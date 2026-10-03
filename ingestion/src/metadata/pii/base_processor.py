@@ -151,6 +151,46 @@ class AutoClassificationProcessor(Processor, ABC):
             if column:
                 yield column, idx
 
+    @classmethod
+    def _log_unmapped_sample_fields(
+        cls,
+        entity_fqn: str,
+        columns: list[Column],
+        sampled_columns: Sequence[ColumnName] | None,
+        classifier_columns: Sequence[tuple[Column, int | None]],
+    ) -> None:
+        """Warn when sampled fields cannot be matched to metadata columns.
+
+        A custom sample query can return aliased fields. Their values never reach a
+        recognizer, and the columns they were meant for are classified without a sample.
+        Field and column names are logged, sampled values are not.
+        """
+        if not sampled_columns:
+            return
+
+        mapped_indexes = {sample_index for _, sample_index in classifier_columns}
+        unmapped_fields = [model_str(field) for idx, field in enumerate(sampled_columns) if idx not in mapped_indexes]
+        if not unmapped_fields:
+            return
+
+        sampled_leaves = {id(leaf) for column, _ in classifier_columns for leaf in cls._iter_leaf_columns(column)}
+        column_fqn_prefix = f"{entity_fqn}."
+        unsampled_columns = [
+            model_str(leaf.fullyQualifiedName).removeprefix(column_fqn_prefix)
+            if leaf.fullyQualifiedName
+            else model_str(leaf.name)
+            for column in columns
+            for leaf in cls._iter_leaf_columns(column)
+            if id(leaf) not in sampled_leaves
+        ]
+        logger.warning(
+            "Auto Classification for [%s]: sampled fields %s do not match any column and were not analyzed."
+            " Columns left without sample data: %s",
+            entity_fqn,
+            unmapped_fields,
+            unsampled_columns,
+        )
+
     @staticmethod
     def _iter_leaf_columns(column: Column, max_depth: int = MAX_COLUMN_NESTING_DEPTH) -> Iterator[Column]:
         """Iterate leaves without following cyclic or pathologically deep schemas."""
@@ -199,8 +239,11 @@ class AutoClassificationProcessor(Processor, ABC):
         column_tags = []
         table_data = record.sample_data.data if record.sample_data else None
         table_data_columns = table_data.columns if table_data is not None else None
+        classifier_columns = list(self._get_classifier_columns(columns, table_data_columns))
+        entity_fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__
+        self._log_unmapped_sample_fields(entity_fqn, columns, table_data_columns, classifier_columns)
 
-        for column, sample_index in self._get_classifier_columns(columns, table_data_columns):
+        for column, sample_index in classifier_columns:
             try:
                 column_sample_data = (
                     [row[sample_index] for row in table_data.rows or []]

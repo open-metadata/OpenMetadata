@@ -14,6 +14,8 @@ Interface for sampler
 
 import traceback
 from abc import ABC, abstractmethod
+from collections import Counter
+from collections.abc import Sequence
 from functools import cached_property
 from typing import Any
 
@@ -25,6 +27,7 @@ from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.pii.types import ClassifiableEntityType
 from metadata.sampler.config import resolve_static_sampling_config
 from metadata.sampler.sampler_config import SamplerConfig
@@ -36,6 +39,71 @@ from metadata.utils.logger import sampler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = sampler_logger()
+
+
+class _TruncatedCell(str):
+    """A sampled text value that was cut to SAMPLE_DATA_MAX_CELL_LENGTH.
+
+    Samplers truncate while fetching, before `generate_sample_data` decides which
+    rows are handed downstream. Marking the value lets that step count only the
+    truncations in rows it hands off, and attribute them to the sampler rather
+    than to a later step. `generate_sample_data` turns marked values back into
+    plain strings before returning them.
+    """
+
+    __slots__ = ()
+
+
+def _count_and_unmark_truncated_cells(rows: list[list[Any]], column_names: Sequence[str]) -> Counter[str]:
+    """Count truncated values per column and turn them back into plain strings."""
+    truncated: Counter[str] = Counter()
+    for row in rows:
+        for idx, cell in enumerate(row):
+            if isinstance(cell, _TruncatedCell):
+                truncated[column_names[idx] if idx < len(column_names) else str(idx)] += 1
+                row[idx] = str(cell)
+    return truncated
+
+
+def _log_sample_data_handoff(
+    entity_fqn: str,
+    requested: int,
+    fetched: int,
+    handed_off: int,
+    truncated: Counter[str],
+) -> None:
+    """Report how many sampled rows reach downstream steps and what was lost on the way.
+
+    Field names may be logged, sampled values must not be.
+    """
+    logger.debug(
+        "Sample data for [%s]: %d rows requested, %d fetched, %d handed off",
+        entity_fqn,
+        requested,
+        fetched,
+        handed_off,
+    )
+    # Fetching fewer rows than requested (small table) or more than requested
+    # (custom sample query) is not a loss. Dropping rows we were asked for is.
+    dropped = min(requested, fetched) - handed_off
+    if dropped > 0:
+        logger.warning(
+            "Sample data for [%s]: %d rows requested and %d fetched, but only %d handed off."
+            " %d rows were dropped because sample data is capped at %d rows.",
+            entity_fqn,
+            requested,
+            fetched,
+            handed_off,
+            dropped,
+            SAMPLE_DATA_DEFAULT_COUNT,
+        )
+    if truncated:
+        logger.warning(
+            "Sample data for [%s]: values longer than %d characters were truncated (column=count): %s",
+            entity_fqn,
+            SAMPLE_DATA_MAX_CELL_LENGTH,
+            ", ".join(f"{name}={count}" for name, count in truncated.items()),
+        )
 
 
 class SamplerInterface(ABC):
@@ -176,7 +244,7 @@ class SamplerInterface(ABC):
     def _truncate_cell(value: Any) -> Any:
         """Truncate string values that exceed the max cell length."""
         if isinstance(value, str) and len(value) > SAMPLE_DATA_MAX_CELL_LENGTH:
-            return value[:SAMPLE_DATA_MAX_CELL_LENGTH]
+            return _TruncatedCell(value[:SAMPLE_DATA_MAX_CELL_LENGTH])
         return value
 
     def generate_sample_data(self, sample_data_config: SampleDataIngestionConfig | None = None) -> TableData:
@@ -197,10 +265,21 @@ class SamplerInterface(ABC):
             if sample_data_config.readSampleData or sample_data_config.storeSampleData:
                 logger.debug(f"Fetching sample data for {self.entity.fullyQualifiedName.root}...")
                 table_data = self.fetch_sample_data(self.columns)
+                fetched_rows = len(table_data.rows or [])
                 table_data.rows = [
                     [self._truncate_cell(cell) for cell in row]
                     for row in table_data.rows[: min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)]
                 ]
+                truncated = _count_and_unmark_truncated_cells(
+                    table_data.rows, [model_str(column) for column in table_data.columns or []]
+                )
+                _log_sample_data_handoff(
+                    entity_fqn=model_str(self.entity.fullyQualifiedName),
+                    requested=self.sample_limit,
+                    fetched=fetched_rows,
+                    handed_off=len(table_data.rows),
+                    truncated=truncated,
+                )
                 return table_data
 
             return TableData(rows=[], columns=[])
