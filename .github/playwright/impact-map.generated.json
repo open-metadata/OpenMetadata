@@ -10162,7 +10162,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/observability/IncidentManager/IncidentGroups/IncidentGroupsView.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts"
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
+        "playwright/e2e/Pages/IntakeForm.spec.ts"
       ]
     },
     {
