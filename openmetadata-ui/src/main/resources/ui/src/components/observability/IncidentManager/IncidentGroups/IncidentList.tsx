@@ -29,9 +29,11 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { FqnPart } from '../../../../enums/entity.enum';
 import {
   Assigned,
+  Severities,
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
@@ -44,6 +46,13 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import Loader from '../../../common/Loader/Loader';
+import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
+import InlineTestCaseIncidentStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/InlineTestCaseIncidentStatus.component';
+import {
+  canEditIncidentRow,
+  submitIncidentSeverity,
+} from '../../../IncidentManager/IncidentManager.utils';
+import { useIncidentRowPermissions } from '../../../IncidentManager/useIncidentRowPermissions';
 import { INCIDENT_STATUS_BADGE_COLORS } from './IncidentGroups.constants';
 import { IncidentListProps } from './IncidentGroups.types';
 import IncidentSeverityBadge from './IncidentSeverityBadge';
@@ -110,11 +119,42 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
 
 /**
  * The incidents of a group, one row each, as the drawer and the drill-down
- * both list them. Read-only: an incident is worked on from its test case,
- * which every row links to, or in bulk from the group table.
+ * both list them. Status and severity are edited in the row by whoever may
+ * edit the incident's test case — the status chip also assigns and reassigns
+ * — and read-only otherwise; `onIncidentChange` hears of every change.
  */
-const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
+const IncidentList = ({
+  incidents,
+  isLoading,
+  onIncidentChange,
+}: IncidentListProps) => {
   const { t } = useTranslation();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const listData = useMemo(
+    () => ({ data: incidents, isLoading }),
+    [incidents, isLoading]
+  );
+  const { isPermissionLoading, testCasePermissions } =
+    useIncidentRowPermissions({
+      testCaseListData: listData,
+      getEntityPermissionByFqn,
+    });
+
+  const canEdit = (incident: TestCaseResolutionStatus) =>
+    !isPermissionLoading &&
+    canEditIncidentRow(
+      testCasePermissions,
+      incident.testCaseReference?.fullyQualifiedName
+    );
+
+  const handleSeveritySubmit = async (
+    incident: TestCaseResolutionStatus,
+    severity?: Severities
+  ) => {
+    if (await submitIncidentSeverity(incident, severity)) {
+      onIncidentChange?.();
+    }
+  };
 
   const columns = useMemo(
     () => [
@@ -165,7 +205,12 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
         )}
       </Table.Header>
       <Table.Body
-        dependencies={[incidents, isLoading]}
+        dependencies={[
+          incidents,
+          isLoading,
+          isPermissionLoading,
+          testCasePermissions,
+        ]}
         items={incidents}
         renderEmptyState={renderEmptyState}>
         {(incident) => {
@@ -173,6 +218,7 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
           const status = incident.testCaseResolutionStatusType;
           const rowId = incident.id ?? incident.stateId;
           const lastUpdated = incident.updatedAt ?? incident.timestamp;
+          const isEditable = canEdit(incident);
 
           return (
             <Table.Row
@@ -200,17 +246,35 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
               </Table.Cell>
               <Table.Cell>
                 <span data-testid="incident-status">
-                  <Badge
-                    color={INCIDENT_STATUS_BADGE_COLORS[status]}
-                    size="sm"
-                    type="pill-color">
-                    {TEST_CASE_RESOLUTION_STATUS_LABELS[status]}
-                  </Badge>
+                  {isEditable ? (
+                    <InlineTestCaseIncidentStatus
+                      hasEditPermission
+                      data={incident}
+                      onSubmit={() => onIncidentChange?.()}
+                    />
+                  ) : (
+                    <Badge
+                      color={INCIDENT_STATUS_BADGE_COLORS[status]}
+                      size="sm"
+                      type="pill-color">
+                      {TEST_CASE_RESOLUTION_STATUS_LABELS[status]}
+                    </Badge>
+                  )}
                 </span>
               </Table.Cell>
               <Table.Cell>
                 <span data-testid="incident-severity">
-                  <IncidentSeverityBadge severity={incident.severity} />
+                  {isEditable ? (
+                    <InlineSeverity
+                      hasEditPermission
+                      severity={incident.severity}
+                      onSubmit={(severity) =>
+                        handleSeveritySubmit(incident, severity)
+                      }
+                    />
+                  ) : (
+                    <IncidentSeverityBadge severity={incident.severity} />
+                  )}
                 </span>
               </Table.Cell>
               <Table.Cell className="tw:whitespace-nowrap">

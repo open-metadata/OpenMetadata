@@ -77,6 +77,7 @@ const IncidentGroupDrawer = ({
   filters,
   onClose,
   onViewAll,
+  onIncidentChange,
 }: IncidentGroupDrawerProps) => {
   const { t } = useTranslation();
   const {
@@ -173,7 +174,14 @@ const IncidentGroupDrawer = ({
                       onRetry={refresh}
                     />
                   ) : (
-                    <IncidentList incidents={incidents} isLoading={isLoading} />
+                    <IncidentList
+                      incidents={incidents}
+                      isLoading={isLoading}
+                      onIncidentChange={() => {
+                        refresh();
+                        onIncidentChange();
+                      }}
+                    />
                   )}
                 </Box>
               </Box>

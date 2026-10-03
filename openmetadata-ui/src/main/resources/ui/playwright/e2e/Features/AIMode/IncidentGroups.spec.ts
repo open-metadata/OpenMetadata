@@ -80,6 +80,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
   const table = new TableClass({ service: new DatabaseServiceClass() });
   const assignee = new UserClass();
   let testCaseFqns: string[] = [];
+  let rowCountName = '';
   // Left unassigned, so it is still New: the one incident here Ack can move.
   let newIncidentFqn = '';
 
@@ -118,6 +119,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
       (testCase) => testCase['fullyQualifiedName']
     );
     newIncidentFqn = fresh['fullyQualifiedName'];
+    rowCountName = rowCount['name'];
 
     for (const testCaseFqn of [...testCaseFqns, newIncidentFqn]) {
       await table.addTestCaseResult(apiContext, testCaseFqn, {
@@ -219,6 +221,40 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     await page.getByTestId('incident-group-back').click();
 
     await expect(tableGroup).toBeVisible();
+  });
+
+  test('changes one incident severity from its row in the drawer', async ({
+    page,
+    browser,
+  }) => {
+    const groups = await openGroups(page, { groupBy: 'table' });
+    const tableGroup = groups.getByRole('rowheader', {
+      name: table.entity.displayName,
+    });
+
+    await expect(tableGroup).toBeVisible({ timeout: GROUPS_TIMEOUT });
+
+    await tableGroup.click();
+
+    const incidentRow = page
+      .getByRole('dialog', { name: 'Incident group' })
+      .getByRole('row', { name: rowCountName });
+
+    await incidentRow.getByTestId('severity-chip').click();
+    await page.getByRole('menuitemradio', { name: 'Severity 4' }).click();
+
+    await expect(incidentRow.getByTestId('severity-chip')).toHaveText(
+      'Severity 4'
+    );
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const incident = await getLatestIncident(apiContext, testCaseFqns[0]);
+
+    expect(incident?.severity).toBe('Severity4');
+    // Only the severity changed: the incident is still assigned.
+    expect(incident?.testCaseResolutionStatusType).toBe('Assigned');
+
+    await afterAction();
   });
 
   test('keeps the drill-down in the URL across a reload and Back', async ({

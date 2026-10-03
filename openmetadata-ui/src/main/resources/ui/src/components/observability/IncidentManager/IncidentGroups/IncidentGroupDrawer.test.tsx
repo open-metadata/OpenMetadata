@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   IncidentGroupBy,
@@ -29,12 +35,35 @@ const mockOnViewAll = jest.fn();
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
+  updateTestCaseIncidentById: jest.fn().mockResolvedValue({}),
 }));
+
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    getEntityPermissionByFqn: jest
+      .fn()
+      .mockResolvedValue({ EditStatus: true, EditAll: true, ViewAll: true }),
+  }),
+}));
+
+jest.mock(
+  '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component',
+  () => ({
+    __esModule: true,
+    default: ({ onSubmit }: { onSubmit: (severity?: string) => void }) => (
+      <button data-testid="severity-chip" onClick={() => onSubmit('Severity2')}>
+        severity
+      </button>
+    ),
+  })
+);
 
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(() => <span>avatar</span>),
 }));
+
+const mockOnIncidentChange = jest.fn();
 
 const GROUP: TestCaseIncidentGroup = {
   groupBy: IncidentGroupBy.TestDefinition,
@@ -56,6 +85,7 @@ const renderDrawer = (group?: TestCaseIncidentGroup) =>
         filters={{ status: [], dateField: 'timestamp' }}
         group={group}
         onClose={mockOnClose}
+        onIncidentChange={mockOnIncidentChange}
         onViewAll={mockOnViewAll}
       />
     </MemoryRouter>
@@ -189,5 +219,22 @@ describe('IncidentGroupDrawer', () => {
     expect(screen.getByTestId('incident-group-drawer-name')).toHaveTextContent(
       'label.no-entity'
     );
+  });
+
+  it('should re-read its incidents and flag the groups stale after a row change', async () => {
+    await act(async () => {
+      renderDrawer(GROUP);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('severity-chip')).toBeInTheDocument()
+    );
+    const reads = mockList.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('severity-chip'));
+    });
+
+    expect(mockOnIncidentChange).toHaveBeenCalledTimes(1);
+    expect(mockList.mock.calls.length).toBeGreaterThan(reads);
   });
 });

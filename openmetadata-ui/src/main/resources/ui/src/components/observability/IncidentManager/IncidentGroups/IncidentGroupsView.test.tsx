@@ -264,10 +264,20 @@ jest.mock('./IncidentGroupDrawer', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ group, onClose, onViewAll }: IncidentGroupDrawerProps) =>
+      ({
+        group,
+        onClose,
+        onViewAll,
+        onIncidentChange,
+      }: IncidentGroupDrawerProps) =>
         group ? (
           <div data-testid="incident-group-drawer">
-            <span data-testid="drawer-group">{group.name}</span>
+            <span data-testid="drawer-group">{`${group.name}:${group.incidentCount}`}</span>
+            <button
+              data-testid="drawer-incident-change"
+              onClick={onIncidentChange}>
+              change
+            </button>
             <button data-testid="drawer-close" onClick={onClose}>
               close
             </button>
@@ -285,9 +295,19 @@ jest.mock('./IncidentGroupDetail', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ group, onBack, onClearFilters }: IncidentGroupDetailProps) => (
+      ({
+        group,
+        onBack,
+        onClearFilters,
+        onIncidentChange,
+      }: IncidentGroupDetailProps) => (
         <div data-testid="incident-group-detail">
           <span data-testid="detail-group">{`${group.name}:${group.incidentCount}`}</span>
+          <button
+            data-testid="detail-incident-change"
+            onClick={onIncidentChange}>
+            change
+          </button>
           <button data-testid="detail-back" onClick={onBack}>
             back
           </button>
@@ -1793,5 +1813,45 @@ describe('IncidentGroupsView filters and paging', () => {
 
       expect(mockShowError).toHaveBeenCalled();
     });
+  });
+
+  it('should re-read the groups when an incident in the drawer changes', async () => {
+    await act(async () => {
+      renderView();
+    });
+    fireEvent.click(screen.getByTestId('preview-first-group'));
+    mockListIncidentGroups.mockResolvedValue({
+      data: [{ ...mockGroups[0], incidentCount: 4 }, ...mockGroups.slice(1)],
+      paging: { total: 5 },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('drawer-incident-change'));
+    });
+
+    expect(screen.getByTestId('drawer-group')).toHaveTextContent(
+      'columnValuesToBeUnique:4'
+    );
+  });
+
+  it('should re-read the drilled-into group when one of its incidents changes', async () => {
+    await act(async () => {
+      renderView();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('group-open-def-unique'));
+    });
+    mockListIncidentGroups.mockResolvedValue({
+      data: [{ ...mockGroups[0], incidentCount: 2 }],
+      paging: { total: 1 },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('detail-incident-change'));
+    });
+
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeUnique:2'
+    );
   });
 });

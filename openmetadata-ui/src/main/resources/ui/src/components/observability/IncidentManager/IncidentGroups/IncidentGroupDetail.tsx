@@ -54,6 +54,7 @@ const IncidentGroupDetail = ({
   filters,
   onBack,
   onClearFilters,
+  onIncidentChange,
 }: IncidentGroupDetailProps) => {
   const { t } = useTranslation();
   const headingRef = useRef<HTMLDivElement>(null);
@@ -175,7 +176,14 @@ const IncidentGroupDetail = ({
             onRetry={refresh}
           />
         ) : (
-          <IncidentList incidents={incidents} isLoading={isLoading} />
+          <IncidentList
+            incidents={incidents}
+            isLoading={isLoading}
+            onIncidentChange={() => {
+              refresh();
+              onIncidentChange();
+            }}
+          />
         )}
         <PaginationCardWithControls
           className="tw:border-0"

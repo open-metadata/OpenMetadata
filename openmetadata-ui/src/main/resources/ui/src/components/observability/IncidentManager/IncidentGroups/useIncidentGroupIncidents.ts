@@ -20,7 +20,10 @@ import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getIncidentGroupIncidentsQuery } from './IncidentGroupIncidents.utils';
 import { IncidentGroupFilters } from './IncidentGroups.types';
-import { getIncidentGroupKey } from './IncidentGroups.utils';
+import {
+  getIncidentGroupKey,
+  getPageAfterEmptyRead,
+} from './IncidentGroups.utils';
 import { useIncidentPaging } from './useIncidentPaging';
 
 interface UseIncidentGroupIncidentsProps {
@@ -67,7 +70,8 @@ export const useIncidentGroupIncidents = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const latestRequest = useRef(0);
-  // Bumped to re-read the page in hand, e.g. after its read failed.
+  // Bumped to re-read the page in hand: an incident on it changed, or its read
+  // failed.
   const [refreshKey, setRefreshKey] = useState(0);
   const groupRef = useRef(group);
   groupRef.current = group;
@@ -90,12 +94,24 @@ export const useIncidentGroupIncidents = ({
       page: currentPage,
     })
       .then((response) => {
-        if (isCurrent()) {
+        if (!isCurrent()) {
+          return;
+        }
+        // Resolving the last incidents on a page leaves it past the end.
+        const pageAfterEmptyRead = getPageAfterEmptyRead(
+          response.data.length,
+          currentPage,
+          pageSize,
+          response.paging.total
+        );
+        if (pageAfterEmptyRead === undefined) {
           setRead({
             groupKey,
             incidents: response.data,
             paging: response.paging,
           });
+        } else {
+          goToPage(pageAfterEmptyRead);
         }
       })
       .catch(() => {
@@ -113,7 +129,7 @@ export const useIncidentGroupIncidents = ({
     return () => {
       latestRequest.current += 1;
     };
-  }, [groupKey, filters, domain, pageSize, currentPage, refreshKey]);
+  }, [groupKey, filters, domain, pageSize, currentPage, goToPage, refreshKey]);
 
   const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
 
