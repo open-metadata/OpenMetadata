@@ -17,6 +17,7 @@ import {
   Locator,
   Page,
   request,
+  test,
 } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { existsSync } from 'fs';
@@ -581,6 +582,49 @@ export const expectNoErrorToast = async (
   await expect(
     message ? errorToast.filter({ hasText: message }) : errorToast
   ).toHaveCount(0);
+};
+
+/**
+ * Opens a `UserSelectableList` / `SelectableList` popover and waits for it.
+ *
+ * Measured on eight separate CI runs of "Add expert to data product via UI":
+ * the click on the widget's `Add` button lands (the button ends up focused),
+ * and `selectable-list` never mounts -- the test then spends its remaining
+ * ~52s on a wait that can no longer succeed. The retry passes with the same
+ * click on the same button, so the click, not the page, is what was lost.
+ *
+ * The browser-level mechanism is NOT established: `trace: on-first-retry`
+ * never traces the attempt that fails, and the component opens reliably in
+ * isolation, so the evidence stops at "the open was dropped on the live page".
+ * Reopening is therefore the honest fix -- it is what a user does, and it
+ * still fails the test if the popover is genuinely broken. The annotation
+ * below is how we find out whether the drop keeps happening.
+ */
+export const openSelectableList = async (page: Page, trigger: Locator) => {
+  const list = page.getByTestId('selectable-list');
+  let clicks = 0;
+
+  await expect(async () => {
+    if (!(await list.isVisible())) {
+      clicks++;
+      await trigger.click();
+    }
+
+    await expect(list).toBeVisible({ timeout: 5_000 });
+    // Deliberately a fraction of the 60s test budget: three clicks that all
+    // fail to open the list is a product bug, not a slow runner.
+  }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+
+  if (clicks > 1) {
+    try {
+      test.info().annotations.push({
+        type: 'selectable-list-reopened',
+        description: `${clicks} clicks needed to open selectable-list`,
+      });
+    } catch {
+      // Called outside a test; the retry itself is what matters.
+    }
+  }
 };
 
 export const clickOutside = async (page: Page) => {

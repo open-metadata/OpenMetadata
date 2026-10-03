@@ -14,8 +14,8 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   captureGitInfo: { commit: false, diff: false },
-  testDir: './utils',
-  testMatch: '**/*.test.ts',
+  testDir: '.',
+  testMatch: ['utils/**/*.test.ts', 'reporters/**/*.test.ts'],
   retries: 0,
   workers: 3,
   fullyParallel: true,

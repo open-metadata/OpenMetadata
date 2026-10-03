@@ -21,7 +21,12 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, toastNotification, uuid } from '../../utils/common';
+import {
+  getApiContext,
+  openSelectableList,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import {
   checkAssetsCount,
   selectDataProduct,
@@ -221,12 +226,10 @@ test.describe('Domain Expert Management', () => {
       await selectDomain(page, domain.data);
 
       // Click add expert button (uses data-testid="Add")
-      await page.getByTestId('domain-expert-name').getByTestId('Add').click();
-
-      // Wait for the popover to appear (UserSelectableList - simpler, no tabs)
-      await page.getByTestId('selectable-list').waitFor({
-        state: 'visible',
-      });
+      await openSelectableList(
+        page,
+        page.getByTestId('domain-expert-name').getByTestId('Add')
+      );
 
       // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');

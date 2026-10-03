@@ -45,7 +45,10 @@ class TimeoutDiagnosticsReporter implements Reporter {
       return;
     }
 
-    const diagnosis = describeFailingStep(result.steps);
+    const diagnosis = describeFailingStep(
+      result.steps,
+      result.startTime.getTime() + result.duration
+    );
 
     if (!diagnosis) {
       return;
@@ -81,25 +84,43 @@ const applyPrefix = (error: TestError, prefix: string): void => {
 const TIMEOUT_DIAGNOSIS_MARKER = 'Timed out in step:';
 
 /**
- * The innermost errored step is the most specific description of where the test
- * stopped: at timeout Playwright fails every step still on the stack, so the
- * chain runs from `test.step(...)` down to the individual `locator.click` that
- * never resolved. Depth wins; duration breaks ties between siblings, since the
- * one that consumed the clock is the one that hung.
+ * A step that already failed on its own timeout and ended long before the clock
+ * ran out did not hang the test, however deep it sits. The background
+ * `page.waitForURL('**\/signin')` that `storageStateRecovery` loses its boot race
+ * to is the worst case: it errors ~30s in, nested two levels under "Before
+ * Hooks", and so outranked every real culprit on depth alone -- every
+ * merge-queue flake in a test longer than that watcher's timeout was reported
+ * as the same innocent navigation wait. Steps still in flight at the deadline
+ * win first; depth and then duration only break ties inside that set.
  */
-export const findFailingStep = (steps: TestStep[]): TestStep | undefined => {
-  let best: { step: TestStep; depth: number } | undefined;
+const STEP_IN_FLIGHT_SLACK_MS = 1_000;
+
+const wasInFlightAt = (step: TestStep, deadline?: number): boolean =>
+  deadline === undefined ||
+  // An unfinished step is reported with duration -1.
+  step.duration < 0 ||
+  step.startTime.getTime() + step.duration >=
+    deadline - STEP_IN_FLIGHT_SLACK_MS;
+
+export const findFailingStep = (
+  steps: TestStep[],
+  deadline?: number
+): TestStep | undefined => {
+  let best: { step: TestStep; depth: number; inFlight: boolean } | undefined;
 
   const visit = (candidates: TestStep[], depth: number): void => {
     for (const step of candidates) {
       if (step.error) {
+        const inFlight = wasInFlightAt(step, deadline);
         const isBetter =
           !best ||
-          depth > best.depth ||
-          (depth === best.depth && step.duration > best.step.duration);
+          (inFlight && !best.inFlight) ||
+          (inFlight === best.inFlight &&
+            (depth > best.depth ||
+              (depth === best.depth && step.duration > best.step.duration)));
 
         if (isBetter) {
-          best = { step, depth };
+          best = { step, depth, inFlight };
         }
       }
       visit(step.steps ?? [], depth + 1);
@@ -111,8 +132,11 @@ export const findFailingStep = (steps: TestStep[]): TestStep | undefined => {
   return best?.step;
 };
 
-export const describeFailingStep = (steps: TestStep[]): string | undefined => {
-  const step = findFailingStep(steps);
+export const describeFailingStep = (
+  steps: TestStep[],
+  deadline?: number
+): string | undefined => {
+  const step = findFailingStep(steps, deadline);
 
   if (!step) {
     return undefined;

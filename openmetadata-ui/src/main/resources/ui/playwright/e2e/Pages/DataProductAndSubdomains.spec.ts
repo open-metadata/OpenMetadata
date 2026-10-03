@@ -26,6 +26,7 @@ import {
 } from '../../utils/assetDrawerQuickFilter';
 import {
   getApiContext,
+  openSelectableList,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -46,7 +47,15 @@ import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
+// `trace` is temporary, and the only way to close out the "Add expert" flake:
+// the repo default is `on-first-retry`, which never traces the attempt that
+// fails, so eight merge-queue occurrences produced screenshots but no call log
+// or network timeline. `retain-on-failure` keeps the first attempt's trace and
+// discards it when the test passes. Drop this line once the flake is explained.
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  trace: 'retain-on-failure',
+});
 
 test.describe('Data Product Comprehensive Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -243,12 +252,10 @@ test.describe('Data Product Comprehensive Tests', () => {
       await selectDataProduct(page, dataProduct.data);
 
       // Click add expert button
-      await page.getByTestId('domain-expert-name').getByTestId('Add').click();
-
-      // Wait for the popover to appear
-      await page.getByTestId('selectable-list').waitFor({
-        state: 'visible',
-      });
+      await openSelectableList(
+        page,
+        page.getByTestId('domain-expert-name').getByTestId('Add')
+      );
 
       // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');
@@ -1039,6 +1046,95 @@ test.describe('Data Product Name in Entity Name Cell', () => {
 
       // Verify the data product appears in search results
       await expect(page.getByTestId(dataProduct.data.name)).toBeVisible();
+    } finally {
+      await dataProduct.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+  /**
+   * TEMPORARY diagnostic — delete once the "Add expert" flake is explained.
+   *
+   * The flake needs a loaded CI runner: 28 local runs (8x CPU throttle, earliest
+   * possible click, the real SPA path with mousedown/mouseup/click logging) never
+   * reproduced it. This repeats the navigate -> click -> assert cycle so one CI
+   * run gets several exposures instead of one, fails on the FIRST miss so
+   * `trace: retain-on-failure` keeps that attempt's trace, and records the single
+   * fact the eight existing reports cannot answer: whether the popover never
+   * mounted, or mounted and was not visible.
+   */
+  test('flake probe: repeatedly open the Experts picker', async ({ page }) => {
+    const iterations = Number(process.env.PROBE_ITERATIONS ?? 8);
+    test.setTimeout(600_000);
+
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+    const requests: string[] = [];
+
+    page.on('request', (request) => {
+      const url = request.url();
+
+      if (
+        url.includes('/api/v1/users?') ||
+        url.includes('/api/v1/search/query')
+      ) {
+        requests.push(`${Date.now()} ${url.slice(0, 120)}`);
+      }
+    });
+
+    try {
+      await domain.create(apiContext);
+      await dataProduct.create(apiContext);
+
+      const list = page.getByTestId('selectable-list');
+
+      for (let iteration = 1; iteration <= iterations; iteration++) {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+
+        const requestsBefore = requests.length;
+        await page.getByTestId('domain-expert-name').getByTestId('Add').click();
+
+        let opened = true;
+        try {
+          await list.waitFor({ state: 'visible', timeout: 8_000 });
+        } catch {
+          opened = false;
+        }
+
+        if (!opened) {
+          const attached = await list.count();
+          const popovers = await page
+            .locator('.ant-popover')
+            .evaluateAll((nodes) =>
+              nodes.map(
+                (node) =>
+                  `${(node as HTMLElement).className}|h=${
+                    (node as HTMLElement).offsetHeight
+                  }`
+              )
+            );
+          const focused = await page.evaluate(
+            () =>
+              document.activeElement?.getAttribute('data-testid') ??
+              document.activeElement?.tagName ??
+              'none'
+          );
+
+          throw new Error(
+            `Experts picker did not open on iteration ${iteration}: ` +
+              `selectable-list attached=${attached}, ` +
+              `popovers=${JSON.stringify(popovers)}, focused=${focused}, ` +
+              `requestsAfterClick=${JSON.stringify(
+                requests.slice(requestsBefore)
+              )}`
+          );
+        }
+
+        await page.keyboard.press('Escape');
+      }
     } finally {
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
