@@ -77,7 +77,7 @@ test.describe('AI mode Observability', () => {
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-         
+
         await expect(
           page.getByText(expectedText).filter({ visible: true })
         ).not.toHaveCount(0);
@@ -474,7 +474,6 @@ test.describe('AI mode Observability', () => {
     });
     await waitForAllLoadersToDisappear(page);
 
-     
     await expect(
       page.getByText('Observability Alert').filter({ visible: true })
     ).not.toHaveCount(0);
