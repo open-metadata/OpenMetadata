@@ -150,8 +150,8 @@ test.describe('Task Creation - Request Description', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -192,8 +192,8 @@ test.describe('Task Creation - Request Description', () => {
     await taskResponse;
 
     await expect(
-      page.locator('[data-testid="task-feed-card"]').first()
-    ).toBeVisible({
+      page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+    ).not.toHaveCount(0, {
       timeout: 10000,
     });
   });
@@ -280,8 +280,8 @@ test.describe('Task Creation - Request Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -442,8 +442,8 @@ test.describe('Task Creation - Suggest Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }

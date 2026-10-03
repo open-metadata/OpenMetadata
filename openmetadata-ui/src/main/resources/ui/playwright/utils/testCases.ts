@@ -864,7 +864,7 @@ export const performE2EExportImportFlow = async (
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     // Update display name for first test case (existing test case)
-    await page.locator('.rdg-row').nth(0).click();
+    await page.getByTestId('rdg-row-0').click();
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
@@ -884,7 +884,7 @@ export const performE2EExportImportFlow = async (
     await page.keyboard.press('Enter');
 
     // First test case - add tag
-    await page.locator('.rdg-row').nth(0).click();
+    await page.getByTestId('rdg-row-0').click();
     await page
       .locator('.rdg-row')
       .nth(0)

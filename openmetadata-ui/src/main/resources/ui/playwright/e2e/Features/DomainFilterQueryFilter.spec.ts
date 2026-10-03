@@ -752,8 +752,8 @@ test.describe('Domain Filter - User Behavior Tests', () => {
             name: dataProductInDomainA.data.displayName,
             exact: true,
           })
-          .first()
-      ).toBeVisible();
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
 
       // Verify subDomainA's data product IS visible (subdomain data products should be included)
       await expect(
@@ -762,8 +762,8 @@ test.describe('Domain Filter - User Behavior Tests', () => {
             name: dataProductInSubDomainA.data.displayName,
             exact: true,
           })
-          .first()
-      ).toBeVisible();
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
 
       // Verify domainB's data product is NOT visible
       await expect(
@@ -826,7 +826,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
     // Helper to verify asset visibility
     const expectVisible = async (fqn: string | undefined) => {
-      await expect(page.locator(`a[href*="${fqn}"]`).first()).toBeVisible();
+      await expect(
+        page.locator(`a[href*="${fqn}"]`).filter({ visible: true })
+      ).not.toHaveCount(0);
     };
 
     const expectNotVisible = async (fqn: string | undefined) => {

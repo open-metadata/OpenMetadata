@@ -69,8 +69,7 @@ test.describe(
       await page.click('[id="root\\/column"]');
       const columnOption = page
         .getByRole('option')
-        .filter({ hasText: columnName })
-        .first();
+        .filter({ hasText: columnName });
       await columnOption.waitFor({
         state: 'visible',
       });

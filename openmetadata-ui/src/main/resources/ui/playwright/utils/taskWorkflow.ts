@@ -39,7 +39,6 @@ export interface CreatedTask {
   status?: string;
 }
 
-const TASK_CARD_SELECTOR = '[data-testid="task-feed-card"]';
 const TASK_TAB_SELECTOR = '[data-testid="task-tab"]';
 const TASK_PANEL_SELECTOR = '#task-panel';
 const VISIBLE_TASK_MODAL_SELECTOR = '.ant-modal-wrap:visible';
@@ -382,10 +381,18 @@ export const openEntityTasksTab = async (page: Page) => {
 export const getTaskCard = (page: Page, task: CreatedTask) => {
   const taskDisplayId = getTaskDisplayId(task.taskId);
 
+  // The card renders aria-label="#<displayId> <type>", so its accessible name
+  // identifies the task. It is not enough on its own: the card also contains a
+  // redirect-task-button-link whose own name starts with the same "#<id>". So
+  // require both identities -- the task card AND that accessible name.
+  //
+  // The pattern is anchored because a substring match on "#12" also hits
+  // "#120".
   return page
-    .locator(TASK_CARD_SELECTOR)
-    .filter({ hasText: `#${taskDisplayId}` })
-    .first();
+    .getByTestId('task-feed-card')
+    .and(
+      page.getByRole('button', { name: new RegExp(`^#${taskDisplayId}\\b`) })
+    );
 };
 
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {
