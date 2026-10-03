@@ -48,21 +48,25 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * Moves {@code entityReference} / {@code entityReferenceList} custom-property values into {@code
  * custom_property_reference}, their only home from 2.1 on. Entity-level values leave {@code
  * entity_extension}; column-level values leave both the column's {@code entity_extension} row and
- * the holder's inline column copy (on main, bulk-created tables have only the inline copy).
+ * the holder's inline column copy.
  *
- * <p>Each page runs in one transaction: rows are inserted, counted back, and only then are the
- * source copies stripped, so a failed page leaves its sources untouched and a re-run finds only
- * what is still left to move. Name-only references get their id; references whose target no longer
- * exists are dropped. A value naming a type this server does not know is left where it is.
- * Definitions come from {@code field_relationship} because the migrate job does not load {@code
- * TypeRegistry}.
+ * <p>Entity-level values are found by their {@code entity_extension} key. Column-level holders are
+ * found by one database query over the column rows that mention a defined reference property, so no
+ * holder row is read unless it has something to move; a column value that exists only in the
+ * holder's inline copy (no column row) is left in place. Each page or holder runs in one
+ * transaction: rows are inserted, counted back, and only then are the source copies stripped, so a
+ * failed one leaves its sources untouched and a re-run finds only what is still left to move.
+ * Name-only references get their id; references whose target no longer exists are dropped. A value
+ * naming a type this server does not know is left where it is. Definitions come from {@code
+ * field_relationship} because the migrate job does not load {@code TypeRegistry}.
  */
 @Slf4j
 public final class CustomPropertyReferenceMigration {
-  // Small pages: one value can hold 10k references and one table thousands of columns, and each
-  // page is held in memory and written in one transaction.
-  private static final int ENTITY_PAGE_SIZE = 100;
-  private static final int HOLDER_PAGE_SIZE = 20;
+  // Small pages: one value can hold 10k references, and a page is held in memory and written in
+  // one transaction. Column-level holders are processed one at a time.
+  private static final int ENTITY_PAGE_SIZE = 25;
+  private static final int HOLDER_ID_BATCH_SIZE = 500;
+  private static final int PROGRESS_INTERVAL = 1000;
   private static final String COLUMN_EXTENSION = "columnExtension";
 
   private final Handle handle;
@@ -71,6 +75,7 @@ public final class CustomPropertyReferenceMigration {
   private int moved;
   private int dropped;
   private int leftInPlace;
+  private int holdersDone;
 
   private CustomPropertyReferenceMigration(
       Handle handle, CollectionDAO dao, ConnectionType connectionType) {
@@ -91,7 +96,7 @@ public final class CustomPropertyReferenceMigration {
           if (holderType == null) {
             properties.forEach(property -> migrateEntityLevel(typeName, property));
           } else {
-            migrateColumnLevel(holderType, properties::contains);
+            migrateColumnLevel(holderType, properties);
           }
         });
     LOG.info(
@@ -133,6 +138,8 @@ public final class CustomPropertyReferenceMigration {
       afterId = page.getLast().id();
       page = page.size() < ENTITY_PAGE_SIZE ? List.of() : entityLevelPage(key, afterId);
     }
+    LOG.info(
+        "Custom-property references: {}.{} done, moved {} so far", holderType, property, moved);
   }
 
   private List<SourceRow> entityLevelPage(String key, String afterId) {
@@ -174,27 +181,76 @@ public final class CustomPropertyReferenceMigration {
 
   private record Holder(String id, String json) {}
 
-  private void migrateColumnLevel(String holderType, Predicate<String> isReference) {
+  private void migrateColumnLevel(String holderType, Set<String> properties) {
+    Predicate<String> isReference = properties::contains;
     String table = Entity.getEntityRepository(holderType).getDao().getTableName();
     String afterId = "";
-    List<Holder> page = holderPage(table, afterId);
-    while (!page.isEmpty()) {
-      List<Holder> current = page;
-      handle.useTransaction(
-          ignored -> migrateColumnLevelPage(holderType, table, isReference, current));
-      afterId = page.getLast().id();
-      page = page.size() < HOLDER_PAGE_SIZE ? List.of() : holderPage(table, afterId);
+    List<String> holderIds = columnHolderIds(table, properties, afterId);
+    while (!holderIds.isEmpty()) {
+      for (String holderId : holderIds) {
+        handle.useTransaction(
+            ignored -> migrateColumnHolder(holderType, table, holderId, isReference));
+        logProgress(holderType);
+      }
+      afterId = holderIds.getLast();
+      holderIds =
+          holderIds.size() < HOLDER_ID_BATCH_SIZE
+              ? List.of()
+              : columnHolderIds(table, properties, afterId);
+    }
+    LOG.info("Custom-property references: {} columns done, {} holders", holderType, holdersDone);
+  }
+
+  private void logProgress(String holderType) {
+    holdersDone++;
+    if (holdersDone % PROGRESS_INTERVAL == 0) {
+      LOG.info(
+          "Custom-property references: {} {} holders migrated, moved {} so far",
+          holdersDone,
+          holderType,
+          moved);
     }
   }
 
-  private List<Holder> holderPage(String table, String afterId) {
+  /**
+   * Ids of holders of this type whose column rows mention one of the properties, in id order. The
+   * database does the filtering, so only matching ids reach this process.
+   */
+  private List<String> columnHolderIds(String table, Set<String> properties, String afterId) {
+    boolean postgres = connectionType == ConnectionType.POSTGRES;
+    String mentionsProperty =
+        postgres
+            ? "jsonb_exists_any(e.json, ARRAY[<names>]::text[])"
+            : "JSON_CONTAINS_PATH(e.json, 'one', <names>)";
+    List<String> names =
+        properties.stream().map(name -> postgres ? name : "$.\"" + name + "\"").toList();
     return handle
         .createQuery(
-            "SELECT id, json FROM " + table + " WHERE id > :afterId ORDER BY id LIMIT :limit")
+            "SELECT DISTINCT e.id FROM entity_extension e JOIN "
+                + table
+                + " t ON t.id = e.id WHERE e.jsonSchema = '"
+                + COLUMN_EXTENSION
+                + "' AND e.id > :afterId AND "
+                + mentionsProperty
+                + " ORDER BY e.id LIMIT :limit")
+        .bindList("names", names)
         .bind("afterId", afterId)
-        .bind("limit", HOLDER_PAGE_SIZE)
-        .map((rs, ctx) -> new Holder(rs.getString("id"), rs.getString("json")))
+        .bind("limit", HOLDER_ID_BATCH_SIZE)
+        .mapTo(String.class)
         .list();
+  }
+
+  private void migrateColumnHolder(
+      String holderType, String table, String holderId, Predicate<String> isReference) {
+    List<Holder> holder =
+        handle
+            .createQuery("SELECT id, json FROM " + table + " WHERE id = :id")
+            .bind("id", holderId)
+            .map((rs, ctx) -> new Holder(rs.getString("id"), rs.getString("json")))
+            .list();
+    if (!holder.isEmpty()) {
+      migrateColumnLevelPage(holderType, table, isReference, holder);
+    }
   }
 
   private void migrateColumnLevelPage(

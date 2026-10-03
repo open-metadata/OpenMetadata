@@ -1782,15 +1782,12 @@ public class ColumnCustomPropertiesIT {
     }
   }
 
-  /**
-   * Bulk create on main stored column values only in the inline copy, often by name only; the
-   * migration moves those too and completes their ids.
-   */
+  /** Column values stored by name only get their ids completed when the migration moves them. */
   @Test
   @ResourceLock(
       value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
       mode = ResourceAccessMode.READ_WRITE)
-  void test_tableColumn_migrationMovesInlineOnlyNameOnlyValues(TestNamespace ns) throws Exception {
+  void test_tableColumn_migrationCompletesNameOnlyValues(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String propName =
         addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
@@ -1799,7 +1796,7 @@ public class ColumnCustomPropertiesIT {
       Team second = createTeam(client, ns.prefix("second"));
       Table table = createTestTable(ns);
       writeLegacyValue(
-          table, "id", Map.of(propName, List.of(nameOnly(first), nameOnly(second))), false);
+          table, "id", Map.of(propName, List.of(nameOnly(first), nameOnly(second))), true);
 
       TypeResourceIT.runReferenceMigration();
 
@@ -1811,6 +1808,29 @@ public class ColumnCustomPropertiesIT {
 
       TypeResourceIT.runReferenceMigration();
       assertEquals(1, referenceRowsTo(first.getId()).size());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  /** Holders are found from their column rows, so a value held only inline is left untouched. */
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_tableColumn_migrationLeavesInlineOnlyValuesInPlace(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team team = createTeam(client, ns.prefix("team"));
+      Table table = createTestTable(ns);
+      writeLegacyValue(table, "id", Map.of(propName, List.of(teamRef(team))), false);
+
+      TypeResourceIT.runReferenceMigration();
+
+      assertEquals(List.of(team.getId().toString()), inlineReferenceIds(table, "id", propName));
+      assertTrue(referenceRowsTo(team.getId()).isEmpty());
     } finally {
       removeColumnTypeProperty(client, TABLE_COLUMN, propName);
     }
