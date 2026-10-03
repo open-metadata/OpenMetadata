@@ -584,8 +584,11 @@ test(
 
       await performExpandAll(page);
 
+      // A child's row key is the parent FQN plus its own name, so a *=
+      // substring match also selects every descendant. Anchor to the end of
+      // the key, which only the term itself satisfies.
       const parentRow = page.locator(
-        `[data-row-key*="${parentTerm.responseData.name}"]`
+        `[data-row-key$="${parentTerm.responseData.name}"]`
       );
 
       await expect(parentRow).toBeVisible();

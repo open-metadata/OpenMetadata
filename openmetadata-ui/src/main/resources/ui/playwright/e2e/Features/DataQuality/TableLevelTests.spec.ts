@@ -703,7 +703,7 @@ test.describe(
           .filter({
             hasText: table2.entityResponseData?.['fullyQualifiedName'] ?? '',
           })
-           
+
           .first();
 
         await expect(table2Option).toBeVisible();
