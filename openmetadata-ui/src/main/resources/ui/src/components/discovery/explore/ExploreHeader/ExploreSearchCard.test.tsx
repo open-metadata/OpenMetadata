@@ -48,9 +48,12 @@ const mockTranslations: Record<string, string> = {
   'message.natural-language-search-active': 'Natural language search active',
 };
 
-jest.mock('../../../common/DomainFilterChip/DomainFilterChip.component', () => ({
-  DomainFilterChip: () => null,
-}));
+jest.mock(
+  '../../../common/DomainFilterChip/DomainFilterChip.component',
+  () => ({
+    DomainFilterChip: () => null,
+  })
+);
 
 jest.mock('react-router-dom', () => ({
   useLocation: () => mockLocation,
