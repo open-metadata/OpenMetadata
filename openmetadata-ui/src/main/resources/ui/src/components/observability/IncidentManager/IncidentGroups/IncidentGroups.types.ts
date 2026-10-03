@@ -68,6 +68,11 @@ export interface IncidentGroupsFiltersProps {
   onChange: (changes: Partial<IncidentGroupFilters>) => void;
 }
 
+export interface IncidentGroupsLoadErrorProps {
+  onRetry: () => void;
+  'data-testid': string;
+}
+
 export interface IncidentListProps {
   incidents: TestCaseResolutionStatus[];
   isLoading: boolean;

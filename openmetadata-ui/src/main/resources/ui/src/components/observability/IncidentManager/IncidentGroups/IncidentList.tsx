@@ -131,7 +131,15 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
     );
 
   return (
-    <Table aria-label={t('label.incident-plural')} size="sm">
+    <Table
+      aria-label={t('label.incident-plural')}
+      // The page being left stays until the next one lands; dimmed, it reads
+      // as on its way out rather than as the result.
+      className={
+        isLoading && incidents.length > 0 ? 'tw:opacity-60' : undefined
+      }
+      data-testid="incident-list"
+      size="sm">
       <Table.Header columns={columns}>
         {(column) => (
           <Table.Head
