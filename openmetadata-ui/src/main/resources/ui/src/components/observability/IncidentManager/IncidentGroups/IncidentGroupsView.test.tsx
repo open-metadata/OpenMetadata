@@ -1038,6 +1038,37 @@ describe('IncidentGroupsView filters and paging', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should keep the rows when the page stepped back to fails to read', async () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        {viewTree(0)}
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await goToSecondPage();
+
+    mockListIncidentGroups
+      .mockResolvedValueOnce({ data: [], paging: { total: 10 } })
+      .mockRejectedValueOnce(new Error('failure'));
+
+    await act(async () => {
+      rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('incident-groups-error')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+  });
+
   it('should show no pager while there is no group to page through', async () => {
     mockListIncidentGroups.mockResolvedValue({
       data: [],
