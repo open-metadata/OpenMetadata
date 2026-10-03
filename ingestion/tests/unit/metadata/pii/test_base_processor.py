@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Tests for the sampler-to-auto-classification bridge."""
 
+import logging
 import uuid
 from collections.abc import Sequence
 from itertools import pairwise
@@ -38,6 +39,9 @@ from metadata.generated.schema.type.tagLabel import LabelType, State, TagLabel, 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.sampler.models import SampleData, SamplerResponse
+from metadata.utils.logger import profiler_logger
+
+PROCESSOR_LOGGER = profiler_logger().name
 
 
 class RecordingClassificationProcessor(AutoClassificationProcessor):
@@ -401,3 +405,106 @@ def test_sampled_dotted_path_maps_to_canonical_nested_column(workflow_config):
     processor.run(record)
 
     assert processor.classifier_inputs == [(nested_email, ["first@example.com", "second@example.com"])]
+
+
+def _processor_warnings(caplog) -> list[str]:
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == PROCESSOR_LOGGER and record.levelno >= logging.WARNING
+    ]
+
+
+def _aliased_query_record() -> tuple[SamplerResponse, Column, Column]:
+    id_column = _column("id")
+    email_column = _column("email")
+    record = SamplerResponse(
+        entity=_table([id_column, email_column]),
+        sample_data=SampleData(
+            data=TableData(
+                columns=[ColumnName(root="id"), ColumnName(root="customer_email")],
+                rows=[[1, "first@example.com"], [2, "second@example.com"]],
+            )
+        ),
+    )
+    return record, id_column, email_column
+
+
+def test_unmapped_sample_fields_report_field_and_unsampled_column(workflow_config, caplog):
+    # Issue #34299: an aliased custom query returns a field that maps to no column.
+    record, id_column, _ = _aliased_query_record()
+    processor = RecordingClassificationProcessor(workflow_config)
+
+    with caplog.at_level(logging.WARNING, logger=PROCESSOR_LOGGER):
+        processor.run(record)
+
+    assert processor.classifier_inputs == [(id_column, [1, 2])]
+    warnings = _processor_warnings(caplog)
+    assert len(warnings) == 1
+    assert "['customer_email']" in warnings[0]
+    assert "Columns left without sample data: ['email']" in warnings[0]
+    assert "example.com" not in caplog.text
+
+
+def test_unmapped_nested_sample_field_reports_unsampled_leaves(workflow_config, caplog):
+    entity, _ = _nested_table_case()
+    record = SamplerResponse(
+        entity=entity,
+        sample_data=SampleData(
+            data=TableData(
+                columns=[ColumnName(root="id"), ColumnName(root="contact.address"), ColumnName(root="contact_mail")],
+                rows=[[1, {"city": "Paris"}, "first@example.com"]],
+            )
+        ),
+    )
+    processor = RecordingClassificationProcessor(workflow_config)
+
+    with caplog.at_level(logging.WARNING, logger=PROCESSOR_LOGGER):
+        processor.run(record)
+
+    warnings = _processor_warnings(caplog)
+    assert len(warnings) == 1
+    assert "['contact_mail']" in warnings[0]
+    assert "Columns left without sample data: ['contact.email']" in warnings[0]
+
+
+@pytest.mark.parametrize(
+    "sample_data",
+    [
+        TableData(
+            columns=[ColumnName(root="id"), ColumnName(root="email")],
+            rows=[[1, "first@example.com"]],
+        ),
+        TableData(columns=[], rows=[]),
+        None,
+    ],
+)
+def test_mapped_or_missing_sample_fields_do_not_warn(workflow_config, caplog, sample_data):
+    record = SamplerResponse(
+        entity=_table([_column("id"), _column("email"), _column("other")]),
+        sample_data=SampleData(data=sample_data) if sample_data is not None else None,
+    )
+    processor = RecordingClassificationProcessor(workflow_config)
+
+    with caplog.at_level(logging.WARNING, logger=PROCESSOR_LOGGER):
+        processor.run(record)
+
+    assert _processor_warnings(caplog) == []
+
+
+def test_diagnostics_do_not_change_emitted_tags(workflow_config, caplog):
+    def run_once() -> list[tuple[str, str]]:
+        record, _, _ = _aliased_query_record()
+        result = RecordingClassificationProcessor(workflow_config).run(record)
+        return [(tag.column_fqn, tag.tag_label.tagFQN.root) for tag in result.column_tags]
+
+    logging.disable(logging.CRITICAL)
+    try:
+        without_diagnostics = run_once()
+    finally:
+        logging.disable(logging.NOTSET)
+    with caplog.at_level(logging.DEBUG, logger=PROCESSOR_LOGGER):
+        with_diagnostics = run_once()
+
+    assert _processor_warnings(caplog)
+    assert with_diagnostics == without_diagnostics == [("service.database.schema.table.id", "PII.Email")]
