@@ -54,7 +54,7 @@ Mark each check as PASS or FAIL. **If a blocker or warning was found for an area
 | Test connection JSON steps match test_fn keys | | |
 | Test connection steps are distinct (no duplicate functions) | | |
 | Registered in service schema enum and oneOf | | |
-| UI utils updated with schema import and switch case | | |
+| UI utils updated with schema loader entry | | |
 | i18n keys added | | |
 
 {{SCHEMA_DETAILS}}
