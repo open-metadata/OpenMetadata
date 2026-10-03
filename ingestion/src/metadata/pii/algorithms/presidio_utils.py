@@ -17,6 +17,7 @@ import logging
 import re
 import types
 from collections.abc import Callable, Iterable
+from datetime import datetime
 from functools import cache, wraps
 from itertools import groupby
 from typing import ClassVar, cast
@@ -34,11 +35,15 @@ from presidio_analyzer import (
 )
 from presidio_analyzer.nlp_engine import NlpArtifacts, SpacyNlpEngine
 from presidio_analyzer.predefined_recognizers import (
+    AuAcnRecognizer,
     AuTfnRecognizer,
     CreditCardRecognizer,
     DateRecognizer,
+    FiPersonalIdentityCodeRecognizer,
     InAadhaarRecognizer,
+    ItFiscalCodeRecognizer,
     NhsRecognizer,
+    PlPeselRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
 )
@@ -421,6 +426,141 @@ def eager_us_bank_recognizer(
     context: list[str] | None = None,
 ) -> ContextAwareUsBankRecognizer:
     return ContextAwareUsBankRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class ValidatedPlPeselRecognizer(PlPeselRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        # PESEL check: weights [1,3,7,9,1,3,7,9,1,3] on first 10 digits;
+        # check digit = (10 - weighted_sum % 10) % 10.
+        # Presidio's upstream omits the complement step, always returning False for valid PESELs
+        # whose weighted sum is non-zero.
+        text = re.sub(r"[^0-9]", "", pattern_text)
+        if len(text) != 11:
+            return False
+        digits = [int(c) for c in text]
+        weights = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3]
+        total = sum(d * w for d, w in zip(digits[:10], weights))
+        return (10 - total % 10) % 10 == digits[10]
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    PlPeselRecognizer
+)
+def pl_pesel_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedPlPeselRecognizer:
+    return ValidatedPlPeselRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class ValidatedItFiscalCodeRecognizer(ItFiscalCodeRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        # Presidio's upstream returns None (no decision) when the check character doesn't
+        # match, keeping the regex score and causing false positives.  Map None → False so
+        # invalid codes are filtered out.
+        result = super().validate_result(pattern_text)
+        return False if result is None else result
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    ItFiscalCodeRecognizer
+)
+def it_fiscal_code_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedItFiscalCodeRecognizer:
+    return ValidatedItFiscalCodeRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class ValidatedAuAcnRecognizer(AuAcnRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        # ACN check: weights [8,7,6,5,4,3,2,1] on first 8 digits;
+        # check digit = (10 - weighted_sum % 10) % 10.
+        # Presidio's upstream uses `10 - remainder` without the outer % 10, so ACNs whose
+        # weighted sum is divisible by 10 (check digit = 0) are always rejected.
+        text = re.sub(r"[^0-9]", "", pattern_text)
+        if len(text) != 9:
+            return False
+        digits = [int(c) for c in text]
+        weights = [8, 7, 6, 5, 4, 3, 2, 1]
+        total = sum(d * w for d, w in zip(digits[:8], weights))
+        return (10 - total % 10) % 10 == digits[8]
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    AuAcnRecognizer
+)
+def au_acn_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedAuAcnRecognizer:
+    return ValidatedAuAcnRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+# Finnish HETU century separator → base year.  Letters A–Z all map to 2000; the regex
+# only admits A–Y, so Z would never reach validate_result in practice.
+_FI_HETU_CENTURY: dict[str, int] = {
+    '+': 1800,
+    '-': 1900,
+    **{chr(c): 2000 for c in range(ord('A'), ord('Z') + 1)},
+}
+# 31-entry check-character table (indices 0–30).
+_FI_HETU_CHECK_CHARS = "0123456789ABCDEFHJKLMNPRSTUVWXY"
+
+
+class ValidatedFiPersonalIdentityCodeRecognizer(FiPersonalIdentityCodeRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        # HETU format: DDMMYYCSSSV (11 chars).
+        # C = century separator; SSS = 3-digit individual number; V = check char.
+        # Presidio's upstream uses strptime("%d%m%y") which applies POSIX 2-digit-year
+        # rules and ignores the century separator, accepting e.g. 290200- (29 Feb 1900,
+        # which never existed) as valid because 2000 *is* a leap year.
+        text = pattern_text.upper()
+        if len(text) != 11:
+            return None
+        separator = text[6]
+        century = _FI_HETU_CENTURY.get(separator)
+        if century is None:
+            return False
+        date_part = text[:6]
+        try:
+            yy = int(date_part[4:6])
+            full_year = century + yy
+            datetime.strptime(f"{date_part[:4]}{full_year:04d}", "%d%m%Y")
+        except ValueError:
+            return False
+        number_part = date_part + text[7:10]
+        try:
+            remainder = int(number_part) % 31
+        except ValueError:
+            return False
+        return text[10] == _FI_HETU_CHECK_CHARS[remainder]
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    FiPersonalIdentityCodeRecognizer
+)
+def fi_personal_identity_code_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedFiPersonalIdentityCodeRecognizer:
+    return ValidatedFiPersonalIdentityCodeRecognizer(
         supported_language=supported_language,
         context=context,
     )
