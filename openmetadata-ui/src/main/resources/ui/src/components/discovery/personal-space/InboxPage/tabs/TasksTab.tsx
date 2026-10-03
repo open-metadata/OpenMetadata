@@ -475,15 +475,29 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // A short narrowed list keeps the scroll sentinel in view, which would page
   // through the user's whole history; stop after a bounded scan.
   const isClientNarrowed = typeFilter.length > 0 || statusFilter.length > 0;
-  // "Load more" on a capped no-match raises the cap by another scan.
-  const [scanLimit, setScanLimit] = useState(MAX_NARROWED_SCAN);
+  // "Load more" on a capped no-match raises the cap by another scan, for that
+  // narrowing only: the raise is keyed to the inputs it was made under, so any
+  // change of tab, search or filter falls back to the base cap.
+  const scanKey = JSON.stringify([
+    status,
+    searchQuery,
+    typeFilter,
+    statusFilter,
+  ]);
+  const [scanRaise, setScanRaise] = useState({ key: scanKey, extra: 0 });
+  const scanLimit =
+    MAX_NARROWED_SCAN + (scanRaise.key === scanKey ? scanRaise.extra : 0);
   const canLoadMore = useCallback(
     (loaded: Task[]) => !isClientNarrowed || loaded.length < scanLimit,
     [isClientNarrowed, scanLimit]
   );
   const handleScanFurther = useCallback(
-    () => setScanLimit((limit) => limit + MAX_NARROWED_SCAN),
-    []
+    () =>
+      setScanRaise((raise) => ({
+        key: scanKey,
+        extra: (raise.key === scanKey ? raise.extra : 0) + MAX_NARROWED_SCAN,
+      })),
+    [scanKey]
   );
 
   const {
