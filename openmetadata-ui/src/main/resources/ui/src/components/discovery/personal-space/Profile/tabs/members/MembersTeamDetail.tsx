@@ -40,7 +40,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, noop } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, {
   FC,
   useCallback,
@@ -53,7 +53,7 @@ import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
 import { DropZone, useDragAndDrop } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ColumnDragIcon } from '../../../../../../assets/svg/menu-duo.svg';
 import {
   PAGE_SIZE_BASE,
@@ -70,6 +70,7 @@ import {
   TabSpecificField,
 } from '../../../../../../enums/entity.enum';
 import { CursorType } from '../../../../../../enums/pagination.enum';
+import { SearchIndex } from '../../../../../../enums/search.enum';
 import {
   Operation,
   Policy,
@@ -83,7 +84,9 @@ import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
+import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { getPolicies, getRoles } from '../../../../../../rest/rolesAPIV1';
+import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
   deleteUserFromTeam,
   exportTeam,
@@ -100,10 +103,6 @@ import {
   checkPermission,
   LIST_CAP,
 } from '../../../../../../utils/PermissionsUtils';
-import {
-  getRoleWithFqnPath,
-  getUserPath,
-} from '../../../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { isDropRestricted } from '../../../../../../utils/TeamUtils';
 import {
@@ -122,13 +121,28 @@ import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import type { MembersTeamDetailProps } from './Members.types';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
+import {
+  profileHash,
+  ProfileHashTarget,
+  toHashLocation,
+} from './profileHash.utils';
 
 const AssetsTabs = withSuspenseFallback(
   React.lazy(
     () =>
       import('../../../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component')
+  )
+);
+
+const EntitySummaryPanel = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
   )
 );
 
@@ -177,7 +191,8 @@ const getTabLabel = (
   tab: TeamTab,
   t: (key: string) => string,
   team: Team,
-  childTeamsCount: number
+  childTeamsCount: number,
+  assetCount: number
 ): string => {
   switch (tab) {
     case 'teams':
@@ -185,7 +200,7 @@ const getTabLabel = (
     case 'users':
       return `${t('label.user-plural')} (${team.users?.length ?? 0})`;
     case 'assets':
-      return t('label.asset-plural');
+      return `${t('label.asset-plural')} (${assetCount})`;
     case 'roles':
       return `${t('label.role-plural')} (${team.defaultRoles?.length ?? 0})`;
     default:
@@ -207,6 +222,14 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { showModal } = useEntityExportModalProvider();
   const { currentUser } = useApplicationStore();
   const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
+  const { setHash } = useSettingsHash();
+
+  // location.hash-driven (href) navigation is starved by this panel's streaming
+  // header updates, so cross-tab links must write the hash synchronously.
+  const goTo = useCallback(
+    (target: ProfileHashTarget) => setHash(target.tab, target.subPath),
+    [setHash]
+  );
 
   const [team, setTeam] = useState<Team>();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
@@ -214,6 +237,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const [isChildTeamsLoading, setIsChildTeamsLoading] = useState(false);
   const [showDeletedTeam, setShowDeletedTeam] = useState(false);
   const [activeTab, setActiveTab] = useState<TeamTab>('teams');
+  const [assetCount, setAssetCount] = useState(0);
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -831,6 +857,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: '30%',
         render: (desc: string) =>
           desc ? (
             <RichTextEditorPreviewerV1 markdown={desc} maxLength={120} />
@@ -856,7 +883,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             <UserPopOverCard
               showUserName
               profileWidth={16}
+              to={toHashLocation(profileHash.user(record.name))}
               userName={record.name}
+              onTitleClick={() => goTo(profileHash.user(record.name ?? ''))}
             />
           ) : (
             getEntityName(record)
@@ -868,11 +897,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         key: 'name',
         ellipsis: true,
         render: (_: unknown, record: User) => (
-          <Link
-            className="tw:truncate tw:block tw:max-w-full"
-            to={getUserPath(record.name ?? '')}>
+          <span className="tw:truncate tw:block tw:max-w-full">
             {getEntityName(record)}
-          </Link>
+          </span>
         ),
       },
       {
@@ -890,11 +917,15 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           return (
             <Box align="center" direction="row" gap={1}>
               {visible.map((role) => (
-                <Link
+                <Button
+                  color="link-color"
                   key={role.id}
-                  to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                  size="sm"
+                  onPress={() =>
+                    goTo(profileHash.role(role.fullyQualifiedName ?? ''))
+                  }>
                   {getEntityName(role)}
-                </Link>
+                </Button>
               ))}
               {overflow > 0 && (
                 <span
@@ -934,7 +965,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           ]
         : []),
     ],
-    [t, canEditAll]
+    [t, canEditAll, goTo]
   );
 
   const handleRemoveRole = useCallback(
@@ -1006,13 +1037,21 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   const makeEntityColumns = useCallback(
     (
-      onRemove: (ref: EntityReference) => void
+      onRemove: (ref: EntityReference) => void,
+      nameHashOf: (ref: EntityReference) => ProfileHashTarget
     ): ColumnsType<EntityReference> => [
       {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (_: unknown, record: EntityReference) => getEntityName(record),
+        render: (_: unknown, record: EntityReference) => (
+          <Button
+            color="link-color"
+            size="sm"
+            onPress={() => goTo(nameHashOf(record))}>
+            {getEntityName(record)}
+          </Button>
+        ),
       },
       {
         title: t('label.description'),
@@ -1044,16 +1083,24 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           ]
         : []),
     ],
-    [t, canEditAll, isSavingInline]
+    [t, canEditAll, isSavingInline, goTo]
   );
 
   const roleColumns = useMemo(
-    () => makeEntityColumns((ref) => setRemoveEntity({ ref, kind: 'role' })),
+    () =>
+      makeEntityColumns(
+        (ref) => setRemoveEntity({ ref, kind: 'role' }),
+        (ref) => profileHash.role(ref.fullyQualifiedName ?? ref.name ?? '')
+      ),
     [makeEntityColumns]
   );
 
   const policyColumns = useMemo(
-    () => makeEntityColumns((ref) => setRemoveEntity({ ref, kind: 'policy' })),
+    () =>
+      makeEntityColumns(
+        (ref) => setRemoveEntity({ ref, kind: 'policy' }),
+        (ref) => profileHash.policy(ref.fullyQualifiedName ?? ref.name ?? '')
+      ),
     [makeEntityColumns]
   );
 
@@ -1115,6 +1162,30 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       }),
     [team?.id]
   );
+
+  // Asset tab count: owns is a truncated relationship list, so match the legacy
+  // team page and read the real total from a search aggregation.
+  const fetchAssetCount = useCallback(async () => {
+    if (!team?.id || !isGroupType) {
+      return;
+    }
+    try {
+      const res = await searchQuery({
+        query: '',
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: assetsQueryFilter,
+        searchIndex: SearchIndex.ALL,
+      });
+      setAssetCount(res?.hits?.total.value ?? 0);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [team?.id, isGroupType, assetsQueryFilter]);
+
+  useEffect(() => {
+    fetchAssetCount();
+  }, [fetchAssetCount]);
 
   // Header: edit name pencil + actions dropdown
   useEffect(() => {
@@ -1365,7 +1436,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           <Tabs.List size="sm" type="underline">
             {availableTabs.map((tab) => (
               <Tabs.Item id={tab} key={tab}>
-                {getTabLabel(tab, t, team, childTeams.length)}
+                {getTabLabel(tab, t, team, childTeams.length, assetCount)}
               </Tabs.Item>
             ))}
           </Tabs.List>
@@ -1394,6 +1465,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                 <Table
                   className={isTableHovered ? 'drop-over-table' : undefined}
                   columns={childTeamColumns}
+                  containerClassName="tw:rounded-xl"
                   data-testid="sub-teams-table"
                   dataSource={filteredChildTeams}
                   dragAndDropHooks={dragAndDropHooks}
@@ -1438,6 +1510,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                   pagination={false}
                   rowKey="fullyQualifiedName"
                   searchProps={{
+                    containerClassName: 'tw:w-80!',
                     placeholder: t('label.search-entity', {
                       entity: t('label.team'),
                     }),
@@ -1629,23 +1702,33 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             </Box>
           )}
 
-          {/* Assets tab (Group only) — full width: cancel the parent px-8 gutter */}
+          {/* Assets tab (Group only) */}
           {activeTab === 'assets' && isGroupType && (
-            <Box className="tw:w-full tw:h-full tw:-mx-8">
-              <AssetsTabs
-                assetCount={team.owns?.length ?? 0}
-                entityFqn={team.fullyQualifiedName ?? ''}
-                isSummaryPanelOpen={false}
-                noDataPlaceholder={t('message.adding-new-asset-to-team')}
-                permissions={permissions}
-                queryFilter={assetsQueryFilter}
-                type={AssetsOfEntity.TEAM}
-                onAddAsset={() => {
-                  navigate(ROUTES.EXPLORE);
-                  closePersonalSpace();
-                }}
-                onAssetClick={noop}
-              />
+            <Box className="tw:w-full tw:h-full" direction="row">
+              <Box className="tw:flex-1 tw:min-w-0">
+                <AssetsTabs
+                  isSummaryPanelOpen
+                  assetCount={assetCount}
+                  entityFqn={team.fullyQualifiedName ?? ''}
+                  noDataPlaceholder={t('message.adding-new-asset-to-team')}
+                  permissions={permissions}
+                  queryFilter={assetsQueryFilter}
+                  type={AssetsOfEntity.TEAM}
+                  onAddAsset={() => {
+                    navigate(ROUTES.EXPLORE);
+                    closePersonalSpace();
+                  }}
+                  onAssetClick={setPreviewAsset}
+                />
+              </Box>
+              {previewAsset && (
+                <Box className="tw:w-96 tw:border-l tw:border-secondary tw:shrink-0">
+                  <EntitySummaryPanel
+                    entityDetails={previewAsset}
+                    handleClosePanel={() => setPreviewAsset(undefined)}
+                  />
+                </Box>
+              )}
             </Box>
           )}
 
