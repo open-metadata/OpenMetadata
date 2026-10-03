@@ -1683,6 +1683,22 @@ describe('IncidentGroupsView filters and paging', () => {
       expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
     });
 
+    it('should drop the selection when the active domain changes', async () => {
+      await renderSelected();
+
+      expect(screen.getByTestId('selection-bar')).toBeInTheDocument();
+
+      try {
+        await act(async () => {
+          useDomainStore.setState({ activeDomain: 'Marketing' });
+        });
+
+        expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+      } finally {
+        useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
+      }
+    });
+
     it('should drop a group from the selection', async () => {
       await renderSelected();
 
