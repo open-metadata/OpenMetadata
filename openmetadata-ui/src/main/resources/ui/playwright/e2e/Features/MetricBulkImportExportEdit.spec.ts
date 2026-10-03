@@ -638,7 +638,7 @@ const editFirstDisplayNameCell = async (page: Page, value: string) => {
 };
 
 const editFirstDisplayNameCellAndBlur = async (page: Page, value: string) => {
-  const firstRow = page.locator('.rdg-row').first();
+  const firstRow = page.getByTestId('rdg-row-0');
   const displayNameCell = firstRow.locator('[aria-colindex="3"]');
 
   await displayNameCell.dblclick();
@@ -1328,7 +1328,7 @@ test.describe(
       await page.getByRole('button', { name: 'Revert Changes' }).click();
       await expect(nextButton).toBeDisabled();
       await expect(
-        page.locator('.rdg-row').first().locator('[aria-colindex="3"]')
+        page.getByTestId('rdg-row-0').locator('[aria-colindex="3"]')
       ).toContainText(originalDisplayName);
     });
 

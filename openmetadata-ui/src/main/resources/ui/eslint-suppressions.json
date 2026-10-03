@@ -41,12 +41,12 @@
   },
   "playwright/e2e/Features/BulkImport.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 42
+      "count": 38
     }
   },
   "playwright/e2e/Features/BulkImportWithDotInName.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Features/ChangeSummaryBadge.spec.ts": {
@@ -254,7 +254,7 @@
   },
   "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 8
     }
   },
   "playwright/e2e/Features/OnlineUsers.spec.ts": {
@@ -544,7 +544,7 @@
   },
   "playwright/e2e/Pages/GlossaryImportExport.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts": {
@@ -783,7 +783,7 @@
   },
   "playwright/utils/importUtils.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 26
+      "count": 23
     }
   },
   "playwright/utils/incidentManager.ts": {
@@ -854,7 +854,7 @@
   },
   "playwright/utils/testCases.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 13
+      "count": 11
     }
   },
   "playwright/utils/userDetails.ts": {
