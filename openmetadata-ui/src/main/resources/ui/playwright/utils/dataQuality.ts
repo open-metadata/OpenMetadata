@@ -111,8 +111,8 @@ export async function goToDataQualityDashboard(page: Page): Promise<void> {
 
 /**
  * Clicks a pie slice by 0-based index. ECharts hit-tests pointer
- * coordinates, so this finds a point inside the slice's path and clicks there
- * with the real mouse; a synthetic DOM click would miss. The first path is the
+ * coordinates, so this waits for the slice to settle before clicking an interior
+ * point with the real mouse; a synthetic DOM click would miss. The first path is the
  * grey track ring; slices follow in data order (zero slices are not drawn).
  */
 export async function clickPieChartSegmentByIndex(
@@ -124,6 +124,34 @@ export async function clickPieChartSegmentByIndex(
   await expect(chart).toBeVisible();
   const slice = chart.locator('svg path').nth(segmentIndex + 1);
   await expect(slice).toBeVisible();
+  await slice.scrollIntoViewIfNeeded();
+
+  let previousGeometry: string | undefined;
+  let stableSamples = 0;
+  // Visibility and a stable bounding box do not mean the SVG arc has stopped animating.
+  await expect
+    .poll(
+      async () => {
+        const geometry = await slice.evaluate((el) => {
+          const path = el as SVGPathElement;
+
+          return JSON.stringify({
+            path: path.getAttribute('d'),
+            matrix: path.getScreenCTM(),
+          });
+        });
+        stableSamples = geometry === previousGeometry ? stableSamples + 1 : 0;
+        previousGeometry = geometry;
+
+        return stableSamples;
+      },
+      {
+        message: 'Pie slice is still animating',
+        timeout: 10_000,
+        intervals: [100],
+      }
+    )
+    .toBeGreaterThanOrEqual(2);
 
   const point = await slice.evaluate((el) => {
     const path = el as SVGPathElement;
@@ -131,20 +159,33 @@ export async function clickPieChartSegmentByIndex(
     const box = path.getBBox();
     const matrix = path.getScreenCTM() as DOMMatrix;
     const probe = svg.createSVGPoint();
-    const steps = 12;
+    const length = path.getTotalLength();
+    const boundary = Array.from({ length: 64 }, (_, index) =>
+      path.getPointAtLength((length * index) / 64)
+    );
+    const steps = 24;
+    let bestPoint: { x: number; y: number } | null = null;
+    let bestClearance = -1;
     for (let i = 1; i < steps; i++) {
       for (let j = 1; j < steps; j++) {
         probe.x = box.x + (box.width * i) / steps;
         probe.y = box.y + (box.height * j) / steps;
         if (path.isPointInFill(probe)) {
-          const screen = probe.matrixTransform(matrix);
-
-          return { x: screen.x, y: screen.y };
+          const clearance = Math.min(
+            ...boundary.map(
+              (edge) => (probe.x - edge.x) ** 2 + (probe.y - edge.y) ** 2
+            )
+          );
+          if (clearance > bestClearance) {
+            const screen = probe.matrixTransform(matrix);
+            bestPoint = { x: screen.x, y: screen.y };
+            bestClearance = clearance;
+          }
         }
       }
     }
 
-    return null;
+    return bestPoint;
   });
   if (!point) {
     throw new Error(`No clickable point in pie slice ${segmentIndex}`);
