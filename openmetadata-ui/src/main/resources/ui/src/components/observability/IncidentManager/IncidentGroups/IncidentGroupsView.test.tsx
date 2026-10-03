@@ -1191,6 +1191,43 @@ describe('IncidentGroupsView filters and paging', () => {
     expect(currentPageInput()).toHaveValue('2');
   });
 
+  it('should step back to the last page when a refresh empties the current one', async () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        {viewTree(0)}
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await goToSecondPage();
+
+    mockListIncidentGroups.mockResolvedValueOnce({
+      data: [],
+      paging: { total: 10 },
+    });
+
+    await act(async () => {
+      rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+      page: 1,
+    });
+    expect(currentPageInput()).toHaveValue('1');
+    expect(
+      screen.queryByTestId('incident-groups-empty')
+    ).not.toBeInTheDocument();
+  });
+
   it('should show no pager while there is no group to page through', async () => {
     mockListIncidentGroups.mockResolvedValue({
       data: [],

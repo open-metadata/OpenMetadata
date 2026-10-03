@@ -33,10 +33,17 @@ interface UseIncidentGroupIncidentsProps {
   defaultPageSize: number;
 }
 
+const NO_INCIDENTS: TestCaseResolutionStatus[] = [];
+
 /**
  * The incidents of one group, a page at a time. The fetch only runs once a
  * group is handed in, and any response for a group that has since been closed
  * or swapped is dropped on arrival.
+ *
+ * Rows are kept with the group they were read for: the drawer outlives each
+ * preview, and another group's rows must not sit under this one's header while
+ * it loads. The fetch is keyed on the group's identity rather than its object,
+ * which a re-read of the groups replaces without changing the group.
  */
 export const useIncidentGroupIncidents = ({
   group,
@@ -54,14 +61,21 @@ export const useIncidentGroupIncidents = ({
     `${groupKey}|${domain}|${JSON.stringify(filters)}`,
     defaultPageSize
   );
-  const [incidents, setIncidents] = useState<TestCaseResolutionStatus[]>([]);
-  const [paging, setPaging] = useState<Paging>();
+  const [read, setRead] = useState<{
+    groupKey: string;
+    incidents: TestCaseResolutionStatus[];
+    paging: Paging;
+  }>();
+  const shownRead = read?.groupKey === groupKey ? read : undefined;
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const latestRequest = useRef(0);
+  const groupRef = useRef(group);
+  groupRef.current = group;
 
   useEffect(() => {
-    if (!group) {
+    const current = groupRef.current;
+    if (!current) {
       return;
     }
 
@@ -72,20 +86,22 @@ export const useIncidentGroupIncidents = ({
     setIsError(false);
 
     getListTestCaseIncidentStatus({
-      ...getIncidentGroupIncidentsQuery(group, filters, Date.now(), domain),
+      ...getIncidentGroupIncidentsQuery(current, filters, Date.now(), domain),
       limit: pageSize,
       page: currentPage,
     })
       .then((response) => {
         if (isCurrent()) {
-          setIncidents(response.data);
-          setPaging(response.paging);
+          setRead({
+            groupKey,
+            incidents: response.data,
+            paging: response.paging,
+          });
         }
       })
       .catch((error: AxiosError) => {
         if (isCurrent()) {
-          setIncidents([]);
-          setPaging(undefined);
+          setRead(undefined);
           setIsError(true);
           showErrorToast(
             error,
@@ -104,11 +120,11 @@ export const useIncidentGroupIncidents = ({
     return () => {
       latestRequest.current += 1;
     };
-  }, [group, filters, domain, pageSize, currentPage, t]);
+  }, [groupKey, filters, domain, pageSize, currentPage, t]);
 
   return {
-    incidents,
-    paging,
+    incidents: shownRead?.incidents ?? NO_INCIDENTS,
+    paging: shownRead?.paging,
     currentPage,
     pageSize,
     isLoading,
