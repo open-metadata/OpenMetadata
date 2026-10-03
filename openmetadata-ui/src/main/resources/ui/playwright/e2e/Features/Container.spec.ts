@@ -250,7 +250,9 @@ test.describe('Container entity specific tests ', () => {
       page,
       buttonTestId: 'copy-column-link-button',
       containerTestId: 'container-data-model-table',
-      rowName: container.childrenSelectorId ?? '',
+      // childrenSelectorId holds the column's FQN after create(); the row
+      // renders only the column name, which is its last segment.
+      rowName: (container.childrenSelectorId ?? '').split('.').pop() ?? '',
       expectedUrlPath: '/container/',
       entityFqn: container.entityResponseData?.['fullyQualifiedName'] ?? '',
     });

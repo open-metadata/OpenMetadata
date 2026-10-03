@@ -247,7 +247,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       const last7DaysOption = page
         .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-        .getByText('Last 7 Days', { exact: true });
+        .getByText('Last 7 days', { exact: true });
       await expect(last7DaysOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
