@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { pick } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,14 +32,27 @@ import {
   DEFAULT_INCIDENT_SORT_TYPE,
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUP_BY_PARAM,
+  INCIDENT_GROUP_FILTER_KEYS,
 } from './IncidentGroups.constants';
-import { parseIncidentGroupBy } from './IncidentGroups.utils';
+import { IncidentGroupFilters } from './IncidentGroups.types';
+import {
+  getIncidentGroupsQuery,
+  getPageAfterEmptyRead,
+  parseIncidentGroupBy,
+  parseIncidentGroupFilters,
+} from './IncidentGroups.utils';
+
+interface IncidentGroupsPage {
+  /** The query the page belongs to; a page of another query is page 1. */
+  queryKey: string;
+  currentPage: number;
+}
 
 /**
- * Owns the grouped incident listing: the grouping dimension is read from and
- * written to the URL, and every change to it refires the fetch. The cursors the
- * server hands back are kept untouched so the pagination added on top of this
- * can pass them straight back as `offset`.
+ * Owns the grouped incident listing: the grouping dimension and the filters are
+ * read from and written to the URL, and every change to them refires the fetch
+ * from the first page. Pages are walked with the cursors the server hands back,
+ * passed straight back as `offset` and never decoded.
  *
  * `refreshKey` is the caller's way of saying the groups it is showing are out
  * of date — a new value refires the fetch once, which is how an incident
@@ -65,6 +79,17 @@ export const useIncidentGroups = ({
 
   const groupBy = parseIncidentGroupBy(searchParams[INCIDENT_GROUP_BY_PARAM]);
 
+  // Keyed on the filter params alone: the incident table on the same page
+  // writes its own paging params into this query string, and those must not
+  // refetch the groups.
+  const filtersSearch = QueryString.stringify(
+    pick(searchParams, INCIDENT_GROUP_FILTER_KEYS)
+  );
+  const filters = useMemo(
+    () => parseIncidentGroupFilters(QueryString.parse(filtersSearch)),
+    [filtersSearch]
+  );
+
   const [incidentGroups, setIncidentGroups] = useState<TestCaseIncidentGroup[]>(
     []
   );
@@ -77,6 +102,20 @@ export const useIncidentGroups = ({
   const [sortType, setSortType] = useState<IncidentSortType>(
     DEFAULT_INCIDENT_SORT_TYPE
   );
+  const [pageSize, setPageSize] = useState(INCIDENT_GROUPS_PAGE_SIZE);
+  /**
+   * Any change to what is listed starts over from the first page. The page is
+   * therefore tagged with its query, and read as page 1 once the query moves
+   * on — no reset effect, so no extra fetch of the stale page.
+   */
+  const queryKey = `${groupBy}|${sortType}|${pageSize}|${filtersSearch}`;
+  const [page, setPage] = useState<IncidentGroupsPage>({
+    queryKey,
+    currentPage: 1,
+  });
+  const activePage: IncidentGroupsPage =
+    page.queryKey === queryKey ? page : { queryKey, currentPage: 1 };
+  const { currentPage } = activePage;
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   // Guards against a slow response for a dimension the user already left.
@@ -104,6 +143,7 @@ export const useIncidentGroups = ({
     // fails. With nothing settled to keep, the re-read has to report itself
     // like any first read — it supersedes whatever it raced, so it is the only
     // request left to fill the section.
+    const previousRefreshKey = fetchedRefreshKey.current;
     const isBackground =
       !isDimensionChange &&
       hasSettledGroups.current &&
@@ -128,11 +168,31 @@ export const useIncidentGroups = ({
     try {
       const response = await listIncidentGroups({
         groupBy,
-        limit: INCIDENT_GROUPS_PAGE_SIZE,
+        limit: pageSize,
         sortType,
+        page: currentPage,
+        ...getIncidentGroupsQuery(filters),
       });
 
       if (latestRequest.current !== requestId) {
+        return;
+      }
+
+      // A refresh can leave the page past the end, e.g. once the last groups
+      // on it were resolved. Shown as is, it would read as no groups at all,
+      // with no pager back to the pages that still hold some.
+      const pageAfterEmptyRead = getPageAfterEmptyRead(
+        response.data.length,
+        currentPage,
+        pageSize,
+        response.paging.total
+      );
+      if (pageAfterEmptyRead !== undefined) {
+        // The earlier page is read the way this one was: a refresh stays in
+        // the background, keeping the rows on screen if that read fails too.
+        fetchedRefreshKey.current = previousRefreshKey;
+        setPage({ queryKey, currentPage: pageAfterEmptyRead });
+
         return;
       }
 
@@ -145,22 +205,34 @@ export const useIncidentGroups = ({
         return;
       }
 
-      if (!isBackground) {
+      if (isBackground) {
+        // The rows stay on screen, so a toast is the only sign the re-read
+        // failed; a foreground failure says so in the section itself.
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', { entity: t('label.incident-plural') })
+        );
+      } else {
         hasSettledGroups.current = false;
         setIncidentGroups([]);
         setPaging(undefined);
         setIsError(true);
       }
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.incident-plural') })
-      );
     } finally {
       if (latestRequest.current === requestId) {
         setIsLoading(false);
       }
     }
-  }, [groupBy, sortType, refreshKey, t]);
+  }, [
+    groupBy,
+    sortType,
+    pageSize,
+    currentPage,
+    queryKey,
+    filters,
+    refreshKey,
+    t,
+  ]);
 
   useEffect(() => {
     fetchIncidentGroups();
@@ -191,14 +263,40 @@ export const useIncidentGroups = ({
     [groupBy, navigate, searchParams]
   );
 
+  const handleFiltersChange = useCallback(
+    (changes: Partial<IncidentGroupFilters>) =>
+      navigate(
+        {
+          search: QueryString.stringify(
+            { ...searchParams, ...changes },
+            { arrayFormat: 'repeat' }
+          ),
+        },
+        { replace: true }
+      ),
+    [navigate, searchParams]
+  );
+
+  const handlePageChange = useCallback(
+    (nextPage: number) => setPage({ queryKey, currentPage: nextPage }),
+    [queryKey]
+  );
+
   return {
     groupBy,
+    filters,
     incidentGroups,
     paging,
     sortType,
+    currentPage,
+    pageSize,
     isLoading,
     isError,
+    retry: fetchIncidentGroups,
     handleGroupByChange,
+    handleFiltersChange,
     handleSortTypeChange: setSortType,
+    handlePageChange,
+    handlePageSizeChange: setPageSize,
   };
 };

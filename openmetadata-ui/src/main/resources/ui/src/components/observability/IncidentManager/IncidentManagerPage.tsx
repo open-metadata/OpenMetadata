@@ -23,7 +23,6 @@ import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.com
 import IncidentManagerTable from '../../IncidentManager/IncidentManagerTable.component';
 import { useIncidentManagerListPage } from '../../IncidentManager/useIncidentManagerListPage';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import FilterBar from '../common/FilterChip/FilterBar';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
@@ -42,10 +41,10 @@ const INCIDENT_WIDGETS_WRAPPER_CLASS = [
 ].join(' ');
 
 /**
- * App-mode Incident Manager page. Composes the shared useIncidentManagerListPage
- * hook (logic) + reused IncidentManagerTable, and supplies its own untitled-ui
- * FilterBar. Only the filter chrome differs from the classic renderer, which keeps
- * its antd filter bar.
+ * App-mode Incident Manager page: the grouped incidents, with the shared
+ * useIncidentManagerListPage hook + IncidentManagerTable listing them one by one
+ * below. The groups' filter row writes the query string params that listing
+ * reads, so a single filter set drives both.
  */
 const IncidentManagerPage = () => {
   const { t } = useTranslation();
@@ -66,9 +65,6 @@ const IncidentManagerPage = () => {
 
   const {
     commonTestCasePermission,
-    filterDescriptors,
-    hasActiveFilters,
-    clearAllFilters,
     isIncidentPage,
     tableDetails,
     testCaseListData,
@@ -144,14 +140,6 @@ const IncidentManagerPage = () => {
           <Box
             className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
             direction="col">
-            <Box className="tw:border-b tw:border-secondary tw:p-4">
-              <FilterBar
-                filters={filterDescriptors}
-                hasActiveFilters={hasActiveFilters}
-                variant="input"
-                onClearAll={clearAllFilters}
-              />
-            </Box>
             <IncidentManagerTable
               breadcrumbData={incidentBreadcrumb}
               handleAssigneeUpdate={handleAssigneeUpdate}

@@ -20,7 +20,11 @@ import {
   TestCaseIncidentGroup,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
-import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
+import {
+  IncidentSortType,
+  OpenIncidentStatus,
+  TestCaseIncidentStatusParams,
+} from '../../../../rest/incidentManagerAPI';
 
 export interface IncidentGroupByOption {
   key: IncidentGroupBy;
@@ -31,6 +35,32 @@ export interface IncidentGroupByOption {
 export interface IncidentGroupByDropdownProps {
   value: IncidentGroupBy;
   onChange: (groupBy: IncidentGroupBy) => void;
+}
+
+/**
+ * Incident timestamp a date range applies to, in the vocabulary the URL already
+ * speaks for the incident listing: `timestamp` is when the incident was opened.
+ */
+export type IncidentListDateField = NonNullable<
+  TestCaseIncidentStatusParams['dateField']
+>;
+
+/**
+ * Filters of the grouped view. Each key is also its query string param, shared
+ * with the incident listing on the same page so both read one filter set.
+ */
+export interface IncidentGroupFilters {
+  testCaseFQN?: string;
+  assignee?: string;
+  status: OpenIncidentStatus[];
+  dateField: IncidentListDateField;
+  startTs?: number;
+  endTs?: number;
+}
+
+export interface IncidentGroupsFiltersProps {
+  filters: IncidentGroupFilters;
+  onChange: (changes: Partial<IncidentGroupFilters>) => void;
 }
 
 export interface IncidentGroupsViewProps {

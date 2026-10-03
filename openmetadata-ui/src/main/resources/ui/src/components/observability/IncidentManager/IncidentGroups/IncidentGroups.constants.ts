@@ -21,9 +21,15 @@ import {
   IncidentTrendDirection,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
-import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
+import { TestCaseResolutionStatusTypes as ResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
+import {
+  IncidentSortType,
+  OpenIncidentStatus,
+} from '../../../../rest/incidentManagerAPI';
 import {
   IncidentGroupByOption,
+  IncidentGroupFilters,
+  IncidentListDateField,
   IncidentTrendTone,
 } from './IncidentGroups.types';
 
@@ -37,6 +43,38 @@ export const INCIDENT_GROUP_BY_PARAM = 'groupBy';
 export const DEFAULT_INCIDENT_GROUP_BY = IncidentGroupBy.TestDefinition;
 
 export const INCIDENT_GROUPS_PAGE_SIZE = 10;
+
+export const INCIDENT_GROUPS_PAGE_SIZE_OPTIONS = [10, 15, 25, 50];
+
+/** Query string params the filters live in — the filter keys themselves. */
+export const INCIDENT_GROUP_FILTER_KEYS: (keyof IncidentGroupFilters)[] = [
+  'testCaseFQN',
+  'assignee',
+  'status',
+  'dateField',
+  'startTs',
+  'endTs',
+];
+
+/** Statuses a group can be filtered by; a resolved incident has left its group. */
+export const INCIDENT_GROUP_STATUS_OPTIONS: OpenIncidentStatus[] = [
+  ResolutionStatusTypes.New,
+  ResolutionStatusTypes.ACK,
+  ResolutionStatusTypes.Assigned,
+];
+
+export const DEFAULT_INCIDENT_LIST_DATE_FIELD: IncidentListDateField =
+  'timestamp';
+
+/** Every filter key, emptied: an absent date field reads back as the default. */
+export const CLEARED_INCIDENT_GROUP_FILTERS: Partial<IncidentGroupFilters> = {
+  testCaseFQN: undefined,
+  assignee: undefined,
+  status: [],
+  dateField: undefined,
+  startTs: undefined,
+  endTs: undefined,
+};
 
 export const INCIDENT_GROUP_BY_OPTIONS: IncidentGroupByOption[] = [
   {

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { sumBy } from 'lodash';
+import { castArray, isString, isUndefined, sumBy } from 'lodash';
+import { ParsedQs } from 'qs';
 import {
   IncidentGroupBy,
   IncidentStatusCount,
@@ -19,12 +20,19 @@ import {
   Severities,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
+import {
+  ListIncidentGroupsParams,
+  OpenIncidentStatus,
+} from '../../../../rest/incidentManagerAPI';
 import Fqn from '../../../../utils/Fqn';
+import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
+  DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_BY_OPTIONS,
   INCIDENT_GROUP_MAX_AVATARS,
   INCIDENT_GROUP_SEPARATOR,
+  INCIDENT_GROUP_STATUS_OPTIONS,
   INCIDENT_TREND_COLORS,
   SPARKLINE_HEIGHT,
   SPARKLINE_INSET,
@@ -33,6 +41,7 @@ import {
 import {
   IncidentGroupAssignees,
   IncidentGroupByOption,
+  IncidentGroupFilters,
   IncidentGroupStatusSegment,
   IncidentTrendTone,
 } from './IncidentGroups.types';
@@ -45,6 +54,75 @@ import {
 export const parseIncidentGroupBy = (value: unknown): IncidentGroupBy =>
   Object.values(IncidentGroupBy).find((dimension) => dimension === value) ??
   DEFAULT_INCIDENT_GROUP_BY;
+
+const readText = (value: unknown) =>
+  isString(value) && value !== '' ? value : undefined;
+
+const readTimestamp = (value: unknown) => {
+  const timestamp = Number(readText(value));
+
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+};
+
+const isOpenIncidentStatus = (value: unknown): value is OpenIncidentStatus =>
+  INCIDENT_GROUP_STATUS_OPTIONS.includes(value as OpenIncidentStatus);
+
+/**
+ * The grouped view's filters out of the query string. A value the endpoint
+ * would reject — `Resolved`, an unknown status, a non-numeric timestamp, a
+ * repeated single-value param — is dropped rather than sent.
+ */
+export const parseIncidentGroupFilters = (
+  params: ParsedQs
+): IncidentGroupFilters => ({
+  testCaseFQN: readText(params.testCaseFQN),
+  assignee: readText(params.assignee),
+  status: [...new Set(castArray(params.status ?? []))].filter(
+    isOpenIncidentStatus
+  ),
+  dateField:
+    params.dateField === 'updatedAt'
+      ? 'updatedAt'
+      : DEFAULT_INCIDENT_LIST_DATE_FIELD,
+  startTs: readTimestamp(params.startTs),
+  endTs: readTimestamp(params.endTs),
+});
+
+/** Whether any filter narrows the groups down from every open incident. */
+export const hasActiveIncidentGroupFilters = (
+  filters: IncidentGroupFilters
+): boolean =>
+  [filters.testCaseFQN, filters.assignee, filters.startTs, filters.endTs].some(
+    (value) => !isUndefined(value)
+  ) ||
+  filters.status.length > 0 ||
+  filters.dateField !== DEFAULT_INCIDENT_LIST_DATE_FIELD;
+
+/**
+ * The filters as groups endpoint params. The date field only means something
+ * next to a range, and the endpoint names the opening time `createdAt` where
+ * the URL says `timestamp`.
+ */
+export const getIncidentGroupsQuery = ({
+  testCaseFQN,
+  assignee,
+  status,
+  dateField,
+  startTs,
+  endTs,
+}: IncidentGroupFilters): Partial<ListIncidentGroupsParams> => {
+  const hasRange = !isUndefined(startTs) || !isUndefined(endTs);
+  const rangeDateField = dateField === 'updatedAt' ? 'updatedAt' : 'createdAt';
+
+  return {
+    testCaseFQN,
+    assignee,
+    status: status.length > 0 ? status : undefined,
+    dateField: hasRange ? rangeDateField : undefined,
+    startTs,
+    endTs,
+  };
+};
 
 export const getIncidentGroupByOption = (
   groupBy: IncidentGroupBy
@@ -191,3 +269,18 @@ export const getIncidentTrendPoints = (trend: number[]): string => {
     })
     .join(' ');
 };
+
+/**
+ * The page to read instead of `page` when it came back empty though it is not
+ * the first: a refresh resolved the last rows on it. Steps back at least one
+ * page, so a total that lags behind the rows cannot pin it in place.
+ */
+export const getPageAfterEmptyRead = (
+  rowCount: number,
+  page: number,
+  pageSize: number,
+  total = 0
+): number | undefined =>
+  rowCount === 0 && page > 1
+    ? Math.min(page - 1, Math.max(1, computeTotalPages(pageSize, total)))
+    : undefined;
