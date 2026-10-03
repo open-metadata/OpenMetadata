@@ -370,3 +370,23 @@ def test_snowflake_schema_stage_skips_feature_store_json_tags(source, status):
         f"svc.db.schema.{feature_view}",
         "svc.db.schema.SRC.COL_A",
     ]
+
+
+# A Snowflake tag holds one value per object. The server hides a schema's inherited value on a table that sets
+# its own only when the classification is mutually exclusive, so Snowflake creates its classifications that way.
+def test_snowflake_classifications_are_mutually_exclusive(source):
+    source.define_tag(
+        classification_name="SENSITIVITY", tag_name="PII", classification_description="", tag_description=""
+    )
+    [record] = list(source.tags_registry.drain())
+    assert record.classification_request.mutuallyExclusive is True
+
+
+def test_default_source_classifications_are_not_mutually_exclusive(default_source):
+    default_source.metadata.es_search_from_fqn.side_effect = None
+    default_source.metadata.es_search_from_fqn.return_value = []
+    default_source.define_tag(
+        classification_name="Class", tag_name="Value", classification_description="", tag_description=""
+    )
+    [record] = list(default_source.tags_registry.drain())
+    assert record.classification_request.mutuallyExclusive is False

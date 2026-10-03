@@ -46,6 +46,11 @@ jobs:
       fail-fast: false
       matrix:
         e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "python-unittests", "python-integration", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]') }}
+    # Snowflake drops and recreates the E2E database that the v2 Snowflake job also uses, so both
+    # workflows queue their Snowflake jobs in one group and never run them at the same time.
+    concurrency:
+      group: ${{ matrix.e2e-test == 'snowflake' && 'cli-e2e-snowflake-database' || format('{0}-{1}-{2}', github.workflow, github.run_id, matrix.e2e-test) }}
+      cancel-in-progress: false
     environment: test
 
     steps:

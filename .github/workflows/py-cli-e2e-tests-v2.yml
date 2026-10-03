@@ -26,7 +26,7 @@ on:
       connectors:
         description: "Connectors to run (JSON array)"
         required: true
-        default: '["mysql", "postgres", "bigquery", "oracle"]'
+        default: '["mysql", "postgres", "bigquery", "oracle", "snowflake"]'
 
 permissions:
   id-token: write
@@ -39,7 +39,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        connector: ${{ fromJSON(inputs.connectors || '["mysql", "postgres", "bigquery", "oracle"]') }}
+        connector: ${{ fromJSON(inputs.connectors || '["mysql", "postgres", "bigquery", "oracle", "snowflake"]') }}
+    # The v1 Snowflake job drops and recreates the same E2E database, so both workflows queue their
+    # Snowflake jobs in one group and never run them at the same time.
+    concurrency:
+      group: ${{ matrix.connector == 'snowflake' && 'cli-e2e-snowflake-database' || format('{0}-{1}-{2}', github.workflow, github.run_id, matrix.connector) }}
+      cancel-in-progress: false
     environment: test
     env:
       E2E_CONNECTOR: ${{ matrix.connector }}
@@ -49,7 +54,7 @@ jobs:
         shell: bash
         run: |
           case "$E2E_CONNECTOR" in
-            mysql|postgres|bigquery|oracle) ;;
+            mysql|postgres|bigquery|oracle|snowflake) ;;
             *) echo "Unsupported E2E connector" >&2; exit 1 ;;
           esac
 
@@ -74,7 +79,7 @@ jobs:
 
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test
-        if: matrix.connector != 'bigquery'
+        if: matrix.connector != 'bigquery' && matrix.connector != 'snowflake'
         env:
           # The bundled server uses these admin credentials to mint a JWT.
           OM_ADMIN_EMAIL: admin@open-metadata.org
@@ -107,6 +112,31 @@ jobs:
           pytest -v \
             --e2e-contract-check \
             -n 6 \
+            --junitxml="junit/test-results-v2-${E2E_CONNECTOR}.xml" \
+            "tests/cli_e2e_v2/${E2E_CONNECTOR}"
+        shell: bash
+
+      - name: Run Snowflake CLI E2E v2 tests
+        id: e2e-v2-snowflake-test
+        if: matrix.connector == 'snowflake'
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+          # The same key-pair identity and E2E database the v1 Snowflake job uses. The job's
+          # concurrency group keeps the two from overlapping.
+          E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
+          E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
+          E2E_SNOWFLAKE_PRIVATE_KEY: ${{ secrets.TEST_SNOWFLAKE_PASSWORD_YAML }}
+          E2E_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
+          E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
+        run: |
+          source env/bin/activate
+          cd ingestion
+          mkdir -p junit
+          pytest -v \
+            --e2e-contract-check \
+            -n 4 \
             --junitxml="junit/test-results-v2-${E2E_CONNECTOR}.xml" \
             "tests/cli_e2e_v2/${E2E_CONNECTOR}"
         shell: bash

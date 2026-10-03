@@ -1,4 +1,4 @@
-#  Copyright 2025 Collate
+#  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -8,18 +8,3 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Tag definition values shared by resolution and registration."""
-
-from dataclasses import dataclass
-
-
-@dataclass(frozen=True)
-class TagDefinition:
-    """Classification and tag names with their descriptions."""
-
-    classification_name: str
-    tag_name: str
-    classification_description: str
-    tag_description: str
-    # Applies only when the classification is created: the server never changes it afterwards.
-    mutually_exclusive: bool = False

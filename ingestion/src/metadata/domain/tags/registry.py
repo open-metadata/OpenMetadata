@@ -107,6 +107,7 @@ class TagRegistry:
                     classification_description=tag.classification_description,
                     tag_name=tag.tag_name,
                     tag_description=tag.tag_description,
+                    mutually_exclusive=tag.mutually_exclusive,
                 )
 
     def attach(
@@ -180,6 +181,7 @@ class TagRegistry:
         classification_description: str,
         tag_name: str,
         tag_description: str,
+        mutually_exclusive: bool = False,
     ) -> OMetaTagAndClassification:
         """Compose the sink-bound create-payload for a classification + tag."""
         return OMetaTagAndClassification(
@@ -187,6 +189,7 @@ class TagRegistry:
             classification_request=CreateClassificationRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(classification_name),
                 description=Markdown(classification_description),
+                mutuallyExclusive=mutually_exclusive,
             ),
             tag_request=CreateTagRequest(  # pyright: ignore[reportCallIssue]
                 classification=FullyQualifiedEntityName(classification_name),
