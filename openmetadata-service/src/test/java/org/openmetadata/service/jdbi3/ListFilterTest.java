@@ -572,4 +572,20 @@ class ListFilterTest {
   void test_getServiceCondition_absentServiceYieldsNoCondition() {
     assertEquals("", new ListFilter(Include.NON_DELETED).getServiceCondition("table_entity"));
   }
+
+  @Test
+  void test_systemWide_true_matchesAnnouncementsWithNoEntityLink() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("systemWide", "true");
+
+    assertTrue(filter.getCondition().contains("entityLink IS NULL"));
+  }
+
+  @Test
+  void test_systemWide_false_matchesEntityAnnouncementsOnly() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("systemWide", "false");
+
+    assertTrue(filter.getCondition().contains("entityLink IS NOT NULL"));
+  }
 }
