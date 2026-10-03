@@ -312,21 +312,21 @@ export const useIncidentGroups = ({
 
   // Back from a drill-down opened here retraces that step, so the browser's
   // Back cannot return to it; one reached by a link has nothing to retrace.
-  const closeGroup = useCallback(() => {
-    if ((location.state as { fromGroups?: boolean } | null)?.fromGroups) {
-      navigate(-1);
-    } else {
-      navigate(
-        {
-          search: QueryString.stringify(
-            omit(searchParams, INCIDENT_GROUP_DETAIL_PARAM),
-            { arrayFormat: 'repeat' }
+  const closeGroup = useCallback(
+    () =>
+      (location.state as { fromGroups?: boolean } | null)?.fromGroups
+        ? navigate(-1)
+        : navigate(
+            {
+              search: QueryString.stringify(
+                omit(searchParams, INCIDENT_GROUP_DETAIL_PARAM),
+                { arrayFormat: 'repeat' }
+              ),
+            },
+            { replace: true }
           ),
-        },
-        { replace: true }
-      );
-    }
-  }, [location.state, navigate, searchParams]);
+    [location.state, navigate, searchParams]
+  );
 
   const handleGroupByChange = useCallback(
     (updatedGroupBy: IncidentGroupBy) => {
