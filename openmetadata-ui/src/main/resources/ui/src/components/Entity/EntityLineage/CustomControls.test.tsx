@@ -95,10 +95,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {children}
       </div>
     )),
+    // `key` is a reserved React prop and is never passed through to a
+    // function component, so capture the component-supplied `id` instead —
+    // the Node Depth items pass `id={String(depth)}`. This lets the menu
+    // mock's `onClick` read the selected depth from `dataset.key`.
     Item: jest
       .fn()
-      .mockImplementation(({ children, key }) => (
-        <li data-key={key}>{children}</li>
+      .mockImplementation(({ children, id }) => (
+        <li data-key={id}>{children}</li>
       )),
   },
   Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
@@ -540,6 +544,34 @@ describe('CustomControls', () => {
     // The menu items would be rendered by the component library's Menu component
     // This test verifies the click handler is set up correctly
     expect(nodeDepthButton).toBeInTheDocument();
+  });
+
+  it('writes the selected node depth to the URL via navigate(replace) when a Node Depth menu item is clicked', () => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=3&dir=downstream',
+    }));
+
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    // Expand the filter panel so the Node Depth dropdown renders.
+    fireEvent.click(screen.getByLabelText('label.filter-plural'));
+    // Expanding the panel writes `fullscreen` to the URL (toggleFilterSelection
+    // calls updateURLParams); clear the spy so the next `navigate` call is
+    // unambiguously the depth-selection call.
+    mockNavigate.mockClear();
+
+    // Click the Node Depth menu item for depth "5". The Dropdown.Menu mock
+    // fires `onAction(dataset.key)` on click; the Item mock exposes the
+    // depth via `data-key={id}`, so clicking the "5" item invokes the real
+    // `onAction("5")` -> `handleNodeDepthUpdate(5)` -> `updateURLParams`
+    // -> `navigate(replace)` chain.
+    fireEvent.click(screen.getByText('5'));
+
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate.mock.calls[0][0].search).toContain('depth=5');
+    expect(mockNavigate.mock.calls[0][1]).toEqual({ replace: true });
   });
 
   it('calls onSearchValueChange when search value changes in impact analysis mode', () => {
