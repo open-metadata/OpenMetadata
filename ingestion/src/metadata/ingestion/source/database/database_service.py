@@ -89,6 +89,7 @@ class DataModelLink(BaseModel):
 
     table_entity: Table
     datamodel: DataModel
+    upstream_tables: dict[str, Table] = Field(default_factory=dict)
 
 
 class DatabaseServiceTopology(ServiceTopology):

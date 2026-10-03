@@ -758,7 +758,7 @@ def _extract_dbt_reference(reference: Any) -> tuple[str | None, str] | None:
     return resolved
 
 
-def build_upstream_node(parent_node, parent_fqn: str) -> UpstreamNode:
+def build_upstream_node(parent_node, parent_fqn: str, table=None) -> UpstreamNode:
     """Pair a dbt manifest node with its table FQN, recording the namespace that a
     ``ref('pkg', 'model')`` or ``source('source_name', 'table')`` reference would use."""
     namespace = getattr(parent_node, "source_name", None) or getattr(parent_node, "package_name", None)
@@ -766,6 +766,7 @@ def build_upstream_node(parent_node, parent_fqn: str) -> UpstreamNode:
         name=parent_node.name,
         qualified_name=f"{namespace}.{parent_node.name}" if namespace else None,
         fqn=parent_fqn,
+        table=table,
     )
 
 
