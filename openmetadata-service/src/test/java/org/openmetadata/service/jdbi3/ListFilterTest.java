@@ -605,6 +605,30 @@ class ListFilterTest {
   }
 
   @Test
+  void test_isTimeDependent_coversTheWindowDerivedFilters() {
+    // These two compare the announcement window against the wall clock, so their row set changes
+    // with nothing written — ListCountCache has to skip them rather than cache a total that
+    // invalidation hooks will never clear.
+    ListFilter byStatus = new ListFilter(Include.NON_DELETED);
+    byStatus.addQueryParam("announcementStatus", "Active");
+
+    ListFilter byActive = new ListFilter(Include.NON_DELETED);
+    byActive.addQueryParam("active", "true");
+
+    assertTrue(byStatus.isTimeDependent());
+    assertTrue(byActive.isTimeDependent());
+  }
+
+  @Test
+  void test_isTimeDependent_isFalseForFiltersDerivedFromStoredState() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementType", "Notice");
+
+    assertFalse(filter.isTimeDependent());
+    assertFalse(new ListFilter(Include.NON_DELETED).isTimeDependent());
+  }
+
+  @Test
   void test_active_appliesWithoutATableName() {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     filter.addQueryParam("active", "true");

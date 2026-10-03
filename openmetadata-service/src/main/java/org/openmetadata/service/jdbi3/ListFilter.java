@@ -481,6 +481,21 @@ public class ListFilter extends Filter<ListFilter> {
    * name, so a name-based guard silently drops the predicate. Only {@code AnnouncementResource}
    * sets these parameters, and {@code startTime}/{@code endTime} exist only on that table.
    */
+  /**
+   * Whether any condition in this filter is derived from the wall clock rather than from stored
+   * state. {@code announcementStatus} and {@code active} both compare an announcement's window
+   * against {@code System.currentTimeMillis()}, so the same query returns different rows as
+   * announcements cross their start and end times — with no write to invalidate a cached count.
+   *
+   * <p>{@link org.openmetadata.service.cache.ListCountCache} hashes only {@code queryParams}, so
+   * such a count would be computed once and reused indefinitely; its TTL is refreshed by any write
+   * to the same entity type, and its invalidation hooks only fire on create/delete/restore. These
+   * filters therefore have to skip the cache rather than populate it.
+   */
+  public boolean isTimeDependent() {
+    return queryParams.containsKey("announcementStatus") || queryParams.containsKey("active");
+  }
+
   private String getActiveCondition() {
     String active = queryParams.get("active");
     if (active == null) {
