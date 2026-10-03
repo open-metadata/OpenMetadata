@@ -5226,7 +5226,7 @@
     "video-playback-not-supported": "您的瀏覽器不支援影片播放。",
     "view-deleted-entity": "檢視此 {{parent}} 下的所有已刪除 {{entity}}。",
     "view-mode-description": "支援多種版面配置的頁面的初始檢視。",
-    "view-sample-data-entity": "要檢視範例資料，請執行 {{entity}}。請參考此文件以排程 {{entity}} <0>{{entity}}</0>",
+    "view-sample-data-entity": "要檢視範例資料，請執行 {{entity}}。請參考此文件以排程 <0>{{entity}}</0>",
     "view-service-openmetadata-docs": "View {{serviceName}} docs",
     "view-test-suite": "檢視測試套件",
     "viewing-older-version": "正在檢視較舊版本\n前往最新版本以更新詳細資料",

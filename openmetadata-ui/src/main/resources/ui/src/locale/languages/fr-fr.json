@@ -5226,7 +5226,7 @@
     "video-playback-not-supported": "Votre navigateur ne prend pas en charge la lecture vidéo.",
     "view-deleted-entity": "Afficher toutes les {{entity}} supprimées qui relèvent de ce {{parent}}.",
     "view-mode-description": "Vue de départ des pages qui proposent plusieurs dispositions.",
-    "view-sample-data-entity": "Pour afficher des données d'exemple, exécutez {{entity}}. Veuillez vous référer à ce document pour planifier {{entity}}.",
+    "view-sample-data-entity": "Pour afficher des données d'exemple, exécutez {{entity}}. Veuillez vous référer à ce document pour planifier <0>{{entity}}</0>.",
     "view-service-openmetadata-docs": "View {{serviceName}} docs",
     "view-test-suite": "Afficher la suite de tests",
     "viewing-older-version": "Affichage de la version précédente \n Aller à la dernière pour mettre à jour les détails",

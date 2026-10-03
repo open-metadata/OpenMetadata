@@ -3526,7 +3526,7 @@
     "ai-asset-not-found-description": "The page or asset you're looking for isn't in the Context Platform. It may have been deprecated, moved, or you don't have access to it yet.",
     "ai-asset-not-found-title": "We couldn't find that asset",
     "airflow-guide-message": "{{brandName}}는 Airflow를 사용하여 수집 커넥터를 실행합니다. 우리는 수집 커넥터를 배포하기 위해 관리형 API를 개발했습니다. {{brandName}} Airflow 인스턴스를 사용하거나 아래 가이드를 참조하여 Airflow 설치에 관리형 API를 설치하세요.",
-    "airflow-host-ip-address": "{{brandName}}는 IP {{hostIp}}에서 귀하의 리소스에 연결할 것입니다. 네트워크 보안 설정에서 인바운드 트래픽을 허용하도록 확인하세요.",
+    "airflow-host-ip-address": "{{brandName}}는 IP <0>{{hostIp}}</0>에서 귀하의 리소스에 연결할 것입니다. 네트워크 보안 설정에서 인바운드 트래픽을 허용하도록 확인하세요.",
     "alert-choose-destination-description": "Slack, Microsoft Teams, 이메일 또는 원하는 webhook으로 전달하세요.",
     "alert-pick-a-trigger-description": "감시할 대상을 선택하세요 — 테스트 결과, 파이프라인 상태, 특정 자산의 변경 사항 등.",
     "alert-recent-events-description": "{{alertName}} 알림에 대해 최근 발생한 알림 이벤트 목록입니다.",

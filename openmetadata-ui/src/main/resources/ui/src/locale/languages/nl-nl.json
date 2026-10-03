@@ -1557,7 +1557,7 @@
     "january": "januari",
     "job-lowercase": "taak",
     "join": "Samenvoegen",
-    "join-entity": "Samenvoegen met {{entity}}",
+    "join-entity": "Samenvoegen met <0>{{entity}}</0>",
     "join-team": "Lid worden team",
     "joinable": "Samenvoegbaar",
     "json-data": "JSON-data",
