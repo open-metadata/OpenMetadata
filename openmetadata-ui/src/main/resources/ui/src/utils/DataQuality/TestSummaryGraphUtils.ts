@@ -32,7 +32,12 @@ import {
   getTaskDisplayId,
 } from '../TaskNavigationUtils';
 
-const EXCLUDED_CHART_FIELDS = new Set(['schemaTable1', 'schemaTable2']);
+// Table Diff values that are not numbers: the two schemas, and the count of differing rows per column (JSON)
+const EXCLUDED_CHART_FIELDS = new Set([
+  'schemaTable1',
+  'schemaTable2',
+  'columnDiffCounts',
+]);
 
 export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
