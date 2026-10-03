@@ -348,7 +348,7 @@ export const useIncidentGroups = ({
   );
 
   const handleFiltersChange = useCallback(
-    (changes: Partial<IncidentGroupFilters>) => {
+    (changes: Partial<IncidentGroupFilters>) =>
       navigate(
         {
           search: QueryString.stringify(
@@ -357,8 +357,7 @@ export const useIncidentGroups = ({
           ),
         },
         { replace: true }
-      );
-    },
+      ),
     [navigate, searchParams]
   );
 
