@@ -625,13 +625,9 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
 
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('loader')
-    .first()
-    .waitFor({
-      state: 'detached',
-    });
+  await expect(
+    page.getByTestId('drop-down-menu').getByTestId('loader')
+  ).toHaveCount(0);
 
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'

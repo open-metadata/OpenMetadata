@@ -421,10 +421,7 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       await page.getByTestId('confirm-button').click();
       const folderDeleteRes = await folderDeleteResPromise;
       expect(folderDeleteRes.status()).toBe(200);
-      await page
-        .getByTestId('document-row-skeleton')
-        .first()
-        .waitFor({ state: 'detached' });
+      await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
     });
 
     // ── 5. File is absent from documents search ──────────────────────────────

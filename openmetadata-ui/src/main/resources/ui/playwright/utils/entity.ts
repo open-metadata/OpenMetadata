@@ -540,22 +540,18 @@ export const addMultiOwner = async (data: {
     page.locator(`[data-testid="${activatorBtnDataTestId}"]`)
   );
 
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByTestId('loader')
-    .first()
-    .waitFor({ state: 'detached' });
+  await expect(
+    page.getByTestId('select-owner-tabs').getByTestId('loader')
+  ).toHaveCount(0);
 
   await page
     .locator("[data-testid='select-owner-tabs']")
     .getByRole('tab', { name: 'Users' })
     .click();
 
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByTestId('loader')
-    .first()
-    .waitFor({ state: 'detached' });
+  await expect(
+    page.getByTestId('select-owner-tabs').getByTestId('loader')
+  ).toHaveCount(0);
 
   const isClearButtonVisible = await page
     .getByTestId('select-owner-tabs')
@@ -570,11 +566,9 @@ export const addMultiOwner = async (data: {
       .getByRole('tab', { name: 'Users' })
       .click();
 
-    await page
-      .getByTestId('select-owner-tabs')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await expect(
+      page.getByTestId('select-owner-tabs').getByTestId('loader')
+    ).toHaveCount(0);
   }
 
   if (clearAll && isMultipleOwners) {
@@ -598,11 +592,9 @@ export const addMultiOwner = async (data: {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
     await searchOwner;
-    await page
-      .getByTestId('select-owner-tabs')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await expect(
+      page.getByTestId('select-owner-tabs').getByTestId('loader')
+    ).toHaveCount(0);
 
     const ownerItem = page
       .locator('[data-testid="owner-option"]')
@@ -990,9 +982,7 @@ export const assignTag = async (
 
   await searchTags;
 
-  await page
-    .getByTestId(`tree-node-${tagFqn ? `${tagFqn}` : tag}`)
-    .click();
+  await page.getByTestId(`tree-node-${tagFqn ? `${tagFqn}` : tag}`).click();
 
   await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 

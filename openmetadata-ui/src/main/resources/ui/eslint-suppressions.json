@@ -76,7 +76,7 @@
   },
   "playwright/e2e/Features/ContextCenterArchive.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
@@ -264,7 +264,7 @@
   },
   "playwright/e2e/Features/ImpactAnalysis.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 7
+      "count": 6
     }
   },
   "playwright/e2e/Features/IncidentManager.spec.ts": {
@@ -309,7 +309,7 @@
   },
   "playwright/e2e/Features/Pagination.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts": {
@@ -375,11 +375,6 @@
   "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    }
-  },
-  "playwright/e2e/Features/Table.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
     }
   },
   "playwright/e2e/Features/Tasks.spec.ts": {
@@ -576,7 +571,7 @@
       "count": 2
     },
     "om-playwright/no-positional-locator": {
-      "count": 13
+      "count": 11
     }
   },
   "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts": {
@@ -672,7 +667,7 @@
   },
   "playwright/e2e/Pages/Tag.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "playwright/e2e/Pages/TagPageRightPanel.spec.ts": {
@@ -682,7 +677,7 @@
   },
   "playwright/e2e/Pages/Tags.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/e2e/Pages/TasksUIFlow.spec.ts": {
@@ -713,7 +708,7 @@
   },
   "playwright/e2e/Pages/UserDetails.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Pages/Users.spec.ts": {
@@ -845,7 +840,7 @@
   },
   "playwright/utils/entity.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 17
+      "count": 13
     }
   },
   "playwright/utils/entityPanel.ts": {
@@ -959,7 +954,7 @@
   },
   "playwright/utils/user.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/utils/userDetails.ts": {

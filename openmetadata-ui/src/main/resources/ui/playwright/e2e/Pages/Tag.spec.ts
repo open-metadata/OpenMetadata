@@ -238,13 +238,9 @@ test.describe('Tag Page with Admin Roles', () => {
       )}`,
       { waitUntil: 'domcontentloaded' }
     );
-    await adminPage
-      .getByTestId('tags-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
+    await expect(
+      adminPage.getByTestId('tags-container').getByTestId('loader')
+    ).toHaveCount(0);
 
     await expect(adminPage.getByTestId('add-new-tag-button')).toBeVisible();
 
@@ -275,13 +271,9 @@ test.describe('Tag Page with Admin Roles', () => {
       )}`,
       { waitUntil: 'domcontentloaded' }
     );
-    await adminPage
-      .getByTestId('tags-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
+    await expect(
+      adminPage.getByTestId('tags-container').getByTestId('loader')
+    ).toHaveCount(0);
 
     await expect(adminPage.getByTestId('domain-link')).toContainText(
       domain.data.displayName

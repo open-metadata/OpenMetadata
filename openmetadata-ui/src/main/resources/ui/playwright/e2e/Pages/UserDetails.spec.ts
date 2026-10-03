@@ -197,10 +197,7 @@ test.describe('User with different Roles', () => {
     await visitUserProfilePage(adminPage, user3.getUserName());
 
     // Wait for the team to be visible in the teams section
-    await adminPage
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await expect(adminPage.getByTestId('loader')).toHaveCount(0);
 
     await adminPage
       .getByTestId('user-profile-teams')
