@@ -78,11 +78,18 @@ const OVER_OVERLAY_CLASS = 'tw:relative tw:z-20';
 /**
  * The trigger `Typography` generates for `ellipsis.tooltip` is a `<button>`, and
  * the host is the only handle on it — `className` reaches the innermost span.
- * It carries `min-w-0` so the trigger can shrink below its content and actually
- * ellipsize. (Alignment used to need fixing here too; core now gives the trigger
- * `[text-align:inherit]`, so it follows the host on its own.)
+ *
+ * `min-w-0` lets the trigger shrink below its content and actually ellipsize.
+ * `text-start` is what positions it: core gives the trigger
+ * `[text-align:inherit]`, which cures the UA `text-align: center` a button is
+ * born with but then follows whatever the ancestors say. The trigger is
+ * `inline-flex`, so once it is narrower than this host — which happens the
+ * moment the host stretches, as it does in the expanded and landing layouts —
+ * that inherited value decides where it sits, and the expanded title drifted to
+ * the middle. Stating it here keeps the label left wherever the banner is
+ * dropped, rather than depending on the page around it.
  */
-const ELLIPSIS_HOST_CLASS = 'tw:block tw:min-w-0';
+const ELLIPSIS_HOST_CLASS = 'tw:block tw:min-w-0 tw:text-start';
 
 /**
  * Just a truncated label with the built-in overflow tooltip. The `onClick` is a

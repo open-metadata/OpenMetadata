@@ -225,13 +225,26 @@ describe('AnnouncementBanner', () => {
     renderBanner({ onClick: jest.fn() });
 
     // The trigger is a `<button>`, whose UA `text-align: center` preflight does
-    // not reset — core gives it `[text-align:inherit]` so it follows the host
-    // instead of centring short text. This used to need a fix at this call site.
+    // not reset. Core gives it `[text-align:inherit]`, which cures that but then
+    // follows the ancestors — so the host has to state the alignment, or the
+    // title drifts to the middle wherever the host stretches.
     const trigger = screen
       .getByTestId('announcement-description')
       .closest('button');
 
     expect(trigger).toHaveClass('tw:[text-align:inherit]');
+    expect(trigger?.parentElement).toHaveClass('tw:text-start');
+  });
+
+  it('should keep the expanded title left-aligned when its host stretches', () => {
+    renderBanner({ expanded: true, onClick: jest.fn() });
+
+    // Expanded, the title's host is a stretched flex item rather than a
+    // content-width one, so the `inline-flex` trigger has slack to drift into.
+    expect(
+      screen.getByTestId('announcement-title-btn').closest('button')
+        ?.parentElement
+    ).toHaveClass('tw:text-start');
   });
 
   it('should make the whole banner clickable through a separate overlay', () => {
