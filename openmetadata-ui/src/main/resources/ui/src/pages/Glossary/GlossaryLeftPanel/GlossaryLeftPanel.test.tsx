@@ -19,6 +19,13 @@ import GlossaryLeftPanel from './GlossaryLeftPanel.component';
 const mockOnAddGlossary = jest.fn();
 let mockFqn = '';
 
+jest.mock(
+  '../../../components/common/DomainFilterChip/DomainFilterChip.component',
+  () => ({
+    DomainFilterChip: () => null,
+  })
+);
+
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: mockFqn })),
 }));

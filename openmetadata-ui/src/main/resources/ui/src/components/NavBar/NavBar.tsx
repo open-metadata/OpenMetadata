@@ -45,9 +45,9 @@ import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurre
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
+import { useSwitchActiveDomain } from '../../hooks/useSwitchActiveDomain';
 import { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
 import { getVersion } from '../../rest/miscAPI';
-import { updateUserDetail } from '../../rest/userAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
@@ -109,10 +109,10 @@ const NavBar = () => {
   const {
     activeDomain,
     activeDomainEntityRef,
-    updateActiveDomain,
     userDomains,
     isDomainRestricted,
   } = useDomainStore();
+  const switchActiveDomain = useSwitchActiveDomain();
   const { t } = useTranslation();
   const searchRef = useRef<InputRef>(null);
   const [hasTaskNotification, setHasTaskNotification] =
@@ -120,12 +120,7 @@ const NavBar = () => {
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const {
-    appVersion: version,
-    setAppVersion,
-    currentUser,
-    updateCurrentUser,
-  } = useApplicationStore();
+  const { appVersion: version, setAppVersion } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
     preferences: { isSidebarCollapsed },
@@ -467,35 +462,10 @@ const NavBar = () => {
 
   const handleDomainChange = useCallback(
     async (domain: EntityReference | EntityReference[] | undefined) => {
-      const selected = domain as EntityReference | undefined;
-      updateActiveDomain(selected);
       setIsDomainDropdownOpen(false);
-      // Persist the selection so the server applies it from the first list call of the next
-      // session. Best-effort: a failed write must not block switching, the store already updated.
-      if (currentUser?.id) {
-        try {
-          // JSON Patch `add` upserts, so one op covers first-set, change, and clear (null).
-          const updated = await updateUserDetail(currentUser.id, [
-            {
-              op: 'add',
-              path: '/defaultDomain',
-              value: selected
-                ? { id: selected.id, type: EntityType.DOMAIN }
-                : null,
-            },
-          ]);
-          updateCurrentUser(updated);
-        } catch (error) {
-          // The reload restores the persisted value, which would silently undo the switch.
-          showErrorToast(error as AxiosError);
-          updateActiveDomain(currentUser.defaultDomain);
-
-          return;
-        }
-      }
-      navigate(0);
+      await switchActiveDomain(domain as EntityReference | undefined);
     },
-    [currentUser?.id, currentUser?.defaultDomain]
+    [switchActiveDomain]
   );
 
   const domainDisplayName = useMemo(
