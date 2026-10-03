@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7349,7 +7350,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
           "name column should have no tags");
     }
 
-    // Test 2: List with fields=columns only — columns populated, no tags
     ListParams paramsColumnsOnly =
         new ListParams()
             .setLimit(tableCount)
@@ -7361,6 +7361,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     for (Table table : responseColumnsOnly.getData()) {
       assertNotNull(table.getColumns(), "Columns should be populated");
       assertEquals(3, table.getColumns().size());
+      assertTrue(nullOrEmpty(table.getTags()));
+      assertEquals(
+          List.of(tag.getFullyQualifiedName()),
+          table.getColumns().getFirst().getTags().stream().map(TagLabel::getTagFQN).toList());
     }
 
     // Test 3: List with fields=tags only — table tags populated
