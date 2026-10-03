@@ -39,7 +39,6 @@ export interface CreatedTask {
   status?: string;
 }
 
-const TASK_CARD_SELECTOR = '[data-testid="task-feed-card"]';
 const TASK_TAB_SELECTOR = '[data-testid="task-tab"]';
 const TASK_PANEL_SELECTOR = '#task-panel';
 const VISIBLE_TASK_MODAL_SELECTOR = '.ant-modal-wrap:visible';
@@ -382,10 +381,12 @@ export const openEntityTasksTab = async (page: Page) => {
 export const getTaskCard = (page: Page, task: CreatedTask) => {
   const taskDisplayId = getTaskDisplayId(task.taskId);
 
-  return page
-    .locator(TASK_CARD_SELECTOR)
-    .filter({ hasText: `#${taskDisplayId}` })
-    .first();
+  // The card renders aria-label="#<displayId> <type>", so its accessible name
+  // identifies the task outright. hasText would be a substring match -- #12
+  // also matches #120 -- hence the anchored pattern.
+  return page.getByRole('button', {
+    name: new RegExp(`^#${taskDisplayId}\\b`),
+  });
 };
 
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {
