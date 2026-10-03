@@ -338,8 +338,8 @@ const IncidentGroupsTable = ({
             </Table.Head>
           ) : (
             <Table.Head
-              allowsSorting={INCIDENT_GROUP_SORTABLE_COLUMNS.some(
-                (sortable) => sortable === column.id
+              allowsSorting={INCIDENT_GROUP_SORTABLE_COLUMNS.includes(
+                column.id as IncidentGroupSortField
               )}
               aria-label={column.ariaLabel}
               id={column.id}
