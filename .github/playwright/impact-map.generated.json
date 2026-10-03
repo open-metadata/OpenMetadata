@@ -683,6 +683,8 @@
         "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
         "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
@@ -754,6 +756,10 @@
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/AssetHealthWidget.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
@@ -812,6 +818,8 @@
         "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
@@ -846,6 +854,8 @@
         "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
@@ -959,6 +969,7 @@
         "playwright/e2e/Flow/IngestionBot.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
@@ -2500,6 +2511,7 @@
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DescriptionVisibility.spec.ts",
         "playwright/e2e/Pages/UserCreationWithPersona.spec.ts",
@@ -2601,6 +2613,8 @@
         "playwright/e2e/Features/TeamSubscriptions.spec.ts",
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
@@ -2750,6 +2764,10 @@
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Flow/Tour.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -2998,6 +3016,10 @@
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/Tour.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/AssetHealthWidget.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
@@ -3074,6 +3096,17 @@
       ],
       "specs": [
         "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/aiProfile.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
       ]
     },
     {
@@ -3442,6 +3475,10 @@
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Flow/TestConnectionModal.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
         "playwright/e2e/Pages/AppStopRunModal.spec.ts",
         "playwright/e2e/Pages/AssetHealthWidget.spec.ts",
@@ -7281,16 +7318,9 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ContextCenterArchive.spec.ts",
-        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/SearchSettings.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
       ]
     },
     {
@@ -7770,6 +7800,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
@@ -7832,6 +7863,8 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/Bots.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -8216,9 +8249,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Team/TeamDetails/TeamDetailsV1.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
@@ -8227,6 +8258,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Team/TeamDetails/TeamHierarchy.tsx"
       ],
       "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
@@ -8244,6 +8277,7 @@
       ],
       "specs": [
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
@@ -8298,6 +8332,8 @@
       "specs": [
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
@@ -8757,8 +8793,6 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/ContextCenterArchive.spec.ts",
-        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
@@ -8768,11 +8802,10 @@
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
@@ -8791,8 +8824,6 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/ContextCenterArchive.spec.ts",
-        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
@@ -8802,16 +8833,14 @@
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
       ]
@@ -9044,6 +9073,7 @@
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
@@ -9270,6 +9300,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/PopOverCard/TeamPopoverContent.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
@@ -9350,6 +9381,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
       ]
@@ -9444,6 +9476,7 @@
         "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
@@ -9625,15 +9658,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/UserSelectableList/UserSelectableList.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/TeamsHierarchy.spec.ts",
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/UserTag/UserTag.component.tsx"
       ],
       "specs": [
@@ -9651,6 +9675,7 @@
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts"
       ]
@@ -9716,6 +9741,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
@@ -9751,7 +9778,17 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/ProfileGovernance.spec.ts"
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileDetailsPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
       ]
     },
     {
@@ -9760,7 +9797,24 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/DomainsRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/PersonaRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
       ]
     },
     {
@@ -9841,17 +9895,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlPanel.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Pages/Roles.spec.ts",
-        "playwright/e2e/Pages/Teams.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlPoliciesPanel.tsx"
       ],
       "specs": [
@@ -9865,6 +9908,9 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts"
       ]
     },
@@ -9873,7 +9919,11 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlRoleDetail.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
       ]
     },
     {
@@ -9944,6 +9994,8 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/Bots.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -10012,6 +10064,84 @@
       ],
       "specs": [
         "playwright/e2e/Features/ProfileGovernance.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersAddTeamForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersCreateUserForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/QueryEntity.spec.ts",
+        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersImportForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersLanding.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersOnlineUsersPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OnlineUsers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersTeamDetail.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersTeamInfoWidgets.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/Teams.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersUsersPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
       ]
     },
     {
@@ -10948,6 +11078,10 @@
         "playwright/e2e/Flow/TestConnectionModal.spec.ts",
         "playwright/e2e/Flow/Tour.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
         "playwright/e2e/Pages/AppStopRunModal.spec.ts",
         "playwright/e2e/Pages/AssetHealthWidget.spec.ts",
@@ -11158,6 +11292,7 @@
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
@@ -11444,6 +11579,7 @@
       "specs": [
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts"
       ]
     },
@@ -11621,6 +11757,7 @@
       "specs": [
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
         "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
@@ -11723,7 +11860,9 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/OnlineUsersPage/OnlineUsersPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/OnlineUsers.spec.ts"
+        "playwright/e2e/Features/OnlineUsers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts"
       ]
     },
     {
@@ -11857,6 +11996,7 @@
         "playwright/e2e/Features/MultipleRename.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/EditClassification.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts",
@@ -11879,9 +12019,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Pages/Roles.spec.ts",
-        "playwright/e2e/Pages/Teams.spec.ts"
+        "playwright/e2e/Pages/Roles.spec.ts"
       ]
     },
     {
@@ -12146,6 +12284,8 @@
         "playwright/e2e/Features/MultipleRename.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/EditClassification.spec.ts",
@@ -12163,15 +12303,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/UserListPage/UserListPageV1.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/TeamsHierarchy.spec.ts",
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/platform/persona/PersonaAppLayoutPage/PersonaAppLayoutPage.tsx"
       ],
       "specs": [
@@ -12184,9 +12315,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/Alerts/AlertsUtil.tsx"
       ],
       "specs": [
-        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
-        "playwright/e2e/Pages/DataMarketplace.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts"
+        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
     },
     {
