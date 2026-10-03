@@ -25,12 +25,12 @@ import {
   TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
+import { getTaskStatusBucket, TaskStatusBucket } from './taskList.utils';
 import {
   getTaskResolutionSummary,
   getTaskStatusBadge,
   getTaskStatusLabel,
 } from './taskResolution.utils';
-import { getTaskStatusBucket, TaskStatusBucket } from './taskList.utils';
 
 // The label key is echoed back so assertions read as the key that will render.
 const t = (key: string) => key;
