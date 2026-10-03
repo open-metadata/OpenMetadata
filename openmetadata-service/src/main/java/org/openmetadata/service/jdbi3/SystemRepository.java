@@ -371,6 +371,7 @@ public class SystemRepository {
   }
 
   public Response createNewSetting(Settings setting) {
+    OpenMetadataBaseUrlValidator.validate(setting);
     try {
       updateSetting(setting);
     } catch (BadRequestException ex) {
