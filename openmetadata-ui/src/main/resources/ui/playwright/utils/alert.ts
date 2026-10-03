@@ -373,7 +373,7 @@ export const addOwnerFilter = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -454,7 +454,7 @@ export const addEntityFQNFilter = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -536,7 +536,7 @@ export const addEventTypeFilter = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -668,7 +668,7 @@ export const addGMEFilter = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -690,14 +690,14 @@ const checkActionOrFilterDetails = async ({
 
       const switchTestId = `${isFilter ? 'filter' : 'trigger'}-switch-${index}`;
 
+      const effectSwitch = page.getByTestId(switchTestId).getByRole('switch');
+
+      await expect(effectSwitch).toBeDisabled();
+
       if (filter.effect === 'include') {
-        await expect(page.getByTestId(switchTestId)).toHaveClass(
-          'ant-switch ant-switch-checked ant-switch-disabled'
-        );
+        await expect(effectSwitch).toBeChecked();
       } else {
-        await expect(page.getByTestId(switchTestId)).not.toHaveClass(
-          'ant-switch ant-switch-checked ant-switch-disabled'
-        );
+        await expect(effectSwitch).not.toBeChecked();
       }
     }
   }
@@ -813,7 +813,7 @@ export const addGetSchemaChangesAction = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -893,7 +893,7 @@ export const addPipelineStatusUpdatesAction = async ({
   if (exclude) {
     const triggerSwitch = page.getByTestId(`trigger-switch-${filterNumber}`);
     await expect(triggerSwitch).toBeVisible();
-    await expect(triggerSwitch).toBeEnabled();
+    await expect(triggerSwitch.getByRole('switch')).toBeEnabled();
     await triggerSwitch.click();
   }
 };

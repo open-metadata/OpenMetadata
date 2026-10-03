@@ -19,6 +19,7 @@ import test, {
 } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
@@ -315,9 +316,7 @@ const searchForExactTableWithRankingDetails = async (page: Page) => {
   await searchBox.press('Enter');
   await searchResponse;
 
-  await page.getByTestId('search-container').getByTestId('loader').waitFor({
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page.getByTestId('search-container'));
   await page.getByTestId('search-results').waitFor({
     state: 'visible',
   });

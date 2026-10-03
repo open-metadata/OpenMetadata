@@ -12,8 +12,13 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Avatar, Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import {
+  Box,
+  Tabs,
+  ToggleBase,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Avatar, Button, Col, Modal, Row, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -657,7 +662,8 @@ const TeamDetailsV1 = ({
                       </Col>
 
                       <Col span={3}>
-                        <Switch checked={currentTeam.isJoinable} size="small" />
+                        {/* Visual only: Toggle swallows the click the menu item's onClick needs. */}
+                        <ToggleBase isSelected={currentTeam.isJoinable} />
                       </Col>
                     </Row>
                   }

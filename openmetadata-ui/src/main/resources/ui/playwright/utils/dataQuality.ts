@@ -20,13 +20,13 @@ import { sidebarClick } from './sidebar';
 import { submitTestCaseForm } from './testCases';
 import { waitForResponseWithStatus } from './waitHelpers';
 
-/** Recharts PieChart id for the Test Case Result pie on the Data Quality dashboard. */
+/** Wrapper id of the Test Case Result pie on the Data Quality dashboard. */
 export const TEST_CASE_STATUS_PIE_CHART_TEST_ID = 'test-case-result-pie-chart';
 
-/** Recharts PieChart id for the Entity Health Status pie on the Data Quality dashboard. */
+/** Wrapper id of the Entity Health Status pie on the Data Quality dashboard. */
 export const ENTITY_HEALTH_PIE_CHART_TEST_ID = 'healthy-data-assets-pie-chart';
 
-/** Recharts PieChart id for the Data Assets Coverage pie on the Data Quality dashboard. */
+/** Wrapper id of the Data Assets Coverage pie on the Data Quality dashboard. */
 export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
   'data-assets-coverage-pie-chart';
 
@@ -109,7 +109,12 @@ export async function goToDataQualityDashboard(page: Page): Promise<void> {
   await dataQualityReportResponse;
 }
 
-/** Clicks a segment by 0-based index (targets .custom-pie-chart-clickable path). */
+/**
+ * Clicks a pie slice by 0-based index. ECharts hit-tests pointer
+ * coordinates, so this finds a point inside the slice's path and clicks there
+ * with the real mouse; a synthetic DOM click would miss. The first path is the
+ * grey track ring; slices follow in data order (zero slices are not drawn).
+ */
 export async function clickPieChartSegmentByIndex(
   page: Page,
   chartTestId: string,
@@ -117,13 +122,34 @@ export async function clickPieChartSegmentByIndex(
 ): Promise<void> {
   const chart = page.locator(`#${chartTestId}`);
   await expect(chart).toBeVisible();
-  const segmentPath = chart
-    .locator('.custom-pie-chart-clickable path')
-    .nth(segmentIndex);
-  await expect(segmentPath).toBeVisible();
-  await segmentPath.evaluate((el) => {
-    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  const slice = chart.locator('svg path').nth(segmentIndex + 1);
+  await expect(slice).toBeVisible();
+
+  const point = await slice.evaluate((el) => {
+    const path = el as SVGPathElement;
+    const svg = path.ownerSVGElement as SVGSVGElement;
+    const box = path.getBBox();
+    const matrix = path.getScreenCTM() as DOMMatrix;
+    const probe = svg.createSVGPoint();
+    const steps = 12;
+    for (let i = 1; i < steps; i++) {
+      for (let j = 1; j < steps; j++) {
+        probe.x = box.x + (box.width * i) / steps;
+        probe.y = box.y + (box.height * j) / steps;
+        if (path.isPointInFill(probe)) {
+          const screen = probe.matrixTransform(matrix);
+
+          return { x: screen.x, y: screen.y };
+        }
+      }
+    }
+
+    return null;
   });
+  if (!point) {
+    throw new Error(`No clickable point in pie slice ${segmentIndex}`);
+  }
+  await page.mouse.click(point.x, point.y);
 }
 
 export enum ObservabilityFeature {
@@ -300,9 +326,11 @@ export const addTestSuitePipeline = async (page: Page) => {
   await addButton.click();
   await testSuiteByNameResponse;
 
+  // The pipeline form's toggle shares this testid with the test-case list's
+  // checkbox; the toggle's wrapper is the one holding a switch.
   const selectAllTestCases = page
     .getByTestId('select-all-test-cases')
-    .and(page.getByRole('switch'));
+    .filter({ has: page.getByRole('switch') });
   await expect(selectAllTestCases).toBeVisible();
   await selectAllTestCases.click();
 

@@ -647,10 +647,8 @@ export const validateGlossaryTerm = async (
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
-  await expect(
-    page.getByTestId('glossary-terms-table').getByTestId('loader')
-  ).toBeHidden();
-  await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
+  await waitForAllLoadersToDisappear(page.getByTestId('glossary-terms-table'));
+  await waitForAllLoadersToDisappear(page);
 
   const termsTable = page.getByTestId('glossary-terms-table');
   for (const header of ['Terms', 'Description', 'Owners', 'Status']) {
@@ -758,9 +756,10 @@ export const addAssetToGlossaryTerm = async (
       .fill(visibleName);
 
     await searchRes;
-    await page.click(
-      `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
-    );
+    await page
+      .locator(`[data-testid="table-data-card_${entityFqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
     await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(

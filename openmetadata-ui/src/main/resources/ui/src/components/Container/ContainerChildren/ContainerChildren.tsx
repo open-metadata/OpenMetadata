@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -229,11 +232,12 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
       dataSource={containerChildrenData}
       extraTableFilters={
         !isReadOnly && (
-          <span>
-            <Switch
-              checked={showDeleted}
+          <span className="tw:inline-flex tw:items-center">
+            <Toggle
               data-testid="show-deleted"
-              onClick={handleShowDeletedChange}
+              isSelected={showDeleted}
+              size="sm"
+              onChange={handleShowDeletedChange}
             />
             <Typography className="m-l-xs">{t('label.deleted')}</Typography>
           </span>

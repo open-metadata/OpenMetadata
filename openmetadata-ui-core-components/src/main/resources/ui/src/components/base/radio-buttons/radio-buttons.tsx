@@ -5,6 +5,7 @@ import {
   type RadioGroupProps as AriaRadioGroupProps,
   type RadioProps as AriaRadioProps,
 } from 'react-aria-components';
+import { Label } from '@/components/base/input/label';
 import { cx } from '@/utils/cx';
 import { borderAfter } from '@/utils/tailwindClasses';
 
@@ -148,11 +149,13 @@ RadioButton.displayName = 'RadioButton';
 interface RadioGroupProps extends RadioGroupContextType, AriaRadioGroupProps {
   children: ReactNode;
   className?: string;
+  label?: ReactNode;
 }
 
 export const RadioGroup = ({
   children,
   className,
+  label,
   size = 'sm',
   ...props
 }: RadioGroupProps) => {
@@ -161,6 +164,7 @@ export const RadioGroup = ({
       <AriaRadioGroup
         {...props}
         className={cx('tw:flex tw:flex-col tw:gap-4', className)}>
+        {label && <Label>{label}</Label>}
         {children}
       </AriaRadioGroup>
     </RadioGroupContext.Provider>
