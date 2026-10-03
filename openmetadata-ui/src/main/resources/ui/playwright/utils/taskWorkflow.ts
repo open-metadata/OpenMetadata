@@ -49,9 +49,6 @@ const logTaskDebug = (...messages: Array<string | number | boolean>) => {
   }
 };
 
-const getDropdownTrigger = (dropdown: Locator) =>
-  dropdown.getByRole('button', { name: /down/i }).first();
-
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -105,111 +102,71 @@ const selectTagSuggestion = async ({
 };
 
 const clickDropdownMenuItem = async ({
-  dropdown,
   page,
   menuPattern,
 }: {
-  dropdown: Locator;
   page: Page;
   menuPattern: RegExp;
 }) => {
-  const dropdownTrigger = getDropdownTrigger(dropdown);
-  const fallbackTrigger = dropdown.locator('button').last();
-  const taskCtaFallbackTrigger = page
-    .locator('#task-panel [data-testid="task-cta-buttons"] button')
-    .last();
-  const plainDownButtonFallbackTrigger = page
-    .locator('#task-panel')
-    .getByRole('button', { name: /down/i })
-    .last();
-  const visibleDropdownMenu = page.locator('.task-action-dropdown').last();
-  const roleMenuItem = page
-    .getByRole('menuitem', { name: menuPattern })
-    .first();
-  const cssMenuItem = visibleDropdownMenu
-    .locator('.ant-dropdown-menu-item')
-    .filter({ hasText: menuPattern })
-    .first();
+  // TaskTabNew renders its CTA through renderDropdownButtons(prefix), which
+  // stamps `${prefix}-primary` on the main button and `${prefix}-trigger` on
+  // the caret, for prefixes workflow-/incident-/glossary-/edit-accept-task-action.
+  // Only one task panel is on screen, so the caret is nameable -- which is what
+  // the four fallback locators here used to be guessing at, each with .last()
+  // and its errors swallowed, so a wrong guess silently changed what got clicked.
+  const dropdownTrigger = page.locator(
+    '#task-panel [data-testid$="-task-action-trigger"]'
+  );
+  const menuItem = page
+    .locator('.task-action-dropdown:visible')
+    .getByRole('menuitem', { name: menuPattern });
 
-  const isMenuItemVisible = async () =>
-    (await roleMenuItem.isVisible().catch(() => false)) ||
-    (await cssMenuItem.isVisible().catch(() => false));
+  const isMenuItemVisible = () => menuItem.isVisible().catch(() => false);
 
   const waitForMenuItem = async () => {
-    await Promise.race([
-      roleMenuItem.waitFor({ state: 'visible', timeout: 1500 }),
-      cssMenuItem.waitFor({ state: 'visible', timeout: 1500 }),
-    ]).catch(() => undefined);
+    await menuItem
+      .waitFor({ state: 'visible', timeout: 1500 })
+      .catch(() => undefined);
 
     return isMenuItemVisible();
   };
 
   if (await isMenuItemVisible()) {
-    if (await roleMenuItem.isVisible().catch(() => false)) {
-      await roleMenuItem.click();
-
-      return;
-    }
-
-    await cssMenuItem.click();
+    await menuItem.click();
 
     return;
   }
 
-  const triggerCandidates = [
-    dropdownTrigger,
-    fallbackTrigger,
-    taskCtaFallbackTrigger,
-    plainDownButtonFallbackTrigger,
-  ];
-  let resolvedTrigger = dropdownTrigger;
+  await expect(dropdownTrigger).toBeVisible();
+  await dropdownTrigger.scrollIntoViewIfNeeded().catch(() => undefined);
 
-  for (const candidate of triggerCandidates) {
-    if (await candidate.isVisible().catch(() => false)) {
-      resolvedTrigger = candidate;
-      break;
-    }
-  }
-
-  await expect(resolvedTrigger).toBeVisible();
-  await resolvedTrigger.scrollIntoViewIfNeeded().catch(() => undefined);
-
+  // antd's Dropdown.Button does not always open on the first click under load,
+  // so the keyboard paths stay -- but they now drive one known element rather
+  // than four candidates.
   for (let attempt = 0; attempt < 3; attempt++) {
     logTaskDebug('clickDropdownMenuItem:openAttempt', attempt + 1);
-    await resolvedTrigger.click().catch(() => undefined);
+    await dropdownTrigger.click().catch(() => undefined);
 
     if (await waitForMenuItem()) {
       break;
     }
 
-    await resolvedTrigger.focus().catch(() => undefined);
-    await resolvedTrigger.press('ArrowDown').catch(() => undefined);
+    await dropdownTrigger.focus().catch(() => undefined);
+    await dropdownTrigger.press('ArrowDown').catch(() => undefined);
 
     if (await waitForMenuItem()) {
       break;
     }
 
-    await resolvedTrigger.press('Enter').catch(() => undefined);
-
-    if (await waitForMenuItem()) {
-      break;
-    }
-
-    await fallbackTrigger.click().catch(() => undefined);
+    await dropdownTrigger.press('Enter').catch(() => undefined);
 
     if (await waitForMenuItem()) {
       break;
     }
   }
 
-  if (await roleMenuItem.isVisible().catch(() => false)) {
-    await roleMenuItem.click();
-
-    return;
-  }
-
-  await expect(cssMenuItem).toBeVisible();
-  await cssMenuItem.click();
+  await expect(menuItem).toBeVisible();
+  await menuItem.click();
 };
 
 export const formatTaskFieldValue = (value: string) => {
@@ -464,7 +421,6 @@ export const openTaskEditModal = async (page: Page) => {
 
     if (!(await waitForVisibleTaskModal()) && !isPrimaryEditAction) {
       await clickDropdownMenuItem({
-        dropdown: workflowTaskActionDropdown,
         page,
         menuPattern: editTransitionPattern,
       });
@@ -487,7 +443,6 @@ export const openTaskEditModal = async (page: Page) => {
         : editTransitionPattern;
 
       await clickDropdownMenuItem({
-        dropdown: workflowTaskActionDropdown,
         page,
         menuPattern,
       });
@@ -512,7 +467,6 @@ export const openTaskEditModal = async (page: Page) => {
 
     if (!(await waitForVisibleTaskModal())) {
       await clickDropdownMenuItem({
-        dropdown: addSuggestionDropdown,
         page,
         menuPattern: /add description|add tags/i,
       });
@@ -520,7 +474,6 @@ export const openTaskEditModal = async (page: Page) => {
   } else if (await editSuggestionDropdown.isVisible().catch(() => false)) {
     logTaskDebug('openTaskEditModal:editSuggestionDropdown');
     await clickDropdownMenuItem({
-      dropdown: editSuggestionDropdown,
       page,
       menuPattern: editTransitionPattern,
     });
@@ -550,7 +503,6 @@ export const openTaskEditModal = async (page: Page) => {
       (await genericDropdownTrigger.isVisible().catch(() => false))
     ) {
       await clickDropdownMenuItem({
-        dropdown: genericTaskActionPanel,
         page,
         menuPattern: editTransitionPattern,
       });
@@ -708,15 +660,9 @@ export const closeTaskFromDetails = async (page: Page) => {
     }
   }
 
-  const dropdown = taskPanel
-    .locator(
-      '[data-testid="workflow-task-action-dropdown"], [data-testid="edit-accept-task-dropdown"], [data-testid="add-close-task-dropdown"]'
-    )
-    .first();
   logTaskDebug('closeTaskFromDetails:dropdown');
   const taskActionResponse = waitForTaskActionResponse(page);
   await clickDropdownMenuItem({
-    dropdown,
     page,
     menuPattern: /reject|decline|close/i,
   });

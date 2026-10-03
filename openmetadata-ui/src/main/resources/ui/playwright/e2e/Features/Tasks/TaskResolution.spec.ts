@@ -16,9 +16,9 @@ import { expect, test } from '../../../support/fixtures/base';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { CreatedTask, getTaskCard } from '../../../utils/taskWorkflow';
 import { getApiContext } from '../../../utils/common';
 import { waitForPageLoaded } from '../../../utils/polling';
+import { CreatedTask, getTaskCard } from '../../../utils/taskWorkflow';
 
 /**
  * Task Resolution Tests
