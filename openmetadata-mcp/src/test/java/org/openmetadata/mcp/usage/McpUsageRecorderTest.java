@@ -73,7 +73,7 @@ class McpUsageRecorderTest {
     stubMcpApp(appId, McpAppConstants.MCP_APP_NAME);
 
     long before = System.currentTimeMillis();
-    McpUsageRecorder.record("search_metadata", "alice", true);
+    McpUsageRecorder.record("search_metadata", "alice", true, null, null, null);
     long after = System.currentTimeMillis();
 
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
@@ -102,7 +102,7 @@ class McpUsageRecorderTest {
   void serializedJsonContainsGeneratedColumnFieldNames() {
     stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
 
-    McpUsageRecorder.record("any_tool", "alice", true);
+    McpUsageRecorder.record("any_tool", "alice", true, null, null, null);
 
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
     verify(dao).insert(json.capture(), eq("limits"));
@@ -117,7 +117,7 @@ class McpUsageRecorderTest {
   void recordSkipsWhenMcpApplicationNotInitialized() {
     when(appContext.getAppIfExists(McpAppConstants.MCP_APP_NAME)).thenReturn(null);
 
-    McpUsageRecorder.record("any_tool", "alice", true);
+    McpUsageRecorder.record("any_tool", "alice", true, null, null, null);
 
     verify(dao, never()).insert(anyString(), anyString());
   }
@@ -127,7 +127,7 @@ class McpUsageRecorderTest {
     stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
     doThrow(new RuntimeException("db down")).when(dao).insert(anyString(), eq("limits"));
 
-    McpUsageRecorder.record("create_entity", "alice", false);
+    McpUsageRecorder.record("create_entity", "alice", false, null, null, null);
 
     verify(dao, times(1)).insert(anyString(), eq("limits"));
   }
@@ -136,7 +136,7 @@ class McpUsageRecorderTest {
   void recordCapturesFailureFlag() {
     stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
 
-    McpUsageRecorder.record("patch_entity", "bob", false);
+    McpUsageRecorder.record("patch_entity", "bob", false, null, null, null);
 
     ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
     verify(dao).insert(json.capture(), eq("limits"));
@@ -157,20 +157,6 @@ class McpUsageRecorderTest {
     assertThat(decoded.getLatencyMs()).isEqualTo(342L);
     assertThat(decoded.getErrorCategory()).isEqualTo(McpToolCallUsage.ErrorCategory.AUTH);
     assertThat(decoded.getClientName()).isEqualTo("Claude Desktop");
-  }
-
-  @Test
-  void legacy3ArgOverloadOmitsPhase3Fields() {
-    stubMcpApp(UUID.randomUUID(), McpAppConstants.MCP_APP_NAME);
-
-    McpUsageRecorder.record("search_metadata", "alice", true);
-
-    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
-    verify(dao).insert(json.capture(), eq("limits"));
-    McpToolCallUsage decoded = JsonUtils.readValue(json.getValue(), McpToolCallUsage.class);
-    assertThat(decoded.getLatencyMs()).isNull();
-    assertThat(decoded.getErrorCategory()).isNull();
-    assertThat(decoded.getClientName()).isNull();
   }
 
   private void stubMcpApp(UUID appId, String appName) {
