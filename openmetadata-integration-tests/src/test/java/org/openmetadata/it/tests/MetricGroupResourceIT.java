@@ -1064,6 +1064,74 @@ public class MetricGroupResourceIT {
         document -> assertEquals(0, document.path("metricCount").asInt()));
   }
 
+  @Test
+  void metadataOnlyPatchKeepsSearchIndexedMetricCountInSync(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric metric = createMetric(ns, "metric_count_sync_member");
+    MetricGroup group =
+        createGroup(
+            new CreateMetricGroup()
+                .withName(ns.prefix("metric_count_sync_group"))
+                .withDescription("Initial description")
+                .withMetrics(List.of(metric.getFullyQualifiedName())));
+
+    awaitFilteredSearchResult(group, 1);
+    assertMetricHasGroup(metric, group);
+
+    String originalJson = JSON.writeValueAsString(group);
+    group.setDescription("Updated description only");
+    rest.patch(GROUPS_PATH, group.getId(), originalJson, group, MetricGroup.class);
+
+    assertEquals(1, getGroup(group.getName(), "metricCount").getMetricCount());
+    assertMetricHasGroup(metric, group);
+    assertIndexedMetricCount(rest, group.getId(), 1);
+    assertFilteredSearchByMetricCountFindsGroup(group, 1);
+
+    MetricGroup refreshed = getGroup(group.getName(), "metricCount,displayName");
+    String priorJson = JSON.writeValueAsString(refreshed);
+    refreshed.setDisplayName("Renamed for count sync");
+    rest.patch(GROUPS_PATH, group.getId(), priorJson, refreshed, MetricGroup.class);
+
+    assertEquals(1, getGroup(group.getName(), "metricCount").getMetricCount());
+    assertMetricHasGroup(metric, group);
+    assertIndexedMetricCount(rest, group.getId(), 1);
+    assertFilteredSearchByMetricCountFindsGroup(group, 1);
+  }
+
+  private static void assertFilteredSearchByMetricCountFindsGroup(
+      MetricGroup group, int metricCount) throws Exception {
+    String queryFilter =
+        String.format(
+            "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"id.keyword\":\"%s\"}},{\"term\":{\"metricCount\":%d}}]}}}",
+            group.getId(), metricCount);
+    String response =
+        SdkClients.adminClient()
+            .search()
+            .query("*")
+            .index("metric_group_search_index")
+            .queryFilter(queryFilter)
+            .size(1)
+            .execute();
+    JsonNode hits = JSON.readTree(response).path("hits").path("hits");
+    assertEquals(1, hits.size(), "Filtered Metric Group search must return one group");
+    JsonNode source = hits.get(0).path("_source");
+    assertEquals(group.getId().toString(), source.path("id").asText());
+    assertEquals(metricCount, source.path("metricCount").asInt());
+  }
+
+  private static void assertIndexedMetricCount(RestClient rest, UUID groupId, int expected)
+      throws Exception {
+    try (Response response =
+        rest.rawGet("v1/search/get/metric_group_search_index/doc/" + groupId)) {
+      assertEquals(200, response.getStatus());
+      JsonNode source = JSON.readTree(response.readEntity(String.class));
+      assertEquals(
+          expected,
+          source.path("metricCount").asInt(),
+          "metric_group_search_index metricCount for " + groupId);
+    }
+  }
+
   private static void assertNoMetricGroup(JsonNode metricDocument) {
     JsonNode metricGroup = metricDocument.path("metricGroup");
     assertTrue(metricGroup.isMissingNode() || metricGroup.isNull());
