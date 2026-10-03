@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.lineage_processors import (
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
 from metadata.utils.db_utils import ViewLineageExtension
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -410,15 +411,15 @@ class LineageSource(QueryParserSource, ABC):
             if (
                 filter_by_database(
                     self.source_config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                    view.db_name,
+                    fqn.unquote_name(view.db_name),
                 )
                 or filter_by_schema(
                     self.source_config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                    view.schema_name,
+                    fqn.unquote_name(view.schema_name),
                 )
                 or filter_by_table(
                     self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                    view.table_name,
+                    fqn.unquote_name(view.table_name),
                 )
             ):
                 self.status.filter(
