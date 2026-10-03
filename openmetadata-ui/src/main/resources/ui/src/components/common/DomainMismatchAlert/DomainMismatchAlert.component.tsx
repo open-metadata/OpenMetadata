@@ -41,12 +41,14 @@ const rememberDismissed = (entityId: string) => {
 interface DomainMismatchAlertProps {
   entityId: string;
   domains?: EntityReference[];
+  className?: string;
 }
 
 /** Tells the viewer an opened entity sits outside the navbar domain; never hides the page. */
 export const DomainMismatchAlert = ({
   entityId,
   domains,
+  className,
 }: DomainMismatchAlertProps) => {
   const { t } = useTranslation();
   const { activeDomain } = useDomainStore();
@@ -66,6 +68,7 @@ export const DomainMismatchAlert = ({
   return (
     <Alert
       closable
+      className={className}
       data-testid="domain-mismatch-alert"
       rightContent={
         <Button

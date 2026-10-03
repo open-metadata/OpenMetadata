@@ -13,14 +13,14 @@
 import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
-  ChevronDown,
-  Download01,
-  Edit01,
-  Glossary as GlossaryIcon,
-  GlossaryTerm as GlossaryTermIcon,
-  RefreshCcw01,
-  Trash01,
-  Upload01,
+    ChevronDown,
+    Download01,
+    Edit01,
+    Glossary as GlossaryIcon,
+    GlossaryTerm as GlossaryTermIcon,
+    RefreshCcw01,
+    Trash01,
+    Upload01
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty, toString } from 'lodash';
@@ -42,8 +42,8 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
-  EntityStatus,
-  GlossaryTerm,
+    EntityStatus,
+    GlossaryTerm
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
@@ -53,9 +53,9 @@ import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
-  exportGlossaryInCSVFormat,
-  getGlossariesById,
-  getGlossaryTermsById,
+    exportGlossaryInCSVFormat,
+    getGlossariesById,
+    getGlossaryTermsById
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
@@ -64,16 +64,17 @@ import Fqn from '../../../utils/Fqn';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
-  getGlossaryPath,
-  getGlossaryTermsVersionsPath,
-  getGlossaryVersionsPath,
+    getGlossaryPath,
+    getGlossaryTermsVersionsPath,
+    getGlossaryVersionsPath
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import {
-  ManageMenu,
-  ManageMenuItem,
-  toManageMenuItems,
+    ManageMenu,
+    ManageMenuItem,
+    toManageMenuItems
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.constants';
@@ -802,6 +803,13 @@ const GlossaryHeader = ({
   return (
     <>
       {!isAiMode && <div className="tw:mb-3">{breadcrumbEl}</div>}
+      {!isVersionView && selectedData && (
+        <DomainMismatchAlert
+          className="tw:mb-3"
+          domains={selectedData.domains}
+          entityId={selectedData.id}
+        />
+      )}
       <PageHeader
         actions={
           <GlossaryHeaderActions
