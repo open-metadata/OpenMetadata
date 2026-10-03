@@ -354,8 +354,8 @@ const LocationSearch = () => {
   return (
     <>
       <span data-testid="location-search">{search}</span>
-      {/* Stands in for the incident table below, which writes its own paging
-          params into the same query string. */}
+      {/* Writes a param the groups do not read, as the drill-down does with
+          its own. */}
       <button
         aria-label="write-unrelated-param"
         data-testid="write-unrelated-param"

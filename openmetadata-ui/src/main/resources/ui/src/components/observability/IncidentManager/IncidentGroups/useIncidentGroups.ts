@@ -107,9 +107,8 @@ export const useIncidentGroups = () => {
 
   const groupBy = parseIncidentGroupBy(searchParams[INCIDENT_GROUP_BY_PARAM]);
 
-  // Keyed on the filter params alone: the incident table on the same page
-  // writes its own paging params into this query string, and those must not
-  // refetch the groups.
+  // Keyed on the filter params alone: the drill-down writes its own param into
+  // this query string, and opening a group must not refetch the groups.
   const filtersSearch = QueryString.stringify(
     pick(searchParams, INCIDENT_GROUP_FILTER_KEYS)
   );

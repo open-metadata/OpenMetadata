@@ -45,14 +45,14 @@ export interface IncidentGroupByDropdownProps {
 }
 
 /**
- * Incident timestamp a date range applies to, in the vocabulary the URL already
- * speaks for the incident listing: `timestamp` is when the incident was opened.
+ * Incident timestamp a date range applies to, in the incident list endpoint's
+ * vocabulary: `timestamp` is when the incident was opened.
  */
 export type IncidentListDateField = 'timestamp' | 'updatedAt';
 
 /**
- * Filters of the grouped view. Each key is also its query string param, shared
- * with the incident listing on the same page so both read one filter set.
+ * Filters of the grouped view. Each key is also its query string param, so a
+ * shared link or a reload keeps them.
  */
 export interface IncidentGroupFilters {
   testCaseFQN?: string;
