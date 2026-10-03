@@ -67,6 +67,7 @@ jest.mock('../../../Glossary/hooks/useEntityReferenceOptions', () => ({
 
 interface MockFilterSelectProps {
   label: string;
+  size?: string;
   options: { value: string; label: ReactNode }[];
   selectedValues: string[];
   'data-testid': string;
@@ -85,6 +86,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(
       ({
         label,
+        size,
         options,
         selectedValues,
         'data-testid': testId,
@@ -93,7 +95,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         onOpenChange,
         onSearch,
       }: MockFilterSelectProps) => (
-        <div aria-label={label} data-testid={testId}>
+        <div aria-label={label} data-size={size} data-testid={testId}>
           <span data-testid={`${testId}-selected`}>
             {selectedValues.join(',')}
           </span>
@@ -146,13 +148,15 @@ jest.mock('../../DataQuality/Dashboard/DqDateRangeFilter', () => ({
       ({
         startTs,
         endTs,
+        size = 'md',
         onApply,
       }: {
         startTs?: number;
         endTs?: number;
+        size?: string;
         onApply: (range: { startTs: number; endTs: number }) => void;
       }) => (
-        <div data-testid="date-range-filter">
+        <div data-size={size} data-testid="date-range-filter">
           <span data-testid="date-range-value">{`${startTs}-${endTs}`}</span>
           <button
             aria-label="date-range-apply"
@@ -214,6 +218,20 @@ describe('IncidentGroupsFilters', () => {
     expect(screen.getByText('label.status')).toBeInTheDocument();
     expect(screen.getByText('label.date-filter')).toBeInTheDocument();
     expect(screen.getByText('label.date-range')).toBeInTheDocument();
+  });
+
+  it('should size every filter md, as tall as the date range', () => {
+    renderFilters();
+
+    for (const testId of [
+      'incident-groups-test-case',
+      'incident-groups-assignee',
+      'incident-groups-status',
+      'incident-groups-date-field',
+      'date-range-filter',
+    ]) {
+      expect(screen.getByTestId(testId)).toHaveAttribute('data-size', 'md');
+    }
   });
 
   it('should name the group of every control after its caption', () => {

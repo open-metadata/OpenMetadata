@@ -206,6 +206,7 @@ const IncidentGroupsFilters = ({
           resolveMissingLabel={getNameFromFQN}
           selectedValues={toSelection(filters.testCaseFQN)}
           selectionMode="single"
+          size="md"
           triggerVariant="input"
           onChange={([testCaseFQN]) => onChange({ testCaseFQN })}
           onOpenChange={(isOpen) =>
@@ -223,6 +224,7 @@ const IncidentGroupsFilters = ({
           resolveMissingLabel={(name) => selectedAssigneeName ?? name}
           selectedValues={toSelection(filters.assignee)}
           selectionMode="single"
+          size="md"
           triggerVariant="input"
           onChange={([assignee]) => onChange({ assignee })}
           onOpenChange={(isOpen) => isOpen && assigneePicker.onFocus()}
@@ -237,6 +239,7 @@ const IncidentGroupsFilters = ({
           options={STATUS_OPTIONS}
           selectedValues={filters.status}
           selectionMode="multiple"
+          size="md"
           triggerVariant="input"
           onChange={(status) =>
             onChange({ status: status as OpenIncidentStatus[] })
@@ -264,6 +267,7 @@ const IncidentGroupsFilters = ({
           options={dateFieldOptions}
           selectedValues={[filters.dateField]}
           selectionMode="single"
+          size="md"
           triggerVariant="input"
           onChange={([dateField]) =>
             onChange({
@@ -277,7 +281,6 @@ const IncidentGroupsFilters = ({
         <DqDateRangeFilter
           fullWidth
           endTs={filters.endTs}
-          size="sm"
           startTs={filters.startTs}
           onApply={(range) => onChange(range)}
         />
