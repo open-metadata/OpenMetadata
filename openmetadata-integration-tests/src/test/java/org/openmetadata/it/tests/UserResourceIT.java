@@ -659,8 +659,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_selectedDomainDoesNotHideAGlossarysTerms(TestNamespace ns) {
-    // Children of an opened entity are listed in full: terms inherit the glossary's domain.
+  void test_glossaryTermsFollowTheirEffectiveDomain(TestNamespace ns) {
+    // A child's effective domain is its own, else its parent's.
     Domain domain =
         SdkClients.adminClient()
             .domains()
@@ -685,6 +685,23 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .withName("inheritsDomain")
                     .withGlossary(glossary.getFullyQualifiedName())
                     .withDescription("no domain of its own"));
+    Domain otherDomain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navOther"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("another domain"));
+    GlossaryTerm otherTerm =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("ownOtherDomain")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("its own domain overrides the glossary's")
+                    .withDomains(List.of(otherDomain.getFullyQualifiedName())));
     String userName = "navterms" + java.util.UUID.randomUUID().toString().substring(0, 8);
     String email = userName + "@test.openmetadata.org";
     User user = createEntity(new CreateUser().withName(userName).withEmail(email));
@@ -699,7 +716,10 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     assertTrue(
         terms.getData().stream().anyMatch(t -> t.getId().equals(term.getId())),
-        "a glossary's terms must not be hidden by the navbar domain pick");
+        "a term inheriting the selected domain from its glossary must be listed");
+    assertTrue(
+        terms.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
+        "a term whose own domain is outside the selection must not be listed");
   }
 
   @Test

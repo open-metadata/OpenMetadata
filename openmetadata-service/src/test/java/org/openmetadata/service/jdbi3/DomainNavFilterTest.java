@@ -103,4 +103,44 @@ class DomainNavFilterTest {
     DomainNavFilter.apply(filter, Entity.GLOSSARY_TERM, true, DOMAIN_ID, "hAlpha");
     assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
   }
+
+  @Test
+  void apply_parentInSelectionMatchesOwnDomainOrInheritedFromParent() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("databaseSchema", "svc.db.schema");
+    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha", true);
+    assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
+    assertEquals("hAlpha", filter.getQueryParams().get("domainFqnHash"));
+    // own domain in the selection, or no own domain (inherits the parent's)
+    assertEquals("true", filter.getQueryParams().get("domainAccessControl"));
+  }
+
+  @Test
+  void apply_parentOutsideSelectionMatchesOwnDomainOnly() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("databaseSchema", "svc.db.schema");
+    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha", false);
+    assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
+    assertNull(filter.getQueryParams().get("domainAccessControl"));
+  }
+
+  @Test
+  void apply_parentScopedEchoIsReplacedByTheEffectiveDomainCondition() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("parent", "glossaryA");
+    filter.addQueryParam("domainId", "'" + DOMAIN_ID + "'");
+    DomainNavFilter.apply(filter, Entity.GLOSSARY_TERM, true, DOMAIN_ID, "hAlpha", true);
+    assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
+    assertEquals("true", filter.getQueryParams().get("domainAccessControl"));
+  }
+
+  @Test
+  void parentScope_reportsTheScopingParamAndValue() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("databaseSchema", "svc.db.schema");
+    assertEquals(
+        java.util.Map.entry("databaseSchema", "svc.db.schema"),
+        DomainNavFilter.parentScope(filter).orElseThrow());
+    assertTrue(DomainNavFilter.parentScope(new ListFilter()).isEmpty());
+  }
 }

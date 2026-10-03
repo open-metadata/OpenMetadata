@@ -1116,14 +1116,66 @@ public final class EntityUtil {
     // Global (navbar) domain filter: a view preference that narrows lists to the selected domain
     // and never restricts access, so it applies to admins too.
     EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    String selectedFqn = selected == null ? null : selected.getFullyQualifiedName();
     DomainNavFilter.apply(
         filter,
         entityType,
         supportsDomains(entityType),
         selected == null ? null : selected.getId().toString(),
-        selected == null || nullOrEmpty(selected.getFullyQualifiedName())
-            ? null
-            : FullyQualifiedName.buildHash(selected.getFullyQualifiedName()));
+        nullOrEmpty(selectedFqn) ? null : FullyQualifiedName.buildHash(selectedFqn),
+        nullOrEmpty(selectedFqn) ? null : parentInSelection(filter, entityType, selectedFqn));
+  }
+
+  /**
+   * For a list confined to one parent, whether that parent's effective domain (own or inherited)
+   * is the selected domain or under it; null when the list is unscoped or the parent can't be
+   * resolved.
+   */
+  private static Boolean parentInSelection(
+      ListFilter filter, String entityType, String selectedFqn) {
+    return DomainNavFilter.parentScope(filter)
+        .map(scope -> parentDomains(scope.getKey(), scope.getValue(), entityType))
+        .map(
+            domains ->
+                domains.stream()
+                    .map(EntityReference::getFullyQualifiedName)
+                    .anyMatch(
+                        fqn ->
+                            selectedFqn.equals(fqn)
+                                || (fqn != null && fqn.startsWith(selectedFqn + Entity.SEPARATOR))))
+        .orElse(null);
+  }
+
+  /** The parent's effective domains, or null when its type is unknown or it no longer exists. */
+  private static List<EntityReference> parentDomains(
+      String param, String parentFqn, String childType) {
+    String parentType = parentEntityType(param, parentFqn, childType);
+    if (parentType == null) {
+      return null;
+    }
+    try {
+      EntityInterface parent =
+          Entity.getEntityByName(parentType, parentFqn, Entity.FIELD_DOMAINS, NON_DELETED);
+      return listOrEmpty(parent.getDomains());
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
+  }
+
+  private static String parentEntityType(String param, String parentFqn, String childType) {
+    return switch (param) {
+      case "service" -> Entity.getServiceType(childType);
+      case "database" -> Entity.DATABASE;
+      case "databaseSchema" -> Entity.DATABASE_SCHEMA;
+      case "apiCollection" -> Entity.API_COLLECTION;
+      case "directory" -> Entity.DIRECTORY;
+      case "spreadsheet" -> Entity.SPREADSHEET;
+        // A glossary's own FQN is one segment; anything longer names a parent term.
+      case "parent", "directChildrenOf" -> FullyQualifiedName.split(parentFqn).length == 1
+          ? Entity.GLOSSARY
+          : Entity.GLOSSARY_TERM;
+      default -> null;
+    };
   }
 
   /**

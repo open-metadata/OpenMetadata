@@ -15,7 +15,9 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.Set;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Applies the global (navbar) domain filter to a list from the caller's persisted selected domain.
@@ -30,8 +32,8 @@ public final class DomainNavFilter {
   private DomainNavFilter() {}
 
   /** List params that confine a list to the children of one entity. */
-  private static final Set<String> PARENT_SCOPE_PARAMS =
-      Set.of(
+  private static final List<String> PARENT_SCOPE_PARAMS =
+      List.of(
           "service",
           "database",
           "databaseSchema",
@@ -44,9 +46,12 @@ public final class DomainNavFilter {
           "entityFQNHash",
           "entityLink");
 
-  private static boolean isScopedToParent(ListFilter filter) {
+  /** The param (and its value) that confines {@code filter} to one parent, if any. */
+  public static Optional<Map.Entry<String, String>> parentScope(ListFilter filter) {
     return PARENT_SCOPE_PARAMS.stream()
-        .anyMatch(param -> !nullOrEmpty(filter.getQueryParams().get(param)));
+        .filter(param -> !nullOrEmpty(filter.getQueryParams().get(param)))
+        .findFirst()
+        .map(param -> Map.entry(param, filter.getQueryParams().get(param)));
   }
 
   /**
@@ -83,27 +88,49 @@ public final class DomainNavFilter {
       boolean supportsDomains,
       String selectedDomainIds,
       String selectedDomainFqnHash) {
+    apply(filter, entityType, supportsDomains, selectedDomainIds, selectedDomainFqnHash, null);
+  }
+
+  /**
+   * As above, for a list confined to one parent ({@link #parentScope}): a child's effective domain
+   * is its own, else the parent's. {@code parentInSelection} says whether the parent's effective
+   * domain is in the selection; when true, children without a domain of their own also match.
+   * Null means the parent could not be resolved, and the children are listed in full.
+   */
+  public static void apply(
+      ListFilter filter,
+      String entityType,
+      boolean supportsDomains,
+      String selectedDomainIds,
+      String selectedDomainFqnHash,
+      Boolean parentInSelection) {
     String explicitDomainIds = filter.getQueryParams().get("domainId");
     boolean hasExplicitDomain = explicitDomainIds != null;
     boolean echoesSelection =
         hasExplicitDomain
             && !nullOrEmpty(selectedDomainIds)
             && explicitDomainIds.replace("'", "").equals(selectedDomainIds);
-    if (isScopedToParent(filter)) {
-      // Children of an opened entity (e.g. a glossary's terms) are listed in full; they mostly
-      // inherit the parent's domain and hold no domain row of their own.
+    boolean parentScoped = parentScope(filter).isPresent();
+    if (parentScoped && parentInSelection == null) {
       if (echoesSelection) {
         filter.removeQueryParam("domainId");
       }
       return;
     }
-    if (!shouldApply(
+    if (shouldApply(
         entityType, supportsDomains, hasExplicitDomain && !echoesSelection, selectedDomainIds)) {
-      return;
+      stamp(filter, entityType, selectedDomainIds, selectedDomainFqnHash);
+      if (parentScoped && parentInSelection) {
+        filter.addQueryParam("domainAccessControl", Boolean.TRUE.toString());
+      }
     }
-    filter.addQueryParam("domainId", selectedDomainIds);
-    if (!nullOrEmpty(selectedDomainFqnHash)) {
-      filter.addQueryParam("domainFqnHash", selectedDomainFqnHash);
+  }
+
+  private static void stamp(
+      ListFilter filter, String entityType, String domainIds, String domainFqnHash) {
+    filter.addQueryParam("domainId", domainIds);
+    if (!nullOrEmpty(domainFqnHash)) {
+      filter.addQueryParam("domainFqnHash", domainFqnHash);
     }
     if (filter.getQueryParams().get("entityType") == null) {
       filter.addQueryParam("entityType", entityType);
