@@ -69,46 +69,27 @@ class DomainNavFilterTest {
   }
 
   @Test
-  void apply_skipsListScopedToAParent() {
+  void apply_unresolvedParentListsChildrenInFull() {
     ListFilter filter = new ListFilter();
-    filter.addQueryParam("parent", "glossaryA");
-    DomainNavFilter.apply(filter, Entity.GLOSSARY_TERM, true, DOMAIN_ID, "hAlpha");
+    DomainNavFilter.apply(
+        filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha", DomainNavFilter.ParentScope.UNRESOLVED);
     assertNull(filter.getQueryParams().get("domainId"));
-    assertNull(filter.getQueryParams().get("domainFqnHash"));
   }
 
   @Test
-  void apply_parentScopedListDropsTheEchoedSelection() {
+  void apply_unresolvedParentDropsTheEchoedSelection() {
     ListFilter filter = new ListFilter();
-    filter.addQueryParam("databaseSchema", "svc.db.schema");
     filter.addQueryParam("domainId", "'" + DOMAIN_ID + "'");
-    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha");
+    DomainNavFilter.apply(
+        filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha", DomainNavFilter.ParentScope.UNRESOLVED);
     assertNull(filter.getQueryParams().get("domainId"));
-  }
-
-  @Test
-  void apply_parentScopedListKeepsAnExplicitOtherDomain() {
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("service", "svc");
-    filter.addQueryParam("domainId", "'22222222-2222-2222-2222-222222222222'");
-    DomainNavFilter.apply(filter, Entity.DATABASE, true, DOMAIN_ID, "hAlpha");
-    assertEquals("'22222222-2222-2222-2222-222222222222'", filter.getQueryParams().get("domainId"));
-  }
-
-  @Test
-  void apply_nullParentParamIsNotAScope() {
-    // Resources add optional params unconditionally, e.g. addQueryParam("parent", null).
-    ListFilter filter = new ListFilter();
-    filter.addQueryParam("parent", (String) null);
-    DomainNavFilter.apply(filter, Entity.GLOSSARY_TERM, true, DOMAIN_ID, "hAlpha");
-    assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
   }
 
   @Test
   void apply_parentInSelectionMatchesOwnDomainOrInheritedFromParent() {
     ListFilter filter = new ListFilter();
-    filter.addQueryParam("databaseSchema", "svc.db.schema");
-    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha", true);
+    DomainNavFilter.apply(
+        filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha", DomainNavFilter.ParentScope.IN_SELECTION);
     assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
     assertEquals("hAlpha", filter.getQueryParams().get("domainFqnHash"));
     // own domain in the selection, or no own domain (inherits the parent's)
@@ -118,8 +99,13 @@ class DomainNavFilterTest {
   @Test
   void apply_parentOutsideSelectionMatchesOwnDomainOnly() {
     ListFilter filter = new ListFilter();
-    filter.addQueryParam("databaseSchema", "svc.db.schema");
-    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha", false);
+    DomainNavFilter.apply(
+        filter,
+        Entity.TABLE,
+        true,
+        DOMAIN_ID,
+        "hAlpha",
+        DomainNavFilter.ParentScope.OUTSIDE_SELECTION);
     assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
     assertNull(filter.getQueryParams().get("domainAccessControl"));
   }
@@ -127,20 +113,30 @@ class DomainNavFilterTest {
   @Test
   void apply_parentScopedEchoIsReplacedByTheEffectiveDomainCondition() {
     ListFilter filter = new ListFilter();
-    filter.addQueryParam("parent", "glossaryA");
     filter.addQueryParam("domainId", "'" + DOMAIN_ID + "'");
-    DomainNavFilter.apply(filter, Entity.GLOSSARY_TERM, true, DOMAIN_ID, "hAlpha", true);
+    DomainNavFilter.apply(
+        filter,
+        Entity.GLOSSARY_TERM,
+        true,
+        DOMAIN_ID,
+        "hAlpha",
+        DomainNavFilter.ParentScope.IN_SELECTION);
     assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
     assertEquals("true", filter.getQueryParams().get("domainAccessControl"));
   }
 
   @Test
-  void parentScope_reportsTheScopingParamAndValue() {
+  void apply_parentScopedListKeepsAnExplicitOtherDomain() {
     ListFilter filter = new ListFilter();
-    filter.addQueryParam("databaseSchema", "svc.db.schema");
-    assertEquals(
-        java.util.Map.entry("databaseSchema", "svc.db.schema"),
-        DomainNavFilter.parentScope(filter).orElseThrow());
-    assertTrue(DomainNavFilter.parentScope(new ListFilter()).isEmpty());
+    filter.addQueryParam("domainId", "'22222222-2222-2222-2222-222222222222'");
+    DomainNavFilter.apply(
+        filter,
+        Entity.DATABASE,
+        true,
+        DOMAIN_ID,
+        "hAlpha",
+        DomainNavFilter.ParentScope.IN_SELECTION);
+    assertEquals("'22222222-2222-2222-2222-222222222222'", filter.getQueryParams().get("domainId"));
+    assertNull(filter.getQueryParams().get("domainAccessControl"));
   }
 }

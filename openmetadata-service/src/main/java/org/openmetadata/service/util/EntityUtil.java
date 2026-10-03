@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -79,6 +80,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
@@ -1089,6 +1091,28 @@ public final class EntityUtil {
 
   public static void addDomainQueryParam(
       SecurityContext securityContext, ListFilter filter, String entityType) {
+    applyDomainQueryParam(
+        securityContext, filter, entityType, () -> listParent(filter, entityType));
+  }
+
+  /**
+   * As above, for a caller that knows the entity its list is confined to ({@code parent}, null when
+   * unconfined), e.g. a glossary whose terms are listed.
+   */
+  public static void addDomainQueryParam(
+      SecurityContext securityContext,
+      ListFilter filter,
+      String entityType,
+      ResourceContextInterface parent) {
+    applyDomainQueryParam(securityContext, filter, entityType, () -> parent);
+  }
+
+  // The parent is only resolved when a navbar selection is actually applied.
+  private static void applyDomainQueryParam(
+      SecurityContext securityContext,
+      ListFilter filter,
+      String entityType,
+      Supplier<ResourceContextInterface> parent) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isBot()) {
       return;
@@ -1123,59 +1147,37 @@ public final class EntityUtil {
         supportsDomains(entityType),
         selected == null ? null : selected.getId().toString(),
         nullOrEmpty(selectedFqn) ? null : FullyQualifiedName.buildHash(selectedFqn),
-        nullOrEmpty(selectedFqn) ? null : parentInSelection(filter, entityType, selectedFqn));
+        nullOrEmpty(selectedFqn)
+            ? DomainNavFilter.ParentScope.NONE
+            : parentScope(parent.get(), selectedFqn));
   }
 
-  /**
-   * For a list confined to one parent, whether that parent's effective domain (own or inherited)
-   * is the selected domain or under it; null when the list is unscoped or the parent can't be
-   * resolved.
-   */
-  private static Boolean parentInSelection(
-      ListFilter filter, String entityType, String selectedFqn) {
-    return DomainNavFilter.parentScope(filter)
-        .map(scope -> parentDomains(scope.getKey(), scope.getValue(), entityType))
-        .map(
-            domains ->
-                domains.stream()
-                    .map(EntityReference::getFullyQualifiedName)
-                    .anyMatch(
-                        fqn ->
-                            selectedFqn.equals(fqn)
-                                || (fqn != null && fqn.startsWith(selectedFqn + Entity.SEPARATOR))))
-        .orElse(null);
+  /** The entity a list is confined to, as identified for its authorization; null if none. */
+  private static ResourceContextInterface listParent(ListFilter filter, String entityType) {
+    ResourceContextInterface parent = filter.getResourceContext(entityType);
+    return entityType.equals(parent.getResource()) ? filter.getParentResourceContext() : parent;
   }
 
-  /** The parent's effective domains, or null when its type is unknown or it no longer exists. */
-  private static List<EntityReference> parentDomains(
-      String param, String parentFqn, String childType) {
-    String parentType = parentEntityType(param, parentFqn, childType);
-    if (parentType == null) {
-      return null;
+  /** Where {@code parent}'s effective domain (own or inherited) sits relative to the selection. */
+  private static DomainNavFilter.ParentScope parentScope(
+      ResourceContextInterface parent, String selectedFqn) {
+    if (parent == null || nullOrEmpty(selectedFqn)) {
+      return DomainNavFilter.ParentScope.NONE;
     }
     try {
-      EntityInterface parent =
-          Entity.getEntityByName(parentType, parentFqn, Entity.FIELD_DOMAINS, NON_DELETED);
-      return listOrEmpty(parent.getDomains());
+      boolean inSelection =
+          listOrEmpty(parent.getDomains()).stream()
+              .map(EntityReference::getFullyQualifiedName)
+              .anyMatch(
+                  fqn ->
+                      selectedFqn.equals(fqn)
+                          || (fqn != null && fqn.startsWith(selectedFqn + Entity.SEPARATOR)));
+      return inSelection
+          ? DomainNavFilter.ParentScope.IN_SELECTION
+          : DomainNavFilter.ParentScope.OUTSIDE_SELECTION;
     } catch (EntityNotFoundException e) {
-      return null;
+      return DomainNavFilter.ParentScope.UNRESOLVED;
     }
-  }
-
-  private static String parentEntityType(String param, String parentFqn, String childType) {
-    return switch (param) {
-      case "service" -> Entity.getServiceType(childType);
-      case "database" -> Entity.DATABASE;
-      case "databaseSchema" -> Entity.DATABASE_SCHEMA;
-      case "apiCollection" -> Entity.API_COLLECTION;
-      case "directory" -> Entity.DIRECTORY;
-      case "spreadsheet" -> Entity.SPREADSHEET;
-        // A glossary's own FQN is one segment; anything longer names a parent term.
-      case "parent", "directChildrenOf" -> FullyQualifiedName.split(parentFqn).length == 1
-          ? Entity.GLOSSARY
-          : Entity.GLOSSARY_TERM;
-      default -> null;
-    };
   }
 
   /**

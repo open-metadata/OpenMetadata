@@ -15,10 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 /**
  * Applies the global (navbar) domain filter to a list from the caller's persisted selected domain.
  *
@@ -31,27 +27,19 @@ import java.util.Optional;
 public final class DomainNavFilter {
   private DomainNavFilter() {}
 
-  /** List params that confine a list to the children of one entity. */
-  private static final List<String> PARENT_SCOPE_PARAMS =
-      List.of(
-          "service",
-          "database",
-          "databaseSchema",
-          "parent",
-          "directChildrenOf",
-          "apiCollection",
-          "directory",
-          "spreadsheet",
-          "aboutEntity",
-          "entityFQNHash",
-          "entityLink");
-
-  /** The param (and its value) that confines {@code filter} to one parent, if any. */
-  public static Optional<Map.Entry<String, String>> parentScope(ListFilter filter) {
-    return PARENT_SCOPE_PARAMS.stream()
-        .filter(param -> !nullOrEmpty(filter.getQueryParams().get(param)))
-        .findFirst()
-        .map(param -> Map.entry(param, filter.getQueryParams().get(param)));
+  /**
+   * Where the list's parent (the entity a list is confined to, e.g. a schema's tables) sits relative
+   * to the selection. A child's effective domain is its own, else its parent's.
+   */
+  public enum ParentScope {
+    /** The list is not confined to a parent. */
+    NONE,
+    /** The parent's effective domain is the selection or under it. */
+    IN_SELECTION,
+    /** The parent's effective domain is outside the selection. */
+    OUTSIDE_SELECTION,
+    /** The list is confined to a parent that could not be resolved: list its children in full. */
+    UNRESOLVED
   }
 
   /**
@@ -88,14 +76,18 @@ public final class DomainNavFilter {
       boolean supportsDomains,
       String selectedDomainIds,
       String selectedDomainFqnHash) {
-    apply(filter, entityType, supportsDomains, selectedDomainIds, selectedDomainFqnHash, null);
+    apply(
+        filter,
+        entityType,
+        supportsDomains,
+        selectedDomainIds,
+        selectedDomainFqnHash,
+        ParentScope.NONE);
   }
 
   /**
-   * As above, for a list confined to one parent ({@link #parentScope}): a child's effective domain
-   * is its own, else the parent's. {@code parentInSelection} says whether the parent's effective
-   * domain is in the selection; when true, children without a domain of their own also match.
-   * Null means the parent could not be resolved, and the children are listed in full.
+   * As above, for a list confined to a parent: with the parent {@link ParentScope#IN_SELECTION},
+   * children without a domain of their own (inheriting the parent's) also match.
    */
   public static void apply(
       ListFilter filter,
@@ -103,15 +95,14 @@ public final class DomainNavFilter {
       boolean supportsDomains,
       String selectedDomainIds,
       String selectedDomainFqnHash,
-      Boolean parentInSelection) {
+      ParentScope parent) {
     String explicitDomainIds = filter.getQueryParams().get("domainId");
     boolean hasExplicitDomain = explicitDomainIds != null;
     boolean echoesSelection =
         hasExplicitDomain
             && !nullOrEmpty(selectedDomainIds)
             && explicitDomainIds.replace("'", "").equals(selectedDomainIds);
-    boolean parentScoped = parentScope(filter).isPresent();
-    if (parentScoped && parentInSelection == null) {
+    if (parent == ParentScope.UNRESOLVED) {
       if (echoesSelection) {
         filter.removeQueryParam("domainId");
       }
@@ -120,7 +111,7 @@ public final class DomainNavFilter {
     if (shouldApply(
         entityType, supportsDomains, hasExplicitDomain && !echoesSelection, selectedDomainIds)) {
       stamp(filter, entityType, selectedDomainIds, selectedDomainFqnHash);
-      if (parentScoped && parentInSelection) {
+      if (parent == ParentScope.IN_SELECTION) {
         filter.addQueryParam("domainAccessControl", Boolean.TRUE.toString());
       }
     }
