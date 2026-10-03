@@ -2,6 +2,9 @@ package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -17,6 +20,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TestCaseResolutionStatusMapper
     implements EntityTimeSeriesMapper<TestCaseResolutionStatus, CreateTestCaseResolutionStatus> {
+  private static final Set<String> ASSIGNEE_TYPES = Set.of(Entity.USER, Entity.TEAM);
+
   @Override
   public TestCaseResolutionStatus createToEntity(
       CreateTestCaseResolutionStatus create, String user) {
@@ -45,29 +50,50 @@ public class TestCaseResolutionStatusMapper
    * the incident lists show the assignee from it, and the incident groups count assignees by name.
    */
   private static Object withResolvedAssignee(CreateTestCaseResolutionStatus create) {
-    Object details = create.getTestCaseResolutionStatusDetails();
-    if (create.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Assigned
-        || details == null) {
-      return details;
-    }
-    Assigned assigned = JsonUtils.convertValue(details, Assigned.class);
-    EntityReference assignee = assigned.getAssignee();
-    if (assignee == null) {
-      return details;
-    }
-    String type = assignee.getType() != null ? assignee.getType() : Entity.USER;
+    Assigned assigned = assignedDetails(create);
+    return assigned == null || assigned.getAssignee() == null
+        ? create.getTestCaseResolutionStatusDetails()
+        : assigned.withAssignee(resolveAssignee(assigned.getAssignee()));
+  }
+
+  private static Assigned assignedDetails(CreateTestCaseResolutionStatus create) {
+    boolean isAssigned =
+        create.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Assigned
+            && create.getTestCaseResolutionStatusDetails() != null;
+    return isAssigned
+        ? JsonUtils.convertValue(create.getTestCaseResolutionStatusDetails(), Assigned.class)
+        : null;
+  }
+
+  private static EntityReference resolveAssignee(EntityReference assignee) {
+    String type = assigneeType(assignee);
+    EntityReference result = assignee;
     if (assignee.getId() != null) {
-      return assigned.withAssignee(
-          Entity.getEntityReferenceById(type, assignee.getId(), Include.NON_DELETED));
+      result = Entity.getEntityReferenceById(type, assignee.getId(), Include.NON_DELETED);
+    } else if (!nullOrEmpty(assignee.getName())) {
+      result =
+          Entity.getEntityReferenceByName(
+              type, assigneeFqn(type, assignee.getName()), Include.NON_DELETED);
     }
-    if (nullOrEmpty(assignee.getName())) {
-      return details;
+    return result;
+  }
+
+  // The type is the client's to send, not to choose: only a user or a team can own an incident.
+  private static String assigneeType(EntityReference assignee) {
+    String type = Objects.requireNonNullElse(assignee.getType(), Entity.USER);
+    if (!ASSIGNEE_TYPES.contains(type)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid assignee type '%s'. Must be one of [%s, %s]",
+              type, Entity.USER, Entity.TEAM));
     }
-    // The lookup takes an FQN: a name with a dot in it is quoted, and a user's is lowercased the
-    // way the user repository builds it.
-    String name = Entity.USER.equals(type) ? assignee.getName().toLowerCase() : assignee.getName();
-    return assigned.withAssignee(
-        Entity.getEntityReferenceByName(
-            type, FullyQualifiedName.quoteName(name), Include.NON_DELETED));
+    return type;
+  }
+
+  // The lookup takes an FQN: a name with a dot in it is quoted, and a user's is lowercased the way
+  // the user repository builds it.
+  private static String assigneeFqn(String type, String name) {
+    return FullyQualifiedName.quoteName(
+        Entity.USER.equals(type) ? name.toLowerCase(Locale.ROOT) : name);
   }
 }

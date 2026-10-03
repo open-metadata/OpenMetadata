@@ -258,6 +258,12 @@ describe('IncidentList', () => {
     expect(screen.getByTestId('incident-list-loader')).toBeInTheDocument();
   });
 
+  it('should mark the rows on screen while the next page loads', () => {
+    renderList([assigned], true);
+
+    expect(screen.getByTestId('incident-list')).toHaveClass('tw:opacity-60');
+  });
+
   it('should show the empty state when the group has no incident left', () => {
     renderList([]);
 

@@ -49,6 +49,17 @@ const renderBar = (selectedCount = 2, isApplying = false, incidentCount = 42) =>
     />
   );
 
+// The global mock drops the interpolated values; the bar shows counts, so this
+// one keeps them to assert what each line was handed.
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}:${options.count}`,
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
+  }),
+}));
+
 describe('IncidentGroupsSelectionBar', () => {
   beforeEach(() => jest.clearAllMocks());
 
@@ -57,9 +68,7 @@ describe('IncidentGroupsSelectionBar', () => {
 
     expect(
       screen.getByTestId('incident-groups-selected-count')
-    ).toHaveTextContent(
-      '2 label.group-lowercase-plural label.selected-lowercase'
-    );
+    ).toHaveTextContent('message.group-selected-count:2');
   });
 
   it('should read a single selected group in the singular', () => {
@@ -67,7 +76,7 @@ describe('IncidentGroupsSelectionBar', () => {
 
     expect(
       screen.getByTestId('incident-groups-selected-count')
-    ).toHaveTextContent('1 label.group-lowercase label.selected-lowercase');
+    ).toHaveTextContent('message.group-selected-count:1');
   });
 
   it('should count the incidents the selection covers', () => {
@@ -75,7 +84,7 @@ describe('IncidentGroupsSelectionBar', () => {
 
     expect(
       screen.getByTestId('incident-groups-selected-incidents')
-    ).toHaveTextContent('42 label.incident-lowercase-plural');
+    ).toHaveTextContent('message.up-to-incident-count:42');
   });
 
   it('should read a single incident in the singular', () => {
@@ -83,7 +92,7 @@ describe('IncidentGroupsSelectionBar', () => {
 
     expect(
       screen.getByTestId('incident-groups-selected-incidents')
-    ).toHaveTextContent('1 label.incident-lowercase');
+    ).toHaveTextContent('message.up-to-incident-count:1');
   });
 
   it('should offer only the statuses an open incident can move to', () => {

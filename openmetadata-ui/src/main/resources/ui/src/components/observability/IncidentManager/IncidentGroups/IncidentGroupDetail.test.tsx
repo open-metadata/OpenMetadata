@@ -94,6 +94,17 @@ const renderDetail = (
     </MemoryRouter>
   );
 
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
+  Transi18next: ({
+    i18nKey,
+    values,
+  }: {
+    i18nKey: string;
+    values: { count: number };
+  }) => `${i18nKey}:${values.count}`,
+}));
+
 describe('IncidentGroupDetail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -121,11 +132,31 @@ describe('IncidentGroupDetail', () => {
 
     expect(screen.getByRole('heading', { name: 'orders' })).toBeInTheDocument();
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '2 label.type-lowercase-plural'
+      'label.type-count'
     );
     expect(screen.getByTestId('incident-group-summary')).toHaveTextContent(
-      '1 label.incident-lowercase · message.incident-group-seen-range'
+      'label.incident-count:1 · message.incident-group-seen-range'
     );
+  });
+
+  it('should say a failed read in place, not as no incidents, and retry it', async () => {
+    mockList.mockRejectedValueOnce(new Error('failure'));
+
+    await act(async () => {
+      renderDetail();
+    });
+
+    expect(
+      screen.getByTestId('incident-group-incidents-error')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('incident-list-empty')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    });
+
+    expect(mockList).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('incident-row-incident-1')).toBeInTheDocument();
   });
 
   it('should list every incident of the group, a full page at a time', async () => {
@@ -178,7 +209,7 @@ describe('IncidentGroupDetail', () => {
     });
 
     expect(screen.getByTestId('incident-group-summary')).toHaveTextContent(
-      '5 label.incident-lowercase-plural'
+      'label.incident-count:5'
     );
   });
 
