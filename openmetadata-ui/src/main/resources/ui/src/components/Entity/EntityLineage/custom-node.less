@@ -15,11 +15,11 @@
 // keeps these static greys.
 
 .ant-btn.ant-btn-background-ghost.expand-btn {
-  background-color: var(--om-color-bg-surface);
+  background-color: var(--tw-background-color-surface);
   box-shadow: none;
 
   &:hover {
-    background-color: var(--om-color-bg-surface);
+    background-color: var(--tw-background-color-surface);
   }
 }
 
@@ -27,13 +27,13 @@
   box-shadow: none;
 
   &.lineage-path-highlight > .lineage-node {
-    border-color: var(--om-color-fg-brand);
-    box-shadow: 0 0 0 3px var(--om-color-utility-brand-100), var(--om-shadow-md);
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 3px var(--tw-color-utility-brand-100), var(--om-shadow-md);
   }
 
   &.lineage-path-highlight > .lineage-scene-layer-node {
-    border-color: var(--om-color-fg-brand);
-    box-shadow: 0 0 0 1px var(--om-color-fg-brand),
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 1px var(--tw-color-fg-brand-primary),
       0 2px 8px var(--om-legacy-color-16-24-40-0-12);
   }
 }
@@ -49,20 +49,20 @@
     box-shadow var(--om-duration-150) ease, opacity var(--om-duration-150) ease;
 
   &.lineage-path-highlight {
-    border-color: var(--om-color-fg-brand);
-    box-shadow: 0 0 0 3px var(--om-color-utility-brand-100), var(--om-shadow-md);
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 3px var(--tw-color-utility-brand-100), var(--om-shadow-md);
   }
 
   &.lineage-scene-layer-node {
     min-height: 66px;
-    border-color: var(--lineage-node-border, var(--om-color-border-secondary));
+    border-color: var(--lineage-node-border, var(--tw-border-color-secondary));
     border-radius: var(--om-radius-xl);
     box-shadow: 0 1px 3px var(--om-legacy-color-16-24-40-0-12);
 
     &.lineage-path-highlight,
     &.custom-node-header-active {
-      border-color: var(--om-color-fg-brand);
-      box-shadow: 0 0 0 1px var(--om-color-fg-brand),
+      border-color: var(--tw-color-fg-brand-primary);
+      box-shadow: 0 0 0 1px var(--tw-color-fg-brand-primary),
         0 2px 8px var(--om-legacy-color-16-24-40-0-12);
     }
 
@@ -84,7 +84,7 @@
         height: 22px;
         border: none;
         border-radius: var(--om-radius-md);
-        background: var(--om-color-utility-brand-100);
+        background: var(--tw-color-utility-brand-100);
         box-shadow: none;
         transform: translateY(-50%);
         opacity: 1;
@@ -125,7 +125,7 @@
         .entity-header-display-name {
           width: auto !important;
           max-width: 170px;
-          color: var(--om-color-text-primary);
+          color: var(--tw-text-color-primary);
           font-size: var(--om-font-size-sm);
           font-weight: var(--om-font-weight-semibold);
           line-height: 18px;
@@ -143,7 +143,7 @@
 
         .lineage-service-subtitle {
           display: block;
-          color: var(--om-color-text-tertiary);
+          color: var(--tw-text-color-tertiary);
           font-size: var(--om-font-size-11_5);
           line-height: 16px;
         }
@@ -180,11 +180,11 @@
     }
 
     &.amber {
-      border: 1px solid var(--om-color-warning-600);
+      border: 1px solid var(--tw-color-fg-warning-primary);
     }
 
     &.red {
-      border: 1px solid var(--om-color-error-600);
+      border: 1px solid var(--tw-color-fg-error-primary);
     }
   }
 
@@ -202,10 +202,10 @@
       width: 24px;
       height: 24px;
       padding: 0;
-      border: 1px solid var(--om-color-border-secondary);
+      border: 1px solid var(--tw-border-color-secondary);
       border-radius: var(--om-radius-md);
-      background: var(--om-color-utility-brand-100);
-      color: var(--om-color-fg-brand);
+      background: var(--tw-color-utility-brand-100);
+      color: var(--tw-color-fg-brand-primary);
       cursor: pointer;
       opacity: 0;
       box-shadow: var(--om-shadow-md);
@@ -219,7 +219,7 @@
 
       &:hover,
       &:focus-visible {
-        background: var(--om-color-bg-surface);
+        background: var(--tw-background-color-surface);
         opacity: 1;
       }
     }
@@ -261,7 +261,7 @@
 
           svg {
             width: 18px;
-            color: var(--om-color-text-quaternary);
+            color: var(--tw-text-color-quaternary);
           }
         }
 
@@ -285,7 +285,7 @@
             width: 100%;
             height: 1px;
 
-            background: var(--om-color-bg-quaternary);
+            background: var(--tw-background-color-quaternary);
             content: '';
           }
         }
@@ -319,8 +319,8 @@
             border-radius: var(--om-radius-lg);
             box-shadow: none;
 
-            background-color: var(--om-color-utility-brand-100);
-            color: var(--om-color-fg-brand);
+            background-color: var(--tw-color-utility-brand-100);
+            color: var(--tw-color-fg-brand-primary);
             font-size: var(--om-font-size-xs);
             font-weight: var(--om-font-weight-medium);
             line-height: 18px;
@@ -329,8 +329,8 @@
 
             &:hover {
               box-shadow: none;
-              background-color: var(--om-color-utility-brand-100);
-              color: var(--om-color-fg-brand);
+              background-color: var(--tw-color-utility-brand-100);
+              color: var(--tw-color-fg-brand-primary);
             }
 
             &::after {
@@ -362,8 +362,8 @@
             }
 
             &.active {
-              background-color: var(--om-color-utility-brand-100);
-              color: var(--om-color-fg-brand);
+              background-color: var(--tw-color-utility-brand-100);
+              color: var(--tw-color-fg-brand-primary);
             }
 
             &:disabled:hover {
@@ -378,7 +378,7 @@
       min-height: 48px;
       padding: var(--om-space-12);
       padding-top: 0;
-      background-color: var(--om-color-bg-secondary);
+      background-color: var(--tw-background-color-secondary);
 
       .inside-current-page-item {
         margin-top: 0;
@@ -430,7 +430,7 @@
         position: relative;
         font-size: var(--om-font-size-xs);
         font-weight: var(--om-font-weight-regular);
-        border: 1px solid var(--om-color-border-secondary);
+        border: 1px solid var(--tw-border-color-secondary);
         border-left: 6px solid transparent;
         border-radius: var(--om-radius-sm);
         border-top-left-radius: var(--om-radius-md);
@@ -480,8 +480,8 @@
       &:not(.any-column-selected) {
         .custom-node-column-container {
           &:hover {
-            background-color: var(--om-color-utility-brand-100);
-            border-left-color: var(--om-color-fg-brand);
+            background-color: var(--tw-color-utility-brand-100);
+            border-left-color: var(--tw-color-fg-brand-primary);
           }
         }
       }
@@ -493,7 +493,7 @@
       .label-container {
         .custom-node-label-container {
           .entity-footer {
-            background-color: var(--om-color-bg-secondary);
+            background-color: var(--tw-background-color-secondary);
           }
         }
       }
@@ -501,89 +501,89 @@
   }
 
   &.custom-node-header-active {
-    background-color: var(--om-color-brand-50);
+    background-color: var(--tw-background-color-brand-primary);
 
     .lineage-node-content {
       .label-container {
-        background-color: var(--om-color-brand-50);
+        background-color: var(--tw-background-color-brand-primary);
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: var(--om-color-brand-50);
+            background-color: var(--tw-background-color-brand-primary);
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: var(--om-color-brand-50);
+      background-color: var(--tw-background-color-brand-primary);
     }
 
     &.columns-expanded {
-      background-color: var(--om-color-utility-brand-100);
+      background-color: var(--tw-color-utility-brand-100);
 
       .lineage-node-content {
         .label-container {
-          background-color: var(--om-color-utility-brand-100);
+          background-color: var(--tw-color-utility-brand-100);
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: var(--om-color-brand-50);
+              background-color: var(--tw-background-color-brand-primary);
             }
           }
         }
 
         .column-container {
-          background-color: var(--om-color-brand-50);
+          background-color: var(--tw-background-color-brand-primary);
         }
       }
 
       .lineage-node-badge-container {
-        background-color: var(--om-color-utility-brand-100);
+        background-color: var(--tw-color-utility-brand-100);
       }
     }
   }
 
   &.custom-node-header-active.data-quality-failed-custom-node-header {
-    background-color: var(--om-color-error-25);
+    background-color: var(--tw-background-color-error-primary);
 
     .lineage-node-content {
       .label-container {
-        background-color: var(--om-color-error-25);
+        background-color: var(--tw-background-color-error-primary);
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: var(--om-color-error-25);
+            background-color: var(--tw-background-color-error-primary);
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: var(--om-color-error-25);
-      border-color: var(--om-color-error-600);
+      background-color: var(--tw-background-color-error-primary);
+      border-color: var(--tw-color-fg-error-primary);
     }
 
     &.columns-expanded {
-      background-color: var(--om-color-error-100);
+      background-color: var(--tw-background-color-error-secondary);
 
       .lineage-node-badge-container {
-        background-color: var(--om-color-error-100);
+        background-color: var(--tw-background-color-error-secondary);
       }
 
       .lineage-node-content {
         .label-container {
-          background-color: var(--om-color-error-100);
+          background-color: var(--tw-background-color-error-secondary);
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: var(--om-color-error-25);
+              background-color: var(--tw-background-color-error-primary);
             }
           }
         }
 
         .column-container {
-          background-color: var(--om-color-error-25);
+          background-color: var(--tw-background-color-error-primary);
         }
       }
     }
@@ -591,7 +591,7 @@
 
   &.custom-node-header-tracing {
     .lineage-node-badge-container {
-      border-color: var(--om-color-fg-brand);
+      border-color: var(--tw-color-fg-brand-primary);
     }
   }
 
@@ -608,22 +608,22 @@
 
     .column-container {
       .custom-node-column-container.custom-node-header-column-tracing {
-        background-color: var(--om-color-utility-brand-100);
-        border-left-color: var(--om-color-fg-brand);
+        background-color: var(--tw-color-utility-brand-100);
+        border-left-color: var(--tw-color-fg-brand-primary);
 
         &:hover {
-          background-color: var(--om-color-utility-brand-100);
+          background-color: var(--tw-color-utility-brand-100);
         }
       }
 
       &.any-column-selected {
         .custom-node-column-container.custom-node-header-column-tracing {
-          background-color: var(--om-color-utility-indigo-100);
-          border-left-color: var(--om-color-utility-indigo-600);
+          background-color: var(--tw-color-utility-indigo-100);
+          border-left-color: var(--tw-color-utility-indigo-600);
 
           &:hover {
-            background-color: var(--om-color-utility-indigo-100);
-            border-left-color: var(--om-color-utility-indigo-600);
+            background-color: var(--tw-color-utility-indigo-100);
+            border-left-color: var(--tw-color-utility-indigo-600);
           }
         }
       }
@@ -632,8 +632,8 @@
         .custom-node-column-container:not(
             .custom-node-header-column-tracing
           ):hover {
-          background-color: var(--om-color-utility-brand-100);
-          border-left-color: var(--om-color-fg-brand);
+          background-color: var(--tw-color-utility-brand-100);
+          border-left-color: var(--tw-color-fg-brand-primary);
         }
       }
     }
@@ -669,8 +669,8 @@
       padding: var(--om-space-2);
       border-radius: var(--om-radius-7);
 
-      background-color: var(--om-color-brand-700);
-      color: var(--om-color-text-inverse);
+      background-color: var(--tw-background-color-brand-solid_hover);
+      color: var(--tw-text-color-primary_on-brand);
 
       font-size: var(--om-font-size-xs);
       font-weight: var(--om-font-weight-medium);
@@ -705,7 +705,7 @@
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: var(--om-color-bg-surface) !important;
+  background-color: var(--tw-background-color-surface) !important;
 }
 
 .react-flow__node-load-more {
@@ -722,11 +722,11 @@
 .react-flow__node-output.selectable:hover,
 .react-flow__node-group.selectable:hover {
   .lineage-node-handle {
-    border-color: var(--om-color-fg-brand);
+    border-color: var(--tw-color-fg-brand-primary);
   }
 
   .lineage-node {
-    border-color: var(--om-color-fg-brand);
+    border-color: var(--tw-color-fg-brand-primary);
 
     .lineage-node-badge-container {
       border-color: var(--om-legacy-color-356fe7);
@@ -734,22 +734,22 @@
   }
 
   .data-quality-failed-custom-node-header {
-    border-color: var(--om-color-fg-error);
+    border-color: var(--tw-color-fg-error-primary);
 
     .lineage-node-badge-container {
-      border-color: var(--om-color-fg-error);
+      border-color: var(--tw-color-fg-error-primary);
     }
 
     .lineage-node-content {
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: var(--om-color-error-50);
-            color: var(--om-color-orange-dark-700);
-            border-left-color: var(--om-color-error-600);
+            background-color: var(--tw-background-color-error-primary);
+            color: var(--tw-color-utility-orange-dark-700);
+            border-left-color: var(--tw-color-fg-error-primary);
 
             .profiler-item {
-              color: var(--om-color-text-primary);
+              color: var(--tw-text-color-primary);
             }
           }
         }
@@ -762,8 +762,8 @@
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: var(--om-color-error-50);
-            border-left-color: var(--om-color-error-600);
+            background-color: var(--tw-background-color-error-primary);
+            border-left-color: var(--tw-color-fg-error-primary);
           }
         }
       }
@@ -777,9 +777,9 @@
     .lineage-node-content {
       .column-container {
         .custom-node-column-container.custom-node-header-column-tracing {
-          border-color: var(--om-color-error-600);
-          background-color: var(--om-color-bg-surface);
-          color: var(--om-color-text-primary);
+          border-color: var(--tw-color-fg-error-primary);
+          background-color: var(--tw-background-color-surface);
+          color: var(--tw-text-color-primary);
         }
       }
     }
@@ -787,7 +787,7 @@
 }
 
 .react-flow__handle.connectable {
-  background-color: var(--om-color-bg-quaternary);
+  background-color: var(--tw-background-color-quaternary);
 }
 
 .react-flow {
@@ -810,7 +810,7 @@
       --lineage-node-border,
       var(--om-legacy-color-b1b1b7)
     ) !important;
-    background: var(--om-color-bg-surface) !important;
+    background: var(--tw-background-color-surface) !important;
     top: min(58px, 50%) !important;
 
     gap: var(--om-space-1);
@@ -836,7 +836,7 @@
     }
 
     svg {
-      color: var(--om-color-text-quaternary);
+      color: var(--tw-text-color-quaternary);
       cursor: pointer;
       padding: var(--om-space-1);
       width: 18px;
@@ -844,8 +844,8 @@
       border-radius: var(--om-radius-3);
 
       &:hover {
-        color: var(--om-color-fg-brand);
-        background-color: var(--om-color-brand-50);
+        color: var(--tw-color-fg-brand-primary);
+        background-color: var(--tw-background-color-brand-primary);
       }
     }
 
@@ -856,7 +856,7 @@
       top: 2px;
       width: 1px;
       height: 14px;
-      background: var(--om-color-bg-quaternary);
+      background: var(--tw-background-color-quaternary);
       transform: translateX(-50%);
     }
   }
@@ -871,12 +871,12 @@
     --lineage-node-border,
     var(--om-legacy-color-b1b1b7)
   ) !important;
-  background: var(--om-color-bg-surface) !important;
+  background: var(--tw-background-color-surface) !important;
   top: 60px !important; // Need to show handles on top half
   top: min(58px, 50%) !important;
 
   svg {
-    color: var(--om-color-text-quaternary);
+    color: var(--tw-text-color-quaternary);
   }
 }
 
@@ -912,7 +912,7 @@
   }
 
   svg:first-child {
-    border-right: 1px solid var(--om-color-border-secondary);
+    border-right: 1px solid var(--tw-border-color-secondary);
     width: 22px;
     padding-right: var(--om-space-6);
   }
@@ -920,8 +920,8 @@
 
 .custom-node-deleted-icon {
   border-radius: var(--om-radius-sm);
-  border: 1px solid var(--om-color-fg-error);
-  background-color: var(--om-color-bg-surface);
+  border: 1px solid var(--tw-color-fg-error-primary);
+  background-color: var(--tw-background-color-surface);
 }
 
 .manage-node {
@@ -931,5 +931,5 @@
 }
 
 .react-flow__edge :hover {
-  stroke: var(--om-color-fg-brand);
+  stroke: var(--tw-color-fg-brand-primary);
 }
