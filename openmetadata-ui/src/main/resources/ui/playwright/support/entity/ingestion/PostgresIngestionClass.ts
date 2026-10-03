@@ -154,10 +154,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
         if (await metadataTab2.isVisible()) {
           await metadataTab2.click();
         }
-        await page
-          .getByLabel('agents')
-          .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+        await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
         const response = await apiContext
           .get(
