@@ -264,6 +264,8 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           matchers: [['del, strike', strikethrough]],
         },
       }),
+      // Quill re-creates the editor whenever `modules` changes, so build it once.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       []
     );
 

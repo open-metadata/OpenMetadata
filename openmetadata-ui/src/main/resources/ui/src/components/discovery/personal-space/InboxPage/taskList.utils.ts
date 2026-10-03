@@ -18,7 +18,7 @@ import {
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { TaskResolutionType } from '../../../../rest/tasksAPI';
-import { isTaskOpen } from './inbox.utils';
+import { isTaskOpen, isTaskPendingViewer } from './inbox.utils';
 import { getTaskTypeKey } from './taskDetail.utils';
 
 export const formatEntityType = (type?: string): string => {
@@ -163,7 +163,7 @@ export const getTaskStatusBucket = (
   if (!isTaskOpen(task)) {
     return OUTCOME_BUCKET[task.status];
   }
-  if ((task.assignees ?? []).some(({ id }) => currentUserIds.has(id))) {
+  if (isTaskPendingViewer(task, currentUserIds)) {
     return TaskStatusBucket.PendingApproval;
   }
 

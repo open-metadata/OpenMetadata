@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import { Toggle } from '@openmetadata/ui-core-components';
+import { Button, Col, Modal, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -538,11 +539,11 @@ const UserListPageV1 = () => {
             data-testid="user-list-table"
             dataSource={userList}
             extraTableFilters={
-              <span>
-                <Switch
-                  checked={isDeleted}
+              <span className="tw:inline-flex tw:items-center">
+                <Toggle
                   data-testid="show-deleted"
-                  onClick={handleShowDeletedUserChange}
+                  isSelected={isDeleted}
+                  onChange={handleShowDeletedUserChange}
                 />
                 <span className="m-l-xs">{t('label.deleted')}</span>
               </span>

@@ -109,18 +109,31 @@ describe('applyActionLabels', () => {
 });
 
 describe('getTaskResolveActions', () => {
-  // /close leaves the workflow transitions on the task; a cancelled task must
-  // not keep offering them.
-  it('offers no action on a cancelled workflow task', () => {
+  // /close and the expiry timer leave the workflow transitions on the task; a
+  // task closed that way must not keep offering them.
+  it.each([
+    TaskStatus.Cancelled,
+    TaskStatus.Expired,
+    TaskStatus.Failed,
+    TaskStatus.Rejected,
+    TaskStatus.Completed,
+    TaskStatus.Revoked,
+  ])('offers no action on a %s workflow task', (status) => {
     expect(
       getTaskResolveActions(
-        makeTask({
-          status: TaskStatus.Cancelled,
-          availableTransitions: [DAR_APPROVE],
-        }),
+        makeTask({ status, availableTransitions: [DAR_APPROVE] }),
         LABELS
       )
     ).toEqual([]);
+  });
+
+  it('keeps the transitions of a row that carries no status', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({ status: undefined, availableTransitions: [DAR_APPROVE] }),
+        LABELS
+      )
+    ).toHaveLength(1);
   });
 
   // A granted access request is closed, yet revoking it is a real action.

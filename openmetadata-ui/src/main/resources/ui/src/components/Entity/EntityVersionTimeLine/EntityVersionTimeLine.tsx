@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Drawer, Row, Tooltip } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Drawer, Row, Tooltip } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
+package org.openmetadata.it.bench;
+
 /**
- * Tabs of the test case detail page. Lives here rather than beside the page so
- * the routing utilities that build these URLs — a lower layer — do not have to
- * import a route-level module to name a tab.
+ * One timed benchmark interaction. Receives its zero-based iteration index so a scenario that must
+ * defeat the server-side scene cache can vary a request parameter per sample.
+ *
+ * <p>{@link java.util.function.IntConsumer} would do, except every interaction worth benchmarking
+ * here issues an HTTP call and therefore throws a checked exception.
  */
-export enum TestCasePageTabs {
-  TEST_CASE_RESULTS = 'test-case-results',
-  DIMENSIONALITY = 'dimensionality',
-  SQL_QUERY = 'sql-query',
-  ISSUES = 'issues',
+@FunctionalInterface
+public interface BenchmarkInteraction {
+  void run(int iteration) throws Exception;
 }

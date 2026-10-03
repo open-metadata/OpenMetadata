@@ -27,6 +27,7 @@ import {
   getTaskResolutionNewValue,
   shouldRequireTaskResolutionValue,
 } from '../../../../utils/TaskFormSchemaUtils';
+import { isTaskOpen } from './inbox.utils';
 import { TaskActionLabelOverrides } from './taskDetail.types';
 import { isApproveTransition, isRejectTransition } from './taskList.utils';
 
@@ -179,11 +180,15 @@ export const getTaskResolveActions = (
   labels: { approve: string; reject: string },
   schema?: TaskFormSchema
 ): TaskResolveAction[] => {
-  // Closing a task leaves its workflow transitions on it, so a cancelled task
-  // would otherwise still offer Approve/Reject. (A Granted access request is
-  // closed too, but its Revoke is real, so only cancellation clears them.)
-  const transitions =
-    task.status === TaskStatus.Cancelled ? [] : task.availableTransitions ?? [];
+  // Closing a task without a transition (cancellation, timer expiry) leaves its
+  // workflow transitions on it, so a closed task would still offer
+  // Approve/Reject. A Granted access request is closed too, but its Revoke is
+  // real; a row without a status is not known to be closed.
+  const isClosed =
+    Boolean(task.status) &&
+    !isTaskOpen(task) &&
+    task.status !== TaskStatus.Granted;
+  const transitions = isClosed ? [] : task.availableTransitions ?? [];
 
   if (transitions.length > 0) {
     return transitions.map((transition) => ({

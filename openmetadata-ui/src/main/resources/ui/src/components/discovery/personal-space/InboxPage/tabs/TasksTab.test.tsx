@@ -348,6 +348,50 @@ describe('TasksTab', () => {
     expect(capturedCanLoadMore?.([])).toBe(true);
   });
 
+  // The scan stopped at its cap with pages unread: matches may still exist.
+  it('says only the scanned tasks lack a match, and scans further on request', () => {
+    const scanned = Array.from(
+      { length: 200 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = { items: scanned, isLoading: false, total: 500, hasMore: true };
+    renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(
+      screen.getByTestId('inbox-tasks-no-match-scanned')
+    ).toHaveTextContent('message.no-match-in-first-tasks');
+    expect(
+      screen.queryByTestId('inbox-tasks-no-match')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(scanned)).toBe(true);
+  });
+
+  // The raised cap belongs to the narrowing it was raised for.
+  it('drops a raised scan cap once the filters change', () => {
+    const scanned = Array.from(
+      { length: 200 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = { items: scanned, isLoading: false, total: 500, hasMore: true };
+    renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+    fireEvent.click(screen.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(scanned)).toBe(true);
+
+    fireEvent.click(screen.getByTestId('toolbar-status-pending'));
+
+    expect(capturedCanLoadMore?.(scanned)).toBe(false);
+  });
+
   it('shows the skeleton while loading', () => {
     hookState = { items: [], isLoading: true, total: 0 };
     renderTab();

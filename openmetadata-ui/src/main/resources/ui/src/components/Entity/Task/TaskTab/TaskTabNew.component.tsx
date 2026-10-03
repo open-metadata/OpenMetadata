@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Owner, Typography } from '@openmetadata/ui-core-components';
+import {
+  Divider,
+  Owner,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
-  Divider,
   Dropdown,
   Form,
   Input,
   MenuProps,
   Row,
-  Skeleton,
   Space,
   Tooltip,
 } from 'antd';
@@ -598,7 +601,7 @@ export const TaskTabNew = ({
       },
       ...TASK_ACTION_COMMON_ITEM,
     ];
-  }, [isTaskTags, suggestedValue]);
+  }, [isTaskTags, suggestedValue, t]);
 
   const latestAction = useMemo(() => {
     const resolutionStatus = last(testCaseResolutionStatus);
@@ -765,11 +768,11 @@ export const TaskTabNew = ({
           : button
       );
 
-  const handleTaskLinkClick = () => {
+  const handleTaskLinkClick = useCallback(() => {
     navigate({
       pathname: getTaskDetailPathFromTask(task),
     });
-  };
+  }, [navigate, task]);
 
   const taskLinkTitleElement = useMemo(
     () =>
@@ -810,6 +813,14 @@ export const TaskTabNew = ({
     ]
   );
 
+  const refreshIncidentStatus = async (taskId: string) => {
+    const refreshed = await getListTestCaseIncidentByStateId(taskId);
+    const latest = refreshed?.data?.[0];
+    if (latest) {
+      updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
+    }
+  };
+
   const updateTaskData = async (
     data: { newValue?: string; payload?: TaskPayload; comment?: string },
     resolutionType?: TaskResolutionType,
@@ -836,11 +847,7 @@ export const TaskTabNew = ({
       setActiveTask(updatedTask);
       updateTask(updatedTask);
 
-      const refreshed = await getListTestCaseIncidentByStateId(task.id);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
-      }
+      await refreshIncidentStatus(task.id);
 
       if (taskRemainsOpen) {
         await fetchUpdatedThread(task.id, true);
@@ -919,7 +926,7 @@ export const TaskTabNew = ({
         transition.id
       );
     },
-    [initialTaskPayload, task, taskFormSchema]
+    [initialTaskPayload, task, taskFormSchema, updateTaskData]
   );
 
   const onGlossaryTaskResolve = (status = 'approved') => {
@@ -1139,11 +1146,7 @@ export const TaskTabNew = ({
       });
       setActiveTask(updatedTask);
       updateTask(updatedTask);
-      const refreshed = await getListTestCaseIncidentByStateId(taskId);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
-      }
+      await refreshIncidentStatus(taskId);
       setIsEditAssignee(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -1173,11 +1176,7 @@ export const TaskTabNew = ({
         comment: testCaseFailureComment || undefined,
         payload: testCaseFailureReason ? { testCaseFailureReason } : undefined,
       });
-      const refreshed = await getListTestCaseIncidentByStateId(taskId);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
-      }
+      await refreshIncidentStatus(taskId);
       rest.onAfterClose?.();
       setShowEditTaskModel(false);
     } catch (error) {
@@ -1259,18 +1258,6 @@ export const TaskTabNew = ({
       onTaskClose();
     }
   };
-
-  const renderCommentButton = useMemo(() => {
-    return (
-      <Button
-        data-testid="comment-button"
-        disabled={isEmpty(comment)}
-        type="primary"
-        onClick={onSave}>
-        {t('label.comment')}
-      </Button>
-    );
-  }, [comment, onSave]);
 
   const workflowTransitionActions = useMemo(() => {
     if (!isWorkflowDrivenTask || !task.availableTransitions?.length) {
@@ -1419,11 +1406,11 @@ export const TaskTabNew = ({
     isAssignee,
     isCreator,
     isPartOfAssigneeTeam,
-    renderCommentButton,
     handleGlossaryTaskMenuClick,
     onTaskDropdownClick,
     taskHandler.approvedValue,
     taskHandler.rejectedValue,
+    t,
   ]);
 
   const testCaseResultFlow = useMemo(() => {
@@ -1458,7 +1445,16 @@ export const TaskTabNew = ({
         </Dropdown.Button>
       </div>
     );
-  }, [task, isAssignee, isPartOfAssigneeTeam, taskAction, renderCommentButton]);
+  }, [
+    task,
+    isAssignee,
+    isActionLoading,
+    isCreator,
+    isPartOfAssigneeTeam,
+    onTestCaseTaskDropdownClick,
+    permissions,
+    taskAction,
+  ]);
 
   const actionButtons = useMemo(() => {
     if (isWorkflowDrivenTask) {
@@ -1549,9 +1545,11 @@ export const TaskTabNew = ({
     testCaseResultFlow,
     isTaskTestCaseResult,
     workflowTransitionActions,
-    renderCommentButton,
     handleNoSuggestionMenuItemClick,
     onNoSuggestionTaskDropdownClick,
+    hasEditAccess,
+    noSuggestionTaskMenuOptions,
+    t,
   ]);
 
   const initialFormValue = useMemo(
@@ -1585,7 +1583,7 @@ export const TaskTabNew = ({
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
     setOptions(assigneeOptions);
-  }, [initialAssignees, assigneeOptions]);
+  }, [assigneesForm, initialAssignees, assigneeOptions]);
 
   useEffect(() => {
     setTaskFormSchema(getDefaultTaskFormSchema(task.type, task.category));
@@ -1786,44 +1784,41 @@ export const TaskTabNew = ({
     );
   };
 
-  const closeFeedEditor = () => {
+  const closeFeedEditor = useCallback(() => {
     setShowFeedEditor(false);
-  };
+  }, []);
 
   const showRejectInEditModal = useMemo(
     () => !isTaskTestCaseResult && !showAddSuggestionButton,
     [isTaskTestCaseResult, showAddSuggestionButton]
   );
 
-  const editTaskModalFooter = useMemo(
-    () => [
-      <Button
-        key="cancel"
-        onClick={() => {
-          form.resetFields();
-          setShowEditTaskModel(false);
-        }}>
-        {t('label.cancel')}
-      </Button>,
-      showRejectInEditModal ? (
-        <Button key="reject" onClick={onTaskReject}>
-          {t('label.reject')}
-        </Button>
-      ) : null,
-      <Button key="submit" type="primary" onClick={() => form.submit()}>
-        {t('label.ok')}
-      </Button>,
-    ],
-    [form, onTaskReject, showRejectInEditModal, t]
-  );
+  const editTaskModalFooter = [
+    <Button
+      key="cancel"
+      onClick={() => {
+        form.resetFields();
+        setShowEditTaskModel(false);
+      }}>
+      {t('label.cancel')}
+    </Button>,
+    showRejectInEditModal ? (
+      <Button key="reject" onClick={onTaskReject}>
+        {t('label.reject')}
+      </Button>
+    ) : null,
+    <Button key="submit" type="primary" onClick={() => form.submit()}>
+      {t('label.ok')}
+    </Button>,
+  ];
 
   const comments = useMemo(() => {
     if (isPostsLoading) {
       return (
         <Space className="m-y-md" direction="vertical" size={16}>
-          <Skeleton active />
-          <Skeleton active />
-          <Skeleton active />
+          <SkeletonParagraph />
+          <SkeletonParagraph />
+          <SkeletonParagraph />
         </Space>
       );
     }
@@ -1883,7 +1878,7 @@ export const TaskTabNew = ({
 
   useEffect(() => {
     closeFeedEditor();
-  }, [task.id]);
+  }, [closeFeedEditor, task.id]);
 
   useEffect(() => {
     setHasAddedComment(false);
@@ -2204,7 +2199,7 @@ export const TaskTabNew = ({
 
         {taskLinkTitleElement}
       </Col>
-      <Divider className="m-0" type="horizontal" />
+      <Divider className="m-0" />
       {!darHeaderRows && <Col span={24}>{taskHeader}</Col>}
       {renderProposedChangesSection()}
       <Col span={24}>

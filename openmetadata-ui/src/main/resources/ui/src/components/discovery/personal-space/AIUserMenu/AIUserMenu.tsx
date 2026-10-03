@@ -93,7 +93,7 @@ const MenuRow: React.FC<MenuRowProps> = ({
   <Box align="start" gap={2}>
     {Icon && (
       <Icon
-        className="tw:mt-1 tw:shrink-0 tw:text-gray-400"
+        className="tw:mt-1 tw:shrink-0 tw:text-fg-quaternary"
         height={14}
         width={14}
       />
@@ -111,7 +111,7 @@ const MenuRow: React.FC<MenuRowProps> = ({
       </Box>
       {isActive && (
         <Check
-          className="tw:ml-2 tw:shrink-0 tw:text-blue-500"
+          className="tw:ml-2 tw:shrink-0 tw:text-fg-brand-primary"
           height={14}
           width={14}
         />
@@ -169,7 +169,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
                     gap={2}>
                     {child.icon && (
                       <child.icon
-                        className="tw:shrink-0 tw:text-gray-400"
+                        className="tw:shrink-0 tw:text-fg-quaternary"
                         height={child.iconSize ?? 14}
                         width={child.iconSize ?? 14}
                       />
@@ -179,7 +179,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
                     </span>
                     {child.isActive && (
                       <Check
-                        className="tw:ml-auto tw:shrink-0 tw:text-blue-500"
+                        className="tw:ml-auto tw:shrink-0 tw:text-fg-brand-primary"
                         height={14}
                         width={14}
                       />
@@ -240,7 +240,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           // version display is non-critical
         });
     }
-  }, []);
+  }, [appVersion, setAppVersion]);
 
   const userExtras = currentUser as CurrentUserExtras | undefined;
   const displayName = useMemo(

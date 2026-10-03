@@ -318,6 +318,43 @@ describe('getTaskDetailDescriptor', () => {
   });
 });
 
+describe('tag request rows', () => {
+  // Approving a tag request removes tags as well as adding them.
+  it('lists the tags to remove beside the tags to add', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.TagUpdate,
+        payload: {
+          tagsToAdd: [{ tagFQN: 'PII.Sensitive' }],
+          tagsToRemove: [{ tagFQN: 'PII.None' }],
+        },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.find((row) => row.key === 'tags')?.value).toEqual({
+      kind: 'tags',
+      tags: [{ tagFQN: 'PII.Sensitive' }],
+    });
+    expect(rows.find((row) => row.key === 'tagsToRemove')?.value).toEqual({
+      kind: 'tags',
+      tags: [{ tagFQN: 'PII.None' }],
+    });
+  });
+
+  it('omits the removal row when nothing is removed', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.TagUpdate,
+        payload: { tagsToAdd: [{ tagFQN: 'PII.Sensitive' }] },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.some((row) => row.key === 'tagsToRemove')).toBe(false);
+  });
+});
+
 describe('source row', () => {
   const sourceOf = (task: Task) =>
     getTaskDetailDescriptor(task, t).rows.find((row) => row.key === 'source')

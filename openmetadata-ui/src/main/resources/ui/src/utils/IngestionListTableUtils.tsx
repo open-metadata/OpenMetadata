@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Tag } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, startCase } from 'lodash';
 import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
@@ -64,15 +64,18 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => {
   const statusIcon = record.enabled ? ActiveIcon : PausedIcon;
 
   return (
-    <Tag
+    <Badge
+      bordered={false}
       className={classNames(
         'ingestion-run-badge latest pipeline-status',
         record.enabled ? 'success' : 'paused'
       )}
-      data-testid="pipeline-active-status">
+      data-testid="pipeline-active-status"
+      size="sm"
+      type="color">
       <Icon component={statusIcon} />
       {record.enabled ? t('label.active') : t('label.paused')}
-    </Tag>
+    </Badge>
   );
 };
 

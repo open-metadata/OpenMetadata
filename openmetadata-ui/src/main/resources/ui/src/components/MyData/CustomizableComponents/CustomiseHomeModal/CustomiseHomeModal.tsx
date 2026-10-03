@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { CheckOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Modal, Row } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -310,10 +310,7 @@ const CustomiseHomeModal = ({
         <Col className="sidebar p-box sticky top-0 self-start">
           {sidebarOptions}
         </Col>
-        <Divider
-          className="customise-home-modal-divider h-auto self-stretch"
-          type="vertical"
-        />
+        <Divider className="h-auto self-stretch" orientation="vertical" />
         <Col className="content p-box">
           {selectedKey === CustomiseHomeModalSelectedKey.ALL_WIDGETS &&
           isFetchingWidgets ? (

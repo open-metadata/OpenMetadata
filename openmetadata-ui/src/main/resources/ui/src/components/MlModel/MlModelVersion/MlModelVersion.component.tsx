@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Card, Divider, Space } from 'antd';
+import {
+  Box,
+  Divider,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -195,8 +200,8 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                     </Typography>
                                   </Space>
                                   <Divider
-                                    className="border-gray"
-                                    type="vertical"
+                                    className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
+                                    orientation="vertical"
                                   />
                                   <Space>
                                     <Typography color="secondary">

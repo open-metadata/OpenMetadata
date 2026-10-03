@@ -188,7 +188,8 @@ describe('getTaskStatusBucket', () => {
   });
 
   // Approved but not yet granted: still open, the grant still to do, so it
-  // stays under the Open tab's options rather than the Approved outcome.
+  // stays under the Open tab's options rather than the Approved outcome. It is
+  // past approval, so even its holder files it as in review, as its label says.
   it('files an access request awaiting grant as in flight, not Approved', () => {
     const awaitingGrant = {
       status: TaskStatus.Approved,
@@ -197,7 +198,7 @@ describe('getTaskStatusBucket', () => {
 
     expect(
       bucketOf({ ...awaitingGrant, assignees: [{ id: 'u1' }] } as Partial<Task>)
-    ).toBe(TaskStatusBucket.PendingApproval);
+    ).toBe(TaskStatusBucket.InReview);
     expect(
       bucketOf({ ...awaitingGrant, assignees: [{ id: 'u9' }] } as Partial<Task>)
     ).toBe(TaskStatusBucket.InReview);

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type {
   BarSeriesOption,
   ECElementEvent,
@@ -152,6 +152,56 @@ describe('LineChart', () => {
     expect(
       (lastHost().onEvents as Record<string, unknown>).click
     ).toBeUndefined();
+  });
+
+  it('keeps the user zoom across a loading flicker that leaves the data unchanged', () => {
+    const zoomRows: Row[] = Array.from({ length: 20 }, (_, i) => ({
+      day: `d${i}`,
+      passed: i,
+      failed: i * 2,
+    }));
+    const { rerender } = render(
+      <LineChart
+        ariaLabel="Runs"
+        data={zoomRows}
+        series={series}
+        xKey="day"
+        zoom="auto"
+      />
+    );
+    act(() => {
+      (lastHost().onEvents as Record<string, (e: unknown) => void>).datazoom({
+        batch: [{ start: 40, end: 70 }],
+      });
+    });
+    rerender(
+      <LineChart
+        loading
+        ariaLabel="Runs"
+        data={zoomRows}
+        series={series}
+        xKey="day"
+        zoom="auto"
+      />
+    );
+    rerender(
+      <LineChart
+        ariaLabel="Runs"
+        data={zoomRows}
+        series={series}
+        xKey="day"
+        zoom="auto"
+      />
+    );
+
+    const zoom = (lastHost().option as ChartOption).dataZoom as Array<{
+      start: number;
+      end: number;
+    }>;
+    expect(zoom).toEqual([
+      expect.objectContaining({ start: 40, end: 70 }),
+      expect.objectContaining({ start: 40, end: 70 }),
+    ]);
   });
 });
 
