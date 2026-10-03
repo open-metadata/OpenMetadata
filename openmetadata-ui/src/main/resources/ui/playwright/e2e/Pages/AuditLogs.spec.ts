@@ -729,8 +729,12 @@ test.describe(
           state: 'visible',
         });
 
+        // RangePicker draws two month panels and each grid also renders the
+        // neighbouring month's days, all carrying a title. Near month end the
+        // next-month panel repeats today, so match only the cell that is
+        // in view for its own panel.
         const todayCell = page.locator(
-          `.ant-picker-dropdown:visible [title="${customFormatDateTime(
+          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
             Date.now(),
             'yyyy-MM-dd'
           )}"]`
@@ -825,8 +829,12 @@ test.describe(
           state: 'visible',
         });
 
+        // RangePicker draws two month panels and each grid also renders the
+        // neighbouring month's days, all carrying a title. Near month end the
+        // next-month panel repeats today, so match only the cell that is
+        // in view for its own panel.
         const todayCell = page.locator(
-          `.ant-picker-dropdown:visible [title="${customFormatDateTime(
+          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
             Date.now(),
             'yyyy-MM-dd'
           )}"]`
@@ -872,8 +880,12 @@ test.describe(
           state: 'visible',
         });
 
+        // RangePicker draws two month panels and each grid also renders the
+        // neighbouring month's days, all carrying a title. Near month end the
+        // next-month panel repeats today, so match only the cell that is
+        // in view for its own panel.
         const todayCell = page.locator(
-          `.ant-picker-dropdown:visible [title="${customFormatDateTime(
+          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
             Date.now(),
             'yyyy-MM-dd'
           )}"]`
