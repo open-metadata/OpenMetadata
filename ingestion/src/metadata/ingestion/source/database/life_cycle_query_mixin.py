@@ -95,10 +95,16 @@ class LifeCycleQueryMixin:
         return queries_dict
 
     @staticmethod
-    def _build_access_details(value: datetime | None) -> AccessDetails:
-        """Convert a source timestamp into an AccessDetails, defaulting to the minimum date."""
-        source_datetime = value if value else datetime.min
-        timestamp_value = datetime_to_timestamp(source_datetime, milliseconds=True)
+    def _build_access_details(value: datetime | None) -> AccessDetails | None:
+        """
+        Convert a source timestamp into an AccessDetails, or None when the source reported none.
+
+        A missing timestamp must stay missing: substituting a placeholder date stores a fabricated
+        value that clients cannot tell apart from a real one.
+        """
+        if value is None:
+            return None
+        timestamp_value = datetime_to_timestamp(value, milliseconds=True)
         return AccessDetails(timestamp=Timestamp(timestamp_value))  # pyright: ignore[reportCallIssue]
 
     def get_life_cycle_data(self, entity: type[Entity], entity_name: str, entity_fqn: str, query: str):
@@ -108,13 +114,14 @@ class LifeCycleQueryMixin:
         try:
             life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)
             if life_cycle_data:
-                life_cycle = LifeCycle(  # pyright: ignore[reportCallIssue]
-                    created=self._build_access_details(life_cycle_data.created_at)  # pyright: ignore[reportAttributeAccessIssue]
-                )
-                if life_cycle_data.updated_at:  # pyright: ignore[reportAttributeAccessIssue]
-                    life_cycle.updated = self._build_access_details(life_cycle_data.updated_at)  # pyright: ignore[reportAttributeAccessIssue]
-
-                yield Either(right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle))
+                created = self._build_access_details(life_cycle_data.created_at)  # pyright: ignore[reportAttributeAccessIssue]
+                updated = self._build_access_details(life_cycle_data.updated_at)  # pyright: ignore[reportAttributeAccessIssue]
+                # The server keeps each stored aspect when the incoming one is empty or older, so a
+                # record with neither would be a no-op patch. Placeholder `created` values written by
+                # earlier runs are removed by the 2.1.0 data migration, not by ingestion.
+                if created is not None or updated is not None:
+                    life_cycle = LifeCycle(created=created, updated=updated)  # pyright: ignore[reportCallIssue]
+                    yield Either(right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle))
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

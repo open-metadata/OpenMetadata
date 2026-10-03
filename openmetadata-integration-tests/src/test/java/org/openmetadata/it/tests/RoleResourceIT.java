@@ -50,6 +50,7 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
 
   public RoleResourceIT() {
     supportsFollowers = false;
+    supportsCreationAudit = true;
     supportsTags = false;
     supportsDomains = false;
     supportsDataProducts = false;
