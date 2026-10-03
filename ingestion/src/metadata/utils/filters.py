@@ -76,6 +76,62 @@ def _filter(filter_pattern: FilterPattern | None, name: str | None) -> bool:
     return False
 
 
+def _filter_server_compatible(
+    filter_pattern: FilterPattern | None,
+    name: str | None,
+) -> bool:
+    """Server-compatible counterpart of ``_filter`` used for deferred excludes.
+
+    ``_filter`` applies regexes with ``re.match`` + ``re.IGNORECASE`` (start
+    anchored, case-insensitive). When the schema and table filter modes
+    conflict, ``DatabaseFetcherStrategy._filter_deferred_excludes`` runs the
+    exclude half client-side; routing it through ``_filter`` diverges from the
+    same ``FilterPattern`` applied server-side in
+    ``ListFilter#getFqnRegexCondition``, which compiles to PostgreSQL
+    ``!~`` / MySQL ``NOT REGEXP`` — both *unanchored* POSIX operators. A
+    substring exclude like ``summary`` then keeps ``revenue_summary``
+    client-side (anchored) while the server drops it (unanchored).
+
+    Using ``re.search`` (unanchored) closes the anchoring gap so the same
+    ``FilterPattern`` yields the same result whether it is forwarded to the
+    server (non-conflicting modes) or applied client-side (conflicting modes).
+
+    Case-sensitivity parity needs backend detection: PostgreSQL ``!~`` is
+    case-sensitive, MySQL ``NOT REGEXP`` is case-insensitive by default.
+    ``re.search`` without ``re.IGNORECASE`` aligns with PostgreSQL, the
+    default OpenMetadata backend. Full MySQL case parity is a follow-up that
+    requires detecting the server's datasource (e.g. via
+    ``DatasourceConfig.isMySQL()``).
+
+    Deferred excludes are constructed as exclude-only ``FilterPattern``s, so
+    only the excludes branch is exercised; the includes branches are mirrored
+    from ``_filter`` for parity and to keep the helper self-consistent.
+    """
+    if not filter_pattern:
+        return False
+    if filter_pattern and not name:
+        # Filter pattern present but no name — filter it out
+        return True
+    # The early returns above guarantee `name` is a non-empty `str` here.
+    assert name is not None
+
+    validate_regex(filter_pattern.includes)
+    validate_regex(filter_pattern.excludes)
+
+    if filter_pattern.includes and filter_pattern.excludes:
+        return not any(re.search(regex, name) for regex in filter_pattern.includes) or any(
+            re.search(regex, name) for regex in filter_pattern.excludes
+        )
+
+    if filter_pattern.includes:
+        return not any(re.search(regex, name) for regex in filter_pattern.includes)
+
+    if filter_pattern.excludes:
+        return any(re.search(regex, name) for regex in filter_pattern.excludes)
+
+    return False
+
+
 def filter_by_schema(schema_filter_pattern: FilterPattern | None, schema_name: str) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
