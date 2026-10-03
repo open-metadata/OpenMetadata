@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCK_PERMISSIONS,
@@ -19,8 +22,13 @@ import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 
 const [mockGlossaryTerm1, mockGlossaryTerm2] = MOCKED_GLOSSARY_TERMS;
 
-const mockContext = {
-  data: mockGlossaryTerm1,
+const mockContext: {
+  data: GlossaryTerm;
+  onUpdate: jest.Mock;
+  isVersionView: boolean;
+  permissions: OperationPermission;
+} = {
+  data: mockGlossaryTerm1 as GlossaryTerm,
   onUpdate: jest.fn(),
   isVersionView: false,
   permissions: MOCK_PERMISSIONS,
@@ -82,5 +90,93 @@ describe('GlossaryTermSynonyms', () => {
 
     expect(synonymsContainer).toBeInTheDocument();
     expect(editBtn).toBeNull();
+  });
+
+  describe('editing', () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    const startEditing = async () => {
+      mockContext.data = mockGlossaryTerm2;
+      mockContext.permissions = MOCK_PERMISSIONS;
+      mockContext.onUpdate.mockClear();
+      render(<GlossaryTermSynonyms />);
+      await user.click(screen.getByTestId('edit-button'));
+
+      return screen.getByTestId('synonyms-input');
+    };
+
+    it('adds synonyms on Enter and comma and saves them', async () => {
+      const input = await startEditing();
+
+      await user.type(input, 'test{Enter}revenue,');
+
+      expect(screen.getByText('message.unsaved-changes')).toBeInTheDocument();
+
+      await user.click(screen.getByTestId('save-synonym-btn'));
+
+      expect(mockContext.onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          synonyms: ['accessory', 'test', 'revenue'],
+        })
+      );
+    });
+
+    it('rejects a case-insensitive duplicate and keeps the typed text', async () => {
+      const input = await startEditing();
+
+      await user.type(input, 'Accessory{Enter}');
+
+      expect(input).toHaveValue('Accessory');
+      expect(input).toHaveAttribute('aria-invalid', 'true');
+      expect(
+        screen.getByText('message.entity-is-already-a-synonym')
+      ).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('synonyms-select')).getAllByRole('row')
+      ).toHaveLength(1);
+    });
+
+    it('removes the last synonym on Backspace in an empty input', async () => {
+      const input = await startEditing();
+
+      await user.type(input, '{Backspace}');
+      await user.click(screen.getByTestId('save-synonym-btn'));
+
+      expect(mockContext.onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ synonyms: [] })
+      );
+    });
+
+    it('restores saved synonyms on cancel', async () => {
+      const input = await startEditing();
+
+      await user.type(input, 'test{Enter}');
+      await user.click(screen.getByTestId('cancel-synonym-btn'));
+
+      expect(mockContext.onUpdate).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('test')).not.toBeInTheDocument();
+      expect(screen.getByTestId('accessory')).toBeInTheDocument();
+    });
+  });
+
+  it('collapses synonyms beyond six behind a show more toggle', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const synonyms = ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'];
+    mockContext.data = { ...mockGlossaryTerm2, synonyms };
+    mockContext.permissions = MOCK_PERMISSIONS;
+    render(<GlossaryTermSynonyms />);
+
+    expect(screen.queryByTestId('s7')).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('synonyms-show-more-btn'));
+
+    expect(screen.getByTestId('s8')).toBeInTheDocument();
+    expect(screen.getByTestId('synonyms-show-more-btn')).toHaveTextContent(
+      'label.show-less'
+    );
+
+    await user.click(screen.getByTestId('synonyms-show-more-btn'));
+
+    expect(screen.queryByTestId('s7')).not.toBeInTheDocument();
   });
 });

@@ -1113,11 +1113,11 @@ export const deleteGlossaryOrGlossaryTerm = async (
 
 export const addSynonyms = async (page: Page, synonyms: string[]) => {
   await page.getByTestId('synonym-add-button').click();
-  await page.locator('.ant-select-selection-overflow').click();
+  const synonymsInput = page.getByTestId('synonyms-input');
 
   for (const synonym of synonyms) {
-    await page.locator('#synonyms-select').fill(synonym);
-    await page.locator('#synonyms-select').press('Enter');
+    await synonymsInput.fill(synonym);
+    await synonymsInput.press('Enter');
   }
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
