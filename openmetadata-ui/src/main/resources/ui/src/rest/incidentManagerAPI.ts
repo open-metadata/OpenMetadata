@@ -99,6 +99,9 @@ export type IncidentDateField = 'createdAt' | 'updatedAt';
 
 export type IncidentSortType = 'asc' | 'desc';
 
+/** What the groups are ordered by; `severity` descending is the worst first. */
+export type IncidentGroupSortField = 'incidentCount' | 'severity' | 'lastSeen';
+
 export type TestCaseIncidentStatusParams = ListParams & {
   startTs?: number;
   endTs?: number;
@@ -147,6 +150,7 @@ export type ListIncidentGroupsParams = {
   /** 1-based page, an alternative to `offset` that can jump to any page. */
   page?: number;
   sortType?: IncidentSortType;
+  sortField?: IncidentGroupSortField;
   /** Only the group with this key; see `getIncidentGroupFilterKey`. */
   group?: string;
 };

@@ -210,8 +210,8 @@ jest.mock('./IncidentGroupsTable', () =>
     .mockImplementation(
       ({
         groups,
-        sortType,
-        onSortTypeChange,
+        sort,
+        onSortChange,
         onGroupPreview,
         onGroupOpen,
         onGroupSelect,
@@ -221,11 +221,16 @@ jest.mock('./IncidentGroupsTable', () =>
       }: IncidentGroupsTableProps) => (
         <div data-testid="incident-groups-table">
           <span data-testid="table-group-count">{groups.length}</span>
-          <span data-testid="table-sort-type">{sortType}</span>
+          <span data-testid="table-sort-type">{`${sort.field}:${sort.type}`}</span>
           <button
             data-testid="flip-sort"
-            onClick={() => onSortTypeChange('asc')}>
+            onClick={() => onSortChange({ ...sort, type: 'asc' })}>
             asc
+          </button>
+          <button
+            data-testid="sort-by-severity"
+            onClick={() => onSortChange({ field: 'severity', type: 'desc' })}>
+            severity
           </button>
           <button
             data-testid="preview-first-group"
@@ -478,19 +483,48 @@ describe('IncidentGroupsView', () => {
       renderView();
     });
 
-    expect(screen.getByTestId('table-sort-type')).toHaveTextContent('desc');
+    expect(screen.getByTestId('table-sort-type')).toHaveTextContent(
+      'incidentCount:desc'
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('flip-sort'));
     });
 
-    expect(screen.getByTestId('table-sort-type')).toHaveTextContent('asc');
+    expect(screen.getByTestId('table-sort-type')).toHaveTextContent(
+      'incidentCount:asc'
+    );
     expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'asc',
       page: 1,
     });
+  });
+
+  it('should order by another field from the first page', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 25 },
+    });
+    await act(async () => {
+      renderView();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('sort-by-severity'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        sortField: 'severity',
+        sortType: 'desc',
+        page: 1,
+      })
+    );
   });
 
   it('should keep the table mounted across a sort refetch', async () => {

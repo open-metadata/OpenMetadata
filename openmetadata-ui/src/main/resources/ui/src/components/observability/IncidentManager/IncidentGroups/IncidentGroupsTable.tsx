@@ -34,14 +34,15 @@ import {
   IncidentGroupBy,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
+import { IncidentGroupSortField } from '../../../../rest/incidentManagerAPI';
 import {
   formatDate,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
-  INCIDENT_GROUPS_SORT_COLUMN,
   INCIDENT_GROUP_MAX_AVATARS,
+  INCIDENT_GROUP_SORTABLE_COLUMNS,
 } from './IncidentGroups.constants';
 import {
   IncidentGroupCellProps,
@@ -156,14 +157,14 @@ const LastSeenCell = ({ group }: IncidentGroupCellProps) => {
 /**
  * The loaded incident groups, one row each. Every cell reads a field the groups
  * endpoint already returns — nothing here fetches or mutates. The only control
- * is the incident-count sort, which the endpoint takes as `sortType` and the
- * caller turns back into a request.
+ * is the ordering, by incident count, severity or last seen, which the caller
+ * turns back into a request.
  */
 const IncidentGroupsTable = ({
   groups,
   groupBy,
-  sortType,
-  onSortTypeChange,
+  sort,
+  onSortChange,
   onGroupPreview,
   onGroupOpen,
   selectedKeys,
@@ -189,11 +190,7 @@ const IncidentGroupsTable = ({
             : 'label.check-type'
         ),
       },
-      {
-        id: INCIDENT_GROUPS_SORT_COLUMN,
-        label: t('label.incident-plural'),
-        allowsSorting: true,
-      },
+      { id: 'incidentCount', label: t('label.incident-plural') },
       { id: 'severity', label: t('label.severity') },
       { id: 'status', label: t('label.status') },
       { id: 'assignees', label: t('label.assignee-plural') },
@@ -204,19 +201,30 @@ const IncidentGroupsTable = ({
     [dimension.labelKey, groupBy, isSelectable, t]
   );
 
-  // react-aria drives the header arrow off the descriptor; `sortType` is the
-  // same ordering in the shape the endpoint takes it.
+  // react-aria drives the header arrow off the descriptor; `sort` is the same
+  // ordering in the shape the endpoint takes it.
   const sortDescriptor: SortDescriptor = {
-    column: INCIDENT_GROUPS_SORT_COLUMN,
-    direction: sortType === 'asc' ? 'ascending' : 'descending',
+    column: sort.field,
+    direction: sort.type === 'asc' ? 'ascending' : 'descending',
   };
 
   const selectedOnPage = groups.filter((group) =>
     selectedKeys.has(getIncidentGroupKey(group))
   ).length;
 
-  const handleSortChange = (descriptor: SortDescriptor) =>
-    onSortTypeChange(descriptor.direction === 'ascending' ? 'asc' : 'desc');
+  // A column pressed for the first time opens on its useful end — the most
+  // incidents, the worst severity, the latest — where react-aria would start
+  // ascending; pressing it again flips it.
+  const handleSortChange = (descriptor: SortDescriptor) => {
+    const field = descriptor.column as IncidentGroupSortField;
+    const isNewColumn = field !== sort.field;
+
+    onSortChange({
+      field,
+      type:
+        isNewColumn || descriptor.direction === 'descending' ? 'desc' : 'asc',
+    });
+  };
 
   const renderRow = (group: TestCaseIncidentGroup) => {
     const rowId = getIncidentGroupKey(group);
@@ -333,7 +341,9 @@ const IncidentGroupsTable = ({
             </Table.Head>
           ) : (
             <Table.Head
-              allowsSorting={column.allowsSorting}
+              allowsSorting={INCIDENT_GROUP_SORTABLE_COLUMNS.includes(
+                column.id as IncidentGroupSortField
+              )}
               aria-label={column.ariaLabel}
               id={column.id}
               isRowHeader={column.id === 'name'}

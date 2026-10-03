@@ -28,6 +28,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
+  DEFAULT_INCIDENT_GROUP_SORT,
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_BY_OPTIONS,
   INCIDENT_GROUP_SEPARATOR,
@@ -40,6 +41,7 @@ import {
 import {
   IncidentGroupByOption,
   IncidentGroupFilters,
+  IncidentGroupSort,
   IncidentGroupStatusSegment,
   IncidentTrendTone,
 } from './IncidentGroups.types';
@@ -289,3 +291,15 @@ export const getPageAfterEmptyRead = (
   rowCount === 0 && page > 1
     ? Math.min(page - 1, Math.max(1, computeTotalPages(pageSize, total)))
     : undefined;
+
+/**
+ * Sort params for the groups request. The endpoint's own default field is
+ * left out, so the usual request stays bare.
+ */
+export const getIncidentGroupSortQuery = ({
+  field,
+  type,
+}: IncidentGroupSort) => ({
+  sortType: type,
+  sortField: field === DEFAULT_INCIDENT_GROUP_SORT.field ? undefined : field,
+});

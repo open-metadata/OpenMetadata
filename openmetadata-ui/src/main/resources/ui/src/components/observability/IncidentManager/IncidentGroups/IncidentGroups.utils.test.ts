@@ -29,6 +29,7 @@ import {
 import {
   countRecurringIncidentGroups,
   getIncidentGroupByOption,
+  getIncidentGroupSortQuery,
   getIncidentGroupsQuery,
   getIncidentGroupStatusSegments,
   getIncidentGroupSubLine,
@@ -447,5 +448,19 @@ describe('getPageAfterEmptyRead', () => {
 
   it('should fall back to the first page when there is no total', () => {
     expect(getPageAfterEmptyRead(0, 3, 10)).toBe(1);
+  });
+});
+
+describe('getIncidentGroupSortQuery', () => {
+  it('should leave the default field out and keep the direction', () => {
+    expect(
+      getIncidentGroupSortQuery({ field: 'incidentCount', type: 'asc' })
+    ).toEqual({ sortType: 'asc', sortField: undefined });
+  });
+
+  it('should send any other field', () => {
+    expect(
+      getIncidentGroupSortQuery({ field: 'severity', type: 'desc' })
+    ).toEqual({ sortType: 'desc', sortField: 'severity' });
   });
 });

@@ -25,21 +25,22 @@ import {
 import { Paging } from '../../../../generated/type/paging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
-import {
-  IncidentSortType,
-  listIncidentGroups,
-} from '../../../../rest/incidentManagerAPI';
+import { listIncidentGroups } from '../../../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
-  DEFAULT_INCIDENT_SORT_TYPE,
+  DEFAULT_INCIDENT_GROUP_SORT,
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUP_BY_PARAM,
   INCIDENT_GROUP_DETAIL_PARAM,
   INCIDENT_GROUP_FILTER_KEYS,
 } from './IncidentGroups.constants';
-import { IncidentGroupFilters } from './IncidentGroups.types';
+import {
+  IncidentGroupFilters,
+  IncidentGroupSort,
+} from './IncidentGroups.types';
 import {
   getIncidentGroupFilterKey,
+  getIncidentGroupSortQuery,
   getIncidentGroupsQuery,
   getPageAfterEmptyRead,
   parseIncidentGroupBy,
@@ -128,15 +129,15 @@ export const useIncidentGroups = () => {
   );
   const [paging, setPaging] = useState<Paging>();
   /**
-   * Ordering of the incident count. Local rather than in the URL: unlike the
-   * dimension it is a view preference the endpoint defaults on its own, so a
-   * shared link carries the groups without having to carry their order too.
+   * Ordering of the groups. Local rather than in the URL: unlike the dimension
+   * it is a view preference the endpoint defaults on its own, so a shared link
+   * carries the groups without having to carry their order too.
    */
-  const [sortType, setSortType] = useState<IncidentSortType>(
-    DEFAULT_INCIDENT_SORT_TYPE
+  const [sort, setSort] = useState<IncidentGroupSort>(
+    DEFAULT_INCIDENT_GROUP_SORT
   );
   const { currentPage, pageSize, setPageSize, goToPage } = useIncidentPaging(
-    `${groupBy}|${sortType}|${domain}|${filtersSearch}`,
+    `${groupBy}|${sort.field}|${sort.type}|${domain}|${filtersSearch}`,
     INCIDENT_GROUPS_PAGE_SIZE
   );
   const [isLoading, setIsLoading] = useState(true);
@@ -192,7 +193,7 @@ export const useIncidentGroups = () => {
       const response = await listIncidentGroups({
         groupBy,
         limit: pageSize,
-        sortType,
+        ...getIncidentGroupSortQuery(sort),
         page: currentPage,
         domain,
         ...getIncidentGroupsQuery(filters),
@@ -249,7 +250,7 @@ export const useIncidentGroups = () => {
     }
   }, [
     groupBy,
-    sortType,
+    sort,
     pageSize,
     currentPage,
     goToPage,
@@ -397,7 +398,7 @@ export const useIncidentGroups = () => {
     filters,
     incidentGroups,
     paging,
-    sortType,
+    sort,
     currentPage,
     pageSize,
     isLoading,
@@ -412,7 +413,7 @@ export const useIncidentGroups = () => {
     closeGroup,
     handleGroupByChange,
     handleFiltersChange,
-    handleSortTypeChange: setSortType,
+    handleSortChange: setSort,
     handlePageChange,
     handlePageSizeChange: setPageSize,
   };

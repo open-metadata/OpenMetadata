@@ -2212,7 +2212,7 @@ public interface TimeSeriesDAOs {
             + "COUNT(*) OVER () AS totalGroups "
             + INCIDENT_GROUPS_FROM
             + "GROUP BY <groupByCols> "
-            + "ORDER BY incidentCount <sortOrder>, groupKey "
+            + "ORDER BY <orderBy>, groupKey "
             + "LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(TestCaseIncidentGroupCountMapper.class)
     List<TestCaseIncidentGroupCount> listIncidentGroups(
@@ -2227,7 +2227,7 @@ public interface TimeSeriesDAOs {
         @Define("groupByCols") String groupByCols,
         @Define("dimensionJoin") String dimensionJoin,
         @Define("cond") String cond,
-        @Define("sortOrder") String sortOrder,
+        @Define("orderBy") String orderBy,
         @BindMap Map<String, ?> params,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
@@ -2280,7 +2280,7 @@ public interface TimeSeriesDAOs {
     }
 
     default IncidentGroupPage listIncidentGroups(
-        IncidentGroupBy groupBy, ListFilter filter, String sortOrder, int limit, int offset) {
+        IncidentGroupBy groupBy, ListFilter filter, String orderBy, int limit, int offset) {
       IncidentGroupDimension dimension = IncidentGroupDimension.from(groupBy);
       String condition = filter.getCondition();
       // One group on its own, as a link to its drill-down reopens it: matched on the very key
@@ -2329,7 +2329,7 @@ public interface TimeSeriesDAOs {
               dimension.groupByCols(),
               joins,
               condition,
-              sortOrder,
+              orderBy,
               params,
               limit,
               offset);

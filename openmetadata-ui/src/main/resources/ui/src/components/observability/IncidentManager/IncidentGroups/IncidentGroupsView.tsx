@@ -87,7 +87,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
     filters,
     incidentGroups,
     paging,
-    sortType,
+    sort,
     currentPage,
     pageSize,
     isLoading,
@@ -102,7 +102,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
     closeGroup,
     handleGroupByChange,
     handleFiltersChange,
-    handleSortTypeChange,
+    handleSortChange,
     handlePageChange,
     handlePageSizeChange,
   } = useIncidentGroups();
@@ -331,12 +331,12 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             groups={incidentGroups}
             isSelectable={canEditIncidents}
             selectedKeys={selectedKeys}
-            sortType={sortType}
+            sort={sort}
             onGroupOpen={handleOpenGroup}
             onGroupPreview={setPreviewGroup}
             onGroupSelect={handleGroupSelect}
             onPageSelect={handlePageSelect}
-            onSortTypeChange={handleSortTypeChange}
+            onSortChange={handleSortChange}
           />
           <PaginationCardWithControls
             className="tw:border-0"

@@ -29,6 +29,7 @@ import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseRe
 import { Response as BulkResponse } from '../../../../generated/type/bulkOperationResult';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import {
+  IncidentGroupSortField,
   IncidentSortType,
   OpenIncidentStatus,
 } from '../../../../rest/incidentManagerAPI';
@@ -177,6 +178,12 @@ export interface IncidentGroupBulkFailuresModalProps {
   onClose: () => void;
 }
 
+/** How the groups are ordered, in the shape the endpoint takes it. */
+export interface IncidentGroupSort {
+  field: IncidentGroupSortField;
+  type: IncidentSortType;
+}
+
 export interface IncidentGroupsViewProps {
   /** Whether the user may change incidents, which the bulk actions do. */
   canEditIncidents: boolean;
@@ -185,8 +192,8 @@ export interface IncidentGroupsViewProps {
 export interface IncidentGroupsTableProps {
   groups: TestCaseIncidentGroup[];
   groupBy: IncidentGroupBy;
-  sortType: IncidentSortType;
-  onSortTypeChange: (sortType: IncidentSortType) => void;
+  sort: IncidentGroupSort;
+  onSortChange: (sort: IncidentGroupSort) => void;
   /** Pressing a row previews its group in the drawer. */
   onGroupPreview: (group: TestCaseIncidentGroup) => void;
   /** The row's open affordance drills into the group. */

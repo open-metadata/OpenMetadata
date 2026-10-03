@@ -78,6 +78,20 @@ public class TestCaseResolutionStatusRepository
   public static final String INCIDENT_DATE_FIELD_UPDATED_AT = "updatedAt";
   public static final String INCIDENT_SORT_TYPE_ASC = "asc";
   public static final String INCIDENT_SORT_TYPE_DESC = "desc";
+  public static final String INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT = "incidentCount";
+  public static final String INCIDENT_GROUP_SORT_FIELD_SEVERITY = "severity";
+  public static final String INCIDENT_GROUP_SORT_FIELD_LAST_SEEN = "lastSeen";
+  private static final String SQL_ASCENDING = "ASC";
+  private static final String SQL_DESCENDING = "DESC";
+  private static final String INCIDENT_COUNT_COLUMN = "incidentCount";
+  private static final String LAST_SEEN_EXPR = "MAX(i.updatedAt)";
+  private static final String LARGER_GROUP_FIRST = INCIDENT_COUNT_COLUMN + " " + SQL_DESCENDING;
+  // Severity1 is the most severe and the values compare as strings, so the worst first is the
+  // lowest value first. Groups with no severity come after every graded one, and before them in
+  // the reverse ordering.
+  private static final String SEVERITY_WORST_FIRST = "MIN(i.severity) IS NULL, MIN(i.severity) ASC";
+  private static final String SEVERITY_MILDEST_FIRST =
+      "MIN(i.severity) IS NOT NULL, MIN(i.severity) DESC";
   private static final int TREND_BUCKET_COUNT = 8;
   // A record range that holds every record, for listings whose range applies to the incidents.
   // Boxed, as a listing without a range passes null bounds through the same expression.
@@ -136,6 +150,25 @@ public class TestCaseResolutionStatusRepository
                       String.format(
                           "Invalid dateField '%s'. Must be one of %s",
                           value, Arrays.toString(values()))));
+    }
+  }
+
+  /** What the incident groups are ordered by. */
+  public enum IncidentGroupSortField {
+    INCIDENT_COUNT(INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT),
+    SEVERITY(INCIDENT_GROUP_SORT_FIELD_SEVERITY),
+    LAST_SEEN(INCIDENT_GROUP_SORT_FIELD_LAST_SEEN);
+
+    private final String value;
+
+    IncidentGroupSortField(String value) {
+      this.value = value;
+    }
+
+    // Query params bind through toString, so it is the API value rather than the constant name.
+    @Override
+    public String toString() {
+      return value;
     }
   }
 
@@ -1046,17 +1079,35 @@ public class TestCaseResolutionStatusRepository
   }
 
   public ResultList<TestCaseIncidentGroup> listIncidentGroups(
-      IncidentGroupBy groupBy, ListFilter filter, String sortType, int limit, String offset) {
+      IncidentGroupBy groupBy,
+      ListFilter filter,
+      IncidentGroupSortField sortField,
+      String sortType,
+      int limit,
+      String offset) {
     int offsetInt = getOffset(offset);
     IncidentGroupPage page =
         ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
             .listIncidentGroups(
-                groupBy, filter, incidentGroupSortOrder(sortType), limit, offsetInt);
+                groupBy, filter, incidentGroupOrderBy(sortField, sortType), limit, offsetInt);
     return new ResultList<>(
         toIncidentGroups(groupBy, page),
         getBeforeOffset(offsetInt, limit),
         getAfterOffset(offsetInt, limit, page.total()),
         page.total());
+  }
+
+  // The ordering is rendered into the SQL, so it is spelled out here from fixed strings and never
+  // taken from the request. Ties under severity or last seen fall back to the larger group first.
+  private static String incidentGroupOrderBy(IncidentGroupSortField sortField, String sortType) {
+    String direction = incidentGroupSortOrder(sortType);
+    String severityOrder =
+        SQL_DESCENDING.equals(direction) ? SEVERITY_WORST_FIRST : SEVERITY_MILDEST_FIRST;
+    return switch (sortField) {
+      case INCIDENT_COUNT -> INCIDENT_COUNT_COLUMN + " " + direction;
+      case SEVERITY -> String.join(", ", severityOrder, LARGER_GROUP_FIRST);
+      case LAST_SEEN -> String.join(", ", LAST_SEEN_EXPR + " " + direction, LARGER_GROUP_FIRST);
+    };
   }
 
   private static List<TestCaseIncidentGroup> toIncidentGroups(
@@ -1123,8 +1174,8 @@ public class TestCaseResolutionStatusRepository
 
   private static String incidentGroupSortOrder(String sortType) {
     return switch (sortType == null ? INCIDENT_SORT_TYPE_DESC : sortType) {
-      case INCIDENT_SORT_TYPE_ASC -> "ASC";
-      case INCIDENT_SORT_TYPE_DESC -> "DESC";
+      case INCIDENT_SORT_TYPE_ASC -> SQL_ASCENDING;
+      case INCIDENT_SORT_TYPE_DESC -> SQL_DESCENDING;
       default -> throw new IllegalArgumentException(
           String.format(
               "Invalid sortType '%s'. Must be one of [%s, %s]",
