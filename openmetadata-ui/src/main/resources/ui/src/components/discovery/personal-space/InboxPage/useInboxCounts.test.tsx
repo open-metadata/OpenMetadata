@@ -121,4 +121,30 @@ describe('useInboxCounts', () => {
     expect(mockGetUserActivity).toHaveBeenCalledTimes(1);
     expect(mockListVisibleTasks).toHaveBeenCalledTimes(1);
   });
+
+  // Regression for the in-page Activity tab badge undercount: useInboxActivity
+  // previously returned total = items.length, capped at ACTIVITY_LIMIT(200) +
+  // CONVERSATION_LIMIT(100), so the badge understated whenever the window held
+  // more than those caps. The count must now aggregate each response's
+  // paging.total and can exceed the loaded page size.
+  it('activityCount badges the server total (paging.total), not the loaded page size', async () => {
+    const { wrapper } = createWrapper();
+    mockGetUserActivity.mockResolvedValue({
+      data: Array.from({ length: 7 }, (_, i) => ({ id: i })),
+      paging: { total: 250 },
+    });
+    mockListConversations.mockResolvedValue({
+      data: [],
+      paging: { total: 140 },
+    });
+
+    const { result } = renderHook(() => useInboxCounts('all'), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Only 7 events load (and 0 conversations), but the badge carries the
+    // server totals: 250 + 140 = 390, not 7.
+    expect(result.current.activityCount).toBe(390);
+    expect(result.current.activityCount).toBeGreaterThan(7);
+  });
 });

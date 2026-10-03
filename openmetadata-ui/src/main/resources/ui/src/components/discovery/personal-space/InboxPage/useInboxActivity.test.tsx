@@ -120,9 +120,77 @@ describe('fetchInboxActivity', () => {
   it('returns empty lists when the user id is not resolved yet', async () => {
     const result = await fetchInboxActivity('all', undefined);
 
-    expect(result).toEqual({ activities: [], threads: [] });
+    expect(result).toEqual({
+      activities: [],
+      threads: [],
+      activityTotal: 0,
+      conversationTotal: 0,
+    });
     expect(mockGetUserActivity).not.toHaveBeenCalled();
     expect(mockListConversations).not.toHaveBeenCalled();
+  });
+
+  // Regression for the Activity tab badge capping at the page size instead of
+  // the server total. Both endpoints return PagingResponse<T[]> whose
+  // `paging.total` carries the true count; the badge must read that, not the
+  // loaded `data` length (capped at ACTIVITY_LIMIT 200 / CONVERSATION_LIMIT 100).
+  it('exposes paging.total as activityTotal / conversationTotal', async () => {
+    mockGetUserActivity.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({
+        id: `a${i}`,
+        timestamp: i,
+      })),
+      paging: { total: 250 },
+    });
+    mockListConversations.mockResolvedValue({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        id: `c${i}`,
+        createdAt: i,
+        updatedAt: i,
+      })),
+      paging: { total: 140 },
+    });
+
+    const result = await fetchInboxActivity('all', 'u1');
+
+    // The loaded lists are capped at the page sizes …
+    expect(result.activities).toHaveLength(200);
+    expect(result.threads).toHaveLength(100);
+    // … but the totals carry the server-side counts beyond those caps.
+    expect(result.activityTotal).toBe(250);
+    expect(result.conversationTotal).toBe(140);
+  });
+
+  it('falls back to the loaded length when paging is absent', async () => {
+    // Existing mocks (and any response shape that omits `paging`) degrade to
+    // the prior behavior — the count equals the loaded page — instead of 0.
+    mockGetUserActivity.mockResolvedValue({
+      data: [{ id: '1' }, { id: '2' }, { id: '3' }],
+    });
+    mockListConversations.mockResolvedValue({
+      data: [{ id: 't1' }, { id: 't2' }],
+    });
+
+    const result = await fetchInboxActivity('all', 'u1');
+
+    expect(result.activityTotal).toBe(3);
+    expect(result.conversationTotal).toBe(2);
+  });
+
+  it('reports 0 for a failed half while keeping the other half’s paging.total', async () => {
+    mockGetUserActivity.mockRejectedValue(new Error('boom'));
+    mockListConversations.mockResolvedValue({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        id: `c${i}`,
+        createdAt: i,
+      })),
+      paging: { total: 140 },
+    });
+
+    const result = await fetchInboxActivity('all', 'u1');
+
+    expect(result.activityTotal).toBe(0);
+    expect(result.conversationTotal).toBe(140);
   });
 });
 
@@ -238,5 +306,57 @@ describe('useInboxActivity', () => {
       'alpha',
       'zebra',
     ]);
+  });
+
+  // Regression for the in-page Activity tab badge undercount. The badge reads
+  // `useInboxActivity().total`; with the bug that was `items.length`, capped at
+  // ACTIVITY_LIMIT(200) + CONVERSATION_LIMIT(100) = 300, while both endpoints
+  // already returned the true count in `paging.total`. The badge must aggregate
+  // the server totals and can therefore exceed the loaded page size.
+  it('badges the server total (paging.total), not the capped loaded list', async () => {
+    mockGetUserActivity.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({
+        id: `a${i}`,
+        timestamp: i,
+      })),
+      paging: { total: 250 },
+    });
+    mockListConversations.mockResolvedValue({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        id: `c${i}`,
+        createdAt: i,
+        updatedAt: i,
+      })),
+      paging: { total: 140 },
+    });
+
+    const { result } = renderHook(() => useInboxActivity('all'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Loaded list is hard-capped at 300 (200 + 100) even though the server has
+    // 250 activity events and 140 conversations in the window.
+    expect(result.current.items).toHaveLength(300);
+    // The badge reads the server total: 250 + 140 = 390, not 300.
+    expect(result.current.total).toBe(390);
+    expect(result.current.total).toBeGreaterThan(result.current.items.length);
+  });
+
+  it('keeps total equal to the loaded length when paging is absent', async () => {
+    // The `?? data.length` fallback preserves the prior behavior for responses
+    // (and tests) that omit `paging`, so the fix is non-breaking.
+    mockGetUserActivity.mockResolvedValue({ data: [{ id: '1' }, { id: '2' }] });
+    mockListConversations.mockResolvedValue({ data: [{ id: 't1' }] });
+
+    const { result } = renderHook(() => useInboxActivity('me'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.total).toBe(result.current.items.length);
+    expect(result.current.total).toBe(3);
   });
 });
