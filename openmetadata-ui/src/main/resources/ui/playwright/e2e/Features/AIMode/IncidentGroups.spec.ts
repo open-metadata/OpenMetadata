@@ -228,6 +228,10 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
       .click();
 
     await expect(page).toHaveURL(/[?&]group=/);
+    // The chevron's press stays with it: the row does not also preview.
+    await expect(
+      page.getByRole('dialog', { name: 'Incident group' })
+    ).toBeHidden();
 
     await page.reload({ waitUntil: 'domcontentloaded' });
 
@@ -259,6 +263,10 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     await expect(page.getByTestId('incident-groups-selected-count')).toHaveText(
       '1 group selected'
     );
+    // The checkbox's press stays with it: the row does not also preview.
+    await expect(
+      page.getByRole('dialog', { name: 'Incident group' })
+    ).toBeHidden();
 
     await columnCountGroup.getByRole('rowheader').click();
 
