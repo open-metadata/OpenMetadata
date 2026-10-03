@@ -41,6 +41,7 @@ import { IncidentGroupFilters } from './IncidentGroups.types';
 import {
   getIncidentGroupFilterKey,
   getIncidentGroupsQuery,
+  getPageAfterEmptyRead,
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
 } from './IncidentGroups.utils';
@@ -176,6 +177,21 @@ export const useIncidentGroups = () => {
         return;
       }
 
+      // A refresh can leave the page past the end, e.g. once the last groups
+      // on it were resolved. Shown as is, it would read as no groups at all,
+      // with no pager back to the pages that still hold some.
+      const pageAfterEmptyRead = getPageAfterEmptyRead(
+        response.data.length,
+        currentPage,
+        pageSize,
+        response.paging.total
+      );
+      if (pageAfterEmptyRead !== undefined) {
+        goToPage(pageAfterEmptyRead);
+
+        return;
+      }
+
       hasSettledGroups.current = true;
       setIncidentGroups(response.data);
       setPaging(response.paging);
@@ -208,6 +224,7 @@ export const useIncidentGroups = () => {
     sortType,
     pageSize,
     currentPage,
+    goToPage,
     filters,
     domain,
     refreshKey,
