@@ -162,10 +162,11 @@ class AtlasSource(Source):
                     tpc_attrs = tpc_entity["attributes"]
                     topic_name = tpc_attrs["name"]
 
+                    assert self.message_service is not None
                     topic_fqn = fqn.build(
                         self.metadata,
                         entity_type=Topic,
-                        service_name=self.message_service.id,
+                        service_name=self.message_service.name.root,
                         topic_name=topic_name,
                     )
 
