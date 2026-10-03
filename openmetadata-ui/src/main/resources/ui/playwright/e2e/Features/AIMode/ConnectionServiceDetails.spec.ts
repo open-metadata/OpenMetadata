@@ -193,7 +193,7 @@ test.describe(
         await expect(getRowByName(page, deletedDatabase)).toBeHidden();
 
         const deletedSwitch = page.getByTestId('show-deleted');
-        await expect(deletedSwitch).not.toBeChecked();
+        await expect(deletedSwitch.getByRole('switch')).not.toBeChecked();
 
         const deletedList = waitForServiceChildList(
           page,
@@ -204,7 +204,7 @@ test.describe(
         await deletedSwitch.click();
         await deletedList;
 
-        await expect(deletedSwitch).toBeChecked();
+        await expect(deletedSwitch.getByRole('switch')).toBeChecked();
         await expect(getRowByName(page, deletedDatabase)).toBeVisible();
         await expect(getRowByName(page, databases[0])).toBeHidden();
       });
@@ -299,7 +299,9 @@ test.describe(
 
           await expect(page.getByTestId('deleted-badge')).toBeVisible();
           await expect(getRowByName(page, database)).toBeVisible();
-          await expect(page.getByTestId('show-deleted')).toBeChecked();
+          await expect(
+            page.getByTestId('show-deleted').getByRole('switch')
+          ).toBeChecked();
         });
 
         await test.step('restoring it relists the live databases', async () => {
@@ -329,7 +331,9 @@ test.describe(
           await liveList;
 
           await expect(getRowByName(page, database)).toBeVisible();
-          await expect(page.getByTestId('show-deleted')).not.toBeChecked();
+          await expect(
+            page.getByTestId('show-deleted').getByRole('switch')
+          ).not.toBeChecked();
           await expect(page.getByTestId('deleted-badge')).toBeHidden();
         });
       });
@@ -507,9 +511,17 @@ test.describe(
             tab: 'connection',
           });
 
+          // The link falls back to the page's default tab, which a plugin may own (Collate's
+          // Summary), so assert only that some other tab took over.
           await expect(
-            dataConsumerPage.getByRole('tab', { name: 'Databases' })
-          ).toHaveAttribute('aria-selected', 'true');
+            dataConsumerPage
+              .getByRole('tablist')
+              .filter({ has: dataConsumerPage.getByTestId('dataAssets-tab') })
+              .getByRole('tab', { selected: true })
+          ).toBeVisible();
+          await expect(
+            dataConsumerPage.getByTestId('connection-tab')
+          ).toHaveCount(0);
           await expect(
             dataConsumerPage.getByTestId('edit-connection-button')
           ).toBeHidden();

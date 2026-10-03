@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Owner, Typography } from '@openmetadata/ui-core-components';
+import {
+  Divider,
+  Owner,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
-  Divider,
   Dropdown,
   Form,
   Input,
   MenuProps,
   Row,
-  Skeleton,
   Space,
   Tooltip,
 } from 'antd';
@@ -1813,9 +1816,9 @@ export const TaskTabNew = ({
     if (isPostsLoading) {
       return (
         <Space className="m-y-md" direction="vertical" size={16}>
-          <Skeleton active />
-          <Skeleton active />
-          <Skeleton active />
+          <SkeletonParagraph />
+          <SkeletonParagraph />
+          <SkeletonParagraph />
         </Space>
       );
     }
@@ -2196,7 +2199,7 @@ export const TaskTabNew = ({
 
         {taskLinkTitleElement}
       </Col>
-      <Divider className="m-0" type="horizontal" />
+      <Divider className="m-0" />
       {!darHeaderRows && <Col span={24}>{taskHeader}</Col>}
       {renderProposedChangesSection()}
       <Col span={24}>

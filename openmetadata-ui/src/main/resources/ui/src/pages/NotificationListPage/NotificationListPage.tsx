@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Skeleton, Tooltip } from 'antd';
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -278,7 +278,11 @@ const NotificationListPage = () => {
             (alert) => alert.id === record.id
           );
           if (loadingCount > 0) {
-            return <Skeleton active className="p-r-lg" paragraph={false} />;
+            return (
+              <div className="p-r-lg">
+                <Skeleton height={16} />
+              </div>
+            );
           }
 
           if (

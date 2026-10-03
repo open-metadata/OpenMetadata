@@ -107,7 +107,9 @@ const getVersionedUnitValue = (
     metric.customUnitOfMeasurement ?? ''
   );
 
-  return unit === UnitOfMeasurement.Other && customUnit ? customUnit : unit;
+  return metric.unitOfMeasurement === UnitOfMeasurement.Other && customUnit
+    ? customUnit
+    : unit;
 };
 
 const getDefinitionEnumValue = (

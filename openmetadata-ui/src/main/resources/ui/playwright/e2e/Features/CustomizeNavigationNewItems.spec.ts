@@ -305,7 +305,7 @@ test.describe(
         .getByTestId('page-layout-v1')
         .getByText('Glossary')
         .first()
-        .getByRole('switch')
+        .locator('[data-testid^="navigation-switch-"]')
         .click();
 
       await expect(adminPage.getByTestId('save-button')).toBeEnabled();

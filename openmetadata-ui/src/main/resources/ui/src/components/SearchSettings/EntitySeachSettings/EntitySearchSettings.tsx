@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Collapse, InputNumber, Row, Select, Switch, Tag } from 'antd';
+import { Badge, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Col, Collapse, InputNumber, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, omit, startCase } from 'lodash';
 import type { MenuInfo } from 'rc-menu/lib/interface';
@@ -678,9 +678,14 @@ const EntitySearchSettings = () => {
   const renderRankingFields = (fields: string[] = []) => (
     <div className="ranking-field-list">
       {fields.map((field) => (
-        <Tag className="ranking-field-tag" key={field}>
+        <Badge
+          className="tw:block tw:max-w-full tw:truncate"
+          color="gray"
+          key={field}
+          size="md"
+          type="color">
           {field}
-        </Tag>
+        </Badge>
       ))}
     </div>
   );
@@ -781,9 +786,10 @@ const EntitySearchSettings = () => {
               <Typography className="text-xs font-normal" color="secondary">
                 {t('label.enabled')}
               </Typography>
-              <Switch
-                checked={ranking.enabled ?? false}
+              <Toggle
                 data-testid="ranking-enabled-switch"
+                isSelected={ranking.enabled ?? false}
+                size="sm"
                 onChange={handleRankingEnabledChange}
               />
             </Col>
