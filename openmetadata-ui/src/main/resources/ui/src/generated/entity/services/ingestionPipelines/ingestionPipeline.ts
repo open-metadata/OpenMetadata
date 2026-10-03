@@ -592,6 +592,9 @@ export enum AuthProvider {
  * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
  * pattern.
  *
+ * Regex to only include/exclude node and relationship properties (columns) that match the
+ * pattern, e.g. properties written back by graph algorithms.
+ *
  * Regex to only fetch subjects/streams that match the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
@@ -3987,6 +3990,8 @@ export interface ServiceConnection {
  *
  * SAP BW/4HANA Database Connection Config
  *
+ * Neo4j Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -4389,6 +4394,9 @@ export interface Connection {
      *
      * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
      *
+     * Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use
+     * 7687.
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -4521,6 +4529,8 @@ export interface Connection {
      * Password to connect to IOMETE.
      *
      * Password for the HANA database user.
+     *
+     * Password to connect to Neo4j.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -4657,6 +4667,9 @@ export interface Connection {
      * Username to connect to QuestDB.
      *
      * HANA database username with access to BW metadata tables.
+     *
+     * Username to connect to Neo4j. The user needs read access to the graph schema of the
+     * database.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -4983,6 +4996,8 @@ export interface Connection {
      * Mongo connection scheme options.
      *
      * Couchbase driver scheme options.
+     *
+     * Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.
      */
     scheme?: AirflowConnectionScheme;
     /**
@@ -5047,6 +5062,8 @@ export interface Connection {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
+     *
+     * Neo4j database to extract metadata from. If left blank, the user's home database is used.
      */
     databaseName?: string;
     /**
@@ -5642,6 +5659,16 @@ export interface Connection {
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
      */
     abapSchema?: string;
+    /**
+     * Also ingest relationship types as tables in the `relationships` schema, with their
+     * properties as columns.
+     */
+    includeRelationships?: boolean;
+    /**
+     * Regex to only include/exclude node and relationship properties (columns) that match the
+     * pattern, e.g. properties written back by graph algorithms.
+     */
+    propertyFilterPattern?: FilterPattern;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -8309,10 +8336,18 @@ export enum RunMode {
  * Mongo connection scheme options.
  *
  * Couchbase driver scheme options.
+ *
+ * Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.
+ *
+ * Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts
+ * and accepts self-signed certificates.
  */
 export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
+    Bolt = "bolt",
+    BoltS = "bolt+s",
+    BoltSsc = "bolt+ssc",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
     Clickzetta = "clickzetta",
@@ -8339,6 +8374,9 @@ export enum AirflowConnectionScheme {
     MssqlPyodbc = "mssql+pyodbc",
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
+    Neo4J = "neo4j",
+    Neo4JS = "neo4j+s",
+    Neo4JSsc = "neo4j+ssc",
     OracleCxOracle = "oracle+cx_oracle",
     OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
@@ -8707,6 +8745,7 @@ export enum AirflowConnectionType {
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nats = "Nats",
+    Neo4J = "Neo4j",
     Nifi = "Nifi",
     Omni = "Omni",
     OpenLineage = "OpenLineage",

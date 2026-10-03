@@ -197,6 +197,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.TableauPipeline,
   DatabaseServiceType.Iomete,
   DatabaseServiceType.Clickzetta,
+  DatabaseServiceType.Neo4J,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

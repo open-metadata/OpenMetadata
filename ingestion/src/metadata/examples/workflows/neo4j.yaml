@@ -1,0 +1,28 @@
+source:
+  type: neo4j
+  serviceName: local_neo4j
+  serviceConnection:
+    config:
+      type: Neo4j
+      scheme: neo4j
+      hostPort: localhost:7687
+      username: username
+      password: password
+      # databaseName: neo4j  # defaults to the user's home database
+      # includeRelationships: true
+      # propertyFilterPattern:
+      #   excludes:
+      #     - "louvain.*"
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "<ingestion-bot-jwt>"
