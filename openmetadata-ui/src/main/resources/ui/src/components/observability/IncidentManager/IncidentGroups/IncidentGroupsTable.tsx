@@ -12,41 +12,46 @@
  */
 
 import {
-  Avatar,
-  BadgeWithIcon,
+  AvatarGroup,
+  Badge,
   Box,
   Table,
+  toOwnerRefs,
   Typography,
 } from '@openmetadata/ui-core-components';
-// The core-components icon barrel re-exports the design team's own SVG set
-// only; it carries no generic person glyph, so this one comes from the shared
-import { User01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Container,
+  LayersTwo01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
+import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import {
-  Severities,
+  IncidentGroupBy,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
-import { Severities as ResolutionSeverities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   formatDate,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
-import { INCIDENT_GROUPS_SORT_COLUMN } from './IncidentGroups.constants';
+import {
+  INCIDENT_GROUPS_SORT_COLUMN,
+  INCIDENT_GROUP_MAX_AVATARS,
+  INCIDENT_GROUP_SEVERITY_COLOR,
+} from './IncidentGroups.constants';
 import {
   IncidentGroupCellProps,
   IncidentGroupsTableProps,
   StackedCellProps,
 } from './IncidentGroups.types';
 import {
-  getIncidentGroupAssignees,
   getIncidentGroupByOption,
   getIncidentGroupSubLine,
+  getIncidentGroupSubLineTitle,
   isUnownedIncidentGroup,
 } from './IncidentGroups.utils';
 import IncidentStatusBreakdown from './IncidentStatusBreakdown';
@@ -55,55 +60,88 @@ import IncidentTrendSparkline from './IncidentTrendSparkline';
 /** Short form of the first-seen date, e.g. `Aug '25`. */
 const FIRST_SEEN_FORMAT = "MMM ''yy";
 
-/**
- * The groups schema `$ref`s the severity of a resolution status, but the TS
- * generator emits one enum per schema file, so the two are nominally distinct
- * with identical members. This bridges them for the shared severity chip.
- */
-const toResolutionSeverity = (severity?: Severities) =>
-  severity as unknown as ResolutionSeverities | undefined;
-
-/** Matches the avatars the incident rows below draw for their assignees. */
-const ASSIGNEE_AVATAR_WIDTH = '24';
-
+// Truncated text keeps its full value in `title`: a hover reveals it without
+// making every cell of a clickable row a focus stop.
 const StackedCell = ({
   value,
+  valueTitle,
+  valueWeight = 'semibold',
   caption,
+  captionTitle,
+  captionIcon: CaptionIcon,
   valueTestId,
   captionTestId,
 }: StackedCellProps) => (
-  <Box className="tw:gap-0.5" direction="col">
+  <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
     <Typography
       as="span"
-      className="tw:text-primary"
+      className="tw:truncate tw:text-primary"
       data-testid={valueTestId}
       size="text-sm"
-      weight="semibold">
+      title={valueTitle}
+      weight={valueWeight}>
       {value}
     </Typography>
     {caption && (
-      <Typography
-        as="span"
-        className="tw:text-tertiary"
-        data-testid={captionTestId}
-        size="text-xs">
-        {caption}
-      </Typography>
+      <Box align="center" className="tw:min-w-0 tw:text-tertiary" gap={1}>
+        {CaptionIcon && (
+          <CaptionIcon className="tw:size-3 tw:shrink-0 tw:text-fg-quaternary" />
+        )}
+        <Typography
+          as="span"
+          className="tw:truncate"
+          data-testid={captionTestId}
+          size="text-xs"
+          title={captionTitle}>
+          {caption}
+        </Typography>
+      </Box>
     )}
   </Box>
 );
 
 /**
- * The assignee names the group carries, drawn by the app's standard avatar so a
- * group row reads the same as the incident rows it aggregates. Only the `+N`
- * bubble is local to the group: it counts from `assigneeCount`, which no single
- * user's avatar knows about.
+ * What the group's incidents span, counted: the tables of a test definition
+ * group, the test definitions (check types) of any other. A group with a single
+ * test definition names it instead, as the design does.
+ */
+const RelatedEntityCell = ({ group }: IncidentGroupCellProps) => {
+  const { t } = useTranslation();
+  const isTableCount = group.groupBy === IncidentGroupBy.TestDefinition;
+  const count = isTableCount ? group.tableCount : group.testDefinitionCount;
+  const onlyTestDefinition =
+    !isTableCount && count === 1 ? group.testDefinitions?.[0] : undefined;
+
+  if (count === undefined) {
+    return null;
+  }
+
+  const countLabel = t(
+    isTableCount ? 'label.table-count' : 'label.type-count',
+    {
+      count,
+    }
+  );
+
+  return (
+    <span data-testid="group-related">
+      <Badge color="gray" size="sm" type="pill-color">
+        {onlyTestDefinition ? getEntityName(onlyTestDefinition) : countLabel}
+      </Badge>
+    </span>
+  );
+};
+
+/**
+ * The group's assignees as the owner stack every other listing draws: a hover
+ * card per avatar, and a `+N` that lists the rest. It takes the resolved
+ * references, which know whether a name is a user or a team.
  */
 const AssigneesCell = ({ group }: IncidentGroupCellProps) => {
   const { t } = useTranslation();
-  const { visible, overflowCount } = getIncidentGroupAssignees(group);
+  const assignees = toOwnerRefs(group.assigneeReferences);
 
-  if (visible.length === 0 && overflowCount === 0) {
+  if (assignees.length === 0) {
     return (
       <Box className="tw:items-center tw:gap-1 tw:text-tertiary">
         <User01 className="tw:size-4" />
@@ -115,22 +153,13 @@ const AssigneesCell = ({ group }: IncidentGroupCellProps) => {
   }
 
   return (
-    <Box className="tw:items-center tw:gap-1" data-testid="group-assignees">
-      {visible.map((assignee) => (
-        // ProfilePicture takes no `data-testid`, so the hook sits on a wrapper.
-        <span data-testid={`group-assignee-${assignee}`} key={assignee}>
-          <ProfilePicture name={assignee} width={ASSIGNEE_AVATAR_WIDTH} />
-        </span>
-      ))}
-      {overflowCount > 0 && (
-        <Avatar
-          colorVariant="neutral"
-          data-testid="group-assignee-overflow"
-          initials={`+${overflowCount}`}
-          size="xs"
-        />
-      )}
-    </Box>
+    <span data-testid="group-assignees">
+      <AvatarGroup
+        maxCount={INCIDENT_GROUP_MAX_AVATARS}
+        overflowTitleLabel={t('label.assignee-plural')}
+        owners={assignees}
+      />
+    </span>
   );
 };
 
@@ -149,6 +178,7 @@ const LastSeenCell = ({ group }: IncidentGroupCellProps) => {
       captionTestId="group-first-seen"
       value={group.lastSeen ? formatDate(group.lastSeen) : NO_DATA_PLACEHOLDER}
       valueTestId="group-last-seen"
+      valueWeight="regular"
     />
   );
 };
@@ -168,12 +198,21 @@ const IncidentGroupsTable = ({
   const { t } = useTranslation();
 
   const dimension = getIncidentGroupByOption(groupBy);
-  const DimensionIcon = dimension.icon;
+  // A table group's sub-line lists check types; every other group's, tables.
+  const subLineIcon =
+    groupBy === IncidentGroupBy.Table ? LayersTwo01 : Container;
 
   const columns = useMemo(
     () => [
       { id: 'name', label: t(dimension.labelKey) },
-      { id: 'dimension', label: t('label.dimension') },
+      {
+        id: 'related',
+        label: t(
+          groupBy === IncidentGroupBy.TestDefinition
+            ? 'label.table-plural'
+            : 'label.check-type'
+        ),
+      },
       {
         id: INCIDENT_GROUPS_SORT_COLUMN,
         label: t('label.incident-plural'),
@@ -185,7 +224,7 @@ const IncidentGroupsTable = ({
       { id: 'lastSeen', label: t('label.last-seen') },
       { id: 'trend', label: t('label.trend') },
     ],
-    [dimension.labelKey, t]
+    [dimension.labelKey, groupBy, t]
   );
 
   // react-aria drives the header arrow off the descriptor; `sortType` is the
@@ -203,10 +242,12 @@ const IncidentGroupsTable = ({
 
     return (
       <Table.Row id={rowId} key={rowId}>
-        <Table.Cell>
+        <Table.Cell className="tw:max-w-72">
           <StackedCell
             caption={getIncidentGroupSubLine(group) || undefined}
+            captionIcon={subLineIcon}
             captionTestId="group-sub-line"
+            captionTitle={getIncidentGroupSubLineTitle(group)}
             value={
               // The unowned bucket stands for no entity, so it is named here
               // rather than after something the server resolved.
@@ -215,16 +256,11 @@ const IncidentGroupsTable = ({
                 : getEntityName(group)
             }
             valueTestId="group-name"
+            valueTitle={group.fullyQualifiedName}
           />
         </Table.Cell>
         <Table.Cell>
-          {/* BadgeWithIcon takes no `data-testid`, so the hook sits on a
-              wrapper rather than on the pill itself. */}
-          <span data-testid="group-dimension">
-            <BadgeWithIcon color="gray" iconLeading={DimensionIcon} size="sm">
-              {t(dimension.labelKey)}
-            </BadgeWithIcon>
-          </span>
+          <RelatedEntityCell group={group} />
         </Table.Cell>
         <Table.Cell>
           <StackedCell
@@ -234,14 +270,19 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          {/* The same read-only chip the incident rows below render, so the
-              group and its incidents cannot drift apart in palette or wording.
-              InlineSeverity takes no `data-testid`; the hook sits on a wrapper. */}
           <span data-testid="group-severity">
-            <InlineSeverity
-              hasEditPermission={false}
-              severity={toResolutionSeverity(group.severity)}
-            />
+            <Badge
+              color={
+                group.severity
+                  ? INCIDENT_GROUP_SEVERITY_COLOR[group.severity]
+                  : 'gray'
+              }
+              size="sm"
+              type="pill-color">
+              {group.severity
+                ? startCase(group.severity)
+                : t('label.no-entity', { entity: t('label.severity') })}
+            </Badge>
           </span>
         </Table.Cell>
         <Table.Cell>

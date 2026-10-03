@@ -101,16 +101,15 @@ export interface IncidentTrendSparklineProps {
 /** Hue a trend reads in, picked from its direction and the group's severity. */
 export type IncidentTrendTone = 'error' | 'warning' | 'success' | 'neutral';
 
-/** Assignees to draw for a group, and how many more it has. */
-export interface IncidentGroupAssignees {
-  visible: string[];
-  overflowCount: number;
-}
-
 /** A cell that stacks a value over a smaller caption, e.g. a name over its FQN. */
 export interface StackedCellProps {
   value: ReactNode;
+  /** Full text of the value, shown on hover once it truncates. */
+  valueTitle?: string;
+  valueWeight?: 'regular' | 'semibold';
   caption?: ReactNode;
+  captionTitle?: string;
+  captionIcon?: FC<{ className?: string }>;
   valueTestId: string;
   captionTestId?: string;
 }

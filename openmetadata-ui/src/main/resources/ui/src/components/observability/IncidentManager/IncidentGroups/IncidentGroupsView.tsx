@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Divider,
   EmptyPlaceholder,
   PaginationCardWithControls,
   TableCard,
@@ -25,11 +26,12 @@ import {
   AlertCircle,
   Search,
   ShieldTick,
-  TrendUp02,
+  TrendUp01,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import Loader from '../../../common/Loader/Loader';
 import IncidentGroupByDropdown from './IncidentGroupByDropdown';
@@ -45,6 +47,10 @@ import {
 import IncidentGroupsFilters from './IncidentGroupsFilters';
 import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroups } from './useIncidentGroups';
+
+const STAT_COUNT_ELEMENT = (
+  <Typography as="span" className="tw:text-primary" weight="semibold" />
+);
 
 /**
  * Grouped incident listing: the `Group by` dimension picker, the header stats
@@ -186,6 +192,7 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
   };
 
   const hasStats = !isInitialLoading && !isError;
+  const groupCount = paging?.total ?? incidentGroups.length;
 
   return (
     <Box
@@ -194,35 +201,43 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
       data-testid="incident-groups"
       direction="col">
       <Box className="tw:items-center tw:justify-between tw:gap-2">
-        <Box className="tw:items-center tw:gap-3">
-          <Typography
-            className="tw:text-secondary"
-            data-testid="incident-groups-count"
-            size="text-sm"
-            weight="semibold">
-            {hasStats
-              ? t('label.group-count', {
-                  count: paging?.total ?? incidentGroups.length,
-                })
-              : ''}
-          </Typography>
+        {/* Kept when empty, so the dimension picker stays on the right. */}
+        <Box align="center" gap={3}>
           {hasStats && (
-            <Tooltip
-              placement="top"
-              title={t('message.recurring-groups-loaded')}>
-              <TooltipTrigger>
-                <Box className="tw:items-center tw:gap-1 tw:text-secondary">
-                  <TrendUp02 className="tw:size-4" />
-                  <Typography
-                    as="span"
-                    data-testid="incident-groups-recurring-count"
-                    size="text-sm"
-                    weight="semibold">
-                    {t('label.recurring-count', { count: recurringCount })}
-                  </Typography>
-                </Box>
-              </TooltipTrigger>
-            </Tooltip>
+            <>
+              <Typography
+                as="span"
+                className="tw:text-secondary"
+                data-testid="incident-groups-count"
+                size="text-sm">
+                <Transi18next
+                  i18nKey="label.group-count"
+                  renderElement={STAT_COUNT_ELEMENT}
+                  values={{ count: groupCount }}
+                />
+              </Typography>
+              <Divider className="tw:h-4" orientation="vertical" />
+              <Tooltip
+                placement="top"
+                title={t('message.recurring-groups-loaded')}>
+                <TooltipTrigger>
+                  <Box align="center" gap={1}>
+                    <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
+                    <Typography
+                      as="span"
+                      className="tw:text-secondary"
+                      data-testid="incident-groups-recurring-count"
+                      size="text-sm">
+                      <Transi18next
+                        i18nKey="label.recurring-count"
+                        renderElement={STAT_COUNT_ELEMENT}
+                        values={{ count: recurringCount }}
+                      />
+                    </Typography>
+                  </Box>
+                </TooltipTrigger>
+              </Tooltip>
+            </>
           )}
         </Box>
         <IncidentGroupByDropdown

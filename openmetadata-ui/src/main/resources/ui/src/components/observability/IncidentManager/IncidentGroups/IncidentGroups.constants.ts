@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { BadgeColor } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   Table,
@@ -19,6 +20,7 @@ import {
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
+  Severities,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { TestCaseResolutionStatusTypes as ResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
@@ -102,12 +104,23 @@ export const DEFAULT_INCIDENT_SORT_TYPE: IncidentSortType = 'desc';
 
 export const INCIDENT_GROUPS_SORT_COLUMN = 'incidentCount';
 
-/**
- * Avatars drawn before the cluster collapses into a `+N` bubble. The server
- * caps the `assignees` array independently, so the overflow is always counted
- * from `assigneeCount` rather than from the array length.
- */
+/** Avatars drawn before the stack collapses into a `+N` bubble. */
 export const INCIDENT_GROUP_MAX_AVATARS = 3;
+
+/**
+ * Badge colour per severity, most severe the hottest. The core badge has no
+ * yellow, so `Severity4` takes the cool step between amber and green.
+ */
+export const INCIDENT_GROUP_SEVERITY_COLOR: Record<
+  Severities,
+  BadgeColor<'pill-color'>
+> = {
+  [Severities.Severity1]: 'error',
+  [Severities.Severity2]: 'orange',
+  [Severities.Severity3]: 'warning',
+  [Severities.Severity4]: 'blue-light',
+  [Severities.Severity5]: 'success',
+};
 
 /** Joins the parts of a group's FQN sub-line and of its status count line. */
 export const INCIDENT_GROUP_SEPARATOR = ' · ';
