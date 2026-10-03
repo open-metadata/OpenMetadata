@@ -1385,9 +1385,6 @@ export const addTagsAndGlossaryToDomain = async (
 };
 
 /**
- * Verifies if the active domain is set to All Domains (DEFAULT_DOMAIN_VALUE)
- */
-/**
  * Clears the caller's persisted navbar selection (User.defaultDomain). The pick is stored on the
  * user, so a spec that selects a domain must clear it or every later list call by that user
  * (in this and other specs) stays scoped to it.
@@ -1407,6 +1404,9 @@ export const clearDomainFromNavbar = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
+/**
+ * Verifies if the active domain is set to All Domains (DEFAULT_DOMAIN_VALUE)
+ */
 export const verifyActiveDomainIsDefault = async (page: Page) => {
   await expect(page.getByTestId('domain-dropdown')).toContainText(
     'All Domains'

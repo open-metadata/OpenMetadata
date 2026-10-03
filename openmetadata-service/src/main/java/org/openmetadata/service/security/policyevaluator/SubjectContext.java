@@ -274,7 +274,6 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
     return listOrEmpty(user.getDomains());
   }
 
-  /** The domain the user selected in the navbar to scope list views; null when none is set. */
   // Iterate over all the policies of the team hierarchy the user belongs to
   public Iterator<PolicyContext> getPolicies(List<EntityReference> resourceOwners) {
     // Get cached user policies (roles + team hierarchy)
