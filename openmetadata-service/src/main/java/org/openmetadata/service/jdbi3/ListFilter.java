@@ -749,24 +749,26 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String incidentSeverityCondition(String param, String severity) {
     String value = queryParams.get(param);
-    String result = "";
-    if (!nullOrEmpty(value)) {
-      List<String> values = Arrays.stream(value.split(",")).map(String::trim).toList();
-      String graded =
-          values.stream()
-              .filter(severityValue -> !NO_INCIDENT_SEVERITY.equals(severityValue))
-              .collect(Collectors.joining(","));
-      List<String> alternatives = new ArrayList<>();
-      if (!graded.isEmpty()) {
-        alternatives.add(
-            String.format("%s IN (%s)", severity, buildIndexedBindParams(param, graded)));
-      }
-      if (values.contains(NO_INCIDENT_SEVERITY)) {
-        alternatives.add(severity + " IS NULL");
-      }
-      result = "(" + String.join(" OR ", alternatives) + ")";
+    return nullOrEmpty(value)
+        ? ""
+        : "(" + String.join(" OR ", severityAlternatives(param, severity, value)) + ")";
+  }
+
+  private List<String> severityAlternatives(String param, String severity, String value) {
+    List<String> values = Arrays.stream(value.split(",")).map(String::trim).toList();
+    String graded =
+        values.stream()
+            .filter(severityValue -> !NO_INCIDENT_SEVERITY.equals(severityValue))
+            .collect(Collectors.joining(","));
+    List<String> alternatives = new ArrayList<>();
+    if (!graded.isEmpty()) {
+      alternatives.add(
+          String.format("%s IN (%s)", severity, buildIndexedBindParams(param, graded)));
     }
-    return result;
+    if (values.contains(NO_INCIDENT_SEVERITY)) {
+      alternatives.add(severity + " IS NULL");
+    }
+    return alternatives;
   }
 
   private String getIncidentDomainCondition() {

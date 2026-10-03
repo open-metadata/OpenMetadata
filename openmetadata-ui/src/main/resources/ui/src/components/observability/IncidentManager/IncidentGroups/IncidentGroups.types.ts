@@ -51,13 +51,13 @@ export interface IncidentGroupByDropdownProps {
  */
 export type IncidentListDateField = 'timestamp' | 'updatedAt';
 
+/** A severity to filter by, or `none` for the incidents that carry none. */
+export type IncidentSeverityFilter = `${Severities}` | 'none';
+
 /**
  * Filters of the grouped view. Each key is also its query string param, so a
  * shared link or a reload keeps them.
  */
-/** A severity to filter by, or `none` for the incidents that carry none. */
-export type IncidentSeverityFilter = `${Severities}` | 'none';
-
 export interface IncidentGroupFilters {
   testCaseFQN?: string;
   assignee?: string;

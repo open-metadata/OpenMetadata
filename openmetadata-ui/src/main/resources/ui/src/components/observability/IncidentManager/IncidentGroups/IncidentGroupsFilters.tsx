@@ -195,11 +195,7 @@ const IncidentGroupsFilters = ({
   const hasActiveFilters = hasActiveIncidentGroupFilters(filters);
 
   return (
-    <Box
-      align="start"
-      data-testid="incident-groups-filters"
-      gap={3}
-      wrap="wrap">
+    <Box align="start" gap={3} wrap="wrap">
       <FilterField label={t('label.test-case')}>
         <FilterSelect
           searchable

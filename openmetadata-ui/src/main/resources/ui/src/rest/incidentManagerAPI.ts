@@ -149,9 +149,7 @@ export type ListIncidentGroupsParams = {
   startTs?: number;
   endTs?: number;
   limit?: number;
-  /** Opaque cursor from a previous `paging.before`/`paging.after`. */
-  offset?: IncidentCursor;
-  /** 1-based page, an alternative to `offset` that can jump to any page. */
+  /** 1-based page. */
   page?: number;
   sortType?: IncidentSortType;
   sortField?: IncidentGroupSortField;

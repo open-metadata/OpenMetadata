@@ -35,6 +35,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -974,21 +975,24 @@ public class TestCaseResolutionStatusResource
   // is checked against the severities an incident can have, so nothing unexpected reaches the SQL
   // binds.
   private static String parseIncidentSeverities(List<String> severities) {
-    List<String> result = new ArrayList<>();
-    for (String severityParam : listOrEmpty(severities)) {
-      for (String value : severityParam.split(",")) {
-        String severity = value.trim();
-        if (!ListFilter.NO_INCIDENT_SEVERITY.equals(severity)) {
-          try {
-            Severity.fromValue(severity);
-          } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(String.format("Invalid severity '%s'", severity));
-          }
-        }
-        result.add(severity);
-      }
-    }
+    List<String> result =
+        listOrEmpty(severities).stream()
+            .flatMap(severityParam -> Arrays.stream(severityParam.split(",")))
+            .map(String::trim)
+            .map(TestCaseResolutionStatusResource::requireIncidentSeverity)
+            .toList();
     return result.isEmpty() ? null : String.join(",", result);
+  }
+
+  private static String requireIncidentSeverity(String value) {
+    if (!ListFilter.NO_INCIDENT_SEVERITY.equals(value) && !isSeverity(value)) {
+      throw new IllegalArgumentException(String.format("Invalid severity '%s'", value));
+    }
+    return value;
+  }
+
+  private static boolean isSeverity(String value) {
+    return Arrays.stream(Severity.values()).anyMatch(severity -> severity.value().equals(value));
   }
 
   private static List<TestCaseResolutionStatusTypes> parseIncidentStatuses(List<String> statuses) {
