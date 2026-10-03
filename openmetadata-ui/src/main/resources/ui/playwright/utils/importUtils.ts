@@ -1578,7 +1578,7 @@ export const fillRecursiveColumnDetails = async (
 export const firstTimeGridAddRowAction = async (page: Page) => {
   const firstRow = page.getByTestId('rdg-row-0');
   if ((await firstRow.count()) > 0) {
-    const firstCell = firstRow.locator('.rdg-cell').first();
+    const firstCell = firstRow.locator(`.${getGridColumnClass('name')}`);
     const hasFirstRowContent = await firstRow
       .locator('.rdg-cell')
       .evaluateAll((cells) =>
@@ -1740,7 +1740,7 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
   });
 
   const firstRow = page.getByTestId('rdg-row-0');
-  const firstCell = firstRow.locator('.rdg-cell').nth(1);
+  const firstCell = firstRow.locator(`.${getGridColumnClass('displayName')}`);
 
   await displayNameHeader.click();
 
