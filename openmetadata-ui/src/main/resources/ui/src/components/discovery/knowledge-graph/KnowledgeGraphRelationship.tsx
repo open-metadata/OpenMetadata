@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
@@ -20,6 +25,7 @@ import type {
 } from './KnowledgeGraph.interface';
 import { getRelationStyle } from './KnowledgeGraph.relations';
 import {
+  InspectorKeyValue,
   InspectorSection,
   InspectorStatement,
 } from './KnowledgeGraphInspectorParts';
@@ -28,65 +34,86 @@ interface RelationshipProps {
   edge: KnowledgeGraphG6Edge;
   nodes: ReadonlyMap<string, GraphNode>;
   renderNode: (node?: GraphNode) => ReactNode;
+  onViewInList?: () => void;
 }
 
 const KnowledgeGraphRelationship = ({
   edge,
   nodes,
   renderNode,
+  onViewInList,
 }: RelationshipProps) => {
   const { t } = useTranslation();
   const derivation = edge.data.derivation;
   const style = getRelationStyle(edge.data.category);
+  const systemName = edge.data.relationType ?? edge.data.label;
   if (!derivation) {
     return (
-      <Box className="kg-inspector-body" direction="col">
-        <InspectorStatement
-          code={edge.data.relationType ?? edge.data.label}
-          codeTestId="relationship-predicate"
-          color={style.color}
-          family={t(style.labelKey)}
-          statement={
-            <Box direction="col" gap={1}>
-              {renderNode(nodes.get(edge.source))}
-              <span>{'→ ' + edge.data.label + ' →'}</span>
-              {renderNode(nodes.get(edge.target))}
-            </Box>
-          }
-        />
-        {edge.data.members && (
-          <>
-            <Typography className="tw:text-tertiary" size="text-xs">
-              {t('message.kg-group-explanation', {
-                count: edge.data.members.length,
-              })}
-            </Typography>
-            <InspectorSection
-              meta={t('label.kg-showing-of', {
-                shown: Math.min(6, edge.data.members.length),
-                total: edge.data.members.length,
-              })}
-              title={t('label.member-plural')}>
-              {edge.data.members.slice(0, 6).map((member) => (
-                <Box
-                  className="tw:border-t tw:border-secondary tw:pt-2"
-                  direction="col"
-                  key={JSON.stringify([
-                    member.from,
-                    member.relationType ?? member.label,
-                    member.to,
-                  ])}>
-                  {renderNode(nodes.get(member.from))}
-                  <Typography className="tw:text-tertiary" size="text-xs">
-                    {'→ ' + member.label + ' →'}
-                  </Typography>
-                  {renderNode(nodes.get(member.to))}
-                </Box>
-              ))}
-            </InspectorSection>
-          </>
+      <>
+        <Box className="kg-inspector-body" direction="col">
+          <InspectorStatement
+            codeTestId="relationship-predicate"
+            color={style.color}
+            family={t(style.labelKey)}
+            statement={
+              <Box direction="col" gap={1}>
+                {renderNode(nodes.get(edge.source))}
+                <span>{'→ ' + edge.data.label + ' →'}</span>
+                {renderNode(nodes.get(edge.target))}
+              </Box>
+            }
+          />
+          {systemName && (
+            <InspectorKeyValue
+              label={t('label.kg-system-name')}
+              value={
+                <span className="tw:font-mono tw:text-utility-purple-700">
+                  {systemName}
+                </span>
+              }
+            />
+          )}
+          {edge.data.members && (
+            <>
+              <Typography className="tw:text-tertiary" size="text-xs">
+                {t('message.kg-group-explanation', {
+                  count: edge.data.members.length,
+                })}
+              </Typography>
+              <InspectorSection
+                meta={t('label.kg-showing-of', {
+                  shown: Math.min(6, edge.data.members.length),
+                  total: edge.data.members.length,
+                })}
+                title={t('label.member-plural')}>
+                {edge.data.members.slice(0, 6).map((member) => (
+                  <Box
+                    className="tw:border-t tw:border-secondary tw:pt-2"
+                    direction="col"
+                    key={JSON.stringify([
+                      member.from,
+                      member.relationType ?? member.label,
+                      member.to,
+                    ])}>
+                    {renderNode(nodes.get(member.from))}
+                    <Typography className="tw:text-tertiary" size="text-xs">
+                      {'→ ' + member.label + ' →'}
+                    </Typography>
+                    {renderNode(nodes.get(member.to))}
+                  </Box>
+                ))}
+              </InspectorSection>
+            </>
+          )}
+        </Box>
+        {onViewInList && (
+          <Box className="kg-inspector-actions" gap={2}>
+            <Button color="secondary" size="md" onPress={onViewInList}>
+              {t('label.kg-view-in-list')}
+            </Button>
+          </Box>
         )}
-      </Box>
+      </>
     );
   }
 
