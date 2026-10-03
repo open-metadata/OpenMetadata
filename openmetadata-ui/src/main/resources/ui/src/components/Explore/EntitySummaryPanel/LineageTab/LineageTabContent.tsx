@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Owner, Tooltip } from '@openmetadata/ui-core-components';
-import { Button, Typography } from 'antd';
+import {
+  Button,
+  Owner,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -153,9 +157,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             {searchClassBase.getEntityIcon(entityType)}
           </span>
         )}
-        <Typography.Text className="item-entity-type-text">
+        <Typography className="item-entity-type-text">
           {capitalize(entityType)}
-        </Typography.Text>
+        </Typography>
       </>
     );
   };
@@ -183,10 +187,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'upstream' ? 'active' : ''
           }`}
+          color="tertiary"
           data-testid={`upstream-button-${
             filter === 'upstream' ? 'active' : ''
           }`}
-          size="small"
+          size="sm"
           onClick={() => onFilterChange('upstream')}>
           <span
             className="lineage-filter-button-text"
@@ -204,10 +209,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'downstream' ? 'active' : ''
           }`}
+          color="tertiary"
           data-testid={`downstream-button-${
             filter === 'downstream' ? 'active' : ''
           }`}
-          size="small"
+          size="sm"
           onClick={() => onFilterChange('downstream')}>
           <span
             className="lineage-filter-button-text"
@@ -285,9 +291,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                 </div>
                 <div className="lineage-card-content">
-                  <Typography.Text className="item-name-text">
+                  <Typography className="item-name-text">
                     {getEntityName(item.entity)}
-                  </Typography.Text>
+                  </Typography>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
                     {renderEntityTypeInfo(item.entity.entityType)}
                     <span className="item-bullet-separator">
@@ -305,9 +311,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center  no-data-placeholder">
+              <Typography as="p" className="text-center  no-data-placeholder">
                 {t('label.lineage-not-found')}
-              </Typography.Paragraph>
+              </Typography>
             </ErrorPlaceHolderNew>
           </div>
         )}

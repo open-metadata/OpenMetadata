@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SearchOutlined } from '@ant-design/icons';
-import { Input } from 'antd';
+import { Input } from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React, {
@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BORDER_COLOR } from '../../../../constants/constants';
 import {
   LINEAGE_CHILD_ITEMS_PER_PAGE,
   LINEAGE_COLUMN_NODE_SUPPORTED,
@@ -100,9 +99,7 @@ const NodeChildren = ({
   }, [currentNodeColumnsWithLineage]);
 
   const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      const searchQuery = e.target.value;
+    (searchQuery: string) => {
       setSearchValue(searchQuery);
       const currentNodeColumnsToSearch =
         isOnlyShowColumnsWithLineageFilterActive
@@ -191,14 +188,14 @@ const NodeChildren = ({
         data-testid="column-container">
         <div className="search-box">
           <Input
-            data-testid="search-column-input"
+            icon={Search}
+            inputDataTestId="search-column-input"
             placeholder={t('label.search-entity', {
               entity: childrenHeading,
             })}
-            suffix={<SearchOutlined color={BORDER_COLOR} />}
             value={searchValue}
             onChange={handleSearchChange}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
           />
 
           <section className="m-t-md" id="table-columns">

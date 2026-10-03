@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@untitledui/icons';
-import { Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
 import { memo, RefObject, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -162,7 +161,12 @@ const getColumnNameContent = (
   isLoading: boolean
 ) => {
   if (isLoading) {
-    return <Skeleton.Button active data-tesid="loader" size="small" />;
+    return (
+      <div
+        className="tw:h-5 tw:w-16 tw:animate-pulse tw:rounded tw:bg-secondary"
+        data-testid="loader"
+      />
+    );
   }
 
   return (
@@ -175,13 +179,12 @@ const getColumnNameContent = (
           })}
         </div>
       )}
-      <Typography.Text
+      <Typography
+        as="span"
         className="custom-node-column-label"
-        ellipsis={{
-          tooltip: true,
-        }}>
+        ellipsis={{ tooltip: true }}>
         {getEntityName(column)}
-      </Typography.Text>
+      </Typography>
     </>
   );
 };

@@ -10,11 +10,60 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, InputNumber, Modal } from 'antd';
-import React from 'react';
+import {
+  Button,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import React, { useEffect } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { LineageConfigModalProps } from './EntityLineage.interface';
+import {
+  LineageConfig,
+  LineageConfigModalProps,
+} from './EntityLineage.interface';
+
+type DepthField = 'upstreamDepth' | 'downstreamDepth' | 'nodesPerLayer';
+
+type LineageConfigFormValues = Record<DepthField, string>;
+
+const FIELDS: {
+  name: DepthField;
+  label: string;
+  tooltip: string;
+  testId: string;
+  min: number;
+}[] = [
+  {
+    name: 'upstreamDepth',
+    label: 'label.upstream-depth',
+    tooltip: 'message.upstream-depth-tooltip',
+    testId: 'field-upstream',
+    min: 0,
+  },
+  {
+    name: 'downstreamDepth',
+    label: 'label.downstream-depth',
+    tooltip: 'message.downstream-depth-tooltip',
+    testId: 'field-downstream',
+    min: 0,
+  },
+  {
+    name: 'nodesPerLayer',
+    label: 'label.nodes-per-layer',
+    tooltip: 'message.nodes-per-layer-tooltip',
+    testId: 'field-nodes-per-layer',
+    min: 5,
+  },
+];
+
+const toFormValues = (config: LineageConfig): LineageConfigFormValues => ({
+  upstreamDepth: String(config.upstreamDepth ?? ''),
+  downstreamDepth: String(config.downstreamDepth ?? ''),
+  nodesPerLayer: String(config.nodesPerLayer ?? ''),
+});
 
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
@@ -23,70 +72,88 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const { control, handleSubmit, reset } = useForm<LineageConfigFormValues>({
+    defaultValues: toFormValues(config),
+  });
+
+  useEffect(() => {
+    if (visible) {
+      reset(toFormValues(config));
+    }
+  }, [visible, config, reset]);
+
+  // Only the edited fields are emitted, matching the previous AntD onFinish payload.
+  const onSubmit = handleSubmit((values) =>
+    onSave({
+      upstreamDepth: Number(values.upstreamDepth),
+      downstreamDepth: Number(values.downstreamDepth),
+      nodesPerLayer: Number(values.nodesPerLayer),
+    } as LineageConfig)
+  );
 
   return (
-    <Modal
-      maskClosable={false}
-      open={visible}
-      title={t('label.lineage-config')}
-      onCancel={onCancel}
-      onOk={form.submit}>
-      <Form
-        form={form}
-        initialValues={config}
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={onSave}>
-        <Form.Item
-          label={t('label.upstream-depth')}
-          name="upstreamDepth"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 0,
-            },
-          ]}
-          tooltip={t('message.upstream-depth-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-upstream" />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.downstream-depth')}
-          name="downstreamDepth"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 0,
-            },
-          ]}
-          tooltip={t('message.downstream-depth-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-downstream" />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.nodes-per-layer')}
-          name="nodesPerLayer"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 5,
-            },
-          ]}
-          tooltip={t('message.nodes-per-layer-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-nodes-per-layer" />
-        </Form.Item>
-      </Form>
-    </Modal>
+    <ModalOverlay
+      isDismissable={false}
+      isOpen={visible}
+      style={{ zIndex: 'var(--om-z-modal)' }}
+      onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          title={t('label.lineage-config')}
+          width={520}
+          onClose={onCancel}>
+          <Dialog.Content>
+            <form className="tw:flex tw:flex-col tw:gap-4" onSubmit={onSubmit}>
+              {FIELDS.map(({ name, label, tooltip, testId, min }) => (
+                <Controller
+                  control={control}
+                  key={name}
+                  name={name}
+                  render={({ field, fieldState }) => (
+                    <Input
+                      isRequired
+                      hint={fieldState.error?.message}
+                      inputDataTestId={testId}
+                      isInvalid={Boolean(fieldState.error)}
+                      label={t(label)}
+                      name={field.name}
+                      ref={field.ref}
+                      tooltip={t(tooltip)}
+                      type="number"
+                      validationBehavior="aria"
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
+                  )}
+                  rules={{
+                    required: t('message.field-text-is-required', {
+                      fieldText: t(label),
+                    }),
+                    min: {
+                      value: min,
+                      message: t('message.entity-size-less-than', {
+                        entity: t(label),
+                        min,
+                      }),
+                    },
+                  }}
+                />
+              ))}
+            </form>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button color="primary" onPress={() => onSubmit()}>
+              {t('label.ok')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

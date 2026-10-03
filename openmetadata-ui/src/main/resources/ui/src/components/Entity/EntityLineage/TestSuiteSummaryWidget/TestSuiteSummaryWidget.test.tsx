@@ -20,18 +20,11 @@ const mockSummary = {
   failed: 2,
 };
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: {
-    Button: jest.fn().mockImplementation(() => <div>Skeleton.Button</div>),
-  },
-}));
-
 describe('TestSuiteSummaryWidget', () => {
   it('should show loader when isLoading is true', () => {
     render(<TestSuiteSummaryWidget isLoading />);
 
-    expect(screen.getByText('Skeleton.Button')).toBeInTheDocument();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
     expect(screen.queryByTestId('test-passed-value')).toBeNull();
     expect(screen.queryByTestId('test-aborted-value')).toBeNull();
     expect(screen.queryByTestId('test-failed-value')).toBeNull();

@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RightOutlined } from '@ant-design/icons';
-import { Select, Space, Typography } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import { Select, SelectItemType } from '@openmetadata/ui-core-components';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { Collection, Key, ListBoxLoadMoreItem } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { useShallow } from 'zustand/react/shallow';
@@ -24,7 +30,6 @@ import {
   NODE_ITEMS_PAGE_SIZE,
   ZOOM_TRANSITION_DURATION,
 } from '../../../../constants/Lineage.constants';
-import { Column } from '../../../../generated/entity/data/table';
 import { LineagePlatformView } from '../../../../hooks/lineage/types';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';
@@ -33,6 +38,11 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useLineageHandlers } from '../../../Lineage/Lineage/LineageHandlersContext';
+
+type LineageSearchOption = SelectItemType & {
+  label: string;
+  content: ReactNode;
+};
 
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
@@ -46,15 +56,17 @@ const LineageSearchSelect = () => {
   const { zoomValue, isPlatformLineage, platformView, setSelectedColumn } =
     useLineageStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [allOptions, setAllOptions] = useState<DefaultOptionType[]>([]);
-  const [renderedOptions, setRenderedOptions] = useState<DefaultOptionType[]>(
+  const [allOptions, setAllOptions] = useState<LineageSearchOption[]>([]);
+  const [renderedOptions, setRenderedOptions] = useState<LineageSearchOption[]>(
     []
   );
   const [searchValue, setSearchValue] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [inputValue, setInputValue] = useState<string>('');
+  const [selectedOption, setSelectedOption] =
+    useState<LineageSearchOption | null>(null);
 
   const generateNodeOptions = useCallback(() => {
-    const optionsMap: Map<string, DefaultOptionType> = new Map();
+    const optionsMap: Map<string, LineageSearchOption> = new Map();
 
     nodes.forEach((nodeObj) => {
       const { node } = nodeObj.data;
@@ -62,27 +74,28 @@ const LineageSearchSelect = () => {
         return;
       }
 
-      const nodeOption = {
-        label: (
-          <Space data-testid={`option-${node.fullyQualifiedName}`} size={0}>
+      const nodeOption: LineageSearchOption = {
+        id: node.fullyQualifiedName,
+        label: getEntityName(node),
+        content: (
+          <span
+            className="tw:flex tw:items-center tw:gap-1"
+            data-testid={`option-${node.fullyQualifiedName}`}>
             <img
               alt={node.serviceType}
-              className="m-r-xss"
               height="16px"
               src={serviceUtilClassBase.getServiceTypeLogo(node)}
               width="16px"
             />
-            <Typography.Text>{getEntityName(node)}</Typography.Text>
-          </Space>
+            <span className="tw:truncate">{getEntityName(node)}</span>
+          </span>
         ),
-        value: node.fullyQualifiedName,
-        dataLabel: getEntityName(node),
       };
-      optionsMap.set(nodeOption.value, nodeOption);
+      optionsMap.set(nodeOption.id, nodeOption);
 
       const { children: childrenFlatten } = getEntityChildrenAndLabel(node);
 
-      childrenFlatten.forEach((column: Column) => {
+      childrenFlatten.forEach((column) => {
         // A metric is its own column-lineage endpoint, so its only child is the
         // node itself. Both options key on FQN, so without this the child would
         // overwrite the node option added above and render the node with the
@@ -91,36 +104,39 @@ const LineageSearchSelect = () => {
           return;
         }
 
-        const columnOption = {
-          label: (
-            <div
-              className="d-flex items-center gap-1"
+        const columnOption: LineageSearchOption = {
+          id: column.fullyQualifiedName ?? '',
+          label: getEntityName(column),
+          content: (
+            <span
+              className="tw:flex tw:items-center tw:gap-1"
               data-testid={`option-${column.fullyQualifiedName}`}>
-              <div className="d-flex items-center gap-1">
+              <span className="tw:flex tw:items-center tw:gap-1">
                 <img
                   alt={node.serviceType}
                   height="16px"
                   src={serviceUtilClassBase.getServiceTypeLogo(node)}
                   width="16px"
                 />
-                <Typography.Text className="text-grey-muted text-xs">
+                <span className="tw:text-xs tw:text-tertiary">
                   {getEntityName(node)}
-                </Typography.Text>
-                <RightOutlined className="text-grey-muted text-xss" />
-              </div>
-              <div className="d-flex items-center gap-1 ">
+                </span>
+                <ChevronRight
+                  aria-hidden="true"
+                  className="tw:size-3 tw:text-fg-quaternary"
+                />
+              </span>
+              <span className="tw:flex tw:items-center tw:gap-1">
                 {searchClassBase.getEntityIconWithBg(
                   node.entityType ?? '',
                   EntityIconSize.Size14
                 )}
-                <Typography.Text>{getEntityName(column)}</Typography.Text>
-              </div>
-            </div>
+                <span className="tw:truncate">{getEntityName(column)}</span>
+              </span>
+            </span>
           ),
-          value: column.fullyQualifiedName,
-          dataLabel: getEntityName(column),
         };
-        optionsMap.set(columnOption.value, columnOption);
+        optionsMap.set(columnOption.id, columnOption);
       });
     });
 
@@ -129,11 +145,9 @@ const LineageSearchSelect = () => {
 
   useEffect(() => {
     if (isDropdownOpen && allOptions.length === 0) {
-      setIsLoading(true);
       const options = generateNodeOptions();
       setAllOptions(options);
       setRenderedOptions(options.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-      setIsLoading(false);
     }
   }, [isDropdownOpen, allOptions.length, generateNodeOptions]);
 
@@ -147,10 +161,7 @@ const LineageSearchSelect = () => {
     (value: string) => {
       if (value) {
         const filteredOptions = allOptions.filter((option) =>
-          option.dataLabel
-            ?.toString()
-            .toLowerCase()
-            .includes(value.toLowerCase())
+          option.label.toLowerCase().includes(value.toLowerCase())
         );
         setRenderedOptions(filteredOptions);
       } else {
@@ -160,38 +171,27 @@ const LineageSearchSelect = () => {
     [allOptions]
   );
 
-  // Create a debounced version of the filter function
   const debouncedFilterOptions = useMemo(
     () => debounce(filterOptions, DEBOUNCE_TIMEOUT),
     [filterOptions]
   );
 
-  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       debouncedFilterOptions.cancel();
     };
   }, [debouncedFilterOptions]);
 
-  const handleSearch = (value: string) => {
-    setSearchValue(value);
-    debouncedFilterOptions(value);
-  };
-
   const loadMoreData = () => {
-    if (searchValue) {
-      // If searching, just use the filtered options from allOptions
-      filterOptions(searchValue);
-    } else {
-      const nextLength = Math.min(
-        renderedOptions.length + NODE_ITEMS_PAGE_SIZE,
-        allOptions.length
-      );
-      setRenderedOptions(allOptions.slice(0, nextLength));
+    if (searchValue || renderedOptions.length >= allOptions.length) {
+      return;
     }
+    setRenderedOptions(
+      allOptions.slice(0, renderedOptions.length + NODE_ITEMS_PAGE_SIZE)
+    );
   };
 
-  const handleDropdownVisibleChange = useCallback(
+  const handleOpenChange = useCallback(
     (open: boolean) => {
       setIsDropdownOpen(open);
       if (!open) {
@@ -202,13 +202,6 @@ const LineageSearchSelect = () => {
     },
     [allOptions, debouncedFilterOptions]
   );
-
-  const handlePopupScroll = (e: React.UIEvent<HTMLElement, UIEvent>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    if (scrollTop + clientHeight >= scrollHeight - 10) {
-      loadMoreData();
-    }
-  };
 
   const onOptionSelect = useCallback(
     (value?: string) => {
@@ -245,32 +238,66 @@ const LineageSearchSelect = () => {
     [onNodeClick, reactFlowInstance, setSelectedColumn, nodes, zoomValue]
   );
 
+  // Both inputValue and selectedKey are controlled, so react-aria never
+  // rewrites the input itself: it re-emits the current key on blur/close to
+  // ask for the text to be synced back, and leaves clearing to us.
+  const handleSelectionChange = (key: Key | null) => {
+    const id = key === null ? null : String(key);
+    if (id === (selectedOption?.id ?? null)) {
+      setInputValue(selectedOption?.label ?? '');
+
+      return;
+    }
+    const option = allOptions.find((opt) => opt.id === id) ?? null;
+    setSelectedOption(option);
+    setInputValue(option?.label ?? '');
+    onOptionSelect(id ?? undefined);
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    setSearchValue(value);
+    debouncedFilterOptions(value);
+    if (!value && selectedOption) {
+      setSelectedOption(null);
+      onOptionSelect(undefined);
+    }
+  };
+
   if (isPlatformLineage || platformView !== LineagePlatformView.None) {
     return null;
   }
 
   return (
-    <Select
-      allowClear
-      showSearch
-      className="custom-control-search-box"
+    <Select.ComboBox
+      allowsEmptyCollection
+      aria-label={t('label.search-entity', {
+        entity: t('label.lineage'),
+      })}
+      className="tw:w-80"
       data-testid="lineage-search"
-      dropdownMatchSelectWidth={false}
-      listHeight={300}
-      loading={isLoading}
-      optionFilterProp="dataLabel"
-      optionLabelProp="dataLabel"
-      options={renderedOptions}
+      emptyState={t('label.no-data-found')}
+      fontSize="sm"
+      inputValue={inputValue}
+      items={renderedOptions}
       placeholder={t('label.search-entity', {
         entity: t('label.lineage'),
       })}
-      popupClassName="lineage-search-options-list"
-      searchValue={searchValue}
-      onChange={onOptionSelect}
-      onDropdownVisibleChange={handleDropdownVisibleChange}
-      onPopupScroll={handlePopupScroll}
-      onSearch={handleSearch}
-    />
+      selectedKey={selectedOption?.id ?? null}
+      shortcut={false}
+      size="md"
+      onInputChange={handleInputChange}
+      onOpenChange={handleOpenChange}
+      onSelectionChange={handleSelectionChange}>
+      <Collection items={renderedOptions}>
+        {(option) => (
+          <Select.Item id={option.id} textValue={option.label}>
+            {option.content}
+          </Select.Item>
+        )}
+      </Collection>
+      <ListBoxLoadMoreItem onLoadMore={loadMoreData} />
+    </Select.ComboBox>
   );
 };
 

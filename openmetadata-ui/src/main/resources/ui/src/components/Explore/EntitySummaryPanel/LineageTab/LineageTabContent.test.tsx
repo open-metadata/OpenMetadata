@@ -39,6 +39,31 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
   Owner: jest.fn().mockReturnValue(<></>),
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick, className, size, ...props }) => (
+      <button
+        className={className}
+        data-size={size}
+        onClick={onClick}
+        {...props}>
+        {children}
+      </button>
+    )),
+  Typography: jest
+    .fn()
+    .mockImplementation(
+      ({ children, className, as: Component = 'span', ...props }) => (
+        <Component
+          className={className}
+          data-testid={
+            Component === 'p' ? 'typography-paragraph' : 'typography-text'
+          }
+          {...props}>
+          {children}
+        </Component>
+      )
+    ),
   Breadcrumbs: jest
     .fn()
     .mockImplementation(
@@ -106,37 +131,6 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
         />
       </div>
     )),
-}));
-
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick, className, size, ...props }) => (
-      <button
-        className={className}
-        data-size={size}
-        data-testid="button"
-        onClick={onClick}
-        {...props}>
-        {children}
-      </button>
-    )),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-    Paragraph: jest
-      .fn()
-      .mockImplementation(({ children, className, ...props }) => (
-        <p className={className} data-testid="typography-paragraph" {...props}>
-          {children}
-        </p>
-      )),
-  },
 }));
 
 // Mock SVG components with unique implementations

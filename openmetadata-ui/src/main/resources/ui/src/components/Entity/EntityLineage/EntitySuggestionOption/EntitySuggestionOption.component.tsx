@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tag } from 'antd';
+import { Badge, Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { get } from 'lodash';
 import { FC, useMemo } from 'react';
-import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { getEntityIcon } from '../../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -54,14 +53,13 @@ const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
 
   return (
     <Button
-      block
       className={classNames(
-        'd-flex items-center entity-suggestion-option-btn p-0',
+        'd-flex items-center entity-suggestion-option-btn tw:w-full tw:justify-start tw:p-0!',
         className
       )}
+      color="tertiary"
       data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
       key={entity.fullyQualifiedName}
-      type="text"
       onClick={() => {
         onSelectHandler?.(entity);
       }}>
@@ -83,11 +81,13 @@ const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
           </div>
         </div>
         {showEntityTypeBadge && (
-          <Tag
+          <Badge
             className="entity-tag text-xs ml-2 whitespace-nowrap"
-            color={PRIMARY_COLOR}>
+            color="brand"
+            size="sm"
+            type="color">
             {(entity as SourceType)?.entityType}
-          </Tag>
+          </Badge>
         )}
       </div>
     </Button>

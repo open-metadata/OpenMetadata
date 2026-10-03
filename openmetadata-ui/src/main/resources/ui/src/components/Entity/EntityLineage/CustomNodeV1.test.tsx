@@ -156,6 +156,7 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
 });
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   ButtonUtility: jest
     .fn()
     .mockImplementation(

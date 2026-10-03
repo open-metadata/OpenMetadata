@@ -10,14 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { DEBOUNCE_TIMEOUT } from '../../../../constants/Lineage.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import { LineagePlatformView } from '../../../../hooks/lineage/types';
@@ -30,10 +25,11 @@ const mockedNodes = [
     data: {
       node: {
         fullyQualifiedName: 'test1',
+        name: 'test1',
         entityType: EntityType.TABLE,
         columns: [
-          { fullyQualifiedName: 'column1' },
-          { fullyQualifiedName: 'column2' },
+          { fullyQualifiedName: 'column1', name: 'column1' },
+          { fullyQualifiedName: 'column2', name: 'column2' },
         ],
       },
     },
@@ -43,6 +39,7 @@ const mockedNodes = [
     data: {
       node: {
         fullyQualifiedName: 'test2',
+        name: 'test2',
       },
     },
     position: { x: 200, y: 200 },
@@ -51,6 +48,7 @@ const mockedNodes = [
     data: {
       node: {
         fullyQualifiedName: 'test3',
+        name: 'test3',
       },
     },
     position: { x: 300, y: 300 },
@@ -109,8 +107,17 @@ jest.mock('../../../../hooks/useLineageStore', () => ({
 }));
 
 describe('LineageSearchSelect', () => {
+  let user: ReturnType<typeof userEvent.setup>;
+
+  const openDropdown = () => user.click(screen.getByRole('combobox'));
+
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+    user = userEvent.setup({
+      advanceTimers: jest.advanceTimersByTime,
+      delay: null,
+    });
     (useLineageHandlers as jest.Mock).mockImplementation(() => ({
       onNodeClick: mockNodeClick,
     }));
@@ -119,40 +126,25 @@ describe('LineageSearchSelect', () => {
     );
   });
 
+  afterEach(() => jest.useRealTimers());
+
   it('should render select with options', async () => {
-    const { container } = render(<LineageSearchSelect />);
-    await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
-    });
+    render(<LineageSearchSelect />);
 
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
+    expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
 
-    const option1 = await screen.findByTestId('option-test1');
+    await openDropdown();
 
-    expect(option1).toBeInTheDocument();
+    expect(await screen.findByTestId('option-test1')).toBeInTheDocument();
+    expect(screen.getByTestId('option-column1')).toBeInTheDocument();
   });
 
   it('should call onNodeClick and center the node', async () => {
-    const { container } = render(<LineageSearchSelect />);
-    await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
-    });
+    render(<LineageSearchSelect />);
+    await openDropdown();
+    await user.click(await screen.findByTestId('option-test1'));
 
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
-
-    const option1 = await screen.findByTestId('option-test1');
-
-    expect(option1).toBeInTheDocument();
-
-    fireEvent.click(option1);
-
-    expect(mockNodeClick).toHaveBeenCalled();
+    expect(mockNodeClick).toHaveBeenCalledWith(mockedNodes[0]);
     // The laid-out position from React Flow, not the origin the provider's copy
     // still carries: centring on (0,0) leaves the picked node off-viewport, and
     // onlyRenderVisibleElements then never draws it.
@@ -164,23 +156,36 @@ describe('LineageSearchSelect', () => {
   });
 
   it('should call onColumnClick', async () => {
-    const { container } = render(<LineageSearchSelect />);
-    await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
-    });
+    render(<LineageSearchSelect />);
+    await openDropdown();
+    await user.click(await screen.findByTestId('option-column1'));
 
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
+    expect(mockColumnClick).toHaveBeenCalledWith('column1');
+    expect(mockNodeClick).not.toHaveBeenCalled();
+  });
 
-    const column = await screen.findByTestId('option-column1');
+  it('should filter options by typed text', async () => {
+    render(<LineageSearchSelect />);
+    await openDropdown();
+    await screen.findByTestId('option-test1');
+    await user.type(screen.getByRole('combobox'), 'column2');
+    await act(async () => jest.advanceTimersByTime(DEBOUNCE_TIMEOUT));
 
-    expect(column).toBeInTheDocument();
+    expect(screen.getByTestId('option-column2')).toBeInTheDocument();
+    expect(screen.queryByTestId('option-test1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('option-column1')).not.toBeInTheDocument();
+  });
 
-    fireEvent.click(column);
+  it('should show the selection and clear the column when the input is cleared', async () => {
+    render(<LineageSearchSelect />);
+    await openDropdown();
+    await user.click(await screen.findByTestId('option-column1'));
 
-    expect(mockColumnClick).toHaveBeenCalled();
+    expect(screen.getByRole('combobox')).toHaveValue('column1');
+
+    await user.clear(screen.getByRole('combobox'));
+
+    expect(mockColumnClick).toHaveBeenLastCalledWith('');
   });
 
   it('should not render when platform lineage is enabled', () => {
@@ -201,34 +206,5 @@ describe('LineageSearchSelect', () => {
     const { container } = render(<LineageSearchSelect />);
 
     expect(container).toBeEmptyDOMElement();
-  });
-
-  it('should handle dropdown visibility change', async () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(
-      mockStoreImplementation({ isPlatformLineage: false })
-    );
-    const { container } = render(<LineageSearchSelect />);
-    await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
-    });
-
-    // Open dropdown
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
-
-    // Close dropdown
-    await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
-      selectElm && userEvent.click(selectElm);
-    });
-
-    // Verify search value is cleared
-    const searchInput = container.querySelector(
-      '.ant-select-selection-search-input'
-    ) as HTMLInputElement;
-
-    expect(searchInput?.value).toBe('');
   });
 });

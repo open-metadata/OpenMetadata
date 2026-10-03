@@ -1065,13 +1065,12 @@ test.describe('Lineage Filters', () => {
     await performZoomOut(page);
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
-    await searchSelect.click();
-    await page
-      .getByTestId('lineage-search')
-      .getByRole('combobox')
-      .fill(topicEntity.entity.name);
+    await searchSelect.getByRole('combobox').fill(topicEntity.entity.name);
 
-    await page.getByTestId(`option-${topicFqn}`).click();
+    await page
+      .locator('[role="listbox"]:visible')
+      .getByTestId(`option-${topicFqn}`)
+      .click();
 
     await page.locator('.lineage-entity-panel').waitFor();
     await page
