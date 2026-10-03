@@ -143,10 +143,14 @@ const ActivityFeedCardNew = ({
 
   const { entityFQN, entityType } = useMemo(() => {
     const aboutValue = feed?.about ?? activity?.about ?? '';
+    // `||`, not `??`: the EntityLink accessors return '' for a missing or
+    // unparseable link, and an activity event's `about` is optional. `??` would
+    // keep that '' and skip the entity reference the event does carry, leaving
+    // the card with no entity link, icon or popover.
     const entityFQN =
-      getEntityFQN(aboutValue) ?? activity?.entity?.fullyQualifiedName ?? '';
+      getEntityFQN(aboutValue) || activity?.entity?.fullyQualifiedName || '';
     const entityType =
-      getEntityType(aboutValue) ?? (activity?.entity?.type as EntityType) ?? '';
+      getEntityType(aboutValue) || (activity?.entity?.type as EntityType) || '';
 
     return { entityFQN, entityType };
   }, [feed?.about, activity?.about, activity?.entity]);

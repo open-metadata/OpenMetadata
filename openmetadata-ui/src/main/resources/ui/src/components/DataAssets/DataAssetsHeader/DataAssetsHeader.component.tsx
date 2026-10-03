@@ -1200,7 +1200,6 @@ export const DataAssetsHeader = ({
           className="tw:mt-3"
           testId="entity-header-announcements"
           onItemClick={handleOpenAnnouncementDrawer}
-          onViewAll={handleOpenAnnouncementDrawer}
         />
       )}
 
