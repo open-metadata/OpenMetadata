@@ -180,9 +180,7 @@ test.describe(
 
         await openAddCustomizeWidgetModal(adminPage);
 
-        await expect(adminPage.locator('[data-testid="loader"]')).toHaveCount(
-          0
-        );
+        await waitForAllLoadersToDisappear(adminPage);
 
         // Check if 'check' icon is present for existing widgets
         await expect(

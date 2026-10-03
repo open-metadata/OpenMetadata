@@ -23,7 +23,11 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
-import { addMultiOwner, removeOwner } from '../../utils/entity';
+import {
+  addMultiOwner,
+  removeOwner,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
   addAssetsToTag,
@@ -238,9 +242,7 @@ test.describe('Tag Page with Admin Roles', () => {
       )}`,
       { waitUntil: 'domcontentloaded' }
     );
-    await expect(
-      adminPage.getByTestId('tags-container').getByTestId('loader')
-    ).toHaveCount(0);
+    await waitForAllLoadersToDisappear(adminPage.getByTestId('tags-container'));
 
     await expect(adminPage.getByTestId('add-new-tag-button')).toBeVisible();
 
@@ -271,9 +273,7 @@ test.describe('Tag Page with Admin Roles', () => {
       )}`,
       { waitUntil: 'domcontentloaded' }
     );
-    await expect(
-      adminPage.getByTestId('tags-container').getByTestId('loader')
-    ).toHaveCount(0);
+    await waitForAllLoadersToDisappear(adminPage.getByTestId('tags-container'));
 
     await expect(adminPage.getByTestId('domain-link')).toContainText(
       domain.data.displayName
@@ -366,11 +366,9 @@ test.describe('Tag Page with Admin Roles', () => {
     const openClassification = async () => {
       await redirectToHomePage(adminPage);
       await sidebarClick(adminPage, SidebarItem.TAGS);
-      await expect(
-        adminPage.locator(
-          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
-        )
-      ).toHaveCount(0, { timeout: 30000 });
+      await waitForAllLoadersToDisappear(
+        adminPage.locator('[data-testid="tags-container"] .table-container')
+      );
 
       const classificationEntry = adminPage
         .locator('[data-testid="side-panel-classification"]')
@@ -416,11 +414,9 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload({ waitUntil: 'domcontentloaded' });
-      await expect(
-        adminPage.locator(
-          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
-        )
-      ).toHaveCount(0, { timeout: 30000 });
+      await waitForAllLoadersToDisappear(
+        adminPage.locator('[data-testid="tags-container"] .table-container')
+      );
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeDisabled();
 
@@ -441,11 +437,9 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload({ waitUntil: 'domcontentloaded' });
-      await expect(
-        adminPage.locator(
-          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
-        )
-      ).toHaveCount(0, { timeout: 30000 });
+      await waitForAllLoadersToDisappear(
+        adminPage.locator('[data-testid="tags-container"] .table-container')
+      );
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeEnabled();
     } finally {

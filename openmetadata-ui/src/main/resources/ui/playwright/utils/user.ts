@@ -169,10 +169,7 @@ export const softDeleteUserProfilePage = async (
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
-  await page
-    .locator('.user-list-table')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.locator('.user-list-table'));
 
   await page.getByTestId(userName).click();
 
@@ -625,9 +622,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
 
-  await expect(
-    page.getByTestId('drop-down-menu').getByTestId('loader')
-  ).toHaveCount(0);
+  await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'

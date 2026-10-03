@@ -828,9 +828,6 @@
   "playwright/utils/activityFeed.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
-    },
-    "playwright/no-wait-for-selector": {
-      "count": 1
     }
   },
   "playwright/utils/advancedSearch.ts": {
@@ -959,9 +956,6 @@
   "playwright/utils/reviewerWorkflow.utils.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    },
-    "playwright/no-wait-for-selector": {
-      "count": 2
     }
   },
   "playwright/utils/searchRBAC.ts": {

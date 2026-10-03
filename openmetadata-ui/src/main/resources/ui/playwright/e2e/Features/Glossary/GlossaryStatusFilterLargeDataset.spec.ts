@@ -109,12 +109,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     ]);
 
     // Wait for table loader to disappear
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
   };
 
   // Reusable helper to verify row statuses
@@ -169,14 +166,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       }
     });
 
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 10000 })
-      .catch(() => {
-        // Ignore timeout
-      });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
     // eslint-disable-next-line playwright/no-wait-for-timeout -- filter results need time to render
     await page.waitForTimeout(500);
   };
@@ -240,11 +232,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     await disableEtagConditionalReads(page);
     await glossary.visitEntityPage(page);
     await page.getByTestId('glossary-terms-table').waitFor();
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
   });
 
   // ==================== STATUS FILTER TESTS ====================

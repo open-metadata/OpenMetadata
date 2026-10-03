@@ -700,9 +700,7 @@ test('Disabled tag should not allow adding assets from Assets tab', async ({
     // Visit the disabled tag page
     await tag1.visitPage(page);
 
-    await expect(
-      page.getByTestId('tags-container').getByTestId('loader')
-    ).toHaveCount(0);
+    await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
     // Verify the disabled badge is visible
     await expect(page.getByTestId('disabled')).toBeVisible();
