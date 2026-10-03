@@ -122,9 +122,17 @@ const TierCard = ({
   const updateTierData = async (value?: string) => {
     setIsLoadingTierData(true);
     const tier = tiers.find((tier) => tier.fullyQualifiedName === value);
-    await updateTier?.(tier);
-    setIsLoadingTierData(false);
-    handleOpenChange(false);
+    try {
+      await updateTier?.(tier);
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-updating-error', { entity: t('label.tier') })
+      );
+    } finally {
+      setIsLoadingTierData(false);
+      handleOpenChange(false);
+    }
   };
 
   const handleCloseTier = () => {

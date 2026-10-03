@@ -19,6 +19,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import TierCard from './TierCard';
 
 const mockTierData = [
@@ -41,7 +42,6 @@ const mockGetTags = jest
   .fn()
   .mockImplementation(() => Promise.resolve({ data: mockTierData }));
 const mockOnUpdate = jest.fn();
-const mockShowErrorToast = jest.fn();
 const mockProps = {
   currentTier: 'currentTier',
   updateTier: mockOnUpdate,
@@ -57,9 +57,9 @@ jest.mock('../Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader</div>);
 });
 
-jest.mock('../../../utils/ToastUtils', () => {
-  return jest.fn().mockImplementation(() => mockShowErrorToast());
-});
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
@@ -181,6 +181,126 @@ describe('Test TierCard Component', () => {
 
     expect(mockGetTags).toHaveBeenCalledWith(
       expect.objectContaining({ parent: 'Tier', disabled: false })
+    );
+  });
+
+  it('should reset loading, show error toast, and request close when Update rejects (controlled)', async () => {
+    const rejectedUpdate = jest
+      .fn()
+      .mockRejectedValue(new Error('save failed'));
+    const onOpenChange = jest.fn();
+
+    await act(async () => {
+      render(
+        <TierCard
+          open
+          currentTier="Tier.Tier1"
+          updateTier={rejectedUpdate}
+          onOpenChange={onOpenChange}>
+          <span>trigger</span>
+        </TierCard>
+      );
+    });
+
+    await screen.findByTestId('radio-btn-Tier1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('update-tier-card'));
+    });
+
+    // The rejection is surfaced…
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+    // …the loading state always resets (no stuck spinner)…
+    await waitFor(() =>
+      expect(screen.queryByText('Loader')).not.toBeInTheDocument()
+    );
+
+    // …and the popover requests to close regardless of the error.
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(rejectedUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ fullyQualifiedName: 'Tier.Tier1' })
+    );
+  });
+
+  it('should close the popover on a failed save and stay usable on reopen (uncontrolled)', async () => {
+    const rejectedUpdate = jest.fn().mockRejectedValue(new Error('409'));
+
+    render(
+      <TierCard currentTier="Tier.Tier1" updateTier={rejectedUpdate}>
+        <Button data-testid="edit-tier">Edit</Button>
+      </TierCard>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-tier'));
+    });
+    await screen.findByTestId('radio-btn-Tier1');
+    // Baseline: after the initial fetch settles, the loader is gone.
+    await waitFor(() =>
+      expect(screen.queryByText('Loader')).not.toBeInTheDocument()
+    );
+
+    // Trigger a failing save.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('update-tier-card'));
+    });
+
+    // Loading state resets and the popover closes itself (handleOpenChange(false)).
+    await waitFor(() =>
+      expect(screen.queryByTestId('cards')).not.toBeInTheDocument()
+    );
+
+    expect(showErrorToast).toHaveBeenCalled();
+
+    // Reopen: tiers are already cached, so getTierData is NOT re-invoked.
+    mockGetTags.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-tier'));
+    });
+    await screen.findByTestId('radio-btn-Tier1');
+
+    expect(mockGetTags).not.toHaveBeenCalled();
+
+    // The card must NOT be stuck loading on reopen.
+    await waitFor(() =>
+      expect(screen.queryByText('Loader')).not.toBeInTheDocument()
+    );
+
+    // The editor remains functional: another (failing) save closes it again.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('update-tier-card'));
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('cards')).not.toBeInTheDocument()
+    );
+  });
+
+  it('should close the popover after a successful save without surfacing an error (uncontrolled)', async () => {
+    const resolvingUpdate = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <TierCard currentTier="Tier.Tier1" updateTier={resolvingUpdate}>
+        <Button data-testid="edit-tier">Edit</Button>
+      </TierCard>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-tier'));
+    });
+    await screen.findByTestId('radio-btn-Tier1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('update-tier-card'));
+    });
+
+    // Save resolved → finally closes the popover and no error toast is shown.
+    await waitFor(() =>
+      expect(screen.queryByTestId('cards')).not.toBeInTheDocument()
+    );
+
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(resolvingUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ fullyQualifiedName: 'Tier.Tier1' })
     );
   });
 });
