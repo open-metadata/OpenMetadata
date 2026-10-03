@@ -125,7 +125,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskAboutServiceCondition());
     conditions.add(getTaskAccessTypeCondition());
     conditions.add(getTaskCreatedAtRangeCondition(tableName));
-    conditions.add(getDarSearchCondition());
+    conditions.add(getTaskSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
@@ -1462,6 +1462,16 @@ public class ListFilter extends Filter<ListFilter> {
     return escapeBackslashAndApostrophe(regexEscaped);
   }
 
+  /**
+   * Escape a value that travels as a LIKE <em>bind</em> parameter: only the LIKE metacharacters
+   * and the escape character itself need escaping. Apostrophes stay as typed — {@link #escape}
+   * doubles them for literal interpolation, which would make a bound search for "it's" match
+   * nothing.
+   */
+  public static String escapeLikeBindValue(String value) {
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+  }
+
   public static String escape(String name) {
     // Escape string to be using in LIKE clause
     // "'" is used for indicated start and end of the string. Use "''" to escape it.
@@ -1582,34 +1592,33 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
-   * Free-text search across DAR-relevant fields. Used by the {@code q} query param on
-   * {@code /v1/tasks/dataAccessRequests}. Database-only — DARs are not indexed into Elasticsearch.
-   * Matches against task name, displayName, the DAR payload.reason, and the about-entity FQN /
-   * displayName.
+   * Free-text search across task fields. Used by the {@code q} query param on the task list
+   * endpoints ({@code /v1/tasks/dataAccessRequests} and the user-scoped {@code /assigned},
+   * {@code /visible}, {@code /owned}, {@code /created} lists). Database-only — tasks are not
+   * indexed into Elasticsearch. Matches against task name, displayName, the request reason in the
+   * payload, and the about-entity FQN / displayName.
    */
-  private String getDarSearchCondition() {
-    String search = queryParams.get("darSearch");
+  private String getTaskSearchCondition() {
+    String search = queryParams.get("taskSearch");
     if (nullOrEmpty(search)) {
       return "";
     }
-    // escape() handles `'` and `_`, but leaves `%` alone (callers like
-    // getCategoryPrefixCondition want trailing `%` as a wildcard). For free-text search the
-    // anchor wildcards we add below are the only ones allowed; escape `%` inside the user
-    // input so callers can't probe rows via `q=%` or smuggle wildcards into the middle.
-    String escaped = "%" + escape(search.trim()).replace("%", "\\%") + "%";
-    queryParams.put("darSearchParam", escaped);
+    // The anchor wildcards added here are the only ones allowed: `%` and `_` in the input are
+    // escaped so callers can't probe rows via `q=%` or smuggle wildcards into the middle.
+    String escaped = "%" + escapeLikeBindValue(search.trim()) + "%";
+    queryParams.put("taskSearchParam", escaped);
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "(LOWER(name) LIKE LOWER(:darSearchParam) "
-          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:darSearchParam) "
-          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.reason')), '')) LIKE LOWER(:darSearchParam) "
-          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.displayName')), '')) LIKE LOWER(:darSearchParam) "
-          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.fullyQualifiedName')), '')) LIKE LOWER(:darSearchParam))";
+      return "(LOWER(name) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.reason')), '')) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.displayName')), '')) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.fullyQualifiedName')), '')) LIKE LOWER(:taskSearchParam))";
     }
-    return "(LOWER(name) LIKE LOWER(:darSearchParam) "
-        + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:darSearchParam) "
-        + "OR LOWER(COALESCE(json->'payload'->>'reason', '')) LIKE LOWER(:darSearchParam) "
-        + "OR LOWER(COALESCE(json->'about'->>'displayName', '')) LIKE LOWER(:darSearchParam) "
-        + "OR LOWER(COALESCE(json->'about'->>'fullyQualifiedName', '')) LIKE LOWER(:darSearchParam))";
+    return "(LOWER(name) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->'payload'->>'reason', '')) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->'about'->>'displayName', '')) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->'about'->>'fullyQualifiedName', '')) LIKE LOWER(:taskSearchParam))";
   }
 
   /**
