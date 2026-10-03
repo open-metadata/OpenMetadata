@@ -292,7 +292,8 @@ export const verifyColumnSuggestion = async (
   const columnSuggestion = suggestionsContainer
     .locator('.suggestion-item')
     .filter({ hasText: columnName })
-    .filter({ hasText: tableName });
+    .filter({ hasText: tableName })
+    .first();
 
   await expect(columnSuggestion).toBeVisible();
 

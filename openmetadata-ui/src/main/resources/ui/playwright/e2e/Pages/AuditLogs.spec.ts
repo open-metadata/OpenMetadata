@@ -55,9 +55,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Wait for dropdown to ensure options are visible
       // Antd dropdowns often render in portal, so we look for text 'Yesterday' globaly or in dropdown
-      const yesterdayOption = page.getByRole('menuitemradio', {
-        name: 'Yesterday',
-      });
+      const yesterdayOption = page
+        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+        .getByText('Yesterday', { exact: true });
       await expect(yesterdayOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -108,9 +108,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByRole('menuitemradio', {
-        name: 'Yesterday',
-      });
+      const yesterdayOption = page
+        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+        .getByText('Yesterday', { exact: true });
       await yesterdayOption.click();
 
       // Verify Time filter is active
@@ -184,9 +184,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByRole('menuitemradio', {
-        name: 'Yesterday',
-      });
+      const yesterdayOption = page
+        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+        .getByText('Yesterday', { exact: true });
       // Wait for API response
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
@@ -224,9 +224,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByRole('menuitemradio', {
-        name: 'Yesterday',
-      });
+      const yesterdayOption = page
+        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+        .getByText('Yesterday', { exact: true });
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
       );
@@ -245,9 +245,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const last7DaysOption = page.getByRole('menuitemradio', {
-        name: 'Last 7 Days',
-      });
+      const last7DaysOption = page
+        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+        .getByText('Last 7 Days', { exact: true });
       await expect(last7DaysOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -326,7 +326,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page
         .getByTestId('drop-down-menu')
-        .getByRole('menuitemradio', { name: 'Table', exact: true })
+        .getByText('Table', { exact: true })
         .click();
       await page.getByTestId('update-btn').click();
       const response = await auditLogResponse;

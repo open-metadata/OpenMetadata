@@ -436,7 +436,8 @@ export async function waitForFirstPipelineStatusNotQueued(page: Page) {
 
     const row = page
       .getByRole('row')
-      .filter({ has: page.getByTestId('logs-button') });
+      .filter({ has: page.getByTestId('logs-button') })
+      .first();
     await expect(row).toBeVisible();
     const statusBadge = row.getByTestId('pipeline-status').last();
     const text = ((await statusBadge.textContent()) ?? '').trim();

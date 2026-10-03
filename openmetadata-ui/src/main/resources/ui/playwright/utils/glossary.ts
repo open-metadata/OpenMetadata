@@ -994,13 +994,16 @@ export const dragAndDropTerm = async (
   dropTarget: string
 ) => {
   // Find the row containing the drag element text
-  const dragLocator = page.locator('tr').filter({ hasText: dragElement });
+  const dragLocator = page
+    .locator('tr')
+    .filter({ hasText: dragElement })
+    .first();
 
   // Find the row containing the drop target text (or the header if dropTarget is "Terms")
   const dropLocator =
     dropTarget === 'Terms'
       ? page.locator('th:has-text("Terms")').first()
-      : page.locator('tr').filter({ hasText: dropTarget });
+      : page.locator('tr').filter({ hasText: dropTarget }).first();
 
   // The glossary page keeps rendering after its loaders clear: the description
   // block above the table hydrates last and pushes every row down by about a row

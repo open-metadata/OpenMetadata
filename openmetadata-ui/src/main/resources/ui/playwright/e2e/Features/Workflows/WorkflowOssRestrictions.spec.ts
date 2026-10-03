@@ -75,7 +75,8 @@ async function openTaskNodeSidebar(page: Page) {
     .filter({ hasNotText: /^Start$/ })
     .filter({ hasNotText: /^End$/ })
     .filter({ hasNotText: /^Approved$/ })
-    .filter({ hasNotText: /^Rejected$/ });
+    .filter({ hasNotText: /^Rejected$/ })
+    .first();
 
   await expect(taskNode).toBeVisible();
   await taskNode.click();
@@ -97,7 +98,8 @@ async function openStartNodeSidebar(page: Page) {
 
   const startNode = page
     .locator('.react-flow__node')
-    .filter({ hasText: /^Start$/ });
+    .filter({ hasText: /^Start$/ })
+    .first();
 
   await expect(startNode).toBeVisible();
   await startNode.click();
@@ -239,7 +241,8 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
           .filter({ hasNotText: /^Start$/ })
           .filter({ hasNotText: /^End$/ })
           .filter({ hasNotText: /^Approved$/ })
-          .filter({ hasNotText: /^Rejected$/ });
+          .filter({ hasNotText: /^Rejected$/ })
+          .first();
 
         await expect(taskNode).toBeVisible();
         await taskNode.click();

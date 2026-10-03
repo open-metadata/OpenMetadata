@@ -285,7 +285,7 @@ test.describe('Context Center - Article Attachments', () => {
       await page.keyboard.press(SHORTCUTS.enter);
       await insertFileViaUpload(page, uploadedFileName);
 
-      await expect(page.getByText(uploadedFileName)).toBeVisible();
+      await expect(page.getByText(uploadedFileName).first()).toBeVisible();
     });
 
     await test.step('verify autosave', async () => {
@@ -297,7 +297,7 @@ test.describe('Context Center - Article Attachments', () => {
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
-      await expect(page.getByText(uploadedFileName)).toBeVisible();
+      await expect(page.getByText(uploadedFileName).first()).toBeVisible();
     });
 
     await test.step('download the file from the inline attachment', async () => {

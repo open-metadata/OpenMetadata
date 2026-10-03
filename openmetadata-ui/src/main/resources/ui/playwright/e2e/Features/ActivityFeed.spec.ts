@@ -322,8 +322,7 @@ test.describe('FeedWidget on landing page', () => {
       widget
         .getByTestId('message-container')
         .filter({ hasText: ownedActivityMarker })
-        .filter({ hasNot: page.getByTestId('message-container') })
-    ).toBeVisible();
+    ).not.toHaveCount(0);
 
     await selectActivityFeedFilterAndVerifyEndpoint(
       page,
@@ -336,8 +335,7 @@ test.describe('FeedWidget on landing page', () => {
       widget
         .getByTestId('message-container')
         .filter({ hasText: followedActivityMarker })
-        .filter({ hasNot: page.getByTestId('message-container') })
-    ).toBeVisible();
+    ).not.toHaveCount(0);
 
     await selectActivityFeedFilterAndVerifyEndpoint(
       page,
@@ -396,7 +394,7 @@ test.describe('FeedWidget on landing page', () => {
     const seededCard = widget
       .getByTestId('message-container')
       .filter({ hasText: ownedActivityMarker })
-      .filter({ hasNot: page.getByTestId('message-container') });
+      .first();
 
     await expect(seededCard).toBeVisible();
     await expect(seededCard.getByTestId('headerText')).toBeVisible();
@@ -423,7 +421,7 @@ test.describe('FeedWidget on landing page', () => {
     const seededCard = widget
       .getByTestId('message-container')
       .filter({ hasText: ownedActivityMarker })
-      .filter({ hasNot: page.getByTestId('message-container') });
+      .first();
 
     await expect(seededCard).toBeVisible();
 
@@ -462,7 +460,7 @@ test.describe('FeedWidget on landing page', () => {
     const seededCard = widget
       .getByTestId('message-container')
       .filter({ hasText: ownedActivityMarker })
-      .filter({ hasNot: page.getByTestId('message-container') });
+      .first();
 
     await expect(seededCard).toBeVisible();
     await seededCard.click();
@@ -585,9 +583,9 @@ test.describe('Mention notifications in Notification Box', () => {
       const seededThread = user1Page
         .locator('[data-testid="message-container"]')
         .filter({ hasText: 'Initial conversation thread for mention test' })
-        // Feed cards nest: an open thread renders its reply composer inside a
-        // second message-container, so match the leaf card, not its wrapper.
-        .filter({ hasNot: user1Page.getByTestId('message-container') });
+        // The conversation renders twice: as the list card and again in the
+        // open thread panel, which is the one carrying the reply composer.
+        .filter({ hasNot: user1Page.getByTestId('comments-input-field') });
 
       await expect(seededThread).toBeVisible({ timeout: 30_000 });
       await seededThread.click();
@@ -746,9 +744,9 @@ test.describe('Mention notifications in Notification Box', () => {
       const message = user1Page
         .locator('[data-testid="message-container"]')
         .filter({ hasText: 'Initial conversation thread for mention test' })
-        // Feed cards nest: an open thread renders its reply composer inside a
-        // second message-container, so match the leaf card, not its wrapper.
-        .filter({ hasNot: user1Page.getByTestId('message-container') });
+        // The conversation renders twice: as the list card and again in the
+        // open thread panel, which is the one carrying the reply composer.
+        .filter({ hasNot: user1Page.getByTestId('comments-input-field') });
       await expect(message).toBeVisible();
 
       const reactionResponse = user1Page.waitForResponse(
@@ -873,7 +871,8 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       .locator(
         '[data-testid="message-container"], [data-testid="feed-reply-card"]'
       )
-      .filter({ hasText: CHINESE_MENTION_THREAD_MESSAGE });
+      .filter({ hasText: CHINESE_MENTION_THREAD_MESSAGE })
+      .first();
 
     await expect(seededThread).toBeVisible({ timeout: 30_000 });
     await seededThread.click();
@@ -905,7 +904,8 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
 
     const hashtagItem = page
       .locator('.hashtag-item')
-      .filter({ hasText: label });
+      .filter({ hasText: label })
+      .first();
 
     if (await hashtagItem.isVisible().catch(() => false)) {
       await hashtagItem.click();

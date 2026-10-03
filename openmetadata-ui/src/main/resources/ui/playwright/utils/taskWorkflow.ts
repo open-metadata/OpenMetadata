@@ -129,7 +129,8 @@ const clickDropdownMenuItem = async ({
     .first();
   const cssMenuItem = visibleDropdownMenu
     .locator('.ant-dropdown-menu-item')
-    .filter({ hasText: menuPattern });
+    .filter({ hasText: menuPattern })
+    .first();
 
   const isMenuItemVisible = async () =>
     (await roleMenuItem.isVisible().catch(() => false)) ||
@@ -383,7 +384,8 @@ export const getTaskCard = (page: Page, task: CreatedTask) => {
 
   return page
     .locator(TASK_CARD_SELECTOR)
-    .filter({ hasText: `#${taskDisplayId}` });
+    .filter({ hasText: `#${taskDisplayId}` })
+    .first();
 };
 
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {

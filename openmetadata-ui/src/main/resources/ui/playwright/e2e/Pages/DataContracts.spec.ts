@@ -427,7 +427,8 @@ test.describe('Data Contracts', () => {
 
           const testTypeOption = page
             .getByRole('option')
-            .filter({ hasText: NEW_TABLE_TEST_CASE.label });
+            .filter({ hasText: NEW_TABLE_TEST_CASE.label })
+            .first();
 
           await expect(testTypeOption).toBeVisible();
 

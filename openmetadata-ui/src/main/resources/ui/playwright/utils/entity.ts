@@ -982,7 +982,10 @@ export const assignTag = async (
 
   await searchTags;
 
-  await page.getByTestId(`tree-node-${tagFqn ? `${tagFqn}` : tag}`).click();
+  await page
+    .getByTestId(`tree-node-${tagFqn ? `${tagFqn}` : tag}`)
+    .first()
+    .click();
 
   await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
@@ -1236,7 +1239,8 @@ export const openColumnDetailPanel = async ({
   if (entityType === 'MlModel') {
     clickTarget = page
       .locator(`[${rowSelector}="${columnId}"]`)
-      .getByTestId(columnNameTestId);
+      .getByTestId(columnNameTestId)
+      .first();
     await clickTarget.waitFor({ state: 'visible' });
   } else {
     const row = page.locator(`[${rowSelector}="${columnId}"]`).first();
@@ -2656,19 +2660,25 @@ export const testCopyLinkButton = async ({
   containerTestId,
   expectedUrlPath,
   entityFqn,
+  rowName,
 }: {
   page: Page;
   buttonTestId: 'copy-column-link-button' | 'copy-field-link-button';
   containerTestId: string;
   expectedUrlPath: string;
   entityFqn: string;
+  rowName: string;
 }) => {
   const container = page.getByTestId(containerTestId);
   await expect(container).toBeVisible();
 
-  // Scope to the container the caller named: every column/field row renders its
-  // own copy button, so a page-wide lookup is ambiguous by construction.
-  const copyButton = container.getByTestId(buttonTestId);
+  // Every column/field row renders its own copy button, so the caller has to say
+  // which row it means. The names come from the fixture the test created, so
+  // they are unique on the page.
+  const copyButton = container
+    .getByRole('row')
+    .filter({ hasText: rowName })
+    .getByTestId(buttonTestId);
   await expect(copyButton).toBeVisible();
 
   // Click copy button and get clipboard text

@@ -250,6 +250,7 @@ test.describe('Container entity specific tests ', () => {
       page,
       buttonTestId: 'copy-column-link-button',
       containerTestId: 'container-data-model-table',
+      rowName: container.childrenSelectorId ?? '',
       expectedUrlPath: '/container/',
       entityFqn: container.entityResponseData?.['fullyQualifiedName'] ?? '',
     });

@@ -402,7 +402,8 @@ export const fillRule = async (
         const exactMatch = dropdown
           .getByRole('option', {
             name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
-          });
+          })
+          .first();
 
         if (await exactMatch.count()) {
           await exactMatch.click();
@@ -410,6 +411,7 @@ export const fillRule = async (
           await dropdown
             .getByRole('option')
             .filter({ hasText: new RegExp(escapeRegex(searchData), 'i') })
+            .first()
             .click();
         }
       }

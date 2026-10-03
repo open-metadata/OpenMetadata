@@ -698,9 +698,12 @@ test.describe(
         await tableSearchResponse;
         await page.waitForLoadState('domcontentloaded');
 
-        const table2Option = page.getByRole('option').filter({
-          hasText: table2.entityResponseData?.['fullyQualifiedName'] ?? '',
-        });
+        const table2Option = page
+          .getByRole('option')
+          .filter({
+            hasText: table2.entityResponseData?.['fullyQualifiedName'] ?? '',
+          })
+          .first();
 
         await expect(table2Option).toBeVisible();
 
@@ -711,6 +714,7 @@ test.describe(
           page
             .getByRole('option')
             .filter({ hasText: table1.entity?.columns[0].name })
+            .first()
         );
 
         // Table 1's popover is still animating out over table 2's trigger;
@@ -723,6 +727,7 @@ test.describe(
           page
             .getByRole('option')
             .filter({ hasText: table2.entity?.columns[0].name })
+            .first()
         );
 
         await expect(table2KeyColumnsInput).not.toBeDisabled();
@@ -735,10 +740,12 @@ test.describe(
         );
         const keyColumnOption = page
           .getByRole('option')
-          .filter({ hasText: table1.entity?.columns[0].name });
+          .filter({ hasText: table1.entity?.columns[0].name })
+          .first();
         const useColumnOption = page
           .getByRole('option')
-          .filter({ hasText: table1.entity?.columns[1].name });
+          .filter({ hasText: table1.entity?.columns[1].name })
+          .first();
         // selectOptionWithRetry, inlined to assert on the open list before
         // picking: if the popover closes first, reopen instead of letting the
         // click wait out the test timeout.
@@ -1036,7 +1043,8 @@ test.describe(
         await page.click('#testCaseFormV1_params_columnName');
         const columnNameOption = page
           .getByRole('option')
-          .filter({ hasText: testCase.columnName });
+          .filter({ hasText: testCase.columnName })
+          .first();
         await columnNameOption.waitFor({ state: 'visible' });
         await columnNameOption.click();
 

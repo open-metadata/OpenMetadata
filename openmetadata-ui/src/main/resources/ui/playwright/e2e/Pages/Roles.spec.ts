@@ -542,7 +542,8 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const policies = ['ApplicationBotPolicy'];
     const roleLocator = page
       .getByTestId('role-name')
-      .filter({ hasText: role.data.displayName });
+      .filter({ hasText: role.data.displayName })
+      .first();
 
     await role.create(apiContext, policies);
 

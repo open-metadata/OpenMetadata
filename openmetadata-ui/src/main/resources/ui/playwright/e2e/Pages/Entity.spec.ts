@@ -937,7 +937,8 @@ pickEntityMatrix(
             // Find count badge - it's a Box with Typography.Text containing just a number
             const countBadge = panelContainer
               .locator('text=/^\\d+$/')
-              .filter({ hasNot: page.locator('.nested-column-name') });
+              .filter({ hasNot: page.locator('.nested-column-name') })
+              .first();
 
             const badgeText = await countBadge.textContent();
 
@@ -1671,7 +1672,8 @@ pickEntityMatrix(
             const columnNameTestId = 'column-name';
             const columnName = page
               .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId(columnNameTestId);
+              .getByTestId(columnNameTestId)
+              .first();
             await columnName.scrollIntoViewIfNeeded();
 
             const profileResponse = page.waitForResponse(

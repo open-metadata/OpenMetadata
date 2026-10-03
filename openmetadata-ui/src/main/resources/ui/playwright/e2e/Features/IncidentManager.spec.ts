@@ -339,12 +339,16 @@ const openIncidentResolveDialog = async (
     await actionTrigger.scrollIntoViewIfNeeded();
     await actionTrigger.click();
 
-    const resolveMenuItem = page.locator(
-      '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible'
-    );
-    const startProgressMenuItem = page.locator(
-      '[data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
-    );
+    const resolveMenuItem = page
+      .locator(
+        '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible'
+      )
+      .last();
+    const startProgressMenuItem = page
+      .locator(
+        '[data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
+      )
+      .last();
     const workflowMenuItem = page
       .locator(
         '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible, [data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'

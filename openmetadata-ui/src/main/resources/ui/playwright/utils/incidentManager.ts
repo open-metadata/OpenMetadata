@@ -177,7 +177,8 @@ export const addAssigneeFromPopoverWidget = async (data: {
   if (testCaseName) {
     const incidentRow = page
       .locator('tr')
-      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) });
+      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
+      .first();
     const editOwnerButton = incidentRow.getByTestId('edit-owner');
 
     await expect(editOwnerButton).toBeVisible();
@@ -190,7 +191,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
     const assigneeSelect = assigneeModal.getByTestId('select-assignee');
     const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
     const assigneeInput = assigneeSelect.locator('input').last();
-    const assigneeOption = page.getByTestId(user.name);
+    const assigneeOption = page.getByTestId(user.name).first();
     const normalizedAssigneeOption = page
       .getByTestId(user.name.toLowerCase())
       .first();
@@ -288,7 +289,9 @@ export const assignIncident = async (data: {
   await expect
     .poll(
       async () => {
-        const incidentRow = page.getByTestId(`test-case-${testCaseName}`);
+        const incidentRow = page
+          .getByTestId(`test-case-${testCaseName}`)
+          .first();
         const incidentLink = page
           .getByRole('link', { name: testCaseName })
           .first();

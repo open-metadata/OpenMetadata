@@ -780,7 +780,8 @@ export class RightPanelPageObject {
     const pattern = new RegExp(normalized.replace(/\s+/g, '\\s*'), 'i');
     return this.getSummaryPanel()
       .getByRole('tab')
-      .filter({ hasText: pattern });
+      .filter({ hasText: pattern })
+      .first();
   }
 
   /**

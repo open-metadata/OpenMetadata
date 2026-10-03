@@ -728,7 +728,7 @@ test.describe('Context Center - Documents Page', () => {
       buffer: Buffer.from('context center upload test file'),
     });
 
-    await expect(modal.getByText(fileName)).toBeVisible();
+    await expect(modal.getByText(fileName).first()).toBeVisible();
 
     const uploadResPromise = page.waitForResponse(
       '/api/v1/contextCenter/drive/files/upload'
@@ -740,7 +740,7 @@ test.describe('Context Center - Documents Page', () => {
     contextFileIdsToCleanup.add(uploadedDocument.id);
 
     await expect(modal).not.toBeVisible();
-    await expect(page.getByText(fileName)).toBeVisible();
+    await expect(page.getByText(fileName).first()).toBeVisible();
   });
 
   // ─── Req 1: All card details (name, size, updatedBy, updatedAt, folder) ──
