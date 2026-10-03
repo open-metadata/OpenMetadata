@@ -28,7 +28,10 @@ import {
   getChangeColumnNameFromDiffValue,
   getChangedEntityName,
   getDiffByFieldName,
+  hasVersionDiffArrayProperty,
+  hasVersionDiffStringProperty,
   isEndsWithField,
+  parseVersionDiffArray,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
 import {
@@ -36,6 +39,22 @@ import {
   getEntityTagDiff,
   getStringEntityDiff,
 } from './EntityVersionUtilsPure';
+
+const isSchemaFieldDiff = (value: unknown): boolean => {
+  if (!hasVersionDiffStringProperty(value, 'name')) {
+    return false;
+  }
+
+  const field = value as { children?: unknown };
+  const validTags = hasVersionDiffArrayProperty(value, 'tags', (tag) =>
+    hasVersionDiffStringProperty(tag, 'tagFQN')
+  );
+  const validChildren =
+    field.children === undefined ||
+    (Array.isArray(field.children) && field.children.every(isSchemaFieldDiff));
+
+  return validTags && validChildren;
+};
 
 export function getNewFieldFromSchemaFieldDiff(
   newCol: Array<Field>
@@ -104,8 +123,9 @@ export function createAddedSchemasDiff(
   schemaFieldsDiff: EntityDiffProps,
   schemaFields: Array<Field> = []
 ) {
-  const newField: Array<Field> = JSON.parse(
-    schemaFieldsDiff.added?.newValue ?? '[]'
+  const newField = parseVersionDiffArray<Field>(
+    schemaFieldsDiff.added?.newValue,
+    isSchemaFieldDiff
   );
 
   newField.forEach((field) => {
@@ -118,8 +138,9 @@ export function addDeletedSchemasDiff(
   colList: Array<Field> = [],
   changedEntity = ''
 ) {
-  const newCol: Array<Field> = JSON.parse(
-    columnsDiff.deleted?.oldValue ?? '[]'
+  const newCol = parseVersionDiffArray<Field>(
+    columnsDiff.deleted?.oldValue,
+    isSchemaFieldDiff
   );
   const newColumns = getNewFieldFromSchemaFieldDiff(newCol);
 
@@ -153,8 +174,9 @@ export function getSchemasDiff(
     createAddedSchemasDiff(schemaFieldsDiff, schemaFields);
   }
   if (schemaFieldsDiff.deleted) {
-    const newField: Array<Field> = JSON.parse(
-      schemaFieldsDiff.deleted?.oldValue ?? '[]'
+    const newField = parseVersionDiffArray<Field>(
+      schemaFieldsDiff.deleted?.oldValue,
+      isSchemaFieldDiff
     );
     const newFields = getNewSchemaFromSchemaDiff(newField);
     const insertNewField = (

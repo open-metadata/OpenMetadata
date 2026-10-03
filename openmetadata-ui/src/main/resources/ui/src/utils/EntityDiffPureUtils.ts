@@ -33,6 +33,51 @@ export const getChangedEntityNewValue = (diffObject?: EntityDiffProps) =>
   diffObject?.deleted?.newValue ??
   diffObject?.updated?.newValue;
 
+// Version history can contain invalid persisted payloads; keep the page usable
+// when an individual array diff cannot be decoded.
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+export const hasVersionDiffStringProperty = (
+  value: unknown,
+  property: string
+): boolean => isRecord(value) && typeof value[property] === 'string';
+
+export const hasVersionDiffArrayProperty = (
+  value: unknown,
+  property: string,
+  isValidItem: (item: unknown) => boolean = () => true
+): boolean =>
+  isRecord(value) &&
+  (value[property] === undefined ||
+    (Array.isArray(value[property]) && value[property].every(isValidItem)));
+
+export const parseVersionDiffArray = <T>(
+  value?: string,
+  isValid: (item: unknown) => boolean = isRecord
+): T[] => {
+  try {
+    const parsed: unknown = JSON.parse(value ?? '[]');
+
+    return Array.isArray(parsed) ? (parsed.filter(isValid) as T[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const parseVersionDiffObject = <T extends object>(
+  value?: string,
+  isValid: (item: unknown) => boolean = isRecord
+): T => {
+  try {
+    const parsed: unknown = JSON.parse(value ?? '{}');
+
+    return isValid(parsed) ? (parsed as T) : ({} as T);
+  } catch {
+    return {} as T;
+  }
+};
+
 export const getChangeColumnNameFromDiffValue = (name?: string) => {
   const nameWithoutInternalQuotes = name?.replaceAll(/"/g, '');
 

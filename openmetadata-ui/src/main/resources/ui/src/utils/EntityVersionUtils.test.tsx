@@ -25,7 +25,10 @@ import {
   ChangeDescription,
   FieldChange,
 } from '../generated/entity/services/databaseService';
-import { getComputeRowCountDiffDisplay } from './EntityVersionUtils';
+import {
+  getComputeRowCountDiffDisplay,
+  renderVersionButton,
+} from './EntityVersionUtils';
 import { getStringEntityDiff } from './EntityVersionUtilsPure';
 // Mock data for testing
 const createMockTableColumn = (
@@ -497,6 +500,16 @@ describe('EntityVersionUtils', () => {
 
       // Should return a React element for removed diff
       expect(result).toBeDefined();
+    });
+  });
+
+  describe('renderVersionButton', () => {
+    it('ignores malformed and unexpected version entries', () => {
+      expect(renderVersionButton('{invalid', '1.0', jest.fn())).toBeNull();
+      expect(renderVersionButton('{}', '1.0', jest.fn())).toBeNull();
+      expect(
+        renderVersionButton('{"version":"invalid"}', '1.0', jest.fn())
+      ).toBeNull();
     });
   });
 });

@@ -47,7 +47,10 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
+  hasVersionDiffStringProperty,
   isEndsWithField,
+  parseVersionDiffArray,
+  parseVersionDiffObject,
 } from './EntityDiffPureUtils';
 import {
   getAddedDiffElement,
@@ -62,7 +65,6 @@ import type {
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
 import { t } from './i18next/LocalUtil';
-import { isValidJSONString } from './StringUtils';
 import { getTagsWithoutTier, getTierTags } from './TablePureUtils';
 
 type EntityColumn = TableColumn | ContainerColumn | Field;
@@ -106,11 +108,13 @@ export const getEntityVersionTags = (
   changeDescription: ChangeDescription
 ) => {
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-  const oldTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityOldValue(tagsDiff) ?? '[]'
+  const oldTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityOldValue(tagsDiff),
+    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
   );
-  const newTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityNewValue(tagsDiff) ?? '[]'
+  const newTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityNewValue(tagsDiff),
+    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
   );
   const flag: { [x: string]: boolean } = {};
   const uniqueTags: Array<TagLabelWithStatus> = [];
@@ -129,28 +133,32 @@ export const getEntityVersionTags = (
 };
 
 export const summaryFormatter = (fieldChange: FieldChange) => {
-  const newValueJSON = isValidJSONString(fieldChange?.newValue)
-    ? JSON.parse(fieldChange?.newValue)
-    : undefined;
-  const oldValueJSON = isValidJSONString(fieldChange?.oldValue)
-    ? JSON.parse(fieldChange?.oldValue)
-    : {};
-
-  const value = newValueJSON ?? oldValueJSON;
+  const value = fieldChange.newValue ?? fieldChange.oldValue;
 
   if (fieldChange.name === EntityField.COLUMNS) {
-    return `${t('label.column-lowercase-plural')} ${value
-      ?.map((val: TableColumn) => val?.name)
+    return `${t(
+      'label.column-lowercase-plural'
+    )} ${parseVersionDiffArray<TableColumn>(value, (item) =>
+      hasVersionDiffStringProperty(item, 'name')
+    )
+      .map((val) => val.name)
       .join(', ')}`;
   } else if (
     fieldChange.name === 'tags' ||
     fieldChange.name?.endsWith('tags')
   ) {
-    return `${t('label.tag-lowercase-plural')} ${value
-      ?.map((val: TagLabel) => val?.tagFQN)
-      ?.join(', ')}`;
+    return `${t(
+      'label.tag-lowercase-plural'
+    )} ${parseVersionDiffArray<TagLabel>(value, (item) =>
+      hasVersionDiffStringProperty(item, 'tagFQN')
+    )
+      .map((val) => val.tagFQN)
+      .join(', ')}`;
   } else if (fieldChange.name === 'owner') {
-    return `${fieldChange.name} ${value.name}`;
+    const owner = parseVersionDiffObject<EntityReference>(value);
+    const ownerName = getEntityName(owner);
+
+    return ownerName ? `${fieldChange.name} ${ownerName}` : fieldChange.name;
   } else {
     return fieldChange.name;
   }
@@ -296,11 +304,13 @@ export function getEntityTagDiff<A extends EntityColumn>(
   changedEntityName?: string,
   entityList?: A[]
 ) {
-  const oldTags: TagLabel[] = JSON.parse(
-    getChangedEntityOldValue(entityDiff) ?? '[]'
+  const oldTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityOldValue(entityDiff),
+    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
   );
-  const newTags: TagLabel[] = JSON.parse(
-    getChangedEntityNewValue(entityDiff) ?? '[]'
+  const newTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityNewValue(entityDiff),
+    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
   );
 
   const formatColumnData = (arr: Array<A>) => {
@@ -310,7 +320,7 @@ export function getEntityTagDiff<A extends EntityColumn>(
         const uniqueTags: TagLabelWithStatus[] = [];
         const tagsDiff = getTagsDiff(oldTags, newTags);
 
-        [...tagsDiff, ...(i.tags as TagLabelWithStatus[])].forEach(
+        [...tagsDiff, ...((i.tags ?? []) as TagLabelWithStatus[])].forEach(
           (elem: TagLabelWithStatus) => {
             if (!flag[elem.tagFQN]) {
               flag[elem.tagFQN] = true;
@@ -337,8 +347,12 @@ export const getEntityReferenceDiffFromFieldName = (
 ) => {
   const entityDiff = getDiffByFieldName(fieldName, changeDescription, true);
 
-  const oldEntity = JSON.parse(getChangedEntityOldValue(entityDiff) ?? '{}');
-  const newEntity = JSON.parse(getChangedEntityNewValue(entityDiff) ?? '{}');
+  const oldEntity = parseVersionDiffObject<EntityReference>(
+    getChangedEntityOldValue(entityDiff)
+  );
+  const newEntity = parseVersionDiffObject<EntityReference>(
+    getChangedEntityNewValue(entityDiff)
+  );
   const entityPlaceholder = getEntityName(entity);
 
   let entityRef = entity;
@@ -390,11 +404,11 @@ export const getOwnerDiff = (
     changeDescription as ChangeDescription
   );
 
-  const addedItems: EntityReference[] = JSON.parse(
-    getChangedEntityNewValue(fieldDiff) ?? '[]'
+  const addedItems = parseVersionDiffArray<EntityReference>(
+    getChangedEntityNewValue(fieldDiff)
   );
-  const deletedItems: EntityReference[] = JSON.parse(
-    getChangedEntityOldValue(fieldDiff) ?? '[]'
+  const deletedItems = parseVersionDiffArray<EntityReference>(
+    getChangedEntityOldValue(fieldDiff)
   );
 
   const unchangedItems = defaultItems.filter(
@@ -442,11 +456,11 @@ export const getDomainDiff = (
     changeDescription as ChangeDescription
   );
 
-  const addedItems: EntityReference[] = JSON.parse(
-    getChangedEntityNewValue(fieldDiff) ?? '[]'
+  const addedItems = parseVersionDiffArray<EntityReference>(
+    getChangedEntityNewValue(fieldDiff)
   );
-  const deletedItems: EntityReference[] = JSON.parse(
-    getChangedEntityOldValue(fieldDiff) ?? '[]'
+  const deletedItems = parseVersionDiffArray<EntityReference>(
+    getChangedEntityOldValue(fieldDiff)
   );
 
   const unchangedItems = defaultItems.filter(
@@ -494,13 +508,15 @@ export const getCommonExtraInfoForVersionDetails = (
   );
 
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-  const newTier = [
-    ...JSON.parse(getChangedEntityNewValue(tagsDiff) ?? '[]'),
-  ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
+  const newTier = parseVersionDiffArray<TagLabel>(
+    getChangedEntityNewValue(tagsDiff),
+    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+  ).find((t) => t.tagFQN?.startsWith('Tier'));
 
-  const oldTier = [
-    ...JSON.parse(getChangedEntityOldValue(tagsDiff) ?? '[]'),
-  ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
+  const oldTier = parseVersionDiffArray<TagLabel>(
+    getChangedEntityOldValue(tagsDiff),
+    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+  ).find((t) => t.tagFQN?.startsWith('Tier'));
 
   let tierDisplayName: ReactNode = '';
 

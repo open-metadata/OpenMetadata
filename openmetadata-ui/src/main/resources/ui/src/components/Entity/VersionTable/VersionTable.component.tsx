@@ -22,6 +22,7 @@ import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
+import { parseVersionDiffArray } from '../../../utils/EntityDiffPureUtils';
 import { searchInColumns } from '../../../utils/EntitySearchUtils';
 import {
   getAllRowKeysByKeyName,
@@ -154,7 +155,9 @@ function VersionTable<T extends Column | SearchIndexField>({
       let deletedTableConstraint: TableConstraint[] | undefined;
 
       addedTableConstraintDiffs?.forEach((diff) => {
-        const constraintNewValue = JSON.parse(diff.newValue);
+        const constraintNewValue = parseVersionDiffArray<TableConstraint>(
+          diff.newValue
+        ).filter((constraint) => Array.isArray(constraint.columns));
         constraintNewValue?.forEach((constraint: TableConstraint) => {
           if (constraint.columns?.includes(name)) {
             addedTableConstraint = [
@@ -166,7 +169,9 @@ function VersionTable<T extends Column | SearchIndexField>({
       });
 
       deletedTableConstraintDiffs?.forEach((diff) => {
-        const constraintOldValue = JSON.parse(diff.oldValue);
+        const constraintOldValue = parseVersionDiffArray<TableConstraint>(
+          diff.oldValue
+        ).filter((constraint) => Array.isArray(constraint.columns));
         constraintOldValue?.forEach((constraint: TableConstraint) => {
           if (constraint.columns?.includes(name)) {
             deletedTableConstraint = [

@@ -39,7 +39,7 @@ export const VersionButton = forwardRef<
       name: updatedBy,
     });
 
-    const versionText = `v${parseFloat(versionNumber).toFixed(1)}`;
+    const versionText = `v${parseFloat(toString(versionNumber)).toFixed(1)}`;
 
     return (
       <div
