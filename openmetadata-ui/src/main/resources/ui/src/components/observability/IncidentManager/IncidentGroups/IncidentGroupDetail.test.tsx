@@ -80,7 +80,11 @@ const mockOnClearFilters = jest.fn();
 
 const renderDetail = (
   group: TestCaseIncidentGroup = GROUP,
-  filters: IncidentGroupFilters = { status: [], dateField: 'timestamp' }
+  filters: IncidentGroupFilters = {
+    status: [],
+    severity: [],
+    dateField: 'timestamp',
+  }
 ) =>
   render(
     <MemoryRouter>
@@ -217,6 +221,7 @@ describe('IncidentGroupDetail', () => {
     await act(async () => {
       renderDetail(GROUP, {
         status: [TestCaseResolutionStatusTypes.New],
+        severity: [],
         dateField: 'timestamp',
       });
     });

@@ -124,6 +124,8 @@ export type TestCaseIncidentStatusParams = ListParams & {
   owner?: string;
   /** Only incidents of test cases with no direct owner. */
   unowned?: boolean;
+  /** Comma-separated current severities; `none` is no severity. */
+  severity?: string;
   sortField?: string;
   sortType?: IncidentSortType;
   /**
@@ -138,6 +140,8 @@ export type ListIncidentGroupsParams = {
   groupBy: IncidentGroupBy;
   /** Repeatable filter on the current open status of the incidents. */
   status?: OpenIncidentStatus[];
+  /** Repeatable filter on the current severity; `none` is no severity. */
+  severity?: string[];
   assignee?: string;
   testCaseFQN?: string;
   domain?: string;
@@ -145,9 +149,7 @@ export type ListIncidentGroupsParams = {
   startTs?: number;
   endTs?: number;
   limit?: number;
-  /** Opaque cursor from a previous `paging.before`/`paging.after`. */
-  offset?: IncidentCursor;
-  /** 1-based page, an alternative to `offset` that can jump to any page. */
+  /** 1-based page. */
   page?: number;
   sortType?: IncidentSortType;
   sortField?: IncidentGroupSortField;

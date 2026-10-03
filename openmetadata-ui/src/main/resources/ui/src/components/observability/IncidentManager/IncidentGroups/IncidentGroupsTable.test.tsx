@@ -436,9 +436,9 @@ describe('IncidentGroupsTable', () => {
       new Set([fixtureGroup.id as string])
     );
 
-    const pageCheckbox = screen.getByRole('checkbox', {
-      name: 'label.select-all',
-    });
+    const pageCheckbox = within(
+      screen.getByTestId('group-select-page')
+    ).getByRole('checkbox', { name: 'label.select-all' });
 
     expect(pageCheckbox).toBePartiallyChecked();
 

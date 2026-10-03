@@ -17,6 +17,7 @@ import {
   Table,
   User01,
 } from '@openmetadata/ui-core-components/icons';
+import { mapValues } from 'lodash';
 import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes as CreateStatusTypes,
@@ -38,6 +39,7 @@ import {
   IncidentGroupFilters,
   IncidentGroupSort,
   IncidentListDateField,
+  IncidentSeverityFilter,
   IncidentTrendTone,
 } from './IncidentGroups.types';
 
@@ -65,6 +67,7 @@ export const INCIDENT_GROUP_FILTER_KEYS: (keyof IncidentGroupFilters)[] = [
   'testCaseFQN',
   'assignee',
   'status',
+  'severity',
   'dateField',
   'startTs',
   'endTs',
@@ -85,6 +88,7 @@ export const CLEARED_INCIDENT_GROUP_FILTERS: Partial<IncidentGroupFilters> = {
   testCaseFQN: undefined,
   assignee: undefined,
   status: [],
+  severity: [],
   dateField: undefined,
   startTs: undefined,
   endTs: undefined,
@@ -128,19 +132,32 @@ export const INCIDENT_GROUP_SORTABLE_COLUMNS: IncidentGroupSortField[] = [
 export const INCIDENT_GROUP_MAX_AVATARS = 3;
 
 /**
+ * The dot that sits beside a badge colour in a menu. Written out whole, one per
+ * colour, so Tailwind finds every class in the source.
+ */
+const DOT_CLASS_BY_BADGE_COLOR = {
+  error: 'tw:text-utility-error-500',
+  orange: 'tw:text-utility-orange-500',
+  warning: 'tw:text-utility-warning-500',
+  'blue-light': 'tw:text-utility-blue-light-500',
+  success: 'tw:text-utility-success-500',
+  gray: 'tw:text-utility-gray-400',
+} satisfies Partial<Record<BadgeColor<'pill-color'>, string>>;
+
+type DotBadgeColor = keyof typeof DOT_CLASS_BY_BADGE_COLOR;
+
+/**
  * Badge colour per severity, most severe the hottest. The core badge has no
  * yellow, so `Severity4` takes the cool step between amber and green.
  */
-export const INCIDENT_GROUP_SEVERITY_COLOR: Record<
-  Severities,
-  BadgeColor<'pill-color'>
-> = {
-  [Severities.Severity1]: 'error',
-  [Severities.Severity2]: 'orange',
-  [Severities.Severity3]: 'warning',
-  [Severities.Severity4]: 'blue-light',
-  [Severities.Severity5]: 'success',
-};
+export const INCIDENT_GROUP_SEVERITY_COLOR: Record<Severities, DotBadgeColor> =
+  {
+    [Severities.Severity1]: 'error',
+    [Severities.Severity2]: 'orange',
+    [Severities.Severity3]: 'warning',
+    [Severities.Severity4]: 'blue-light',
+    [Severities.Severity5]: 'success',
+  };
 
 /** Joins the parts of a group's FQN sub-line and of its status count line. */
 export const INCIDENT_GROUP_SEPARATOR = ' · ';
@@ -201,14 +218,37 @@ export const BULK_INCIDENT_STATUSES: BulkIncidentStatus[] = [
   CreateStatusTypes.Resolved,
 ];
 
+export const NO_SEVERITY_FILTER = 'none';
+
+/** What the severity filter offers, most severe first, then the ungraded. */
+export const INCIDENT_SEVERITY_FILTER_OPTIONS: IncidentSeverityFilter[] = [
+  ...Object.values(Severities),
+  NO_SEVERITY_FILTER,
+];
+
+/**
+ * Dot before each severity in the filter, in the hue of its badge — the way
+ * the design prefixes each status in the Set status menu with its colour.
+ */
+export const INCIDENT_SEVERITY_DOT_CLASS: Record<
+  IncidentSeverityFilter,
+  string
+> = {
+  ...mapValues(
+    INCIDENT_GROUP_SEVERITY_COLOR,
+    (color) => DOT_CLASS_BY_BADGE_COLOR[color]
+  ),
+  [NO_SEVERITY_FILTER]: DOT_CLASS_BY_BADGE_COLOR.gray,
+};
+
 /** The dot each status carries in the bulk menu, in the hue of its chip. */
 export const BULK_INCIDENT_STATUS_DOT_CLASS: Record<
   BulkIncidentStatus,
   string
 > = {
-  [CreateStatusTypes.ACK]: 'tw:text-utility-blue-light-500',
-  [CreateStatusTypes.Assigned]: 'tw:text-utility-warning-500',
-  [CreateStatusTypes.Resolved]: 'tw:text-utility-success-500',
+  [CreateStatusTypes.ACK]: DOT_CLASS_BY_BADGE_COLOR['blue-light'],
+  [CreateStatusTypes.Assigned]: DOT_CLASS_BY_BADGE_COLOR.warning,
+  [CreateStatusTypes.Resolved]: DOT_CLASS_BY_BADGE_COLOR.success,
 };
 
 export const INCIDENT_FAILURE_REASON_OPTIONS = [

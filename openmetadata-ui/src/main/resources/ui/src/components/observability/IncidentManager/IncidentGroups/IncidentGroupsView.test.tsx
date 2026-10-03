@@ -925,6 +925,7 @@ describe('IncidentGroupsView filters and paging', () => {
     ).toEqual({
       assignee: 'aaron',
       status: [],
+      severity: [],
       dateField: 'timestamp',
     });
   });

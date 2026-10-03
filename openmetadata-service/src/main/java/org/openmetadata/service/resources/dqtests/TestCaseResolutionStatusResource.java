@@ -35,6 +35,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
@@ -227,7 +229,14 @@ public class TestCaseResolutionStatusResource
                         TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT
                       }))
           @QueryParam("dateField")
-          IncidentDateField dateField) {
+          IncidentDateField dateField,
+      @Parameter(
+              description =
+                  "Filter incidents by their current severity. Repeatable or comma-separated; "
+                      + "`none` matches the incidents with no severity.",
+              schema = @Schema(type = "string"))
+          @QueryParam("severity")
+          List<String> severities) {
     ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
     ResourceContextInterface entityResourceContext =
         buildEntityResourceContext(testCaseFQN, testCaseId, originEntityFQN);
@@ -239,6 +248,7 @@ public class TestCaseResolutionStatusResource
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("incidentAssignee", assignee);
+    filter.addQueryParam("incidentListSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
     UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
@@ -297,6 +307,13 @@ public class TestCaseResolutionStatusResource
               schema = @Schema(type = "String"))
           @QueryParam("assignee")
           String assignee,
+      @Parameter(
+              description =
+                  "Filter incidents by their current severity. Repeatable or comma-separated; "
+                      + "`none` matches the incidents with no severity.",
+              schema = @Schema(type = "string"))
+          @QueryParam("severity")
+          List<String> severities,
       @Parameter(description = "Test case fully qualified name", schema = @Schema(type = "String"))
           @QueryParam("testCaseFQN")
           String testCaseFQN,
@@ -400,6 +417,7 @@ public class TestCaseResolutionStatusResource
               .collect(Collectors.joining(",")));
     }
     filter.addQueryParam("incidentAssignee", assignee);
+    filter.addQueryParam("incidentSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
     if (domainId != null) {
@@ -951,6 +969,30 @@ public class TestCaseResolutionStatusResource
               groupBy, Stream.of(IncidentGroupBy.values()).map(IncidentGroupBy::value).toList()));
     }
     return result;
+  }
+
+  // The severities a filter names, comma-joined for ListFilter, or null for no filter. Every value
+  // is checked against the severities an incident can have, so nothing unexpected reaches the SQL
+  // binds.
+  private static String parseIncidentSeverities(List<String> severities) {
+    List<String> result =
+        listOrEmpty(severities).stream()
+            .flatMap(severityParam -> Arrays.stream(severityParam.split(",")))
+            .map(String::trim)
+            .map(TestCaseResolutionStatusResource::requireIncidentSeverity)
+            .toList();
+    return result.isEmpty() ? null : String.join(",", result);
+  }
+
+  private static String requireIncidentSeverity(String value) {
+    if (!ListFilter.NO_INCIDENT_SEVERITY.equals(value) && !isSeverity(value)) {
+      throw new IllegalArgumentException(String.format("Invalid severity '%s'", value));
+    }
+    return value;
+  }
+
+  private static boolean isSeverity(String value) {
+    return Arrays.stream(Severity.values()).anyMatch(severity -> severity.value().equals(value));
   }
 
   private static List<TestCaseResolutionStatusTypes> parseIncidentStatuses(List<String> statuses) {

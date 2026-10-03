@@ -69,6 +69,8 @@ export const getIncidentGroupIncidentsQuery = (
       ).join(','),
       testCaseFQN: filters.testCaseFQN,
       assignee: filters.assignee,
+      severity:
+        filters.severity.length > 0 ? filters.severity.join(',') : undefined,
       domain,
     },
     isUndefined

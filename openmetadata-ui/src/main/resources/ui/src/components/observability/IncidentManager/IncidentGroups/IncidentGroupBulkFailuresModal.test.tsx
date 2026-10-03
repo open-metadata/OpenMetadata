@@ -21,6 +21,9 @@ describe('IncidentGroupBulkFailuresModal', () => {
     render(<IncidentGroupBulkFailuresModal onClose={mockOnClose} />);
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('incident-groups-bulk-failures-modal')
+    ).not.toBeInTheDocument();
   });
 
   it('should list every incident that was not updated, with its reason', () => {

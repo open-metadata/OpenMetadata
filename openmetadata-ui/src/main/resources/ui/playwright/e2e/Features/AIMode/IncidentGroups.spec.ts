@@ -257,6 +257,34 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     await afterAction();
   });
 
+  // The test before gave the row count incident Severity 4; the column count
+  // one still has none.
+  test('narrows the groups to the severities picked', async ({ page }) => {
+    const groups = await openGroups(page, {
+      groupBy: 'testDefinition',
+      severity: 'Severity4',
+    });
+
+    await expect(
+      groups.getByRole('rowheader', { name: ROW_COUNT_TYPE })
+    ).toBeVisible({ timeout: GROUPS_TIMEOUT });
+    await expect(
+      groups.getByRole('rowheader', { name: COLUMN_COUNT_TYPE })
+    ).toBeHidden();
+    await expect(page.getByTestId('incident-groups-count')).toHaveText(
+      '1 group'
+    );
+
+    await openGroups(page, {
+      groupBy: 'testDefinition',
+      severity: 'Severity1',
+    });
+
+    await expect(page.getByTestId('incident-groups-no-match')).toBeVisible({
+      timeout: GROUPS_TIMEOUT,
+    });
+  });
+
   test('keeps the drill-down in the URL across a reload and Back', async ({
     page,
   }) => {

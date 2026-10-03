@@ -14,11 +14,12 @@
 import {
   Box,
   Button,
+  Dot,
   FilterSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { uniqBy } from 'lodash';
+import { startCase, uniqBy } from 'lodash';
 import { ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
@@ -36,10 +37,14 @@ import {
   CLEARED_INCIDENT_GROUP_FILTERS,
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_STATUS_OPTIONS,
+  INCIDENT_SEVERITY_DOT_CLASS,
+  INCIDENT_SEVERITY_FILTER_OPTIONS,
+  NO_SEVERITY_FILTER,
 } from './IncidentGroups.constants';
 import {
   IncidentGroupsFiltersProps,
   IncidentListDateField,
+  IncidentSeverityFilter,
 } from './IncidentGroups.types';
 import { hasActiveIncidentGroupFilters } from './IncidentGroups.utils';
 
@@ -112,7 +117,28 @@ const IncidentGroupsFilters = ({
   onChange,
 }: IncidentGroupsFiltersProps) => {
   const { t } = useTranslation();
-  const { searchTestCases } = useIncidentFilterOptions({ filters });
+  // The same coloured dot each severity's badge is drawn in, before its name.
+  const severityOptions = useMemo(
+    () =>
+      INCIDENT_SEVERITY_FILTER_OPTIONS.map((severity) => ({
+        value: severity,
+        label:
+          severity === NO_SEVERITY_FILTER
+            ? t('label.no-entity', { entity: t('label.severity') })
+            : startCase(severity),
+        icon: (
+          <Dot
+            aria-hidden="true"
+            className={INCIDENT_SEVERITY_DOT_CLASS[severity]}
+            size="md"
+          />
+        ),
+      })),
+    [t]
+  );
+  const { searchTestCases } = useIncidentFilterOptions({
+    filters: { testCaseFQN: filters.testCaseFQN, assignee: filters.assignee },
+  });
   const [isTestCasePickerOpened, setIsTestCasePickerOpened] = useState(false);
   const [testCaseSearch, setTestCaseSearch] = useState('');
   const debouncedTestCaseSearch = useDebouncedValue(
@@ -169,11 +195,7 @@ const IncidentGroupsFilters = ({
   const hasActiveFilters = hasActiveIncidentGroupFilters(filters);
 
   return (
-    <Box
-      align="start"
-      data-testid="incident-groups-filters"
-      gap={3}
-      wrap="wrap">
+    <Box align="start" gap={3} wrap="wrap">
       <FilterField label={t('label.test-case')}>
         <FilterSelect
           searchable
@@ -221,6 +243,21 @@ const IncidentGroupsFilters = ({
           triggerVariant="input"
           onChange={(status) =>
             onChange({ status: status as OpenIncidentStatus[] })
+          }
+        />
+      </FilterField>
+      <FilterField label={t('label.severity')}>
+        <FilterSelect
+          hideCounts
+          data-testid="incident-groups-severity"
+          label={t('label.severity')}
+          options={severityOptions}
+          selectedValues={filters.severity}
+          selectionMode="multiple"
+          size="md"
+          triggerVariant="input"
+          onChange={(severity) =>
+            onChange({ severity: severity as IncidentSeverityFilter[] })
           }
         />
       </FilterField>

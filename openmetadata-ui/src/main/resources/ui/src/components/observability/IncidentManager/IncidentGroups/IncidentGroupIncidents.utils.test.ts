@@ -22,6 +22,7 @@ import { IncidentGroupFilters } from './IncidentGroups.types';
 const NOW = 1_790_000_000_000;
 const NO_FILTERS: IncidentGroupFilters = {
   status: [],
+  severity: [],
   dateField: 'timestamp',
 };
 
@@ -113,6 +114,7 @@ describe('getIncidentGroupIncidentsQuery', () => {
           testCaseFQN: 'svc.db.shop.orders.row_count',
           assignee: 'aaron',
           status: [TestCaseResolutionStatusTypes.ACK],
+          severity: ['Severity2', 'none'],
           dateField: 'updatedAt',
           startTs: 10,
           endTs: 20,
@@ -129,6 +131,7 @@ describe('getIncidentGroupIncidentsQuery', () => {
       testCaseResolutionStatusType: 'Ack',
       testCaseFQN: 'svc.db.shop.orders.row_count',
       assignee: 'aaron',
+      severity: 'Severity2,none',
       domain: 'Marketing',
     });
   });

@@ -647,6 +647,72 @@ public class IncidentGroupsIT {
     assertEquals(400, error.getStatusCode());
   }
 
+  // Table B's only open incident is Severity2; table A's two carry no severity. Each severity, and
+  // `none`, keeps exactly the groups whose incidents carry it.
+  @Test
+  void testSeverityFilterNarrowsGroups() throws Exception {
+    Map<String, String> graded = groupParams(GROUP_BY_TABLE);
+    graded.put("severity", "Severity2");
+    List<TestCaseIncidentGroup> gradedGroups = fetchGroups(graded);
+    assertEquals(1, findGroup(gradedGroups, tableB.getFullyQualifiedName()).getIncidentCount());
+    assertGroupAbsent(gradedGroups, tableA.getFullyQualifiedName());
+
+    Map<String, String> ungraded = groupParams(GROUP_BY_TABLE);
+    ungraded.put("severity", "none");
+    List<TestCaseIncidentGroup> ungradedGroups = fetchGroups(ungraded);
+    assertEquals(2, findGroup(ungradedGroups, tableA.getFullyQualifiedName()).getIncidentCount());
+    assertGroupAbsent(ungradedGroups, tableB.getFullyQualifiedName());
+
+    Map<String, String> both = groupParams(GROUP_BY_TABLE);
+    both.put("severity", "Severity2,none");
+    List<TestCaseIncidentGroup> bothGroups = fetchGroups(both);
+    findGroup(bothGroups, tableA.getFullyQualifiedName());
+    findGroup(bothGroups, tableB.getFullyQualifiedName());
+  }
+
+  // The drill-down lists a group's incidents on the flat endpoint, so the same severity filter
+  // there must keep exactly the incidents the group counts.
+  @Test
+  void testSeverityFilterListMatchesGroupCount() throws Exception {
+    List<TestCaseResolutionStatus> graded =
+        listStatuses(
+            latestOpenParams()
+                .addFilter("originEntityFQN", tableB.getFullyQualifiedName())
+                .addFilter("severity", "Severity2"));
+    assertEquals(Set.of(testCase3.getFullyQualifiedName()), statusTestCaseFqns(graded));
+
+    List<TestCaseResolutionStatus> ungraded =
+        listStatuses(
+            latestOpenParams()
+                .addFilter("originEntityFQN", tableA.getFullyQualifiedName())
+                .addFilter("severity", "none"));
+    assertEquals(
+        Set.of(testCase1.getFullyQualifiedName(), testCase2.getFullyQualifiedName()),
+        statusTestCaseFqns(ungraded));
+
+    List<TestCaseResolutionStatus> mismatched =
+        listStatuses(
+            latestOpenParams()
+                .addFilter("originEntityFQN", tableA.getFullyQualifiedName())
+                .addFilter("severity", "Severity2"));
+    assertTrue(mismatched.isEmpty(), "table A has no Severity2 incident");
+  }
+
+  @Test
+  void testUnknownSeverityRejected() {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("severity", "Severity9");
+    OpenMetadataException groupsError =
+        assertThrows(OpenMetadataException.class, () -> fetchGroups(params));
+    assertEquals(400, groupsError.getStatusCode());
+
+    OpenMetadataException listError =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> listStatuses(latestOpenParams().addFilter("severity", "Critical")));
+    assertEquals(400, listError.getStatusCode());
+  }
+
   @Test
   void testPagination() throws Exception {
     Map<String, String> params = groupParams(GROUP_BY_TABLE);
