@@ -629,8 +629,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
   /**
    * Same request shape as {@link #buildUpdateChildrenRequest}: an async, sliced, rate-limited
-   * update-by-query, because a target referenced by many documents fans out widely. Each path is
-   * matched both as a nested field and as a plain one, so indexes that map it either way are found.
+   * update-by-query, because a target referenced by many documents fans out widely. Each path is a
+   * nested field in every index that maps it, so it is matched with a nested query only.
    */
   @Override
   public void updateChildrenByNestedField(
@@ -656,7 +656,6 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Query terms =
           Query.of(
               q -> q.terms(t -> t.field(path + "." + field).terms(tv -> tv.value(fieldValues))));
-      matches.add(terms);
       matches.add(Query.of(q -> q.nested(n -> n.path(path).ignoreUnmapped(true).query(terms))));
     }
     client.updateByQuery(
