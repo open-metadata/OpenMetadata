@@ -309,15 +309,12 @@ export const navigateToArchive = async (page: Page) => {
 // ─── Archive page test helpers ─────────────────────────────────────────────────
 
 export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
-  page
-    .getByRole('treegrid', { name: 'Folders' })
-    .getByRole('row', {
-      name: folderName,
-    })
-    .first();
+  page.getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+    name: folderName,
+  });
 
 export const getFolderExpandBtn = (page: Page, folderName: string): Locator =>
-  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]').first();
+  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]');
 
 /**
  * The sidebar folder tree is paginated (FOLDER_PAGE_SIZE), so a folder

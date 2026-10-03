@@ -584,9 +584,9 @@ test(
 
       await performExpandAll(page);
 
-      const parentRow = page
-        .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-        .first();
+      const parentRow = page.locator(
+        `[data-row-key*="${parentTerm.responseData.name}"]`
+      );
 
       await expect(parentRow).toBeVisible();
 
