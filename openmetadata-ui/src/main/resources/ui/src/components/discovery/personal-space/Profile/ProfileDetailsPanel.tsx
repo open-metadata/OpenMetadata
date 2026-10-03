@@ -123,7 +123,7 @@ const PreferredNameRow: React.FC<PreferredNameRowProps> = ({
           className="tw:text-primary-900"
           size="text-sm"
           weight="regular">
-          {startCase(displayName)}
+          {userData.displayName ? displayName : startCase(displayName)}
         </Typography>
       }
       onEnterEdit={() => setDraft(displayName)}
