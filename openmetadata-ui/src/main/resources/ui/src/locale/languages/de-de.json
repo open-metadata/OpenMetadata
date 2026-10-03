@@ -4519,6 +4519,8 @@
     "no-filter-patterns-available": "Für diesen Konnektor sind keine Filtermuster verfügbar.",
     "no-folders-yet-create-one": "Noch keine Ordner vorhanden. Erstellen Sie einen, um Dokumente nach Thema oder Team zu organisieren.",
     "no-glossary-term": "Es scheint, dass derzeit keine Glossarbegriffe definiert sind. Um einen neuen Glossarbegriff zu erstellen, verwenden Sie einfach die Schaltfläche 'Begriff hinzufügen'.",
+    "no-glossary-term-relation-yet": "Noch keine Glossarbegriff-Beziehungen",
+    "no-glossary-term-relation-yet-description": "Erstellen Sie einen Beziehungstyp, um semantische Beziehungen zwischen Glossarbegriffen zu definieren.",
     "no-glossary-terms-found": "Keine Glossarbegriffe gefunden. Erstellen Sie ein Glossar und fügen Sie Begriffe hinzu, um Ihre Geschäftskonzepte zu visualisieren.",
     "no-glossary-to-export": "Kein Glossar zum Exportieren verfügbar.",
     "no-hierarchical-relations-found": "Keine hierarchischen Beziehungen gefunden.",

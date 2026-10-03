@@ -4519,6 +4519,8 @@
     "no-filter-patterns-available": "このコネクタにはフィルターパターンがありません。",
     "no-folders-yet-create-one": "フォルダはまだありません。作成してトピックやチームごとにドキュメントを整理しましょう。",
     "no-glossary-term": "現在、用語集が定義されていないようです。「用語を追加」ボタンを使用して新しい用語を作成してください。",
+    "no-glossary-term-relation-yet": "用語集の用語の関係はまだありません",
+    "no-glossary-term-relation-yet-description": "リレーションタイプを作成して、用語集の用語間の意味的な関係を定義します。",
     "no-glossary-terms-found": "用語集の用語が見つかりません。用語集を作成し、用語を追加してビジネスコンセプトを可視化しましょう。",
     "no-glossary-to-export": "エクスポート可能な用語集がありません。",
     "no-hierarchical-relations-found": "階層的なリレーションが見つかりません。",

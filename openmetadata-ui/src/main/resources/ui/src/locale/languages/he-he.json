@@ -4519,6 +4519,8 @@
     "no-filter-patterns-available": "אין תבניות סינון זמינות עבור מחבר זה.",
     "no-folders-yet-create-one": "אין עדיין תיקיות, צור אחת כדי לארגן מסמכים לפי נושא או צוות.",
     "no-glossary-term": "נראה שאין מונחי מילון מוגדרים כרגע. כדי ליצור מונח מילון חדש, פשוט השתמש בכפתור 'הוסף מונח'.",
+    "no-glossary-term-relation-yet": "עדיין אין קשרים בין מונחי מילון",
+    "no-glossary-term-relation-yet-description": "צור סוג קשר כדי להגדיר קשרים סמנטיים בין מונחי המילון.",
     "no-glossary-terms-found": "לא נמצאו מונחי מילון. צור מילון והוסף מונחים כדי להמחיש את המושגים העסקיים שלך.",
     "no-glossary-to-export": "אין מילון זמין לייצוא.",
     "no-hierarchical-relations-found": "לא נמצאו יחסים היררכיים.",
