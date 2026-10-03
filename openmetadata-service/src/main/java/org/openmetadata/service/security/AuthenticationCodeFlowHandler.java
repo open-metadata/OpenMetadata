@@ -59,6 +59,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
@@ -68,6 +69,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
@@ -95,6 +97,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.security.session.PendingLoginState;
 import org.openmetadata.service.security.session.SessionRefreshInProgressException;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -139,6 +142,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final String FORCED_REAUTHENTICATION_MAX_AGE = "0";
 
   private static final String MCP_CALLBACK_PATH = "/mcp/callback";
+  private static final String AUTH_CALLBACK_PATH = "/auth/callback";
+  private static final String CALLBACK_SERVLET_PATH = "/callback";
+  private static final String SIGNIN_PATH = "/signin";
+  private static final String LOGOUT_PATH = "/logout";
 
   static final String SESSION_REVOKED_DURING_REFRESH = "Session revoked during refresh";
 
@@ -462,7 +469,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       Map<String, String> params = buildLoginParams(client.getConfiguration());
-      params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
+      // MCP logins keep the primary callback URL: the MCP flow is anchored to serverUrl end to end
+      // (its own callback is serverUrl + /mcp/callback), so it is left exactly as it was.
+      String additionalCallbackUrl = isMcpFlow ? null : additionalCallbackUrlFor(req);
+      params.put(
+          OidcConfiguration.REDIRECT_URI,
+          nullOrEmpty(additionalCallbackUrl) ? client.getCallbackUrl() : additionalCallbackUrl);
 
       PendingLoginContext pendingLoginContext =
           addStateAndNonceParameters(client.getConfiguration(), params);
@@ -473,10 +485,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           req,
           resp,
           authenticationConfiguration.getProvider().value(),
-          redirectUri,
-          pendingLoginContext.state(),
-          pendingLoginContext.nonce(),
-          pendingLoginContext.pkceVerifier());
+          pendingLoginContext.toPendingLoginState(redirectUri, additionalCallbackUrl));
 
       String prompt = resolvePrompt(req.getParameter(PROMPT_KEY), isMcpFlow);
       if (!nullOrEmpty(prompt)) {
@@ -540,6 +549,59 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return (serverUrl + MCP_CALLBACK_PATH).equals(redirectUri);
   }
 
+  /**
+   * The additional callback URL registered for the host this login arrived on, or {@code null} to
+   * keep the primary. A deployment that configures none never derives a request origin at all.
+   */
+  private String additionalCallbackUrlFor(HttpServletRequest req) {
+    List<String> additionalCallbackUrls =
+        listOrEmpty(authenticationConfiguration.getAdditionalCallbackUrls());
+    return additionalCallbackUrls.isEmpty()
+        ? null
+        : SecurityUtil.sameOriginCallbackUrl(
+            SecurityUtil.requestOrigin(req), client.getCallbackUrl(), additionalCallbackUrls);
+  }
+
+  /**
+   * The {@code redirect_uri} this login sent the identity provider, which the token request must
+   * repeat exactly. Sessions that recorded none were sent the primary.
+   */
+  private String callbackUrlSentToProvider(UserSession pendingSession) {
+    String recordedCallbackUrl = pendingSession.getIdpRedirectUri();
+    return nullOrEmpty(recordedCallbackUrl) ? client.getCallbackUrl() : recordedCallbackUrl;
+  }
+
+  /**
+   * {@code path} on the host this request arrived on when that host has a registered callback URL,
+   * primary or additional, so signin and logout do not bounce the user to a {@code serverUrl} that
+   * may be stale (#26311) or name another site. Any other origin, forged or not, gets {@code
+   * serverUrl}. The base URL is copied from the configured callback URL that matched, never from
+   * the request headers that selected it.
+   */
+  private String ownUrl(HttpServletRequest req, String path) {
+    String registeredBaseUrl =
+        baseUrlOf(
+            SecurityUtil.registeredCallbackUrl(
+                SecurityUtil.requestOrigin(req),
+                client.getCallbackUrl(),
+                listOrEmpty(authenticationConfiguration.getAdditionalCallbackUrls())));
+    return (registeredBaseUrl == null ? serverUrl : registeredBaseUrl) + path;
+  }
+
+  /**
+   * The URL a callback URL's deployment is served under: the callback URL minus its trailing {@code
+   * /callback}, so a deployment under a base path keeps it, as {@code serverUrl} would. {@code null}
+   * when the URL is not the callback servlet's.
+   */
+  private static String baseUrlOf(String callbackUrl) {
+    String origin = SecurityUtil.originOf(callbackUrl);
+    String path = origin == null ? null : URI.create(callbackUrl.trim()).getPath();
+    boolean isCallbackServletUrl = path != null && path.endsWith(CALLBACK_SERVLET_PATH);
+    return isCallbackServletUrl
+        ? origin + path.substring(0, path.length() - CALLBACK_SERVLET_PATH.length())
+        : null;
+  }
+
   private void persistMcpPendingState(HttpServletRequest req, PendingLoginContext context) {
     McpPendingStatePersister persister = mcpPendingStatePersister;
     if (persister != null) {
@@ -556,7 +618,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         // consumed). A 500 here strands the browser in a login loop; getPendingSession has
         // already cleared the stale cookie, so route the user to interactive signin instead.
         LOG.warn("No pending session found for callback, redirecting to signin");
-        resp.sendRedirect(serverUrl + "/signin");
+        resp.sendRedirect(ownUrl(req, SIGNIN_PATH));
         return;
       }
       UserSession pendingSession = maybePendingSession.get();
@@ -564,7 +626,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       LOG.debug(
           "Performing Auth Callback For User Session: {} ",
           SessionService.truncateId(pendingSession.getId()));
-      String computedCallbackUrl = client.getCallbackUrl();
+      String computedCallbackUrl = callbackUrlSentToProvider(pendingSession);
       Map<String, List<String>> parameters = retrieveCallbackParameters(req);
       AuthenticationResponse response =
           AuthenticationResponseParser.parse(new URI(computedCallbackUrl), parameters);
@@ -576,7 +638,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         String errorCode = authenticationErrorResponse.getErrorObject().getCode();
         if (SILENT_AUTH_ERRORS.contains(errorCode)) {
           LOG.warn("Silent auth not possible (error={}), redirecting to signin", errorCode);
-          resp.sendRedirect(serverUrl + "/signin");
+          resp.sendRedirect(ownUrl(req, SIGNIN_PATH));
           return;
         }
         LOG.error(
@@ -699,7 +761,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         }
       }
       sessionService.revokeSession(httpServletRequest, httpServletResponse);
-      httpServletResponse.sendRedirect(serverUrl + "/logout");
+      httpServletResponse.sendRedirect(ownUrl(httpServletRequest, LOGOUT_PATH));
     } catch (Exception ex) {
       LOG.error("[Auth Logout] Error while performing logout", ex);
     }
@@ -1366,19 +1428,58 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return (OIDCTokenResponse) response;
   }
 
-  private String requireRedirectUri(String redirectUri) {
+  /**
+   * Redirect targets a login round-trip may land on.
+   *
+   * <p>The browser asks to land on {@code <its own origin>/auth/callback}, so that landing page is
+   * trusted on the host of every OIDC callback URL the operator configured: the primary {@code
+   * oidcConfiguration.callbackUrl} and each {@code additionalCallbackUrls} entry. Those are the
+   * values that have to be right for login to work at all — the identity provider rejects any other
+   * {@code redirect_uri} — so they name the deployment's real hosts, while {@code serverUrl} is
+   * routinely left at its localhost default (issue #26311). Nothing is read from the request, so a
+   * forwarded or {@code Host} header cannot add a target and a forged host cannot make the login land
+   * on itself. SAML applies the same rule to its configured ACS URLs.
+   */
+  private Set<String> trustedRedirectUris() {
     Set<String> trusted =
         trustedRedirects(
             authenticationConfiguration.getCallbackUrl(),
-            serverUrl + "/auth/callback",
-            serverUrl + "/mcp/callback");
+            serverUrl + AUTH_CALLBACK_PATH,
+            serverUrl + MCP_CALLBACK_PATH);
+    trusted.addAll(landingPagesOnCallbackHosts());
     trusted.addAll(listOrEmpty(authenticationConfiguration.getAdditionalTrustedRedirectUris()));
-    return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    return trusted;
+  }
+
+  private List<String> landingPagesOnCallbackHosts() {
+    List<String> callbackUrls = new ArrayList<>();
+    callbackUrls.add(client.getCallbackUrl());
+    callbackUrls.addAll(listOrEmpty(authenticationConfiguration.getAdditionalCallbackUrls()));
+    return callbackUrls.stream()
+        .map(SecurityUtil::originOf)
+        .filter(Objects::nonNull)
+        .map(origin -> origin + AUTH_CALLBACK_PATH)
+        .toList();
+  }
+
+  private String requireRedirectUri(String redirectUri) {
+    Set<String> trusted = trustedRedirectUris();
+    try {
+      return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    } catch (IllegalArgumentException e) {
+      // Without the candidate set on the wire-facing 400 this is undiagnosable from the outside.
+      LOG.warn(
+          "Rejected login redirect URI [{}] - trusted targets are {}: {}",
+          redirectUri,
+          trusted,
+          e.getMessage());
+      throw e;
+    }
   }
 
   private String requireRedirectUriOrDefault(String redirectUri) {
     String targetRedirectUri =
-        nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
+        nullOrEmpty(redirectUri) ? serverUrl + AUTH_CALLBACK_PATH : redirectUri;
     return requireRedirectUri(targetRedirectUri);
   }
 
@@ -1485,7 +1586,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  record PendingLoginContext(String state, String nonce, String pkceVerifier) {}
+  record PendingLoginContext(String state, String nonce, String pkceVerifier) {
+    PendingLoginState toPendingLoginState(String redirectUri, String idpRedirectUri) {
+      return new PendingLoginState(redirectUri, idpRedirectUri, state, nonce, pkceVerifier);
+    }
+  }
 
   private record RefreshRotation(
       String previousRefreshToken,

@@ -111,6 +111,15 @@
         "type": "string"
       }
     },
+    "additionalCallbackUrls": {
+      "title": "Additional Callback URLs",
+      "description": "Callback (redirect_uri) values registered with the identity provider for the other hostnames this deployment answers on — a load-balanced second site, or a disaster-recovery host. At login the entry whose scheme, host and port match the incoming request is used as the redirect_uri; entries whose path differs from 'callbackUrl' are ignored. When nothing matches, 'callbackUrl' is used, so a single-hostname deployment is unaffected. Every entry must also be registered with the identity provider.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
     "jwtPrincipalClaims": {
       "title": "Jwt Principal Claims",
       "description": "[DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the principal/subject of the token. Defaults are sub, email, preferred_username, name, upn, email_verified",
@@ -405,6 +414,15 @@
               "description": "Assertion Consumer URL.",
               "type": "string"
             },
+            "additionalAcsUrls": {
+              "title": "Additional Assertion Consumer Service URLs",
+              "description": "Additional Assertion Consumer Service URLs this deployment is reachable at, one per hostname behind a load balancer or DR endpoint. The entry whose origin matches the incoming request is used as the AssertionConsumerServiceURL of the AuthnRequest; requests from any other origin fall back to 'acs'. Every entry must also be registered with the Identity Provider. The Service Provider entityId stays single-valued.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
             "spX509Certificate": {
               "description": "X509 Certificate ",
               "type": "string",
@@ -543,6 +561,15 @@
             "acs": {
               "description": "Assertion Consumer URL.",
               "type": "string"
+            },
+            "additionalAcsUrls": {
+              "title": "Additional Assertion Consumer Service URLs",
+              "description": "Additional Assertion Consumer Service URLs this deployment is reachable at, one per hostname behind a load balancer or DR endpoint. The entry whose origin matches the incoming request is used as the AssertionConsumerServiceURL of the AuthnRequest; requests from any other origin fall back to 'acs'. Every entry must also be registered with the Identity Provider. The Service Provider entityId stays single-valued.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
             },
             "spX509Certificate": {
               "description": "X509 Certificate ",

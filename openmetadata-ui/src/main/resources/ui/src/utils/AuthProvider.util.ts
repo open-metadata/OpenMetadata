@@ -58,7 +58,43 @@ export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
 
 const subPath = getBasePath();
 
-export const getRedirectUri = (callbackUrl?: string) => {
+const parseUrl = (value: string): URL | undefined => {
+  try {
+    return new URL(value);
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * The additional callback URL registered for the host this page is served from, or undefined to
+ * keep the primary. Mirrors the server's selection: an entry must share the primary's path, and the
+ * primary wins on its own origin. The configured string is returned untouched because the identity
+ * provider compares it byte for byte with what was registered.
+ */
+const findAdditionalCallbackUrl = (
+  callbackUrl: string,
+  additionalCallbackUrls: string[]
+): string | undefined => {
+  const primary = parseUrl(callbackUrl);
+  if (!primary || primary.origin === globalThis.location.origin) {
+    return undefined;
+  }
+
+  return additionalCallbackUrls.find((candidate) => {
+    const candidateUrl = parseUrl(candidate);
+
+    return (
+      candidateUrl?.origin === globalThis.location.origin &&
+      candidateUrl.pathname === primary.pathname
+    );
+  });
+};
+
+export const getRedirectUri = (
+  callbackUrl?: string,
+  additionalCallbackUrls?: string[]
+) => {
   if (isDev()) {
     return `http://localhost:3000${subPath}/callback`;
   }
@@ -67,7 +103,10 @@ export const getRedirectUri = (callbackUrl?: string) => {
     return `${globalThis.location.origin}${subPath}/callback`;
   }
 
-  return callbackUrl;
+  return (
+    findAdditionalCallbackUrl(callbackUrl, additionalCallbackUrls ?? []) ??
+    callbackUrl
+  );
 };
 
 export const getSilentRedirectUri = () => {
@@ -83,6 +122,7 @@ export const getUserManagerConfig = (
     authority = '',
     clientId = '',
     callbackUrl,
+    additionalCallbackUrls,
     scope,
     responseType,
   } = authClient;
@@ -94,7 +134,7 @@ export const getUserManagerConfig = (
     // UserManager silently drops the field and every provider requests the
     // implicit 'id_token' flow regardless of configuration (#29597).
     response_type: responseType ?? 'id_token',
-    redirect_uri: getRedirectUri(callbackUrl),
+    redirect_uri: getRedirectUri(callbackUrl, additionalCallbackUrls),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
     userStore: oidcTokenStorage,
@@ -109,6 +149,7 @@ export const getAuthConfig = (
     authority,
     clientId,
     callbackUrl,
+    additionalCallbackUrls,
     provider,
     providerName,
     enableSelfSignup,
@@ -118,7 +159,7 @@ export const getAuthConfig = (
     clientType = 'public',
   } = authClient;
   let config = {};
-  const redirectUri = getRedirectUri(callbackUrl);
+  const redirectUri = getRedirectUri(callbackUrl, additionalCallbackUrls);
   switch (provider) {
     case AuthProvider.Okta:
       config = {

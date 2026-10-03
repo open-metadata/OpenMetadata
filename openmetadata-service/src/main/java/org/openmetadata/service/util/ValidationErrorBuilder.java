@@ -24,6 +24,8 @@ public class ValidationErrorBuilder {
     public static final String AUTH_AUTHORITY = "authenticationConfiguration.authority";
     public static final String AUTH_CLIENT_ID = "authenticationConfiguration.clientId";
     public static final String AUTH_CALLBACK_URL = "authenticationConfiguration.callbackUrl";
+    public static final String AUTH_ADDITIONAL_CALLBACK_URLS =
+        "authenticationConfiguration.additionalCallbackUrls";
 
     // OIDC Configuration
     public static final String OIDC_CLIENT_ID = "authenticationConfiguration.oidcConfiguration.id";
@@ -86,6 +88,8 @@ public class ValidationErrorBuilder {
         "authenticationConfiguration.samlConfiguration.sp.entityId";
     public static final String SAML_SP_ACS_URL =
         "authenticationConfiguration.samlConfiguration.sp.acs";
+    public static final String SAML_SP_ADDITIONAL_ACS_URLS =
+        "authenticationConfiguration.samlConfiguration.sp.additionalAcsUrls";
     public static final String SAML_SP_CERT =
         "authenticationConfiguration.samlConfiguration.sp.spX509Certificate";
     public static final String SAML_SP_KEY =

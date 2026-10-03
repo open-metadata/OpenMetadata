@@ -1703,6 +1703,11 @@ public class SystemRepository {
               FieldPaths.AUTH_CALLBACK_URL, "Callback URL is required");
         }
 
+        FieldError additionalCallbackUrlsError = validateAdditionalCallbackUrls(authConfig);
+        if (additionalCallbackUrlsError != null) {
+          return additionalCallbackUrlsError;
+        }
+
         if (nullOrEmpty(authConfig.getClientId())) {
           return ValidationErrorBuilder.createFieldError(
               FieldPaths.AUTH_CLIENT_ID, "Client ID is required");
@@ -1855,6 +1860,37 @@ public class SystemRepository {
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError("", e.getMessage());
     }
+  }
+
+  /**
+   * An additional callback URL that login can never select is silently ignored there, so it is
+   * rejected when saved instead. Entries are judged against the callback URL the identity provider
+   * is actually sent: the OIDC one for confidential clients, the top-level one otherwise.
+   */
+  @VisibleForTesting
+  static FieldError validateAdditionalCallbackUrls(AuthenticationConfiguration authConfig) {
+    String primaryCallbackUrl = primaryCallbackUrl(authConfig);
+    return listOrEmpty(authConfig.getAdditionalCallbackUrls()).stream()
+        .filter(url -> !SecurityUtil.isAlternativeCallbackUrl(url, primaryCallbackUrl))
+        .findFirst()
+        .map(
+            url ->
+                ValidationErrorBuilder.createFieldError(
+                    FieldPaths.AUTH_ADDITIONAL_CALLBACK_URLS,
+                    String.format(
+                        "Additional callback URL '%s' must be an absolute http(s) URL with the same"
+                            + " path as the callback URL '%s'",
+                        url, primaryCallbackUrl)))
+        .orElse(null);
+  }
+
+  private static String primaryCallbackUrl(AuthenticationConfiguration authConfig) {
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    boolean isSentByServer =
+        authConfig.getClientType() == ClientType.CONFIDENTIAL
+            && oidcConfig != null
+            && !nullOrEmpty(oidcConfig.getCallbackUrl());
+    return isSentByServer ? oidcConfig.getCallbackUrl() : authConfig.getCallbackUrl();
   }
 
   @VisibleForTesting

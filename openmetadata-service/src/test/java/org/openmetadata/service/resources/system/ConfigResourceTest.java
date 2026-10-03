@@ -99,6 +99,22 @@ class ConfigResourceTest {
     }
   }
 
+  /** Public clients build redirect_uri in the browser, so they need the per-host callback URLs. */
+  @Test
+  void getAuthConfigReflectsPersistedAdditionalCallbackUrls() {
+    List<String> additionalCallbackUrls = List.of("https://dr.example.com/callback");
+    try (MockedStatic<SecurityConfigurationManager> managerMock =
+        mockStatic(SecurityConfigurationManager.class)) {
+      managerMock
+          .when(SecurityConfigurationManager::getCurrentAuthConfig)
+          .thenReturn(persistedCognitoConfig().withAdditionalCallbackUrls(additionalCallbackUrls));
+
+      AuthenticationConfiguration response = new ConfigResource().getAuthConfig();
+
+      assertEquals(additionalCallbackUrls, response.getAdditionalCallbackUrls());
+    }
+  }
+
   @Test
   void getAuthConfigStillExcludesSensitiveNestedConfigs() {
     try (MockedStatic<SecurityConfigurationManager> managerMock =
