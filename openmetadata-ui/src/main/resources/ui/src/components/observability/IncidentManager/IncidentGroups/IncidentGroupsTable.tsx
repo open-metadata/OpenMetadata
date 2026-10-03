@@ -285,18 +285,14 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          {/* The row previews on activation, so the drill-down press has to
-              stay with its button. */}
-          <div role="presentation" onClick={stopPropagationIfInteractive}>
-            <Button
-              aria-label={t('label.view-entity', { entity: groupName })}
-              color="tertiary"
-              data-testid={`group-open-${rowId}`}
-              iconLeading={ChevronRight}
-              size="sm"
-              onPress={() => onGroupOpen(group)}
-            />
-          </div>
+          <Button
+            aria-label={t('label.view-entity', { entity: groupName })}
+            color="tertiary"
+            data-testid={`group-open-${rowId}`}
+            iconLeading={ChevronRight}
+            size="sm"
+            onPress={() => onGroupOpen(group)}
+          />
         </Table.Cell>
       </Table.Row>
     );
