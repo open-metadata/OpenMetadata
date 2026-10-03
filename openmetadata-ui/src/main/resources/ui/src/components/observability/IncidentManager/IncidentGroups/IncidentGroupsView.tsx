@@ -203,14 +203,16 @@ const IncidentGroupsView = () => {
   const handleOpenGroup = useCallback(
     (group: TestCaseIncidentGroup) => {
       setPreviewGroup(undefined);
-      openGroup(group);
+
+      return openGroup(group);
     },
     [openGroup]
   );
 
   const handleBack = useCallback(() => {
     setReturnFocusKey(detailGroup && getIncidentGroupKey(detailGroup));
-    closeGroup();
+
+    return closeGroup();
   }, [closeGroup, detailGroup]);
 
   useEffect(() => {
@@ -219,12 +221,12 @@ const IncidentGroupsView = () => {
     }
     // The table builds its rows a pass after it mounts, so the row is looked
     // up once they are in.
+    const testId = `group-open-${returnFocusKey}`.replaceAll(
+      '"',
+      String.raw`\"`
+    );
     const frame = requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>(
-          `[data-testid="group-open-${returnFocusKey.replaceAll('"', '\\"')}"]`
-        )
-        ?.focus();
+      document.querySelector<HTMLElement>(`[data-testid="${testId}"]`)?.focus();
       setReturnFocusKey(undefined);
     });
 
