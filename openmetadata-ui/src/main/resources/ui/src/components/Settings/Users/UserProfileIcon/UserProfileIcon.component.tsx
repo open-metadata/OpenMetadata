@@ -165,7 +165,8 @@ export const UserProfileIcon = () => {
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => {
-      const isDefaultPersona = defaultPersona?.id === item.id;
+      const isDefaultPersona =
+        !defaultPersona?.inherited && defaultPersona?.id === item.id;
 
       return (
         <div

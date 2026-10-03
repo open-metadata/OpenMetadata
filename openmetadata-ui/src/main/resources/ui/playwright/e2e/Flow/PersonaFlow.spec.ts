@@ -484,6 +484,7 @@ test.describe.serial('Team persona setting flow', () => {
 
   test('Set default persona for team should work properly', async ({
     adminPage,
+    browser,
   }) => {
     test.slow(true);
 
@@ -616,7 +617,7 @@ test.describe.serial('Team persona setting flow', () => {
       expect(teamPatchRevertResponseData.status()).toBe(200);
     });
 
-    await test.step('Team persona is not auto-applied as the user default persona', async () => {
+    await test.step('Team fallback is not shown as a saved user default', async () => {
       // Navigate to the Users tab in the Team page
       await adminPage.getByTestId('users').click();
 
@@ -633,29 +634,86 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.getByTestId('persona-details-card').waitFor();
 
       const defaultPersonaChip = adminPage.getByTestId('default-persona-chip');
-      // Asserted so the negative check below cannot pass against a chip that
-      // never rendered.
       await expect(defaultPersonaChip).toBeVisible();
-
-      // The inherited team persona must NOT be shown as the user's default
-      // persona.
-      //
-      // Deliberately not asserting the literal "No default persona"
-      // placeholder: when a user has no default persona the backend resolves
-      // the field to the *system* default persona, which is global state this
-      // test does not own. The sibling describe in this file sets and clears a
-      // system default, and the environment ships with one pre-seeded, so the
-      // placeholder only appears when unrelated work happens to have cleared
-      // it. The invariant under test is just that the team's persona is not
-      // auto-applied.
+      await expect(defaultPersonaChip).toContainText('No default persona');
       await expect(defaultPersonaChip).not.toContainText(
         teamPersona.responseData.displayName
       );
 
-      // The misleading inherited icon must not be rendered on the default persona
       await expect(
         adminPage.locator('[data-testid="default-persona-chip"] .inherit-icon')
       ).toHaveCount(0);
+    });
+
+    await test.step('Team persona is selected at login and can be saved as an explicit default', async () => {
+      const userContext = await browser.newContext({
+        storageState: { cookies: [], origins: [] },
+      });
+      const userPage = await userContext.newPage();
+
+      try {
+        await teamUser.login(userPage);
+        await userPage.getByTestId('dropdown-profile').click();
+        const teamPersonaOption = userPage.getByTestId('persona-label').filter({
+          hasText: teamPersona.responseData.displayName,
+        });
+        await expect(teamPersonaOption.getByRole('radio')).toBeChecked();
+        await expect(
+          teamPersonaOption.getByTestId('default-persona-tag')
+        ).toHaveCount(0);
+        await userPage.getByTestId('user-name').click();
+        await expect(
+          userPage.getByTestId('default-persona-chip')
+        ).toContainText('No default persona');
+
+        await userPage.getByTestId('default-edit-user-persona').click();
+        await userPage.getByTestId('default-persona-select-list').click();
+        await userPage
+          .locator(
+            `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
+          )
+          .click();
+        const saveDefaultResponse = userPage.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .endsWith(`/api/v1/users/${teamUser.responseData.id}`) &&
+            response.request().method() === 'PATCH'
+        );
+        await userPage
+          .getByTestId('user-profile-default-persona-edit-save')
+          .click();
+        expect((await saveDefaultResponse).status()).toBe(200);
+        await userPage.reload();
+        await expect(
+          userPage.getByTestId('default-persona-chip')
+        ).toContainText(teamPersona.responseData.displayName);
+
+        await userPage.getByTestId('default-edit-user-persona').click();
+        await userPage.getByTestId('default-persona-select-list').hover();
+        await userPage
+          .locator(
+            '[data-testid="default-persona-select-list"] .ant-select-clear'
+          )
+          .click();
+        const clearDefaultResponse = userPage.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .endsWith(`/api/v1/users/${teamUser.responseData.id}`) &&
+            response.request().method() === 'PATCH'
+        );
+        await userPage
+          .getByTestId('user-profile-default-persona-edit-save')
+          .click();
+        expect((await clearDefaultResponse).status()).toBe(200);
+        await userPage.reload();
+        await expect(
+          userPage.getByTestId('default-persona-chip')
+        ).toContainText('No default persona');
+      } finally {
+        await userContext.close();
+      }
     });
   });
 

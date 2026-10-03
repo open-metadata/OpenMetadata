@@ -92,4 +92,19 @@ describe('UserProfilePersonas', () => {
       )
     ).toBeInTheDocument();
   });
+
+  it('keeps an automatically selected team persona out of the default persona field', () => {
+    renderComponent({
+      personas: [],
+      inheritedPersonas: [DATA_SEEKER],
+      defaultPersona: { ...DATA_SEEKER, inherited: true },
+    });
+
+    const defaultChip = screen.getByTestId('default-persona-chip');
+
+    expect(
+      within(defaultChip).getByText('message.no-default-persona')
+    ).toBeInTheDocument();
+    expect(within(defaultChip).queryByText('Data Seeker')).toBeNull();
+  });
 });

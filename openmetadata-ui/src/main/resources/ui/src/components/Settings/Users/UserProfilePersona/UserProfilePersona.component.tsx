@@ -53,11 +53,20 @@ const UserProfilePersonas = ({
     [isAdminUser, isLoggedInUser, userData.deleted]
   );
 
-  const activeDefaultPersona = userData.defaultPersona;
+  const activeDefaultPersona = userData.defaultPersona?.inherited
+    ? undefined
+    : userData.defaultPersona;
 
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
-      await updateUserDetails({ defaultPersona }, 'defaultPersona');
+      await updateUserDetails(
+        {
+          defaultPersona: defaultPersona
+            ? { ...defaultPersona, inherited: false }
+            : undefined,
+        },
+        'defaultPersona'
+      );
     },
     [updateUserDetails]
   );
@@ -99,7 +108,7 @@ const UserProfilePersonas = ({
               multiSelect={false}
               personaList={combinedPersonas}
               selectedPersonas={
-                userData.defaultPersona ? [userData.defaultPersona] : []
+                activeDefaultPersona ? [activeDefaultPersona] : []
               }
               onUpdate={handleDefaultPersonaUpdate}
             />
@@ -119,7 +128,6 @@ const UserProfilePersonas = ({
     ),
     [
       activeDefaultPersona,
-      userData,
       hasEditPermission,
       combinedPersonas,
       handleDefaultPersonaUpdate,
