@@ -631,13 +631,16 @@ export interface PipelineServiceClientConfiguration {
      */
     authorizerConfiguration?: AuthorizerConfiguration;
     /**
-     * Automatically create Table and Pipeline entities when they are referenced in OpenLineage
-     * events but don't exist in OpenMetadata.
+     * Create a Table that an OpenLineage event references but OpenMetadata lacks, along with
+     * its missing Database and Database Schema, when the dataset namespace maps to a Database
+     * Service through namespaceToServiceMapping and the event carries the table's columns in
+     * its schema facet. Pipelines are never created.
      */
     autoCreateEntities?: boolean;
     /**
-     * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
-     * jobs. This service must exist in OpenMetadata.
+     * Name of the Pipeline Service searched for the Pipeline of an OpenLineage job, named
+     * '<namespace>-<job name>'. Pipelines are never created from OpenLineage events; a job
+     * without one is reported in the response and its edges carry no pipeline.
      */
     defaultPipelineService?: string;
     /**
@@ -646,9 +649,10 @@ export interface PipelineServiceClientConfiguration {
      */
     eventTypeFilter?: EventTypeFilter[];
     /**
-     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to
-     * resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' ->
-     * 'prod-postgres'
+     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names, matched
+     * exactly and then by the longest namespace prefix. Used to resolve dataset references to
+     * existing tables, and the only way a missing table can be created (see
+     * autoCreateEntities). Example: 'postgresql://prod-db:5432' -> 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
     /**
