@@ -35,6 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { TestCaseResolutionStatusTypes as CreateStatusTypes } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
+import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import {
   showErrorToast,
@@ -132,7 +133,10 @@ const IncidentGroupsView = () => {
 
   // Another dimension or other filters make other groups; a page or a sort
   // only shows the same ones differently.
-  useEffect(() => setSelection(new Map()), [groupBy, filters]);
+  const { activeDomain } = useDomainStore();
+  // The domain scopes the groups as the filters do, so a selection made under
+  // another one would apply its change outside what is listed.
+  useEffect(() => setSelection(new Map()), [groupBy, filters, activeDomain]);
 
   const selectedGroups = [...selection.values()];
   const selectedKeys = useMemo(() => new Set(selection.keys()), [selection]);

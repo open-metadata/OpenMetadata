@@ -1119,6 +1119,37 @@ describe('IncidentGroupsView filters and paging', () => {
     expect(currentPageInput()).toHaveValue('2');
   });
 
+  it('should step back to the last page when a refresh empties the current one', async () => {
+    mockApplyBulkChange.mockResolvedValue({
+      total: 1,
+      passed: 1,
+      failures: [],
+      unchanged: 0,
+    });
+    await act(async () => {
+      renderView();
+    });
+    await goToSecondPage();
+
+    mockListIncidentGroups.mockResolvedValueOnce({
+      data: [],
+      paging: { total: 10 },
+    });
+
+    await applyBulkAck();
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+      page: 1,
+    });
+    expect(currentPageInput()).toHaveValue('1');
+    expect(
+      screen.queryByTestId('incident-groups-empty')
+    ).not.toBeInTheDocument();
+  });
+
   it('should show no pager while there is no group to page through', async () => {
     mockListIncidentGroups.mockResolvedValue({
       data: [],
@@ -1609,6 +1640,22 @@ describe('IncidentGroupsView filters and paging', () => {
       });
 
       expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+    });
+
+    it('should drop the selection when the active domain changes', async () => {
+      await renderSelected();
+
+      expect(screen.getByTestId('selection-bar')).toBeInTheDocument();
+
+      try {
+        await act(async () => {
+          useDomainStore.setState({ activeDomain: 'Marketing' });
+        });
+
+        expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+      } finally {
+        useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
+      }
     });
 
     it('should drop a group from the selection', async () => {
