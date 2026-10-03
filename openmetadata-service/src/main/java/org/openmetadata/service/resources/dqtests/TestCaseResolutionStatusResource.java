@@ -63,6 +63,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentGroupSortField;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentListRange;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
@@ -367,7 +368,7 @@ public class TestCaseResolutionStatusResource
                       }))
           @QueryParam("sortField")
           @DefaultValue(TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT)
-          String sortField,
+          IncidentGroupSortField sortField,
       @Parameter(
               description = "Direction of the `sortField` ordering",
               schema =

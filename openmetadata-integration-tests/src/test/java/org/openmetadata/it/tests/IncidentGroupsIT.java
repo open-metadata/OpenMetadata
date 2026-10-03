@@ -472,16 +472,7 @@ public class IncidentGroupsIT {
   void testDomainInheritedFromTheTable() throws Exception {
     long ts = System.currentTimeMillis();
     Domain tableDomain = createDomain("incident_groups_table_domain_" + ts);
-    Table table =
-        client
-            .tables()
-            .create(
-                new CreateTable()
-                    .withName("incident_groups_domain_table_" + ts)
-                    .withDatabaseSchema(schemaFqn)
-                    .withDomains(List.of(tableDomain.getFullyQualifiedName()))
-                    .withColumns(
-                        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+    Table table = createTableInDomain("incident_groups_domain_table_" + ts, tableDomain);
     TestDefinition definition =
         createTestDefinition("incident_groups_domain_def_" + ts, TestDefinitionEntityType.TABLE);
     // No domain of its own: the test case is in its table's domain, as test cases usually are.
@@ -593,23 +584,41 @@ public class IncidentGroupsIT {
     assertSorted(fetchGroups(descParams), false);
   }
 
-  // Table B's open incident is Severity2 and table A's carry none, so worst-first puts B first and
-  // the reverse ordering puts A first, wherever other suites' groups land around them.
+  // A domain of its own scopes the listing to two groups whatever other suites add: one with a
+  // Severity2 incident and one with none, as an untiered table gets no inferred severity. The
+  // severe table's name also sorts first, so the reverse ordering cannot pass on the tie-break.
   @Test
   void testSortBySeverityPutsTheMostSevereFirst() throws Exception {
+    long ts = System.currentTimeMillis();
+    Domain sortDomain = createDomain("incident_groups_sort_domain_" + ts);
+    TestDefinition definition =
+        createTestDefinition("incident_groups_sort_def_" + ts, TestDefinitionEntityType.TABLE);
+    Table severe = createTableInDomain("incident_groups_sort_severe_" + ts, sortDomain);
+    Table ungraded = createTableInDomain("incident_groups_sort_ungraded_" + ts, sortDomain);
+    createStatus(
+        createTestCase(
+            "incident_groups_sort_severe_case", tableLink(severe), definition, List.of()),
+        TestCaseResolutionStatusTypes.New,
+        null,
+        Severity.Severity2);
+    createStatus(
+        createTestCase(
+            "incident_groups_sort_ungraded_case", tableLink(ungraded), definition, List.of()),
+        TestCaseResolutionStatusTypes.New,
+        null);
+
     Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("domain", sortDomain.getFullyQualifiedName());
     params.put("sortField", "severity");
-    List<String> worstFirst = groupFqns(fetchGroups(params));
-    assertTrue(
-        worstFirst.indexOf(tableB.getFullyQualifiedName())
-            < worstFirst.indexOf(tableA.getFullyQualifiedName()),
+    assertEquals(
+        List.of(severe.getFullyQualifiedName(), ungraded.getFullyQualifiedName()),
+        groupFqns(fetchGroups(params)),
         "the Severity2 group comes before the group with no severity");
 
     params.put("sortType", "asc");
-    List<String> mildestFirst = groupFqns(fetchGroups(params));
-    assertTrue(
-        mildestFirst.indexOf(tableA.getFullyQualifiedName())
-            < mildestFirst.indexOf(tableB.getFullyQualifiedName()),
+    assertEquals(
+        List.of(ungraded.getFullyQualifiedName(), severe.getFullyQualifiedName()),
+        groupFqns(fetchGroups(params)),
         "the group with no severity comes first in the reverse ordering");
   }
 
@@ -1844,6 +1853,18 @@ public class IncidentGroupsIT {
             new CreateTable()
                 .withName(name)
                 .withDatabaseSchema(schemaFqn)
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+  }
+
+  private Table createTableInDomain(String name, Domain tableDomain) throws Exception {
+    return client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(name)
+                .withDatabaseSchema(schemaFqn)
+                .withDomains(List.of(tableDomain.getFullyQualifiedName()))
                 .withColumns(
                     List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
   }
