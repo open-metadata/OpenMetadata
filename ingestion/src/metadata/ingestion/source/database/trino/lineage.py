@@ -31,6 +31,7 @@ from metadata.ingestion.source.database.trino.query_parser import (
     TRINO_QUERY_BATCH_SIZE,
     TrinoQueryParserSource,
 )
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -131,7 +132,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
     ) -> str | None:
         trino_schema_name = None
         if trino_table.databaseSchema and trino_table.databaseSchema.name:
-            trino_schema_name = trino_table.databaseSchema.name.root
+            trino_schema_name = model_str(trino_table.databaseSchema.name)
 
         if not trino_schema_name and trino_table.fullyQualifiedName and trino_table.fullyQualifiedName.root:
             trino_table_fqn_parts = fqn.split(trino_table.fullyQualifiedName.root)
