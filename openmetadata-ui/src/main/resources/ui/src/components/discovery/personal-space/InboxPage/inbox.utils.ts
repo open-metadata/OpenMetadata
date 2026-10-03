@@ -232,16 +232,26 @@ export const isTaskOpen = (task: Pick<Task, 'status' | 'type'>): boolean =>
   (task.type === TaskType.DataAccessRequest &&
     task.status === TaskStatus.Approved);
 
+// Open statuses past the approval step: an access request awaiting its grant
+// or a manual revoke. Its holder still has work, but not an approval, and the
+// workflow's stage name says what.
+const PAST_APPROVAL_STATUSES = new Set<TaskStatus>([
+  TaskStatus.Approved,
+  TaskStatus.ManualRevoke,
+]);
+
 /**
- * Whether an open task waits on the viewer: it is assigned to them or one of
- * their teams. The Status filter and the status label both read it, so a task
- * filed under "Pending approval" also says so.
+ * Whether an open task awaits the viewer's approval: it is assigned to them or
+ * one of their teams and has not passed its approval step. The Status filter
+ * and the status label both read it, so a task filed under "Pending approval"
+ * also says so.
  */
 export const isTaskPendingViewer = (
   task: Pick<Task, 'status' | 'type' | 'assignees'>,
   currentUserIds: ReadonlySet<string>
 ): boolean =>
   isTaskOpen(task) &&
+  !PAST_APPROVAL_STATUSES.has(task.status) &&
   (task.assignees ?? []).some(({ id }) => currentUserIds.has(id));
 
 export interface RelativeDayGroup<T> {

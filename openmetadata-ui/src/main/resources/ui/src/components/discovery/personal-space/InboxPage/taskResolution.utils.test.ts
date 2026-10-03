@@ -207,6 +207,29 @@ describe('getTaskStatusLabel', () => {
     );
   });
 
+  // Past approval, an access request awaiting its grant or a manual revoke
+  // reads as its workflow stage and files under In review, held or not.
+  it.each([
+    [TaskStatus.Approved, 'Approved'],
+    [TaskStatus.ManualRevoke, 'Awaiting Revoke'],
+  ])(
+    'reads a held access request in %s as its stage, not pending approval',
+    (status, stage) => {
+      const request = openTask({
+        type: TaskType.DataAccessRequest,
+        status,
+        assignees: [{ id: 'u1' }],
+        workflowStageDisplayName: stage,
+      } as unknown as Partial<Task>);
+      const viewer = new Set(['u1']);
+
+      expect(getTaskStatusLabel(request, viewer, t)?.label).toBe(stage);
+      expect(getTaskStatusBucket(request, viewer)).toBe(
+        TaskStatusBucket.InReview
+      );
+    }
+  );
+
   it('reads a task the viewer holds as pending their approval', () => {
     expect(
       getTaskStatusLabel(
