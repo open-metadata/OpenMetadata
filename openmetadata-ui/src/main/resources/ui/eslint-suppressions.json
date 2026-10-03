@@ -81,7 +81,7 @@
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 9
+      "count": 8
     },
     "playwright/no-wait-for-selector": {
       "count": 1
@@ -149,7 +149,7 @@
   },
   "playwright/e2e/Features/DataQuality/DataQuality.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts": {
@@ -249,7 +249,7 @@
   },
   "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 3
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts": {
@@ -407,11 +407,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/Table.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
   "playwright/e2e/Features/Tasks.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
@@ -487,17 +482,12 @@
   },
   "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 1
     }
   },
   "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
-    }
-  },
-  "playwright/e2e/Flow/CustomizeLandingPage.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/e2e/Flow/IngestionBot.spec.ts": {
@@ -582,7 +572,7 @@
   },
   "playwright/e2e/Pages/DataContracts.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts": {
@@ -641,7 +631,7 @@
   },
   "playwright/e2e/Pages/ExploreBrowse.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts": {
@@ -651,7 +641,7 @@
   },
   "playwright/e2e/Pages/ExploreTree.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Pages/Glossary.spec.ts": {
@@ -742,7 +732,7 @@
   },
   "playwright/e2e/Pages/Tag.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "playwright/e2e/Pages/TagPageRightPanel.spec.ts": {
@@ -752,7 +742,7 @@
   },
   "playwright/e2e/Pages/Tags.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/e2e/Pages/TaskFormSettings.spec.ts": {
@@ -773,11 +763,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Pages/Teams.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Pages/TestSuite.spec.ts": {
     "playwright/no-wait-for-selector": {
       "count": 1
@@ -793,7 +778,7 @@
   },
   "playwright/e2e/Pages/UserDetails.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/e2e/Pages/Users.spec.ts": {
@@ -852,7 +837,7 @@
       "count": 8
     },
     "playwright/no-wait-for-selector": {
-      "count": 7
+      "count": 5
     }
   },
   "playwright/utils/activityAPI.ts": {
@@ -863,9 +848,6 @@
   "playwright/utils/activityFeed.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
-    },
-    "playwright/no-wait-for-selector": {
-      "count": 1
     }
   },
   "playwright/utils/advancedSearch.ts": {
@@ -900,7 +882,7 @@
   },
   "playwright/utils/customProperty.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 12
+      "count": 2
     }
   },
   "playwright/utils/customPropertyAdvancedSearchUtils.ts": {
@@ -935,7 +917,7 @@
   },
   "playwright/utils/entity.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 22
+      "count": 18
     }
   },
   "playwright/utils/entityPanel.ts": {
@@ -1004,9 +986,6 @@
   "playwright/utils/reviewerWorkflow.utils.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    },
-    "playwright/no-wait-for-selector": {
-      "count": 2
     }
   },
   "playwright/utils/searchRBAC.ts": {
@@ -1059,7 +1038,7 @@
   },
   "playwright/utils/user.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/utils/userDetails.ts": {

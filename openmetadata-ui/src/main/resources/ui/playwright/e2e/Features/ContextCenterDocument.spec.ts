@@ -98,7 +98,7 @@ const test = base.extend<object, { documentSession: DocumentSession }>({
         await user.create(adminContext);
         await installServerLoadReducers(context);
         const page = await context.newPage();
-        await user.login(page);
+        await user.signIn(page);
         const { apiContext, afterAction: disposeApiContext } =
           await getApiContext(page);
         try {

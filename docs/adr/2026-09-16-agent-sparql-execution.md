@@ -2,9 +2,10 @@
 
 - **Status:** Accepted for a scoped first implementation (2026-09-16, review 3). Code is
   reviewed separately.
-- **Date:** 2026-09-16
+- **Date:** 2026-09-16 (amended 2026-09-29, §2a: default grant through Data Consumer)
 - **Issue:** [OpenMetadata #33384](https://github.com/open-metadata/OpenMetadata/issues/33384)
 - **Branch:** `fmcardoso/add-permissioned-read-only-sparql-execution-for`
+- **Amended by:** [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231).
 - **Related:** ai-platform epic #224, ai-platform #1299, ai-platform PR #1310 (design, pinned at
   `0056ceb9`); OpenMetadata #33224 (asset-level RBAC — parallel work, explicitly **not** a
   prerequisite and **not** provided here).
@@ -107,7 +108,50 @@ what a given worker was authored against.
   `Entity.getEntityRepository("rdf")` (`policyevaluator/ResourceContext.java:50-55`), which
   throws for a non-entity type (`Entity.java:763-771`).
 
-#### 2a. Explicit opt-in (decided — review feedback 2026-09-16)
+#### 2a. Explicit-name matching (decided — review feedback 2026-09-16; default amended 2026-09-29)
+
+> **Amendment (2026-09-29, #34231).** The default changes from opt-in to opt-out through the
+> Data Consumer policy. This was a team decision by the AI domain, recorded on #34231.
+>
+> - **What changes.** The seeded `DataConsumerPolicy` carries its own allow rule,
+>   `DataConsumerPolicy-ExecuteSparqlQuery-Rule`, which names `ExecuteSparqlQuery` (resource
+>   `All`). Every user inherits Data Consumer through the Organization team, so a new user can
+>   run agent SPARQL queries with no role of their own. An admin who does not want this deletes
+>   that one rule; it is separate from `DataConsumerPolicy-EditRule` for that reason.
+> - **What does not change.** The matching described below is untouched: an allow rule matches
+>   only when it names the operation (`All` does not grant it), and a deny rule matches by name
+>   or by `All`. A deny rule on a role therefore still removes the permission from a user who
+>   inherits the Data Consumer grant. Admins are unaffected.
+> - **Why.** The agent's graph tool calls the endpoint as the user. With no default grant, most
+>   users were offered the tool and refused, and the agent fell back to sampling lineage. The
+>   ai-platform benchmark measured wrong answers in 3 of 5 runs (ai-platform#1370). Making the
+>   refusal honest (ai-platform#1372) cannot produce the answer; only the grant can.
+> - **Accepted risk.** Data Consumer already holds `ViewAll` on every resource, so on a default
+>   setup the graph exposes nothing a Data Consumer could not already view.
+> - **Remaining caveat (§7).** The endpoint does no asset-level filtering (#33224). An
+>   organisation that restricts what users can view through custom policies must also remove the
+>   rule, or its users can query assets they cannot otherwise see.
+> - **Existing installations.** Seed data never updates a policy that already exists, so the
+>   2.1.0 schema migration appends the rule to an existing `DataConsumerPolicy` when it is
+>   absent. It is a native SQL statement, recorded once in `SERVER_MIGRATION_SQL_LOGS`, so an
+>   admin who removes the rule afterwards does not get it back on a later upgrade. A Java data
+>   migration was rejected because its identity is a fingerprint of the version's migration
+>   classes, and changing any of them re-runs it on installs whose latest version is 2.1.0.
+> - **Upgrade guard.** The accepted risk above holds only while Data Consumer can view
+>   everything, so the migration adds the rule only if some allow rule of the policy still
+>   lists `ViewAll`, in the same plain style as the 2.0 policy backfills. An install where an
+>   admin removed `ViewAll` from Data Consumer keeps that restriction and does not receive the
+>   grant; such an admin who wants it adds the rule by hand. This narrows "works after
+>   upgrade" to installs that still have `ViewAll` in Data Consumer. The check is deliberately
+>   simple: it does not look at a rule's condition or resources, so a `ViewAll` that was
+>   narrowed by a condition or to specific resources still lets the grant through, and it does
+>   not treat the wildcard `All` operation as `ViewAll`. It reads `DataConsumerPolicy` only,
+>   so it cannot see deny rules in other policies (for example `DomainOnlyAccessPolicy` or a
+>   conditional deny on a team's role). Instances that restrict viewing in any of these ways
+>   must remove the rule themselves (§7).
+> The sections below record the original opt-in decision and remain the reference for how the
+> operation is matched. Where they say no default role grants the operation, read them as
+> superseded by this amendment.
 
 "No default role grants it" is **not** sufficient for opt-in. Policy evaluation matches
 wildcards: resource `All` matches `rdf` (`policyevaluator/CompiledRule.java:217-218`, only
@@ -136,14 +180,18 @@ Decision: **explicit opt-in** for non-admin callers.
   for `subjectContext.isAdmin()` (`security/DefaultAuthorizer.java:83-84`) before policy
   evaluation, independent of policy `All`. Under impersonation the subject is the effective
   user, so an impersonated **admin** user passes; the bot's own admin status is never used.
-- Rollout: no default role/policy grants `ExecuteSparqlQuery`; non-admins get access only
-  through a policy that names it.
+- Rollout (superseded 2026-09-29, see the amendment above): originally no default role grants
+  `ExecuteSparqlQuery`, and non-admins get access only through a policy that names it. Now the
+  Data Consumer policy names it, so users get access by default and an admin opts out.
 - Required tests (IT, real policies): wildcard-only (`All`/`All`) caller → 403
   `RDF_QUERY_FORBIDDEN`; explicit grant → 200; explicit grant plus applicable deny (named
   and wildcard `All`) → 403; admin without any grant → 200; impersonated user with/without
   explicit grant → 200/403 (bot's grants irrelevant); permissions API reflects the same
   outcomes; `CompiledRule` unit tests for allow-vs-deny matching of `ExecuteSparqlQuery`, plus
   a regression test that `Impersonate` still ignores wildcard allows **and** wildcard denies.
+  With the 2026-09-29 amendment: a user who only inherits Data Consumer → 200; the same user
+  plus a role denying `ExecuteSparqlQuery` → 403; the permissions API agrees in both cases; and
+  removing the Data Consumer rule withdraws the grant.
 
 ### 3. Effective caller, impersonation, audit
 
@@ -299,9 +347,11 @@ behavior it touches.
   `ExecuteSparqlQuery` only), and a before/after
   readiness check on the existing projection state. No second executor, no projection,
   rebuild, or storage changes.
-- Rollout is explicit opt-in (§2a): wildcard-only policies do not grant the endpoint;
-  non-admins need a policy naming `ExecuteSparqlQuery`; admins pass via the authorizer's
-  admin short-circuit.
+- Rollout is opt-out through Data Consumer (§2a, amended 2026-09-29): the seeded
+  `DataConsumerPolicy` names `ExecuteSparqlQuery`, so users inheriting it are allowed; wildcard-only
+  policies still do not grant the endpoint on their own; a deny rule still removes the permission;
+  admins pass via the authorizer's admin short-circuit. Instances with restricted viewing policies
+  should remove the rule (§7).
 - Companion `KnowledgeGraphApi.executeQuery` binds to the schemas/OpenAPI published here;
   any deviation from ai-platform PR #1310's proposal is reconciled with the owner and
   recorded as an amendment here.
@@ -379,6 +429,10 @@ Choices made while implementing that refine, but do not change, the decisions ab
   the eventual code). Final trims: `Impersonate` semantics left unchanged (§2a);
   `projectionState` removed as redundant (§1); vocabulary compatibility documented as not
   signaled (§1a). ai-platform proposal to be reconciled with the dropped fields.
+
+- 2026-09-29 amendment (#34231): default flipped from opt-in to opt-out through Data Consumer
+  (§2a). Explicit-name matching unchanged. Accepted risk and the restricted-viewing caveat
+  recorded there.
 
 ## Open items
 

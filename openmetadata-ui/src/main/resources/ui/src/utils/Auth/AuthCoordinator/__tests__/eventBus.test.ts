@@ -43,9 +43,9 @@ describe('TypedEventBus', () => {
     bus.on('refreshed', (p) => refreshed.push(p));
     bus.on('refresh-failed', (p) => failed.push(p));
 
-    bus.emit('refresh-failed', { reason: 'network' });
+    bus.emit('refresh-failed', { reason: 'network', source: 'renewer' });
 
     expect(refreshed).toEqual([]);
-    expect(failed).toEqual([{ reason: 'network' }]);
+    expect(failed).toEqual([{ reason: 'network', source: 'renewer' }]);
   });
 });

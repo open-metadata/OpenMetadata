@@ -16,6 +16,8 @@ Base validator class
 from __future__ import annotations
 
 import reprlib
+import sys
+import time
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -27,6 +29,7 @@ from typing import (
 from uuid import uuid4
 
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.api.models import TestCaseResultResponse  # noqa: TC001
 from metadata.data_quality.validations import result_messages, thresholds, utils
@@ -45,6 +48,7 @@ from metadata.data_quality.validations.thresholds import (
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
     TestCaseDimensionResult,
+    TestCaseErrorDetails,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -76,6 +80,58 @@ DIMENSION_IMPACT_SCORE_KEY = "impact_score"
 DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
 DIMENSION_SUM_VALUE_KEY = "sum_value"  # For statistical validators weighted calculations
+
+
+def elapsed_ms(start: float) -> float:
+    """Milliseconds elapsed since a `time.perf_counter()` reading"""
+    return (time.perf_counter() - start) * 1000
+
+
+# A trace or message is stored in the result, both search indexes and every search response, and
+# drivers put whole SQL statements and bound parameters in them, so both are capped.
+MAX_STACK_TRACE_CHARS = 16_000
+MAX_ERROR_MESSAGE_CHARS = 2_000
+TRUNCATION_MARKER = "... [truncated {count} characters]\n"
+
+
+def _root_error_type(exc: BaseException) -> str:
+    """Name of the driver exception behind a SQLAlchemy error, or of the exception itself
+
+    SQLAlchemy wraps the driver's exception (e.g. psycopg2 `QueryCanceled` for a statement
+    timeout) and keeps it on `orig`; our validators also re-raise as a bare `SQLAlchemyError`
+    with the wrapped one chained behind it. The driver type is what says what went wrong.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        orig = getattr(current, "orig", None)
+        if orig is not None:
+            return type(orig).__name__
+        if not isinstance(current, SQLAlchemyError):
+            break
+        current = current.__cause__ or current.__context__
+    return type(exc).__name__
+
+
+def _keep_head(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[:limit] + TRUNCATION_MARKER.format(count=len(text) - limit).rstrip()
+
+
+def _keep_tail(text: str, limit: int) -> str:
+    # The raising frame and the exception line are at the end of a traceback.
+    return text if len(text) <= limit else TRUNCATION_MARKER.format(count=len(text) - limit) + text[-limit:]
+
+
+def error_details(exc: BaseException | None) -> TestCaseErrorDetails | None:
+    """Structured details of the exception that aborted a test run"""
+    if exc is None:
+        return None
+    return TestCaseErrorDetails(
+        errorType=_root_error_type(exc),
+        message=_keep_head(str(exc), MAX_ERROR_MESSAGE_CHARS),
+        stackTrace=_keep_tail("".join(traceback.format_exception(exc)), MAX_STACK_TRACE_CHARS),
+    )
 
 
 class TestEvaluation(TypedDict, total=False):
@@ -177,8 +233,8 @@ class BaseTestValidator(ABC):
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
-            logger.debug(f"Executing dimensional validation for test case: {self.test_case.fullyQualifiedName}")
-            logger.debug(f"Dimension columns: {self.test_case.dimensionColumns}")
+            logger.debug("Executing dimensional validation for test case: %s", self.test_case.fullyQualifiedName)
+            logger.debug("Dimension columns: %s", self.test_case.dimensionColumns)
 
             if not self.are_dimension_columns_valid():
                 return test_result
@@ -186,19 +242,19 @@ class BaseTestValidator(ABC):
             try:
                 dimension_results = self._run_dimensional_validation()
                 if dimension_results:
-                    logger.debug(f"Dimensional validation completed with {len(dimension_results)} results")
+                    logger.debug("Dimensional validation completed with %d results", len(dimension_results))
 
                     test_case_dimension_results = self._convert_to_test_case_dimension_results(
                         dimension_results, test_result
                     )
 
                     test_result.dimensionResults = test_case_dimension_results
-                    logger.debug(f"Attached {len(test_case_dimension_results)} dimension results to main test result")
+                    logger.debug("Attached %d dimension results to main test result", len(test_case_dimension_results))
                 else:
                     logger.debug("Dimensional validation completed with no results")
 
             except Exception as exc:
-                logger.warning(f"Dimensional validation failed for {self.test_case.fullyQualifiedName}: {exc}")
+                logger.warning("Dimensional validation failed for %s: %s", self.test_case.fullyQualifiedName, exc)
                 logger.debug(traceback.format_exc())
 
         return test_result
@@ -839,6 +895,8 @@ class BaseTestValidator(ABC):
         passed_rows: int | None = None,
         min_bound: float | None = None,
         max_bound: float | None = None,
+        *,
+        exc: BaseException | None = None,
     ) -> TestCaseResult:
         """Returns a TestCaseResult object with the given args
 
@@ -847,6 +905,7 @@ class BaseTestValidator(ABC):
             status (TestCaseStatus): failed, success, aborted
             result (str): test case result
             test_result_value (List[TestResultValue]): test result value to display in UI
+            exc (BaseException): the exception that aborted the run; defaults to the one being handled
         Returns:
             TestCaseResult:
         """
@@ -859,6 +918,14 @@ class BaseTestValidator(ABC):
             # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
             minBound=None if min_bound == float("-inf") else min_bound,
             maxBound=None if max_bound == float("inf") else max_bound,
+            # Validators build their Aborted result inside the `except` block that caught the error,
+            # so without an explicit `exc` the exception being handled is the cause; that spares each
+            # of them from threading it through.
+            errorDetails=(
+                error_details(exc if exc is not None else sys.exc_info()[1])
+                if status == TestCaseStatus.Aborted
+                else None
+            ),
         )
 
         if (row_count is not None and row_count != 0) and (

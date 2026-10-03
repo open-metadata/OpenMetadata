@@ -1,7 +1,7 @@
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { DotsVertical } from '@untitledui/icons';
+import { DotsVertical } from '../../../icons';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,

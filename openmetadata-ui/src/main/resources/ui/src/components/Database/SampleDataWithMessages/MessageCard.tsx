@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Collapse, Tag, Typography } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Collapse } from 'antd';
 import { lazy, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -26,9 +27,9 @@ const { Panel } = Collapse;
 const MessageCard = ({ message }: { message: string }) => {
   const { t } = useTranslation();
   const [header, setHeader] = useState<ReactNode>(
-    <Typography.Text ellipsis className="text-primary">
+    <Typography ellipsis className="text-primary">
       {message}
-    </Typography.Text>
+    </Typography>
   );
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -37,18 +38,24 @@ const MessageCard = ({ message }: { message: string }) => {
   useEffect(() => {
     if (isExpanded) {
       setHeader(
-        <Tag data-testid="expanded-header" id="sampleData-value">
+        <Badge
+          className="tw:mr-2 tw:inline-flex tw:px-3 tw:py-1"
+          color="gray"
+          data-testid="expanded-header"
+          id="sampleData-value"
+          size="md"
+          type="color">
           {t('label.value')}
-        </Tag>
+        </Badge>
       );
     } else {
       setHeader(
-        <Typography.Text
+        <Typography
           ellipsis
           className="text-primary"
           data-testid="collapsed-header">
           {message}
-        </Typography.Text>
+        </Typography>
       );
     }
   }, [isExpanded]);

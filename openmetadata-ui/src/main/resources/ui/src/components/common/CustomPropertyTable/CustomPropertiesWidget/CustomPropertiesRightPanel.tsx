@@ -12,20 +12,17 @@
  */
 import {
   ButtonUtility,
-  Divider,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   ArrowUpRight,
-  SearchLg,
+  Search,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { Fragment, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import WidgetCard from '../../WidgetCard/WidgetCard';
 import { CustomPropertyCard } from '../CustomPropertyCard/CustomPropertyCard';
 import { matchesPropertySearch } from '../CustomPropertyCard/CustomPropertyCard.utils';
@@ -41,22 +38,13 @@ import {
 } from './CustomPropertiesWidget.utils';
 import { CustomPropertyListItem } from './CustomPropertyListItem';
 
-const PropertyValue = withSuspenseFallback(
-  lazy(() =>
-    import('../PropertyValue').then((m) => ({ default: m.PropertyValue }))
-  )
-);
-
 /** Custom properties rendered as a side widget (right panel or persona tab). */
 export const CustomPropertiesRightPanel = ({
   properties,
   extension,
-  versionDataKeys,
   widgetSettings,
   viewAllPath,
   hasEditPermissions,
-  isVersionView,
-  onExtensionUpdate,
   onValueSave,
 }: CustomPropertiesRightPanelProps) => {
   const { t } = useTranslation();
@@ -150,47 +138,6 @@ export const CustomPropertiesRightPanel = ({
     );
   };
 
-  if (isVersionView) {
-    return (
-      <WidgetCard
-        className="no-scrollbar"
-        headerExtra={
-          viewAllPath && (
-            <Link className="text-sm" to={viewAllPath}>
-              {t('label.view-all')}
-            </Link>
-          )
-        }
-        title={t('label.custom-property-plural')}>
-        <div className="custom-property-right-panel-container">
-          {properties.map((record, index) => (
-            <Fragment key={record.name}>
-              <div
-                className={classNames(
-                  'custom-property-right-panel-card tw:py-3.5',
-                  {
-                    'top-border-radius': index === 0,
-                    'bottom-border-radius': index === properties.length - 1,
-                  }
-                )}>
-                <PropertyValue
-                  isRenderedInRightPanel
-                  isVersionView
-                  extension={extension}
-                  hasEditPermissions={hasEditPermissions}
-                  property={record}
-                  versionDataKeys={versionDataKeys}
-                  onExtensionUpdate={onExtensionUpdate}
-                />
-              </div>
-              {index !== properties.length - 1 && <Divider />}
-            </Fragment>
-          ))}
-        </div>
-      </WidgetCard>
-    );
-  }
-
   if (widgetSettings && !widgetSettings.showHeader) {
     return (
       <ul
@@ -207,7 +154,7 @@ export const CustomPropertiesRightPanel = ({
       <Input
         aria-label={searchLabel}
         className="tw:w-full"
-        icon={SearchLg}
+        icon={Search}
         inputDataTestId="custom-properties-widget-search"
         placeholder={searchLabel}
         size="sm"
@@ -253,7 +200,7 @@ export const CustomPropertiesRightPanel = ({
               className="tw:p-1"
               color="tertiary"
               data-testid="custom-properties-widget-search-button"
-              icon={SearchLg}
+              icon={Search}
               size="xs"
               tooltip={searchLabel}
               onClick={() => setIsSearchOpen(true)}
@@ -272,7 +219,8 @@ export const CustomPropertiesRightPanel = ({
         </ul>
       ) : (
         <Typography
-          className="tw:px-4 tw:pb-4 tw:text-center tw:text-tertiary"
+          as="p"
+          className="tw:px-4 tw:py-6 tw:text-center tw:text-tertiary"
           data-testid="no-matching-custom-properties"
           size="text-sm">
           {t('message.no-entity-found-for-name', {

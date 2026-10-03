@@ -234,27 +234,48 @@ public class VectorSearchQueryBuilder {
     // caller-supplied
     // filter list exactly as the caller expressed it.
     sb.append(",\"filter\":[{\"bool\":{\"should\":[");
-    // Branch 1: anything that is not a context memory.
-    sb.append("{\"bool\":{\"must_not\":[")
-        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
-        .append("]}}");
+    // Branch 1: anything governed by neither rule.
+    sb.append("{\"bool\":{\"must_not\":[{\"terms\":{\"")
+        .append(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE)
+        .append("\":[\"")
+        .append(escape(Entity.CONTEXT_MEMORY))
+        .append("\",\"")
+        .append(escape(Entity.CONTEXT_FILE))
+        .append("\"]}}]}}");
     // Branch 2: a context memory this subject may see.
     sb.append(",{\"bool\":{\"must\":[")
         .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
         .append(',');
-    appendVisibleMemoryClause(sb, widen ? subjectContext : null);
+    appendVisibleToUserClause(sb, widen ? subjectContext : null, true);
+    sb.append("]}}");
+    // Branch 3: a context file this subject may see. A file with no visibility stamped is not
+    // restricted — unlike a memory, which is written with one — so it gets its own branch.
+    sb.append(",{\"bool\":{\"must\":[")
+        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_FILE))
+        .append(",{\"bool\":{\"should\":[{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"")
+        .append(ContextMemorySearchVisibility.FIELD_VISIBILITY)
+        .append("\"}}]}},");
+    appendVisibleToUserClause(sb, widen ? subjectContext : null, false);
+    sb.append("]}}");
     sb.append("]}}");
     sb.append("]}}]");
   }
 
   /** Mirrors {@code ContextMemorySearchVisibility#buildVisibleToUserClause}. */
-  private static void appendVisibleMemoryClause(StringBuilder sb, SubjectContext subjectContext) {
-    // A document lacking `visibility` satisfies no branch, so a memory chunk written before it was
-    // stamped is excluded until a Search Reindex restamps it — it may be a Private one.
+  private static void appendVisibleToUserClause(
+      StringBuilder sb, SubjectContext subjectContext, boolean allowPublic) {
+    // This clause excludes unstamped memories until Search Reindex restamps them; the file wrapper
+    // above separately admits unstamped files because those predate document sharing.
     sb.append("{\"bool\":{\"should\":[")
         .append(
             termClause(
                 ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    if (allowPublic) {
+      sb.append(',')
+          .append(
+              termClause(
+                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
+    }
     if (subjectContext != null) {
       User user = subjectContext.user();
       // ignore_unmapped mirrors QueryBuilderFactory#nestedQuery, and is not optional: a KNN query

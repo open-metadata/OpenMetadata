@@ -19,7 +19,7 @@ import {
 import {
   DotsGrid,
   MinusCircle,
-  Settings,
+  Settings01,
 } from '@openmetadata/ui-core-components/icons';
 import { noop, startCase } from 'lodash';
 import { useLayoutEffect, useMemo, useState } from 'react';
@@ -178,7 +178,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
             <ButtonUtility
               color="secondary"
               data-testid="widget-settings-button"
-              icon={Settings}
+              icon={Settings01}
               size="xs"
               tooltip={t('label.configure-entity', { entity: widgetName })}
               onClick={() => setIsSettingsOpen(true)}

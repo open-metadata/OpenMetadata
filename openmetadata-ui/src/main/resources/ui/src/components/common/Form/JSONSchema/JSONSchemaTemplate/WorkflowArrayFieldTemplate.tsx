@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Select, Tooltip } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -115,7 +116,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
         {/* Display field title only if uniqueItems is not true to remove duplicate title set
          automatically due to an unknown behavior */}
         {props.schema.uniqueItems !== true && (
-          <Typography>{startCase(props.name)}</Typography>
+          <Typography as="article">{startCase(props.name)}</Typography>
         )}
       </Col>
       <Col className="select-container" span={24}>
