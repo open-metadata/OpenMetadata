@@ -129,7 +129,9 @@ export const getMappingCoverage = (
       return 'mapped';
     }
     if (data.truncated || (inspectedIds && !inspectedIds.has(id))) {
-      return 'unknown';
+      // Outside the current traversal depth or truncated — we didn't look,
+      // so this is a "not explored" bucket, not a missing-data gap.
+      return 'not-explored';
     }
 
     return 'unmapped';

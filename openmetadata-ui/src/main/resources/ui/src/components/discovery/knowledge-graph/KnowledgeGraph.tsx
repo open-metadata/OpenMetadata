@@ -486,14 +486,12 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   columns={columns}
                   concepts={concepts}
                   coverage={coverage}
-                  coverageMode={coverageMode}
                   data={displayData}
                   drawer={drawer}
                   mode={mode}
                   relationshipScope={relationshipScope}
                   onClearRelationshipScope={() => setRelationshipScope(null)}
                   onClose={() => setDrawer(null)}
-                  onCoverageMode={setCoverageMode}
                   onDrawerChange={setDrawer}
                   onRetry={handleRefresh}
                   onSelect={(kind, id) =>
