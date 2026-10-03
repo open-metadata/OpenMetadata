@@ -63,13 +63,9 @@ const selectTagSuggestion = async ({
   searchText: string;
   tagTestId: string;
 }) => {
-  const tagSelector = root.locator('[data-testid="tag-selector"]').first();
-  const tagsInput = tagSelector
-    .locator(
-      '.ant-select-selection-search-input, input[type="search"], .ant-select-selection-search input'
-    )
-    .first();
-  const tagOption = page.getByTestId(tagTestId).first();
+  const tagSelector = root.locator('[data-testid="tag-selector"]');
+  const tagsInput = tagSelector.locator('.ant-select-selection-search-input');
+  const tagOption = page.getByTestId(tagTestId);
   const tagSearchResponse = page
     .waitForResponse(
       (response) =>
@@ -221,7 +217,7 @@ export const selectAssignee = async (page: Page, assigneeName: string) => {
   const assigneeInput = page.locator(
     '[data-testid="select-assignee"] .ant-select-selection-search input'
   );
-  const assigneeOption = page.getByTestId(assigneeName).first();
+  const assigneeOption = page.getByTestId(assigneeName);
   const assigneeSearchResponse = page
     .waitForResponse(
       (response) =>
@@ -370,21 +366,20 @@ export const openTaskEditModal = async (page: Page) => {
   logTaskDebug('openTaskEditModal:start');
   const editTransitionPattern =
     /edit suggestion|edit|update description|update tags|add description|add tags/i;
-  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
-  const workflowTaskActionPrimary = page
-    .locator('#task-panel [data-testid="workflow-task-action-primary"]')
-    .first();
-  const workflowTaskActionDropdown = page
-    .locator('#task-panel [data-testid="workflow-task-action-dropdown"]')
-    .first();
-  const genericTaskActionPanel = page.locator('#task-panel').first();
-  const addSuggestionDropdown = page
-    .locator('#task-panel [data-testid="add-close-task-dropdown"]')
-    .first();
-  const editSuggestionDropdown = page
-    .locator('#task-panel [data-testid="edit-accept-task-dropdown"]')
-    .first();
-
+  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR);
+  const workflowTaskActionPrimary = page.locator(
+    '#task-panel [data-testid="workflow-task-action-primary"]'
+  );
+  const workflowTaskActionDropdown = page.locator(
+    '#task-panel [data-testid="workflow-task-action-dropdown"]'
+  );
+  const genericTaskActionPanel = page.locator('#task-panel');
+  const addSuggestionDropdown = page.locator(
+    '#task-panel [data-testid="add-close-task-dropdown"]'
+  );
+  const editSuggestionDropdown = page.locator(
+    '#task-panel [data-testid="edit-accept-task-dropdown"]'
+  );
   const waitForVisibleTaskModal = async () => {
     await visibleTaskModal
       .waitFor({ state: 'visible', timeout: 5000 })
@@ -400,9 +395,9 @@ export const openTaskEditModal = async (page: Page) => {
 
   if (await workflowTaskActionDropdown.isVisible().catch(() => false)) {
     logTaskDebug('openTaskEditModal:workflowDropdown');
-    const dropdownPrimaryButton = workflowTaskActionDropdown
-      .locator('[data-testid="workflow-task-action-primary"]')
-      .first();
+    const dropdownPrimaryButton = workflowTaskActionDropdown.locator(
+      '[data-testid="workflow-task-action-primary"]'
+    );
     const dropdownPrimaryLabel = (
       await dropdownPrimaryButton.textContent().catch(() => '')
     )
@@ -460,7 +455,9 @@ export const openTaskEditModal = async (page: Page) => {
     }
   } else if (await addSuggestionDropdown.isVisible().catch(() => false)) {
     logTaskDebug('openTaskEditModal:addSuggestionDropdown');
-    const primaryActionButton = addSuggestionDropdown.locator('button').first();
+    const primaryActionButton = addSuggestionDropdown.locator(
+      '[data-testid="no-suggestion-task-action-primary"]'
+    );
 
     await primaryActionButton.scrollIntoViewIfNeeded().catch(() => undefined);
     await primaryActionButton.click().catch(() => undefined);
@@ -479,18 +476,17 @@ export const openTaskEditModal = async (page: Page) => {
     });
   } else if (
     await genericTaskActionPanel
-      .getByRole('button', { name: /approve|resolve|edit|update|add|down/i })
-      .first()
+      .locator('[data-testid$="-task-action-primary"]')
       .isVisible()
       .catch(() => false)
   ) {
     logTaskDebug('openTaskEditModal:genericTaskActionPanel');
-    const genericPrimaryAction = genericTaskActionPanel
-      .getByRole('button', { name: /edit suggestion|edit|resolve|update|add/i })
-      .first();
-    const genericDropdownTrigger = genericTaskActionPanel
-      .getByRole('button', { name: /down/i })
-      .first();
+    const genericPrimaryAction = genericTaskActionPanel.locator(
+      '[data-testid$="-task-action-primary"]'
+    );
+    const genericDropdownTrigger = genericTaskActionPanel.locator(
+      '[data-testid$="-task-action-trigger"]'
+    );
     if (await genericPrimaryAction.isVisible().catch(() => false)) {
       await genericPrimaryAction
         .scrollIntoViewIfNeeded()
@@ -518,7 +514,6 @@ export const saveTaskEditModal = async (page: Page) => {
   const taskResolveResponse = waitForTaskResolveResponse(page);
   await page
     .locator(VISIBLE_TASK_MODAL_SELECTOR)
-    .first()
     .getByRole('button', { name: /save|ok/i })
     .click();
   await taskResolveResponse;
@@ -535,7 +530,6 @@ export const editDescriptionAndAccept = async (
   logTaskDebug('editDescriptionAndAccept:modalOpen');
   const editor = page
     .locator(VISIBLE_TASK_MODAL_SELECTOR)
-    .first()
     .locator(descriptionBox);
   await expect(editor).toBeVisible();
   await editor.click();
@@ -561,7 +555,7 @@ export const editTagsAndAccept = async ({
   await openTaskEditModal(page);
   await selectTagSuggestion({
     page,
-    root: page.locator(VISIBLE_TASK_MODAL_SELECTOR).first(),
+    root: page.locator(VISIBLE_TASK_MODAL_SELECTOR),
     searchText,
     tagTestId,
   });
@@ -612,9 +606,9 @@ export const closeTaskFromDetails = async (page: Page) => {
   logTaskDebug('closeTaskFromDetails:start');
   const taskPanel = page.locator(TASK_PANEL_SELECTOR);
   const closeButton = taskPanel.getByTestId('close-button');
-  const workflowPrimaryButton = taskPanel
-    .getByTestId('workflow-task-action-primary')
-    .first();
+  const workflowPrimaryButton = taskPanel.getByTestId(
+    'workflow-task-action-primary'
+  );
 
   await expect(taskPanel).toBeVisible();
   await expect
@@ -623,10 +617,7 @@ export const closeTaskFromDetails = async (page: Page) => {
         (await closeButton.isVisible().catch(() => false)) ||
         (await workflowPrimaryButton.isVisible().catch(() => false)) ||
         (await taskPanel
-          .locator(
-            '[data-testid="workflow-task-action-dropdown"], [data-testid="edit-accept-task-dropdown"], [data-testid="add-close-task-dropdown"]'
-          )
-          .first()
+          .locator('[data-testid$="-task-action-trigger"]')
           .isVisible()
           .catch(() => false))
       );
@@ -667,7 +658,7 @@ export const closeTaskFromDetails = async (page: Page) => {
     menuPattern: /reject|decline|close/i,
   });
 
-  const visibleModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
+  const visibleModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR);
   await visibleModal
     .waitFor({ state: 'visible', timeout: 3000 })
     .catch(() => undefined);
@@ -678,12 +669,12 @@ export const closeTaskFromDetails = async (page: Page) => {
       await commentInput.fill('Rejected by Playwright');
     }
 
-    const rejectButton = visibleModal
-      .getByRole('button', { name: /reject|decline|close/i })
-      .first();
-    const confirmButton = visibleModal
-      .getByRole('button', { name: /save|ok/i })
-      .first();
+    const rejectButton = visibleModal.getByRole('button', {
+      name: /reject|decline|close/i,
+    });
+    const confirmButton = visibleModal.getByRole('button', {
+      name: /save|ok/i,
+    });
 
     if (await rejectButton.isVisible().catch(() => false)) {
       await rejectButton.click();
@@ -700,17 +691,17 @@ export const closeTaskFromDetails = async (page: Page) => {
 export const approveTaskFromDetails = async (page: Page) => {
   logTaskDebug('approveTaskFromDetails:start');
   const taskPanel = page.locator(TASK_PANEL_SELECTOR);
-  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
-  const approveButton = taskPanel.getByTestId('approve-button').first();
-  const workflowPrimaryButton = taskPanel
-    .getByTestId('workflow-task-action-primary')
-    .first();
-  const workflowDropdownPrimaryButton = taskPanel
-    .locator('[data-testid="workflow-task-action-dropdown"] button')
-    .first();
-  const genericPrimaryButton = taskPanel
-    .getByRole('button', { name: /approve|accept|resolve|complete/i })
-    .first();
+  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR);
+  const approveButton = taskPanel.getByTestId('approve-button');
+  const workflowPrimaryButton = taskPanel.getByTestId(
+    'workflow-task-action-primary'
+  );
+  const workflowDropdownPrimaryButton = taskPanel.locator(
+    '[data-testid="workflow-task-action-dropdown"] [data-testid="workflow-task-action-primary"]'
+  );
+  const genericPrimaryButton = taskPanel.locator(
+    '[data-testid$="-task-action-primary"]'
+  );
 
   const clickAndWait = async (button: Locator) => {
     const taskActionResponse = waitForTaskActionResponse(page);
