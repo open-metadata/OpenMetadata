@@ -527,7 +527,7 @@ test.describe('Column Level Lineage', () => {
       await visitLineageTab(page);
 
       const fieldBandBtn = page.getByTestId('lineage-layer-band-FIELD');
-      const layerControl = page.locator('.lineage-map-layer-control');
+      const layerControl = page.getByTestId('lineage-layer-btn');
 
       await test.step('Verify the FIELD band is inactive initially', async () => {
         await page.click('[data-testid="lineage-layer-btn"]');

@@ -238,9 +238,15 @@
       right: 34px;
     }
 
-    // Keep the label row, and a container's count pill, clear of the drill button.
-    &.has-scene-drill-button .label-container {
+    // Keep the label row, and a container's count pill, clear of the drill
+    // button. With a ⋮ menu the drill button sits left of it, so the gap goes
+    // before the menu rather than after it.
+    &.has-scene-drill-button:not(.has-lineage-node-menu) .label-container {
       padding-right: var(--om-space-36);
+    }
+
+    &.has-scene-drill-button .label-container .lineage-node-menu {
+      margin-left: var(--om-space-36);
     }
 
     .label-container {

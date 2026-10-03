@@ -34,7 +34,7 @@ const LineageNodeMenu = ({
 
   return (
     <div
-      className="nodrag nopan tw:inline-flex"
+      className="lineage-node-menu nodrag nopan tw:inline-flex"
       ref={triggerRef}
       role="presentation"
       onClick={(event) => event.stopPropagation()}
