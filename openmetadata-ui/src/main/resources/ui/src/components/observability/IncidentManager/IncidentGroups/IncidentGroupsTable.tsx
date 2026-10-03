@@ -15,6 +15,7 @@ import {
   AvatarGroup,
   Box,
   Button,
+  Checkbox,
   Table,
   toOwnerRefs,
   Typography,
@@ -165,6 +166,10 @@ const IncidentGroupsTable = ({
   onSortTypeChange,
   onGroupPreview,
   onGroupOpen,
+  selectedKeys,
+  isSelectable,
+  onGroupSelect,
+  onPageSelect,
 }: IncidentGroupsTableProps) => {
   const { t } = useTranslation();
 
@@ -174,6 +179,7 @@ const IncidentGroupsTable = ({
 
   const columns = useMemo(
     () => [
+      ...(isSelectable ? [{ id: 'select' }] : []),
       { id: 'name', label: t(dimension.labelKey) },
       {
         id: 'related',
@@ -195,7 +201,7 @@ const IncidentGroupsTable = ({
       { id: 'trend', label: t('label.trend') },
       { id: 'open', ariaLabel: t('label.action-plural') },
     ],
-    [dimension.labelKey, groupBy, t]
+    [dimension.labelKey, groupBy, isSelectable, t]
   );
 
   // react-aria drives the header arrow off the descriptor; `sortType` is the
@@ -204,6 +210,10 @@ const IncidentGroupsTable = ({
     column: INCIDENT_GROUPS_SORT_COLUMN,
     direction: sortType === 'asc' ? 'ascending' : 'descending',
   };
+
+  const selectedOnPage = groups.filter((group) =>
+    selectedKeys.has(getIncidentGroupKey(group))
+  ).length;
 
   const handleSortChange = (descriptor: SortDescriptor) =>
     onSortTypeChange(descriptor.direction === 'ascending' ? 'asc' : 'desc');
@@ -221,6 +231,17 @@ const IncidentGroupsTable = ({
         id={rowId}
         key={rowId}
         onAction={() => onGroupPreview(group)}>
+        {isSelectable && (
+          <Table.Cell className="tw:w-9 tw:pr-0">
+            <Checkbox
+              aria-label={t('label.select-entity', { entity: groupName })}
+              data-testid={`group-select-${rowId}`}
+              isSelected={selectedKeys.has(rowId)}
+              slot={null}
+              onChange={(isSelected) => onGroupSelect(group, isSelected)}
+            />
+          </Table.Cell>
+        )}
         <Table.Cell className="tw:max-w-72">
           <StackedCell
             caption={getIncidentGroupSubLine(group) || undefined}
@@ -284,19 +305,47 @@ const IncidentGroupsTable = ({
       size="sm"
       sortDescriptor={sortDescriptor}
       onSortChange={handleSortChange}>
-      <Table.Header columns={columns}>
-        {(column) => (
-          <Table.Head
-            allowsSorting={column.allowsSorting}
-            aria-label={column.ariaLabel}
-            id={column.id}
-            isRowHeader={column.id === 'name'}
-            key={column.id}
-            label={column.label}
-          />
-        )}
+      {/* The collection caches its rows and headers; the checkboxes in them
+          follow the selection only if it is a dependency. */}
+      <Table.Header
+        columns={columns}
+        dependencies={[selectedOnPage, groups.length]}>
+        {(column) =>
+          column.id === 'select' ? (
+            <Table.Head
+              className="tw:w-9 tw:pr-0"
+              id={column.id}
+              key={column.id}>
+              <Checkbox
+                aria-label={t('label.select-all')}
+                data-testid="group-select-page"
+                isIndeterminate={
+                  selectedOnPage > 0 && selectedOnPage < groups.length
+                }
+                isSelected={
+                  groups.length > 0 && selectedOnPage === groups.length
+                }
+                // Not the table's own selection slot: selection is ours, so a
+                // row press always previews.
+                slot={null}
+                onChange={onPageSelect}
+              />
+            </Table.Head>
+          ) : (
+            <Table.Head
+              allowsSorting={column.allowsSorting}
+              aria-label={column.ariaLabel}
+              id={column.id}
+              isRowHeader={column.id === 'name'}
+              key={column.id}
+              label={column.label}
+            />
+          )
+        }
       </Table.Header>
-      <Table.Body dependencies={[groups]} items={groups}>
+      <Table.Body
+        dependencies={[groups, selectedKeys, isSelectable]}
+        items={groups}>
         {(group) => renderRow(group)}
       </Table.Body>
     </Table>

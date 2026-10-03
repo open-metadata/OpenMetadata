@@ -88,8 +88,12 @@ const resolveDetail = (
  * one a link names may sit on any page of the listing.
  */
 export const useIncidentGroups = ({
-  refreshKey,
+  refreshKey: externalRefreshKey,
 }: { refreshKey?: number } = {}) => {
+  // The view's own reason to re-read, e.g. after a bulk change, adds to the
+  // caller's; both refresh in the background alike.
+  const [localRefreshKey, setLocalRefreshKey] = useState(0);
+  const refreshKey = (externalRefreshKey ?? 0) + localRefreshKey;
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
@@ -393,7 +397,10 @@ export const useIncidentGroups = ({
     [goToPage]
   );
 
+  const refresh = useCallback(() => setLocalRefreshKey((key) => key + 1), []);
+
   return {
+    refresh,
     groupBy,
     filters,
     incidentGroups,

@@ -25,9 +25,21 @@ jest.mock('../../IncidentManager/useIncidentManagerListPage', () => ({
 jest.mock('./IncidentGroups/IncidentGroupsView', () =>
   jest
     .fn()
-    .mockImplementation(({ refreshKey }: { refreshKey?: number }) => (
-      <div data-testid="incident-groups-view">{refreshKey}</div>
-    ))
+    .mockImplementation(
+      ({
+        refreshKey,
+        canEditIncidents,
+      }: {
+        refreshKey?: number;
+        canEditIncidents: boolean;
+      }) => (
+        <div
+          data-can-edit={String(canEditIncidents)}
+          data-testid="incident-groups-view">
+          {refreshKey}
+        </div>
+      )
+    )
 );
 
 jest.mock('../../IncidentManager/IncidentManagerTable.component', () =>
@@ -54,8 +66,12 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     ))
 );
 
-const listPage = (canView: boolean) => ({
-  commonTestCasePermission: { ViewAll: canView, ViewBasic: canView },
+const listPage = (canView: boolean, canEditStatus = false) => ({
+  commonTestCasePermission: {
+    ViewAll: canView,
+    ViewBasic: canView,
+    EditStatus: canEditStatus,
+  },
   isIncidentPage: true,
   testCaseListData: { data: [], isLoading: false },
   testCasePermissions: [],
@@ -83,6 +99,23 @@ describe('IncidentManagerPage (app mode)', () => {
     expect(screen.getByTestId('incident-widgets')).toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-view')).toBeInTheDocument();
     expect(screen.getByTestId('incident-table')).toBeInTheDocument();
+  });
+
+  it('should offer the bulk actions only to who may change incident statuses', () => {
+    renderPage();
+
+    expect(screen.getByTestId('incident-groups-view')).toHaveAttribute(
+      'data-can-edit',
+      'false'
+    );
+
+    mockUseIncidentManagerListPage.mockReturnValue(listPage(true, true));
+    renderPage();
+
+    expect(screen.getAllByTestId('incident-groups-view')[1]).toHaveAttribute(
+      'data-can-edit',
+      'true'
+    );
   });
 
   it('should show the permission placeholder without view access', () => {

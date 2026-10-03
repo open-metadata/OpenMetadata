@@ -18,6 +18,10 @@ import {
   User01,
 } from '@openmetadata/ui-core-components/icons';
 import {
+  TestCaseFailureReasonType,
+  TestCaseResolutionStatusTypes as CreateStatusTypes,
+} from '../../../../generated/api/tests/createTestCaseResolutionStatus';
+import {
   IncidentGroupBy,
   IncidentTrendDirection,
   Severities,
@@ -29,6 +33,7 @@ import {
   OpenIncidentStatus,
 } from '../../../../rest/incidentManagerAPI';
 import {
+  BulkIncidentStatus,
   IncidentGroupByOption,
   IncidentGroupFilters,
   IncidentListDateField,
@@ -177,6 +182,37 @@ export const INCIDENT_STATUS_BADGE_COLORS: Record<
 
 export const INCIDENT_GROUP_DRAWER_PAGE_SIZE_OPTIONS = [4, 8, 12, 20];
 
+/**
+ * Statuses a selection of groups can be moved to. New is left out: the status
+ * flow never sends an open incident back to it.
+ */
+export const BULK_INCIDENT_STATUSES: BulkIncidentStatus[] = [
+  CreateStatusTypes.ACK,
+  CreateStatusTypes.Assigned,
+  CreateStatusTypes.Resolved,
+];
+
+/** The dot each status carries in the bulk menu, in the hue of its chip. */
+export const BULK_INCIDENT_STATUS_DOT_CLASS: Record<
+  BulkIncidentStatus,
+  string
+> = {
+  [CreateStatusTypes.ACK]: 'tw:text-utility-blue-light-500',
+  [CreateStatusTypes.Assigned]: 'tw:text-utility-warning-500',
+  [CreateStatusTypes.Resolved]: 'tw:text-utility-success-500',
+};
+
+export const INCIDENT_FAILURE_REASON_OPTIONS = [
+  {
+    id: TestCaseFailureReasonType.FalsePositive,
+    label: 'label.false-positive',
+  },
+  { id: TestCaseFailureReasonType.MissingData, label: 'label.missing-data' },
+  { id: TestCaseFailureReasonType.Duplicates, label: 'label.duplicate-plural' },
+  { id: TestCaseFailureReasonType.OutOfBounds, label: 'label.out-of-bounds' },
+  { id: TestCaseFailureReasonType.Other, label: 'label.other' },
+];
+
 export const SPARKLINE_WIDTH = 72;
 export const SPARKLINE_HEIGHT = 24;
 /**
@@ -211,4 +247,14 @@ export const INCIDENT_TREND_DIRECTION_LABELS: Record<
   [IncidentTrendDirection.Rising]: 'label.rising',
   [IncidentTrendDirection.Falling]: 'label.falling',
   [IncidentTrendDirection.Steady]: 'label.steady',
+};
+
+/** Groups whose incidents a bulk change reads at once. */
+export const BULK_GROUP_READ_CONCURRENCY = 4;
+
+/** The confirm modal's title for each bulk status. */
+export const BULK_STATUS_TITLE_KEY: Record<BulkIncidentStatus, string> = {
+  [CreateStatusTypes.ACK]: 'label.acknowledge',
+  [CreateStatusTypes.Assigned]: 'label.assign-to',
+  [CreateStatusTypes.Resolved]: 'label.resolve',
 };
