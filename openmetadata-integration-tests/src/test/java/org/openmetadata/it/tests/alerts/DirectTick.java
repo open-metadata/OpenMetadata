@@ -3,9 +3,10 @@ package org.openmetadata.it.tests.alerts;
 import java.util.Date;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDetail;
+import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -24,20 +25,23 @@ final class DirectTick {
   private DirectTick() {}
 
   static void run(EventSubscription alert) {
-    Scheduler scheduler = EventSubscriptionScheduler.getInstance().getAlertsScheduler();
+    Scheduler scheduler = AlertFixtures.scheduler();
     run(alert, jobOf(scheduler, alert));
   }
 
   /** With a job read earlier, for a tick that fires after its alert was disabled or deleted. */
   static void run(EventSubscription alert, JobDetail jobDetail) {
-    Scheduler scheduler = EventSubscriptionScheduler.getInstance().getAlertsScheduler();
+    Scheduler scheduler = AlertFixtures.scheduler();
     AlertPublisher job = new AlertPublisher(new DIContainer());
-    job.execute(new JobExecutionContextImpl(scheduler, firedNow(jobDetail), job));
+    try {
+      job.execute(new JobExecutionContextImpl(scheduler, firedNow(jobDetail), job));
+    } catch (JobExecutionException refused) {
+      throw new IllegalStateException("The tick refused job " + jobDetail.getKey(), refused);
+    }
   }
 
   private static JobDetail jobOf(Scheduler scheduler, EventSubscription alert) {
-    JobKey jobKey =
-        new JobKey(alert.getId().toString(), EventSubscriptionScheduler.ALERT_JOB_GROUP);
+    JobKey jobKey = new JobKey(alert.getId().toString(), AlertJobs.JOB_GROUP);
     try {
       return scheduler.getJobDetail(jobKey);
     } catch (SchedulerException e) {

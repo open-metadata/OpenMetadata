@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.awaitility.Awaitility;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.quartz.JobExecutionContext;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -32,9 +32,8 @@ final class QuietAlert {
    * The trigger's state comes from the job store, so it is true for the whole cluster.
    */
   static void awaitScheduledTickIsOver(EventSubscription alert) {
-    Scheduler scheduler = EventSubscriptionScheduler.getInstance().getAlertsScheduler();
-    TriggerKey key =
-        new TriggerKey(alert.getId().toString(), EventSubscriptionScheduler.ALERT_TRIGGER_GROUP);
+    Scheduler scheduler = AlertFixtures.scheduler();
+    TriggerKey key = new TriggerKey(alert.getId().toString(), AlertJobs.TRIGGER_GROUP);
     Awaitility.await("the scheduled tick of " + alert.getName() + " to be over")
         .pollDelay(Duration.ofSeconds(1))
         .atMost(Duration.ofSeconds(90))
@@ -45,7 +44,7 @@ final class QuietAlert {
   }
 
   private static void awaitFirstScheduledTick(EventSubscription alert) {
-    Scheduler scheduler = EventSubscriptionScheduler.getInstance().getAlertsScheduler();
+    Scheduler scheduler = AlertFixtures.scheduler();
     String jobName = alert.getId().toString();
     Awaitility.await("first scheduled tick of " + alert.getName())
         .atMost(Duration.ofSeconds(60))
@@ -71,9 +70,7 @@ final class QuietAlert {
   }
 
   private static boolean hasFired(Scheduler scheduler, String jobName) throws SchedulerException {
-    Trigger trigger =
-        scheduler.getTrigger(
-            new TriggerKey(jobName, EventSubscriptionScheduler.ALERT_TRIGGER_GROUP));
+    Trigger trigger = scheduler.getTrigger(new TriggerKey(jobName, AlertJobs.TRIGGER_GROUP));
     return trigger != null && trigger.getPreviousFireTime() != null;
   }
 
