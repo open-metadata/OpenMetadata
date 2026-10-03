@@ -10,7 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ReactNode } from 'react';
+import { mergeProps } from '@react-aria/utils';
+import type { DOMAttributes, ReactNode } from 'react';
+import {
+  Children,
+  cloneElement,
+  createContext,
+  isValidElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import type {
   DialogTriggerProps as AriaDialogTriggerProps,
   PopoverProps as AriaPopoverProps,
@@ -21,7 +33,21 @@ import {
   OverlayArrow as AriaOverlayArrow,
   Popover as AriaPopover,
 } from 'react-aria-components';
+import { useHover } from 'react-aria';
 import { cx } from '@/utils/cx';
+
+/**
+ * Hover handlers the trigger shares with its Popover.
+ *
+ * A hover popover has to survive the pointer travelling from the trigger into
+ * the panel, and the panel is portalled out of the trigger's subtree — so it
+ * cannot inherit the hover by containment. The trigger publishes its handlers
+ * here and the Popover re-attaches them to the panel, which makes the pair
+ * behave as one hover region.
+ */
+const PopoverHoverContext = createContext<DOMAttributes<HTMLElement> | null>(
+  null
+);
 
 export interface PopoverProps extends Omit<AriaPopoverProps, 'children'> {
   /**
@@ -39,7 +65,101 @@ export interface PopoverProps extends Omit<AriaPopoverProps, 'children'> {
   containerClassName?: string;
 }
 
-export type PopoverTriggerProps = AriaDialogTriggerProps;
+export interface PopoverTriggerProps extends AriaDialogTriggerProps {
+  /**
+   * How the popover opens.
+   * - `press` (default): click or Enter/Space, via react-aria's DialogTrigger.
+   * - `hover`: pointer enter, and still press — so a keyboard user is not
+   *   locked out of content only a mouse can reach.
+   *
+   * Use `hover` only for a panel the pointer is meant to travel into, such as
+   * a preview card. Anything purely informational belongs in a Tooltip.
+   * @default 'press'
+   */
+  trigger?: 'press' | 'hover';
+  /**
+   * Milliseconds the pointer must rest on the trigger before a `hover`
+   * popover opens. Ignored when `trigger` is `press`.
+   * @default 300
+   */
+  delay?: number;
+  /**
+   * Milliseconds before a `hover` popover closes once the pointer has left
+   * both the trigger and the panel. This is the forgiveness window for
+   * crossing the gap between them, so it is not 0.
+   * @default 200
+   */
+  closeDelay?: number;
+}
+
+const HoverPopoverTrigger = ({
+  children,
+  trigger: _trigger,
+  delay = 300,
+  closeDelay = 200,
+  isOpen: controlledOpen,
+  defaultOpen,
+  onOpenChange,
+  ...props
+}: PopoverTriggerProps) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen ?? false);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+
+  const open = controlledOpen ?? isOpen;
+
+  const setOpen = useCallback(
+    (next: boolean) => {
+      setIsOpen(next);
+      onOpenChange?.(next);
+    },
+    [onOpenChange]
+  );
+
+  // A single timer for both directions: re-entering the panel before the
+  // close delay elapses cancels the pending close, which is what keeps the
+  // trigger -> panel journey from dismissing the thing being travelled to.
+  const schedule = useCallback(
+    (next: boolean, ms: number) => {
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => setOpen(next), ms);
+    },
+    [setOpen]
+  );
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  // useHover ignores touch and emulated-mouse events, so a tap does not open
+  // a panel the user then cannot dismiss by "moving away".
+  const { hoverProps } = useHover({
+    onHoverStart: () => schedule(true, delay),
+    onHoverEnd: () => schedule(false, closeDelay),
+  });
+
+  const [triggerChild, ...rest] = Children.toArray(children);
+
+  return (
+    <PopoverHoverContext.Provider value={hoverProps}>
+      <AriaDialogTrigger
+        {...props}
+        isOpen={open}
+        onOpenChange={(next) => {
+          clearTimeout(timer.current);
+          setOpen(next);
+        }}>
+        {isValidElement(triggerChild)
+          ? cloneElement(
+              triggerChild,
+              mergeProps(
+                triggerChild.props as Record<string, unknown>,
+                hoverProps
+              )
+            )
+          : triggerChild}
+        {rest}
+      </AriaDialogTrigger>
+    </PopoverHoverContext.Provider>
+  );
+};
 
 /**
  * PopoverTrigger manages the open/close state of a Popover.
@@ -53,9 +173,15 @@ export type PopoverTriggerProps = AriaDialogTriggerProps;
  *   </Popover>
  * </PopoverTrigger>
  */
-export const PopoverTrigger = (props: PopoverTriggerProps) => (
-  <AriaDialogTrigger {...props} />
-);
+export const PopoverTrigger = ({
+  trigger = 'press',
+  ...props
+}: PopoverTriggerProps) =>
+  trigger === 'hover' ? (
+    <HoverPopoverTrigger trigger={trigger} {...props} />
+  ) : (
+    <AriaDialogTrigger {...props} />
+  );
 
 /**
  * A general-purpose floating overlay panel built on react-aria Popover.
@@ -68,8 +194,13 @@ export const Popover = ({
   offset = 8,
   ...popoverProps
 }: PopoverProps) => {
+  // Null under a press trigger, which is why this costs nothing there.
+  const hoverProps = useContext(PopoverHoverContext);
+
   return (
     <AriaPopover
+      {...hoverProps}
+      isNonModal={hoverProps ? true : undefined}
       offset={offset}
       {...popoverProps}
       className={(state) =>

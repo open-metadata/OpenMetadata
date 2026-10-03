@@ -1773,7 +1773,9 @@ export const deleteAnnouncement = async (page: Page) => {
     await deleteAction.click({ timeout: 2000 });
   }).toPass({ timeout: 30000 });
 
-  const modalText = await page.textContent('.ant-modal-body');
+  // ConfirmationModal is a core Dialog now, so there is no `.ant-modal-body`.
+  // `body-text` is the test id the component has always carried.
+  const modalText = await page.textContent('[data-testid="body-text"]');
 
   expect(modalText).toContain(
     'Are you sure you want to permanently delete this message?'
