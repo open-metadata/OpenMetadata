@@ -236,15 +236,26 @@ describe('AnnouncementBanner', () => {
     expect(trigger?.parentElement).toHaveClass('tw:text-start');
   });
 
-  it('should keep the expanded title left-aligned when its host stretches', () => {
+  it('should show the expanded title in full, with no tooltip trigger', () => {
     renderBanner({ expanded: true, onClick: jest.fn() });
 
-    // Expanded, the title's host is a stretched flex item rather than a
-    // content-width one, so the `inline-flex` trigger has slack to drift into.
-    expect(
-      screen.getByTestId('announcement-title-btn').closest('button')
-        ?.parentElement
-    ).toHaveClass('tw:text-start');
+    const title = screen.getByTestId('announcement-title-btn');
+
+    // Expanded there is room to wrap, so the title is not truncated and needs no
+    // tooltip repeating text already on screen. No tooltip means Typography
+    // builds no trigger `<button>` — which is also what kept centring it, since
+    // a button's UA `text-align: center` beats an inherited value.
+    expect(title.closest('button')).toBeNull();
+    expect(title).not.toHaveClass('tw:truncate');
+  });
+
+  it('should still truncate the collapsed title and keep its tooltip', () => {
+    renderBanner({ onClick: jest.fn() });
+
+    const title = screen.getByTestId('announcement-title-btn');
+
+    expect(title).toHaveClass('tw:truncate');
+    expect(title.closest('button')).not.toBeNull();
   });
 
   it('should make the whole banner clickable through a separate overlay', () => {
