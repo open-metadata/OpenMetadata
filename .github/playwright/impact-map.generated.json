@@ -683,7 +683,6 @@
         "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
         "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
-        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
@@ -4115,6 +4114,14 @@
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/governance.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts"
       ]
     },
     {
@@ -9655,7 +9662,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
-        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
@@ -9687,7 +9693,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
-        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
@@ -9940,14 +9945,6 @@
       "specs": [
         "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/governance/GovernanceLanding.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ProfileGovernance.spec.ts"
       ]
     },
     {
