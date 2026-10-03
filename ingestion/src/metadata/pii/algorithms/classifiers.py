@@ -51,6 +51,20 @@ from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
 # which pattern recognisers never flag but spaCy NER might mis-classify as PERSON.
 _NER_BASED_TAGS: frozenset[PIITag] = frozenset({PIITag.PERSON, PIITag.LOCATION, PIITag.NRP})
 
+# Column-name tokens that identify a column as a generic audit / event timestamp
+# rather than a date that might represent personal information.  DATE_TIME content
+# hits are suppressed when the column name contains one of these tokens, because
+# "event_timestamp" or "created_timestamp" will always score 1.0 via
+# ValidatedDateRecognizer but are not PII.
+_TECHNICAL_TIMESTAMP_COLUMN_TOKENS: frozenset[str] = frozenset({"timestamp"})
+
+# DataType values that store database-level timestamps (not calendar dates).
+# A column declared TIMESTAMP/TIMESTAMPZ is definitionally a technical timestamp;
+# its parsed datetime values should not trigger a PII tag.
+_TECHNICAL_TIMESTAMP_DATATYPES: frozenset[DataType] = frozenset(
+    {DataType.TIMESTAMP, DataType.TIMESTAMPZ}
+)
+
 T = TypeVar("T", bound=Hashable)
 
 
@@ -160,6 +174,19 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
 
         if column_name is not None:
             column_name_matches = extract_pii_from_column_names(column_name, patterns=self._column_name_patterns)
+
+        # Drop DATE_TIME content hits when the column is a technical timestamp.
+        # ValidatedDateRecognizer scores any parseable datetime value at 1.0, so every
+        # event_timestamp / created_timestamp column would otherwise be tagged as PII.
+        # We suppress the hit when either the data type is a database-level timestamp
+        # type (TIMESTAMP/TIMESTAMPZ) or the column name contains "timestamp" as a token.
+        context_token_set = frozenset(context or [])
+        is_technical_timestamp = (
+            column_data_type in _TECHNICAL_TIMESTAMP_DATATYPES
+            or bool(_TECHNICAL_TIMESTAMP_COLUMN_TOKENS & context_token_set)
+        )
+        if is_technical_timestamp:
+            content_results.pop(PIITag.DATE_TIME, None)
 
         final_results: dict[PIITag, float] = {}
 
