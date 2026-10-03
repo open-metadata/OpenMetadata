@@ -19,7 +19,7 @@ type MockDateRangePickerProps = Pick<
   ComponentProps<
     typeof import('@openmetadata/ui-core-components').DateRangePicker
   >,
-  'value' | 'onApply' | 'onCancel' | 'onChange'
+  'value' | 'onApply' | 'onCancel' | 'onChange' | 'size' | 'fullWidth'
 >;
 
 // The core DateRangePicker speaks `@internationalized/date` values. We render a
@@ -31,8 +31,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onApply,
     onCancel,
     onChange,
+    size,
+    fullWidth,
   }: MockDateRangePickerProps) => (
-    <div data-testid="date-range-picker">
+    <div
+      data-full-width={String(Boolean(fullWidth))}
+      data-size={size}
+      data-testid="date-range-picker">
       <span data-testid="picker-value">
         {value ? JSON.stringify(value) : 'null'}
       </span>
@@ -163,28 +168,29 @@ describe('DqDateRangeFilter', () => {
     expect(screen.getByTestId('picker-value')).not.toHaveTextContent('null');
   });
 
-  it('should leave the trigger at its own width by default', () => {
-    const { container } = render(<DqDateRangeFilter onApply={onApply} />);
+  it('should leave the core trigger at its default size and width', () => {
+    render(<DqDateRangeFilter onApply={onApply} />);
 
-    expect(container.firstChild).toBe(screen.getByTestId('date-range-picker'));
+    expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
+      'data-full-width',
+      'false'
+    );
+    expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
+      'data-size',
+      'md'
+    );
   });
 
-  it('should stretch the trigger across its field when asked to', () => {
-    const { container } = render(
-      <DqDateRangeFilter fullWidth onApply={onApply} />
+  it('should pass the size and full width to the core trigger', () => {
+    render(<DqDateRangeFilter fullWidth size="sm" onApply={onApply} />);
+
+    expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
+      'data-full-width',
+      'true'
     );
-
-    expect(container.firstChild).toHaveClass('tw:w-full');
-  });
-
-  it('should combine the small size with the full width', () => {
-    const { container } = render(
-      <DqDateRangeFilter fullWidth size="sm" onApply={onApply} />
-    );
-
-    expect(container.firstChild).toHaveClass(
-      'tw:w-full',
-      'tw:[&_button]:py-2!'
+    expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
+      'data-size',
+      'sm'
     );
   });
 });
