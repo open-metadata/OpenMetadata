@@ -22,12 +22,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -2051,6 +2053,44 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     assertNotNull(result, "Request with omitted assets must not NPE");
     assertEquals(0, result.getNumberOfRowsProcessed());
     assertEquals(0, result.getNumberOfRowsPassed());
+  }
+
+  @Test
+  void test_customPropertyValueSurvivesCreatePatchAndRead(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = ns.prefix("teamCostCentre");
+    CustomPropertyTestSupport.registerStringProperty(client, "team", property);
+    try {
+      Team team =
+          client
+              .teams()
+              .create(
+                  new CreateTeam()
+                      .withName(ns.prefix("cpTeam"))
+                      .withTeamType(TeamType.GROUP)
+                      .withDescription("Team carrying a custom property")
+                      .withExtension(Map.of(property, "cc-100")));
+      String id = team.getId().toString();
+
+      Team created = client.teams().get(id, "extension");
+      assertEquals(
+          "cc-100",
+          CustomPropertyTestSupport.extensionValue(created.getExtension(), property),
+          "extension supplied on create must survive the round trip");
+
+      created.setChildrenCount(null);
+      created.setUserCount(null);
+      created.setExtension(Map.of(property, "cc-200"));
+      client.teams().update(id, created);
+
+      assertEquals(
+          "cc-200",
+          CustomPropertyTestSupport.extensionValue(
+              client.teams().get(id, "extension").getExtension(), property),
+          "PATCHing the extension must replace the stored value");
+    } finally {
+      CustomPropertyTestSupport.removeProperty(client, "team", property);
+    }
   }
 
   private Team createTeam(TestNamespace ns, String suffix) {
