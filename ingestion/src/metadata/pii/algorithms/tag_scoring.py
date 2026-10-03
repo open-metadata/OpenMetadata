@@ -95,8 +95,10 @@ class TagScorer:
         if not analysis.recognizer_results:
             return None
 
-        first_result = analysis.recognizer_results[0]
-        recognition_metadata = cast(dict[str, str], first_result.recognition_metadata)  # noqa: TC006
+        # Use the result with the highest score — that is the result responsible for
+        # analysis.score (which is the max), not necessarily the first in the list.
+        best_result = max(analysis.recognizer_results, key=lambda r: r.score)
+        recognition_metadata = cast(dict[str, str], best_result.recognition_metadata)  # noqa: TC006
 
         recognizer_name = recognition_metadata.get(
             presidio_constants.RECOGNIZER_METADATA_NAME,
@@ -123,15 +125,31 @@ class TagScorer:
         ]
 
         recognizer_id = None
-        for recognizer_config in analysis.tag.recognizers or []:
-            if isinstance(recognizer_config.recognizerConfig.root, PredefinedRecognizer):
-                name = recognizer_config.recognizerConfig.root.name.value
-            else:
-                name = recognizer_config.name.root
+        configs = analysis.tag.recognizers or []
 
-            if name == recognizer_name:
+        def _config_name(cfg) -> str:
+            if isinstance(cfg.recognizerConfig.root, PredefinedRecognizer):
+                return cfg.recognizerConfig.root.name.value
+            return cfg.name.root
+
+        # Pass 1: exact match across all configs (prevents custom recognizers named
+        # like "CustomEmailRecognizer" from being stolen by a predefined "EmailRecognizer"
+        # via the suffix fallback in pass 2).
+        for recognizer_config in configs:
+            if _config_name(recognizer_config) == recognizer_name:
                 recognizer_id = recognizer_config.id
                 break
+
+        # Pass 2: suffix match for predefined recognizers only (handles runtime subclasses
+        # like DateRecognizer → ValidatedDateRecognizer that prepend a qualifier).
+        if not recognizer_id:
+            for recognizer_config in configs:
+                if isinstance(recognizer_config.recognizerConfig.root, PredefinedRecognizer):
+                    config_name = recognizer_config.recognizerConfig.root.name.value
+                    if recognizer_name.endswith(config_name):
+                        recognizer_id = recognizer_config.id
+                        recognizer_name = config_name
+                        break
 
         if not recognizer_id:
             return None
