@@ -64,22 +64,14 @@ const IncidentGroupsSelectionBar = ({
         data-testid="incident-groups-selected-count"
         size="text-sm"
         weight="semibold">
-        {`${selectedCount} ${t(
-          selectedCount === 1
-            ? 'label.group-lowercase'
-            : 'label.group-lowercase-plural'
-        )} ${t('label.selected-lowercase')}`}
+        {t('message.group-selected-count', { count: selectedCount })}
       </Typography>
       <Typography
         as="span"
         className="tw:text-tertiary"
         data-testid="incident-groups-selected-incidents"
         size="text-sm">
-        {`${incidentCount} ${t(
-          incidentCount === 1
-            ? 'label.incident-lowercase'
-            : 'label.incident-lowercase-plural'
-        )}`}
+        {t('message.up-to-incident-count', { count: incidentCount })}
       </Typography>
       <Divider className="tw:h-4" orientation="vertical" />
       <Dropdown.Root>

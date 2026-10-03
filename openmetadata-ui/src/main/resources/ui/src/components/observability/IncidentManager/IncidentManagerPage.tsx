@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -85,9 +86,12 @@ const IncidentManagerPage = () => {
   // #26521), mirroring the classic IncidentManager.component.tsx precedent. Pure rename:
   // `!hasViewAccess` is De Morgan's law applied to the old `!ViewAll && !ViewBasic` — the
   // exact same condition, just via the named flag.
-  const hasViewPermission = getDerivedPermissionFlags(
+  const testCasePermissionFlags = getDerivedPermissionFlags(
     commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
-  ).hasViewAccess;
+  );
+  const hasViewPermission = testCasePermissionFlags.hasViewAccess;
+  // The bulk actions change incident statuses and severities.
+  const canEditIncidents = testCasePermissionFlags.can(Operation.EditStatus);
 
   // Attached to the test case links so the detail page breadcrumb reflects
   // the incidents page as the origin.
@@ -136,7 +140,10 @@ const IncidentManagerPage = () => {
       </div>
       {hasViewPermission ? (
         <Box className="tw:gap-4" direction="col">
-          <IncidentGroupsView refreshKey={groupsRefreshKey} />
+          <IncidentGroupsView
+            canEditIncidents={canEditIncidents}
+            refreshKey={groupsRefreshKey}
+          />
           <Box
             className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
             direction="col">

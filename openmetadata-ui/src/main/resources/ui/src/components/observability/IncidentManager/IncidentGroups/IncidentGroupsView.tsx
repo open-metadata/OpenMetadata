@@ -32,7 +32,6 @@ import { isEmpty, sumBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
-import { TestCaseResolutionStatusTypes as CreateStatusTypes } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
@@ -54,10 +53,10 @@ import {
 } from './IncidentGroups.constants';
 import {
   BulkIncidentChange,
+  BulkIncidentDetails,
   BulkIncidentOutcome,
-  BulkIncidentStatus,
-  IncidentGroupBulkStatusModalProps,
   IncidentGroupsViewProps,
+  PendingBulkChange,
 } from './IncidentGroups.types';
 import {
   countRecurringIncidentGroups,
@@ -80,7 +79,10 @@ const STAT_COUNT_ELEMENT = (
  * over the fetched groups, the filter row, and the paged group table — plus
  * the loading/empty/error states of the fetch that feeds them.
  */
-const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
+const IncidentGroupsView = ({
+  refreshKey,
+  canEditIncidents,
+}: IncidentGroupsViewProps) => {
   const { t } = useTranslation();
   const {
     refresh,
@@ -133,10 +135,9 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
   const [selection, setSelection] = useState<
     ReadonlyMap<string, TestCaseIncidentGroup>
   >(new Map());
-  // The status that needs more than itself (an assignee, a reason), while its
-  // details are being asked for.
-  const [pendingStatus, setPendingStatus] =
-    useState<IncidentGroupBulkStatusModalProps['status']>();
+  // Every bulk change is confirmed first, with how many incidents it reaches:
+  // it cannot be undone, and the selection can span pages.
+  const [pendingChange, setPendingChange] = useState<PendingBulkChange>();
   const [bulkOutcome, setBulkOutcome] = useState<BulkIncidentOutcome>();
 
   // Another dimension or other filters make other groups; a page or a sort
@@ -190,18 +191,22 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
         );
       }
       clearSelection();
-      refresh();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setPendingStatus(undefined);
+      setPendingChange(undefined);
+      // Even a change that failed part way has written what came before.
+      refresh();
     }
   };
 
-  const handleSetStatus = (status: BulkIncidentStatus) =>
-    status === CreateStatusTypes.ACK
-      ? runBulkChange({ kind: 'status', status })
-      : setPendingStatus(status);
+  const handleApplyPending = (details?: BulkIncidentDetails) =>
+    pendingChange &&
+    runBulkChange(
+      pendingChange.kind === 'status'
+        ? { ...pendingChange, details }
+        : pendingChange
+    );
 
   const [previewGroup, setPreviewGroup] = useState<TestCaseIncidentGroup>();
   const isRouteVisible = useIsRouteVisible();
@@ -300,22 +305,25 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
 
     return (
       <>
-        {selectedGroups.length > 0 && (
+        {canEditIncidents && selectedGroups.length > 0 && (
           <IncidentGroupsSelectionBar
             incidentCount={selectedIncidentCount}
             isApplying={isApplying}
             selectedCount={selectedGroups.length}
             onClearSelection={clearSelection}
             onSetSeverity={(severity) =>
-              runBulkChange({ kind: 'severity', severity })
+              setPendingChange({ kind: 'severity', severity })
             }
-            onSetStatus={handleSetStatus}
+            onSetStatus={(status) =>
+              setPendingChange({ kind: 'status', status })
+            }
           />
         )}
         <TableCard.Root>
           <IncidentGroupsTable
             groupBy={groupBy}
             groups={incidentGroups}
+            isSelectable={canEditIncidents}
             selectedKeys={selectedKeys}
             sortType={sortType}
             onGroupOpen={handleOpenGroup}
@@ -462,14 +470,11 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
         renderDetail()
       )}
       <IncidentGroupBulkStatusModal
+        change={pendingChange}
         incidentCount={selectedIncidentCount}
         isApplying={isApplying}
-        status={pendingStatus}
-        onApply={(details) =>
-          pendingStatus &&
-          runBulkChange({ kind: 'status', status: pendingStatus, details })
-        }
-        onCancel={() => setPendingStatus(undefined)}
+        onApply={handleApplyPending}
+        onCancel={() => setPendingChange(undefined)}
       />
       <IncidentGroupBulkFailuresModal
         outcome={bulkOutcome}

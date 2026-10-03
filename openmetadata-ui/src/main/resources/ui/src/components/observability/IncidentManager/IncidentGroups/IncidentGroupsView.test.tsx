@@ -114,14 +114,21 @@ jest.mock('./IncidentGroupBulkStatusModal', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ status, onApply, onCancel }: IncidentGroupBulkStatusModalProps) =>
-        status ? (
+      ({ change, onApply, onCancel }: IncidentGroupBulkStatusModalProps) =>
+        change ? (
           <div data-testid="bulk-status-modal">
-            <span data-testid="bulk-status-modal-status">{status}</span>
+            <span data-testid="bulk-status-modal-status">
+              {change.kind === 'status' ? change.status : change.severity}
+            </span>
             <button
               data-testid="bulk-status-modal-apply"
               onClick={() =>
-                onApply({ assignee: { id: 'user-a', type: 'user' } })
+                onApply(
+                  change.kind === 'status' &&
+                    change.status === CreateStatusTypes.Assigned
+                    ? { assignee: { id: 'user-a', type: 'user' } }
+                    : undefined
+                )
               }>
               apply
             </button>
@@ -210,6 +217,7 @@ jest.mock('./IncidentGroupsTable', () =>
         onGroupSelect,
         onPageSelect,
         selectedKeys,
+        isSelectable,
       }: IncidentGroupsTableProps) => (
         <div data-testid="incident-groups-table">
           <span data-testid="table-group-count">{groups.length}</span>
@@ -225,6 +233,7 @@ jest.mock('./IncidentGroupsTable', () =>
             preview
           </button>
           <span data-testid="table-selected-count">{selectedKeys.size}</span>
+          <span data-testid="table-is-selectable">{String(isSelectable)}</span>
           <button
             data-testid="select-first-group"
             onClick={() => onGroupSelect(groups[0], true)}>
@@ -384,7 +393,7 @@ const mockGroups = [
 
 const viewTree = (refreshKey?: number) => (
   <>
-    <IncidentGroupsView refreshKey={refreshKey} />
+    <IncidentGroupsView canEditIncidents refreshKey={refreshKey} />
     <LocationSearch />
   </>
 );
@@ -1659,6 +1668,24 @@ describe('IncidentGroupsView filters and paging', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should offer no selection to a user who cannot change incidents', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          <IncidentGroupsView canEditIncidents={false} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('table-is-selectable')).toHaveTextContent(
+      'false'
+    );
+
+    fireEvent.click(screen.getByTestId('select-first-group'));
+
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+  });
+
   describe('bulk changes', () => {
     beforeEach(() => {
       mockApplyBulkChange.mockResolvedValue({
@@ -1668,6 +1695,13 @@ describe('IncidentGroupsView filters and paging', () => {
         unchanged: 0,
       });
     });
+
+    const pickAndConfirm = async (testId: string) => {
+      fireEvent.click(screen.getByTestId(testId));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('bulk-status-modal-apply'));
+      });
+    };
 
     const renderSelected = async () => {
       await act(async () => {
@@ -1702,13 +1736,11 @@ describe('IncidentGroupsView filters and paging', () => {
       expect(screen.getByTestId('selected-count')).toHaveTextContent('3');
     });
 
-    it('should acknowledge the selected groups straight away and re-read them', async () => {
+    it('should acknowledge the selected groups once confirmed and re-read them', async () => {
       await renderSelected();
       const reads = mockListIncidentGroups.mock.calls.length;
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(mockApplyBulkChange).toHaveBeenCalledWith([mockGroups[0]], {
         kind: 'status',
@@ -1719,6 +1751,34 @@ describe('IncidentGroupsView filters and paging', () => {
       );
       expect(mockListIncidentGroups.mock.calls.length).toBeGreaterThan(reads);
       expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+    });
+
+    it('should not acknowledge until the change is confirmed', async () => {
+      await renderSelected();
+
+      fireEvent.click(screen.getByTestId('bulk-ack'));
+
+      expect(mockApplyBulkChange).not.toHaveBeenCalled();
+      expect(screen.getByTestId('bulk-status-modal-status')).toHaveTextContent(
+        CreateStatusTypes.ACK
+      );
+
+      fireEvent.click(screen.getByTestId('bulk-status-modal-cancel'));
+
+      expect(mockApplyBulkChange).not.toHaveBeenCalled();
+      expect(screen.getByTestId('selection-bar')).toBeInTheDocument();
+    });
+
+    it('should re-read the groups even when the change fails part way', async () => {
+      mockApplyBulkChange.mockRejectedValue(new Error('failure'));
+      await renderSelected();
+      const reads = mockListIncidentGroups.mock.calls.length;
+
+      await pickAndConfirm('bulk-ack');
+
+      expect(showErrorToast).toHaveBeenCalled();
+      expect(mockListIncidentGroups.mock.calls.length).toBeGreaterThan(reads);
+      expect(screen.queryByTestId('bulk-status-modal')).not.toBeInTheDocument();
     });
 
     it('should ask for the assignee before assigning', async () => {
@@ -1756,9 +1816,7 @@ describe('IncidentGroupsView filters and paging', () => {
     it('should change the severity of the selected groups', async () => {
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-severity'));
-      });
+      await pickAndConfirm('bulk-severity');
 
       expect(mockApplyBulkChange).toHaveBeenCalledWith([mockGroups[0]], {
         kind: 'severity',
@@ -1775,9 +1833,7 @@ describe('IncidentGroupsView filters and paging', () => {
       });
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(screen.getByTestId('bulk-failures-count')).toHaveTextContent('2');
       expect(showSuccessToast).not.toHaveBeenCalled();
@@ -1798,9 +1854,7 @@ describe('IncidentGroupsView filters and paging', () => {
       });
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(showSuccessToast).toHaveBeenCalledWith(
         'message.bulk-incident-update-success-skipped:2'
@@ -1859,9 +1913,7 @@ describe('IncidentGroupsView filters and paging', () => {
       });
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(showInfoToast).toHaveBeenCalledWith(
         'message.bulk-incident-no-change'
@@ -1872,9 +1924,7 @@ describe('IncidentGroupsView filters and paging', () => {
       mockApplyBulkChange.mockRejectedValue(new Error('failure'));
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(mockShowError).toHaveBeenCalled();
     });

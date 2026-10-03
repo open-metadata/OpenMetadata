@@ -152,6 +152,63 @@ describe('useIncidentGroupBulkUpdate', () => {
     expect(outcome.failures).toHaveLength(3);
   });
 
+  it('should count a failed call as failures and still send the rest', async () => {
+    mockList.mockResolvedValue({
+      data: Array.from({ length: 230 }, (_, index) => incident(index)),
+      paging: { total: 230 },
+    });
+    mockBulk
+      .mockImplementationOnce(async (entries: unknown[]) => ({
+        numberOfRowsPassed: entries.length,
+        failedRequest: [],
+      }))
+      .mockRejectedValueOnce(new Error('Request failed'));
+    const { result } = renderBulkUpdate();
+
+    let outcome: Awaited<ReturnType<typeof result.current.applyBulkChange>> = {
+      total: 0,
+      passed: 0,
+      failures: [],
+      unchanged: 0,
+    };
+    await act(async () => {
+      outcome = await result.current.applyBulkChange([group('rowCount')], ACK);
+    });
+
+    expect(mockBulk).toHaveBeenCalledTimes(3);
+    expect(outcome.total).toBe(230);
+    expect(outcome.passed).toBe(130);
+    expect(outcome.failures).toHaveLength(100);
+    expect(outcome.failures[0]).toEqual(
+      expect.objectContaining({ message: 'Request failed' })
+    );
+  });
+
+  it('should read at most four groups at a time', async () => {
+    let inFlight = 0;
+    let mostInFlight = 0;
+    mockList.mockImplementation(async () => {
+      inFlight += 1;
+      mostInFlight = Math.max(mostInFlight, inFlight);
+      await Promise.resolve();
+      await Promise.resolve();
+      inFlight -= 1;
+
+      return { data: [], paging: { total: 0 } };
+    });
+    const { result } = renderBulkUpdate();
+
+    await act(async () => {
+      await result.current.applyBulkChange(
+        Array.from({ length: 9 }, (_, index) => group(`group-${index}`)),
+        ACK
+      );
+    });
+
+    expect(mockList).toHaveBeenCalledTimes(9);
+    expect(mostInFlight).toBe(4);
+  });
+
   it('should leave out incidents the change would not alter', async () => {
     mockList.mockResolvedValue({
       data: [incident(1), incident(2, TestCaseResolutionStatusTypes.ACK)],

@@ -105,15 +105,23 @@ export type BulkIncidentStatus =
   | CreateStatusTypes.Assigned
   | CreateStatusTypes.Resolved;
 
+/** What a status change carries on top of the status: an assignee, a reason. */
+export type BulkIncidentDetails = NonNullable<
+  CreateTestCaseResolutionStatus['testCaseResolutionStatusDetails']
+>;
+
 /** What a bulk action does to every open incident of the selected groups. */
 export type BulkIncidentChange =
   | {
       kind: 'status';
       status: BulkIncidentStatus;
-      details?: NonNullable<
-        CreateTestCaseResolutionStatus['testCaseResolutionStatusDetails']
-      >;
+      details?: BulkIncidentDetails;
     }
+  | { kind: 'severity'; severity: CreateSeverities };
+
+/** A bulk change picked from the selection bar, waiting to be confirmed. */
+export type PendingBulkChange =
+  | { kind: 'status'; status: BulkIncidentStatus }
   | { kind: 'severity'; severity: CreateSeverities };
 
 /** What the bulk status form collects, before it becomes the entries' details. */
@@ -135,20 +143,21 @@ export interface BulkIncidentOutcome {
 }
 
 export interface IncidentGroupBulkStatusModalProps {
-  /** The status being applied; the modal is open while there is one. */
-  status?: CreateStatusTypes.Assigned | CreateStatusTypes.Resolved;
-  /** Open incidents the selected groups count, to say what Apply touches. */
+  /** The change being confirmed; the modal is open while there is one. */
+  change?: PendingBulkChange;
+  /**
+   * Open incidents the selected groups count. An incident in two of them is
+   * counted twice, so it is the most Apply can touch.
+   */
   incidentCount: number;
   isApplying: boolean;
   onCancel: () => void;
-  onApply: (
-    details: CreateTestCaseResolutionStatus['testCaseResolutionStatusDetails']
-  ) => void;
+  onApply: (details?: BulkIncidentDetails) => void;
 }
 
 export interface IncidentGroupsSelectionBarProps {
   selectedCount: number;
-  /** Open incidents across the selected groups. */
+  /** Open incidents across the selected groups, at most: see the modal's. */
   incidentCount: number;
   isApplying: boolean;
   onSetStatus: (status: BulkIncidentStatus) => void;
@@ -169,6 +178,8 @@ export interface IncidentGroupsViewProps {
    * the change to show. Every new value costs one fetch — nothing polls.
    */
   refreshKey?: number;
+  /** Whether the user may change incidents, which the bulk actions do. */
+  canEditIncidents: boolean;
 }
 
 export interface IncidentGroupsTableProps {
@@ -185,6 +196,8 @@ export interface IncidentGroupsTableProps {
    * row's checkbox alone, so pressing a row always previews it.
    */
   selectedKeys: ReadonlySet<string>;
+  /** Without it there is nothing to do to a selection, so rows have no checkbox. */
+  isSelectable: boolean;
   onGroupSelect: (group: TestCaseIncidentGroup, isSelected: boolean) => void;
   /** The header checkbox: every group on the page, or none of them. */
   onPageSelect: (isSelected: boolean) => void;

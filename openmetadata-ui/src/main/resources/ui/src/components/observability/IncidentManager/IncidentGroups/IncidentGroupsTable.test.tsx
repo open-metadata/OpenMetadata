@@ -123,12 +123,14 @@ const fixtureGroup: TestCaseIncidentGroup = {
 const renderTable = (
   groups: TestCaseIncidentGroup[] = [fixtureGroup],
   groupBy = IncidentGroupBy.Table,
-  selectedKeys: ReadonlySet<string> = new Set()
+  selectedKeys: ReadonlySet<string> = new Set(),
+  isSelectable = true
 ) =>
   render(
     <IncidentGroupsTable
       groupBy={groupBy}
       groups={groups}
+      isSelectable={isSelectable}
       selectedKeys={selectedKeys}
       sortType="desc"
       onGroupOpen={mockOnGroupOpen}
@@ -390,6 +392,13 @@ describe('IncidentGroupsTable', () => {
 
     expect(mockOnGroupSelect).toHaveBeenCalledWith(fixtureGroup, true);
     expect(mockOnGroupPreview).not.toHaveBeenCalled();
+  });
+
+  it('should offer no checkboxes to a user who cannot change incidents', () => {
+    renderTable([fixtureGroup], IncidentGroupBy.Table, new Set(), false);
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.getByTestId('group-severity')).toBeInTheDocument();
   });
 
   it('should show a partly selected page and select all of it', () => {

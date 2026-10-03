@@ -13,11 +13,13 @@
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import {
+  Severities as CreateSeverities,
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes as CreateStatusTypes,
 } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import IncidentGroupBulkStatusModal from './IncidentGroupBulkStatusModal';
+import { BulkIncidentStatus, PendingBulkChange } from './IncidentGroups.types';
 
 const mockOnApply = jest.fn();
 const mockOnCancel = jest.fn();
@@ -50,18 +52,19 @@ const press = (element: HTMLElement) => {
   fireEvent.click(element);
 };
 
-const renderModal = (
-  status?: CreateStatusTypes.Assigned | CreateStatusTypes.Resolved
-) =>
+const renderChange = (change?: PendingBulkChange) =>
   render(
     <IncidentGroupBulkStatusModal
+      change={change}
       incidentCount={12}
       isApplying={false}
-      status={status}
       onApply={mockOnApply}
       onCancel={mockOnCancel}
     />
   );
+
+const renderModal = (status?: BulkIncidentStatus) =>
+  renderChange(status && { kind: 'status', status });
 
 const apply = async () => {
   await act(async () => {
@@ -170,9 +173,9 @@ describe('IncidentGroupBulkStatusModal', () => {
     const reopen = (status?: CreateStatusTypes.Resolved) =>
       rerender(
         <IncidentGroupBulkStatusModal
+          change={status && { kind: 'status', status }}
           incidentCount={12}
           isApplying={false}
-          status={status}
           onApply={mockOnApply}
           onCancel={mockOnCancel}
         />
@@ -183,5 +186,30 @@ describe('IncidentGroupBulkStatusModal', () => {
     expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue(
       ''
     );
+  });
+
+  it('should confirm an acknowledgement with its scope and nothing to fill in', async () => {
+    renderModal(CreateStatusTypes.ACK);
+
+    expect(screen.getByText('label.acknowledge')).toBeInTheDocument();
+    expect(screen.getByTestId('bulk-status-scope')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('dialog')).queryByRole('textbox')
+    ).not.toBeInTheDocument();
+
+    await apply();
+
+    expect(mockOnApply).toHaveBeenCalledWith(undefined);
+  });
+
+  it('should confirm a severity change and name the severity', async () => {
+    renderChange({ kind: 'severity', severity: CreateSeverities.Severity2 });
+
+    expect(screen.getByText('label.set-severity')).toBeInTheDocument();
+    expect(screen.getByText('Severity 2')).toBeInTheDocument();
+
+    await apply();
+
+    expect(mockOnApply).toHaveBeenCalledWith(undefined);
   });
 });
