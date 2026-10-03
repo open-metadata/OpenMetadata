@@ -366,8 +366,8 @@ test.describe(
       });
     });
 
-    test.describe('Negative - Delete Results (ALL logic)', () => {
-      test('User with only TEST_CASE.DELETE (no TABLE.DELETE) cannot DELETE results', async ({
+    test.describe('Positive - Delete Results (ANY logic)', () => {
+      test('User with only TEST_CASE.DELETE (no TABLE.DELETE) can DELETE results', async ({
         partialDeleteTcPage,
         adminPage,
       }) => {
@@ -400,9 +400,9 @@ test.describe(
             testCaseFqn
           )}/${ts}`
         );
-        expect(res.status()).toBe(403);
+        expect(res.status()).toBe(200);
 
-        if (postRes.ok()) {
+        if (!res.ok() && postRes.ok()) {
           await adminContext.delete(
             `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
               testCaseFqn
@@ -411,7 +411,7 @@ test.describe(
         }
       });
 
-      test('User with only TABLE.DELETE (no TEST_CASE.DELETE) cannot DELETE results', async ({
+      test('User with only TABLE.DELETE (no TEST_CASE.DELETE) can DELETE results', async ({
         partialDeleteTablePage,
         adminPage,
       }) => {
@@ -443,9 +443,9 @@ test.describe(
             testCaseFqn
           )}/${ts}`
         );
-        expect(res.status()).toBe(403);
+        expect(res.status()).toBe(200);
 
-        if (postRes.ok()) {
+        if (!res.ok() && postRes.ok()) {
           await adminContext.delete(
             `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
               testCaseFqn
