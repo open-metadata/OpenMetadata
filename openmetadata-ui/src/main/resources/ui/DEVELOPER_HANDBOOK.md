@@ -299,10 +299,10 @@ folders stay at the top level.
   - ✅ Good: Store the key `message: 'label.name'`, then translate in component using `t('label.name')`
   - This prevents initialization order issues and keeps non-component code pure
 
-## 16. UI Library (@openmetadata/ui-core-components) and Icons (@untitledui/icons)
+## 16. UI Library (@openmetadata/ui-core-components) and Icons
 
 - Primary UI library: `@openmetadata/ui-core-components`, built on Untitled UI patterns with `react-aria-components` as the accessibility foundation.
-- Icon source: @untitledui/icons.
+- Icon source: `@openmetadata/ui-core-components/icons` (in-package generated icon set, see [ICONS.md](../../../../../openmetadata-ui-core-components/src/main/resources/ui/ICONS.md)).
 
 Usage guidance:
 - Component-level usage:
@@ -313,7 +313,7 @@ Usage guidance:
   - Use CSS custom properties (design tokens) defined in `openmetadata-ui-core-components` for colors instead of hardcoded values.
   - Use `.style.less` only for component-specific static styles/layout that predate the Tailwind migration.
 - Icons:
-  - Import icons directly to keep bundle size small: `import { IconName } from '@untitledui/icons';`
+  - Import icons directly to keep bundle size small: `import { IconName } from '@openmetadata/ui-core-components/icons';`
   - For rarely used icons, import directly where needed to enable tree-shaking.
   - If you need consistent sizing, color, or extra behavior, wrap icons in a shared component at
     `@src/components/common/Icon/Icon.tsx` (create it when the need arises — it does not exist yet).

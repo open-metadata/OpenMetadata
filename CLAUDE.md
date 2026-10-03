@@ -117,7 +117,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 
 **No wrappers around core-ui components.** If a wrapper component exists that wraps a core-ui component, skip it — use the `openmetadata-ui-core-components` component directly at the call site. Only create a wrapper if it adds genuine, non-trivial behaviour (custom hook logic, composed sub-components, domain-specific state). A wrapper that only passes props through is a maintenance liability: it hides which core component is in use and drifts from upstream updates.
 
-**Icons and assets: always go through the design-system layer.** Import icons from `@openmetadata/ui-core-components/icons`, never directly from `@untitledui/icons` — the core-components package re-exports the full icon set and bypassing it can diverge on version upgrades. For the same reason, do not import SVG icons directly from `assets/` paths; use the designated abstraction instead.
+**Icons and assets: always go through the design-system layer.** Import icons from `@openmetadata/ui-core-components/icons` — the icon set lives inside the core-components package. For the same reason, do not import SVG icons directly from `assets/` paths; use the designated abstraction instead.
 
 ## Pointer index — when to reach for what
 
