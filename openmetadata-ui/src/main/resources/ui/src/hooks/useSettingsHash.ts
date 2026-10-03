@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { PROFILE_NAV_IDS } from '../constants/Profile.constants';
-// eslint-disable-next-line openmetadata-imports/no-hook-ui-imports -- type-only import for hash ↔ nav-id mapping
-import type { ProfileNavId } from '../components/discovery/personal-space/Profile/profileNavConfig';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useSyncExternalStore
+} from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
 
 /**
  * Parsed hash state for the settings modal.
@@ -108,6 +112,34 @@ function buildHash(
   return hash;
 }
 
+// The modal's BrowserRouter runs with `useTransitions`, so react-router wraps every
+// location update in `React.startTransition` — a low-priority commit. The Teams panel
+// pushes a stream of header-state updates (urgent re-renders) that starve that
+// transition, so a `useLocation()`-derived view never commits and the modal appears
+// frozen on the old sub-view until a refresh. This urgent store is updated
+// synchronously by `setHash`/`clearHash` so the view switches immediately; react-router
+// still owns the URL and history. Browser-driven changes (deep link, refresh,
+// Back/Forward) are mirrored back in via the `location.hash` effect below.
+let storeHash = typeof window !== 'undefined' ? window.location.hash : '';
+const storeListeners = new Set<() => void>();
+
+const setStoreHash = (next: string): void => {
+  if (storeHash !== next) {
+    storeHash = next;
+    storeListeners.forEach((listener) => listener());
+  }
+};
+
+const subscribeStoreHash = (onStoreChange: () => void): (() => void) => {
+  storeListeners.add(onStoreChange);
+
+  return () => {
+    storeListeners.delete(onStoreChange);
+  };
+};
+
+const getStoreHash = (): string => storeHash;
+
 /**
  * Hook that syncs settings modal navigation with `location.hash`.
  *
@@ -115,11 +147,41 @@ function buildHash(
  * Hash presence means the modal should be open; clearing the hash closes it.
  */
 export const useSettingsHash = () => {
-  const location = useLocation();
   const navigate = useNavigate();
 
-  const state = useMemo(() => parseHash(location.hash), [location.hash]);
+  // Keep navigate reachable from the stable callbacks below without listing it
+  // (or location) as a dependency — an unstable `setHash` identity propagates
+  // into panels' `onNavigate` callbacks and the header-injection effects that
+  // depend on them, re-firing those effects every render (infinite loop).
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
 
+  const hash = useSyncExternalStore(
+    subscribeStoreHash,
+    getStoreHash,
+    getStoreHash
+  );
+
+  const state = useMemo(() => parseHash(hash), [hash]);
+
+  // The urgent `storeHash` is the single source of truth; `setHash`/`clearHash`
+  // keep it correct for in-app navigation. Only GENUINE browser-driven changes
+  // (Back/Forward, deep link, refresh) need mirroring in. We listen to
+  // `popstate` rather than react-router's `location.hash` because our own
+  // `navigate(..., { replace: true })` wraps the update in a transition — reading
+  // the lagged `location.hash` would echo a stale value back into the store and
+  // flip it to the previous tab/sub-path (infinite oscillation). `replace`
+  // navigations do not emit `popstate`, so they never echo back.
+  useEffect(() => {
+    const onPopState = () => setStoreHash(globalThis.location.hash);
+    globalThis.addEventListener('popstate', onPopState);
+    onPopState();
+
+    return () => globalThis.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // pathname/search are read from `globalThis.location` at call time (mirroring
+  // useTableFilters) so these callbacks stay referentially stable.
   const setHash = useCallback(
     (
       tab: string,
@@ -128,28 +190,34 @@ export const useSettingsHash = () => {
     ) => {
       const next = buildHash(tab, subPath, params);
 
-      if (window.location.hash !== next) {
-        navigate(
+      if (storeHash !== next) {
+        setStoreHash(next);
+        navigateRef.current(
           {
-            pathname: location.pathname,
-            search: location.search,
+            pathname: globalThis.location.pathname,
+            search: globalThis.location.search,
             hash: next.slice(1),
           },
           { replace: true }
         );
       }
     },
-    [navigate, location.pathname, location.search]
+    []
   );
 
   const clearHash = useCallback(() => {
-    if (window.location.hash) {
-      navigate(
-        { pathname: location.pathname, search: location.search, hash: '' },
+    if (storeHash) {
+      setStoreHash('');
+      navigateRef.current(
+        {
+          pathname: globalThis.location.pathname,
+          search: globalThis.location.search,
+          hash: '',
+        },
         { replace: true }
       );
     }
-  }, [navigate, location.pathname, location.search]);
+  }, []);
 
   const updateParams = useCallback(
     (params: Record<string, string | undefined>) => {

@@ -19,13 +19,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
+    DE_ACTIVE_COLOR,
+    ICON_DIMENSION,
+    NO_DATA_PLACEHOLDER
 } from '../../../../../constants/constants';
 import {
-  SUBSCRIPTION_WEBHOOK,
-  SUBSCRIPTION_WEBHOOK_OPTIONS,
+    SUBSCRIPTION_WEBHOOK,
+    SUBSCRIPTION_WEBHOOK_OPTIONS
 } from '../../../../../constants/Teams.constants';
 import { Webhook } from '../../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
@@ -35,6 +35,7 @@ import './teams-subscription.less';
 const TeamsSubscription = ({
   subscription,
   hasEditPermission,
+  hideLabel = false,
   updateTeamSubscription,
 }: TeamsSubscriptionProps) => {
   const [form] = useForm();
@@ -141,9 +142,11 @@ const TeamsSubscription = ({
       className="teams-subscription-container d-flex flex-col gap-2"
       data-testid="teams-subscription">
       <div className="d-flex gap-1 items-center teams-subscription-label-container">
-        <Typography className="right-panel-label text-sm font-medium subscription-label">
-          {`${t('label.subscription')}`}
-        </Typography>
+        {!hideLabel && (
+          <Typography className="right-panel-label text-sm font-medium subscription-label">
+            {`${t('label.subscription')}`}
+          </Typography>
+        )}
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
           <Tooltip
             title={t('label.edit-entity', {

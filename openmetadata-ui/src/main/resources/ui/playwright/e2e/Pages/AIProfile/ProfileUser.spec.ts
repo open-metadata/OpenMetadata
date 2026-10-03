@@ -1,0 +1,348 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Page } from '@playwright/test';
+import { expect, test } from '../../fixtures/pages';
+import { Domain } from '../../../support/domain/Domain';
+import { PersonaClass } from '../../../support/persona/PersonaClass';
+import { UserClass } from '../../../support/user/UserClass';
+import {
+  navigateToMembersPanel,
+  openAdminsPanel,
+  openUsersPanel,
+  searchUserRow,
+} from '../../../utils/aiProfile';
+import { performAdminLogin } from '../../../utils/admin';
+import { redirectToHomePage, uuid } from '../../../utils/common';
+import { enableAiAppMode } from '../../Utils/appMode';
+
+// Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
+// AI-mode Users/Admins panels and the user profile view (ProfileDetailsPanel).
+// Deferred/NOT-APPLICABLE (not ported): access-token gen/revoke/expiry;
+// entity-detail & settings permission matrices; header persona-dropdown switcher;
+// team/role/description editing on the profile and delete/restore from the
+// profile (ProfileDetailsPanel does not expose these); the performance suite.
+
+const persona = new PersonaClass();
+// Assigned in beforeAll: some stacks gate domain creation behind an intake form
+// requiring Owners + Tags, so the domain is built with both.
+let domain: Domain;
+let createdUsers: UserClass[] = [];
+
+const trackUser = async (
+  apiContext: Parameters<UserClass['create']>[0]
+): Promise<UserClass> => {
+  const user = new UserClass();
+  await user.create(apiContext);
+  createdUsers.push(user);
+
+  return user;
+};
+
+/** Open a user's profile view (#profile/<name>) from the Users list. */
+const openUserProfile = async (page: Page, userName: string): Promise<void> => {
+  await navigateToMembersPanel(page);
+  await openUsersPanel(page);
+  const userCell = await searchUserRow(page, userName);
+
+  const profileResponse = page.waitForResponse((response) =>
+    response.url().includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
+  );
+  await userCell.click();
+  await profileResponse;
+
+  await expect(page.getByTestId('profile-details-panel')).toBeVisible();
+};
+
+test.describe('AI Profile Users', () => {
+  test.beforeAll(async ({ browser }) => {
+    createdUsers = [];
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await persona.create(apiContext);
+
+    const domainOwner = new UserClass();
+    await domainOwner.create(apiContext);
+    createdUsers.push(domainOwner);
+
+    const domainId = uuid();
+    domain = new Domain({
+      name: `PW%domain.${domainId}`,
+      displayName: `PW Domain ${domainId}`,
+      description: 'playwright profile-user domain',
+      domainType: 'Aggregate',
+      fullyQualifiedName: `"PW%domain.${domainId}"`,
+      owners: [
+        {
+          id: domainOwner.responseData.id ?? '',
+          type: 'user',
+          name: domainOwner.responseData.name,
+        },
+      ],
+      // Satisfy intake-form configs that require a tag; PII.Sensitive is seeded.
+      tags: [
+        {
+          tagFQN: 'PII.Sensitive',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ],
+    } as ConstructorParameters<typeof Domain>[0]);
+    await domain.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    for (const user of createdUsers) {
+      await user.delete(apiContext).catch(() => undefined);
+    }
+    await persona.delete(apiContext).catch(() => undefined);
+    await domain?.delete(apiContext).catch(() => undefined);
+    await afterAction();
+  });
+
+  test('Should create a user from the create-user form', async ({ page }) => {
+    const email = `pw-user-${uuid()}@example.com`;
+
+    await navigateToMembersPanel(page);
+    await openUsersPanel(page);
+    await page.getByTestId('add-user').click();
+    await expect(page.getByTestId('create-user-container')).toBeVisible();
+
+    await page.getByTestId('email').getByRole('textbox').fill(email);
+
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('save-user').click();
+    const created = await createResponse;
+
+    expect(created.ok()).toBeTruthy();
+    const body = await created.json();
+    createdUsers.push(
+      Object.assign(new UserClass(), { responseData: body }) as UserClass
+    );
+  });
+
+  test('Should not allow creating a user with a duplicate email', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const existing = await trackUser(apiContext);
+
+    await navigateToMembersPanel(page);
+    await openUsersPanel(page);
+    await page.getByTestId('add-user').click();
+    await page.getByTestId('email').getByRole('textbox').fill(existing.data.email);
+
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('save-user').click();
+    const response = await createResponse;
+
+    expect(response.status()).toBe(409);
+    await expect(page.getByTestId('create-user-container')).toBeVisible();
+  });
+
+  test('Should create an admin from the admins panel', async ({ page }) => {
+    const email = `pw-admin-${uuid()}@example.com`;
+
+    await navigateToMembersPanel(page);
+    await openAdminsPanel(page);
+    await page.getByTestId('add-user').click();
+    await expect(page.getByTestId('create-user-container')).toBeVisible();
+    await expect(
+      page.getByTestId('create-user-container').getByTestId('admin')
+    ).toBeVisible();
+
+    await page.getByTestId('email').getByRole('textbox').fill(email);
+
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users') &&
+        response.request().method() === 'POST'
+    );
+    await page.getByTestId('save-user').click();
+    const created = await createResponse;
+
+    expect(created.ok()).toBeTruthy();
+    const body = await created.json();
+    createdUsers.push(
+      Object.assign(new UserClass(), { responseData: body }) as UserClass
+    );
+  });
+
+  test('Should search a user by name', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+
+    await navigateToMembersPanel(page);
+    await openUsersPanel(page);
+    await searchUserRow(page, user.responseData.name);
+  });
+
+  test('Should soft delete and restore a user from the list', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+    const userName = user.responseData.name;
+
+    await navigateToMembersPanel(page);
+    await openUsersPanel(page);
+    await searchUserRow(page, userName);
+
+    const softDelete = page.waitForResponse((response) =>
+      response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
+      response.url().includes('hardDelete=false')
+    );
+    await page.getByTestId(`delete-user-btn-${userName}`).click();
+    await page.getByTestId('delete-modal').waitFor();
+    await page.getByTestId('soft-delete').click();
+    await page.getByTestId('confirm-button').click();
+    await softDelete;
+
+    // Show deleted users, then restore.
+    await page.getByTestId('show-deleted').click();
+    await searchUserRow(page, userName);
+
+    const restore = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/users/restore')
+    );
+    await page.getByTestId(`restore-user-btn-${userName}`).click();
+    await page
+      .getByTestId('restore-user-modal')
+      .getByRole('button', { name: 'Restore' })
+      .click();
+    await restore;
+  });
+
+  test('Should hard delete a user from the list', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+    const userName = user.responseData.name;
+
+    await navigateToMembersPanel(page);
+    await openUsersPanel(page);
+    await searchUserRow(page, userName);
+
+    const hardDelete = page.waitForResponse((response) =>
+      response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
+      response.url().includes('hardDelete=true')
+    );
+    await page.getByTestId(`delete-user-btn-${userName}`).click();
+    await page.getByTestId('delete-modal').waitFor();
+    await page.getByTestId('hard-delete').click();
+    await page.getByTestId('confirm-button').click();
+    await hardDelete;
+  });
+
+  test('Should edit the preferred name on a user profile', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+
+    await openUserProfile(page, user.responseData.name);
+
+    await page.getByTestId('preferred-name-edit').click();
+    await page
+      .getByTestId('preferred-name-input')
+      .getByRole('textbox')
+      .fill(`${user.responseData.name}-edited`);
+
+    const patch = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('preferred-name-save').click();
+    await patch;
+  });
+
+  test('Should add a persona on a user profile', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+
+    await openUserProfile(page, user.responseData.name);
+
+    await page.getByTestId('persona-edit').click();
+    await page.getByTestId('persona-multiselect').click();
+    await page
+      .getByRole('option', { name: persona.responseData.displayName })
+      .click();
+
+    const patch = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('persona-save').click();
+    await patch;
+
+    await expect(page.getByTestId('persona')).toContainText(
+      persona.responseData.displayName
+    );
+  });
+
+  test('Should assign a domain on a user profile', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+
+    await openUserProfile(page, user.responseData.name);
+
+    await page.getByTestId('domains-edit').click();
+    await page.getByTestId('domains-multiselect').click();
+    await page
+      .getByRole('option', { name: domain.responseData.displayName })
+      .click();
+
+    const patch = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('domains-save').click();
+    await patch;
+  });
+
+  test('Non-admin can edit own name but not persona', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const nonAdmin = new UserClass();
+    await nonAdmin.create(apiContext);
+    createdUsers.push(nonAdmin);
+    await afterAction();
+
+    const page = await browser.newPage();
+    await enableAiAppMode(page);
+    await nonAdmin.signIn(page);
+    await redirectToHomePage(page);
+
+    // Non-admins cannot reach Members; open their own profile directly.
+    await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+    await page.getByTestId('ask-ai-user-menu-trigger').click();
+    await page.getByTestId('ai-user-menu-profile').click();
+    await expect(page.getByTestId('profile-details-panel')).toBeVisible();
+
+    await expect(page.getByTestId('preferred-name-edit')).toBeVisible();
+    await expect(page.getByTestId('persona-edit')).toBeHidden();
+
+    await page.close();
+  });
+});

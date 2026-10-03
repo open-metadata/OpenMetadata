@@ -14,9 +14,14 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
+let mockHashState: { tab: string | null; subPath: string; params: object } = {
+  tab: null,
+  subPath: '',
+  params: {},
+};
 jest.mock('hooks/useSettingsHash', () => ({
   useSettingsHash: () => ({
-    state: { tab: null, subPath: '', params: {} },
+    state: mockHashState,
     setHash: jest.fn(),
     clearHash: jest.fn(),
     updateParams: jest.fn(),
@@ -100,6 +105,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Typography: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),
+  EmptyPlaceholder: ({ title }: { title?: ReactNode }) => (
+    <div data-testid="empty-placeholder">{title}</div>
+  ),
   FeaturedIcon: () => <span data-testid="featured-icon" />,
   Breadcrumbs: ({ items }: { items?: { id: string; label: ReactNode }[] }) => (
     <nav>
@@ -119,6 +127,7 @@ import ProfilePage from './ProfilePage';
 describe('ProfilePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockHashState = { tab: null, subPath: '', params: {} };
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
   });
@@ -170,6 +179,19 @@ describe('ProfilePage', () => {
     });
 
     expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.any(Object));
+  });
+
+  it('shows an empty placeholder (no loader) when the profile username is unknown', async () => {
+    mockHashState = { tab: 'profile', subPath: 'does-not-exist', params: {} };
+    mockGetUserByName.mockRejectedValue(new Error('404'));
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('label.no-entity-found')).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 
   it('swaps the content panel when a nav item is clicked', async () => {

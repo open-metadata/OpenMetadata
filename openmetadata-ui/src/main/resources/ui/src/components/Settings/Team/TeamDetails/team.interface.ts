@@ -13,8 +13,8 @@
 
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
-  MessagingProvider,
-  Team,
+    MessagingProvider,
+    Team
 } from '../../../../generated/entity/teams/team';
 
 export interface TeamHierarchyProps {
@@ -63,6 +63,7 @@ export interface TeamsInfoProps {
 
 export interface TeamsSubscriptionProps {
   hasEditPermission: boolean;
+  hideLabel?: boolean;
   subscription?: MessagingProvider;
   updateTeamSubscription: (value?: SubscriptionWebhook) => Promise<void>;
 }

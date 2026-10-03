@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { Link01 } from '@openmetadata/ui-core-components/icons';
+import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
@@ -26,6 +26,7 @@ import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,
@@ -35,6 +36,7 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
+import { resolveProfileTarget } from './ProfilePage.utils';
 import {
   APPLICATION_NAV_ITEMS,
   DEFAULT_PROFILE_NAV_ID,
@@ -64,33 +66,51 @@ const ProfilePage: React.FC = () => {
   // detail cards in a skeleton state until getUserByName backfills them so
   // the sections do not flash empty before the fetch resolves.
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  // A `#profile/<unknown-user>` deep link resolves to a target that getUserByName
+  // 404s on — track it to show an empty placeholder instead of a perpetual loader.
+  const [isUserNotFound, setIsUserNotFound] = useState(false);
   const { state: hashState, setHash } = useSettingsHash();
+
+  const { targetUsername, isViewingOtherUser } = useMemo(
+    () => resolveProfileTarget(hashState, currentUser?.name),
+    [hashState, currentUser?.name]
+  );
 
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     (hashState.tab as ProfileNavId) || DEFAULT_PROFILE_NAV_ID
   );
-
-  // Follow hash tab changes (e.g. deep link, back navigation).
-  useEffect(() => {
-    if (hashState.tab && hashState.tab !== selectedId) {
-      setSelectedId(hashState.tab as ProfileNavId);
-    }
-  }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Allows panels (e.g. Access Control) to override the header breadcrumbs
   // and title without needing a separate route.
   const [headerOverride, setHeaderOverride] =
     useState<ProfileHeaderOverride | null>(null);
 
+  // Follow hash tab changes (e.g. deep link, back navigation). A hash-driven
+  // cross-tab jump (e.g. team detail → a user profile) must also drop the
+  // previous tab's header override, otherwise its stale breadcrumb/title leaks
+  // into the new tab until that tab sets its own.
+  useEffect(() => {
+    if (hashState.tab && hashState.tab !== selectedId) {
+      setSelectedId(hashState.tab as ProfileNavId);
+      setHeaderOverride(null);
+    }
+  }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchUser = useCallback(async () => {
-    if (!currentUser?.name) {
+    if (!targetUsername) {
       setIsProfileLoading(false);
 
       return;
     }
     setIsProfileLoading(true);
+    setIsUserNotFound(false);
+    // Drop the current-user seed before fetching another user so their data
+    // doesn't flash the logged-in user first.
+    if (isViewingOtherUser) {
+      setUserData(undefined);
+    }
     try {
-      const res = await getUserByName(currentUser.name, {
+      const res = await getUserByName(targetUsername, {
         fields: [
           TabSpecificField.PROFILE,
           TabSpecificField.ROLES,
@@ -103,11 +123,13 @@ const ProfilePage: React.FC = () => {
       });
       setUserData(res);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // An unknown username (e.g. a hand-typed hash) is an expected miss — show
+      // the empty placeholder below rather than a disruptive error toast.
+      setIsUserNotFound(true);
     } finally {
       setIsProfileLoading(false);
     }
-  }, [currentUser?.name]);
+  }, [targetUsername, isViewingOtherUser]);
 
   useEffect(() => {
     fetchUser();
@@ -223,7 +245,13 @@ const ProfilePage: React.FC = () => {
 
   // Resolve header props — prefer panel-supplied override, fall back to defaults.
   const headerIcon = headerOverride?.icon ?? activeItem.icon;
-  const headerTitle = headerOverride?.title ?? t(activeItem.label);
+  // isViewingOtherUser already implies the profile tab (only `#profile/<user>`
+  // yields a target other than the current user).
+  const otherUserTitle = isViewingOtherUser
+    ? getEntityName(userData)
+    : undefined;
+  const headerTitle =
+    headerOverride?.title ?? otherUserTitle ?? t(activeItem.label);
   const headerDescription =
     headerOverride?.description ?? t(activeItem.description);
   const headerBreadcrumbs = headerOverride?.breadcrumbs;
@@ -236,7 +264,16 @@ const ProfilePage: React.FC = () => {
       data-testid="ai-profile-page"
       direction="row">
       {!userData ? (
-        <Loader />
+        isUserNotFound ? (
+          <Box className="tw:relative tw:flex-1">
+            <EmptyPlaceholder
+              icon={User01}
+              title={t('label.no-entity-found', { entity: t('label.user') })}
+            />
+          </Box>
+        ) : (
+          <Loader />
+        )
       ) : (
         <>
           <ProfileSideNav
