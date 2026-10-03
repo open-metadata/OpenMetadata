@@ -1585,10 +1585,8 @@ export const filterStatus = async (
   );
   const statusColumnIndex = 2;
 
-  for (let i = 0; i < (await rows.count()); i++) {
-    const statusCell = rows
-      .nth(i)
-      .locator(`td:nth-child(${statusColumnIndex + 1})`);
+  for (const row of await rows.all()) {
+    const statusCell = row.locator(`td:nth-child(${statusColumnIndex + 1})`);
     const statusText = await statusCell.textContent();
 
     expect(expectedStatus).toContain(statusText);

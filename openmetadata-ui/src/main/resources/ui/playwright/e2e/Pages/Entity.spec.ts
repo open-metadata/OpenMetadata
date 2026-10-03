@@ -1883,12 +1883,9 @@ pickEntityMatrix(
                 testCaseCardsSection.locator('.test-case-card');
 
               await expect(failedCards).toHaveCount(1);
-
-              const failedCard = failedCards.first();
-
-              await expect(failedCard.locator('.test-case-name')).toContainText(
-                testCase2Name
-              );
+              await expect(
+                failedCards.locator('.test-case-name')
+              ).toContainText(testCase2Name);
             });
 
             await test.step('Filter by success and verify test case card', async () => {

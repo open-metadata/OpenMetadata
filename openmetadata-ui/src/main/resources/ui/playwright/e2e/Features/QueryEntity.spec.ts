@@ -97,9 +97,10 @@ test('Query Entity', async ({ page }) => {
     await tableSearchResponse;
 
     await page
-      .locator('div')
-      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table1}$`) })
-      .first()
+      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .filter({
+        has: page.getByText(queryData.queryUsedIn.table1, { exact: true }),
+      })
       .click();
 
     await clickOutside(page);
@@ -211,9 +212,10 @@ test('Query Entity', async ({ page }) => {
     await page.keyboard.type(queryData.queryUsedIn.table2);
     await tableSearchResponse;
     await page
-      .locator('div')
-      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table2}$`) })
-      .first()
+      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .filter({
+        has: page.getByText(queryData.queryUsedIn.table2, { exact: true }),
+      })
       .click();
     await clickOutside(page);
     const updateQueryResponse = page.waitForResponse(

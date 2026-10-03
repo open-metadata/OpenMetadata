@@ -2657,17 +2657,25 @@ export const testCopyLinkButton = async ({
   containerTestId,
   expectedUrlPath,
   entityFqn,
+  rowName,
 }: {
   page: Page;
   buttonTestId: 'copy-column-link-button' | 'copy-field-link-button';
   containerTestId: string;
   expectedUrlPath: string;
   entityFqn: string;
+  rowName: string;
 }) => {
-  await expect(page.getByTestId(containerTestId)).toBeVisible();
+  const container = page.getByTestId(containerTestId);
+  await expect(container).toBeVisible();
 
-  // Find the first copy button and verify it's visible
-  const copyButton = page.getByTestId(buttonTestId).first();
+  // Every column/field row renders its own copy button, so the caller has to say
+  // which row it means. The names come from the fixture the test created, so
+  // they are unique on the page.
+  const copyButton = container
+    .getByRole('row')
+    .filter({ hasText: rowName })
+    .getByTestId(buttonTestId);
   await expect(copyButton).toBeVisible();
 
   // Click copy button and get clipboard text
