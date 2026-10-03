@@ -13,10 +13,10 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
-  Clock,
-  ShieldTick,
-  User01,
-  Users01,
+    Clock,
+    ShieldTick,
+    User01,
+    Users01
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -76,6 +76,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     const settingsLabel = t('label.setting-plural');
     const membersLabel = t('label.member-plural');
     const organizationLabel = t('label.organization');
+    const teamsLabel = t('label.team-plural');
     const usersLabel = t('label.user-plural');
     const adminsLabel = t('label.admin-plural');
     const onlineUsersLabel = t('label.online-user-plural');
@@ -119,7 +120,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
 
     const crumbsByType: Record<MembersView['type'], BreadcrumbItemType[]> = {
       landing: [settingsItem, { id: 'current', label: membersLabel }],
-      teams: [...base, { id: 'current', label: organizationLabel }],
+      teams: [...base, { id: 'current', label: teamsLabel }],
       [TEAM_DETAIL]: [...base, teamsItem, { id: 'current', label: teamName }],
       'teams-add': [...base, teamsItem, { id: 'current', label: addTeamLabel }],
       'teams-import': [

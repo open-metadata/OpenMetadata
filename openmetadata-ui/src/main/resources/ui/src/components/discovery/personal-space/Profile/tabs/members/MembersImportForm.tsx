@@ -11,47 +11,47 @@
  *  limitations under the License.
  */
 import {
-  Alert,
-  Box,
-  Button,
-  FeaturedIcon,
-  FileUploadDropZone,
-  ProgressBar,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    FeaturedIcon,
+    FileUploadDropZone,
+    ProgressBar,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
-  Check,
-  CheckCircle,
-  ChevronRight,
-  File06,
-  RefreshCw01,
-  XClose,
+    AlertTriangle,
+    Check,
+    CheckCircle,
+    ChevronRight,
+    File06,
+    RefreshCw01,
+    XClose
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import {
-  FC,
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    Fragment,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ENTITY_IMPORT_STEPS,
-  VALIDATION_STEP,
+    ENTITY_IMPORT_STEPS,
+    VALIDATION_STEP
 } from '../../../../../../constants/BulkImport.constant';
 import { SOCKET_EVENTS } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
 import {
-  CSVImportResult,
-  Status,
+    CSVImportResult,
+    Status
 } from '../../../../../../generated/type/csvImportResult';
 import {
-  CSVImportAsyncWebsocketResponse,
-  CSVImportJobType,
+    CSVImportAsyncWebsocketResponse,
+    CSVImportJobType
 } from '../../../../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { importTeam, importUserInTeam } from '../../../../../../rest/teamsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';

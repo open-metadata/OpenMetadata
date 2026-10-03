@@ -12,10 +12,10 @@
  */
 
 import {
-  Clock,
-  ShieldTick,
-  User01,
-  Users01,
+    Clock,
+    ShieldTick,
+    User01,
+    Users01
 } from '@openmetadata/ui-core-components/icons';
 
 import type { MembersLandingCard, TimeWindowOption } from './Members.types';

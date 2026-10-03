@@ -15,8 +15,8 @@ import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import {
-  CSVImportResult,
-  Status,
+    CSVImportResult,
+    Status
 } from '../../../../../../generated/type/csvImportResult';
 
 const STATUS_KEY = 'status';

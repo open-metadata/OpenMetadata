@@ -12,16 +12,14 @@
  */
 
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useSyncExternalStore
 } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { PROFILE_NAV_IDS } from '../constants/Profile.constants';
-// eslint-disable-next-line openmetadata-imports/no-hook-ui-imports -- type-only import for hash ↔ nav-id mapping
-import type { ProfileNavId } from '../components/discovery/personal-space/Profile/profileNavConfig';
+import { useNavigate } from 'react-router-dom';
+import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
 
 /**
  * Parsed hash state for the settings modal.
@@ -149,8 +147,14 @@ const getStoreHash = (): string => storeHash;
  * Hash presence means the modal should be open; clearing the hash closes it.
  */
 export const useSettingsHash = () => {
-  const location = useLocation();
   const navigate = useNavigate();
+
+  // Keep navigate reachable from the stable callbacks below without listing it
+  // (or location) as a dependency — an unstable `setHash` identity propagates
+  // into panels' `onNavigate` callbacks and the header-injection effects that
+  // depend on them, re-firing those effects every render (infinite loop).
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
 
   const hash = useSyncExternalStore(
     subscribeStoreHash,
@@ -160,12 +164,24 @@ export const useSettingsHash = () => {
 
   const state = useMemo(() => parseHash(hash), [hash]);
 
-  // Mirror browser-driven location changes (deep link, refresh, Back/Forward)
-  // into the urgent store.
+  // The urgent `storeHash` is the single source of truth; `setHash`/`clearHash`
+  // keep it correct for in-app navigation. Only GENUINE browser-driven changes
+  // (Back/Forward, deep link, refresh) need mirroring in. We listen to
+  // `popstate` rather than react-router's `location.hash` because our own
+  // `navigate(..., { replace: true })` wraps the update in a transition — reading
+  // the lagged `location.hash` would echo a stale value back into the store and
+  // flip it to the previous tab/sub-path (infinite oscillation). `replace`
+  // navigations do not emit `popstate`, so they never echo back.
   useEffect(() => {
-    setStoreHash(location.hash);
-  }, [location.hash]);
+    const onPopState = () => setStoreHash(globalThis.location.hash);
+    globalThis.addEventListener('popstate', onPopState);
+    onPopState();
 
+    return () => globalThis.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // pathname/search are read from `globalThis.location` at call time (mirroring
+  // useTableFilters) so these callbacks stay referentially stable.
   const setHash = useCallback(
     (
       tab: string,
@@ -176,28 +192,32 @@ export const useSettingsHash = () => {
 
       if (storeHash !== next) {
         setStoreHash(next);
-        navigate(
+        navigateRef.current(
           {
-            pathname: location.pathname,
-            search: location.search,
+            pathname: globalThis.location.pathname,
+            search: globalThis.location.search,
             hash: next.slice(1),
           },
           { replace: true }
         );
       }
     },
-    [navigate, location.pathname, location.search]
+    []
   );
 
   const clearHash = useCallback(() => {
     if (storeHash) {
       setStoreHash('');
-      navigate(
-        { pathname: location.pathname, search: location.search, hash: '' },
+      navigateRef.current(
+        {
+          pathname: globalThis.location.pathname,
+          search: globalThis.location.search,
+          hash: '',
+        },
         { replace: true }
       );
     }
-  }, [navigate, location.pathname, location.search]);
+  }, []);
 
   const updateParams = useCallback(
     (params: Record<string, string | undefined>) => {

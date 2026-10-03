@@ -13,17 +13,18 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
-  Bell01,
-  Key01,
-  PermissionDebugger as AccessControlIcon,
-  Settings02,
-  ShieldTick,
-  User01,
-  Users01,
+    Bell01,
+    Key01,
+    PermissionDebugger as AccessControlIcon,
+    Settings02,
+    ShieldTick,
+    User01,
+    Users01
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
 import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
+import type { ProfileNavId } from '../../../../constants/Profile.constants';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
@@ -37,16 +38,9 @@ import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
-export type ProfileNavId =
-  | 'profile'
-  | 'permissions'
-  | 'access-token'
-  | 'my-connections'
-  | 'access-control'
-  | 'bots'
-  | 'custom-properties'
-  | 'notification'
-  | 'members';
+// Single source of truth lives in Profile.constants (hook-safe layer); re-exported
+// here so existing imports of `ProfileNavId` from this module keep working.
+export type { ProfileNavId };
 
 /** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
 export type ProfileNavGroup =

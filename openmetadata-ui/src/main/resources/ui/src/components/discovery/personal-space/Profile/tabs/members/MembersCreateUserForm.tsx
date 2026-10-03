@@ -30,10 +30,10 @@ import {
     Typography
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
-  Eye,
-  EyeOff,
-  RefreshCw01,
+    Copy01,
+    Eye,
+    EyeOff,
+    RefreshCw01
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compact, debounce } from 'lodash';

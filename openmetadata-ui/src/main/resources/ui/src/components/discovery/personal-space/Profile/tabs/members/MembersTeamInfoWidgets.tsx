@@ -11,31 +11,28 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  Divider,
-  Input,
-  Owner,
-  Popover,
-  PopoverTrigger,
-  Select,
-  SelectItemType,
-  Tooltip,
-  Typography,
+    Box,
+    Button,
+    ButtonUtility,
+    Divider,
+    Input,
+    Owner,
+    Popover,
+    PopoverTrigger,
+    Select,
+    SelectItemType,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
-import {
-  Edit01,
-  InfoCircle,
-} from '@openmetadata/ui-core-components/icons';
+import { Edit01, InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
 import {
-  SUBSCRIPTION_WEBHOOK,
-  SUBSCRIPTION_WEBHOOK_OPTIONS,
+    SUBSCRIPTION_WEBHOOK,
+    SUBSCRIPTION_WEBHOOK_OPTIONS
 } from '../../../../../../constants/Teams.constants';
-import { Team } from '../../../../../../generated/entity/teams/team';
+import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getWebhookIcon } from '../../../../../../utils/TeamUtils';
@@ -576,6 +573,10 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // The root Organization has no meaningful team type or default persona to set;
+  // both only apply to a specific team.
+  const isOrganization = team.teamType === TeamType.Organization;
+
   return (
     <Box
       className="tw:flex-wrap tw:px-8 tw:pb-6"
@@ -584,8 +585,10 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
       gap={4}>
       <DomainField canEdit={canEdit} team={team} onPatch={onPatch} />
       <OwnerField canEdit={canEdit} team={team} onPatch={onPatch} />
-      <TypeField team={team} />
-      <PersonaField canEdit={canEdit} team={team} onPatch={onPatch} />
+      {!isOrganization && <TypeField team={team} />}
+      {!isOrganization && (
+        <PersonaField canEdit={canEdit} team={team} onPatch={onPatch} />
+      )}
       <EmailField canEdit={canEdit} team={team} onPatch={onPatch} />
       <SubscriptionField canEdit={canEdit} team={team} onPatch={onPatch} />
 

@@ -12,42 +12,38 @@
  */
 
 import {
-  Box,
-  Button,
-  EmptyPlaceholder,
-  PaginationCardWithControls,
-  Popover,
-  PopoverTrigger,
-  Select,
-  Typography,
+    Box,
+    Button,
+    EmptyPlaceholder,
+    PaginationCardWithControls,
+    Popover,
+    PopoverTrigger,
+    Select,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../../../../constants/constants';
 import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import type { User } from '../../../../../../generated/entity/teams/user';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
+import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
-  getOnlineUsers,
-  OnlineUsersQueryParams,
+    getOnlineUsers,
+    OnlineUsersQueryParams
 } from '../../../../../../rest/userAPI';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
-import {
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
-} from '../../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
@@ -56,6 +52,12 @@ import Table from '../../../../../common/Table/TableV2';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
+import ProfileHashLink from './ProfileHashLink';
+import {
+    profileHash,
+    ProfileHashTarget,
+    toHashLocation
+} from './profileHash.utils';
 
 const USER_FIELDS = 'profile,teams,roles,lastLoginTime,lastActivityTime';
 
@@ -65,6 +67,15 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [timeWindow, setTimeWindow] = useState<number>(DEFAULT_TIME_WINDOW);
+  const { setHash } = useSettingsHash();
+
+  // In-app clicks must write the hash synchronously; a plain react-router push
+  // is not mirrored into useSettingsHash (popstate-only), so href-only links
+  // leave the panel view on the stale tab. href stays for open-in-new-tab.
+  const goTo = useCallback(
+    (target: ProfileHashTarget) => setHash(target.tab, target.subPath),
+    [setHash]
+  );
 
   const {
     paging,
@@ -182,7 +193,10 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   }, [timeWindow, pageSize]);
 
   const renderEntityLinks = useCallback(
-    (items: User['teams'] | User['roles'], pathFn: (fqn: string) => string) => {
+    (
+      items: User['teams'] | User['roles'],
+      targetFn: (fqn: string) => ProfileHashTarget
+    ) => {
       if (!items || items.length === 0) {
         return '-';
       }
@@ -193,9 +207,12 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
       return (
         <Box align="center" direction="row" gap={1}>
           {visible.map((item) => (
-            <Link key={item.id} to={pathFn(item.fullyQualifiedName ?? '')}>
+            <ProfileHashLink
+              key={item.id}
+              target={targetFn(item.fullyQualifiedName ?? '')}
+              onNavigate={goTo}>
               {getEntityName(item)}
-            </Link>
+            </ProfileHashLink>
           ))}
           {overflow > 0 && (
             <span
@@ -207,7 +224,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         </Box>
       );
     },
-    [t]
+    [t, goTo]
   );
 
   const renderRolesCell = useCallback(
@@ -217,11 +234,12 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
       }
 
       const renderRoleItem = (role: EntityReference) => (
-        <Link
+        <ProfileHashLink
           key={role.id}
-          to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+          target={profileHash.role(role.fullyQualifiedName ?? '')}
+          onNavigate={goTo}>
           {getEntityName(role)}
-        </Link>
+        </ProfileHashLink>
       );
 
       return (
@@ -246,7 +264,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         </Box>
       );
     },
-    [t]
+    [t, goTo]
   );
 
   const columns = useMemo(
@@ -261,7 +279,9 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
             <UserPopOverCard
               showUserName
               profileWidth={16}
+              to={toHashLocation(profileHash.user(record.name))}
               userName={record.name}
+              onTitleClick={() => goTo(profileHash.user(record.name ?? ''))}
             />
           ) : (
             <Typography size="text-sm">{getEntityName(record)}</Typography>
@@ -303,7 +323,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         dataIndex: 'teams',
         key: 'teams',
         render: (_: unknown, record: User) =>
-          renderEntityLinks(record.teams, getTeamsWithFqnPath),
+          renderEntityLinks(record.teams, (fqn) => profileHash.team(fqn)),
       },
       {
         title: t('label.role-plural'),
@@ -312,7 +332,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         render: (_: unknown, record: User) => renderRolesCell(record.roles),
       },
     ],
-    [t, renderEntityLinks, renderRolesCell]
+    [t, goTo, renderEntityLinks, renderRolesCell]
   );
 
   const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
@@ -364,6 +384,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         pagination={false}
         rowKey="id"
         searchProps={{
+          containerClassName: 'tw:w-80!',
           onSearch: handleSearch,
           searchValue: searchText,
           typingInterval: 500,
@@ -376,6 +397,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
 
       {showPagination && (
         <PaginationCardWithControls
+          minimal
           page={currentPage}
           pageSize={pageSize}
           pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}

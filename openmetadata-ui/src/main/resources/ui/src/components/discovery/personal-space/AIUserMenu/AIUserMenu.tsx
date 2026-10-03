@@ -43,7 +43,7 @@ import {
 } from '../../../../constants/Navbar.constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
+import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getVersion } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { languageSelectOptions } from '../../../../utils/i18next/i18nextUtil';
@@ -222,7 +222,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
-  const openPanel = usePersonalSpaceStore((state) => state.open);
+  const { setHash } = useSettingsHash();
   const {
     appVersion,
     currentUser,
@@ -404,7 +404,6 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
       handleLanguageChange,
       navigate,
       onLogoutHandler,
-      openPanel,
       selectedPersona,
       selectedPersonaName,
       setSelectedPersona,
@@ -451,7 +450,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             data-testid="ai-user-menu-profile"
             id="profile-header"
             textValue={displayName}
-            onAction={() => openPanel('profile')}>
+            onAction={() => setHash('profile', currentUser?.name)}>
             <Box
               align="center"
               className="tw:relative tw:rounded-md tw:px-2.5 tw:py-2 tw:transition tw:duration-100 tw:ease-linear tw:group-hover:bg-primary_hover"

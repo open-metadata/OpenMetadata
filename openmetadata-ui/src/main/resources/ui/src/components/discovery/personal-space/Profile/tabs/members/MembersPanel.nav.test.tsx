@@ -98,14 +98,24 @@ jest.mock('./MembersOnlineUsersPanel', () => () => (
 
 import MembersPanel from './MembersPanel';
 
-const renderAt = (hash: string) =>
-  render(
+// useSettingsHash reads the hash from `window.location` (seeded on mount, then
+// driven by popstate) — BrowserRouter mirrors window in production, but
+// MemoryRouter does not, so set window.location.hash to simulate the deep link.
+const renderAt = (hash: string) => {
+  globalThis.location.hash = hash;
+
+  return render(
     <MemoryRouter initialEntries={[`/settings${hash}`]}>
       <MembersPanel />
     </MemoryRouter>
   );
+};
 
 describe('MembersPanel hash navigation', () => {
+  beforeEach(() => {
+    globalThis.location.hash = '';
+  });
+
   it('landing -> teams updates the view', () => {
     renderAt('#members');
     fireEvent.click(screen.getByTestId('go-teams'));

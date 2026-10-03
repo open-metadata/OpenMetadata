@@ -12,47 +12,43 @@
  */
 
 import {
-  Box,
-  Button,
-  EmptyPlaceholder,
-  PaginationCardWithControls,
-  Popover,
-  PopoverTrigger,
-  SimpleModal,
-  Toggle,
-  TableCard,
-  Tooltip,
-  Typography,
-  ButtonUtility,
+    Box,
+    Button,
+    ButtonUtility,
+    EmptyPlaceholder,
+    PaginationCardWithControls,
+    Popover,
+    PopoverTrigger,
+    SimpleModal,
+    TableCard,
+    Toggle,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
-import {
-  RefreshCcw01,
-  Trash01,
-} from '@openmetadata/ui-core-components/icons';
+import { RefreshCcw01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    INITIAL_PAGING_VALUE,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
-  EntityType,
-  TabSpecificField,
+    EntityType,
+    TabSpecificField
 } from '../../../../../../enums/entity.enum';
 import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -62,20 +58,17 @@ import { EntityReference } from '../../../../../../generated/entity/type';
 import { Include } from '../../../../../../generated/type/include';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
+import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getUsers, restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-  checkPermission,
-  LIST_CAP,
+    checkPermission,
+    LIST_CAP
 } from '../../../../../../utils/PermissionsUtils';
 import {
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
-} from '../../../../../../utils/RouterUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
@@ -83,6 +76,12 @@ import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
 import type { MembersUsersPanelProps } from './Members.types';
+import ProfileHashLink from './ProfileHashLink';
+import {
+    profileHash,
+    ProfileHashTarget,
+    toHashLocation
+} from './profileHash.utils';
 
 const USER_FIELDS = [
   TabSpecificField.PROFILE,
@@ -98,6 +97,16 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const { permissions } = usePermissionProvider();
+  const { setHash } = useSettingsHash();
+
+  // The cross-tab links below render as hrefs for middle-click/open-in-new-tab,
+  // but the in-app click must write the hash synchronously via setHash: a plain
+  // react-router push is not mirrored into useSettingsHash (popstate-only), so
+  // href-only navigation leaves the panel view on the stale tab/sub-path.
+  const goTo = useCallback(
+    (target: ProfileHashTarget) => setHash(target.tab, target.subPath),
+    [setHash]
+  );
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleted, setShowDeleted] = useState(false);
@@ -302,7 +311,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           <UserPopOverCard
             showUserName
             profileWidth={16}
+            to={toHashLocation(profileHash.user(record.name))}
             userName={record.name}
+            onTitleClick={() => goTo(profileHash.user(record.name ?? ''))}
           />
         ) : (
           <Typography size="text-sm">{getEntityName(record)}</Typography>
@@ -334,11 +345,12 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         return (
           <Box align="center" direction="row" gap={1}>
             {visible.map((team) => (
-              <Link
+              <ProfileHashLink
                 key={team.id}
-                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                target={profileHash.team(team.fullyQualifiedName ?? '')}
+                onNavigate={goTo}>
                 {getEntityName(team)}
-              </Link>
+              </ProfileHashLink>
             ))}
             {overflow > 0 && (
               <Tooltip
@@ -370,11 +382,12 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         }
 
         const renderRoleItem = (role: EntityReference) => (
-          <Link
+          <ProfileHashLink
             key={role.id}
-            to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+            target={profileHash.role(role.fullyQualifiedName ?? '')}
+            onNavigate={goTo}>
             {getEntityName(role)}
-          </Link>
+          </ProfileHashLink>
         );
 
         return (
@@ -464,7 +477,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     baseColumns.push(actionColumn);
 
     return baseColumns;
-  }, [showDeleted, isAdminUser, isAdmin, t]);
+  }, [showDeleted, isAdminUser, isAdmin, t, goTo]);
 
   const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
 
@@ -511,6 +524,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
             pagination={false}
             rowKey="id"
             searchProps={{
+              containerClassName: 'tw:w-80!',
               placeholder: `${t('label.search-for-type', {
                 type: t('label.user'),
               })}...`,
@@ -523,6 +537,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         </div>
         {showPagination && (
           <PaginationCardWithControls
+            minimal
             page={currentPage}
             pageSize={pageSize}
             pageSizeOptions={[
