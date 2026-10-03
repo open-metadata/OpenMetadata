@@ -1098,6 +1098,31 @@ describe('IncidentGroupsView filters and paging', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should keep the rows when the page stepped back to fails to read', async () => {
+    mockApplyBulkChange.mockResolvedValue({
+      total: 1,
+      passed: 1,
+      failures: [],
+      unchanged: 0,
+    });
+    await act(async () => {
+      renderView();
+    });
+    await goToSecondPage();
+
+    mockListIncidentGroups
+      .mockResolvedValueOnce({ data: [], paging: { total: 10 } })
+      .mockRejectedValueOnce(new Error('failure'));
+
+    await applyBulkAck();
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('incident-groups-error')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+  });
+
   it('should show no pager while there is no group to page through', async () => {
     mockListIncidentGroups.mockResolvedValue({
       data: [],
