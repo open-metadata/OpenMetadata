@@ -249,7 +249,7 @@
   },
   "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 3
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts": {
@@ -572,7 +572,7 @@
   },
   "playwright/e2e/Pages/DataContracts.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts": {
@@ -759,11 +759,6 @@
     }
   },
   "playwright/e2e/Pages/TeamAssetsRightPanel.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
-  "playwright/e2e/Pages/Teams.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
     }

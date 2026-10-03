@@ -145,7 +145,7 @@ describe('CanvasButtonPopover', () => {
     );
 
     const extraInfo = screen.getByTestId('extra-info');
-    const tag = extraInfo.querySelector('.green');
+    const tag = extraInfo.querySelector('[class*="bg-utility-success-50"]');
 
     expect(tag).toBeInTheDocument();
     expect(tag).toHaveTextContent('Successful');
@@ -252,7 +252,7 @@ describe('CanvasButtonPopover', () => {
     );
 
     const extraInfo = screen.getByTestId('extra-info');
-    const tag = extraInfo.querySelector('.red');
+    const tag = extraInfo.querySelector('[class*="bg-utility-error-50"]');
 
     expect(tag).toBeInTheDocument();
     expect(tag).toHaveTextContent('Failed');
@@ -286,7 +286,7 @@ describe('CanvasButtonPopover', () => {
     );
 
     const extraInfo = screen.getByTestId('extra-info');
-    const tag = extraInfo.querySelector('.amber');
+    const tag = extraInfo.querySelector('[class*="bg-utility-warning-50"]');
 
     expect(tag).toBeInTheDocument();
     expect(tag).toHaveTextContent('Pending');

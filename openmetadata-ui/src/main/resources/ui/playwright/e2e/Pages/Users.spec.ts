@@ -42,6 +42,7 @@ import {
   visitOwnProfilePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { visitClassificationPage } from '../../utils/tag';
 import {
@@ -1380,7 +1381,9 @@ base.describe(
       await afterAction();
     });
 
-    for (const entity of userPerformanceEntities) {
+    for (const entity of pickEntityMatrix(__filename, userPerformanceEntities, [
+      EntityDataClass.table1,
+    ])) {
       base(
         `User Performance across different entities pages - ${entity.getType()}`,
         async ({ browser }) => {
