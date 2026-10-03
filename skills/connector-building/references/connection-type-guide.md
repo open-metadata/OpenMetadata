@@ -52,7 +52,7 @@ Add the `MultiDBSource` mixin when a single server connection can access multipl
 
 ```python
 class MyDbSource(CommonDbSourceService, MultiDBSource):
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> str | None:
         return self.service_connection.databaseName
 
     def get_database_names_raw(self) -> Iterable[str]:

@@ -139,7 +139,7 @@ Add `MultiDBSource` mixin when the database server hosts multiple independent da
 
 ```python
 class MyDbSource(CommonDbSourceService, MultiDBSource):
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> str | None:
         return self.service_connection.databaseName
 
     def get_database_names_raw(self) -> Iterable[str]:
