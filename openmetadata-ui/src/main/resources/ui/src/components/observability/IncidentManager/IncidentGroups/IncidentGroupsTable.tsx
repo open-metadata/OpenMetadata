@@ -168,6 +168,7 @@ const IncidentGroupsTable = ({
   onGroupPreview,
   onGroupOpen,
   selectedKeys,
+  isSelectable,
   onGroupSelect,
   onPageSelect,
 }: IncidentGroupsTableProps) => {
@@ -179,7 +180,7 @@ const IncidentGroupsTable = ({
 
   const columns = useMemo(
     () => [
-      { id: 'select' },
+      ...(isSelectable ? [{ id: 'select' }] : []),
       { id: 'name', label: t(dimension.labelKey) },
       {
         id: 'related',
@@ -197,7 +198,7 @@ const IncidentGroupsTable = ({
       { id: 'trend', label: t('label.trend') },
       { id: 'open', ariaLabel: t('label.action-plural') },
     ],
-    [dimension.labelKey, groupBy, t]
+    [dimension.labelKey, groupBy, isSelectable, t]
   );
 
   // react-aria drives the header arrow off the descriptor; `sort` is the same
@@ -238,15 +239,17 @@ const IncidentGroupsTable = ({
         id={rowId}
         key={rowId}
         onAction={() => onGroupPreview(group)}>
-        <Table.Cell className="tw:w-9 tw:pr-0">
-          <Checkbox
-            aria-label={t('label.select-entity', { entity: groupName })}
-            data-testid={`group-select-${rowId}`}
-            isSelected={selectedKeys.has(rowId)}
-            slot={null}
-            onChange={(isSelected) => onGroupSelect(group, isSelected)}
-          />
-        </Table.Cell>
+        {isSelectable && (
+          <Table.Cell className="tw:w-9 tw:pr-0">
+            <Checkbox
+              aria-label={t('label.select-entity', { entity: groupName })}
+              data-testid={`group-select-${rowId}`}
+              isSelected={selectedKeys.has(rowId)}
+              slot={null}
+              onChange={(isSelected) => onGroupSelect(group, isSelected)}
+            />
+          </Table.Cell>
+        )}
         <Table.Cell className="tw:max-w-72">
           <StackedCell
             caption={getIncidentGroupSubLine(group) || undefined}
@@ -350,7 +353,9 @@ const IncidentGroupsTable = ({
           )
         }
       </Table.Header>
-      <Table.Body dependencies={[groups, selectedKeys]} items={groups}>
+      <Table.Body
+        dependencies={[groups, selectedKeys, isSelectable]}
+        items={groups}>
         {(group) => renderRow(group)}
       </Table.Body>
     </Table>

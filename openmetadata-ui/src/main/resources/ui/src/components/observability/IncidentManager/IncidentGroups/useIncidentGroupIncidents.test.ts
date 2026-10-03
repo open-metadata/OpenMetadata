@@ -137,7 +137,20 @@ describe('useIncidentGroupIncidents', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(result.current.incidents).toEqual([]);
-    expect(showErrorToast).toHaveBeenCalled();
+    // The list says so in place, so no toast repeats it.
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('should read the page again on refresh', async () => {
+    mockList.mockRejectedValueOnce(new Error('failure'));
+    const { result } = renderIncidents(GROUP);
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    act(() => result.current.refresh());
+
+    await waitFor(() => expect(result.current.incidents).toEqual(INCIDENTS));
+
+    expect(result.current.isError).toBe(false);
   });
 
   it('should drop a response that lands after the group was closed', async () => {

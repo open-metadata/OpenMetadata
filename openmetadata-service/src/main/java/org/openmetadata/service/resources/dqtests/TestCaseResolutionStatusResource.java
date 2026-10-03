@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.resolveFilterEntityId;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -62,6 +63,9 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentGroupSortField;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentListRange;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -224,7 +228,7 @@ public class TestCaseResolutionStatusResource
                         TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT
                       }))
           @QueryParam("dateField")
-          String dateField,
+          IncidentDateField dateField,
       @Parameter(
               description =
                   "Filter incidents by their current severity. Repeatable or comma-separated; "
@@ -232,9 +236,6 @@ public class TestCaseResolutionStatusResource
               schema = @Schema(type = "string"))
           @QueryParam("severity")
           List<String> severities) {
-    if (unowned && !nullOrEmpty(owner)) {
-      throw new IllegalArgumentException("`owner` and `unowned` cannot be combined");
-    }
     ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
     ResourceContextInterface entityResourceContext =
         buildEntityResourceContext(testCaseFQN, testCaseId, originEntityFQN);
@@ -257,38 +258,13 @@ public class TestCaseResolutionStatusResource
     if (testDefinitionId != null) {
       filter.addQueryParam("testDefinitionId", testDefinitionId.toString());
     }
-    UUID testCaseOwnerId = resolveOwnerFilterId(owner);
-    if (testCaseOwnerId != null) {
-      filter.addQueryParam("testCaseOwnerId", testCaseOwnerId.toString());
-    }
-    if (unowned) {
-      filter.addQueryParam("testCaseUnowned", Boolean.TRUE.toString());
-    }
-
-    // With a date field the range applies to the incidents themselves, the way the groups apply
-    // it, so the records are no longer filtered by their own timestamp. The record range is
-    // opened up rather than dropped: `latest` is only honoured over a range.
-    Long recordStartTs = startTs;
-    Long recordEndTs = endTs;
-    if (dateField != null) {
-      filter.addQueryParam("incidentListDateField", dateField);
-      if (startTs != null) {
-        filter.addQueryParam("incidentListStartTs", String.valueOf(startTs));
-      }
-      if (endTs != null) {
-        filter.addQueryParam("incidentListEndTs", String.valueOf(endTs));
-      }
-      recordStartTs = 0L;
-      recordEndTs = Long.MAX_VALUE;
-    }
-
-    return repository.list(
+    repository.addTestCaseOwnerFilter(filter, owner, unowned);
+    return repository.listIncidentRecords(
         cursorForPage(page, limitParam, offset),
-        recordStartTs,
-        recordEndTs,
         limitParam,
         filter,
-        latest);
+        latest,
+        new IncidentListRange(dateField, startTs, endTs));
   }
 
   @GET
@@ -351,7 +327,7 @@ public class TestCaseResolutionStatusResource
                       }))
           @QueryParam("dateField")
           @DefaultValue(TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT)
-          String dateField,
+          IncidentDateField dateField,
       @Parameter(
               description = "Filter incidents after the given start timestamp",
               schema = @Schema(type = "number"))
@@ -408,7 +384,7 @@ public class TestCaseResolutionStatusResource
                       }))
           @QueryParam("sortField")
           @DefaultValue(TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT)
-          String sortField,
+          IncidentGroupSortField sortField,
       @Parameter(
               description = "Direction of the `sortField` ordering",
               schema =
@@ -446,7 +422,7 @@ public class TestCaseResolutionStatusResource
     if (domainId != null) {
       filter.addQueryParam("incidentDomainId", domainId.toString());
     }
-    filter.addQueryParam("incidentDateField", dateField);
+    filter.addQueryParam("incidentDateField", dateField.value());
     if (startTs != null) {
       filter.addQueryParam("incidentStartTs", String.valueOf(startTs));
     }
@@ -1049,30 +1025,6 @@ public class TestCaseResolutionStatusResource
         ? offset
         : RestUtil.encodeCursor(
             String.valueOf(Math.min((long) (page - 1) * limit, Integer.MAX_VALUE)));
-  }
-
-  private static UUID resolveFilterEntityId(String entityType, String name) {
-    UUID entityId = null;
-    if (!nullOrEmpty(name)) {
-      EntityReference result =
-          Entity.getEntityReferenceByName(entityType, name, Include.NON_DELETED);
-      if (!nullOrEmpty(result)) {
-        entityId = result.getId();
-      }
-    }
-    return entityId;
-  }
-
-  private static UUID resolveOwnerFilterId(String owner) {
-    UUID result = null;
-    if (!nullOrEmpty(owner)) {
-      try {
-        result = resolveFilterEntityId(Entity.USER, owner);
-      } catch (EntityNotFoundException e) {
-        result = resolveFilterEntityId(Entity.TEAM, owner);
-      }
-    }
-    return result;
   }
 
   protected static ResourceContextInterface buildEntityResourceContext(

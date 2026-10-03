@@ -25,15 +25,12 @@ import {
   Database01,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { FqnPart } from '../../../../enums/entity.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   Assigned,
   Severities,
@@ -41,7 +38,6 @@ import {
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
-import { updateTestCaseIncidentById } from '../../../../rest/incidentManagerAPI';
 import {
   formatDate,
   formatDateTimeLong,
@@ -49,12 +45,13 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
 import InlineTestCaseIncidentStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/InlineTestCaseIncidentStatus.component';
+import {
+  canEditIncidentRow,
+  submitIncidentSeverity,
+} from '../../../IncidentManager/IncidentManager.utils';
 import { useIncidentRowPermissions } from '../../../IncidentManager/useIncidentRowPermissions';
 import { INCIDENT_STATUS_BADGE_COLORS } from './IncidentGroups.constants';
 import { IncidentListProps } from './IncidentGroups.types';
@@ -143,31 +140,19 @@ const IncidentList = ({
       getEntityPermissionByFqn,
     });
 
-  // `EditStatus` on the test case, as the incident table elsewhere gates it:
-  // a role can work incidents while the test case itself stays read-only.
   const canEdit = (incident: TestCaseResolutionStatus) =>
     !isPermissionLoading &&
-    getDerivedPermissionFlags(
-      testCasePermissions.find(
-        (permission) =>
-          permission.fullyQualifiedName ===
-          incident.testCaseReference?.fullyQualifiedName
-      ) ?? DEFAULT_ENTITY_PERMISSION,
-      false
-    ).can(Operation.EditStatus);
+    canEditIncidentRow(
+      testCasePermissions,
+      incident.testCaseReference?.fullyQualifiedName
+    );
 
   const handleSeveritySubmit = async (
     incident: TestCaseResolutionStatus,
     severity?: Severities
   ) => {
-    try {
-      await updateTestCaseIncidentById(
-        incident.id ?? '',
-        compare(incident, { ...incident, severity })
-      );
+    if (await submitIncidentSeverity(incident, severity)) {
       onIncidentChange?.();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
     }
   };
 
@@ -200,7 +185,15 @@ const IncidentList = ({
     );
 
   return (
-    <Table aria-label={t('label.incident-plural')} size="sm">
+    <Table
+      aria-label={t('label.incident-plural')}
+      // The page being left stays until the next one lands; dimmed, it reads
+      // as on its way out rather than as the result.
+      className={
+        isLoading && incidents.length > 0 ? 'tw:opacity-60' : undefined
+      }
+      data-testid="incident-list"
+      size="sm">
       <Table.Header columns={columns}>
         {(column) => (
           <Table.Head

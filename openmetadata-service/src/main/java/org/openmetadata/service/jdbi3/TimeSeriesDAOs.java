@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -2213,9 +2214,9 @@ public interface TimeSeriesDAOs {
             + "MAX(i.updatedAt) AS lastSeen, "
             + "<createdAtAgg> AS incidentCreatedAt, "
             + "COUNT(DISTINCT <tableFqn>) AS tableCount, "
-            + "<tablesAgg> AS tables, "
-            + "COUNT(DISTINCT tdr.fromId) AS testDefinitionCount, "
-            + "<testDefinitionsAgg> AS testDefinitions, "
+            + "COUNT(DISTINCT "
+            + TEST_DEFINITION_ID
+            + ") AS testDefinitionCount, "
             + "COUNT(*) OVER () AS totalGroups "
             + INCIDENT_GROUPS_FROM
             + "GROUP BY <groupByCols> "
@@ -2229,8 +2230,6 @@ public interface TimeSeriesDAOs {
         @Define("assigneesExpr") String assigneesExpr,
         @Define("createdAtAgg") String createdAtAgg,
         @Define("tableFqn") String tableFqn,
-        @Define("tablesAgg") String tablesAgg,
-        @Define("testDefinitionsAgg") String testDefinitionsAgg,
         @Define("groupKey") String groupKey,
         @Define("groupType") String groupType,
         @Define("groupByCols") String groupByCols,
@@ -2240,6 +2239,30 @@ public interface TimeSeriesDAOs {
         @BindMap Map<String, ?> params,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
+
+    // The few related entities each group of a page names inline: those most of its incidents
+    // carry, ranked here so the payload is bounded by the page rather than by its incidents.
+    @SqlQuery(
+        "SELECT groupKey, relatedKey FROM ("
+            + "SELECT <groupKey> AS groupKey, <relatedKey> AS relatedKey, "
+            + "ROW_NUMBER() OVER (PARTITION BY <groupKey> "
+            + "ORDER BY COUNT(DISTINCT i.stateId) DESC, <relatedKey>) AS relatedRank "
+            + INCIDENT_GROUPS_FROM
+            + "AND <relatedKey> IS NOT NULL AND <groupKey> IN (<groupKeys>) "
+            + "GROUP BY <groupByCols>, <relatedKey>) ranked "
+            + "WHERE :relatedLimit >= relatedRank "
+            + "ORDER BY groupKey, relatedRank")
+    @RegisterRowMapper(IncidentGroupRelatedKeyMapper.class)
+    List<IncidentGroupRelatedKey> listIncidentGroupRelatedKeys(
+        @Define("openStatuses") String openStatuses,
+        @Define("groupKey") String groupKey,
+        @Define("groupByCols") String groupByCols,
+        @Define("dimensionJoin") String dimensionJoin,
+        @Define("cond") String cond,
+        @Define("relatedKey") String relatedKey,
+        @BindList("groupKeys") List<String> groupKeys,
+        @BindMap Map<String, ?> params,
+        @Bind("relatedLimit") int relatedLimit);
 
     @SqlQuery("SELECT COUNT(DISTINCT <groupKey>) " + INCIDENT_GROUPS_FROM)
     int countIncidentGroups(
@@ -2298,8 +2321,8 @@ public interface TimeSeriesDAOs {
           String.format(
               "MIN(CASE i.testCaseResolutionStatusType %s ELSE %d END)",
               String.join(" ", statusRankWhens), OPEN_STATUSES.size() + 1);
-      // Every test case has exactly one test definition, so this join neither drops nor
-      // multiplies incident rows; it is what lets a group of any dimension name its definitions.
+      // A test case has one test definition, so this join does not multiply incident rows; it is
+      // what lets a group of any dimension name its definitions.
       String joins = dimension.join() + " " + TEST_DEFINITION_JOIN;
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
@@ -2309,8 +2332,6 @@ public interface TimeSeriesDAOs {
               assigneesExpr(),
               createdAtAggExpr(),
               tableFqnExpr(),
-              jsonArrayAgg(tableFqnExpr()),
-              jsonArrayAgg("tdr.fromId"),
               dimension.groupKey(),
               dimension.groupType(),
               dimension.groupByCols(),
@@ -2330,7 +2351,37 @@ public interface TimeSeriesDAOs {
       } else {
         total = countIncidentGroups(openStatuses, dimension.groupKey(), joins, condition, params);
       }
-      return new IncidentGroupPage(counts, total);
+      IncidentGroupScope scope =
+          new IncidentGroupScope(dimension, openStatuses, joins, condition, params);
+      List<String> groupKeys = counts.stream().map(TestCaseIncidentGroupCount::groupKey).toList();
+      return new IncidentGroupPage(
+          counts,
+          total,
+          topRelatedKeys(scope, tableFqnExpr(), groupKeys),
+          topRelatedKeys(scope, TEST_DEFINITION_ID, groupKeys));
+    }
+
+    // Related keys by group key, each group's list ordered from the most incidents down.
+    private Map<String, List<String>> topRelatedKeys(
+        IncidentGroupScope scope, String relatedKey, List<String> groupKeys) {
+      List<IncidentGroupRelatedKey> rows =
+          groupKeys.isEmpty()
+              ? List.of()
+              : listIncidentGroupRelatedKeys(
+                  scope.openStatuses(),
+                  scope.dimension().groupKey(),
+                  scope.dimension().groupByCols(),
+                  scope.joins(),
+                  scope.condition(),
+                  relatedKey,
+                  groupKeys,
+                  scope.params(),
+                  INCIDENT_GROUP_RELATED_LIMIT);
+      return rows.stream()
+          .collect(
+              Collectors.groupingBy(
+                  IncidentGroupRelatedKey::groupKey,
+                  Collectors.mapping(IncidentGroupRelatedKey::relatedKey, Collectors.toList())));
     }
 
     // JSON aggregates instead of GROUP_CONCAT/STRING_AGG: the 1024-char group_concat_max_len
@@ -2344,8 +2395,6 @@ public interface TimeSeriesDAOs {
       return jsonArrayAgg("i.createdAt");
     }
 
-    // One element per incident row, duplicates kept: the repository ranks the related entities
-    // of a group by how many of its incidents they carry.
     private static String jsonArrayAgg(String expression) {
       return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
           ? String.format("JSON_ARRAYAGG(%s)", expression)
@@ -2361,13 +2410,33 @@ public interface TimeSeriesDAOs {
           : "TRIM(TRAILING '>' FROM SPLIT_PART(tc.entityLink, '::', 3))";
     }
 
+    // Outer, so an incident whose test case lost its definition relationship still counts, as it
+    // still lists in the flat listing.
     String TEST_DEFINITION_JOIN =
         String.format(
-            "INNER JOIN entity_relationship tdr ON tdr.toId = tc.id AND tdr.relation = %d "
+            "LEFT JOIN entity_relationship tdr ON tdr.toId = tc.id AND tdr.relation = %d "
                 + "AND tdr.fromEntity = '%s' AND tdr.toEntity = '%s'",
             CONTAINS.ordinal(), Entity.TEST_DEFINITION, Entity.TEST_CASE);
 
-    record IncidentGroupPage(List<TestCaseIncidentGroupCount> counts, int total) {}
+    String TEST_DEFINITION_ID = "tdr.fromId";
+
+    // Related tables and test definitions a group names inline; its counts carry the full number.
+    int INCIDENT_GROUP_RELATED_LIMIT = 5;
+
+    /** A page of groups, with the top related table FQNs and test definition ids of each group. */
+    record IncidentGroupPage(
+        List<TestCaseIncidentGroupCount> counts,
+        int total,
+        Map<String, List<String>> tables,
+        Map<String, List<String>> testDefinitions) {}
+
+    // The FROM and WHERE of a grouping, which the page and its related-entity ranking share.
+    record IncidentGroupScope(
+        IncidentGroupDimension dimension,
+        String openStatuses,
+        String joins,
+        String condition,
+        Map<String, Object> params) {}
 
     record IncidentGroupDimension(
         String groupKey, String groupType, String groupByCols, String join) {
@@ -2668,10 +2737,17 @@ public interface TimeSeriesDAOs {
       long lastSeen,
       String incidentCreatedAt,
       int tableCount,
-      String tables,
       int testDefinitionCount,
-      String testDefinitions,
       int totalGroups) {}
+
+  record IncidentGroupRelatedKey(String groupKey, String relatedKey) {}
+
+  class IncidentGroupRelatedKeyMapper implements RowMapper<IncidentGroupRelatedKey> {
+    @Override
+    public IncidentGroupRelatedKey map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new IncidentGroupRelatedKey(rs.getString("groupKey"), rs.getString("relatedKey"));
+    }
+  }
 
   class TestCaseIncidentGroupCountMapper implements RowMapper<TestCaseIncidentGroupCount> {
     @Override
@@ -2696,9 +2772,7 @@ public interface TimeSeriesDAOs {
           rs.getLong("lastSeen"),
           rs.getString("incidentCreatedAt"),
           rs.getInt("tableCount"),
-          rs.getString("tables"),
           rs.getInt("testDefinitionCount"),
-          rs.getString("testDefinitions"),
           rs.getInt("totalGroups"));
     }
   }

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { uniqBy } from 'lodash';
+import { AxiosError } from 'axios';
+import { chunk, uniqBy } from 'lodash';
 import { useCallback, useState } from 'react';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -24,59 +25,102 @@ import {
   getListTestCaseIncidentStatus,
   IncidentCursor,
   MAX_BULK_INCIDENT_UPDATE_SIZE,
-  TestCaseIncidentStatusParams,
 } from '../../../../rest/incidentManagerAPI';
+import { getErrorText } from '../../../../utils/StringUtils';
 import {
   buildBulkIncidentEntries,
   chunkBulkIncidentEntries,
   mergeBulkResults,
 } from './IncidentGroupBulk.utils';
 import { getIncidentGroupIncidentsQuery } from './IncidentGroupIncidents.utils';
+import { BULK_GROUP_READ_CONCURRENCY } from './IncidentGroups.constants';
 import {
   BulkIncidentChange,
   IncidentGroupFilters,
 } from './IncidentGroups.types';
 
-/**
- * Every open incident a query lists from `offset` on, read page after page:
- * each page needs the cursor of the one before it.
- */
-const fetchIncidentsFrom = async (
-  query: TestCaseIncidentStatusParams,
-  offset?: IncidentCursor
-): Promise<TestCaseResolutionStatus[]> => {
-  const { data, paging } = await getListTestCaseIncidentStatus({
-    ...query,
-    limit: MAX_BULK_INCIDENT_UPDATE_SIZE,
-    offset,
-  });
-
-  return paging?.after
-    ? [...data, ...(await fetchIncidentsFrom(query, paging.after))]
-    : data;
-};
-
-/** Every open incident of one group. */
-const fetchAllGroupIncidents = (
+/** Every open incident of one group, read page after page. */
+const fetchAllGroupIncidents = async (
   group: TestCaseIncidentGroup,
   filters: IncidentGroupFilters,
   domain?: string
-) =>
-  fetchIncidentsFrom(
-    getIncidentGroupIncidentsQuery(group, filters, Date.now(), domain)
+) => {
+  const query = getIncidentGroupIncidentsQuery(
+    group,
+    filters,
+    Date.now(),
+    domain
   );
+  const incidents: TestCaseResolutionStatus[] = [];
+  let offset: IncidentCursor | undefined;
+
+  do {
+    const pageQuery = {
+      ...query,
+      limit: MAX_BULK_INCIDENT_UPDATE_SIZE,
+      offset,
+    };
+    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- each page needs the previous cursor
+    const { data, paging } = await getListTestCaseIncidentStatus(pageQuery); // NOSONAR
+    incidents.push(...data);
+    offset = paging?.after;
+  } while (offset);
+
+  return incidents;
+};
+
+/**
+ * The incidents of every selected group, a few groups at a time: a selection
+ * spanning pages must not open a read per group all at once.
+ */
+const fetchSelectedIncidents = async (
+  groups: TestCaseIncidentGroup[],
+  filters: IncidentGroupFilters,
+  domain?: string
+) => {
+  const readGroup = (group: TestCaseIncidentGroup) =>
+    fetchAllGroupIncidents(group, filters, domain);
+  const incidents: TestCaseResolutionStatus[] = [];
+
+  for (const someGroups of chunk(groups, BULK_GROUP_READ_CONCURRENCY)) {
+    const read = await Promise.all(someGroups.map(readGroup)); // NOSONAR
+    incidents.push(...read.flat());
+  }
+
+  return incidents;
+};
+
+/** One call's outcome; a call that fails outright fails every entry it carried. */
+const sendBatch = async (
+  batch: CreateTestCaseResolutionStatus[]
+): Promise<BulkOperationResult> => {
+  try {
+    return await bulkCreateResolutionStatus(batch);
+  } catch (error) {
+    const message = getErrorText(error as AxiosError, (error as Error).message);
+
+    return {
+      numberOfRowsFailed: batch.length,
+      failedRequest: batch.map((request) => ({ request, message })),
+    };
+  }
+};
 
 /**
  * Sends the batches one call after another: the endpoint caps a call at 100
- * entries, and one call at a time keeps the writes off each other.
+ * entries, and one at a time keeps the writes off each other. A failed call
+ * does not stop the rest — the ones before it are written, so the outcome has
+ * to say what went through either way.
  */
-const sendBatches = async ([
-  batch,
-  ...rest
-]: CreateTestCaseResolutionStatus[][]): Promise<BulkOperationResult[]> =>
-  batch
-    ? [await bulkCreateResolutionStatus(batch), ...(await sendBatches(rest))]
-    : [];
+const sendBatches = async (batches: CreateTestCaseResolutionStatus[][]) => {
+  const results: BulkOperationResult[] = [];
+
+  for (const batch of batches) {
+    results.push(await sendBatch(batch)); // NOSONAR
+  }
+
+  return results;
+};
 
 /**
  * Applies one change to every open incident of a selection of groups: their
@@ -101,13 +145,7 @@ export const useIncidentGroupBulkUpdate = ({
       try {
         // A test case co-owned by two owners sits in both their groups.
         const incidents = uniqBy(
-          (
-            await Promise.all(
-              groups.map((group) =>
-                fetchAllGroupIncidents(group, filters, domain)
-              )
-            )
-          ).flat(),
+          await fetchSelectedIncidents(groups, filters, domain),
           'stateId'
         );
         const { entries, unchanged } = buildBulkIncidentEntries(

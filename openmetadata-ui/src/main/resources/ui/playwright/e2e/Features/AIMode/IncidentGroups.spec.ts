@@ -47,6 +47,14 @@ type IncidentRecord = {
 // takes the click.
 const selectGroup = (row: Locator) => row.getByTestId(/^group-select-/).click();
 
+// Every bulk change asks first, naming how many incidents it reaches.
+const confirmBulkChange = async (page: Page) => {
+  const modal = page.getByTestId('incident-groups-bulk-status-modal');
+
+  await expect(modal.getByTestId('bulk-status-scope')).toBeVisible();
+  await modal.getByRole('button', { name: 'Apply' }).click();
+};
+
 const getLatestIncident = async (
   apiContext: APIRequestContext,
   testCaseFqn: string
@@ -363,6 +371,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
 
     await page.getByTestId('incident-groups-set-severity').click();
     await page.getByTestId('incident-groups-severity-Severity2').click();
+    await confirmBulkChange(page);
 
     await toastNotification(page, 'Incidents updated: 2');
     await expect(
@@ -402,6 +411,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     await selectGroup(tableGroup);
     await page.getByTestId('incident-groups-set-status').click();
     await page.getByTestId('incident-groups-status-Ack').click();
+    await confirmBulkChange(page);
 
     await toastNotification(page, 'Incidents updated: 1');
 
@@ -427,6 +437,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     await selectGroup(tableGroup);
     await page.getByTestId('incident-groups-set-status').click();
     await page.getByTestId('incident-groups-status-Ack').click();
+    await confirmBulkChange(page);
 
     // The workflow has no way back from Assigned to Ack, so nothing is sent.
     await toastNotification(

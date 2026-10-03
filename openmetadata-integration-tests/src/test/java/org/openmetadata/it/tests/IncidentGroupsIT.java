@@ -20,6 +20,7 @@ import java.util.Base64;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -116,6 +118,7 @@ public class IncidentGroupsIT {
   private TestCase testCase4;
   private User pagerUser;
   private List<String> pagerTableFqns;
+  private List<TestCase> pagerCases;
   private String schemaFqn;
 
   @BeforeAll
@@ -178,6 +181,7 @@ public class IncidentGroupsIT {
     TestDefinition pagerDefinition =
         createTestDefinition("incident_groups_pager_def_" + ts, TestDefinitionEntityType.TABLE);
     pagerTableFqns = new ArrayList<>();
+    pagerCases = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       Table pagerTable = createTable(schemaFqn, "incident_groups_page_" + i + "_" + ts);
       TestCase pagerCase =
@@ -189,6 +193,7 @@ public class IncidentGroupsIT {
           TestCaseResolutionStatusTypes.Assigned,
           new Assigned().withAssignee(pagerUser.getEntityReference()));
       pagerTableFqns.add(pagerTable.getFullyQualifiedName());
+      pagerCases.add(pagerCase);
     }
     pagerTableFqns = pagerTableFqns.stream().sorted().toList();
   }
@@ -467,16 +472,7 @@ public class IncidentGroupsIT {
   void testDomainInheritedFromTheTable() throws Exception {
     long ts = System.currentTimeMillis();
     Domain tableDomain = createDomain("incident_groups_table_domain_" + ts);
-    Table table =
-        client
-            .tables()
-            .create(
-                new CreateTable()
-                    .withName("incident_groups_domain_table_" + ts)
-                    .withDatabaseSchema(schemaFqn)
-                    .withDomains(List.of(tableDomain.getFullyQualifiedName()))
-                    .withColumns(
-                        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+    Table table = createTableInDomain("incident_groups_domain_table_" + ts, tableDomain);
     TestDefinition definition =
         createTestDefinition("incident_groups_domain_def_" + ts, TestDefinitionEntityType.TABLE);
     // No domain of its own: the test case is in its table's domain, as test cases usually are.
@@ -495,6 +491,51 @@ public class IncidentGroupsIT {
         statusTestCaseFqns(
             listStatuses(
                 latestOpenParams().addFilter("domain", tableDomain.getFullyQualifiedName()))),
+        "the drill-down lists the incidents its domain-scoped group counts");
+  }
+
+  // Tables inherit their domain from the schema, database or service; the test case then inherits
+  // it from the table, and neither keeps a relationship to it.
+  @Test
+  void testDomainInheritedFromTheSchema() throws Exception {
+    long ts = System.currentTimeMillis();
+    Domain schemaDomain = createDomain("incident_groups_schema_domain_" + ts);
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName("incident_groups_domain_db_" + ts)
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    String domainSchemaFqn =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName("incident_groups_domain_schema_" + ts)
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withDomains(List.of(schemaDomain.getFullyQualifiedName())))
+            .getFullyQualifiedName();
+    Table table = createTable(domainSchemaFqn, "incident_groups_schema_domain_table_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_schema_domain_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_schema_domain_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("domain", schemaDomain.getFullyQualifiedName());
+    List<TestCaseIncidentGroup> groups = fetchGroups(params);
+    assertEquals(1, groups.size(), "the schema's table is the only one in its domain");
+    assertEquals(1, findGroup(groups, table.getFullyQualifiedName()).getIncidentCount());
+
+    assertEquals(
+        Set.of(testCase.getFullyQualifiedName()),
+        statusTestCaseFqns(
+            listStatuses(
+                latestOpenParams().addFilter("domain", schemaDomain.getFullyQualifiedName()))),
         "the drill-down lists the incidents its domain-scoped group counts");
   }
 
@@ -543,23 +584,41 @@ public class IncidentGroupsIT {
     assertSorted(fetchGroups(descParams), false);
   }
 
-  // Table B's open incident is Severity2 and table A's carry none, so worst-first puts B first and
-  // the reverse ordering puts A first, wherever other suites' groups land around them.
+  // A domain of its own scopes the listing to two groups whatever other suites add: one with a
+  // Severity2 incident and one with none, as an untiered table gets no inferred severity. The
+  // severe table's name also sorts first, so the reverse ordering cannot pass on the tie-break.
   @Test
   void testSortBySeverityPutsTheMostSevereFirst() throws Exception {
+    long ts = System.currentTimeMillis();
+    Domain sortDomain = createDomain("incident_groups_sort_domain_" + ts);
+    TestDefinition definition =
+        createTestDefinition("incident_groups_sort_def_" + ts, TestDefinitionEntityType.TABLE);
+    Table severe = createTableInDomain("incident_groups_sort_severe_" + ts, sortDomain);
+    Table ungraded = createTableInDomain("incident_groups_sort_ungraded_" + ts, sortDomain);
+    createStatus(
+        createTestCase(
+            "incident_groups_sort_severe_case", tableLink(severe), definition, List.of()),
+        TestCaseResolutionStatusTypes.New,
+        null,
+        Severity.Severity2);
+    createStatus(
+        createTestCase(
+            "incident_groups_sort_ungraded_case", tableLink(ungraded), definition, List.of()),
+        TestCaseResolutionStatusTypes.New,
+        null);
+
     Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("domain", sortDomain.getFullyQualifiedName());
     params.put("sortField", "severity");
-    List<String> worstFirst = groupFqns(fetchGroups(params));
-    assertTrue(
-        worstFirst.indexOf(tableB.getFullyQualifiedName())
-            < worstFirst.indexOf(tableA.getFullyQualifiedName()),
+    assertEquals(
+        List.of(severe.getFullyQualifiedName(), ungraded.getFullyQualifiedName()),
+        groupFqns(fetchGroups(params)),
         "the Severity2 group comes before the group with no severity");
 
     params.put("sortType", "asc");
-    List<String> mildestFirst = groupFqns(fetchGroups(params));
-    assertTrue(
-        mildestFirst.indexOf(tableA.getFullyQualifiedName())
-            < mildestFirst.indexOf(tableB.getFullyQualifiedName()),
+    assertEquals(
+        List.of(ungraded.getFullyQualifiedName(), severe.getFullyQualifiedName()),
+        groupFqns(fetchGroups(params)),
         "the group with no severity comes first in the reverse ordering");
   }
 
@@ -1110,6 +1169,31 @@ public class IncidentGroupsIT {
           "a range ending before any incident (" + dateField + ")");
     }
     assertEquals(0, pagerIncidents("createdAt", "0", "1").size());
+
+    // The first pager incident was opened at this instant and every pager incident was assigned
+    // after it, so only a range on the right column holds exactly that one incident.
+    String openedAt =
+        String.valueOf(
+            fetchStatuses(pagerCases.getFirst()).stream()
+                .mapToLong(TestCaseResolutionStatus::getTimestamp)
+                .min()
+                .orElseThrow());
+    String createdAt = TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT;
+    String updatedAt = TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT;
+    assertEquals(1, pagerIncidentCount(createdAt, openedAt, openedAt));
+    assertEquals(1, pagerIncidents(createdAt, openedAt, openedAt).size());
+    assertEquals(0, pagerIncidentCount(updatedAt, openedAt, openedAt));
+    assertEquals(0, pagerIncidents(updatedAt, openedAt, openedAt).size());
+  }
+
+  @Test
+  void testUnknownDateFieldRejected() {
+    OpenMetadataException groupsError =
+        assertThrows(OpenMetadataException.class, () -> pagerIncidentCount("timestamp", "0", "1"));
+    assertEquals(400, groupsError.getStatusCode());
+    OpenMetadataException listError =
+        assertThrows(OpenMetadataException.class, () -> pagerIncidents("timestamp", "0", "1"));
+    assertEquals(400, listError.getStatusCode());
   }
 
   @Test
@@ -1263,6 +1347,122 @@ public class IncidentGroupsIT {
             Assigned.class);
     assertEquals(dotted.getId(), assigned.getAssignee().getId());
     assertEquals(dotted.getName(), assigned.getAssignee().getName());
+  }
+
+  @Test
+  void testAssigneeOtherThanUserOrTeamRejected() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_table_assignee_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_table_assignee_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_table_assignee_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                createStatus(
+                    testCase,
+                    TestCaseResolutionStatusTypes.Assigned,
+                    new Assigned().withAssignee(table.getEntityReference())));
+    assertEquals(400, error.getStatusCode());
+    assertEquals(
+        TestCaseResolutionStatusTypes.New,
+        fetchStatuses(testCase).getFirst().getTestCaseResolutionStatusType());
+  }
+
+  @Test
+  void testAssigneeNamedByAnUnknownNameNotFound() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_unknown_assignee_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_unknown_assignee_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_unknown_assignee_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    String unknownName = "incident_groups_nobody_" + ts;
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                createStatus(
+                    testCase,
+                    TestCaseResolutionStatusTypes.Assigned,
+                    new Assigned()
+                        .withAssignee(
+                            new EntityReference().withName(unknownName).withType(Entity.USER))));
+    assertEquals(404, error.getStatusCode());
+    assertTrue(
+        error.getMessage().contains("user instance for " + unknownName + " not found"),
+        error.getMessage());
+  }
+
+  // Records written before assignees were resolved keep the name the client sent, in whatever case
+  // it was typed, while a user is looked up by its lowercased FQN.
+  @Test
+  void testMixedCaseAssigneeNameResolvesToItsUser() throws Exception {
+    long ts = System.currentTimeMillis();
+    User user = createUser("incident_groups_mixed_case_" + ts);
+    Table table = createTable(schemaFqn, "incident_groups_mixed_case_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_mixed_case_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase("incident_groups_mixed_case_case", tableLink(table), definition, List.of());
+    String typedName = user.getName().toUpperCase(Locale.ROOT);
+    String stateId = UUID.randomUUID().toString();
+    insertStatusRecords(
+        testCase,
+        List.of(
+            seededRecord(stateId, ts - 120_000, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(stateId, ts - 60_000, TestCaseResolutionStatusTypes.Assigned, typedName)));
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", testCase.getFullyQualifiedName());
+    TestCaseIncidentGroup group = findGroup(fetchGroups(params), table.getFullyQualifiedName());
+
+    assertEquals(List.of(typedName), group.getAssignees());
+    assertEquals(
+        List.of(user.getId()),
+        group.getAssigneeReferences().stream().map(EntityReference::getId).toList());
+  }
+
+  // The flat list never joins a test case to its definition, so it still lists an incident whose
+  // test case lost that relationship; the groups must count it as well.
+  @Test
+  void testIncidentWithoutTestDefinitionRelationStillCounts() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_no_definition_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_no_definition_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_no_definition_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle.execute(
+                    "DELETE FROM entity_relationship WHERE toId = ? AND fromEntity = ? "
+                        + "AND relation = ?",
+                    testCase.getId().toString(),
+                    Entity.TEST_DEFINITION,
+                    Relationship.CONTAINS.ordinal()));
+
+    TestCaseIncidentGroup group =
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName());
+
+    assertEquals(1, group.getIncidentCount());
+    assertEquals(0, group.getTestDefinitionCount());
+    assertTrue(group.getTestDefinitions().isEmpty());
   }
 
   @Test
@@ -1719,6 +1919,18 @@ public class IncidentGroupsIT {
             new CreateTable()
                 .withName(name)
                 .withDatabaseSchema(schemaFqn)
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+  }
+
+  private Table createTableInDomain(String name, Domain tableDomain) throws Exception {
+    return client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(name)
+                .withDatabaseSchema(schemaFqn)
+                .withDomains(List.of(tableDomain.getFullyQualifiedName()))
                 .withColumns(
                     List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
   }

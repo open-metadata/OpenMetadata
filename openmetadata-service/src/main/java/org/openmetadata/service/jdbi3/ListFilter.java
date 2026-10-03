@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -41,6 +43,17 @@ public class ListFilter extends Filter<ListFilter> {
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
+  // An fqnHash joins one MD5 hex digest per FQN segment.
+  private static final int FQN_HASH_SEGMENT_LENGTH = 32;
+  private static final String FQN_HASH_COLUMN = "fqnHash";
+  // Where a test case's table inherits its domain from, the table itself first.
+  private static final List<TestCaseAncestor> TEST_CASE_DOMAIN_ANCESTORS =
+      List.of(
+          new TestCaseAncestor(Entity.TABLE, "table_entity", FQN_HASH_COLUMN, 4),
+          new TestCaseAncestor(
+              Entity.DATABASE_SCHEMA, "database_schema_entity", FQN_HASH_COLUMN, 3),
+          new TestCaseAncestor(Entity.DATABASE, "database_entity", FQN_HASH_COLUMN, 2),
+          new TestCaseAncestor(Entity.DATABASE_SERVICE, "dbservice_entity", "nameHash", 1));
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -772,19 +785,51 @@ public class ListFilter extends Filter<ListFilter> {
             + ")";
   }
 
-  // A test case is in the domain it has itself or, as is usual, the one its table has: inherited
-  // domains are resolved at read time and leave no relationship on the test case. The table's
-  // fqnHash is the first four segments, 131 characters, of the test case's.
+  // A test case is in the domain it has itself or, as is usual, the one its table has — which the
+  // table may in turn inherit from its schema, database or service. Inherited domains are resolved
+  // at read time and leave no relationship on the entity that inherits them.
   private static String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
-    return String.format(
-        "(EXISTS (SELECT 1 FROM entity_relationship dr WHERE dr.fromId = :%1$s "
-            + "AND dr.fromEntity = 'domain' AND dr.relation = %2$d "
-            + "AND dr.toId = %3$s.id AND dr.toEntity = 'testCase') "
-            + "OR EXISTS (SELECT 1 FROM table_entity dte INNER JOIN entity_relationship dtr "
-            + "ON dtr.toId = dte.id AND dtr.toEntity = 'table' "
-            + "WHERE dte.fqnHash = LEFT(%3$s.fqnHash, 131) AND dtr.fromId = :%1$s "
-            + "AND dtr.fromEntity = 'domain' AND dtr.relation = %2$d))",
-        domainParam, Relationship.HAS.ordinal(), testCaseAlias);
+    String ownDomain =
+        String.format(
+            "EXISTS (SELECT 1 FROM entity_relationship dr WHERE dr.fromId = :%s "
+                + "AND dr.fromEntity = '%s' AND dr.relation = %d "
+                + "AND dr.toId = %s.id AND dr.toEntity = '%s')",
+            domainParam,
+            Entity.DOMAIN,
+            Relationship.HAS.ordinal(),
+            testCaseAlias,
+            Entity.TEST_CASE);
+    return Stream.concat(
+            Stream.of(ownDomain),
+            TEST_CASE_DOMAIN_ANCESTORS.stream()
+                .map(ancestor -> ancestor.inDomainCondition(testCaseAlias, domainParam)))
+        .collect(Collectors.joining(" OR ", "(", ")"));
+  }
+
+  // An ancestor of a test case found by its hash column, which holds the leading fqnDepth hashed
+  // segments of the test case's fqnHash.
+  private record TestCaseAncestor(
+      String entityType, String tableName, String hashColumn, int fqnDepth) {
+
+    String inDomainCondition(String testCaseAlias, String domainParam) {
+      return String.format(
+          "EXISTS (SELECT 1 FROM %s da INNER JOIN entity_relationship dar "
+              + "ON dar.toId = da.id AND dar.toEntity = '%s' "
+              + "WHERE da.%s = LEFT(%s.fqnHash, %d) AND dar.fromId = :%s "
+              + "AND dar.fromEntity = '%s' AND dar.relation = %d)",
+          tableName,
+          entityType,
+          hashColumn,
+          testCaseAlias,
+          fqnHashPrefixLength(),
+          domainParam,
+          Entity.DOMAIN,
+          Relationship.HAS.ordinal());
+    }
+
+    private int fqnHashPrefixLength() {
+      return fqnDepth * FQN_HASH_SEGMENT_LENGTH + (fqnDepth - 1) * Entity.SEPARATOR.length();
+    }
   }
 
   private String getIncidentDateRangeCondition() {
@@ -805,21 +850,10 @@ public class ListFilter extends Filter<ListFilter> {
     return String.join(" AND ", clauses);
   }
 
-  private String getIncidentDateColumn(String dateField) {
-    String defaulted =
-        dateField == null
-            ? TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT
-            : dateField;
-    return switch (defaulted) {
-      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT -> "createdAt";
-      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT -> "updatedAt";
-      default -> throw new IllegalArgumentException(
-          String.format(
-              "Invalid dateField '%s'. Must be one of [%s, %s]",
-              dateField,
-              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
-              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT));
-    };
+  private static String getIncidentDateColumn(String dateField) {
+    return dateField == null
+        ? IncidentDateField.CREATED_AT.value()
+        : IncidentDateField.fromValue(dateField).value();
   }
 
   public String getIncludeCondition(String tableName) {
