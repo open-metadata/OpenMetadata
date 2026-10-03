@@ -40,6 +40,7 @@ import { resolveProfileTarget } from './ProfilePage.utils';
 import {
   APPLICATION_NAV_ITEMS,
   DEFAULT_PROFILE_NAV_ID,
+  FEATURES_NAV_ITEMS,
   ProfileHeaderOverride,
   ProfileNavGroup,
   ProfileNavId,
@@ -213,10 +214,15 @@ const ProfilePage: React.FC = () => {
       (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
     );
 
+    const featuresItems = FEATURES_NAV_ITEMS.filter(
+      (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
+    );
+
     return [
       ...coreItems,
       ...workspaceItems,
       ...applicationItems,
+      ...featuresItems,
       ...contributed,
     ];
   }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);

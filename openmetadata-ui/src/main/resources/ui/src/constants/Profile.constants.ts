@@ -25,6 +25,7 @@ export const PROFILE_NAV_ID_LIST = [
   'custom-properties',
   'notification',
   'members',
+  'governance',
 ] as const;
 
 export type ProfileNavId = (typeof PROFILE_NAV_ID_LIST)[number];
