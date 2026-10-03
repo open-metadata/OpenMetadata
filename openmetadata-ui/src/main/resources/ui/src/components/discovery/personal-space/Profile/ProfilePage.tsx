@@ -79,17 +79,21 @@ const ProfilePage: React.FC = () => {
     (hashState.tab as ProfileNavId) || DEFAULT_PROFILE_NAV_ID
   );
 
-  // Follow hash tab changes (e.g. deep link, back navigation).
-  useEffect(() => {
-    if (hashState.tab && hashState.tab !== selectedId) {
-      setSelectedId(hashState.tab as ProfileNavId);
-    }
-  }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Allows panels (e.g. Access Control) to override the header breadcrumbs
   // and title without needing a separate route.
   const [headerOverride, setHeaderOverride] =
     useState<ProfileHeaderOverride | null>(null);
+
+  // Follow hash tab changes (e.g. deep link, back navigation). A hash-driven
+  // cross-tab jump (e.g. team detail → a user profile) must also drop the
+  // previous tab's header override, otherwise its stale breadcrumb/title leaks
+  // into the new tab until that tab sets its own.
+  useEffect(() => {
+    if (hashState.tab && hashState.tab !== selectedId) {
+      setSelectedId(hashState.tab as ProfileNavId);
+      setHeaderOverride(null);
+    }
+  }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchUser = useCallback(async () => {
     if (!targetUsername) {

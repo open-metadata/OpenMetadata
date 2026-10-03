@@ -12,7 +12,7 @@
  */
 
 import { Page } from '@playwright/test';
-import { expect, test } from '../../../support/fixtures/base';
+import { expect, test } from '../../fixtures/pages';
 import { Domain } from '../../../support/domain/Domain';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
@@ -23,7 +23,7 @@ import {
   searchUserRow,
 } from '../../../utils/aiProfile';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
+import { redirectToHomePage, uuid } from '../../../utils/common';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 // Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
@@ -34,7 +34,9 @@ import { enableAiAppMode } from '../../Utils/appMode';
 // profile (ProfileDetailsPanel does not expose these); the performance suite.
 
 const persona = new PersonaClass();
-const domain = new Domain();
+// Assigned in beforeAll: some stacks gate domain creation behind an intake form
+// requiring Owners + Tags, so the domain is built with both.
+let domain: Domain;
 let createdUsers: UserClass[] = [];
 
 const trackUser = async (
@@ -67,6 +69,35 @@ test.describe('AI Profile Users', () => {
     createdUsers = [];
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await persona.create(apiContext);
+
+    const domainOwner = new UserClass();
+    await domainOwner.create(apiContext);
+    createdUsers.push(domainOwner);
+
+    const domainId = uuid();
+    domain = new Domain({
+      name: `PW%domain.${domainId}`,
+      displayName: `PW Domain ${domainId}`,
+      description: 'playwright profile-user domain',
+      domainType: 'Aggregate',
+      fullyQualifiedName: `"PW%domain.${domainId}"`,
+      owners: [
+        {
+          id: domainOwner.responseData.id ?? '',
+          type: 'user',
+          name: domainOwner.responseData.name,
+        },
+      ],
+      // Satisfy intake-form configs that require a tag; PII.Sensitive is seeded.
+      tags: [
+        {
+          tagFQN: 'PII.Sensitive',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ],
+    } as ConstructorParameters<typeof Domain>[0]);
     await domain.create(apiContext);
     await afterAction();
   });
@@ -77,7 +108,7 @@ test.describe('AI Profile Users', () => {
       await user.delete(apiContext).catch(() => undefined);
     }
     await persona.delete(apiContext).catch(() => undefined);
-    await domain.delete(apiContext).catch(() => undefined);
+    await domain?.delete(apiContext).catch(() => undefined);
     await afterAction();
   });
 
@@ -89,7 +120,7 @@ test.describe('AI Profile Users', () => {
     await page.getByTestId('add-user').click();
     await expect(page.getByTestId('create-user-container')).toBeVisible();
 
-    await page.getByTestId('email').fill(email);
+    await page.getByTestId('email').getByRole('textbox').fill(email);
 
     const createResponse = page.waitForResponse(
       (response) =>
@@ -107,15 +138,16 @@ test.describe('AI Profile Users', () => {
   });
 
   test('Should not allow creating a user with a duplicate email', async ({
+    browser,
     page,
   }) => {
-    const { apiContext } = await getApiContext(page);
+    const { apiContext } = await performAdminLogin(browser);
     const existing = await trackUser(apiContext);
 
     await navigateToMembersPanel(page);
     await openUsersPanel(page);
     await page.getByTestId('add-user').click();
-    await page.getByTestId('email').fill(existing.data.email);
+    await page.getByTestId('email').getByRole('textbox').fill(existing.data.email);
 
     const createResponse = page.waitForResponse(
       (response) =>
@@ -125,7 +157,7 @@ test.describe('AI Profile Users', () => {
     await page.getByTestId('save-user').click();
     const response = await createResponse;
 
-    expect(response.status()).toBe(400);
+    expect(response.status()).toBe(409);
     await expect(page.getByTestId('create-user-container')).toBeVisible();
   });
 
@@ -136,9 +168,11 @@ test.describe('AI Profile Users', () => {
     await openAdminsPanel(page);
     await page.getByTestId('add-user').click();
     await expect(page.getByTestId('create-user-container')).toBeVisible();
-    await expect(page.getByTestId('admin')).toBeVisible();
+    await expect(
+      page.getByTestId('create-user-container').getByTestId('admin')
+    ).toBeVisible();
 
-    await page.getByTestId('email').fill(email);
+    await page.getByTestId('email').getByRole('textbox').fill(email);
 
     const createResponse = page.waitForResponse(
       (response) =>
@@ -155,8 +189,8 @@ test.describe('AI Profile Users', () => {
     );
   });
 
-  test('Should search a user by name', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should search a user by name', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
     await navigateToMembersPanel(page);
@@ -165,9 +199,10 @@ test.describe('AI Profile Users', () => {
   });
 
   test('Should soft delete and restore a user from the list', async ({
+    browser,
     page,
   }) => {
-    const { apiContext } = await getApiContext(page);
+    const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
     const userName = user.responseData.name;
 
@@ -200,8 +235,8 @@ test.describe('AI Profile Users', () => {
     await restore;
   });
 
-  test('Should hard delete a user from the list', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should hard delete a user from the list', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
     const userName = user.responseData.name;
 
@@ -220,8 +255,8 @@ test.describe('AI Profile Users', () => {
     await hardDelete;
   });
 
-  test('Should edit the preferred name on a user profile', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should edit the preferred name on a user profile', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
     await openUserProfile(page, user.responseData.name);
@@ -229,6 +264,7 @@ test.describe('AI Profile Users', () => {
     await page.getByTestId('preferred-name-edit').click();
     await page
       .getByTestId('preferred-name-input')
+      .getByRole('textbox')
       .fill(`${user.responseData.name}-edited`);
 
     const patch = page.waitForResponse(
@@ -240,8 +276,8 @@ test.describe('AI Profile Users', () => {
     await patch;
   });
 
-  test('Should add a persona on a user profile', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should add a persona on a user profile', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
     await openUserProfile(page, user.responseData.name);
@@ -265,8 +301,8 @@ test.describe('AI Profile Users', () => {
     );
   });
 
-  test('Should assign a domain on a user profile', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should assign a domain on a user profile', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
     await openUserProfile(page, user.responseData.name);

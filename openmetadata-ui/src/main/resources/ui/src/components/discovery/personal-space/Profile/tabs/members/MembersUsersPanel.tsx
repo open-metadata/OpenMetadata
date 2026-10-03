@@ -347,7 +347,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
             {visible.map((team) => (
               <ProfileHashLink
                 key={team.id}
-                target={profileHash.team(team.fullyQualifiedName ?? '')}
+                target={profileHash.team(
+                  team.fullyQualifiedName ?? team.name ?? ''
+                )}
                 onNavigate={goTo}>
                 {getEntityName(team)}
               </ProfileHashLink>
@@ -384,7 +386,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         const renderRoleItem = (role: EntityReference) => (
           <ProfileHashLink
             key={role.id}
-            target={profileHash.role(role.fullyQualifiedName ?? '')}
+            target={profileHash.role(
+              role.fullyQualifiedName ?? role.name ?? ''
+            )}
             onNavigate={goTo}>
             {getEntityName(role)}
           </ProfileHashLink>

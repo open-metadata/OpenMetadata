@@ -122,9 +122,10 @@ export const openOnlineUsersPanel = async (page: Page): Promise<void> => {
  * the index — re-issue the search until the row appears.
  */
 export const searchUserRow = (page: Page, userName: string) => {
+  // Scope to the panel: the home page behind the modal has its own search box.
   const searchInput = page
-    .getByTestId('search-bar-container')
-    .getByRole('textbox');
+    .getByTestId('users-list-container')
+    .getByTestId('searchbar');
   const userCell = page.getByTestId('users-list-table').getByTestId(userName);
 
   return expect(async () => {

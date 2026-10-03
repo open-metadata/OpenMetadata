@@ -209,7 +209,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
           {visible.map((item) => (
             <ProfileHashLink
               key={item.id}
-              target={targetFn(item.fullyQualifiedName ?? '')}
+              target={targetFn(item.fullyQualifiedName ?? item.name ?? '')}
               onNavigate={goTo}>
               {getEntityName(item)}
             </ProfileHashLink>
@@ -236,7 +236,9 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
       const renderRoleItem = (role: EntityReference) => (
         <ProfileHashLink
           key={role.id}
-          target={profileHash.role(role.fullyQualifiedName ?? '')}
+          target={profileHash.role(
+            role.fullyQualifiedName ?? role.name ?? ''
+          )}
           onNavigate={goTo}>
           {getEntityName(role)}
         </ProfileHashLink>

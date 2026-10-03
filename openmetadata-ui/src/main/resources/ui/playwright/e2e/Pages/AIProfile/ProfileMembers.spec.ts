@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '../../../support/fixtures/base';
+import { expect, test } from '../../fixtures/pages';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TeamClass } from '../../../support/team/TeamClass';
@@ -110,7 +110,9 @@ test.describe('AI Profile Members - navigation & basics', () => {
 
     await page.getByTestId('add-user').click();
     await expect(page.getByTestId('create-user-container')).toBeVisible();
-    await expect(page.getByTestId('admin')).toBeVisible();
+    await expect(
+      page.getByTestId('create-user-container').getByTestId('admin')
+    ).toBeVisible();
 
     await page.getByTestId('cancel-user').click();
     await expect(page.getByTestId('users-list-container')).toBeVisible();
@@ -152,6 +154,11 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
   const role = new RolesClass();
   const regularUser = new UserClass();
   const adminUser = new UserClass();
+  // The users/admins list reads ES _source, which lags relationships added after
+  // a user is created; and LIST_CAP=1 only renders the first team/role link.
+  // So the list-based nav tests use data set at creation: every user is in the
+  // Organization team with the Data Consumer role (exactly one each).
+  const listUser = new UserClass();
   let team: TeamClass;
 
   test.beforeAll(async ({ browser }) => {
@@ -159,6 +166,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await regularUser.create(apiContext);
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
+    await listUser.create(apiContext);
     await policy.create(apiContext, [
       {
         name: `rule-${uuid()}`,
@@ -169,26 +177,13 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     ]);
     await role.create(apiContext, [policy.responseData.name]);
 
-    await regularUser.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/roles/0',
-          value: { id: role.responseData.id, type: 'role' },
-        },
-      ],
-    });
-
     const id = uuid();
     team = new TeamClass({
       name: `PW%team-nav-${id}`,
       displayName: `PW Team Nav ${id}`,
       description: 'playwright members navigation',
       teamType: 'Group',
-      users: [regularUser.responseData.id, adminUser.responseData.id].filter(
-        Boolean
-      ) as string[],
+      users: [regularUser.responseData.id].filter(Boolean) as string[],
       defaultRoles: [role.responseData.id].filter(Boolean) as string[],
       policies: [policy.responseData.id].filter(Boolean) as string[],
     });
@@ -203,6 +198,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await policy.delete(apiContext).catch(() => undefined);
     await regularUser.delete(apiContext).catch(() => undefined);
     await adminUser.delete(apiContext).catch(() => undefined);
+    await listUser.delete(apiContext).catch(() => undefined);
     await afterAction();
   });
 
@@ -287,18 +283,14 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
   }) => {
     await navigateToMembersPanel(page);
     await openUsersPanel(page);
-    await searchUserRow(page, regularUser.responseData.name);
+    await searchUserRow(page, listUser.responseData.name);
 
     const teamResponse = page.waitForResponse((response) =>
-      response
-        .url()
-        .includes(
-          `/api/v1/teams/name/${encodeURIComponent(team.responseData.name)}`
-        )
+      response.url().includes('/api/v1/teams/name/Organization')
     );
     await page
       .getByTestId('users-list-table')
-      .getByRole('link', { name: team.responseData.displayName })
+      .getByRole('link', { name: 'Organization' })
       .click();
     await teamResponse;
 
@@ -310,12 +302,22 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
   }) => {
     await navigateToMembersPanel(page);
     await openUsersPanel(page);
-    await searchUserRow(page, regularUser.responseData.name);
 
-    await page
+    // Re-search until the row's role link is indexed (ES _source can lag).
+    const searchInput = page
+      .getByTestId('users-list-container')
+      .getByTestId('searchbar');
+    const roleLink = page
       .getByTestId('users-list-table')
-      .getByRole('link', { name: role.responseData.displayName })
-      .click();
+      .getByTestId('role-link')
+      .getByRole('link');
+    await expect(async () => {
+      await searchInput.fill('');
+      await searchInput.fill(listUser.responseData.name);
+      await expect(roleLink).toBeVisible({ timeout: 5000 });
+    }).toPass({ timeout: 30000 });
+
+    await roleLink.click();
 
     await expect(page.getByTestId('role-detail-container')).toBeVisible();
   });
@@ -328,15 +330,11 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await searchUserRow(page, adminUser.responseData.name);
 
     const teamResponse = page.waitForResponse((response) =>
-      response
-        .url()
-        .includes(
-          `/api/v1/teams/name/${encodeURIComponent(team.responseData.name)}`
-        )
+      response.url().includes('/api/v1/teams/name/Organization')
     );
     await page
       .getByTestId('users-list-table')
-      .getByRole('link', { name: team.responseData.displayName })
+      .getByRole('link', { name: 'Organization' })
       .click();
     await teamResponse;
 

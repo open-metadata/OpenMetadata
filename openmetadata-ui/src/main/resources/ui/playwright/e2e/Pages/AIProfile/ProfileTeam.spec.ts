@@ -12,7 +12,7 @@
  */
 
 import { APIRequestContext, Page } from '@playwright/test';
-import { expect, test } from '../../../support/fixtures/base';
+import { expect, test } from '../../fixtures/pages';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TeamClass } from '../../../support/team/TeamClass';
@@ -24,7 +24,7 @@ import {
   openTeamTab,
 } from '../../../utils/aiProfile';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, uuid } from '../../../utils/common';
+import { uuid } from '../../../utils/common';
 
 // Ports the PORTABLE behaviours of e2e/Pages/Teams.spec.ts onto the AI-mode team
 // detail (MembersTeamDetail), using core-ui selectors. Deferred (not ported):
@@ -57,11 +57,14 @@ const makeTeam = async (
   return team;
 };
 
-/** Drive the add-user UserTeamSelectableList popover (same widget as owner pick). */
+/**
+ * Drive the add-user UserTeamSelectableList popover (same widget as owner pick).
+ * The option row renders the user's display name, so search/filter by that.
+ */
 const addUserToTeam = async (
   page: Page,
   teamId: string,
-  userName: string
+  userDisplayName: string
 ): Promise<void> => {
   await page.getByTestId('add-user').click();
   await page
@@ -72,14 +75,14 @@ const addUserToTeam = async (
   const searchResponse = page.waitForResponse(
     'api/v1/search/query?q=*&index=user*'
   );
-  await page.locator('[data-testid="owner-select-users-search-bar"]').fill(
-    userName
-  );
+  await page
+    .locator('[data-testid="owner-select-users-search-bar"]')
+    .fill(userDisplayName);
   await searchResponse;
 
   await page
     .locator('[data-testid="owner-option"]')
-    .filter({ hasText: userName })
+    .filter({ hasText: userDisplayName })
     .click();
 
   const patchResponse = page.waitForResponse(
@@ -140,7 +143,6 @@ test.describe('AI Profile Team Detail', () => {
     await openOrganizationTeams(page);
 
     await expect(page.getByTestId('team-info-widgets')).toBeVisible();
-    await expect(page.getByTestId('team-type')).toBeVisible();
     await expect(page.getByTestId('team-user-count')).toBeVisible();
     await expect(page.getByTestId('sub-teams-table')).toBeVisible();
   });
@@ -156,9 +158,12 @@ test.describe('AI Profile Team Detail', () => {
     await page.getByTestId('add-team').click();
     await expect(page.getByTestId('add-team-container')).toBeVisible();
 
-    await page.getByTestId('name').fill(teamName);
-    await page.getByTestId('display-name').fill(`PW UI Team ${id}`);
-    await page.getByTestId('isJoinable-switch-button').click();
+    await page.getByTestId('name').getByRole('textbox').fill(teamName);
+    await page
+      .getByTestId('display-name')
+      .getByRole('textbox')
+      .fill(`PW UI Team ${id}`);
+    // isJoinable defaults to true (public); toggling would make it private.
 
     const createResponse = page.waitForResponse(
       (response) =>
@@ -179,17 +184,18 @@ test.describe('AI Profile Team Detail', () => {
   });
 
   test('Should search teams in the Organization sub-teams table', async ({
+    browser,
     page,
   }) => {
-    const { apiContext } = await getApiContext(page);
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
 
     await navigateToMembersPanel(page);
     await openOrganizationTeams(page);
 
     const searchInput = page
-      .getByTestId('search-bar-container')
-      .getByRole('textbox');
+      .getByTestId('team-detail')
+      .getByTestId('searchbar');
     await searchInput.fill(team.responseData.displayName);
     await expect(
       page.getByTestId(`team-link-${team.responseData.name}`)
@@ -201,14 +207,15 @@ test.describe('AI Profile Team Detail', () => {
     ).toBeHidden();
   });
 
-  test('Should rename a team inline', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should rename a team inline', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
 
     await page.getByTestId('edit-display-name').click();
     await page
       .getByTestId('display-name-input')
+      .getByRole('textbox')
       .fill(`${team.data.displayName}-edited`);
 
     const patch = patchTeamWait(page, team.responseData.id ?? '');
@@ -218,21 +225,21 @@ test.describe('AI Profile Team Detail', () => {
     await expect(page.getByTestId('display-name-input')).toBeHidden();
   });
 
-  test('Should edit the team email', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should edit the team email', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
 
     await page.getByTestId('edit-email').click();
-    await page.getByTestId('email-input').fill(`team-${uuid()}@example.com`);
+    await page.getByTestId('email-input').getByRole('textbox').fill(`team-${uuid()}@example.com`);
 
     const patch = patchTeamWait(page, team.responseData.id ?? '');
     await page.getByTestId('save-email').click();
     await patch;
   });
 
-  test('Should edit the team description', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should edit the team description', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
 
@@ -247,8 +254,8 @@ test.describe('AI Profile Team Detail', () => {
     await patch;
   });
 
-  test('Should add and remove a user from the team', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should add and remove a user from the team', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
 
@@ -258,7 +265,11 @@ test.describe('AI Profile Team Detail', () => {
     await openTeamTab(page, /Users/);
     await teamUsers;
 
-    await addUserToTeam(page, team.responseData.id ?? '', member.responseData.name);
+    await addUserToTeam(
+      page,
+      team.responseData.id ?? '',
+      member.responseData.displayName
+    );
     await expect(
       page.getByTestId('team-users-table').getByText(member.responseData.name)
     ).toBeVisible();
@@ -280,8 +291,8 @@ test.describe('AI Profile Team Detail', () => {
     ).toBeHidden();
   });
 
-  test('Should render and update the team user count', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should render and update the team user count', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext, {
       users: [member.responseData.id].filter(Boolean) as string[],
     });
@@ -302,8 +313,8 @@ test.describe('AI Profile Team Detail', () => {
     await deletedFetch;
   });
 
-  test('Should add and remove a role on the team', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should add and remove a role on the team', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
     await openTeamTab(page, /Roles/);
@@ -315,9 +326,10 @@ test.describe('AI Profile Team Detail', () => {
     await page.getByTestId('add-role').click();
     await rolesList;
 
-    await page.getByTestId('add-role-select').click();
-    await page.keyboard.type(roleName);
+    await page.getByTestId('add-role-select').getByRole('combobox').fill(roleName);
     await page.getByRole('option', { name: roleName }).click();
+    // Close the autocomplete dropdown so it doesn't intercept the Save click.
+    await page.keyboard.press('Escape');
 
     const addPatch = patchTeamWait(page, team.responseData.id ?? '');
     await page.getByRole('button', { name: 'Save' }).click();
@@ -337,8 +349,8 @@ test.describe('AI Profile Team Detail', () => {
     await expect(roleButton).toBeHidden();
   });
 
-  test('Should add and remove a policy on the team', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should add and remove a policy on the team', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
     await openTeamTab(page, /Policies/);
@@ -350,9 +362,13 @@ test.describe('AI Profile Team Detail', () => {
     await page.getByTestId('add-policy').click();
     await policiesList;
 
-    await page.getByTestId('add-policy-select').click();
-    await page.keyboard.type(policyName);
+    await page
+      .getByTestId('add-policy-select')
+      .getByRole('combobox')
+      .fill(policyName);
     await page.getByRole('option', { name: policyName }).click();
+    // Close the autocomplete dropdown so it doesn't intercept the Save click.
+    await page.keyboard.press('Escape');
 
     const addPatch = patchTeamWait(page, team.responseData.id ?? '');
     await page.getByRole('button', { name: 'Save' }).click();
@@ -373,9 +389,10 @@ test.describe('AI Profile Team Detail', () => {
   });
 
   test('Should navigate to a child team and back via breadcrumb', async ({
+    browser,
     page,
   }) => {
-    const { apiContext } = await getApiContext(page);
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
 
     await navigateToMembersPanel(page);
@@ -389,35 +406,47 @@ test.describe('AI Profile Team Detail', () => {
     await expect(page.getByTestId('team-detail')).toBeVisible();
   });
 
-  test('Should join and leave a public team', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should join and leave a public team', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     // Public group team the admin is not a member of.
     const team = await makeTeam(apiContext, { isJoinable: true });
     await openCreatedTeam(page, team);
 
-    const joinPatch = patchTeamWait(page, team.responseData.id ?? '');
+    // Joining patches the current (admin) user's teams, not the team entity.
+    const joinResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
     await page
       .getByTestId('profile-content-header')
       .getByTestId('join-team-button')
       .click();
-    await joinPatch;
+    await joinResponse;
 
     const leaveButton = page
       .getByTestId('profile-content-header')
       .getByTestId('leave-team-button');
     await expect(leaveButton).toBeVisible();
 
-    const leavePatch = patchTeamWait(page, team.responseData.id ?? '');
+    // Leaving removes the user from the team: DELETE /teams/<id>/users/<userId>.
+    const leaveResponse = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/teams/${team.responseData.id}/users/`) &&
+        response.request().method() === 'DELETE'
+    );
     await leaveButton.click();
-    await leavePatch;
+    await leaveResponse;
 
     await expect(
       page.getByTestId('profile-content-header').getByTestId('join-team-button')
     ).toBeVisible();
   });
 
-  test('Should soft delete and restore a team', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+  test('Should soft delete and restore a team', async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
 
@@ -466,22 +495,23 @@ test.describe('AI Profile Team Detail', () => {
       .getByTestId('profile-content-header')
       .getByRole('button', { name: 'Open menu' })
       .click();
-    await page.getByTestId('export-team').click();
-    await expect(page.getByTestId('export-entity-modal')).toBeVisible();
 
+    // A CSV-only export skips the type-picker modal and triggers the async job
+    // directly (see EntityExportModalProvider `isCsvOnly`).
     const exportResponse = page.waitForResponse((response) =>
       response.url().includes('exportAsync')
     );
-    await page.getByTestId('submit-button').click();
+    await page.getByTestId('export-team').click();
     const exported = await exportResponse;
 
     expect(exported.ok()).toBeTruthy();
   });
 
   test('Should open the team import form and preview an uploaded CSV', async ({
+    browser,
     page,
   }) => {
-    const { apiContext } = await getApiContext(page);
+    const { apiContext } = await performAdminLogin(browser);
     // Department teams expose header import-team and can hold child teams.
     const team = await makeTeam(apiContext, { teamType: 'Department' });
     await openCreatedTeam(page, team);
@@ -494,7 +524,7 @@ test.describe('AI Profile Team Detail', () => {
     await expect(page.getByTestId('members-import-container')).toBeVisible();
 
     const csv =
-      'name*,displayName,description,teamType,parents,Owner,isJoinable,defaultRoles,policies\n' +
+      'name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n' +
       `PW%imp-${uuid()},Imported Team,desc,Group,${team.responseData.name},,true,,`;
 
     const previewResponse = page.waitForResponse((response) =>

@@ -624,6 +624,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
               type: 'role',
               fullyQualifiedName: r.fullyQualifiedName,
               name: r.name,
+              displayName: r.displayName,
             } as EntityReference)
           : null;
       })
@@ -678,6 +679,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
               type: 'policy',
               fullyQualifiedName: p.fullyQualifiedName,
               name: p.name,
+              displayName: p.displayName,
             } as EntityReference)
           : null;
       })
@@ -1608,6 +1610,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                     {canEditAll && !team.deleted && (
                       <UserTeamSelectableList
                         hasPermission
+                        multiple={{ user: true, team: false }}
                         owner={team.users ?? []}
                         onUpdate={(users) => handleAddUsers(users ?? [])}>
                         <Button

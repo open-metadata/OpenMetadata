@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '../../../support/fixtures/base';
+import { expect, test } from '../../fixtures/pages';
 import { UserClass } from '../../../support/user/UserClass';
 import {
   navigateToMembersPanel,

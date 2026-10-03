@@ -279,7 +279,7 @@ const AbortCard: FC<{ reason?: string; onBack: () => void }> = ({
           {t('label.aborted')}
         </Typography>
         <Typography
-          className="tw:text-tertiary tw:text-center"
+          className="tw:w-full tw:text-tertiary tw:text-center tw:break-words"
           data-testid="abort-reason"
           size="text-sm">
           {reason}
