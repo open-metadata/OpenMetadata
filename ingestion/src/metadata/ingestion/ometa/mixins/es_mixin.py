@@ -194,11 +194,20 @@ class ESMixin(Generic[T]):
 
             entities = []
             for hit in response["hits"]["hits"]:
-                entity = self.get_by_name(
-                    entity=entity_type,
-                    fqn=hit["_source"]["fullyQualifiedName"],
-                    fields=fields,
-                )
+                entity = None
+                entity_id = hit.get("_source", {}).get("id")
+                if entity_id:
+                    entity = self.get_by_id(
+                        entity=entity_type,
+                        entity_id=entity_id,
+                        fields=fields,
+                    )
+                if entity is None and hit.get("_source", {}).get("fullyQualifiedName"):
+                    entity = self.get_by_name(
+                        entity=entity_type,
+                        fqn=hit["_source"]["fullyQualifiedName"],
+                        fields=fields,
+                    )
                 if entity is None:
                     continue
 
@@ -312,7 +321,7 @@ class ESMixin(Generic[T]):
         Returns:
             Optional[List[Container]]: A list of containers that match the search criteria, or None if no entities are found.
         """
-        return self._es_search_entity(
+        res = self._es_search_entity(
             entity_type=Container,
             field_value=full_path,
             field_name="fullPath",
@@ -320,6 +329,17 @@ class ESMixin(Generic[T]):
             size=size,
             fields=fields,
         )
+        if not res and full_path:
+            alt_path = full_path.rstrip("/") if full_path.endswith("/") else f"{full_path}/"
+            res = self._es_search_entity(
+                entity_type=Container,
+                field_value=alt_path,
+                field_name="fullPath",
+                from_count=from_count,
+                size=size,
+                fields=fields,
+            )
+        return res
 
     def _es_search_entity(
         self,
