@@ -182,12 +182,13 @@ export const getTaskResolveActions = (
 ): TaskResolveAction[] => {
   // Closing a task without a transition (cancellation, timer expiry) leaves its
   // workflow transitions on it, so a closed task would still offer
-  // Approve/Reject. Only an open task acts on them, and a Granted access
-  // request, which is closed but whose Revoke is real.
-  const transitions =
-    isTaskOpen(task) || task.status === TaskStatus.Granted
-      ? task.availableTransitions ?? []
-      : [];
+  // Approve/Reject. A Granted access request is closed too, but its Revoke is
+  // real; a row without a status is not known to be closed.
+  const isClosed =
+    Boolean(task.status) &&
+    !isTaskOpen(task) &&
+    task.status !== TaskStatus.Granted;
+  const transitions = isClosed ? [] : task.availableTransitions ?? [];
 
   if (transitions.length > 0) {
     return transitions.map((transition) => ({

@@ -127,6 +127,15 @@ describe('getTaskResolveActions', () => {
     ).toEqual([]);
   });
 
+  it('keeps the transitions of a row that carries no status', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({ status: undefined, availableTransitions: [DAR_APPROVE] }),
+        LABELS
+      )
+    ).toHaveLength(1);
+  });
+
   // A granted access request is closed, yet revoking it is a real action.
   it('keeps the transitions of a closed but still actionable task', () => {
     expect(
