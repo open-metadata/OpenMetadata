@@ -84,33 +84,38 @@ def _clock_skew(error: BaseException) -> bool:
 AWS_ERRORS = ErrorPack(
     when(_clock_skew).diagnose(
         "Request signature expired",
-        fix="The clock where ingestion runs is too far from AWS's (tolerance is about 5 minutes); sync it with NTP.",
+        fix="The clock on the machine ingestion runs on is more than about five minutes away from "
+        "AWS's, so AWS rejected the request as too old. Sync that machine's clock, usually with NTP.",
     ),
     when(aws_code(*_UNKNOWN_KEY)).diagnose(
         "AWS access key not recognized",
-        fix="AWS does not know this awsAccessKeyId - it may be deleted, inactive, or from another "
-        "account or partition. With temporary credentials, the awsSessionToken may also be invalid.",
+        fix="AWS does not recognise the AWS Access Key ID. It may have been deleted or made "
+        "inactive, or it may belong to a different AWS account. If you are using temporary "
+        "credentials, the AWS Session Token may be invalid too.",
     ),
     when(aws_code(*_BAD_SIGNATURE)).diagnose(
         "AWS secret key does not match",
-        fix="The awsSecretAccessKey is wrong for this awsAccessKeyId; re-enter the credential pair.",
+        fix="The AWS Secret Access Key does not go with the AWS Access Key ID. They are issued as a "
+        "pair - re-enter both together.",
     ),
     when(aws_code(*_EXPIRED_TOKEN)).diagnose(
         "AWS session token expired",
-        fix="Temporary credentials have expired; refresh the awsSessionToken.",
+        fix="These are temporary credentials and they have expired. Generate a new AWS Session "
+        "Token and update the connection.",
     ),
     when(Matchers.exception(NoCredentialsError)).diagnose(
         "No AWS credentials found",
-        fix="No credentials were configured or resolvable; set awsAccessKeyId/awsSecretAccessKey "
-        "or make an IAM role available where ingestion runs.",
+        fix="No AWS credentials were found at all. Either fill in AWS Access Key ID and AWS Secret "
+        "Access Key, or attach an IAM role to the machine ingestion runs on.",
     ),
     when(Matchers.exception(NoRegionError)).diagnose(
         "No AWS region configured",
-        fix="Set awsRegion; the client cannot resolve a service endpoint without it.",
+        fix="AWS Region is empty, and it is required - without it there is no way to work out which "
+        "regional AWS endpoint to call.",
     ),
     when(Matchers.exception(EndpointConnectionError)).diagnose(
         "Cannot reach the AWS endpoint",
-        fix="Check awsRegion (and endPointURL when overridden), and that the network allows "
-        "access to the service endpoint from where ingestion runs.",
+        fix="Could not reach the AWS service endpoint. Check AWS Region (and Endpoint URL if you "
+        "overrode it), and that the network lets the machine ingestion runs on reach AWS.",
     ),
 ).including(NETWORK_ERRORS)
