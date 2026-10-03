@@ -25,8 +25,10 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.WorkflowInstances;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
@@ -82,6 +84,7 @@ import org.openmetadata.sdk.network.RequestOptions;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlossaryTerm> {
+  private static final String APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
 
   // Disable tests that don't apply to GlossaryTerm
   {
@@ -98,6 +101,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
+
+  // Without reviewers the minimal entity has nobody to review it, so it starts approved.
+  @Override
+  protected EntityStatus expectedInitialEntityStatus() {
+    return EntityStatus.APPROVED;
+  }
 
   @Override
   protected CreateGlossaryTerm createMinimalRequest(TestNamespace ns) {
@@ -175,6 +184,15 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Override
   protected String getEntityType() {
     return "glossaryTerm";
+  }
+
+  /**
+   * Waits for the approval workflow's run on the new term to finish. Without reviewers it approves
+   * the term whatever stage the term is in by then, so a test that moves the stage waits for it.
+   */
+  private void awaitApprovalWorkflowRun(GlossaryTerm term) {
+    WorkflowInstances.awaitSettled(
+        getEntityType(), term.getFullyQualifiedName(), APPROVAL_WORKFLOW);
   }
 
   @Override
@@ -1597,11 +1615,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     GlossaryTerm term = createEntity(request);
     assertNotNull(term.getEntityStatus());
+    awaitApprovalWorkflowRun(term);
 
-    // Update status to Deprecated
-    term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
-    assertEquals(org.openmetadata.schema.type.EntityStatus.DEPRECATED, updated.getEntityStatus());
+    // The approval workflow owns a term's stage, so move it the way the workflow does
+    GovernanceWorkflowActions.moveToStage(getEntityType(), term.getId(), EntityStatus.DEPRECATED);
+    GlossaryTerm updated = getEntity(term.getId().toString());
+    assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus());
   }
 
   @Test
@@ -1617,8 +1636,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term for search status propagation");
 
     GlossaryTerm term = createEntity(request);
-    term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    awaitApprovalWorkflowRun(term);
+    GovernanceWorkflowActions.moveToStage(getEntityType(), term.getId(), EntityStatus.DEPRECATED);
+    GlossaryTerm updated = getEntity(term.getId().toString());
 
     Awaitility.await("Glossary term status should be reflected in search")
         .atMost(java.time.Duration.ofSeconds(30))
@@ -2988,9 +3008,10 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm draftTerm = createEntity(request2);
     assertEquals(EntityStatus.APPROVED, draftTerm.getEntityStatus());
 
-    // Update second term to DRAFT status
-    draftTerm.setEntityStatus(EntityStatus.DRAFT);
-    GlossaryTerm updatedDraftTerm = client.glossaryTerms().update(draftTerm.getId(), draftTerm);
+    // Move the second term to DRAFT the way the approval workflow, which owns its stage, does
+    awaitApprovalWorkflowRun(draftTerm);
+    GovernanceWorkflowActions.moveToStage(getEntityType(), draftTerm.getId(), EntityStatus.DRAFT);
+    GlossaryTerm updatedDraftTerm = client.glossaryTerms().get(draftTerm.getId().toString());
     assertEquals(EntityStatus.DRAFT, updatedDraftTerm.getEntityStatus());
 
     // List with APPROVED status filter - only approved term should be returned
@@ -3081,9 +3102,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm reviewTerm = client.glossaryTerms().create(request2);
     assertEquals(EntityStatus.APPROVED, reviewTerm.getEntityStatus());
 
-    // Step 3: Update the second term to IN_REVIEW status
-    reviewTerm.setEntityStatus(EntityStatus.IN_REVIEW);
-    GlossaryTerm updatedReviewTerm = client.glossaryTerms().update(reviewTerm.getId(), reviewTerm);
+    // Step 3: Move the second term to IN_REVIEW the way the approval workflow, which owns its
+    // stage, does
+    awaitApprovalWorkflowRun(reviewTerm);
+    GovernanceWorkflowActions.moveToStage(
+        getEntityType(), reviewTerm.getId(), EntityStatus.IN_REVIEW);
+    GlossaryTerm updatedReviewTerm = client.glossaryTerms().get(reviewTerm.getId().toString());
     assertEquals(EntityStatus.IN_REVIEW, updatedReviewTerm.getEntityStatus());
 
     // Step 4: Search without entityStatus filter - both terms should be returned
