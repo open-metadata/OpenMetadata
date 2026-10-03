@@ -76,8 +76,10 @@ describe('activityAPI', () => {
   });
 
   it('lists user and current-user activity', async () => {
-    await getUserActivity('user-1', { limit: 10 });
-    await getMyActivityFeed({ limit: 20 });
+    await Promise.all([
+      getUserActivity('user-1', { limit: 10 }),
+      getMyActivityFeed({ limit: 20 }),
+    ]);
 
     expect(APIClient.get).toHaveBeenNthCalledWith(1, '/activity/user/user-1', {
       params: { limit: 10 },
@@ -116,8 +118,10 @@ describe('activityAPI', () => {
   it('lists activity by entity link and gets the count', async () => {
     const entityLink = '<#E::table::service.table>';
 
-    await getActivityByEntityLink(entityLink, { days: 30 });
-    await getActivityCount({ days: 30 });
+    await Promise.all([
+      getActivityByEntityLink(entityLink, { days: 30 }),
+      getActivityCount({ days: 30 }),
+    ]);
 
     expect(APIClient.get).toHaveBeenNthCalledWith(1, '/activity/about', {
       params: { entityLink, days: 30 },
@@ -128,8 +132,10 @@ describe('activityAPI', () => {
   });
 
   it('adds and removes an activity reaction', async () => {
-    await addActivityReaction('activity-1', ReactionType.Heart);
-    await removeActivityReaction('activity-1', ReactionType.Heart);
+    await Promise.all([
+      addActivityReaction('activity-1', ReactionType.Heart),
+      removeActivityReaction('activity-1', ReactionType.Heart),
+    ]);
 
     const path = '/activity/activity-1/reaction/heart';
 

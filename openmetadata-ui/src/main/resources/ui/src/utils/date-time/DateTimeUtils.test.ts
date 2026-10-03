@@ -23,9 +23,9 @@ import {
   formatMonth,
   formatTimeDurationFromSeconds,
   getElapsedTime,
+  getRelativeCalendar,
   getScheduleDescriptionTexts,
   isValidDateFormat,
-  getRelativeCalendar,
 } from './DateTimeUtils';
 
 const systemLocale = Settings.defaultLocale;
