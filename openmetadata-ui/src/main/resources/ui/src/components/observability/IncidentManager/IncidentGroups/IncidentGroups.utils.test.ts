@@ -35,6 +35,7 @@ import {
   getIncidentGroupSubLine,
   getIncidentTrendColor,
   getIncidentTrendPoints,
+  getPageAfterEmptyRead,
   isRecurring,
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
@@ -432,5 +433,24 @@ describe('getIncidentGroupsQuery', () => {
     expect(
       getIncidentGroupsQuery({ status: [], dateField: 'updatedAt' })
     ).toEqual({});
+  });
+});
+
+describe('getPageAfterEmptyRead', () => {
+  it('should keep a page that has rows, and the first page even when empty', () => {
+    expect(getPageAfterEmptyRead(3, 2, 10, 13)).toBeUndefined();
+    expect(getPageAfterEmptyRead(0, 1, 10, 0)).toBeUndefined();
+  });
+
+  it('should step back to the last page the total still reaches', () => {
+    expect(getPageAfterEmptyRead(0, 4, 10, 15)).toBe(2);
+  });
+
+  it('should step back at least one page when the total lags behind', () => {
+    expect(getPageAfterEmptyRead(0, 3, 10, 30)).toBe(2);
+  });
+
+  it('should fall back to the first page when there is no total', () => {
+    expect(getPageAfterEmptyRead(0, 3, 10)).toBe(1);
   });
 });
