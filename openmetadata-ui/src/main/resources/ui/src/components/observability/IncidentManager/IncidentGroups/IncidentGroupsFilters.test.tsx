@@ -227,6 +227,7 @@ describe('IncidentGroupsFilters', () => {
       'incident-groups-test-case',
       'incident-groups-assignee',
       'incident-groups-status',
+      'incident-groups-severity',
       'incident-groups-date-field',
       'date-range-filter',
     ]) {

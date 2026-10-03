@@ -254,6 +254,7 @@ const IncidentGroupsFilters = ({
           options={severityOptions}
           selectedValues={filters.severity}
           selectionMode="multiple"
+          size="md"
           triggerVariant="input"
           onChange={(severity) =>
             onChange({ severity: severity as IncidentSeverityFilter[] })
