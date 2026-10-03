@@ -370,11 +370,6 @@
       "count": 6
     }
   },
-  "playwright/e2e/Features/Tasks/TaskResolution.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    }
-  },
   "playwright/e2e/Features/Tasks/TeamActivity.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
