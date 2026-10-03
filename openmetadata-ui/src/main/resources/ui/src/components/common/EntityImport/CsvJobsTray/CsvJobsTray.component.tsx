@@ -48,6 +48,7 @@ import {
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './csv-jobs-tray.less';
 import {
+  CSV_JOBS_POLL_INTERVAL_MS,
   CSV_JOBS_POST_ACTION_REFRESH_MS,
   CSV_JOBS_REFRESH_EVENT,
   isCsvJobOwned,
@@ -64,8 +65,6 @@ const TERMINAL_STATUSES: CsvAsyncJobStatus[] = [
   'FAILED',
   'CANCELLED',
 ];
-
-const ACTIVE_JOBS_POLL_INTERVAL_MS = 5000;
 
 // Fetch well beyond the handful the tray renders so a just-finished job cannot
 // fall outside the fetched window (which would silently skip its auto-open).
@@ -355,7 +354,7 @@ export const CsvJobsTray = () => {
         if (!cancelled) {
           scheduleNextPoll();
         }
-      }, ACTIVE_JOBS_POLL_INTERVAL_MS);
+      }, CSV_JOBS_POLL_INTERVAL_MS);
     };
 
     scheduleNextPoll();

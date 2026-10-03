@@ -16,6 +16,10 @@
 // it does not pull the heavy CsvJobsTray component into the caller's bundle.
 export const CSV_JOBS_REFRESH_EVENT = 'csv-jobs-refresh';
 
+// Cadence for polling CSV async job status — shared by the export jobs tray and
+// the import validation fallback so both poll at the same rate.
+export const CSV_JOBS_POLL_INTERVAL_MS = 5000;
+
 // One extra refresh a short while after an action fires the event above, to
 // catch a job that only registers slightly afterwards. The import path in
 // particular dispatches before its job exists, so a socket-less client that
