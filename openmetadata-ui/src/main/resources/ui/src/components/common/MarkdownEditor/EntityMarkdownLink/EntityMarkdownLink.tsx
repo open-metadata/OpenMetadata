@@ -51,13 +51,24 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
   }
 
   if (entityType === EntityType.INGESTION_PIPELINE) {
+    // An ingestion-pipeline entity link is exactly
+    // #ingestionPipeline/<serviceCategory>/<serviceFqn>/<pipelineName> (3
+    // segments). A literal '/' in a name is encoded as %2F upstream, so 4+
+    // segments are malformed; reject them so the FQN reconstruction below is
+    // unambiguous.
     const parts = rest.split('/');
-    if (parts.length < 3) {
+    if (parts.length !== 3) {
       return { isEntityLink: false };
     }
-    const [serviceCategory, encodedServiceFqn, ...fqnParts] = parts;
+    const [serviceCategory, encodedServiceFqn, encodedPipelineName] = parts;
     const serviceFqn = decodeURIComponent(encodedServiceFqn);
-    const fullyQualifiedName = decodeURIComponent(fqnParts.join('/'));
+    // Populate the full FQN (matching EntityLinkInfo.fullyQualifiedName and the
+    // generic branch below) so the hover popover fetches the pipeline by the
+    // FQN the backend hashes against (<serviceFqn>.<pipelineName>), not the
+    // bare pipeline name.
+    const fullyQualifiedName = `${serviceFqn}.${decodeURIComponent(
+      encodedPipelineName
+    )}`;
 
     return {
       isEntityLink: true,
