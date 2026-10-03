@@ -23,6 +23,8 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
+from metadata.core.connections.test_connection.checks.database import targets_in_scope
+from metadata.core.connections.test_connection.checks.probe import probe_targets
 from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
 )
@@ -47,6 +49,11 @@ from metadata.utils.logger import cli_logger
 from metadata.utils.timeout import timeout
 
 logger = cli_logger()
+
+
+# Never probed: these are exposed to every login, so landing on one proves nothing
+# about the data being ingested. Skipped rather than deferred, as before.
+LEGACY_SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema"})
 
 
 class SourceConnectionException(Exception):  # noqa: N818
@@ -375,21 +382,30 @@ def test_connection_db_schema_sources(
 
     def custom_executor(engine_: Engine, inspector_fn_str: str):
         """
-        Check if we can list tables or views from a given schema
-        or a random one
+        Check if we can list tables or views from the schemas the ingestion would
+        read: the configured `databaseSchema` when set, else the ones
+        `schemaFilterPattern` targets, minus the system schemas.
+
+        Probing a single arbitrary schema fails a connection whose ingestion reads
+        a different, readable schema - on an engine fronted by an external
+        authorizer (Hive or Trino with Ranger) an unauthorized schema raises rather
+        than returning an empty list. Only every schema in scope refusing the read
+        is a failure.
         """
 
         inspector = inspect(engine_)
         inspector_fn = getattr(inspector, inspector_fn_str)
 
-        if service_connection.databaseSchema:
-            inspector_fn(service_connection.databaseSchema)
-        else:
-            schema_name = inspector.get_schema_names() or []
-            for schema in schema_name:
-                if schema.lower() not in ("information_schema", "performance_schema"):
-                    inspector_fn(schema)
-                    break
+        candidates = [
+            schema for schema in inspector.get_schema_names() or [] if schema.lower() not in LEGACY_SYSTEM_SCHEMAS
+        ]
+        targets = targets_in_scope(
+            candidates,
+            pinned=service_connection.databaseSchema,
+            excluded=getattr(service_connection, "schemaFilterPattern", None),
+        )
+        # A listing that does not raise is an answer, empty or not.
+        probe_targets(targets, lambda schema: inspector_fn(schema) or ())
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
