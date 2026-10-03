@@ -25,6 +25,7 @@ import {
   OpenIncidentStatus,
 } from '../../../../rest/incidentManagerAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
@@ -271,3 +272,18 @@ export const getIncidentTrendPoints = (trend: number[]): string => {
     })
     .join(' ');
 };
+
+/**
+ * The page to read instead of `page` when it came back empty though it is not
+ * the first: a refresh resolved the last rows on it. Steps back at least one
+ * page, so a total that lags behind the rows cannot pin it in place.
+ */
+export const getPageAfterEmptyRead = (
+  rowCount: number,
+  page: number,
+  pageSize: number,
+  total = 0
+): number | undefined =>
+  rowCount === 0 && page > 1
+    ? Math.min(page - 1, Math.max(1, computeTotalPages(pageSize, total)))
+    : undefined;
