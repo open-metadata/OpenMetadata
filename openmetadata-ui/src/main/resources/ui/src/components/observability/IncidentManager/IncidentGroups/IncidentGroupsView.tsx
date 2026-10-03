@@ -31,6 +31,7 @@ import {
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import Loader from '../../../common/Loader/Loader';
 import IncidentGroupByDropdown from './IncidentGroupByDropdown';
@@ -46,6 +47,10 @@ import {
 import IncidentGroupsFilters from './IncidentGroupsFilters';
 import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroups } from './useIncidentGroups';
+
+const STAT_COUNT_ELEMENT = (
+  <Typography as="span" className="tw:text-primary" weight="semibold" />
+);
 
 /**
  * Grouped incident listing: the `Group by` dimension picker, the header stats
@@ -205,17 +210,11 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
                 className="tw:text-secondary"
                 data-testid="incident-groups-count"
                 size="text-sm">
-                <Typography
-                  as="span"
-                  className="tw:text-primary"
-                  weight="semibold">
-                  {groupCount}
-                </Typography>{' '}
-                {t(
-                  groupCount === 1
-                    ? 'label.group-lowercase'
-                    : 'label.group-lowercase-plural'
-                )}
+                <Transi18next
+                  i18nKey="label.group-count"
+                  renderElement={STAT_COUNT_ELEMENT}
+                  values={{ count: groupCount }}
+                />
               </Typography>
               <Divider className="tw:h-4" orientation="vertical" />
               <Tooltip
@@ -229,13 +228,11 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
                       className="tw:text-secondary"
                       data-testid="incident-groups-recurring-count"
                       size="text-sm">
-                      <Typography
-                        as="span"
-                        className="tw:text-primary"
-                        weight="semibold">
-                        {recurringCount}
-                      </Typography>{' '}
-                      {t('label.recurring-lowercase')}
+                      <Transi18next
+                        i18nKey="label.recurring-count"
+                        renderElement={STAT_COUNT_ELEMENT}
+                        values={{ count: recurringCount }}
+                      />
                     </Typography>
                   </Box>
                 </TooltipTrigger>

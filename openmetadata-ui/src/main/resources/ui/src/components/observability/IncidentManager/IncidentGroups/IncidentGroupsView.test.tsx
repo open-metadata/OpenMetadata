@@ -51,6 +51,17 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
+  Transi18next: ({
+    i18nKey,
+    values,
+  }: {
+    i18nKey: string;
+    values: { count: number };
+  }) => `${i18nKey}:${values.count}`,
+}));
+
 jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
@@ -231,11 +242,11 @@ describe('IncidentGroupsView', () => {
     });
 
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      '5 label.group-lowercase-plural'
+      'label.group-count:5'
     );
     expect(
       screen.getByTestId('incident-groups-recurring-count')
-    ).toHaveTextContent('2 label.recurring-lowercase');
+    ).toHaveTextContent('label.recurring-count:2');
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
   });
 
@@ -511,7 +522,7 @@ describe('IncidentGroupsView', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      '5 label.group-lowercase-plural'
+      'label.group-count:5'
     );
 
     await act(async () => {
@@ -1096,7 +1107,7 @@ describe('IncidentGroupsView filters and paging', () => {
     });
 
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      '3 label.group-lowercase-plural'
+      'label.group-count:3'
     );
     expect(currentPageInput()).toHaveAttribute('max', '1');
   });
@@ -1136,7 +1147,7 @@ describe('IncidentGroupsView filters and paging', () => {
     });
 
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      '1 label.group-lowercase'
+      'label.group-count:1'
     );
   });
 

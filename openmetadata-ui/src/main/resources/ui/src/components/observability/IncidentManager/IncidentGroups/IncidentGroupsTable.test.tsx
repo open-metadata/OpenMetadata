@@ -23,6 +23,17 @@ import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { IncidentTrendSparklineProps } from './IncidentGroups.types';
 import IncidentGroupsTable from './IncidentGroupsTable';
 
+// The global mock drops the interpolated values; the related badge is a count,
+// so this one keeps it to assert what the badge was handed.
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}:${options.count}`,
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
+  }),
+}));
+
 jest.mock('./IncidentTrendSparkline', () => ({
   __esModule: true,
   default: jest
@@ -114,7 +125,7 @@ describe('IncidentGroupsTable', () => {
       'Row count · Uniqueness · Null check'
     );
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '3 label.type-lowercase-plural'
+      'label.type-count:3'
     );
     expect(screen.getByTestId('group-incident-count')).toHaveTextContent('5');
     expect(screen.getByTestId('group-severity')).toHaveTextContent(
@@ -263,7 +274,7 @@ describe('IncidentGroupsTable', () => {
     );
 
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '3 label.table-lowercase-plural'
+      'label.table-count:3'
     );
     // The array is capped server-side, so the sub-line lists what it holds
     // while the pill counts from the field.
@@ -279,7 +290,7 @@ describe('IncidentGroupsTable', () => {
     );
 
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '1 label.table-lowercase'
+      'label.table-count:1'
     );
   });
 
@@ -310,7 +321,7 @@ describe('IncidentGroupsTable', () => {
     ]);
 
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '1 label.type-lowercase'
+      'label.type-count:1'
     );
   });
 });
