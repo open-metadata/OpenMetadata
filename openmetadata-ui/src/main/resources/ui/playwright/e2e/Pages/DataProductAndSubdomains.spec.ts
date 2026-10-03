@@ -431,7 +431,8 @@ test.describe('Data Product Comprehensive Tests', () => {
       // and /assets/add never fired.
       const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
       await assetModal
-        .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+        .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+        .getByTestId('asset-checkbox')
         .check();
 
       // Save

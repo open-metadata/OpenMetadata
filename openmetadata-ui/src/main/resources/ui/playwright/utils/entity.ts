@@ -2447,10 +2447,10 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
   await expect(
     page
       .getByTestId('explore-tree')
-      .locator('span')
+      .getByRole('row')
       .filter({ hasText: serviceType })
       .first()
-  ).toHaveClass(/ant-tree-node-selected/);
+  ).toHaveAttribute('aria-selected', 'true');
 };
 
 export const escapeESReservedCharacters = (text?: string) => {

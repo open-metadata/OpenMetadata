@@ -148,7 +148,9 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('Verify edge click opens edge drawer', async ({ page }) => {
       await clickEdgeBetweenNodes(page, table1, topic, false);
 
-      await expect(page.locator('.edge-info-drawer-container')).toBeVisible();
+      await expect(
+        page.getByTestId('edge-info-drawer-container')
+      ).toBeVisible();
       await expect(page.getByTestId('edge-header-title')).toBeVisible();
       await expect(page.getByTestId('edge-header-title')).toHaveText(
         'Edge Information'

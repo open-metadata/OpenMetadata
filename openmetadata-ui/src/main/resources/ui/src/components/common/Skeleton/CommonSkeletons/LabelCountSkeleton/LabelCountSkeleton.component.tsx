@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { LabelCountSkeletonProps } from '../../Skeleton.interfaces';
 
 const LabelCountSkeleton = ({
@@ -25,34 +26,18 @@ const LabelCountSkeleton = ({
   ...props
 }: LabelCountSkeletonProps) => {
   return (
-    <Row justify="space-between">
+    <Row className="tw:mb-6" justify="space-between">
       {isSelect || isLabel ? (
         <Col span={firstColSize}>
           <div className="w-48 flex">
             {isSelect ? (
               <div>
-                <Skeleton
-                  active
-                  paragraph={{ rows: 0 }}
-                  title={{
-                    width: 14,
-                  }}
-                  {...props}
-                  {...selectProps}
-                />
+                <Skeleton height={16} width={14} {...props} {...selectProps} />
               </div>
             ) : null}
             {isLabel ? (
               <div className="m-l-xs">
-                <Skeleton
-                  active
-                  paragraph={{ rows: 0 }}
-                  title={{
-                    width: 100,
-                  }}
-                  {...props}
-                  {...labelProps}
-                />
+                <Skeleton height={16} width={100} {...props} {...labelProps} />
               </div>
             ) : null}
           </div>
@@ -60,15 +45,7 @@ const LabelCountSkeleton = ({
       ) : null}
       <Col span={secondColSize}>
         {isCount ? (
-          <Skeleton
-            active
-            paragraph={{ rows: 0 }}
-            title={{
-              width: 40,
-            }}
-            {...props}
-            {...countProps}
-          />
+          <Skeleton height={16} width={40} {...props} {...countProps} />
         ) : null}
       </Col>
     </Row>

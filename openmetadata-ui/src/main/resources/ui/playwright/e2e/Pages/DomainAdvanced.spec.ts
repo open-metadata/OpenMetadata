@@ -613,7 +613,8 @@ test.describe('Bulk Domain Asset Operations', () => {
         await waitForAllLoadersToDisappear(page);
 
         await page
-          .locator(`[data-testid="table-data-card_${fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
       }
 
@@ -904,7 +905,8 @@ test.describe('Data Product Asset Management', () => {
       await searchRes;
 
       await page
-        .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+        .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+        .getByTestId('asset-checkbox')
         .check();
 
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');
@@ -1047,7 +1049,10 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
     // arrival and React swapping the list to a single card.
     await waitForAllLoadersToDisappear(page);
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   };
 
   test('single-asset remove with linked data product shows preview and commits on Remove Anyway', async ({

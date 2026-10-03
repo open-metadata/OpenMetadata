@@ -17,6 +17,21 @@
 export const SSO_TEST_LOGIN_STORE_PREFIX = 'omSsoTestLogin.';
 
 /**
+ * Test Login points a same-origin popup at a sign-in address that comes from the candidate identity
+ * provider. Anything other than http(s) — a `javascript:` or `data:` URL — would run in this origin.
+ */
+export const isHttpUrl = (url?: string): boolean => {
+  try {
+    return ['http:', 'https:'].includes(new URL(url ?? '').protocol);
+  } catch {
+    return false;
+  }
+};
+
+/** Raised instead of sending the Test Login popup to a sign-in address that is not http(s). */
+export class UnsafeSignInUrlError extends Error {}
+
+/**
  * Returns true only when the current document is the SSO "Test Login" popup
  * returning from the identity provider.
  *

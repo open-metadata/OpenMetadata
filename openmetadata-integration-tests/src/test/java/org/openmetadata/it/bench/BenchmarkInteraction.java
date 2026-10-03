@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-.entity-summary-details {
-  .ant-space-item {
-    position: relative;
-  }
+package org.openmetadata.it.bench;
+
+/**
+ * One timed benchmark interaction. Receives its zero-based iteration index so a scenario that must
+ * defeat the server-side scene cache can vary a request parameter per sample.
+ *
+ * <p>{@link java.util.function.IntConsumer} would do, except every interaction worth benchmarking
+ * here issues an HTTP call and therefore throws a checked exception.
+ */
+@FunctionalInterface
+public interface BenchmarkInteraction {
+  void run(int iteration) throws Exception;
 }
