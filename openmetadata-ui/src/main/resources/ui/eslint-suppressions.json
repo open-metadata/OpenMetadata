@@ -472,7 +472,7 @@
   },
   "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 1
     }
   },
   "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts": {
