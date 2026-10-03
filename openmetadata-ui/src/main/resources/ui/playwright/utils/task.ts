@@ -202,7 +202,7 @@ export const createTagTask = async (
     await querySearchResponse;
 
     // select value from dropdown
-    const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`);
+    const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`).first();
     await dropdownValue.hover();
     await dropdownValue.click();
     await clickOutside(page);

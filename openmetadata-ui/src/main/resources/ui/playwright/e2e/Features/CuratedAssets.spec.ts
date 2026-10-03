@@ -197,6 +197,7 @@ test.describe('Curated Assets Widget', () => {
         curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
+          .first()
       ).toBeVisible();
 
       await redirectToHomePage(page);
@@ -225,6 +226,7 @@ test.describe('Curated Assets Widget', () => {
         curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
+          .first()
       ).toBeVisible();
 
       await navigateToCustomizeLandingPage(page, {

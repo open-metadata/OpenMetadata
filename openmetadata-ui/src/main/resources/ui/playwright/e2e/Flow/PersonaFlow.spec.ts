@@ -891,6 +891,7 @@ test.describe('Curated Assets – Description filter', () => {
           .getByTestId('KnowledgePanel.CuratedAssets')
           .locator('.entity-list-item-title')
           .filter({ hasText: tableName })
+          .first()
       ).toBeVisible();
     });
   });

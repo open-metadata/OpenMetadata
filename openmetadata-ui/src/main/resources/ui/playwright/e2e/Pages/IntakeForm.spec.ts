@@ -238,7 +238,7 @@ const selectExtensionReference = async ({
 
   const option = optionTestId
     ? page.getByTestId(optionTestId)
-    : page.getByRole('option').filter({ hasText: optionText });
+    : page.getByRole('option').filter({ hasText: optionText }).first();
   await expect(option).toBeVisible({ timeout: 15000 });
   await option.click();
 };

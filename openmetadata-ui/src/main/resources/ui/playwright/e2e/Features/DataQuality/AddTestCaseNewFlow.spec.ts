@@ -55,6 +55,7 @@ test.describe(
       await page
         .getByRole('option')
         .filter({ hasText: table.entityResponseData.fullyQualifiedName })
+        .first()
         .click();
 
       await page.locator('[data-id="selected-entity"]').waitFor({
@@ -125,6 +126,7 @@ test.describe(
       await page
         .getByRole('option')
         .filter({ hasText: testType })
+        .first()
         .click();
 
       await page.locator(`[data-id="${testTypeId}"]`).waitFor({

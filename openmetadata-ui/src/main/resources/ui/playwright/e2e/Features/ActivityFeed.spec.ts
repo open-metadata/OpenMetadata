@@ -1291,7 +1291,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await waitForBothFeedKinds(feedList);
 
     // Select the seeded change-event activity into the right panel.
-    const activityCard = feedList.filter({ hasText: activityMarker });
+    const activityCard = feedList.filter({ hasText: activityMarker }).first();
     await activityCard.click();
     await waitForAllLoadersToDisappear(adminPage);
 

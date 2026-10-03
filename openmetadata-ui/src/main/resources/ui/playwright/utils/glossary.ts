@@ -231,7 +231,7 @@ export const selectActiveGlossaryTerm = async (
   page: Page,
   glossaryTermName: string
 ) => {
-  const glossaryTermEntry = page.getByTestId(glossaryTermName);
+  const glossaryTermEntry = page.getByTestId(glossaryTermName).first();
 
   await expect(glossaryTermEntry).toBeVisible();
   await glossaryTermEntry.scrollIntoViewIfNeeded().catch(() => undefined);
@@ -994,9 +994,7 @@ export const dragAndDropTerm = async (
   dropTarget: string
 ) => {
   // Find the row containing the drag element text
-  const dragLocator = page
-    .locator('tr')
-    .filter({ hasText: dragElement });
+  const dragLocator = page.locator('tr').filter({ hasText: dragElement });
 
   // Find the row containing the drop target text (or the header if dropTarget is "Terms")
   const dropLocator =

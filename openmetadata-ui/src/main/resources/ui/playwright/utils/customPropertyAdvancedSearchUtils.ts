@@ -497,6 +497,7 @@ const handlePropertyValueInput = async (
     await page
       .locator('[role="listbox"]:visible [role="option"]')
       .filter({ hasText: value as string })
+      .first()
       .click();
   }
 };

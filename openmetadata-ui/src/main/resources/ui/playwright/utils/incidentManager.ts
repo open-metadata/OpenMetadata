@@ -266,6 +266,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
     ? page
         .locator('tr')
         .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
+        .first()
         .getByTestId('assignee')
     : page.getByTestId('assignee').first();
 
@@ -287,8 +288,7 @@ export const assignIncident = async (data: {
   await expect
     .poll(
       async () => {
-        const incidentRow = page
-          .getByTestId(`test-case-${testCaseName}`);
+        const incidentRow = page.getByTestId(`test-case-${testCaseName}`);
         const incidentLink = page
           .getByRole('link', { name: testCaseName })
           .first();

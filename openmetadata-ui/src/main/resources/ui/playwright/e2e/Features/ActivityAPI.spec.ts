@@ -601,6 +601,7 @@ test.describe(
         feedWidget
           .getByTestId('message-container')
           .filter({ hasText: followedActivitySummary })
+          .first()
       ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
     });
   }

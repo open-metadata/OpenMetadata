@@ -86,7 +86,8 @@ test.describe(
         );
         const columnOption = page
           .getByRole('option')
-          .filter({ hasText: testCase.column });
+          .filter({ hasText: testCase.column })
+          .first();
         await expect(columnOption).toBeVisible();
         await columnOption.click();
         await testDefinitionResponse;
@@ -192,6 +193,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -279,6 +281,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -361,6 +364,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -471,6 +475,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -564,6 +569,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -648,6 +654,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -740,6 +747,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -842,6 +850,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -944,6 +953,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1046,6 +1056,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1148,6 +1159,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1251,6 +1263,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1349,6 +1362,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1436,6 +1450,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1524,6 +1539,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
+          .first()
           .click();
         await testDefinitionResponse;
 

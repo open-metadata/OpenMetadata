@@ -41,7 +41,7 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
 export const selectTestType = async (page: Page, label: string) => {
   await page.click('[id="root\\/testType"]');
   await page.fill('[id="root\\/testType"]', label);
-  await page.getByRole('option').filter({ hasText: label }).click();
+  await page.getByRole('option').filter({ hasText: label }).first().click();
 };
 
 /**

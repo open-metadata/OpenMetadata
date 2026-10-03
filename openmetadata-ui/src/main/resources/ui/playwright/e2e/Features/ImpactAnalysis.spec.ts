@@ -1080,7 +1080,7 @@ test.describe('Impact Analysis', () => {
       .getByTestId('drop-down-menu')
       .getByRole('menuitemcheckbox');
     await expect(glossaryOptions).toHaveCount(1);
-    await glossaryOptions.click();
+    await glossaryOptions.first().click();
 
     const filterResponse = page.waitForResponse((response) => {
       if (!response.url().includes('/api/v1/lineage/getLineage/Downstream')) {

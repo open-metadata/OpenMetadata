@@ -638,7 +638,7 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
     ).toBeVisible();
   }
 };
@@ -2423,6 +2423,7 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
       .getByTestId('explore-tree')
       .getByRole('row')
       .filter({ hasText: serviceType })
+      .first()
   ).toHaveAttribute('aria-selected', 'true');
 };
 

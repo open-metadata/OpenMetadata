@@ -1566,6 +1566,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .getByTestId('query-builder-group-card')
+        .first()
         .locator(
           '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
@@ -1687,6 +1688,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .getByTestId('query-builder-group-card')
+        .first()
         .locator(
           '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
@@ -1784,6 +1786,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .getByTestId('query-builder-group-card')
+        .first()
         .locator(
           '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
@@ -1865,6 +1868,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .getByTestId('query-builder-group-card')
+        .first()
         .locator(
           '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
@@ -1947,6 +1951,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .getByTestId('query-builder-group-card')
+        .first()
         .locator(
           '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );
@@ -2030,6 +2035,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .getByTestId('query-builder-group-card')
+        .first()
         .locator(
           '[data-testid=advanced-search-value] input[data-testid="qb-number-input"]'
         );

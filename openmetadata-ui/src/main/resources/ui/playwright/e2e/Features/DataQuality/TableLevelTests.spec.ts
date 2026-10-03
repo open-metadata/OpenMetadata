@@ -674,6 +674,7 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: 'Compare 2 tables for differences' })
+          .first()
           .click();
         await tableListSearchResponse;
 
@@ -697,11 +698,9 @@ test.describe(
         await tableSearchResponse;
         await page.waitForLoadState('domcontentloaded');
 
-        const table2Option = page
-          .getByRole('option')
-          .filter({
-            hasText: table2.entityResponseData?.['fullyQualifiedName'] ?? '',
-          });
+        const table2Option = page.getByRole('option').filter({
+          hasText: table2.entityResponseData?.['fullyQualifiedName'] ?? '',
+        });
 
         await expect(table2Option).toBeVisible();
 
@@ -837,6 +836,7 @@ test.describe(
           page
             .getByRole('option')
             .filter({ hasText: table1.entity?.columns[3].name })
+            .first()
         );
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
@@ -846,6 +846,7 @@ test.describe(
           page
             .getByRole('option')
             .filter({ hasText: table1.entity?.columns[2].name })
+            .first()
         );
 
         await clickUpdateButton(page);

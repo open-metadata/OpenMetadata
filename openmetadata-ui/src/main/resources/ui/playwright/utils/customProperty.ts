@@ -435,6 +435,7 @@ export const validateValueForProperty = async (data: {
         .getByRole('row')
         .filter({ hasText: values[0] })
         .filter({ hasText: values[1] })
+        .first()
     ).toBeVisible();
   } else if (propertyType === 'hyperlink-cp') {
     // Value format: "url,displayText" or just "url"

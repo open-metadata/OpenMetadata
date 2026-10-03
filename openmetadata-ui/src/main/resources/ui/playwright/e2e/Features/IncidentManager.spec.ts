@@ -819,6 +819,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await page.getByTestId('resolved-comment-textarea').click();
       await page
         .locator('[data-testid="resolved-comment-textarea"] textarea')
+        .first()
         .fill('test');
       const updateTestCaseIncidentStatus = waitForTaskResolveResponse(page);
       await page.getByTestId('submit-resolved-popover-button').click();

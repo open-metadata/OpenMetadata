@@ -1901,7 +1901,7 @@ pickEntityMatrix(
 
               await expect(successCards).toHaveCount(1);
               await expect(
-                successCards.locator('.test-case-name')
+                successCards.first().locator('.test-case-name')
               ).toContainText(testCase1Name);
 
               await closeColumnDetailPanel(page);

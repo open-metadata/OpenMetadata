@@ -73,7 +73,7 @@ const selectTagSuggestion = async ({
       '.ant-select-selection-search-input, input[type="search"], .ant-select-selection-search input'
     )
     .first();
-  const tagOption = page.getByTestId(tagTestId);
+  const tagOption = page.getByTestId(tagTestId).first();
   const tagSearchResponse = page
     .waitForResponse(
       (response) =>
@@ -264,7 +264,7 @@ export const selectAssignee = async (page: Page, assigneeName: string) => {
   const assigneeInput = page.locator(
     '[data-testid="select-assignee"] .ant-select-selection-search input'
   );
-  const assigneeOption = page.getByTestId(assigneeName);
+  const assigneeOption = page.getByTestId(assigneeName).first();
   const assigneeSearchResponse = page
     .waitForResponse(
       (response) =>

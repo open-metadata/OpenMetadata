@@ -72,6 +72,7 @@ test.describe('Verify RTL Layout for landing page', () => {
         .getByTestId('explore-tree')
         .getByRole('row')
         .filter({ hasText: serviceType })
+        .first()
     ).toHaveAttribute('aria-selected', 'true');
   });
 
