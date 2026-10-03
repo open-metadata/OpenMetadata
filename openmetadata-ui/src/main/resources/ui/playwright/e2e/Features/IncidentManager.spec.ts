@@ -161,29 +161,24 @@ const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
 };
 
 const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
-  const visibleReassignButton = page
-    .getByRole('button', { name: /^Re-?assign$/ })
-    .last();
-  const primaryActionButton = page
-    .locator(
-      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
-    )
-    .last();
-  const actionTrigger = page
-    .locator(
-      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
-    )
-    .last();
-  const editAssigneesButton = page
-    .locator('[data-testid="edit-assignees"]:visible')
-    .last();
+  const visibleReassignButton = page.getByRole('button', {
+    name: /^Re-?assign$/,
+  });
+  const primaryActionButton = page.locator(
+    '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+  );
+  const actionTrigger = page.locator(
+    '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+  );
+  const editAssigneesButton = page.locator(
+    '[data-testid="edit-assignees"]:visible'
+  );
   const reassignModal = page
     .locator('.ant-modal-wrap:visible')
     .filter({ hasText: /Re-?assign Task/i });
   const reassignMenuItem = page
     .locator('.task-action-dropdown:visible')
-    .getByRole('menuitem', { name: /^Reassign$/ })
-    .last();
+    .getByRole('menuitem', { name: /^Reassign$/ });
   const incidentListRowAction = testCaseName
     ? page
         .locator('[data-testid="test-case-incident-manager-table"] tbody tr')
@@ -264,7 +259,7 @@ const reassignIncidentTask = async (
   const reassignModal = await openIncidentReassignModal(page, testCaseName);
   const assigneeSelect = reassignModal.getByTestId('select-assignee');
   const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
-  const assigneeInput = assigneeSelect.locator('input').last();
+  const assigneeInput = assigneeSelect.getByRole('combobox');
   const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
 
   await expect(assigneeSelector).toBeVisible();
@@ -301,17 +296,15 @@ const openIncidentResolveDialog = async (
   page: Page,
   allowProgressTransition = true
 ) => {
-  const primaryActionButton = page
-    .locator(
-      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
-    )
-    .last();
-  const actionTrigger = page
-    .locator(
-      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
-    )
-    .last();
-  const resolveModal = page.locator('.ant-modal .ant-modal-content').last();
+  const primaryActionButton = page.locator(
+    '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+  );
+  const actionTrigger = page.locator(
+    '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+  );
+  const resolveModal = page.locator(
+    '.ant-modal-wrap:visible .ant-modal-content'
+  );
   const modalTextareas = resolveModal.locator('textarea');
 
   if (await isVisible(resolveModal)) {
@@ -346,16 +339,12 @@ const openIncidentResolveDialog = async (
     await actionTrigger.scrollIntoViewIfNeeded();
     await actionTrigger.click();
 
-    const resolveMenuItem = page
-      .locator(
-        '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible'
-      )
-      .last();
-    const startProgressMenuItem = page
-      .locator(
-        '[data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
-      )
-      .last();
+    const resolveMenuItem = page.locator(
+      '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible'
+    );
+    const startProgressMenuItem = page.locator(
+      '[data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
+    );
     const workflowMenuItem = page
       .locator(
         '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible, [data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
@@ -404,7 +393,7 @@ const openIncidentResolveDialog = async (
   await expect(resolveModal).toBeVisible({
     timeout: 10_000,
   });
-  await expect(modalTextareas.first()).toBeVisible({
+  await expect(modalTextareas).not.toHaveCount(0, {
     timeout: 10_000,
   });
 
@@ -830,7 +819,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await page.getByTestId('resolved-comment-textarea').click();
       await page
         .locator('[data-testid="resolved-comment-textarea"] textarea')
-        .first()
         .fill('test');
       const updateTestCaseIncidentStatus = waitForTaskResolveResponse(page);
       await page.getByTestId('submit-resolved-popover-button').click();
