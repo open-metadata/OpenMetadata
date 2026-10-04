@@ -23,7 +23,6 @@
  *  limitations under the License.
  */
 
-import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { Include } from '../generated/type/include';
 
@@ -87,7 +86,6 @@ describe('testAPI tests', () => {
         expect(mockGet).toHaveBeenCalledWith(
           '/dataQuality/testCases/search/list',
           {
-            headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
             params,
           }
         );
@@ -114,7 +112,6 @@ describe('testAPI tests', () => {
         expect(mockGet).toHaveBeenCalledWith(
           '/dataQuality/testCases/search/list',
           {
-            headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
             params: {
               testCaseStatus: `${TestCaseStatus.Success},${TestCaseStatus.Queued}`,
             },
@@ -140,7 +137,6 @@ describe('testAPI tests', () => {
         expect(mockGet).toHaveBeenCalledWith(
           '/dataQuality/testCases/search/list',
           {
-            headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
             params: undefined,
           }
         );
@@ -168,7 +164,6 @@ describe('testAPI tests', () => {
         expect(mockGet).toHaveBeenCalledWith(
           '/dataQuality/testCases/search/list',
           {
-            headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
             params: { testSuiteId: 'suite-id' },
             signal: controller.signal,
           }

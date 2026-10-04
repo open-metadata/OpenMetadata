@@ -271,37 +271,6 @@ describe('withDomainFilter', () => {
       expect(result.headers?.[SKIP_DOMAIN_FILTER_HEADER]).toBeUndefined();
     });
 
-    it('should return config unchanged for test case searches (test cases are not domain-filtered)', () => {
-      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
-      );
-      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
-
-      const config = createMockConfig('get', '/search/query', {
-        index: SearchIndex.TEST_CASE,
-      });
-      const result = withDomainFilter(config);
-
-      expect(result.params?.query_filter).toBeUndefined();
-    });
-
-    it.each(['aboutEntity', 'entityLink'])(
-      'should not add the domain to a list scoped to one entity (%s)',
-      (param) => {
-        (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-          '/table/svc.db.sch.t'
-        );
-        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
-
-        const config = createMockConfig('get', '/tasks', {
-          [param]: 'svc.db.sch.t',
-        });
-        const result = withDomainFilter(config);
-
-        expect(result.params?.domain).toBeUndefined();
-      }
-    );
-
     it('should use fullyQualifiedName field for DOMAIN index searches', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
         '/api/search'

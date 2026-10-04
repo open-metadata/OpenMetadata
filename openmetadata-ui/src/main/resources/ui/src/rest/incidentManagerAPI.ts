@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { CreateTestCaseResolutionStatus } from '../generated/api/tests/createTestCaseResolutionStatus';
 import { EntityReference } from '../generated/entity/data/table';
 import {
@@ -154,7 +153,6 @@ export const getListTestCaseIncidentStatus = async ({
     PagingResponse<TestCaseResolutionStatus[]>
   >(testCaseIncidentUrl, {
     params: { ...params, limit },
-    headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
   });
 
   return response.data;
@@ -175,7 +173,6 @@ export const listIncidentGroups = async ({
     {
       params: { ...params, limit },
       paramsSerializer: repeatableParamsSerializer,
-      headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
     }
   );
 

@@ -62,11 +62,7 @@ const UNSCOPED_SEARCH_INDEXES = new Set<string>([
   SearchIndex.TAG,
   SearchIndex.USER,
   SearchIndex.TEAM,
-  SearchIndex.TEST_CASE,
 ]);
-
-// A list scoped to one entity (e.g. a table's own tasks) shows all of it, like its other tabs.
-const ENTITY_SCOPED_PARAMS = ['aboutEntity', 'entityLink'];
 
 // A search may name several indexes, as a comma-joined string or an array (e.g. owner pickers
 // search "team,user"); it stays unscoped only when every index it names is unscoped.
@@ -153,7 +149,7 @@ export const withDomainFilter = (
         ...config.params,
         query_filter: JSON.stringify(filter),
       };
-    } else if (!ENTITY_SCOPED_PARAMS.some((param) => config.params?.[param])) {
+    } else {
       config.params = {
         ...config.params,
         domain: activeDomain,
