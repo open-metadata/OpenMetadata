@@ -374,12 +374,6 @@ export default defineConfig(async ({ mode }) => {
         'echarts/features',
         'echarts/renderers',
         'echarts-for-react/esm/core',
-        // RJSF's validator pulls a nested ajv that `require()`s the CJS-only
-        // `fast-deep-equal`. Force-prebundle it so esbuild synthesizes the
-        // `default` export the ESM transform expects — otherwise the dev server
-        // throws "does not provide an export named 'default'" on any RJSF form.
-        'fast-deep-equal',
-        '@rjsf/validator-ajv8',
       ],
       esbuildOptions: {
         target: 'esnext',
