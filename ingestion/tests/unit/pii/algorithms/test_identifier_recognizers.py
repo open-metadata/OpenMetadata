@@ -293,3 +293,49 @@ def test_bare_vat_follows_ordinary_prose():
     assert [text[result.start : result.end] for result in recognizer.analyze(text, recognizer.supported_entities)] == [
         "12345678903"
     ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "VAT is 12345678903",
+        "VAT number is 12345678903",
+        "partita iva di 12345678903",
+        "VAT number de 12345678903",
+        "IVA de 12345678903",
+    ],
+)
+def test_bare_vat_survives_ordinary_prose(text):
+    recognizer = configured(Name.ItVatCodeRecognizer, ClassificationLanguage.it)
+    assert [text[result.start : result.end] for result in recognizer.analyze(text, recognizer.supported_entities)] == [
+        "12345678903"
+    ]
+
+
+@pytest.mark.parametrize(
+    "name,language,value",
+    [
+        (Name.AuAbnRecognizer, ClassificationLanguage.en, "51-824-753-556"),
+        (Name.AuAcnRecognizer, ClassificationLanguage.en, "004-085-616"),
+        (Name.ItVatCodeRecognizer, ClassificationLanguage.it, "IT12345678903"),
+    ],
+)
+@pytest.mark.parametrize("enclosure", ["{} 9", "9 {}", "{} - 9", "9 - {}"])
+def test_grouped_identifiers_do_not_salvage_from_extra_digit_groups(name, language, value, enclosure):
+    recognizer = configured(name, language)
+    assert recognizer.analyze(enclosure.format(value), recognizer.supported_entities) == []
+
+
+@pytest.mark.parametrize(
+    "name,language,text,value",
+    [
+        (Name.AuAbnRecognizer, ClassificationLanguage.en, "ABN 51-824-753-556 and ACN 004-085-616", "51-824-753-556"),
+        (Name.AuAcnRecognizer, ClassificationLanguage.en, "ABN 51-824-753-556 and ACN 004-085-616", "004-085-616"),
+        (Name.ItVatCodeRecognizer, ClassificationLanguage.it, "VAT is 12345678903 and is registered", "12345678903"),
+    ],
+)
+def test_grouped_identifiers_survive_separate_prose(name, language, text, value):
+    recognizer = configured(name, language)
+    assert [text[result.start : result.end] for result in recognizer.analyze(text, recognizer.supported_entities)] == [
+        value
+    ]

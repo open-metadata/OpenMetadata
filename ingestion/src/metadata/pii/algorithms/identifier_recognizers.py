@@ -27,6 +27,11 @@ from presidio_analyzer.predefined_recognizers import (
 )
 from presidio_analyzer.predefined_recognizers.iban_patterns import regex_per_country
 
+# Foreign markers stay uppercase so prose such as "de 12345678903" remains a bare VAT candidate.
+_VAT_COUNTRY_PREFIX = re.compile(
+    r"\b(?:(?i:IT)|(?:AT|BE|BG|CY|CZ|DE|DK|EE|EL|ES|FI|FR|GB|GR|HR|HU|IE|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK|XI))[ _-]+$"
+)
+
 
 class _IdentifierRecognizer:
     _predefined_name: str
@@ -46,6 +51,29 @@ class _IdentifierRecognizer:
         self.name = self._predefined_name  # type: ignore[attr-defined]
         if supported_entities:
             self.supported_entities = supported_entities  # type: ignore[attr-defined]
+
+
+class _GroupedNumberRecognizer(_IdentifierRecognizer):
+    def analyze(
+        self,
+        text: str,
+        entities: list[str],
+        nlp_artifacts: NlpArtifacts | None = None,
+        regex_flags: int | None = None,
+    ) -> list[RecognizerResult]:
+        results = PatternRecognizer.analyze(
+            self,  # pyright: ignore[reportArgumentType]
+            text,
+            entities,
+            nlp_artifacts,
+            regex_flags,
+        )
+        return [
+            result
+            for result in results
+            if not re.search(r"[0-9][ -]+$", text[: result.start])
+            and not re.match(r"[ -]+[0-9]| +-", text[result.end :])
+        ]
 
 
 class BoundedIbanRecognizer(_IdentifierRecognizer, IbanRecognizer):
@@ -130,17 +158,17 @@ class BoundedSgUenRecognizer(_IdentifierRecognizer, SgUenRecognizer):
         return super().validate_result(pattern_text.upper()) is True
 
 
-class BoundedAuAbnRecognizer(_IdentifierRecognizer, AuAbnRecognizer):
+class BoundedAuAbnRecognizer(_GroupedNumberRecognizer, AuAbnRecognizer):
     _predefined_name = "AuAbnRecognizer"
     PATTERNS: ClassVar[list[Pattern]] = [Pattern("ABN", r"(?<![\w-])[0-9]{2}(?:[- ]?[0-9]{3}){3}(?![\w-])", 0.1)]
 
 
-class BoundedAuAcnRecognizer(_IdentifierRecognizer, AuAcnRecognizer):
+class BoundedAuAcnRecognizer(_GroupedNumberRecognizer, AuAcnRecognizer):
     _predefined_name = "AuAcnRecognizer"
     PATTERNS: ClassVar[list[Pattern]] = [Pattern("ACN", r"(?<![\w-])[0-9]{3}(?:[- ]?[0-9]{3}){2}(?![\w-])", 0.1)]
 
 
-class BoundedItVatRecognizer(_IdentifierRecognizer, ItVatCodeRecognizer):
+class BoundedItVatRecognizer(_GroupedNumberRecognizer, ItVatCodeRecognizer):
     _predefined_name = "ItVatCodeRecognizer"
     PATTERNS: ClassVar[list[Pattern]] = [
         Pattern("IT VAT", r"(?<![\w-])(?:[Ii][Tt] ?)?(?:[0-9][ _]?){10}[0-9](?![\w-])", 0.1)
@@ -153,12 +181,12 @@ class BoundedItVatRecognizer(_IdentifierRecognizer, ItVatCodeRecognizer):
         nlp_artifacts: NlpArtifacts | None = None,
         regex_flags: int | None = None,
     ) -> list[RecognizerResult]:
-        results = PatternRecognizer.analyze(self, text, entities, nlp_artifacts, regex_flags)
+        results = super().analyze(text, entities, nlp_artifacts, regex_flags)
         return [
             result
             for result in results
             if text[result.start : result.end].upper().startswith("IT")
-            or not re.search(r"(?i:\b[A-Z]{2})[ _-]+$", text[: result.start])
+            or not _VAT_COUNTRY_PREFIX.search(text[: result.start])
         ]
 
     def validate_result(self, pattern_text: str) -> bool:
