@@ -12,30 +12,30 @@
  */
 
 import {
-    Alert,
-    Badge,
-    Box,
-    Button,
-    Card as CoreCard,
-    Dialog,
-    Divider,
-    Dropdown,
-    Modal,
-    ModalOverlay,
-    PaginationCardWithControls,
-    RadioButton,
-    RadioGroup,
-    Skeleton,
-    Tabs,
-    Toggle,
-    Typography as CoreTypography
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Card as CoreCard,
+  Dialog,
+  Divider,
+  Dropdown,
+  Modal,
+  ModalOverlay,
+  PaginationCardWithControls,
+  RadioButton,
+  RadioGroup,
+  Skeleton,
+  Tabs,
+  Toggle,
+  Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import {
-    ChevronDown,
-    Download01,
-    FilterFunnel01,
-    InfoCircle,
-    Trash01
+  ChevronDown,
+  Download01,
+  FilterFunnel01,
+  InfoCircle,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -49,14 +49,14 @@ import ExploreQueryFilterChips from '../../components/Explore/ExploreQueryFilter
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import {
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_LARGE,
-    PAGE_SIZE_MEDIUM
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import {
-    entitySortingFields,
-    SUPPORTED_EMPTY_FILTER_FIELDS,
-    TAG_FQN_KEY
+  entitySortingFields,
+  SUPPORTED_EMPTY_FILTER_FIELDS,
+  TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
@@ -72,24 +72,24 @@ import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntitySearchUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
-    getExploreQueryFilterMust,
-    getSelectedValuesFromQuickFilter,
-    truncateBrowsePath
+  getExploreQueryFilterMust,
+  getSelectedValuesFromQuickFilter,
+  truncateBrowsePath,
 } from '../../utils/ExplorePureUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import { DomainFilterChip } from '../common/DomainFilterChip/DomainFilterChip.component';
 import {
-    CSV_JOBS_REFRESH_EVENT,
-    markCsvJobOwned
+  CSV_JOBS_REFRESH_EVENT,
+  markCsvJobOwned,
 } from '../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
-    ExploreProps,
-    ExploreQuickFilterField
+  ExploreProps,
+  ExploreQuickFilterField,
 } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
