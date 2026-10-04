@@ -80,6 +80,31 @@ class DbWebSocketRelayTest {
   }
 
   @Test
+  void aLowerIdThatCommitsAfterTheCursorPassedIsStillDelivered() {
+    // Models the auto-increment commit-ordering gap: id 2 is committed and delivered first, then id
+    // 1 (assigned earlier, committed later) becomes visible. The trailing re-scan must still pick
+    // it
+    // up rather than lose it behind the advanced cursor.
+    InMemoryDao dao = new InMemoryDao();
+    Capture capB = new Capture();
+    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
+    podB.start(); // empty table -> startFloor 0
+
+    long later = System.currentTimeMillis() + HOUR;
+    dao.insertWithId(2, UUID.randomUUID().toString(), "e", "second", "podA", later);
+    podB.dispatchOnce(); // delivers id 2, cursor -> 2
+
+    dao.insertWithId(1, UUID.randomUUID().toString(), "e", "first", "podA", later);
+    podB.dispatchOnce(); // id 1 < cursor but within the re-scan window -> delivered
+
+    assertEquals(2, capB.rows.size(), "the late-committing lower id must not be lost");
+    assertTrue(capB.rows.stream().anyMatch(d -> "first".equals(d.payload())));
+    assertTrue(capB.rows.stream().anyMatch(d -> "second".equals(d.payload())));
+
+    podB.stop();
+  }
+
+  @Test
   void expiredFramesAreNotDelivered() {
     InMemoryDao dao = new InMemoryDao();
     Capture capB = new Capture();
@@ -135,6 +160,12 @@ class DbWebSocketRelayTest {
     public synchronized void insert(
         String userId, String event, String payload, String senderPod, long expiresAt) {
       rows.add(new Row(seq.incrementAndGet(), userId, event, payload, senderPod, expiresAt));
+    }
+
+    // Insert with an explicit id to model rows becoming visible out of id order (commit ordering).
+    synchronized void insertWithId(
+        long id, String userId, String event, String payload, String senderPod, long expiresAt) {
+      rows.add(new Row(id, userId, event, payload, senderPod, expiresAt));
     }
 
     @Override
