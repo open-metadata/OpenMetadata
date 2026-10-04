@@ -147,7 +147,7 @@ const TeamsPage = () => {
         setIsTeamBasicDataLoading(false);
       }
     },
-    [showDeletedTeam]
+    [showDeletedTeam, t]
   );
 
   const fetchTeamAssetCounts = useCallback(async () => {
@@ -158,6 +158,21 @@ const TeamsPage = () => {
       // Silently fail - asset counts will show 0
     }
   }, []);
+
+  const applyAllTeamsData = (
+    teams: Team[],
+    parentTeam: string | undefined,
+    updateChildNode: boolean
+  ) => {
+    if (!updateChildNode) {
+      setChildTeams(teams);
+
+      return;
+    }
+    const allTeamsData = cloneDeep(childTeams);
+    updateTeamsHierarchy(allTeamsData, parentTeam ?? '', teams);
+    setChildTeams(allTeamsData);
+  };
 
   const fetchAllTeamsAdvancedDetails = async (
     loading = true,
@@ -195,15 +210,7 @@ const TeamsPage = () => {
         return;
       }
 
-      const modifiedTeams: Team[] = data.map(toListTeam);
-
-      if (updateChildNode) {
-        const allTeamsData = cloneDeep(childTeams);
-        updateTeamsHierarchy(allTeamsData, parentTeam || '', modifiedTeams);
-        setChildTeams(allTeamsData);
-      } else {
-        setChildTeams(modifiedTeams);
-      }
+      applyAllTeamsData(data.map(toListTeam), parentTeam, updateChildNode);
     } catch (error) {
       if (isLatestFullRefresh()) {
         showErrorToast(error as AxiosError, t('server.unexpected-response'));
@@ -322,7 +329,7 @@ const TeamsPage = () => {
         setFetchingAdvancedDetails(false);
       }
     },
-    [fetchAssets]
+    [fetchAssets, t]
   );
 
   const loadAdvancedDetails = useCallback(() => {
@@ -563,6 +570,7 @@ const TeamsPage = () => {
     if (hasViewPermission) {
       fetchTeamBasicDetails(fqn, true).then(loadAdvancedDetails);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run only on view/fqn change; the fetchers are stable triggers, not reactive inputs
   }, [hasViewPermission, fqn]);
 
   useEffect(() => {
@@ -575,6 +583,7 @@ const TeamsPage = () => {
     if (hasViewPermission && fqn) {
       fetchAllTeamsBasicDetails(fqn);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when the deleted toggle flips; fqn/permission changes are handled by the fetch-on-navigation effect above
   }, [showDeletedTeam]);
 
   useEffect(() => {
@@ -585,6 +594,7 @@ const TeamsPage = () => {
     if (advancedFetchNonce > 0 && fqnRef.current) {
       fetchAllTeamsAdvancedDetails(false, fqnRef.current);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire only on the nonce; fetchAllTeamsAdvancedDetails reads the latest fqn via fqnRef
   }, [advancedFetchNonce]);
 
   if (isPageLoading) {
