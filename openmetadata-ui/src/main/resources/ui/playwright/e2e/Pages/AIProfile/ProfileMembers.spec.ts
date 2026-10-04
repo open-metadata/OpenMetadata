@@ -221,8 +221,10 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
       .click();
     await userResponse;
 
+    // The panel renders the displayName via startCase (spaced/capitalised), so
+    // assert on the email, which is shown verbatim and is unique per run.
     await expect(page.getByTestId('profile-details-panel')).toContainText(
-      regularUser.responseData.displayName
+      regularUser.responseData.email
     );
   });
 
