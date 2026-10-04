@@ -13,6 +13,7 @@ Utilities for working with the Presidio Library.
 """
 
 import inspect
+import ipaddress
 import logging
 import re
 import types
@@ -38,7 +39,9 @@ from presidio_analyzer.predefined_recognizers import (
     CreditCardRecognizer,
     DateRecognizer,
     InAadhaarRecognizer,
+    IpRecognizer,
     NhsRecognizer,
+    UrlRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
 )
@@ -182,12 +185,24 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
         nlp_artifacts: NlpArtifacts | None = None,
         regex_flags: int | None = None,
     ) -> list[RecognizerResult]:
-        return super().analyze(
-            self.sanitize_value(text, self.replacement_pairs),
-            entities,
-            nlp_artifacts,
-            regex_flags,
-        )
+        results: list[RecognizerResult] = []
+        for match in re.finditer(r"\d[\d -]*\d|\d", text):
+            start, end = match.span()
+            if (start and (text[start - 1].isalnum() or text[start - 1] == "-")) or (
+                end < len(text) and (text[end].isalnum() or text[end] == "-")
+            ):
+                continue
+            candidate = match.group()
+            if len(candidate) > 37:
+                continue
+            normalized = self.sanitize_value(candidate, self.replacement_pairs)
+            if not 12 <= len(normalized) <= 19 or not re.fullmatch(r"\d+(?:[ -]\d+)*", candidate):
+                continue
+            for result in super().analyze(normalized, entities, nlp_artifacts, regex_flags):
+                if result.start == 0 and result.end == len(normalized):
+                    result.start, result.end = start, end
+                    results.append(result)
+        return results
 
 
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
@@ -203,6 +218,103 @@ def credit_card_factory(
         supported_language=supported_language,
         context=context,
     )
+
+
+class CompleteUrlRecognizer(UrlRecognizer):
+    def analyze(
+        self,
+        text: str,
+        entities: list[str],
+        nlp_artifacts: NlpArtifacts | None = None,
+        regex_flags: int | None = None,
+    ) -> list[RecognizerResult]:
+        results: list[RecognizerResult] = []
+        seen: set[tuple[int, int]] = set()
+        for match in super().analyze(text, entities, nlp_artifacts, regex_flags):
+            start = match.start + (text[match.start] in "\"'")
+            if start and (text[start - 1].isalnum() or text[start - 1] in "@._-"):
+                continue
+            end = start
+            depth = 0
+            while end < len(text) and text[end] not in " \t\r\n<>\"'":
+                char = text[end]
+                if char == "(":
+                    depth += 1
+                elif char == ")":
+                    if depth == 0:
+                        break
+                    depth -= 1
+                end += 1
+            while end > start and text[end - 1] in ".,":
+                end -= 1
+            candidate = text[start:end]
+            if len(candidate) > 2048 or depth or not candidate:
+                continue
+            scheme_end = candidate.find("://") + 3 if "://" in candidate else 0
+            host_end_match = re.search(r"[/?#]", candidate[scheme_end:])
+            host_end = scheme_end + (host_end_match.start() if host_end_match else len(candidate) - scheme_end)
+            if not any(
+                result.start == 0 and result.end >= host_end
+                for result in super().analyze(candidate, entities, nlp_artifacts, regex_flags)
+            ):
+                continue
+            if (start, end) not in seen:
+                match.start, match.end = start, end
+                results.append(match)
+                seen.add((start, end))
+        return results
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    UrlRecognizer
+)
+def url_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None) -> CompleteUrlRecognizer:
+    return CompleteUrlRecognizer(supported_language=supported_language, context=context)
+
+
+class CompleteIpRecognizer(IpRecognizer):
+    def __init__(self, *, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None):
+        super().__init__(
+            patterns=[
+                Pattern("IPv4", r"^[0-9.]+$", 0.6),
+                Pattern("IPv6", r"^(?!::$)[0-9a-fA-F:]+(?:%[a-zA-Z0-9]+)?$", 0.6),
+                Pattern("IPv6", r"^::$", 0.1),
+            ],
+            supported_language=supported_language,
+            context=context,
+        )
+
+    def analyze(
+        self,
+        text: str,
+        entities: list[str],
+        nlp_artifacts: NlpArtifacts | None = None,
+        regex_flags: int | None = None,
+    ) -> list[RecognizerResult]:
+        results: list[RecognizerResult] = []
+        for match in re.finditer(r"(?<![\w:.%-])[0-9a-fA-F:][\w:.%-]*[.:%][\w:.%-]*", text):
+            start, end = match.span()
+            while end > start and text[end - 1] == ".":
+                end -= 1
+            candidate = text[start:end]
+            if len(candidate) > 45 or (end < len(text) and text[end] == "/" and text[end + 1 : end + 2].isdigit()):
+                continue
+            try:
+                ipaddress.ip_address(candidate)
+            except ValueError:
+                continue
+            for result in super().analyze(candidate, entities, nlp_artifacts, regex_flags):
+                if result.start == 0 and result.end == len(candidate):
+                    result.start, result.end = start, end
+                    results.append(result)
+        return results
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    IpRecognizer
+)
+def ip_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None) -> CompleteIpRecognizer:
+    return CompleteIpRecognizer(supported_language=supported_language, context=context)
 
 
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]

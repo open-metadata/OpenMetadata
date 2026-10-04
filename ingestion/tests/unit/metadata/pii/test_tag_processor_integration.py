@@ -13,7 +13,9 @@ Integration tests for TagProcessor with multi-classification support.
 Tests scenarios from AUTO_CLASSIFICATION_REFACTOR_SOLUTION.md
 """
 
+import json
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, create_autospec
 
@@ -51,12 +53,162 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     SourceConfig,
 )
+from metadata.generated.schema.type.classificationLanguages import ClassificationLanguage
 from metadata.generated.schema.type.predefinedRecognizer import Name
-from metadata.generated.schema.type.recognizer import Target
+from metadata.generated.schema.type.recognizer import Recognizer, Target
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.models import ScoredTag
+from metadata.pii.tag_analyzer import TagAnalyzer
 from metadata.pii.tag_processor import TagProcessor
+
+_SHIPPED_PII = json.loads(
+    (
+        Path(__file__).resolve().parents[5]
+        / "openmetadata-service/src/main/resources/json/data/tags/piiTagsWithRecognizers.json"
+    ).read_text()
+)
+
+
+def _shipped_classification() -> Classification:
+    settings = _SHIPPED_PII["createClassification"]
+    config = settings["autoClassificationConfig"]
+    return ClassificationFactory.create(
+        fqn="PII",
+        mutuallyExclusive=settings["mutuallyExclusive"],
+        autoClassificationConfig__enabled=config["enabled"],
+        autoClassificationConfig__conflictResolution=ConflictResolution(config["conflictResolution"]),
+        autoClassificationConfig__minimumConfidence=config["minimumConfidence"],
+        autoClassificationConfig__requireExplicitMatch=config["requireExplicitMatch"],
+    )
+
+
+def _shipped_tag(classification: Classification, tag_name: str, recognizer_names: set[str] | None = None) -> Tag:
+    tag_data = next(tag for tag in _SHIPPED_PII["createTags"] if tag["name"] == tag_name)
+    return TagFactory.create(
+        tag_name=tag_name,
+        tag_classification=classification,
+        autoClassificationEnabled=True,
+        autoClassificationPriority=tag_data["autoClassificationPriority"],
+        recognizers=[
+            Recognizer.model_validate(config)
+            for config in tag_data["recognizers"]
+            if recognizer_names is None or config["name"] in recognizer_names
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    "language, recognizer_name",
+    [
+        ("en", "EnglishCreditCardRecognizer"),
+        ("es", "SpanishCreditCardRecognizer"),
+        ("it", "ItalianCreditCardRecognizer"),
+        ("pl", "PolishCreditCardRecognizer"),
+    ],
+)
+def test_shipped_card_evidence_and_default_tagging(language, recognizer_name):
+    classification = _shipped_classification()
+    tag = _shipped_tag(classification, "Sensitive", {recognizer_name})
+    column = Column(
+        name="customer_card", fullyQualifiedName="db.schema.table.customer_card", dataType=DataType.VARCHAR, tags=[]
+    )
+    value = "Card 4111-1111-1111-1111 issued"
+    language_enum = ClassificationLanguage(language)
+    analyzer = TagAnalyzer(tag, column, load_nlp_engine(classification_language=language_enum), language_enum)
+
+    analysis = analyzer.analyze([value])
+    assert [(value[result.start : result.end], result.score) for result in analysis.recognizer_results] == [
+        ("4111-1111-1111-1111", 1.0)
+    ]
+
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=language_enum)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, [tag])),
+    )
+    labels = processor.create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == ["PII.Sensitive"]
+    assert labels[0].labelType == LabelType.Generated
+    assert labels[0].state == State.Suggested
+
+
+@pytest.mark.parametrize(
+    "tag_name, recognizer_name, value, expected, expected_labels",
+    [
+        ("NonSensitive", "UrlRecognizer", "Visit https://example.org/a?x=1", "https://example.org/a?x=1", []),
+        ("Sensitive", "IpRecognizer", "2001:db8::1", "2001:db8::1", []),
+        ("NonSensitive", "UrlRecognizer", "http://app.internal.local/path", None, []),
+        ("Sensitive", "IpRecognizer", "2001:db8::1g", None, []),
+    ],
+)
+def test_shipped_network_evidence_and_default_tagging(tag_name, recognizer_name, value, expected, expected_labels):
+    classification = _shipped_classification()
+    tag = _shipped_tag(classification, tag_name, {recognizer_name})
+    column = Column(
+        name="service_value", fullyQualifiedName="db.schema.table.service_value", dataType=DataType.VARCHAR, tags=[]
+    )
+    analyzer = TagAnalyzer(tag, column, load_nlp_engine(classification_language=ClassificationLanguage.en))
+    analysis = analyzer.analyze([value])
+    assert [value[result.start : result.end] for result in analysis.recognizer_results] == (
+        [expected] if expected else []
+    )
+
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, [tag])),
+    )
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
+
+
+@pytest.mark.parametrize(
+    ("value", "expected_entities", "expected_labels"),
+    [
+        ("Card 4111111111111111 issued", {"CREDIT_CARD": "4111111111111111"}, ["PII.Sensitive"]),
+        ("user@example.com", {"EMAIL_ADDRESS": "user@example.com"}, ["PII.Sensitive"]),
+        (
+            "https://example.org/4111111111111111",
+            {"URL": "https://example.org/4111111111111111", "CREDIT_CARD": "4111111111111111"},
+            ["PII.Sensitive"],
+        ),
+        ("http://app.internal.local/path", {}, []),
+    ],
+)
+def test_full_shipped_recognizer_interactions(value, expected_entities, expected_labels):
+    classification = _shipped_classification()
+    tags = [_shipped_tag(classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
+    column = Column(name="payload", fullyQualifiedName="db.schema.table.payload", dataType=DataType.VARCHAR, tags=[])
+    nlp_engine = load_nlp_engine(classification_language=ClassificationLanguage.en)
+    evidence = [
+        result for tag in tags for result in TagAnalyzer(tag, column, nlp_engine).analyze([value]).recognizer_results
+    ]
+    for entity, expected_slice in expected_entities.items():
+        assert any(
+            result.entity_type == entity and value[result.start : result.end] == expected_slice for result in evidence
+        )
+    if not expected_entities:
+        assert all(result.entity_type != "URL" for result in evidence)
+
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
 
 
 class FakeScoreTagsForColumn:

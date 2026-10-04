@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 import pytest
 from presidio_analyzer import EntityRecognizer, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpArtifacts
+from presidio_analyzer.predefined_recognizers import CreditCardRecognizer, IpRecognizer, UrlRecognizer
 
 from metadata.pii.algorithms.presidio_utils import (
     MIN_SCORE_FOR_ENHANCEMENT,
@@ -22,10 +23,98 @@ from metadata.pii.algorithms.presidio_utils import (
     decorate_recognizer,
     enhance_using_context,
     load_nlp_engine,
+    recognizer_factories,
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIITag
 from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Card 4111111111111111 issued", "4111111111111111"),
+        ("(4111-1111-1111-1111)", "4111-1111-1111-1111"),
+        ("'4111 1111 1111 1111'", "4111 1111 1111 1111"),
+        ("é 4111111111111111 and 5555555555554444", "4111111111111111"),
+    ],
+)
+def test_card_results_use_original_candidate_spans(text, expected):
+    recognizer = recognizer_factories.get(CreditCardRecognizer)()
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+
+    assert any(text[result.start : result.end] == expected for result in results)
+    assert all(result.score == 1.0 for result in results)
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(result.analysis_explanation.pattern_name == "Credit Card Number" for result in results)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "4111111111111112",
+        "4111-1111-1111-1112",
+        "x4111111111111111",
+        "41111111111111111",
+        "4111--1111--1111--1111",
+        "1234 4111111111111111",
+    ],
+)
+def test_card_rejects_invalid_enclosing_candidate(text):
+    recognizer = recognizer_factories.get(CreditCardRecognizer)()
+    assert recognizer.analyze(text, ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text", "expected", "score"),
+    [
+        (UrlRecognizer, "URL", "Visit https://example.com/a.b?x=1&y=2.", "https://example.com/a.b?x=1&y=2", 0.6),
+        (UrlRecognizer, "URL", "https://example.com/a?value=wow!", "https://example.com/a?value=wow!", 0.6),
+        (UrlRecognizer, "URL", "https://example.com/v1;", "https://example.com/v1;", 0.6),
+        (UrlRecognizer, "URL", "('http://example.org/a(b)c')", "http://example.org/a(b)c", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "IP 2001:db8::1 recorded", "2001:db8::1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "é 192.168.1.1 and 2001:db8::1", "192.168.1.1", 0.6),
+        (
+            IpRecognizer,
+            "IP_ADDRESS",
+            "2001:0db8:0000:0000:0000:0000:0000:0001",
+            "2001:0db8:0000:0000:0000:0000:0000:0001",
+            0.6,
+        ),
+        (IpRecognizer, "IP_ADDRESS", "fe80::1%eth0", "fe80::1%eth0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "::", "::", 0.1),
+    ],
+)
+def test_network_results_use_complete_original_candidate(recognizer_class, entity, text, expected, score):
+    recognizer = recognizer_factories.get(recognizer_class)()
+    results = recognizer.analyze(text, [entity])
+
+    assert any(text[result.start : result.end] == expected and result.score == score for result in results)
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(result.analysis_explanation.pattern_name for result in results)
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text"),
+    [
+        (UrlRecognizer, "URL", "http://app.internal.local/path"),
+        (UrlRecognizer, "URL", "https://example.com.invalid/path"),
+        (UrlRecognizer, "URL", "user@example.com"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1g"),
+        (IpRecognizer, "IP_ADDRESS", "192.168.1.999"),
+        (IpRecognizer, "IP_ADDRESS", "x192.168.1.1"),
+        (IpRecognizer, "IP_ADDRESS", "192.168.1.1-invalid"),
+        (IpRecognizer, "IP_ADDRESS", "fe80::1%bad-scope"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1/64"),
+    ],
+)
+def test_network_rejects_invalid_longer_candidate(recognizer_class, entity, text):
+    recognizer = recognizer_factories.get(recognizer_class)()
+    assert recognizer.analyze(text, [entity]) == []
 
 
 def test_analyzer_supports_all_expected_pii_entities():
