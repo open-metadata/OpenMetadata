@@ -21,6 +21,7 @@ import { redirectToHomePage } from '../../../utils/common';
 import {
   clearDomainFromNavbar,
   selectDomainFromNavbar,
+  setPersistedDomain,
   verifyActiveDomainIsDefault,
 } from '../../../utils/domain';
 import { sidebarClick } from '../../../utils/sidebar';
@@ -170,6 +171,9 @@ test('clearing the selection restores the unfiltered list', async ({
     viewer
   );
   try {
+    // Start from a saved pick so clearing is a real change: a retry or reordering may run this
+    // test without the previous one, and clearing "All Domains" again sends no request.
+    await setPersistedDomain(apiContext, domainB.responseData.id);
     await redirectToHomePage(page);
     await openGlossaryPage(page);
     const cleared = persisted(page);

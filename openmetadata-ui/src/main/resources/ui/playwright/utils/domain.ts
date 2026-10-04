@@ -1396,6 +1396,24 @@ export const clearPersistedDomain = async (apiContext: APIRequestContext) => {
   });
 };
 
+/** Saves `domainId` as the caller's navbar selection (User.defaultDomain) through the API. */
+export const setPersistedDomain = async (
+  apiContext: APIRequestContext,
+  domainId: string
+) => {
+  const me = await (await apiContext.get('/api/v1/users/loggedInUser')).json();
+  await apiContext.patch(`/api/v1/users/${me.id}`, {
+    data: [
+      {
+        op: 'add',
+        path: '/defaultDomain',
+        value: { id: domainId, type: 'domain' },
+      },
+    ],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+};
+
 /** Clears the navbar selection through the UI ("All Domains"), which also clears the persisted pick. */
 export const clearDomainFromNavbar = async (page: Page) => {
   await page.getByTestId('domain-dropdown').click();
