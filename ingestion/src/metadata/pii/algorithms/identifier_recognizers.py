@@ -31,6 +31,8 @@ from presidio_analyzer.predefined_recognizers.iban_patterns import regex_per_cou
 _VAT_COUNTRY_PREFIX = re.compile(
     r"\b(?:(?i:IT)|(?:AT|BE|BG|CY|CZ|DE|DK|EE|EL|ES|FI|FR|GB|GR|HR|HU|IE|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK|XI))[ _-]+$"
 )
+_NUMERIC_RUN_BEFORE = re.compile(r"(?<!\w)[0-9]+(?:[ _-]+[0-9]+)*[ _-]+$")
+_NUMERIC_RUN_AFTER = re.compile(r"[ _-]+[0-9]+(?:[ _-]+[0-9]+)*(?!\w)| +[-_]")
 
 
 class _IdentifierRecognizer:
@@ -71,8 +73,7 @@ class _GroupedNumberRecognizer(_IdentifierRecognizer):
         return [
             result
             for result in results
-            if not re.search(r"[0-9][ -]+$", text[: result.start])
-            and not re.match(r"[ -]+[0-9]| +-", text[result.end :])
+            if not _NUMERIC_RUN_BEFORE.search(text[: result.start]) and not _NUMERIC_RUN_AFTER.match(text[result.end :])
         ]
 
 

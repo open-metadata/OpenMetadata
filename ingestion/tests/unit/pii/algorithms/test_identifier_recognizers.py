@@ -320,7 +320,10 @@ def test_bare_vat_survives_ordinary_prose(text):
         (Name.ItVatCodeRecognizer, ClassificationLanguage.it, "IT12345678903"),
     ],
 )
-@pytest.mark.parametrize("enclosure", ["{} 9", "9 {}", "{} - 9", "9 - {}"])
+@pytest.mark.parametrize(
+    "enclosure",
+    ["{} 9", "9 {}", "{} - 9", "9 - {}", "{} _ 9", "9 _ {}", "{} 9_9", "9_9 {}"],
+)
 def test_grouped_identifiers_do_not_salvage_from_extra_digit_groups(name, language, value, enclosure):
     recognizer = configured(name, language)
     assert recognizer.analyze(enclosure.format(value), recognizer.supported_entities) == []
@@ -336,6 +339,23 @@ def test_grouped_identifiers_do_not_salvage_from_extra_digit_groups(name, langua
 )
 def test_grouped_identifiers_survive_separate_prose(name, language, text, value):
     recognizer = configured(name, language)
+    assert [text[result.start : result.end] for result in recognizer.analyze(text, recognizer.supported_entities)] == [
+        value
+    ]
+
+
+@pytest.mark.parametrize(
+    "name,language,value",
+    [
+        (Name.AuAbnRecognizer, ClassificationLanguage.en, "51-824-753-556"),
+        (Name.AuAcnRecognizer, ClassificationLanguage.en, "004-085-616"),
+        (Name.ItVatCodeRecognizer, ClassificationLanguage.it, "IT12345678903"),
+    ],
+)
+@pytest.mark.parametrize("enclosure", ["supplier2 {}", "{} 9lives"])
+def test_grouped_identifiers_survive_digit_bearing_words(name, language, value, enclosure):
+    recognizer = configured(name, language)
+    text = enclosure.format(value)
     assert [text[result.start : result.end] for result in recognizer.analyze(text, recognizer.supported_entities)] == [
         value
     ]
