@@ -31,7 +31,8 @@ const APP_MODE_PREFERENCES_URL = '/settings/preferences';
 const APP_MODE_MENU_TESTID = 'preferences.appMode';
 
 // Matches the PATCH request to the specific appConfiguration endpoint
-const SYSTEM_SETTINGS_PATCH_URL = /\/api\/v1\/system\/settings\/appConfiguration/;
+const SYSTEM_SETTINGS_PATCH_URL =
+  /\/api\/v1\/system\/settings\/appConfiguration/;
 
 /**
 Restores the tenant-wide app-mode default to "no default" via the same
@@ -217,9 +218,6 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
         // Reset inside the lock so the "initial radio = null" assertion below
         // is against a value no sibling worker can flip.
         await resetAppConfigurationToNoDefaultViaBrowser(browser);
-        
-        // Add a small delay to ensure the backend reset has fully processed
-        await page.waitForTimeout(1000);
 
         await page.goto(APP_MODE_SETTINGS_URL, {
           waitUntil: 'domcontentloaded',
@@ -253,19 +251,19 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
       });
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('app-mode-option-ai').click();
-      
+
       await clickAndWaitFor(
         page,
         page.getByTestId('save-app-mode-settings'),
         SYSTEM_SETTINGS_PATCH_URL
       );
-      
+
       // Stronger than asserting a PATCH merely happened: pin the payload.
       expect(settings.patches).toHaveLength(1);
       expect(settings.patches[0]).toMatchObject([
         { op: 'add', path: '/defaultAppMode', value: 'ai' },
       ]);
-      
+
       await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await expect(
@@ -297,7 +295,7 @@ test.describe('AppMode — Admin Settings page', { tag: ['@Platform'] }, () => {
           page.getByTestId('save-app-mode-settings'),
           SYSTEM_SETTINGS_PATCH_URL
         );
-        
+
         // Verify via GET that the state was actually cleared
         const { apiContext, afterAction } = await getApiContext(page);
         const configResponse = await apiContext.get(

@@ -316,7 +316,7 @@ export const getElapsedTime = (timeStamp?: number): string => {
 };
 
 /**
- *  
+ *
  * @param timeStamp EPOCH millis
  * @param baseTimeStamp EPOCH millis
  * @returns Relative calendar string
