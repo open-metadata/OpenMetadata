@@ -61,6 +61,19 @@ const UNSCOPED_SEARCH_INDEXES = new Set<string>([
   SearchIndex.TEAM,
 ]);
 
+// A search may name several indexes, as a comma-joined string or an array (e.g. owner pickers
+// search "team,user"); it stays unscoped only when every index it names is unscoped.
+const isUnscopedSearch = (index?: string | string[]) => {
+  const indexes = (Array.isArray(index) ? index : (index ?? '').split(','))
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  return (
+    indexes.length > 0 &&
+    indexes.every((name) => UNSCOPED_SEARCH_INDEXES.has(name))
+  );
+};
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
@@ -83,7 +96,7 @@ export const withDomainFilter = (
 
   if (isGetRequest && hasActiveDomain) {
     if (config.url?.includes('/search/query')) {
-      if (UNSCOPED_SEARCH_INDEXES.has(config.params?.index)) {
+      if (isUnscopedSearch(config.params?.index)) {
         return config;
       }
 

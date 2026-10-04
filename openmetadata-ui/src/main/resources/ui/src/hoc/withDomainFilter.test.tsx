@@ -220,6 +220,36 @@ describe('withDomainFilter', () => {
       }
     );
 
+    it.each([['team,user'], [['team', 'user']], ['user,team,tag']])(
+      'should return config unchanged for combined people searches (%s)',
+      (index) => {
+        (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+          '/api/search'
+        );
+        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+        const config = createMockConfig('get', '/search/query', { index });
+        const result = withDomainFilter(config);
+
+        expect(result).toBe(config);
+        expect(result.params?.query_filter).toBeUndefined();
+      }
+    );
+
+    it('should still filter a combined search that includes a data index', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: 'table,user',
+      });
+      const result = withDomainFilter(config);
+
+      expect(result.params?.query_filter).toBeDefined();
+    });
+
     it('should use fullyQualifiedName field for DOMAIN index searches', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
         '/api/search'
