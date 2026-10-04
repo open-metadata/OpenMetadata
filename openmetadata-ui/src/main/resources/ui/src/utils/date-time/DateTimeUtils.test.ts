@@ -12,6 +12,7 @@
  */
 import { Settings } from 'luxon';
 import {
+  calculateInterval,
   convertMillisecondsToHumanReadableFormat,
   convertSecondsToHumanReadableFormat,
   customFormatDateTime,
@@ -28,6 +29,7 @@ import {
   getElapsedTime,
   getRelativeCalendar,
   getActiveTimeFormat,
+  getElapsedTime,
   getMappedTimeFormat,
   getScheduleDescriptionTexts,
   isValidDateFormat,

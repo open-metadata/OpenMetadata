@@ -301,11 +301,13 @@ const ActivityFeedCardNew = ({
       excludeTriggerFromTabOrder
       containerClassName="timestamp-tooltip"
       title={formatDateTime(timestampValue, timeFormat)}>
-      <Typography.Text
+      <Typography
         className="feed-card-header-v2-timestamp"
-        data-testid="timestamp">
+        color="secondary"
+        data-testid="timestamp"
+        size="text-xs">
         {getRelativeTime(timestampValue)}
-      </Typography.Text>
+      </Typography>
     </Tooltip>
   ) : null;
 
