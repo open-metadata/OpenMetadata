@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T03:29:14Z",
+  "generatedAt": "2026-10-04T04:09:12Z",
   "window": 10,
   "threshold": 2,
   "runs": [
@@ -23,6 +23,11 @@
       "runId": "37091511300",
       "sourceSha": "e9ebb310234e8e03faa8391ec17a4fddd4545e63",
       "recordedAt": "2026-10-03T03:29:14Z"
+    },
+    {
+      "runId": "37174398749",
+      "sourceSha": "507f5d783c6ca2ee22c76c0eb92b44ff6055cc79",
+      "recordedAt": "2026-10-04T04:09:12Z"
     }
   ],
   "entries": {
@@ -84,6 +89,16 @@
       "file": "Pages/Domains.spec.ts",
       "title": "Domains \u203a Create DataProducts and add remove assets",
       "lastSeenSha": "170677437861064916f8ac34ceea410bb4ca8273",
+      "hardFailure": false
+    },
+    "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for apiEndpoint -> mlModel": {
+      "observations": [
+        "37174398749"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/DataAssetLineage.spec.ts",
+      "title": "Column Level Lineage \u203a Column lineage for apiEndpoint -> mlModel",
+      "lastSeenSha": "507f5d783c6ca2ee22c76c0eb92b44ff6055cc79",
       "hardFailure": false
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Delete Api Service": {
