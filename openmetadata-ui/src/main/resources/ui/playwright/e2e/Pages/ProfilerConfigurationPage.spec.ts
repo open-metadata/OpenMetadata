@@ -165,7 +165,10 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.getByRole('tree').getByText('All').click();
       await clickOutside(adminPage);
 
-      await adminPage.click('#metricConfiguration_2_disabled');
+      // The visible track covers the hidden switch input, so click its label.
+      await adminPage
+        .locator('label:has(#metricConfiguration_2_disabled)')
+        .click();
 
       const settingRes = adminPage.waitForResponse('/api/v1/system/settings');
       await adminPage.click('[data-testid="save-button"]');
@@ -234,11 +237,11 @@ test.describe('Profiler Configuration Page', () => {
       ).toBeVisible();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).toBeChecked();
     });
 
@@ -252,22 +255,22 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.getByTestId('read-sample-data-switch').click();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).not.toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).not.toBeChecked();
 
       // Turn store ON — read should auto-enable
       await adminPage.getByTestId('store-sample-data-switch').click();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).toBeChecked();
     });
 
@@ -280,11 +283,11 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.getByTestId('store-sample-data-switch').click();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).not.toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).toBeChecked();
 
       // Re-enable store, then turn off read
@@ -292,11 +295,11 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.getByTestId('read-sample-data-switch').click();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).not.toBeChecked();
     });
 

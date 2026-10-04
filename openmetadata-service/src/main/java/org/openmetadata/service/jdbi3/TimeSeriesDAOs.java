@@ -448,17 +448,10 @@ public interface TimeSeriesDAOs {
       }
 
       if (!nullOrEmpty(searchQuery)) {
-        // The term travels as a bind value, so only the LIKE metacharacters need escaping — not the
-        // apostrophes that ListFilter.escape also doubles for literal interpolation, which would
-        // make a search for "it's" match nothing. Lower-cased here to pair with the LOWER(...)
-        // columns in the condition instead of asking the engine to lower the pattern per row.
+        // Lower-cased here to pair with the LOWER(...) columns in the condition instead of asking
+        // the engine to lower the pattern per row.
         String pattern =
-            searchQuery
-                .trim()
-                .toLowerCase(Locale.ROOT)
-                .replace("\\", "\\\\")
-                .replace("%", "\\%")
-                .replace("_", "\\_");
+            ListFilter.escapeLikeBindValue(searchQuery.trim().toLowerCase(Locale.ROOT));
         filter.queryParams.put("testDefinitionSearchLike", String.format("%%%s%%", pattern));
         mysqlCondition.append(MYSQL_SEARCH_CONDITION);
         psqlCondition.append(POSTGRES_SEARCH_CONDITION);

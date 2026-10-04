@@ -216,9 +216,8 @@ export const addReviewerToEntity = async (
     await page.getByTestId('Add').click();
   }
 
-  await page.waitForSelector(
-    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-    { state: 'detached' }
+  await waitForAllLoadersToDisappear(
+    page.locator('[data-testid="select-owner-tabs"]')
   );
   await page
     .locator("[data-testid='select-owner-tabs']")
@@ -229,9 +228,8 @@ export const addReviewerToEntity = async (
   );
   await page.fill('[data-testid="owner-select-users-search-bar"]', name);
   await searchOwner;
-  await page.waitForSelector(
-    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-    { state: 'detached' }
+  await waitForAllLoadersToDisappear(
+    page.locator('[data-testid="select-owner-tabs"]')
   );
   await page
     .getByText(displayName, {

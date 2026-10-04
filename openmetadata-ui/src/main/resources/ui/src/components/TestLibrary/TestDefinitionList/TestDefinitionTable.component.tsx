@@ -16,10 +16,11 @@ import {
   EmptyPlaceholder,
   Skeleton,
   Table,
+  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@openmetadata/ui-core-components/icons';
-import { Button, Space, Switch, Tooltip } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -156,12 +157,11 @@ const TestDefinitionTable = ({
     return (
       <Tooltip title={tooltipTitle}>
         <div className="new-form-style d-inline-flex">
-          <Switch
-            checked={record.enabled ?? true}
+          <Toggle
             data-testid={`enable-switch-${record.name}`}
-            disabled={isExternal || !hasEditPermission || isRefetching}
-            size="small"
-            onChange={(checked) => onEnableToggle(record, checked)}
+            isDisabled={isExternal || !hasEditPermission || isRefetching}
+            isSelected={record.enabled ?? true}
+            onChange={(isSelected) => onEnableToggle(record, isSelected)}
           />
         </div>
       </Tooltip>

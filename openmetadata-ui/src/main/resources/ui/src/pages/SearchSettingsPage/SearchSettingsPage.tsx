@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Collapse, Row, Slider, Switch } from 'antd';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Collapse, Row, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -534,11 +534,13 @@ const SearchSettingsPage = () => {
               <Typography className="global-setting-card__content">
                 {t('label.enable-roles-polices-in-search')}
               </Typography>
-              <Switch
-                checked={searchConfig?.globalSettings?.enableAccessControl}
+              <Toggle
                 className="m-l-xlg global-setting-card__action"
                 data-testid="enable-roles-polices-in-search-switch"
-                disabled={isUpdating}
+                isDisabled={isUpdating}
+                isSelected={Boolean(
+                  searchConfig?.globalSettings?.enableAccessControl
+                )}
                 onChange={() =>
                   handleUpdateSearchConfig({
                     enabled: !searchConfig?.globalSettings?.enableAccessControl,

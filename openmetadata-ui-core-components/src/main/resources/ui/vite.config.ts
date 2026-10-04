@@ -92,6 +92,7 @@ export default defineConfig({
       external: [
         'react',
         'react-dom',
+        'react-dom/server',
         'react/jsx-runtime',
         'react-aria',
         'react-aria-components',
@@ -108,7 +109,7 @@ export default defineConfig({
         'i18next',
         'react-i18next',
         // Charts: `/charts` imports echarts' modular entries (echarts/core,
-        // echarts/charts, ...) and echarts-for-react/lib/core. Keep every
+        // echarts/charts, ...) and echarts-for-react/esm/core. Keep every
         // sub-path external so consumers resolve their own single copy.
         /^echarts(\/.*)?$/,
         /^echarts-for-react(\/.*)?$/,

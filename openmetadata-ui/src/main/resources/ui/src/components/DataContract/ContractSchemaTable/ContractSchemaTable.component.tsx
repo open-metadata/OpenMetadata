@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Tag } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,9 +69,14 @@ const ContractSchemaTable: React.FC<{
         dataIndex: 'dataType',
         key: 'dataType',
         render: (type: string) => (
-          <Tag className="custom-tag" color="purple">
+          <Badge
+            bordered={false}
+            className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+            color="purple"
+            size="sm"
+            type="color">
             {type}
-          </Tag>
+          </Badge>
         ),
       },
       ...(entityType === EntityType.TABLE
@@ -83,9 +88,14 @@ const ContractSchemaTable: React.FC<{
               render: (constraint: string) => (
                 <div>
                   {constraint ? (
-                    <Tag className="custom-tag" color="blue">
+                    <Badge
+                      bordered={false}
+                      className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                      color="blue"
+                      size="sm"
+                      type="color">
                       {constraint}
-                    </Tag>
+                    </Badge>
                   ) : (
                     <Typography
                       className="tw:text-primary"
