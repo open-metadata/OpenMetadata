@@ -24,7 +24,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -58,7 +58,7 @@ public class DbWebSocketRelay implements WebSocketRelay {
   private final long messageTtlMs;
   private final long cleanupIntervalMs;
   // Seam for tests: default delivers to the live WebSocketManager; a test can route to a probe.
-  private final BiConsumer<UUID, WsRelayDAO.RelayRow> deliver;
+  private final Consumer<WsRelayDAO.RelayRow> deliver;
 
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final AtomicLong cursor = new AtomicLong(0);
@@ -92,7 +92,7 @@ public class DbWebSocketRelay implements WebSocketRelay {
       long pollIntervalMs,
       long messageTtlMs,
       long cleanupIntervalMs,
-      BiConsumer<UUID, WsRelayDAO.RelayRow> deliver) {
+      Consumer<WsRelayDAO.RelayRow> deliver) {
     this.dao = dao;
     this.instanceId = instanceId;
     this.pollIntervalMs = pollIntervalMs;
@@ -143,15 +143,15 @@ public class DbWebSocketRelay implements WebSocketRelay {
   }
 
   @Override
-  public void publish(UUID userId, String event, String message) {
-    if (!running.get() || userId == null) {
+  public void publish(String scope, String target, String event, String message) {
+    if (!running.get() || scope == null) {
       return;
     }
     try {
       long expiresAt = System.currentTimeMillis() + messageTtlMs;
-      dao.insert(userId.toString(), event, message, instanceId, expiresAt);
+      dao.insert(scope, target, event, message, instanceId, expiresAt);
     } catch (Exception e) {
-      LOG.debug("Failed to insert ws relay frame: user={} event={}", userId, event, e);
+      LOG.debug("Failed to insert ws relay frame: scope={} event={}", scope, event, e);
     }
   }
 
@@ -169,9 +169,9 @@ public class DbWebSocketRelay implements WebSocketRelay {
         continue;
       }
       try {
-        deliver.accept(UUID.fromString(row.userId()), row);
+        deliver.accept(row);
       } catch (Exception e) {
-        LOG.debug("Failed to deliver relayed frame id={} user={}", row.id(), row.userId(), e);
+        LOG.debug("Failed to deliver relayed frame id={} scope={}", row.id(), row.scope(), e);
       }
       // Advance even on delivery failure: the row is a best-effort transient notification, and the
       // seen-set prevents re-delivery within the window regardless of the cursor.
@@ -197,10 +197,10 @@ public class DbWebSocketRelay implements WebSocketRelay {
     }
   }
 
-  private static void deliverToLocalManager(UUID userId, WsRelayDAO.RelayRow row) {
+  private static void deliverToLocalManager(WsRelayDAO.RelayRow row) {
     WebSocketManager manager = WebSocketManager.getInstance();
     if (manager != null) {
-      manager.sendToOneLocal(userId, row.event(), row.payload());
+      manager.deliverRelayedFrame(row.scope(), row.target(), row.event(), row.payload());
     }
   }
 

@@ -21,7 +21,7 @@ import java.net.InetAddress;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.cache.CacheConfig;
@@ -44,7 +44,7 @@ public class RedisWebSocketRelay implements WebSocketRelay {
   private final AtomicBoolean running = new AtomicBoolean(false);
 
   // Seam for tests: default delivers to the live WebSocketManager; a test can route to a probe.
-  private final BiConsumer<UUID, RelayFrame> deliver;
+  private final Consumer<RelayFrame> deliver;
 
   private RedisClient client;
   private StatefulRedisPubSubConnection<String, String> subConnection;
@@ -54,7 +54,7 @@ public class RedisWebSocketRelay implements WebSocketRelay {
     this(cacheConfig, RedisWebSocketRelay::deliverToLocalManager);
   }
 
-  RedisWebSocketRelay(CacheConfig cacheConfig, BiConsumer<UUID, RelayFrame> deliver) {
+  RedisWebSocketRelay(CacheConfig cacheConfig, Consumer<RelayFrame> deliver) {
     this.redisConfig = cacheConfig.redis;
     this.instanceId = generateInstanceId();
     this.deliver = deliver;
@@ -100,34 +100,34 @@ public class RedisWebSocketRelay implements WebSocketRelay {
   }
 
   @Override
-  public void publish(UUID userId, String event, String message) {
-    if (!running.get() || pubConnection == null || userId == null) {
+  public void publish(String scope, String target, String event, String message) {
+    if (!running.get() || pubConnection == null || scope == null) {
       return;
     }
     try {
-      RelayFrame frame = new RelayFrame(userId, event, message, instanceId);
+      RelayFrame frame = new RelayFrame(scope, target, event, message, instanceId);
       pubConnection.async().publish(CHANNEL, JsonUtils.pojoToJson(frame));
     } catch (Exception e) {
-      LOG.debug("Failed to publish ws relay frame: user={} event={}", userId, event, e);
+      LOG.debug("Failed to publish ws relay frame: scope={} event={}", scope, event, e);
     }
   }
 
   private void handleMessage(String message) {
     try {
       RelayFrame frame = JsonUtils.readValue(message, RelayFrame.class);
-      if (frame == null || frame.userId() == null || instanceId.equals(frame.sender())) {
+      if (frame == null || frame.scope() == null || instanceId.equals(frame.sender())) {
         return;
       }
-      deliver.accept(frame.userId(), frame);
+      deliver.accept(frame);
     } catch (Exception e) {
       LOG.debug("Bad ws relay frame: {}", message, e);
     }
   }
 
-  private static void deliverToLocalManager(UUID userId, RelayFrame frame) {
+  private static void deliverToLocalManager(RelayFrame frame) {
     WebSocketManager manager = WebSocketManager.getInstance();
     if (manager != null) {
-      manager.sendToOneLocal(userId, frame.event(), frame.message());
+      manager.deliverRelayedFrame(frame.scope(), frame.target(), frame.event(), frame.message());
     }
   }
 
@@ -177,5 +177,6 @@ public class RedisWebSocketRelay implements WebSocketRelay {
   }
 
   /** Wire frame carried on the relay channel. {@code sender} is the publishing pod's instance id. */
-  public record RelayFrame(UUID userId, String event, String message, String sender) {}
+  public record RelayFrame(
+      String scope, String target, String event, String message, String sender) {}
 }

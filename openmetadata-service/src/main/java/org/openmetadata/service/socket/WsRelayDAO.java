@@ -23,17 +23,19 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
 /**
- * DAO for the {@code ws_relay_message} broadcast table backing {@link DbWebSocketRelay}. All
- * statements are plain SQL that runs identically on MySQL and PostgreSQL (no JSON columns, no
- * engine-specific functions), so no connection-aware variants are needed.
+ * DAO for the {@code ws_relay_message} broadcast table backing {@link DbWebSocketRelay}. The row is
+ * generic — {@code scope} + {@code target} express any delivery pattern (USER/ALL/future) — so one
+ * table serves every {@link WebSocketManager} relay use. All statements are plain SQL that runs
+ * identically on MySQL and PostgreSQL (no JSON columns, no engine-specific functions).
  */
 public interface WsRelayDAO {
 
   @SqlUpdate(
-      "INSERT INTO ws_relay_message (userId, event, payload, senderPod, expiresAt) "
-          + "VALUES (:userId, :event, :payload, :senderPod, :expiresAt)")
+      "INSERT INTO ws_relay_message (scope, target, event, payload, senderPod, expiresAt) "
+          + "VALUES (:scope, :target, :event, :payload, :senderPod, :expiresAt)")
   void insert(
-      @Bind("userId") String userId,
+      @Bind("scope") String scope,
+      @Bind("target") String target,
       @Bind("event") String event,
       @Bind("payload") String payload,
       @Bind("senderPod") String senderPod,
@@ -44,16 +46,16 @@ public interface WsRelayDAO {
   long maxId();
 
   /**
-   * Frames newer than this pod's cursor that it did not publish and have not expired. Ordered by id
+   * Frames newer than {@code from} that this pod did not publish and have not expired. Ordered by id
    * so the caller can advance its cursor to the last row read.
    */
   @SqlQuery(
-      "SELECT id, userId, event, payload FROM ws_relay_message "
-          + "WHERE id > :cursor AND senderPod <> :self AND expiresAt > :now "
+      "SELECT id, scope, target, event, payload FROM ws_relay_message "
+          + "WHERE id > :from AND senderPod <> :self AND expiresAt > :now "
           + "ORDER BY id ASC LIMIT :limit")
   @RegisterRowMapper(RelayRowMapper.class)
   List<RelayRow> fetchNewer(
-      @Bind("cursor") long cursor,
+      @Bind("from") long from,
       @Bind("self") String self,
       @Bind("now") long now,
       @Bind("limit") int limit);
@@ -61,13 +63,17 @@ public interface WsRelayDAO {
   @SqlUpdate("DELETE FROM ws_relay_message WHERE expiresAt < :now")
   int deleteExpired(@Bind("now") long now);
 
-  record RelayRow(long id, String userId, String event, String payload) {}
+  record RelayRow(long id, String scope, String target, String event, String payload) {}
 
   class RelayRowMapper implements RowMapper<RelayRow> {
     @Override
     public RelayRow map(ResultSet rs, StatementContext ctx) throws SQLException {
       return new RelayRow(
-          rs.getLong("id"), rs.getString("userId"), rs.getString("event"), rs.getString("payload"));
+          rs.getLong("id"),
+          rs.getString("scope"),
+          rs.getString("target"),
+          rs.getString("event"),
+          rs.getString("payload"));
     }
   }
 }

@@ -146,9 +146,11 @@ public class WebSocketManager {
     return instance;
   }
 
+  // Node-local today. The relay already supports SCOPE_ALL (see deliverRelayedFrame), so a future
+  // change can make this publishToAll for cross-pod broadcast — deliberately not wired yet to avoid
+  // relaying high-frequency job-status broadcasts.
   public void broadCastMessageToAll(String event, String message) {
-    activityFeedEndpoints.forEach(
-        (key, value) -> value.forEach((key1, value1) -> value1.send(event, message)));
+    broadCastMessageToAllLocal(event, message);
   }
 
   public void sendToOne(UUID receiver, String event, String message) {
@@ -157,7 +159,7 @@ public class WebSocketManager {
     // is
     // a no-op on single-pod, keeping this a plain local send there.
     sendToOneLocal(receiver, event, message);
-    relay.publish(receiver, event, message);
+    relay.publishToUser(receiver, event, message);
   }
 
   public void sendToOne(String username, String event, String message) {
@@ -178,6 +180,32 @@ public class WebSocketManager {
     Map<String, SocketIoSocket> connections = activityFeedEndpoints.get(receiver);
     if (connections != null) {
       connections.forEach((key, value) -> value.send(event, message));
+    }
+  }
+
+  /** Broadcast to every socket on THIS pod only, without relaying — the receive side of a relayed
+   * {@link WebSocketRelay#SCOPE_ALL} frame (so it is not re-published). */
+  public void broadCastMessageToAllLocal(String event, String message) {
+    activityFeedEndpoints.forEach(
+        (key, value) -> value.forEach((key1, value1) -> value1.send(event, message)));
+  }
+
+  /**
+   * Deliver a frame received from the relay to this pod's local sockets, dispatched by scope. New
+   * scopes are handled by adding a branch here — no transport or schema change. A received frame is
+   * delivered locally only (never re-published) to avoid a fan-out loop.
+   */
+  public void deliverRelayedFrame(String scope, String target, String event, String message) {
+    if (WebSocketRelay.SCOPE_ALL.equals(scope)) {
+      broadCastMessageToAllLocal(event, message);
+      return;
+    }
+    if (WebSocketRelay.SCOPE_USER.equals(scope) && target != null) {
+      try {
+        sendToOneLocal(UUID.fromString(target), event, message);
+      } catch (IllegalArgumentException ex) {
+        LOG.debug("Relayed frame with non-UUID target {} ignored", target);
+      }
     }
   }
 
