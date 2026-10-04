@@ -34,8 +34,8 @@ import { enableAiAppMode } from '../../Utils/appMode';
 // profile (ProfileDetailsPanel does not expose these); the performance suite.
 
 const persona = new PersonaClass();
-// Assigned in beforeAll: some stacks gate domain creation behind an intake form
-// requiring Owners + Tags, so the domain is built with both.
+// Assigned in beforeAll — created via the API (bypasses the UI intake form), so
+// the minimal payload the other domain fixtures use is sufficient.
 let domain: Domain;
 let createdUsers: UserClass[] = [];
 
@@ -56,10 +56,6 @@ test.describe('AI Profile Users', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await persona.create(apiContext);
 
-    const domainOwner = new UserClass();
-    await domainOwner.create(apiContext);
-    createdUsers.push(domainOwner);
-
     const domainId = uuid();
     domain = new Domain({
       name: `PW%domain.${domainId}`,
@@ -67,23 +63,7 @@ test.describe('AI Profile Users', () => {
       description: 'playwright profile-user domain',
       domainType: 'Aggregate',
       fullyQualifiedName: `"PW%domain.${domainId}"`,
-      owners: [
-        {
-          id: domainOwner.responseData.id ?? '',
-          type: 'user',
-          name: domainOwner.responseData.name,
-        },
-      ],
-      // Satisfy intake-form configs that require a tag; PII.Sensitive is seeded.
-      tags: [
-        {
-          tagFQN: 'PII.Sensitive',
-          source: 'Classification',
-          labelType: 'Manual',
-          state: 'Confirmed',
-        },
-      ],
-    } as ConstructorParameters<typeof Domain>[0]);
+    });
     await domain.create(apiContext);
     await afterAction();
   });
