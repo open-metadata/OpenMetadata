@@ -34,11 +34,19 @@ from presidio_analyzer import (
 )
 from presidio_analyzer.nlp_engine import NlpArtifacts, SpacyNlpEngine
 from presidio_analyzer.predefined_recognizers import (
+    AuAbnRecognizer,
+    AuAcnRecognizer,
     AuTfnRecognizer,
     CreditCardRecognizer,
     DateRecognizer,
+    EsNieRecognizer,
+    EsNifRecognizer,
+    IbanRecognizer,
     InAadhaarRecognizer,
+    ItVatCodeRecognizer,
     NhsRecognizer,
+    SgFinRecognizer,
+    SgUenRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
 )
@@ -48,6 +56,16 @@ from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
 from metadata.pii.algorithms import patterns, presidio_constants
+from metadata.pii.algorithms.identifier_recognizers import (
+    BoundedAuAbnRecognizer,
+    BoundedAuAcnRecognizer,
+    BoundedEsNieRecognizer,
+    BoundedEsNifRecognizer,
+    BoundedIbanRecognizer,
+    BoundedItVatRecognizer,
+    BoundedSgUenRecognizer,
+    ValidatedSgFinRecognizer,
+)
 from metadata.pii.constants import (
     LANGUAGE_MODEL_MAPPING,
     PRESIDIO_LOGGER,
@@ -172,6 +190,18 @@ def _get_all_entity_recognizer_classes() -> Iterable[type[EntityRecognizer]]:
 
 
 recognizer_factories = class_register()
+
+for original, adapter in (
+    (AuAbnRecognizer, BoundedAuAbnRecognizer),
+    (AuAcnRecognizer, BoundedAuAcnRecognizer),
+    (EsNieRecognizer, BoundedEsNieRecognizer),
+    (EsNifRecognizer, BoundedEsNifRecognizer),
+    (IbanRecognizer, BoundedIbanRecognizer),
+    (ItVatCodeRecognizer, BoundedItVatRecognizer),
+    (SgFinRecognizer, ValidatedSgFinRecognizer),
+    (SgUenRecognizer, BoundedSgUenRecognizer),
+):
+    recognizer_factories.add(original)(adapter)
 
 
 class SanitizedCreditCardRecognizer(CreditCardRecognizer):
