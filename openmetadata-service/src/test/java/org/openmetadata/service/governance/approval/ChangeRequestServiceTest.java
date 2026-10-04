@@ -62,6 +62,7 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.governance.changeRequest.DecisionType;
 import org.openmetadata.schema.governance.changeRequest.LifecycleEventType;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -292,7 +293,12 @@ class ChangeRequestServiceTest {
       assertEquals(ChangeRequestStatus.PENDING, event.getFromStatus());
       assertEquals(ChangeRequestStatus.CANCELLED, event.getToStatus());
       assertEquals(ADMIN, event.getActor());
-      tasks.verify(() -> ChangeRequestTasks.closeTask(request.getTaskId(), "Cancelled by admin"));
+      tasks.verify(
+          () ->
+              ChangeRequestTasks.closeTask(
+                  request.getTaskId(),
+                  "Cancelled by admin",
+                  WorkflowInstance.WorkflowStatus.CANCELLED));
     }
 
     @Test
@@ -304,6 +310,7 @@ class ChangeRequestServiceTest {
       assertEquals(LifecycleEventType.REJECTED, event.getEventType());
       assertNull(event.getActor());
       tasks.verify(() -> ChangeRequestTasks.closeTask(any(), any()), never());
+      tasks.verify(() -> ChangeRequestTasks.closeTask(any(), any(), any()), never());
     }
 
     @Test
