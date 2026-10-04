@@ -28,6 +28,10 @@ jest.mock(
   })
 );
 
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: false }),
+}));
+
 jest.mock('./MembersLanding', () => () => (
   <div data-testid="members-landing" />
 ));

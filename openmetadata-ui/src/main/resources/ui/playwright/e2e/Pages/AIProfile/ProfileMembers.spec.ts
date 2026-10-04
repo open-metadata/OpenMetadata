@@ -28,6 +28,7 @@ import {
   searchUserRow,
 } from '../../../utils/aiProfile';
 import { uuid } from '../../../utils/common';
+import { getRowByName } from '../../../utils/scopedLocators';
 import { expect, test } from '../../fixtures/pages';
 
 test.describe('AI Profile Members - navigation & basics', () => {
@@ -220,7 +221,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
       .click();
     await userResponse;
 
-    await expect(page.getByTestId('profile-content-header')).toContainText(
+    await expect(page.getByTestId('profile-details-panel')).toContainText(
       regularUser.responseData.displayName
     );
   });
@@ -279,8 +280,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     const teamResponse = page.waitForResponse((response) =>
       response.url().includes('/api/v1/teams/name/Organization')
     );
-    await page
-      .getByTestId('users-list-table')
+    await getRowByName(page, listUser.responseData.name)
       .getByRole('link', { name: 'Organization' })
       .click();
     await teamResponse;
@@ -323,8 +323,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     const teamResponse = page.waitForResponse((response) =>
       response.url().includes('/api/v1/teams/name/Organization')
     );
-    await page
-      .getByTestId('users-list-table')
+    await getRowByName(page, adminUser.responseData.name)
       .getByRole('link', { name: 'Organization' })
       .click();
     await teamResponse;

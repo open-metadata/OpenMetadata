@@ -26,6 +26,7 @@ import { usePermissionProvider } from '../../../../../../context/PermissionProvi
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../../enums/common.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -178,20 +179,24 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { state: hashState, setHash } = useSettingsHash();
   const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
 
   // Create permissions gate the form views directly, since those views are
   // reachable by deep-linking the hash even when the create button is hidden.
+  // Admins bypass the resource check (user/team creation is admin-gated).
   const canCreateTeam = useMemo(
     () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
-    [permissions]
+      isAdminUser ||
+      (!isEmpty(permissions) &&
+        checkPermission(Operation.Create, ResourceEntity.TEAM, permissions)),
+    [isAdminUser, permissions]
   );
   const canCreateUser = useMemo(
     () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.USER, permissions),
-    [permissions]
+      isAdminUser ||
+      (!isEmpty(permissions) &&
+        checkPermission(Operation.Create, ResourceEntity.USER, permissions)),
+    [isAdminUser, permissions]
   );
 
   // Hash-synced navigation (same pattern as NotificationPanel / AccessControlPanel):

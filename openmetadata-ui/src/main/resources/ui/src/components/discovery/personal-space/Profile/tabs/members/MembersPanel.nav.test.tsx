@@ -24,6 +24,10 @@ jest.mock(
   () => ({ usePermissionProvider: () => ({ permissions: mockPermissions }) })
 );
 
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: false }),
+}));
+
 jest.mock(
   './MembersLanding',
   () => (props: { onNavigate: (v: MembersView) => void }) =>

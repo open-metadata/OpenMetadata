@@ -129,9 +129,10 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
 
   const canCreateUser = useMemo(
     () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.USER, permissions),
-    [permissions]
+      isAdminUser ||
+      (!isEmpty(permissions) &&
+        checkPermission(Operation.Create, ResourceEntity.USER, permissions)),
+    [isAdminUser, permissions]
   );
 
   const fetchUsers = useCallback(
