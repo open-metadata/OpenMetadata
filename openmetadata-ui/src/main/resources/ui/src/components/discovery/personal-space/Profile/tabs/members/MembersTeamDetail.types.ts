@@ -20,8 +20,8 @@ import type { User } from '../../../../../../generated/entity/teams/user';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import type { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import type {
-    ColumnsType,
-    ExpandableConfig
+  ColumnsType,
+  ExpandableConfig,
 } from '../../../../../common/Table/Table.interface';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import type { MembersView } from './Members.types';

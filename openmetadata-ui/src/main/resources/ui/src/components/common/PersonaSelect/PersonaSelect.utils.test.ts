@@ -13,8 +13,8 @@
 import { Persona } from '../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-    entityRefToTreeNode,
-    personasToTreeNodes
+  entityRefToTreeNode,
+  personasToTreeNodes,
 } from './PersonaSelect.utils';
 
 describe('PersonaSelect.utils', () => {

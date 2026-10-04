@@ -54,11 +54,7 @@ const groupTeam = {
 describe('MembersTeamInfoWidgets', () => {
   it('renders the widget strip with the distinct user count', () => {
     render(
-      <MembersTeamInfoWidgets
-        canEdit
-        team={groupTeam}
-        onPatch={jest.fn()}
-      />
+      <MembersTeamInfoWidgets canEdit team={groupTeam} onPatch={jest.fn()} />
     );
 
     expect(screen.getByTestId('team-info-widgets')).toBeInTheDocument();
@@ -67,11 +63,7 @@ describe('MembersTeamInfoWidgets', () => {
 
   it('shows the team type and persona widgets for a non-organization team', () => {
     render(
-      <MembersTeamInfoWidgets
-        canEdit
-        team={groupTeam}
-        onPatch={jest.fn()}
-      />
+      <MembersTeamInfoWidgets canEdit team={groupTeam} onPatch={jest.fn()} />
     );
 
     expect(screen.getByTestId('team-type')).toBeInTheDocument();

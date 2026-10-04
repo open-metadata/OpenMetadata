@@ -17,12 +17,12 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import React, {
-    FC,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
@@ -34,25 +34,25 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
 import {
-    EXTENSION_POINTS,
-    PluginEntityDetailsContext,
-    TabContribution
+  EXTENSION_POINTS,
+  PluginEntityDetailsContext,
+  TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
-    APPLICATION_NAV_ITEMS,
-    DEFAULT_PROFILE_NAV_ID,
-    FEATURES_NAV_ITEMS,
-    ProfileHeaderOverride,
-    ProfileNavGroup,
-    ProfileNavId,
-    ProfileNavItem,
-    PROFILE_NAV_GROUP_LABEL,
-    PROFILE_NAV_ITEMS,
-    WORKSPACE_NAV_ITEMS
+  APPLICATION_NAV_ITEMS,
+  DEFAULT_PROFILE_NAV_ID,
+  FEATURES_NAV_ITEMS,
+  ProfileHeaderOverride,
+  ProfileNavGroup,
+  ProfileNavId,
+  ProfileNavItem,
+  PROFILE_NAV_GROUP_LABEL,
+  PROFILE_NAV_ITEMS,
+  WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import { resolveProfileTarget } from './ProfilePage.utils';
 import ProfileSideNav from './ProfileSideNav';

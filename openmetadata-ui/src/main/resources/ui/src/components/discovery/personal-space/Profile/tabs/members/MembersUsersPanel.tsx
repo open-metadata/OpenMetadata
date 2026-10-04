@@ -12,43 +12,43 @@
  */
 
 import {
-    Box,
-    Button,
-    ButtonUtility,
-    EmptyPlaceholder,
-    PaginationCardWithControls,
-    Popover,
-    PopoverTrigger,
-    SimpleModal,
-    TableCard,
-    Toggle,
-    Tooltip,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  EmptyPlaceholder,
+  PaginationCardWithControls,
+  Popover,
+  PopoverTrigger,
+  SimpleModal,
+  TableCard,
+  Toggle,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { RefreshCcw01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
-    INITIAL_PAGING_VALUE,
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_LARGE,
-    PAGE_SIZE_MEDIUM
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
-    EntityType,
-    TabSpecificField
+  EntityType,
+  TabSpecificField,
 } from '../../../../../../enums/entity.enum';
 import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -63,12 +63,12 @@ import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getUsers, restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-    checkPermission,
-    LIST_CAP
+  checkPermission,
+  LIST_CAP,
 } from '../../../../../../utils/PermissionsUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
@@ -77,9 +77,9 @@ import Table from '../../../../../common/Table/TableV2';
 
 import type { MembersUsersPanelProps } from './Members.types';
 import {
-    profileHash,
-    ProfileHashTarget,
-    toHashLocation
+  profileHash,
+  ProfileHashTarget,
+  toHashLocation,
 } from './profileHash.utils';
 import ProfileHashLink from './ProfileHashLink';
 

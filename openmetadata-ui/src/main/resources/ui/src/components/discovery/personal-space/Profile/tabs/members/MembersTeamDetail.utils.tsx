@@ -12,12 +12,12 @@
  */
 
 import {
-    Box,
-    Button,
-    ButtonUtility,
-    Popover,
-    PopoverTrigger,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  Popover,
+  PopoverTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
@@ -34,9 +34,9 @@ import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import type { MembersView } from './Members.types';
 import type { TeamTab, UserRolesCellProps } from './MembersTeamDetail.types';
 import {
-    profileHash,
-    ProfileHashTarget,
-    toHashLocation
+  profileHash,
+  ProfileHashTarget,
+  toHashLocation,
 } from './profileHash.utils';
 
 export const TEAM_FIELDS = [

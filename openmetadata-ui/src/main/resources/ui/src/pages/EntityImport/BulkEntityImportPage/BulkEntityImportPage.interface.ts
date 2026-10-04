@@ -17,9 +17,9 @@ import { VALIDATION_STEP } from '../../../constants/BulkImport.constant';
 import { EntityStatus } from '../../../generated/entity/data/metric';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import type {
-    CSVImportAsyncJob,
-    CSVImportAsyncWebsocketResponse,
-    CSVImportJobType
+  CSVImportAsyncJob,
+  CSVImportAsyncWebsocketResponse,
+  CSVImportJobType,
 } from '../../../interface/entity/csv.interface';
 import type { getImportOperationSummary } from '../../../utils/CSV/CSV.utils';
 
@@ -95,7 +95,7 @@ export interface BulkEntityImportLocationState {
 // Canonical definitions live in the lower-layer csv.interface (imported above
 // for local use); re-exported here for existing page-local importers.
 export type {
-    CSVImportAsyncJob,
-    CSVImportAsyncWebsocketResponse,
-    CSVImportJobType,
+  CSVImportAsyncJob,
+  CSVImportAsyncWebsocketResponse,
+  CSVImportJobType,
 };

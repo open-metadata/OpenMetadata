@@ -12,11 +12,11 @@
  */
 
 import {
-    formatOnlineStatus,
-    getCsvFileSizeLabel,
-    getCsvRowCount,
-    hashSubPathToView,
-    viewToSubPath
+  formatOnlineStatus,
+  getCsvFileSizeLabel,
+  getCsvRowCount,
+  hashSubPathToView,
+  viewToSubPath,
 } from './Members.utils';
 
 const t = (key: string, params?: Record<string, string | number>) =>

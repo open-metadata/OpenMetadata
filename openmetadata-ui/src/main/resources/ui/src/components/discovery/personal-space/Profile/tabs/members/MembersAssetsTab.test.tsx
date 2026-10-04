@@ -53,10 +53,7 @@ describe('MembersAssetsTab', () => {
 
   it('renders the summary panel when an asset is previewed', async () => {
     render(
-      <MembersAssetsTab
-        {...baseProps}
-        previewAsset={{ id: 'a1' } as never}
-      />
+      <MembersAssetsTab {...baseProps} previewAsset={{ id: 'a1' } as never} />
     );
 
     expect(await screen.findByTestId('summary-panel')).toBeInTheDocument();

@@ -12,30 +12,30 @@
  */
 
 import {
-    Box,
-    Button,
-    ButtonUtility,
-    EmptyPlaceholder,
-    Input,
-    Table,
-    TableCard,
-    Tabs,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  EmptyPlaceholder,
+  Input,
+  Table,
+  TableCard,
+  Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    Copy01,
-    Edit01 as Edit,
-    Trash01 as Delete
+  Copy01,
+  Edit01 as Edit,
+  Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, {
-    FC,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -45,30 +45,30 @@ import { OperationPermission } from '../../../../../../context/PermissionProvide
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import {
-    Effect,
-    Rule
+  Effect,
+  Rule,
 } from '../../../../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
-    getPolicyByName,
-    getRoleByName,
-    patchPolicy,
-    patchRole
+  getPolicyByName,
+  getRoleByName,
+  patchPolicy,
+  patchRole,
 } from '../../../../../../rest/rolesAPIV1';
 import {
-    getTeamByName,
-    patchTeamDetail
+  getTeamByName,
+  patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../../../common/Loader/Loader';

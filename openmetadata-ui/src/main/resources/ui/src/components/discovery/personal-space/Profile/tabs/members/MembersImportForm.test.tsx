@@ -12,11 +12,11 @@
  */
 
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { SOCKET_EVENTS } from '../../../../../../constants/constants';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';

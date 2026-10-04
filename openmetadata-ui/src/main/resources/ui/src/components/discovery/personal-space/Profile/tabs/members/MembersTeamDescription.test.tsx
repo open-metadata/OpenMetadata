@@ -61,18 +61,14 @@ describe('MembersTeamDescription', () => {
   });
 
   it('shows the no-description placeholder when the team has no description', () => {
-    render(
-      <MembersTeamDescription {...baseProps} team={{} as Team} />
-    );
+    render(<MembersTeamDescription {...baseProps} team={{} as Team} />);
 
     expect(screen.getByText('label.no-description')).toBeInTheDocument();
     expect(screen.queryByTestId('rich-text-preview')).not.toBeInTheDocument();
   });
 
   it('hides the edit button when inline editing is not permitted', () => {
-    render(
-      <MembersTeamDescription {...baseProps} canEditDescInline={false} />
-    );
+    render(<MembersTeamDescription {...baseProps} canEditDescInline={false} />);
 
     expect(
       screen.queryByTestId('edit-description-btn')
@@ -81,9 +77,7 @@ describe('MembersTeamDescription', () => {
 
   it('calls onStartEdit when the edit button is pressed', () => {
     const onStartEdit = jest.fn();
-    render(
-      <MembersTeamDescription {...baseProps} onStartEdit={onStartEdit} />
-    );
+    render(<MembersTeamDescription {...baseProps} onStartEdit={onStartEdit} />);
 
     fireEvent.click(screen.getByTestId('edit-description-btn'));
 

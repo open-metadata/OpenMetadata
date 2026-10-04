@@ -12,33 +12,33 @@
  */
 
 import {
-    Autocomplete,
-    Box,
-    Button,
-    ButtonUtility,
-    EmptyPlaceholder,
-    Input,
-    SelectItemType,
-    Table,
-    TableCard,
-    Tabs,
-    Typography
+  Autocomplete,
+  Box,
+  Button,
+  ButtonUtility,
+  EmptyPlaceholder,
+  Input,
+  SelectItemType,
+  Table,
+  TableCard,
+  Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    Copy01,
-    Edit01 as Edit,
-    Trash01 as Delete
+  Copy01,
+  Edit01 as Edit,
+  Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, {
-    FC,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
@@ -54,13 +54,13 @@ import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
-    getPolicies,
-    getRoleByName,
-    patchRole
+  getPolicies,
+  getRoleByName,
+  patchRole,
 } from '../../../../../../rest/rolesAPIV1';
 import {
-    getTeamByName,
-    patchTeamDetail
+  getTeamByName,
+  patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
 import { getUserById, updateUserDetail } from '../../../../../../rest/userAPI';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
@@ -68,8 +68,8 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../../../common/Loader/Loader';

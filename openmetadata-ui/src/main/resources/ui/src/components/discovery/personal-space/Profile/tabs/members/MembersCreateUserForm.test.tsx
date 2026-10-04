@@ -29,7 +29,9 @@ jest.mock('../../../../../../hooks/useApplicationStore', () => ({
 }));
 
 jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
-  useLimitStore: () => ({ getResourceLimit: jest.fn().mockResolvedValue(undefined) }),
+  useLimitStore: () => ({
+    getResourceLimit: jest.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 jest.mock('../../../../../../rest/auth-API', () => ({
