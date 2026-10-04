@@ -85,7 +85,11 @@ const TeamsPage = () => {
 
   const [isFetchingAdvancedDetails, setFetchingAdvancedDetails] =
     useState<boolean>(true);
-  const [isFetchAllTeamAdvancedDetails, setFetchAllTeamAdvancedDetails] =
+  // Monotonic nonce, not a boolean trigger: a boolean coalesced when a refresh was requested while
+  // an advanced fetch was still in flight (slow under load), silently dropping the post-create
+  // refresh. Each bump is a distinct value so the effect always re-fires.
+  const [advancedFetchNonce, setAdvancedFetchNonce] = useState<number>(0);
+  const [isFetchAllTeamAdvancedDetails, setIsFetchAllTeamAdvancedDetails] =
     useState<boolean>(false);
   const [teamAssetCounts, setTeamAssetCounts] = useState<
     Record<string, number>
@@ -128,7 +132,7 @@ const TeamsPage = () => {
         }));
 
         setChildTeams(modifiedTeams);
-        setFetchAllTeamAdvancedDetails(true);
+        setAdvancedFetchNonce((n) => n + 1);
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.unexpected-response'));
       } finally {
@@ -153,6 +157,7 @@ const TeamsPage = () => {
     updateChildNode = false
   ) => {
     loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
+    setIsFetchAllTeamAdvancedDetails(true);
 
     try {
       const { data } = await getTeams({
@@ -183,7 +188,7 @@ const TeamsPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
-      setFetchAllTeamAdvancedDetails(false);
+      setIsFetchAllTeamAdvancedDetails(false);
     }
     loading && setIsDataLoading((isDataLoading) => --isDataLoading);
   };
@@ -549,10 +554,10 @@ const TeamsPage = () => {
   }, [showDeletedTeam]);
 
   useEffect(() => {
-    if (isFetchAllTeamAdvancedDetails && fqn) {
+    if (advancedFetchNonce > 0 && fqn) {
       fetchAllTeamsAdvancedDetails(false, fqn);
     }
-  }, [isFetchAllTeamAdvancedDetails, fqn]);
+  }, [advancedFetchNonce, fqn]);
 
   if (isPageLoading) {
     return <Loader />;
