@@ -157,7 +157,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     //   Make changes
     const navigateSwitch = page
       .locator('.ant-tree-title:has-text("Insights")')
-      .locator('.ant-switch');
+      .locator('[data-testid^="navigation-switch-"]');
 
     await navigateSwitch.click();
 
@@ -207,7 +207,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     const domainSwitch = page
       .locator('.ant-tree-title:has-text("Domains")')
       .first()
-      .locator('.ant-switch');
+      .locator('[data-testid^="navigation-switch-"]');
 
     await domainSwitch.click();
 
@@ -301,7 +301,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     const exploreSwitch = page.getByTestId('navigation-switch-/explore');
     const insightsSwitch = page
       .locator('.ant-tree-title:has-text("Insights")')
-      .locator('.ant-switch')
+      .locator('[data-testid^="navigation-switch-"]')
       .first();
 
     await exploreSwitch.click();

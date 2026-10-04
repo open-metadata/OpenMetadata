@@ -316,11 +316,6 @@ export const addOwnerFilter = async ({
   // Select owner filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible (fail fast if multiple)
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -346,11 +341,6 @@ export const addOwnerFilter = async ({
   await expect(ownerInput).toBeEnabled();
   await ownerInput.click();
 
-  // Wait for search dropdown to open
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -373,7 +363,7 @@ export const addOwnerFilter = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -396,11 +386,6 @@ export const addEntityFQNFilter = async ({
 
   // Select entity FQN filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -432,11 +417,6 @@ export const addEntityFQNFilter = async ({
   );
   await getSearchResult;
 
-  // Wait for search dropdown to open
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -454,7 +434,7 @@ export const addEntityFQNFilter = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -475,11 +455,6 @@ export const addEventTypeFilter = async ({
 
   // Select event type filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -507,11 +482,6 @@ export const addEventTypeFilter = async ({
     await expect(eventTypeInput).toBeEnabled();
     await eventTypeInput.click();
 
-    // Wait for dropdown to open
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
-
     // CRITICAL: Verify EXACTLY one dropdown is visible
     await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -536,7 +506,7 @@ export const addEventTypeFilter = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -559,11 +529,6 @@ export const addDomainFilter = async ({
 
   // Open filter dropdown
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -589,11 +554,6 @@ export const addDomainFilter = async ({
   await expect(domainInput).toBeVisible();
   await expect(domainInput).toBeEnabled();
   await domainInput.click();
-
-  // Wait for search dropdown to open
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -646,11 +606,6 @@ export const addGMEFilter = async ({
   // Select general metadata events filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -668,7 +623,7 @@ export const addGMEFilter = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -690,14 +645,14 @@ const checkActionOrFilterDetails = async ({
 
       const switchTestId = `${isFilter ? 'filter' : 'trigger'}-switch-${index}`;
 
+      const effectSwitch = page.getByTestId(switchTestId).getByRole('switch');
+
+      await expect(effectSwitch).toBeDisabled();
+
       if (filter.effect === 'include') {
-        await expect(page.getByTestId(switchTestId)).toHaveClass(
-          'ant-switch ant-switch-checked ant-switch-disabled'
-        );
+        await expect(effectSwitch).toBeChecked();
       } else {
-        await expect(page.getByTestId(switchTestId)).not.toHaveClass(
-          'ant-switch ant-switch-checked ant-switch-disabled'
-        );
+        await expect(effectSwitch).not.toBeChecked();
       }
     }
   }
@@ -791,11 +746,6 @@ export const addGetSchemaChangesAction = async ({
   // Select schema changes action
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
 
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -813,7 +763,7 @@ export const addGetSchemaChangesAction = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch).toBeEnabled();
+    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -834,11 +784,6 @@ export const addPipelineStatusUpdatesAction = async ({
 
   // Select pipeline status action
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
-
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -865,11 +810,6 @@ export const addPipelineStatusUpdatesAction = async ({
   await expect(pipelineStatusInput).toBeEnabled();
   await pipelineStatusInput.click();
 
-  // Wait for search dropdown to open
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -893,7 +833,7 @@ export const addPipelineStatusUpdatesAction = async ({
   if (exclude) {
     const triggerSwitch = page.getByTestId(`trigger-switch-${filterNumber}`);
     await expect(triggerSwitch).toBeVisible();
-    await expect(triggerSwitch).toBeEnabled();
+    await expect(triggerSwitch.getByRole('switch')).toBeEnabled();
     await triggerSwitch.click();
   }
 };

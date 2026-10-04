@@ -94,6 +94,7 @@ describe('profileNavConfig', () => {
     expect(PROFILE_NAV_GROUP_ORDER).toEqual([
       'account',
       'administration',
+      'features',
       'workspace',
       'application',
       'credentials',

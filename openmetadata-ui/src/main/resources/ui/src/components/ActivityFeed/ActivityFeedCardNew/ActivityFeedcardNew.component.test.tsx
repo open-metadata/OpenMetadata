@@ -83,8 +83,8 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
 );
 
 jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () =>
-  jest.fn(({ onSave, onTextChange }) => (
-    <div data-testid="reply-editor">
+  jest.fn(({ focused, onSave, onTextChange }) => (
+    <div data-focused={String(Boolean(focused))} data-testid="reply-editor">
       <input
         aria-label="edit"
         data-testid="reply-editor-input"
@@ -205,6 +205,23 @@ describe('ActivityFeedCardNew', () => {
     fireEvent.mouseEnter(screen.getByTestId('feed-card-v2-sidebar'));
 
     expect(screen.getByTestId('feed-actions')).toBeVisible();
+  });
+
+  // FeedEditor no longer focuses itself on mount, so an editor revealed by a
+  // click must ask for focus, or the user clicks twice before typing.
+  it('focuses the comment editor its placeholder reveals', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('comments-input-field'));
+
+    expect(await screen.findByTestId('reply-editor')).toHaveAttribute(
+      'data-focused',
+      'true'
+    );
   });
 
   it('keeps the root actions a direct child of the card body', () => {

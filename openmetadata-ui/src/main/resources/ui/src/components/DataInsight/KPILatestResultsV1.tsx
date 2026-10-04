@@ -13,12 +13,16 @@
 
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  chartColor,
+  hexToRgba,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { Col, Progress, Row, Space, Tooltip } from 'antd';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
-import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
 import { getDaysRemaining } from '../../utils/date-time/DateTimeUtils';
@@ -30,7 +34,7 @@ interface Props {
 
 const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
   const { t } = useTranslation();
-  const { kpiBackgrounds, kpiSeries } = useDataInsightChartColors();
+  const palette = useChartPalette();
   const { latestResultsList } = useMemo(() => {
     return { latestResultsList: Object.entries(kpiLatestResultsRecord) };
   }, [kpiLatestResultsRecord]);
@@ -66,8 +70,8 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
         const daysLeft = getDaysRemaining(resultData.endDate);
 
         const isTargetMet = targetResult.targetMet;
-        const seriesColor = kpiSeries[index % kpiSeries.length];
-        const backgroundColor = kpiBackgrounds[index % kpiBackgrounds.length];
+        const seriesColor = chartColor(palette, index);
+        const backgroundColor = hexToRgba(seriesColor, 0.1);
 
         return (
           <Row data-testid={name} key={name}>

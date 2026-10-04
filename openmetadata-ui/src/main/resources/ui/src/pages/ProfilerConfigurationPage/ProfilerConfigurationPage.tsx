@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Collapse,
-  Form,
-  Row,
-  Select,
-  Switch,
-  TreeSelect,
-} from 'antd';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Collapse, Form, Row, Select, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -280,8 +271,8 @@ const ProfilerConfigurationPage = () => {
                             <Col className="d-flex justify-between" span={3}>
                               <Form.Item
                                 name={[name, 'disabled']}
-                                valuePropName="checked">
-                                <Switch data-testid="disabled-switch" />
+                                valuePropName="isSelected">
+                                <Toggle data-testid="disabled-switch" />
                               </Form.Item>
                               <Form.Item>
                                 <Button
@@ -348,11 +339,11 @@ const ProfilerConfigurationPage = () => {
                       <Col className="p-l-lg" flex="none">
                         <Form.Item
                           name={['sampleDataConfig', 'storeSampleData']}
-                          valuePropName="checked">
-                          <Switch
+                          valuePropName="isSelected">
+                          <Toggle
                             data-testid="store-sample-data-switch"
-                            onChange={(checked) => {
-                              if (checked) {
+                            onChange={(isSelected) => {
+                              if (isSelected) {
                                 form.setFieldValue(
                                   ['sampleDataConfig', 'readSampleData'],
                                   true
@@ -377,8 +368,8 @@ const ProfilerConfigurationPage = () => {
                       <Col className="p-l-lg" flex="none">
                         <Form.Item
                           name={['sampleDataConfig', 'readSampleData']}
-                          valuePropName="checked">
-                          <Switch data-testid="read-sample-data-switch" />
+                          valuePropName="isSelected">
+                          <Toggle data-testid="read-sample-data-switch" />
                         </Form.Item>
                       </Col>
                     </Row>

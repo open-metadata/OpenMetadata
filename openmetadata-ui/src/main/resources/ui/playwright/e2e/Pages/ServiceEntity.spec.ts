@@ -35,6 +35,7 @@ import {
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 const entities = {
   'Api Service': ApiServiceClass,
@@ -80,7 +81,11 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-Object.entries(entities).forEach(([key, EntityClass]) => {
+Object.entries(
+  pickEntityMatrix(__filename, entities, {
+    'Database Service': DatabaseServiceClass,
+  })
+).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
 

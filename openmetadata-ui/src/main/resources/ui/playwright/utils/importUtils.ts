@@ -483,9 +483,9 @@ const selectOwnersOnTab = async (
     await page.getByTestId(searchBarTestId).clear();
     await page.getByTestId(searchBarTestId).fill(owner);
     await searchOwner;
-    await expect(
-      page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
-    ).toHaveCount(0);
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="select-owner-tabs"]')
+    );
 
     // Scope to the open tab's panel, as addOwnerWithoutValidation does: the
     // picker keeps a visited tab's panel mounted, so after the Users pass the

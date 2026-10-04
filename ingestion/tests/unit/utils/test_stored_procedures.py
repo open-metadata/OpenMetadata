@@ -237,3 +237,42 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text="SELECT begin_dt - 1\nFROM t\nWHERE id IN (1,2)") is None
 
         assert get_procedure_name_from_call(query_text='SELECT begin_dt, "Some Col"\nFROM t\nWHERE x IN (1)') is None
+
+    def test_get_procedure_name_preserves_dots_inside_double_quoted_identifiers(self):
+        """A `.` inside a double-quoted identifier (Snowflake/Oracle form) is a literal character
+        of the name, not a separator between qualifiers. The StoredProcedure entity is keyed by
+        the real, undelimited name (e.g. Snowflake's `ACCOUNT_USAGE.PROCEDURES.PROCEDURE_NAME`
+        carries it verbatim), and the query-history row only supplies `QUERY_TEXT`, so this
+        parser is the sole source of the name to join on. Splitting on every dot returned only
+        the tail (`"proc.v2"` -> `"v2"`), so `procedures_by_name.get("v2")` missed the entity
+        keyed `proc.v2` and lineage was silently dropped.
+
+        BigQuery's backtick form is the opposite: the whole backtick blob is one qualified path
+        (`project.dataset.routine`) and its internal dots are separators, so those keep returning
+        the last segment — covered by `test_get_procedure_name_parses_quoted_identifiers`.
+
+        Regression test for the unconditional `.split(".")[-1]` introduced in 660bf01a5b (#13655),
+        which predates the `"..."` alternation of `_QUALIFIED_NAME` added in e38dee4222 (#32737).
+
+        https://docs.snowflake.com/en/sql-reference/identifiers-syntax
+        https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/identifiers.html
+        """
+        assert get_procedure_name_from_call(query_text='CALL "proc.v2"()') == "proc.v2"
+
+        assert get_procedure_name_from_call(query_text='CALL my_db.my_schema."proc.v2"(1)') == "proc.v2"
+
+        assert get_procedure_name_from_call(query_text='CALL db."report.run"(1)') == "report.run"
+
+        assert get_procedure_name_from_call(query_text='CALL "a.b.c"(1)') == "a.b.c"
+
+        # A dot between two quoted segments is a separator: only the last segment is the name.
+        assert get_procedure_name_from_call(query_text='CALL schema."a.b"."c.d"(1)') == "c.d"
+
+        # Quoted dot in a BEGIN ... END; (Oracle PL/SQL) form, which routes through the same parser.
+        assert get_procedure_name_from_call(query_text='BEGIN\n  schema."proc.v2";\nEND;') == "proc.v2"
+
+        # Case-insensitive keyword + lowered name still hold for quoted dot names.
+        assert get_procedure_name_from_call(query_text='call "Proc.V2"(1)') == "proc.v2"
+
+        # sensitive_match drops re.IGNORECASE while preserving the quoted dot.
+        assert get_procedure_name_from_call(query_text='call schema."proc.v2"(1)', sensitive_match=True) == "proc.v2"

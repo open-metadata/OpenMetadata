@@ -146,7 +146,11 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).toBeVisible();
+        // A label string can legitimately appear more than once on the page, so
+        // assert that at least one visible match exists.
+        await expect(
+          testUserPage.getByText(testId).filter({ visible: true })
+        ).not.toHaveCount(0);
 
         break;
       }
@@ -223,7 +227,9 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).not.toBeVisible();
+        await expect(
+          testUserPage.getByText(testId).filter({ visible: true })
+        ).toHaveCount(0);
 
         break;
       }

@@ -59,6 +59,8 @@ import {
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  AppModeHint,
+  AppModeSession,
   clearAppMode,
   isAppModeHintFresh,
   readAppModeHint,
@@ -157,6 +159,30 @@ const isSilentReauthRecoverable = (payload: RefreshFailedPayload): boolean =>
   payload.source === 'renewer' && isReauthRequiredError(payload.error);
 
 /**
+ * Decide whether the boot resolver should adopt a fresh cross-tab
+ * `omAppModeHint` (returning early) instead of falling through to the
+ * persona-doc fetch. The hint is a single shared `localStorage` key with
+ * no per-tab identity, and `refreshHint` writes it from THIS tab's own
+ * `currentMode` on a fixed interval + on every `visibilitychange`/`focus`.
+ *
+ * A `'boot'` session whose mode MATCHES the hint almost certainly means the
+ * hint is a self-refresh from this tab's own heartbeat — adopting it would
+ * skip the persona-doc fetch the `'boot'` re-resolve is documented to
+ * perform, so an admin's persona-`appMode` downgrade (AI → Classic) would
+ * never reach an alive AI tab on reload. Only adopt a hint that represents
+ * a *different* mode than the existing boot session (genuine cross-tab
+ * inheritance — e.g. cmd+click opened a tab whose sibling is in a different
+ * mode), or when there's no existing session at all (a truly fresh tab).
+ */
+const shouldAdoptHint = (
+  hint: AppModeHint | null,
+  existingSession: AppModeSession | null
+): boolean =>
+  isAppModeHintFresh(hint) &&
+  hint?.mode !== undefined &&
+  hint.mode !== existingSession?.mode;
+
+/**
  * Boot-time app-mode plumbing, run once `currentUser` is known (both the
  * returning-session path and the fresh-login path need it). Fetches the
  * user's own preferences bag and the tenant-wide app-mode default in
@@ -207,7 +233,7 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
     return;
   }
   const hint = readAppModeHint();
-  if (isAppModeHintFresh(hint) && hint?.mode) {
+  if (shouldAdoptHint(hint, existingSession) && hint?.mode) {
     // Adopt the sibling tab's mode so this new tab renders the right
     // shell. `source: 'boot'` keeps the tuple re-resolvable on the next
     // reload and skips re-writing the hint (no self-leak).

@@ -28,6 +28,7 @@ import {
   ModifiedDestination,
   ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import {
   AlertAiFormFieldsProps,
@@ -440,19 +441,22 @@ export const getDestinationTypeUpdate = (
   const destinationType = nextDestinationType as
     | SubscriptionCategory
     | SubscriptionType;
+  const configField = getConfigFieldFromDestinationType(nextDestinationType);
   const nextDestination: Omit<ModifiedDestination, 'type'> & {
     type?: SubscriptionType;
   } = {
-    ...destination,
     category: isInternalDestinationType
       ? (nextDestinationType as SubscriptionCategory)
       : SubscriptionCategory.External,
     destinationType,
+    config: configField ? { [configField]: true } : undefined,
+    downstreamDepth: undefined,
+    notifyDownstream: undefined,
   };
 
-  if (!isInternalDestinationType) {
-    nextDestination.type = nextDestinationType as SubscriptionType;
-  }
+  nextDestination.type = isInternalDestinationType
+    ? undefined
+    : (nextDestinationType as SubscriptionType);
 
   return nextDestination as ModifiedDestination;
 };
