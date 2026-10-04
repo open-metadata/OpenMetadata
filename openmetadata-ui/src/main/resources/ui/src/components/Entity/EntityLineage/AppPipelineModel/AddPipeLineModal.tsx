@@ -69,6 +69,7 @@ const AddPipeLineModal = ({
   const getSearchResults = async (value = '*') => {
     try {
       const data = await searchQuery({
+        skipDomainFilter: true,
         query: value,
         pageNumber: 1,
         pageSize: PAGE_SIZE,

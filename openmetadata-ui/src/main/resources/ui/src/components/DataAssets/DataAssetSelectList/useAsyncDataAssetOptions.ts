@@ -57,6 +57,7 @@ export const useAsyncDataAssetOptions = ({
       page: number
     ): Promise<FetchOptionsResponse> => {
       const response = await searchQuery({
+        skipDomainFilter: true,
         query: searchQueryParam ? `*${searchQueryParam}*` : '*',
         pageNumber: page,
         pageSize: PAGE_SIZE,

@@ -103,6 +103,7 @@ const EntityReferencePropertyEdit = ({
     async (text: string) => {
       try {
         const response = await searchQuery({
+          skipDomainFilter: true,
           query: text ? `*${text}*` : '*',
           pageNumber: 1,
           pageSize: PAGE_SIZE,

@@ -385,6 +385,8 @@ export type SearchRequest<
   explain?: boolean;
   filters?: string;
   excludeSourceFields?: string[];
+  /** Pickers inside a form search every domain, not just the selected navbar domain. */
+  skipDomainFilter?: boolean;
 } & (
   | {
       fetchSource: true;

@@ -644,6 +644,7 @@ class JSONLogicSearchClassBase {
   }) => {
     return (search) => {
       return searchQuery({
+        skipDomainFilter: true,
         query: Array.isArray(search) ? search.join(',') : search ?? '',
         pageNumber: 1,
         pageSize: PAGE_SIZE_BASE,

@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { SORT_ORDER } from '../enums/common.enum';
 import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
@@ -171,6 +172,7 @@ export const getListTestCaseBySearch = async (
     `${testCaseUrl}/search/list`,
     {
       params: serializedParams,
+      headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
       ...(config?.signal && { signal: config.signal }),
     }
   );

@@ -105,6 +105,7 @@ export const searchEntity = async ({
 }) => {
   try {
     const response = await searchQuery({
+      skipDomainFilter: true,
       query: searchText,
       pageNumber: 1,
       pageSize: PAGE_SIZE_LARGE,
@@ -250,6 +251,7 @@ export const getEntityByIdOptions = async (
 
   try {
     const response = await searchQuery({
+      skipDomainFilter: true,
       query: trimmed,
       pageNumber: 1,
       pageSize: PAGE_SIZE_LARGE,
@@ -321,6 +323,7 @@ export const getFieldByArgumentType = (
 
     try {
       const response = await searchQuery({
+        skipDomainFilter: true,
         query: trimmed,
         pageNumber: 1,
         pageSize: PAGE_SIZE_LARGE,

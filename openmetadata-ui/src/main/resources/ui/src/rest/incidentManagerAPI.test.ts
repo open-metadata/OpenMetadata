@@ -12,6 +12,7 @@
  */
 
 import axios from 'axios';
+import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { IncidentGroupBy } from '../generated/tests/testCaseIncidentGroup';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import APIClient from './axiosClient';
@@ -130,6 +131,7 @@ describe('incidentManagerAPI', () => {
       });
 
       expect(APIClient.get).toHaveBeenCalledWith(INCIDENT_URL, {
+        headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
         params: {
           testDefinition: 'columnValuesToBeUnique',
           owner: 'aaron_johnson0',
@@ -147,6 +149,7 @@ describe('incidentManagerAPI', () => {
       await getListTestCaseIncidentStatus({});
 
       expect(APIClient.get).toHaveBeenCalledWith(INCIDENT_URL, {
+        headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
         params: { limit: 10 },
       });
     });
