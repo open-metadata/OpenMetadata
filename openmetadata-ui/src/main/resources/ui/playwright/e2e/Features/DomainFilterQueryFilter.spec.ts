@@ -834,11 +834,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await expect(page.locator(`a[href*="${fqn}"]`).first()).not.toBeVisible();
     };
 
-    // The dropdown's opening aggregation is a terms agg capped at 10 buckets
-    // ordered by key, so any facet with more than 10 distinct values in the
-    // environment (e.g. leftover `Tier.pw-tier-*` tags from other specs) can
-    // push the wanted option out of the list. Typing re-runs the aggregation
-    // server-side filtered to the term, which always returns it.
+    // The open dropdown is capped at 10 buckets ordered by key, so a crowded facet hides the option; typing re-queries for it.
     const searchInDropdown = async (searchText: string) => {
       const aggregation = waitForAggregation(page, { value: searchText });
       await page
@@ -857,7 +853,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         state: 'visible',
       });
       const checkbox = page.getByTestId('drop-down-menu').getByTestId(tier);
-      await searchInDropdown(tier.replace(/^tier\./, ''));
+      await searchInDropdown(tier);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(
