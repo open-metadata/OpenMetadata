@@ -1255,6 +1255,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     eioOptions.setAllowedCorsOrigins(null);
     eioOptions.setMaxTimeoutThreadPoolSize(8);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
+    initializeWebSocketRelay(catalogConfig, environment);
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
     environment
@@ -1279,6 +1280,51 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
     }
+  }
+
+  // Selects the cross-pod WebSocket relay behind WebSocketManager.sendToOne: Redis pub/sub when a
+  // Redis cache is configured, the DB-poll fallback when explicitly enabled for a cache=none
+  // multi-pod deployment, otherwise the no-op (single-pod). Fixes completion frames dropped when
+  // the
+  // job runs on a different pod than the one holding the user's socket (#33179).
+  private void initializeWebSocketRelay(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    org.openmetadata.service.cache.CacheConfig cacheConfig = catalogConfig.getCacheConfig();
+    org.openmetadata.service.socket.WebSocketRelay relay = null;
+    try {
+      if (cacheConfig != null
+          && cacheConfig.provider == org.openmetadata.service.cache.CacheConfig.Provider.redis) {
+        relay = new org.openmetadata.service.socket.RedisWebSocketRelay(cacheConfig);
+      } else if (cacheConfig != null && cacheConfig.webSocketRelayEnabled) {
+        relay =
+            new org.openmetadata.service.socket.DbWebSocketRelay(
+                Entity.getJdbi().onDemand(org.openmetadata.service.socket.WsRelayDAO.class));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to initialize WebSocket relay; staying node-local", e);
+      relay = null;
+    }
+    if (relay == null) {
+      return; // WebSocketManager defaults to a no-op relay (single-pod behavior).
+    }
+    relay.start();
+    WebSocketManager.getInstance().setRelay(relay);
+    org.openmetadata.service.socket.WebSocketRelay startedRelay = relay;
+    environment
+        .lifecycle()
+        .manage(
+            new Managed() {
+              @Override
+              public void start() {
+                // Already started above so it is active before the first frame.
+              }
+
+              @Override
+              public void stop() {
+                startedRelay.stop();
+              }
+            });
+    LOG.info("WebSocket relay enabled: {}", relay.getClass().getSimpleName());
   }
 
   protected void registerDistributedJobParticipant(Environment environment, Jdbi jdbi) {

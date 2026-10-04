@@ -12,7 +12,9 @@
  */
 package org.openmetadata.service.socket;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doThrow;
@@ -168,6 +170,78 @@ class WebSocketManagerTest {
 
     verify(sessionService, times(1)).getFreshSessionById("session-a");
     verify(socket, never()).disconnect(anyBoolean());
+  }
+
+  @Test
+  void sendToOne_deliversLocallyAndPublishesToRelay() {
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket socket = mock(SocketIoSocket.class);
+    when(socket.getId()).thenReturn("s1");
+    Map<String, SocketIoSocket> sockets = new ConcurrentHashMap<>();
+    sockets.put("s1", socket);
+    manager.getActivityFeedEndpoints().put(userId, sockets);
+    CapturingRelay relay = new CapturingRelay();
+    manager.setRelay(relay);
+
+    manager.sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, "payload");
+
+    verify(socket, times(1)).send(WebSocketManager.CSV_IMPORT_CHANNEL, "payload");
+    assertEquals(1, relay.count);
+    assertEquals(userId, relay.lastUser);
+    assertEquals(WebSocketManager.CSV_IMPORT_CHANNEL, relay.lastEvent);
+    assertEquals("payload", relay.lastMessage);
+  }
+
+  @Test
+  void sendToOne_publishesToRelayEvenWhenNoLocalSocket() {
+    UUID userId = UUID.randomUUID();
+    CapturingRelay relay = new CapturingRelay();
+    manager.setRelay(relay);
+
+    manager.sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, "payload");
+
+    // No local socket: the peer pod holding it must still be reached via the relay.
+    assertEquals(1, relay.count);
+    assertEquals(userId, relay.lastUser);
+  }
+
+  @Test
+  void sendToOneLocal_deliversWithoutPublishing() {
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket socket = mock(SocketIoSocket.class);
+    when(socket.getId()).thenReturn("s1");
+    Map<String, SocketIoSocket> sockets = new ConcurrentHashMap<>();
+    sockets.put("s1", socket);
+    manager.getActivityFeedEndpoints().put(userId, sockets);
+    CapturingRelay relay = new CapturingRelay();
+    manager.setRelay(relay);
+
+    manager.sendToOneLocal(userId, WebSocketManager.CSV_IMPORT_CHANNEL, "payload");
+
+    verify(socket, times(1)).send(WebSocketManager.CSV_IMPORT_CHANNEL, "payload");
+    // A relayed frame must not be re-published, or peers would loop.
+    assertEquals(0, relay.count);
+  }
+
+  @Test
+  void setRelay_nullFallsBackToNoop() {
+    manager.setRelay(null);
+    assertInstanceOf(NoopWebSocketRelay.class, manager.getRelay());
+  }
+
+  private static final class CapturingRelay implements WebSocketRelay {
+    private int count;
+    private UUID lastUser;
+    private String lastEvent;
+    private String lastMessage;
+
+    @Override
+    public void publish(UUID userId, String event, String message) {
+      count++;
+      lastUser = userId;
+      lastEvent = event;
+      lastMessage = message;
+    }
   }
 
   private UserSession activeSession(String sessionId, UUID userId) {
