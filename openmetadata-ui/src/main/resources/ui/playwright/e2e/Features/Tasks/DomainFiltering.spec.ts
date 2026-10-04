@@ -37,7 +37,7 @@ const switchDomain = async (
   domain?: Domain['responseData']
 ) => {
   await (domain
-    ? setPersistedDomain(apiContext, domain.id)
+    ? setPersistedDomain(apiContext, domain.id ?? '')
     : clearPersistedDomain(apiContext));
   await page.reload();
 };
@@ -150,7 +150,9 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
 
       expect(response.status()).toBe(200);
       expect(response.url()).toContain(
-        `domain=${encodeURIComponent(domainA.responseData.fullyQualifiedName)}`
+        `domain=${encodeURIComponent(
+          domainA.responseData.fullyQualifiedName ?? ''
+        )}`
       );
     } finally {
       await afterAction();
@@ -182,7 +184,9 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
 
       expect(response.status()).toBe(200);
       expect(response.url()).toContain(
-        `domain=${encodeURIComponent(domainB.responseData.fullyQualifiedName)}`
+        `domain=${encodeURIComponent(
+          domainB.responseData.fullyQualifiedName ?? ''
+        )}`
       );
     } finally {
       await afterAction();
