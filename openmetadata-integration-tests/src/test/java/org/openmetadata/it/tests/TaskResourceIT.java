@@ -2315,6 +2315,52 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testVisibleEndpointSearchMatchesTextAsTyped(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Table table =
+        createTableWithDomainAndOwners(
+            ns, createDomain(ns, "visible-search-domain").getEntityReference(), List.of());
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "visible-search", table)
+                    .withDisplayName("Review the customer's order " + ns.prefix("search"))
+                    .withAssignees(List.of(shared.USER1.getFullyQualifiedName())));
+
+    // `q` is a bound LIKE value: an apostrophe must match as typed, not doubled.
+    assertTrue(
+        searchVisibleTaskIds("customer's order " + ns.prefix("search")).contains(task.getId()),
+        "An apostrophe in the search text should match as typed");
+    // `%` and `_` are escaped, so they cannot act as wildcards.
+    assertFalse(
+        searchVisibleTaskIds("%").contains(task.getId()), "A bare % should not match every task");
+    assertFalse(
+        searchVisibleTaskIds("no-such-task-" + ns.prefix("search")).contains(task.getId()),
+        "Unrelated text should not match");
+  }
+
+  private List<UUID> searchVisibleTaskIds(String query) throws Exception {
+    String response =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tasks/visible",
+                null,
+                RequestOptions.builder()
+                    .queryParam("q", query)
+                    .queryParam("statusGroup", "open")
+                    .queryParam("limit", "100")
+                    .build());
+    List<UUID> ids = new ArrayList<>();
+    JsonUtils.readTree(response)
+        .path("data")
+        .forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
+  @Test
   void testScopedTaskEndpointsHonorTimeRange(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
     Domain domain = createDomain(ns, "time-range-domain");

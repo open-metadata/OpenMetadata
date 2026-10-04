@@ -999,7 +999,7 @@ test.describe('Impact Analysis', () => {
     const rowsWithColumn = page.locator(
       `[data-row-key*="${columnName}"], tbody tr:has-text("${columnName}")`
     );
-    await expect(rowsWithColumn.first()).toBeVisible();
+    await expect(rowsWithColumn.filter({ visible: true })).not.toHaveCount(0);
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);

@@ -10,7 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { UIEvent, useCallback, useState } from 'react';
 
-.custom-data-insight-tooltip-title {
-  color: var(--om-color-text-primary);
-}
+/**
+ * Whether a scroll area has left its top edge, so the header pinned above it
+ * can lift with a shadow while content passes underneath. React skips the
+ * re-render when the flag has not flipped, so wiring `onScroll` is cheap.
+ */
+export const useIsScrolled = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  const onScroll = useCallback((event: UIEvent<HTMLElement>) => {
+    setIsScrolled(event.currentTarget.scrollTop > 0);
+  }, []);
+
+  return { isScrolled, onScroll };
+};

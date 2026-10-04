@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,18 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../../styles/variables.less');
 
-.dq-pie-chart-container {
-  .chart-center-text-header {
-    font-size: var(--om-font-size-sm);
-    font-weight: var(--om-font-weight-semibold);
-    fill: @grey-900;
-  }
+import { TargetEntityType } from '../../../../../../generated/governance/intakeForm';
 
-  .chart-center-text-sub-header {
-    font-weight: var(--om-font-weight-medium);
-    fill: @grey-700;
-    font-size: var(--om-font-size-xs);
-  }
-}
+export type GovernanceView =
+  | { type: 'landing' }
+  | { type: 'glossary-list' }
+  | { type: 'glossary-add' }
+  | { type: 'glossary-edit'; name: string }
+  | { type: 'intake-list' }
+  | { type: 'intake-add'; entityType: TargetEntityType }
+  | { type: 'intake-edit'; id: string };
