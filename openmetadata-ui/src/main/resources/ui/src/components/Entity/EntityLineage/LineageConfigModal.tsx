@@ -20,50 +20,13 @@ import {
 import React, { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { LINEAGE_CONFIG_FIELDS } from '../../../constants/Lineage.constants';
+import { getLineageConfigFormValues } from '../../../utils/EntityLineagePureUtils';
 import {
   LineageConfig,
+  LineageConfigFormValues,
   LineageConfigModalProps,
 } from './EntityLineage.interface';
-
-type DepthField = 'upstreamDepth' | 'downstreamDepth' | 'nodesPerLayer';
-
-type LineageConfigFormValues = Record<DepthField, string>;
-
-const FIELDS: {
-  name: DepthField;
-  label: string;
-  tooltip: string;
-  testId: string;
-  min: number;
-}[] = [
-  {
-    name: 'upstreamDepth',
-    label: 'label.upstream-depth',
-    tooltip: 'message.upstream-depth-tooltip',
-    testId: 'field-upstream',
-    min: 0,
-  },
-  {
-    name: 'downstreamDepth',
-    label: 'label.downstream-depth',
-    tooltip: 'message.downstream-depth-tooltip',
-    testId: 'field-downstream',
-    min: 0,
-  },
-  {
-    name: 'nodesPerLayer',
-    label: 'label.nodes-per-layer',
-    tooltip: 'message.nodes-per-layer-tooltip',
-    testId: 'field-nodes-per-layer',
-    min: 5,
-  },
-];
-
-const toFormValues = (config: LineageConfig): LineageConfigFormValues => ({
-  upstreamDepth: String(config.upstreamDepth ?? ''),
-  downstreamDepth: String(config.downstreamDepth ?? ''),
-  nodesPerLayer: String(config.nodesPerLayer ?? ''),
-});
 
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
@@ -73,12 +36,12 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const { control, handleSubmit, reset } = useForm<LineageConfigFormValues>({
-    defaultValues: toFormValues(config),
+    defaultValues: getLineageConfigFormValues(config),
   });
 
   useEffect(() => {
     if (visible) {
-      reset(toFormValues(config));
+      reset(getLineageConfigFormValues(config));
     }
   }, [visible, config, reset]);
 
@@ -105,42 +68,44 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
           onClose={onCancel}>
           <Dialog.Content>
             <form className="tw:flex tw:flex-col tw:gap-4" onSubmit={onSubmit}>
-              {FIELDS.map(({ name, label, tooltip, testId, min }) => (
-                <Controller
-                  control={control}
-                  key={name}
-                  name={name}
-                  render={({ field, fieldState }) => (
-                    <Input
-                      isRequired
-                      hint={fieldState.error?.message}
-                      inputDataTestId={testId}
-                      isInvalid={Boolean(fieldState.error)}
-                      label={t(label)}
-                      name={field.name}
-                      ref={field.ref}
-                      tooltip={t(tooltip)}
-                      type="number"
-                      validationBehavior="aria"
-                      value={field.value}
-                      onBlur={field.onBlur}
-                      onChange={field.onChange}
-                    />
-                  )}
-                  rules={{
-                    required: t('message.field-text-is-required', {
-                      fieldText: t(label),
-                    }),
-                    min: {
-                      value: min,
-                      message: t('message.entity-size-less-than', {
-                        entity: t(label),
-                        min,
+              {LINEAGE_CONFIG_FIELDS.map(
+                ({ name, label, tooltip, testId, min }) => (
+                  <Controller
+                    control={control}
+                    key={name}
+                    name={name}
+                    render={({ field, fieldState }) => (
+                      <Input
+                        isRequired
+                        hint={fieldState.error?.message}
+                        inputDataTestId={testId}
+                        isInvalid={Boolean(fieldState.error)}
+                        label={t(label)}
+                        name={field.name}
+                        ref={field.ref}
+                        tooltip={t(tooltip)}
+                        type="number"
+                        validationBehavior="aria"
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                      />
+                    )}
+                    rules={{
+                      required: t('message.field-text-is-required', {
+                        fieldText: t(label),
                       }),
-                    },
-                  }}
-                />
-              ))}
+                      min: {
+                        value: min,
+                        message: t('message.entity-size-less-than', {
+                          entity: t(label),
+                          min,
+                        }),
+                      },
+                    }}
+                  />
+                )
+              )}
             </form>
           </Dialog.Content>
           <Dialog.Footer>

@@ -50,6 +50,21 @@ import type { Edge, LineageConfig } from '../../../interface/lineage.interface';
 
 export type { LineageConfig };
 
+export type LineageConfigDepthField =
+  | 'upstreamDepth'
+  | 'downstreamDepth'
+  | 'nodesPerLayer';
+
+export type LineageConfigFormValues = Record<LineageConfigDepthField, string>;
+
+export interface LineageConfigField {
+  name: LineageConfigDepthField;
+  label: string;
+  tooltip: string;
+  testId: string;
+  min: number;
+}
+
 export interface LineageConfigModalProps {
   visible: boolean;
   config: LineageConfig;

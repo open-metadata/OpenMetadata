@@ -15,6 +15,7 @@ import {
   Select,
   SelectItemType,
 } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Heading } from 'react-aria-components';
@@ -30,6 +31,7 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { AddLineagePopoverProps } from './AddLineagePopover.interface';
 
 // Only entity types whose search hits carry columns via getEntityChildrenAndLabel's
@@ -73,18 +75,22 @@ const AddLineagePopover = ({
   const search = useMemo(
     () =>
       debounce(async (index: SearchIndex, text: string) => {
-        const response = await searchQuery({
-          query: text,
-          searchIndex: index,
-          pageNumber: 1,
-          pageSize: PAGE_SIZE,
-          includeDeleted: false,
-        });
-        setHits(
-          response.hits.hits
-            .map(({ _source }) => _source as unknown as EntityHit)
-            .filter((searchHit) => searchHit.id !== excludeEntityId)
-        );
+        try {
+          const response = await searchQuery({
+            query: text,
+            searchIndex: index,
+            pageNumber: 1,
+            pageSize: PAGE_SIZE,
+            includeDeleted: false,
+          });
+          setHits(
+            response.hits.hits
+              .map(({ _source }) => _source as unknown as EntityHit)
+              .filter((searchHit) => searchHit.id !== excludeEntityId)
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }, 300),
     [excludeEntityId]
   );
@@ -179,7 +185,10 @@ const AddLineagePopover = ({
           selectedKey={type ?? null}
           size="sm"
           onSelectionChange={(key) => {
+            // A search queued for the previous type must not refill the list.
+            search.cancel();
             setType(key as SearchIndex);
+            setQuery('');
             setEntity(undefined);
             setHits([]);
           }}>

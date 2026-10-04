@@ -49,9 +49,7 @@ describe('LineageNodeMenu', () => {
     const triggerRef = onEdit.mock.calls[0][1];
 
     expect(triggerRef.current).toBeInstanceOf(HTMLElement);
-    expect(
-      triggerRef.current.contains(screen.getByTestId('lineage-node-menu'))
-    ).toBe(true);
+    expect(triggerRef.current).toBe(screen.getByTestId('lineage-node-menu'));
   });
 
   it('deletes when allowed and hides delete otherwise', async () => {

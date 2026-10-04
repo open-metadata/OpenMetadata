@@ -15,12 +15,14 @@ import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { searchQuery } from '../../../rest/searchAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import AddLineagePopover from './AddLineagePopover';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 jest.mock('../../../rest/searchAPI', () => ({ searchQuery: jest.fn() }));
+jest.mock('../../../utils/ToastUtils', () => ({ showErrorToast: jest.fn() }));
 
 const hit = (id: string, name: string, extra = {}) => ({
   _source: {
@@ -134,6 +136,40 @@ describe('AddLineagePopover', () => {
         entity: { id: 'b', type: 'table', fullyQualifiedName: 's.d.sc.orders' },
       })
     );
+  });
+
+  it('shows an error toast when the search fails', async () => {
+    const error = new Error('search failed');
+    (searchQuery as jest.Mock).mockRejectedValueOnce(error);
+    open();
+    await pickType(user);
+    await searchEntity(user, 'ord');
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+  });
+
+  it('drops a pending search when the type changes', async () => {
+    open();
+    await pickType(user);
+    await user.type(
+      within(screen.getByTestId('add-lineage-entity-input')).getByRole(
+        'combobox'
+      ),
+      'ord'
+    );
+    await user.keyboard('{Escape}');
+    await openTypeSelect(user);
+    await user.click(
+      await screen.findByRole('option', { name: 'label.dashboard-plural' })
+    );
+    await act(async () => jest.advanceTimersByTime(300));
+
+    expect(searchQuery).not.toHaveBeenCalled();
+    expect(
+      within(screen.getByTestId('add-lineage-entity-input')).getByRole(
+        'combobox'
+      )
+    ).toHaveValue('');
   });
 
   it('asks for a column when opened from a column and submits the column', async () => {

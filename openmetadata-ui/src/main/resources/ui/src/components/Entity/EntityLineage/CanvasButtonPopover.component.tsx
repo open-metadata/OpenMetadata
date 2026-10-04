@@ -13,21 +13,11 @@
 import { Badge } from '@openmetadata/ui-core-components';
 import React, { MutableRefObject, useCallback } from 'react';
 import { Edge, Viewport } from 'reactflow';
+import { PIPELINE_STATUS_BADGE_COLOR } from '../../../constants/Lineage.constants';
 import { CanvasButton } from '../../../utils/CanvasButtonUtils';
 import { getPipelineStatusClass } from '../../../utils/PipelineStatusUtils';
 import { getAbsolutePosition } from '../../../utils/ViewportUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
-
-// getPipelineStatusClass returns a legacy antd-tag colour name; map it to the
-// core Badge's semantic color palette.
-const PIPELINE_STATUS_BADGE_COLOR: Record<
-  string,
-  'success' | 'error' | 'warning'
-> = {
-  green: 'success',
-  red: 'error',
-  amber: 'warning',
-};
 
 export interface CanvasButtonPopoverProps {
   hoveredButton: CanvasButton;
@@ -87,7 +77,7 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
         extraInfo={
           pipelineStatus && (
             <Badge
-              color={PIPELINE_STATUS_BADGE_COLOR[pipelineStatusClass] ?? 'gray'}
+              color={PIPELINE_STATUS_BADGE_COLOR[pipelineStatusClass]}
               data-testid="pipeline-status-badge"
               size="sm"
               type="pill-color">

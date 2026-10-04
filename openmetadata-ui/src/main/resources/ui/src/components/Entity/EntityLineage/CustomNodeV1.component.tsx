@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from '@openmetadata/ui-core-components';
+import { Box, Button, Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import {
   memo,
@@ -407,9 +407,12 @@ const CustomNodeV1 = (props: NodeProps) => {
           node={sceneNode}
           onDrill={onSceneDrill}
         />
-        <div className="label-container tw:flex tw:items-start tw:justify-between tw:bg-surface">
+        <Box
+          align="start"
+          className="label-container tw:bg-surface"
+          justify="between">
           {nodeLabel}
-        </div>
+        </Box>
         <NodeHandles
           expandCollapseHandles={handlesElement}
           nodeType={nodeType}
