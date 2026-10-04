@@ -35,13 +35,13 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import {
-    createTeam,
-    deleteUserFromTeam,
-    getTeamByName,
-    getTeams,
-    getTeamsAssetCounts,
-    patchTeamDetail,
-    updateUsersFromTeam
+  createTeam,
+  deleteUserFromTeam,
+  getTeamByName,
+  getTeams,
+  getTeamsAssetCounts,
+  patchTeamDetail,
+  updateUsersFromTeam,
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
