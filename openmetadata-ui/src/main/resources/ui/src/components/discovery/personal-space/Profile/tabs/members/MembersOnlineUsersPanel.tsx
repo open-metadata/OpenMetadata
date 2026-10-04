@@ -128,7 +128,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     }
 
     handlePageChange(newPage);
-    fetchOnlineUsers({ [cursorType]: cursor });
+    void fetchOnlineUsers({ [cursorType]: cursor });
   };
 
   const handleSearch = useCallback(
@@ -137,7 +137,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
 
       if (!query.trim()) {
         handlePageChange(INITIAL_PAGING_VALUE);
-        fetchOnlineUsers();
+        void fetchOnlineUsers();
 
         return;
       }
@@ -188,7 +188,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
 
   useEffect(() => {
     if (!searchText) {
-      fetchOnlineUsers();
+      void fetchOnlineUsers();
     }
     // Refetch on time-window / page-size change; search is handled separately.
     // eslint-disable-next-line react-hooks/exhaustive-deps

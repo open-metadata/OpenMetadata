@@ -483,14 +483,13 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
   );
 
   const handleDropFiles = useCallback(
-    (files: FileList) => {
+    async (files: FileList) => {
       const file = files[0];
       if (!file) {
         return;
       }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const content = (event.target?.result as string) ?? '';
+      try {
+        const content = await file.text();
         setSelectedFile({
           content,
           name: file.name,
@@ -498,9 +497,9 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
           sizeLabel: getCsvFileSizeLabel(file.size),
         });
         setCsvImportResult(undefined);
-      };
-      reader.onerror = () => showErrorToast(t('server.unexpected-error'));
-      reader.readAsText(file);
+      } catch {
+        showErrorToast(t('server.unexpected-error'));
+      }
     },
     [t]
   );

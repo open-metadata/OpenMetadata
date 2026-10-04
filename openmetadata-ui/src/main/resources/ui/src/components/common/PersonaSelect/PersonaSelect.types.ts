@@ -17,7 +17,7 @@ export interface PersonaSelectProps {
   /** Currently-selected persona, or undefined when none is set. */
   selectedPersona?: EntityReference;
   /** Fired with the picked persona, or undefined when the selection is cleared. */
-  onUpdate: (persona: EntityReference | undefined) => void | Promise<void>;
+  onUpdate: (persona?: EntityReference) => void | Promise<void>;
   hasPermission?: boolean;
   disabled?: boolean;
   triggerVariant?: 'input' | 'button';

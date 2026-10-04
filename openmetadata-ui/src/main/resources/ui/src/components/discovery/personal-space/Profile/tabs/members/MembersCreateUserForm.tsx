@@ -278,14 +278,14 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   };
 
   useEffect(() => {
-    generateRandomPassword();
+    void generateRandomPassword();
   }, []);
 
   useEffect(() => {
     if (!isAdmin) {
-      fetchTeams();
-      fetchRoleOptions();
-      fetchPersonaOptions();
+      void fetchTeams();
+      void fetchRoleOptions();
+      void fetchPersonaOptions();
     }
 
     return () => {
@@ -488,7 +488,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                 multiple
                 data-testid="domain-select"
                 selectedDomain={selectedDomains}
-                onUpdate={async (domains) => {
+                onUpdate={(domains) => {
                   if (Array.isArray(domains)) {
                     setSelectedDomains(domains);
 

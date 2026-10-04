@@ -27,7 +27,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../../../../../constants/regex.constants';
+import {
+  EMAIL_REG_EX,
+  ENTITY_NAME_REGEX,
+} from '../../../../../../constants/regex.constants';
 import {
   CreateTeam,
   TeamType,
@@ -179,7 +182,7 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
         props: { 'data-testid': 'email' },
         rules: {
           pattern: {
-            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            value: EMAIL_REG_EX,
             message: t('message.field-text-is-invalid', {
               fieldText: t('label.email'),
             }),
@@ -268,7 +271,7 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
                 multiple
                 data-testid="domain-select"
                 selectedDomain={selectedDomains}
-                onUpdate={async (domains) => {
+                onUpdate={(domains) => {
                   if (Array.isArray(domains)) {
                     setSelectedDomains(domains);
 

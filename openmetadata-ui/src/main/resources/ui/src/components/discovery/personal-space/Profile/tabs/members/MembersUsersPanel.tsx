@@ -204,9 +204,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       setSearchValue(value);
       handlePageChange(INITIAL_PAGING_VALUE);
       if (value) {
-        searchUsers(value);
+        void searchUsers(value);
       } else {
-        fetchUsers();
+        void fetchUsers();
       }
     },
     [handlePageChange, fetchUsers, searchUsers]
@@ -228,7 +228,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
 
     if (searchValue) {
       handlePageChange(newPage);
-      searchUsers(searchValue, newPage);
+      void searchUsers(searchValue, newPage);
 
       return;
     }
@@ -243,7 +243,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     }
 
     handlePageChange(newPage);
-    fetchUsers({ [cursorType]: cursor });
+    void fetchUsers({ [cursorType]: cursor });
   };
 
   const handleRestoreUser = useCallback(async () => {
@@ -256,7 +256,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       showSuccessToast(
         t('message.entity-restored-success', { entity: t('label.user') })
       );
-      fetchUsers();
+      void fetchUsers();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -268,9 +268,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
 
   useEffect(() => {
     if (searchValue) {
-      searchUsers(searchValue);
+      void searchUsers(searchValue);
     } else {
-      fetchUsers();
+      void fetchUsers();
     }
     // Refetch on page-size / deleted-toggle using the current search term;
     // search-term changes are driven by the search input's own handler.
@@ -278,7 +278,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   }, [pageSize, showDeleted]);
 
   useEffect(() => {
-    fetchUsers();
+    void fetchUsers();
     // Initial load only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -16,11 +16,7 @@ import type { Column } from 'react-data-grid';
 import { VALIDATION_STEP } from '../../../constants/BulkImport.constant';
 import { EntityStatus } from '../../../generated/entity/data/metric';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
-import type {
-  CSVImportAsyncJob,
-  CSVImportAsyncWebsocketResponse,
-  CSVImportJobType,
-} from '../../../interface/entity/csv.interface';
+import type { CSVImportJobType } from '../../../interface/entity/csv.interface';
 import type { getImportOperationSummary } from '../../../utils/CSV/CSV.utils';
 
 export type TranslateFn = (
@@ -92,10 +88,10 @@ export interface BulkEntityImportLocationState {
   selectedMetricNames?: string[];
 }
 
-// Canonical definitions live in the lower-layer csv.interface (imported above
-// for local use); re-exported here for existing page-local importers.
+// Canonical definitions live in the lower-layer csv.interface; re-exported here
+// for existing page-local importers.
 export type {
   CSVImportAsyncJob,
   CSVImportAsyncWebsocketResponse,
-  CSVImportJobType,
-};
+} from '../../../interface/entity/csv.interface';
+export type { CSVImportJobType };

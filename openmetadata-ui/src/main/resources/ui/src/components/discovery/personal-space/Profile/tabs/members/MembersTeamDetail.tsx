@@ -345,20 +345,25 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
 
     handleUsersPageChange(newPage);
-    fetchTeamUsers({ [cursorType]: cursor });
+    void fetchTeamUsers({ [cursorType]: cursor });
   };
 
   useEffect(() => {
-    fetchTeam();
+    void fetchTeam();
   }, [fetchTeam]);
 
   // Invalidate any in-flight fetchTeam on unmount so its late resolution can't
   // call onRename (which writes the still-mounted panel's state).
-  useEffect(() => () => void (fetchIdRef.current += 1), []);
+  useEffect(
+    () => () => {
+      fetchIdRef.current += 1;
+    },
+    []
+  );
 
   useEffect(() => {
     if (team) {
-      fetchChildTeams();
+      void fetchChildTeams();
     }
     // Keyed on the stable team fqn + deleted toggle; the team object and the
     // fetch callback change identity on every refresh and would over-fire.
@@ -367,7 +372,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   useEffect(() => {
     if (team && activeTab === 'users') {
-      fetchTeamUsers();
+      void fetchTeamUsers();
     }
     // Keyed on the stable team fqn + tab + page size; see note above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -414,7 +419,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       return;
     }
     const trimmed = editNameValue.trim();
-    handlePatchTeam({ ...team, displayName: trimmed });
+    void handlePatchTeam({ ...team, displayName: trimmed });
     onRename?.(trimmed || team.name);
     setIsEditingName(false);
   }, [team, editNameValue, handlePatchTeam, onRename]);
@@ -438,7 +443,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     if (!team) {
       return;
     }
-    handlePatchTeam({ ...team, isJoinable: !team.isJoinable });
+    void handlePatchTeam({ ...team, isJoinable: !team.isJoinable });
   }, [team, handlePatchTeam]);
 
   const handleJoinTeam = useCallback(async () => {
@@ -462,7 +467,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       showSuccessToast(
         t('server.join-team-success', { team: getEntityName(team) })
       );
-      fetchTeam();
+      void fetchTeam();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -477,7 +482,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       showSuccessToast(
         t('server.leave-team-success', { team: getEntityName(team) })
       );
-      fetchTeam();
+      void fetchTeam();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -521,8 +526,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         showSuccessToast(
           t('server.update-entity-success', { entity: t('label.team') })
         );
-        fetchTeam();
-        fetchTeamUsers();
+        void fetchTeam();
+        void fetchTeamUsers();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -538,7 +543,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         return;
       }
       await handlePatchTeam({ ...team, users });
-      fetchTeamUsers();
+      void fetchTeamUsers();
     },
     [team, handlePatchTeam, fetchTeamUsers]
   );
@@ -684,7 +689,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
       await patchTeamDetail(data.id, patch);
       showSuccessToast(t('message.team-moved-success'));
-      fetchChildTeams();
+      void fetchChildTeams();
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.team-moved-error'));
     } finally {
@@ -765,7 +770,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       ...getTableExpandableConfig<Team>(true),
       onExpand: (isOpen, record) => {
         if (isOpen) {
-          handleTeamExpand(record);
+          void handleTeamExpand(record);
         }
       },
     }),
@@ -999,7 +1004,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   }, [team?.id, isGroupType, assetsQueryFilter]);
 
   useEffect(() => {
-    fetchAssetCount();
+    void fetchAssetCount();
   }, [fetchAssetCount]);
 
   // Header: edit name pencil + actions dropdown
