@@ -1153,6 +1153,65 @@ class EntityUtilTest {
     }
   }
 
+  @Test
+  void addDomainQueryParam_skipsPlatformConfigurationLists() {
+    // Settings and reference lists (custom property types, alerts, apps, bots, policies...) support
+    // domains but aren't user-facing data: they're not part of the "all" search alias, so a navbar
+    // pick must not empty them.
+    EntityReference selected =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+    org.openmetadata.service.search.SearchRepository searchRepository =
+        mock(org.openmetadata.service.search.SearchRepository.class);
+    when(searchRepository.getIndexMapping("table"))
+        .thenReturn(
+            org.openmetadata.search.IndexMapping.builder()
+                .parentAliases(List.of("all", "dataAsset"))
+                .build());
+    when(searchRepository.getIndexMapping("type")).thenReturn(null);
+    when(searchRepository.getIndexMapping("user"))
+        .thenReturn(
+            org.openmetadata.search.IndexMapping.builder().parentAliases(List.of()).build());
+    CatalogSecurityContext carried =
+        new CatalogSecurityContext(
+            () -> "viewer", "https", "digest", null, false, null, null, selected);
+    org.openmetadata.schema.entity.teams.User user =
+        new org.openmetadata.schema.entity.teams.User().withName("viewer");
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      for (String type : List.of("table", "type", "user")) {
+        entity.when(() -> Entity.hasEntityRepository(type)).thenReturn(true);
+        entity.when(() -> Entity.getEntityRepository(type)).thenReturn(domainAwareRepository);
+      }
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
+          .thenReturn(selected);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(carried))
+          .thenReturn(new SubjectContext(user, null));
+
+      ListFilter config = new ListFilter();
+      EntityUtil.addDomainQueryParam(carried, config, "type");
+      assertNull(config.getQueryParam("domainId"));
+
+      ListFilter people = new ListFilter();
+      EntityUtil.addDomainQueryParam(carried, people, "user");
+      assertNull(people.getQueryParam("domainId"));
+
+      ListFilter data = new ListFilter();
+      EntityUtil.addDomainQueryParam(carried, data, "table");
+      assertEquals(selected.getId().toString(), data.getQueryParam("domainId"));
+    }
+  }
+
   private static class NoDescriptionEntity {}
 
   private static class ThrowingFieldTable extends Table {

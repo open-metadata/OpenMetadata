@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -77,6 +78,7 @@ import org.openmetadata.service.jdbi3.DomainNavFilter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -85,6 +87,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public final class EntityUtil {
+  private static final String ALL_ALIAS = "all";
   //
   // Comparators used for sorting list based on the given type
   //
@@ -1227,7 +1230,23 @@ public final class EntityUtil {
 
   private static boolean supportsDomains(String entityType) {
     return Entity.hasEntityRepository(entityType)
-        && Entity.getEntityRepository(entityType).isSupportsDomains();
+        && Entity.getEntityRepository(entityType).isSupportsDomains()
+        && isUserFacingData(entityType);
+  }
+
+  /**
+   * True for entities the platform treats as user-facing data: those whose search index is part of
+   * the "all" alias (data assets, services, glossaries, domains, ...). Platform configuration such
+   * as custom property types, alerts, apps, bots and policies isn't, so a navbar pick never empties
+   * those lists. Without a search registry (e.g. unit tests) the domain support alone decides.
+   */
+  private static boolean isUserFacingData(String entityType) {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    if (searchRepository == null) {
+      return true;
+    }
+    IndexMapping mapping = searchRepository.getIndexMapping(entityType);
+    return mapping != null && listOrEmpty(mapping.getParentAliases(null)).contains(ALL_ALIAS);
   }
 
   /**
