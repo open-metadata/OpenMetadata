@@ -193,7 +193,7 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
         results: list[RecognizerResult] = []
         for match in re.finditer(r"\d[\d -]*\d|\d", text):
             start, end = match.span()
-            if (start and (text[start - 1].isalnum() or text[start - 1] in "_-")) or (
+            if (start and (text[start - 1].isalnum() or text[start - 1] in "_.-")) or (
                 end < len(text)
                 and (
                     text[end].isalnum() or text[end] in "_-" or (text[end] == "." and text[end + 1 : end + 2].isdigit())
@@ -269,9 +269,9 @@ class UrlRecognizer(PresidioUrlRecognizer):
             if len(candidate) > 2048 or depth or not candidate:
                 continue
             try:
-                has_scheme = candidate.startswith(("http://", "https://"))
+                has_scheme = candidate.lower().startswith(("http://", "https://"))
                 parsed = urlsplit(candidate if has_scheme else f"//{candidate}")
-                if not parsed.path and not parsed.query and candidate[-1] in "!;":
+                if not parsed.path and not parsed.query and not parsed.fragment and candidate[-1] in "!;":
                     end -= 1
                     candidate = text[start:end]
                     parsed = urlsplit(candidate if has_scheme else f"//{candidate}")
@@ -323,10 +323,23 @@ class IpRecognizer(PresidioIpRecognizer):
         results: list[RecognizerResult] = []
         for match in re.finditer(r"(?<![\w:.%-])[0-9a-fA-F:][\w:.%-]*[.:%][\w:.%-]*", text):
             start, end = match.span()
+            in_url_authority = bool(re.search(r"https?://\[?$", text[max(0, start - 10) : start], re.IGNORECASE))
             while end > start and text[end - 1] == ".":
                 end -= 1
             candidate = text[start:end]
-            if len(candidate) > 45 or (end < len(text) and text[end] == "/" and text[end + 1 : end + 2].isdigit()):
+            if len(candidate) > 45:
+                continue
+            if in_url_authority and candidate.count(":") == 1:
+                address, _, port = candidate.rpartition(":")
+                if port.isdigit() and 1 <= int(port) <= 65535:
+                    try:
+                        ipaddress.IPv4Address(address)
+                    except ValueError:
+                        pass
+                    else:
+                        candidate = address
+                        end = start + len(address)
+            if not in_url_authority and end < len(text) and text[end] == "/" and text[end + 1 : end + 2].isdigit():
                 continue
             try:
                 ipaddress.ip_address(candidate)

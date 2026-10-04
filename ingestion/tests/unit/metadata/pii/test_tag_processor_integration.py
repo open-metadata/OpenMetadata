@@ -239,6 +239,7 @@ def test_luhn_valid_operational_lookalike_remains_ambiguous():
             {"URL": "https://example.org/4111111111111111", "CREDIT_CARD": "4111111111111111"},
             ["PII.Sensitive"],
         ),
+        ("http://192.168.1.1:8080/123", {"IP_ADDRESS": "192.168.1.1"}, []),
         ("http://app.internal.local/path", {}, []),
     ],
 )

@@ -126,24 +126,26 @@ def test_it_returns_the_expected_classifications(
     metadata: OpenMetadata,
     run_autoclassification: AutoClassificationWorkflow,
 ) -> None:
-    (
-        academic_year_code_column,
-        address_column,
-        customer_id_column,
-        dwh_x10_column,
-        dwh_x20_column,
-        nhs_number_column,
-        order_date_column,
-        timestamp_column,
-        user_name_column,
-        version_column,
-        card_note_column,
-        service_url_column,
-        session_ip_column,
-    ) = metadata.get_table_columns(
-        f"{db_service.fullyQualifiedName.root}.test_db.public.example_table",
-        fields=["tags"],
-    )
+    columns = {
+        column.name.root.lower(): column
+        for column in metadata.get_table_columns(
+            f"{db_service.fullyQualifiedName.root}.test_db.public.example_table",
+            fields=["tags"],
+        )
+    }
+    academic_year_code_column = columns["academic_year_code"]
+    address_column = columns["address"]
+    card_note_column = columns["card_note"]
+    customer_id_column = columns["customer_id"]
+    dwh_x10_column = columns["dwh_x10"]
+    dwh_x20_column = columns["dwh_x20"]
+    nhs_number_column = columns["nhs_number"]
+    order_date_column = columns["order_date"]
+    service_url_column = columns["service_url"]
+    session_ip_column = columns["session_ip"]
+    timestamp_column = columns["timestamp"]
+    user_name_column = columns["user_name"]
+    version_column = columns["version"]
 
     assert customer_id_column.tags == []
     assert nhs_number_column.tags == [
