@@ -11,18 +11,10 @@
  *  limitations under the License.
  */
 
-import { FC, ReactNode } from 'react';
+import { FC } from 'react';
 import { Link } from 'react-router-dom';
-import { ProfileHashTarget, toHashLocation } from './profileHash.utils';
-
-interface ProfileHashLinkProps {
-  target: ProfileHashTarget;
-  /** Writes the hash synchronously (setHash); a plain react-router push is not
-   * mirrored into useSettingsHash, so href-only navigation would not switch the
-   * in-modal view. The href is kept for middle-click / open-in-new-tab. */
-  onNavigate: (target: ProfileHashTarget) => void;
-  children: ReactNode;
-}
+import type { ProfileHashLinkProps } from './Members.types';
+import { toHashLocation } from './profileHash.utils';
 
 const ProfileHashLink: FC<ProfileHashLinkProps> = ({
   target,

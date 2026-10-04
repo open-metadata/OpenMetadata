@@ -13,8 +13,8 @@
 
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
-    MessagingProvider,
-    Team
+  MessagingProvider,
+  Team,
 } from '../../../../generated/entity/teams/team';
 
 export interface TeamHierarchyProps {

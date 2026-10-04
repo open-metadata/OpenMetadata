@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
+import { FC, ReactNode } from 'react';
+import { TeamType } from '../../../../../../generated/entity/teams/team';
+import { CSVImportResult } from '../../../../../../generated/type/csvImportResult';
+import type { ProfileHashTarget } from './profileHash.utils';
 
 export type MembersImportType = 'teams' | 'users';
 
@@ -60,6 +63,53 @@ export interface MembersTeamDetailProps extends MembersSubPanelProps {
 export interface OnlineStatusInfo {
   label: string;
   colorClass: string;
+}
+
+export type ProcessingType = 'preview' | 'import';
+
+export type StageState = 'done' | 'active' | 'pending';
+
+export interface SelectedCsvFile {
+  content: string;
+  name: string;
+  rowCount: number;
+  sizeLabel: string;
+}
+
+export interface ActiveJob {
+  jobId?: string;
+  status?: string;
+}
+
+export interface MembersImportFormProps {
+  fqn: string;
+  importType: MembersImportType;
+  onClose: () => void;
+}
+
+export interface MembersImportResultTableProps {
+  csvImportResult: CSVImportResult;
+}
+
+export interface MembersAddTeamFormProps {
+  parentTeamType?: TeamType;
+  parentTeamFqn?: string;
+  onCancel: () => void;
+  onSave: () => void;
+}
+
+export interface MembersCreateUserFormProps {
+  isAdmin?: boolean;
+  onNavigate: (view: MembersView) => void;
+}
+
+export interface ProfileHashLinkProps {
+  target: ProfileHashTarget;
+  /** Writes the hash synchronously (setHash); a plain react-router push is not
+   * mirrored into useSettingsHash, so href-only navigation would not switch the
+   * in-modal view. The href is kept for middle-click / open-in-new-tab. */
+  onNavigate: (target: ProfileHashTarget) => void;
+  children: ReactNode;
 }
 
 export interface TimeWindowOption {

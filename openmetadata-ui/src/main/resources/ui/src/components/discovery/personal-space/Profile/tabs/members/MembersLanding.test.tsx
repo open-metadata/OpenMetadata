@@ -23,7 +23,6 @@ jest.mock('react-i18next', () => ({
 import MembersLanding from './MembersLanding';
 
 describe('MembersLanding', () => {
-
   it('renders 4 landing cards', () => {
     const onNavigate = jest.fn();
     render(<MembersLanding onNavigate={onNavigate} />);
@@ -31,9 +30,7 @@ describe('MembersLanding', () => {
     expect(screen.getByTestId('members-card-teams')).toBeInTheDocument();
     expect(screen.getByTestId('members-card-users')).toBeInTheDocument();
     expect(screen.getByTestId('members-card-admins')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('members-card-online-users')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('members-card-online-users')).toBeInTheDocument();
   });
 
   it('calls onNavigate with correct view when a card is clicked', () => {
@@ -44,5 +41,4 @@ describe('MembersLanding', () => {
 
     expect(onNavigate).toHaveBeenCalledWith({ type: 'teams' });
   });
-
 });

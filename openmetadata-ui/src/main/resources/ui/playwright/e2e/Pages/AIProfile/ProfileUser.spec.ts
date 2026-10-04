@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
 import { expect, test } from '../../fixtures/pages';
 import { Domain } from '../../../support/domain/Domain';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
@@ -19,6 +18,7 @@ import { UserClass } from '../../../support/user/UserClass';
 import {
   navigateToMembersPanel,
   openAdminsPanel,
+  openUserProfile,
   openUsersPanel,
   searchUserRow,
 } from '../../../utils/aiProfile';
@@ -50,20 +50,6 @@ const trackUser = async (
 };
 
 /** Open a user's profile view (#profile/<name>) from the Users list. */
-const openUserProfile = async (page: Page, userName: string): Promise<void> => {
-  await navigateToMembersPanel(page);
-  await openUsersPanel(page);
-  const userCell = await searchUserRow(page, userName);
-
-  const profileResponse = page.waitForResponse((response) =>
-    response.url().includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
-  );
-  await userCell.click();
-  await profileResponse;
-
-  await expect(page.getByTestId('profile-details-panel')).toBeVisible();
-};
-
 test.describe('AI Profile Users', () => {
   test.beforeAll(async ({ browser }) => {
     createdUsers = [];

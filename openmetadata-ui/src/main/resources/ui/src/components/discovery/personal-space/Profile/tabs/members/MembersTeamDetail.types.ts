@@ -19,7 +19,10 @@ import type { Team } from '../../../../../../generated/entity/teams/team';
 import type { User } from '../../../../../../generated/entity/teams/user';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import type { getTermQuery } from '../../../../../../utils/SearchPureUtils';
-import type { ColumnsType } from '../../../../../common/Table/Table.interface';
+import type {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../../../../common/Table/Table.interface';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import type { MembersView } from './Members.types';
 import type { ProfileHashTarget } from './profileHash.utils';
@@ -38,9 +41,16 @@ export interface RemoveEntity {
   kind: 'user' | 'role' | 'policy';
 }
 
+export interface MembersTeamInfoWidgetsProps {
+  team: Team;
+  canEdit: boolean;
+  onPatch: (updated: Team) => void | Promise<void>;
+}
+
 export interface MembersTeamsTabProps {
   team: Team;
   childTeamColumns: ColumnsType<Team>;
+  childTeamExpandable: ExpandableConfig<Team>;
   filteredChildTeams: Team[];
   dragAndDropHooks: DragAndDropHooks;
   draggedTeamRef: React.MutableRefObject<Team | undefined>;

@@ -60,7 +60,6 @@ const renderComponent = (isAdmin = false) =>
   );
 
 describe('MembersUsersPanel', () => {
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -69,9 +68,7 @@ describe('MembersUsersPanel', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('users-list-container')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('users-list-container')).toBeInTheDocument();
     });
   });
 
@@ -90,5 +87,4 @@ describe('MembersUsersPanel', () => {
       expect(screen.getByTestId('users-list-table')).toBeInTheDocument();
     });
   });
-
 });

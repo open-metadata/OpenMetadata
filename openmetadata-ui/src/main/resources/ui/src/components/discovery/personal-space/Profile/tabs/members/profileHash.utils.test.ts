@@ -45,9 +45,9 @@ describe('profileHash', () => {
 
 describe('toHashLocation', () => {
   it('joins tab and sub-path into a Link hash location', () => {
-    expect(toHashLocation({ tab: 'access-control', subPath: 'roles/Admin' })).toEqual(
-      { hash: 'access-control/roles/Admin' }
-    );
+    expect(
+      toHashLocation({ tab: 'access-control', subPath: 'roles/Admin' })
+    ).toEqual({ hash: 'access-control/roles/Admin' });
   });
 
   it('falls back to just the tab when there is no sub-path', () => {

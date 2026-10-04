@@ -18,9 +18,10 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+let mockPermissions: Record<string, unknown> = { all: { Create: true } };
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
-  () => ({ usePermissionProvider: () => ({ permissions: {} }) })
+  () => ({ usePermissionProvider: () => ({ permissions: mockPermissions }) })
 );
 
 jest.mock(
@@ -114,6 +115,7 @@ const renderAt = (hash: string) => {
 describe('MembersPanel hash navigation', () => {
   beforeEach(() => {
     globalThis.location.hash = '';
+    mockPermissions = { all: { Create: true } };
   });
 
   it('landing -> teams updates the view', () => {
@@ -166,5 +168,35 @@ describe('MembersPanel hash navigation', () => {
 
     expect(form).toHaveAttribute('data-fqn', 'Engineering.Data');
     expect(form).toHaveAttribute('data-import-type', 'users');
+  });
+
+  it('gates the add-team form behind create permission', () => {
+    mockPermissions = {};
+    renderAt('#members/teams/add');
+
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('add-team-form')).not.toBeInTheDocument();
+  });
+
+  it('gates the team-import form behind create permission', () => {
+    mockPermissions = {};
+    renderAt('#members/teams/Engineering.Data/import-team');
+
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('import-form')).not.toBeInTheDocument();
+  });
+
+  it('gates the create-user form behind create permission', () => {
+    mockPermissions = {};
+    renderAt('#members/users/create');
+
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('create-user')).not.toBeInTheDocument();
   });
 });

@@ -11,29 +11,28 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Button,
-    ButtonUtility,
-    Divider,
-    Input,
-    Owner,
-    Popover,
-    PopoverTrigger,
-    Select,
-    SelectItemType,
-    Tooltip,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  Divider,
+  Input,
+  Owner,
+  Popover,
+  PopoverTrigger,
+  Select,
+  SelectItemType,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
 import {
-    SUBSCRIPTION_WEBHOOK,
-    SUBSCRIPTION_WEBHOOK_OPTIONS
+  SUBSCRIPTION_WEBHOOK,
+  SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../../../constants/Teams.constants';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
-import { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getWebhookIcon } from '../../../../../../utils/TeamUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
@@ -42,15 +41,9 @@ import DomainTags from '../../../../../common/DomainTags/DomainTags';
 import PersonaSelect from '../../../../../common/PersonaSelect/PersonaSelect';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import type { SubscriptionWebhook } from '../../../../../Settings/Team/TeamDetails/team.interface';
-
-interface MembersTeamInfoWidgetsProps {
-  team: Team;
-  canEdit: boolean;
-  onPatch: (updated: Team) => void | Promise<void>;
-}
-
-const WIDGET_CLASS =
-  'tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3';
+import { WIDGET_CLASS } from './Members.constants';
+import { toDomainArray } from './Members.utils';
+import type { MembersTeamInfoWidgetsProps } from './MembersTeamDetail.types';
 
 // Sentinel id for the "None" webhook option; react-aria Select cannot round-trip
 // an empty-string key, so we map it to '' on selection and back for display.
@@ -59,18 +52,6 @@ const NONE_KEY = 'none';
 // A filled value renders primary; an empty/None value renders muted.
 const valueTextClass = (hasValue: boolean): string =>
   hasValue ? 'tw:text-primary' : 'tw:text-tertiary';
-
-// DomainSelect hands back a single ref, an array, or undefined (cleared);
-// normalise to the array shape the Team PATCH expects.
-const toDomainArray = (
-  next: EntityReference | EntityReference[] | undefined
-): EntityReference[] => {
-  if (Array.isArray(next)) {
-    return next;
-  }
-
-  return next ? [next] : [];
-};
 
 const InfoWidget: FC<{
   label: string;

@@ -12,15 +12,15 @@
  */
 
 import {
-    Box,
-    Button,
-    FieldProp,
-    FieldTypes,
-    FormFields,
-    FormItemLabel,
-    FormSelectItem,
-    HookForm,
-    Typography
+  Box,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  FormItemLabel,
+  FormSelectItem,
+  HookForm,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -29,33 +29,27 @@ import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../../../constants/regex.constants';
 import {
-    CreateTeam,
-    TeamType
+  CreateTeam,
+  TeamType,
 } from '../../../../../../generated/api/teams/createTeam';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { createTeam, getTeamByName } from '../../../../../../rest/teamsAPI';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import { getTeamOptionsFromType } from '../../../../../../utils/TeamUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import type { MembersAddTeamFormProps } from './Members.types';
 
 // The teamType SELECT stores the whole option object as its RHF value, so the
 // form type overrides teamType with FormSelectItem and onSubmit unwraps the id.
 type AddTeamFormValues = Omit<CreateTeam, 'teamType'> & {
   teamType: FormSelectItem;
 };
-
-interface MembersAddTeamFormProps {
-  parentTeamType?: TeamType;
-  parentTeamFqn?: string;
-  onCancel: () => void;
-  onSave: () => void;
-}
 
 const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
   parentTeamType = TeamType.Organization,

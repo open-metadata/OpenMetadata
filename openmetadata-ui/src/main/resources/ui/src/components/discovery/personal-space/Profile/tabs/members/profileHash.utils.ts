@@ -49,6 +49,9 @@ export const profileHash = {
 };
 
 /** Adapter for a react-router `<Link to={...}>` — keeps pathname/search, swaps the hash. */
-export const toHashLocation = ({ tab, subPath }: ProfileHashTarget): { hash: string } => ({
+export const toHashLocation = ({
+  tab,
+  subPath,
+}: ProfileHashTarget): { hash: string } => ({
   hash: subPath ? `${tab}/${subPath}` : tab,
 });

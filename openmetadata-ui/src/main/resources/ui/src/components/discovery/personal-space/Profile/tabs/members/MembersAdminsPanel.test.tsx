@@ -17,14 +17,14 @@ const mockMembersUsersPanel = jest.fn(() => (
   <div data-testid="members-users-panel" />
 ));
 
-jest.mock('./MembersUsersPanel', () => (props: Record<string, unknown>) =>
-  mockMembersUsersPanel(props)
+jest.mock(
+  './MembersUsersPanel',
+  () => (props: Record<string, unknown>) => mockMembersUsersPanel(props)
 );
 
 import MembersAdminsPanel from './MembersAdminsPanel';
 
 describe('MembersAdminsPanel', () => {
-
   it('renders MembersUsersPanel with isAdmin prop', () => {
     render(<MembersAdminsPanel onNavigate={jest.fn()} />);
 
@@ -33,5 +33,4 @@ describe('MembersAdminsPanel', () => {
       expect.objectContaining({ isAdmin: true })
     );
   });
-
 });

@@ -43,7 +43,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
   () => ({
@@ -118,16 +117,13 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock(
-  '../../../../../common/RichTextEditor/RichTextEditor',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="rich-text-editor" />)
+jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
+  jest.fn().mockReturnValue(<div data-testid="rich-text-editor" />)
 );
 
 jest.mock(
   '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="rich-text-previewer" />)
+  () => jest.fn().mockReturnValue(<div data-testid="rich-text-previewer" />)
 );
 
 jest.mock('../../../../../common/Loader/Loader', () => () => (
@@ -147,7 +143,6 @@ jest.mock('../../../../../common/Table/TableV2', () =>
 import MembersTeamDetail from './MembersTeamDetail';
 
 describe('MembersTeamDetail', () => {
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -184,5 +179,4 @@ describe('MembersTeamDetail', () => {
       expect(screen.getByTestId('team-info-widgets')).toBeInTheDocument();
     });
   });
-
 });

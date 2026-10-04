@@ -12,13 +12,17 @@
  */
 
 import {
-    Clock,
-    ShieldTick,
-    User01,
-    Users01
+  Clock,
+  ShieldTick,
+  User01,
+  Users01,
 } from '@openmetadata/ui-core-components/icons';
 
-import type { MembersLandingCard, TimeWindowOption } from './Members.types';
+import type {
+  MembersLandingCard,
+  StageState,
+  TimeWindowOption,
+} from './Members.types';
 
 export const LANDING_CARDS: MembersLandingCard[] = [
   {
@@ -61,3 +65,12 @@ export const TIME_WINDOW_OPTIONS: TimeWindowOption[] = [
 ];
 
 export const DEFAULT_TIME_WINDOW = 1440;
+
+export const WIDGET_CLASS =
+  'tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3';
+
+export const STAGE_ICON_CLASS: Record<StageState, string> = {
+  done: 'tw:bg-success-secondary tw:text-fg-success-primary',
+  active: 'tw:bg-brand-secondary tw:text-brand-secondary',
+  pending: 'tw:bg-tertiary tw:text-fg-quaternary',
+};

@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Box, Table, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Table,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import {
-    CSVImportResult,
-    Status
-} from '../../../../../../generated/type/csvImportResult';
+import { Status } from '../../../../../../generated/type/csvImportResult';
+import type { MembersImportResultTableProps } from './Members.types';
 
 const STATUS_KEY = 'status';
 const DETAILS_KEY = 'details';
@@ -31,10 +34,6 @@ interface ImportRow {
 interface ParsedResult {
   headers: string[];
   rows: ImportRow[];
-}
-
-interface MembersImportResultTableProps {
-  csvImportResult: CSVImportResult;
 }
 
 const toImportRows = (data: string[][]): ParsedResult => {
@@ -113,7 +112,11 @@ const MembersImportResultTable: FC<MembersImportResultTableProps> = ({
       <Table.Header>
         <Table.Head id={STATUS_KEY} label={t('label.status')} />
         {dataColumns.map((header) => (
-          <Table.Head id={header} key={header} label={header.replace(/\*$/, '')} />
+          <Table.Head
+            id={header}
+            key={header}
+            label={header.replace(/\*$/, '')}
+          />
         ))}
       </Table.Header>
       <Table.Body>
@@ -132,7 +135,9 @@ const MembersImportResultTable: FC<MembersImportResultTableProps> = ({
                     {isFailure ? t('label.failed') : t('label.success')}
                   </Badge>
                   {isFailure && cells[DETAILS_KEY] && (
-                    <Typography className="tw:text-error-primary" size="text-sm">
+                    <Typography
+                      className="tw:text-error-primary"
+                      size="text-sm">
                       {cells[DETAILS_KEY]}
                     </Typography>
                   )}

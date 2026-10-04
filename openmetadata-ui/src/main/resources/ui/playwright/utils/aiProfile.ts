@@ -12,6 +12,7 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { TeamClass } from '../support/team/TeamClass';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { redirectToHomePage } from './common';
 
@@ -135,4 +136,89 @@ export const searchUserRow = (page: Page, userName: string) => {
   })
     .toPass({ timeout: 30000 })
     .then(() => userCell);
+};
+
+/** Navigate from the Members landing into a previously-created team's detail. */
+export const openCreatedTeam = async (
+  page: Page,
+  team: TeamClass
+): Promise<void> => {
+  await navigateToMembersPanel(page);
+  await openOrganizationTeams(page);
+  await openTeamByLink(page, team.responseData.name);
+};
+
+/** Wait for the PATCH that updates a given team. */
+export const waitForTeamPatch = (page: Page, teamId: string) =>
+  page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/teams/${teamId}`) &&
+      response.request().method() === 'PATCH'
+  );
+
+/**
+ * Drive the add-user UserTeamSelectableList popover (same widget as owner pick).
+ * The option row renders the user's display name, so search/filter by that.
+ */
+export const addUserToTeam = async (
+  page: Page,
+  teamId: string,
+  userDisplayName: string
+): Promise<void> => {
+  await page.getByTestId('add-user').click();
+  await page
+    .getByTestId('select-owner-tabs')
+    .getByRole('tab', { name: 'Users' })
+    .click();
+
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=user')
+  );
+  await page
+    .locator('[data-testid="owner-select-users-search-bar"]')
+    .fill(userDisplayName);
+  await searchResponse;
+
+  await page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: userDisplayName })
+    .click();
+
+  const patchResponse = waitForTeamPatch(page, teamId);
+  await page
+    .locator('[data-testid="owner-select-users-panel"]')
+    .getByTestId('selectable-list-update-btn')
+    .click();
+  await patchResponse;
+};
+
+/** Open a user's profile-details panel from the Users list. */
+export const openUserProfile = async (
+  page: Page,
+  userName: string
+): Promise<void> => {
+  await navigateToMembersPanel(page);
+  await openUsersPanel(page);
+  const userCell = await searchUserRow(page, userName);
+
+  const profileResponse = page.waitForResponse((response) =>
+    response.url().includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
+  );
+  await userCell.click();
+  await profileResponse;
+
+  await expect(page.getByTestId('profile-details-panel')).toBeVisible();
+};
+
+/** Click the "Members" breadcrumb in the profile content header. */
+export const clickMembersBreadcrumb = async (page: Page): Promise<void> => {
+  // The header breadcrumb is a react-aria link; scope to the header so it cannot
+  // collide with the "Members" sidebar nav button.
+  await page
+    .getByTestId('profile-content-header')
+    .getByRole('link', { name: 'Members' })
+    .click();
+  await expect(page.getByTestId('members-landing')).toBeVisible();
 };

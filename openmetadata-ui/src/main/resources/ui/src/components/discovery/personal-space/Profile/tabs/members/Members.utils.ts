@@ -11,7 +11,20 @@
  *  limitations under the License.
  */
 
+import type { EntityReference } from '../../../../../../generated/entity/type';
 import type { MembersView, OnlineStatusInfo } from './Members.types';
+
+// DomainSelect hands back a single ref, an array, or undefined (cleared);
+// normalise to the array shape the Team PATCH expects.
+export const toDomainArray = (
+  next: EntityReference | EntityReference[] | undefined
+): EntityReference[] => {
+  if (Array.isArray(next)) {
+    return next;
+  }
+
+  return next ? [next] : [];
+};
 
 const TEAMS = 'teams';
 const USERS = 'users';

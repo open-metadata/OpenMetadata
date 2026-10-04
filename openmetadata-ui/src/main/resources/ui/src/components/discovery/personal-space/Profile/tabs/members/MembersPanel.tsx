@@ -18,10 +18,17 @@ import {
   User01,
   Users01,
 } from '@openmetadata/ui-core-components/icons';
+import { isEmpty } from 'lodash';
 import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../../enums/common.enum';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import ErrorPlaceHolder from '../../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { MembersPanelProps, MembersView } from './Members.types';
 import { hashSubPathToView, viewToSubPath } from './Members.utils';
@@ -35,6 +42,9 @@ import MembersTeamDetail from './MembersTeamDetail';
 import MembersUsersPanel from './MembersUsersPanel';
 
 const TEAM_DETAIL = 'team-detail' as const;
+const TEAMS_ADD = 'teams-add' as const;
+const TEAMS_IMPORT = 'teams-import' as const;
+const USER_CREATE = 'user-create' as const;
 
 // Pure header maps extracted to module scope to keep the header effect's
 // cyclomatic complexity within budget.
@@ -83,9 +93,7 @@ const makeBreadcrumbAction =
   };
 
 const isTeamsOrDetailView = (view: MembersView): boolean =>
-  view.type === 'teams' ||
-  view.type === TEAM_DETAIL ||
-  view.type === 'teams-add';
+  view.type === 'teams' || view.type === TEAM_DETAIL || view.type === TEAMS_ADD;
 
 // Builds the per-view breadcrumb/title/icon/description maps. Kept at module
 // scope (pure) so the header effect stays within its complexity budget.
@@ -102,7 +110,7 @@ const buildMembersHeaderMaps = (
   const onlineUsersLabel = t('label.online-user-plural');
   const addTeamLabel = t('label.add-entity', { entity: t('label.team') });
   const importIsUser =
-    view.type === 'teams-import' && view.importType === 'users';
+    view.type === TEAMS_IMPORT && view.importType === 'users';
   const importLabel = t('label.import-entity', {
     entity: importIsUser ? t('label.user') : t('label.team'),
   });
@@ -125,8 +133,7 @@ const buildMembersHeaderMaps = (
   const adminsItem: BreadcrumbItemType = { id: 'admins', label: adminsLabel };
   const base = [settingsItem, membersItem];
 
-  const createUserIsAdmin =
-    view.type === 'user-create' && Boolean(view.isAdmin);
+  const createUserIsAdmin = view.type === USER_CREATE && Boolean(view.isAdmin);
   const createUserLabel = t('label.create-entity', {
     entity: createUserIsAdmin ? t('label.admin') : t('label.user'),
   });
@@ -170,6 +177,22 @@ const buildMembersHeaderMaps = (
 const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { state: hashState, setHash } = useSettingsHash();
+  const { permissions } = usePermissionProvider();
+
+  // Create permissions gate the form views directly, since those views are
+  // reachable by deep-linking the hash even when the create button is hidden.
+  const canCreateTeam = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
+    [permissions]
+  );
+  const canCreateUser = useMemo(
+    () =>
+      !isEmpty(permissions) &&
+      checkPermission(Operation.Create, ResourceEntity.USER, permissions),
+    [permissions]
+  );
 
   // Hash-synced navigation (same pattern as NotificationPanel / AccessControlPanel):
   // the view is derived from the hash sub-path and every navigation writes the hash,
@@ -185,6 +208,22 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     },
     [setHash]
   );
+
+  // A form view reached without the matching create permission (e.g. via a deep
+  // link) renders the lock placeholder instead of the form.
+  const isDeniedFormView = useMemo(() => {
+    if (view.type === TEAMS_ADD) {
+      return !canCreateTeam;
+    }
+    if (view.type === TEAMS_IMPORT) {
+      return !(view.importType === 'users' ? canCreateUser : canCreateTeam);
+    }
+    if (view.type === USER_CREATE) {
+      return !canCreateUser;
+    }
+
+    return false;
+  }, [view, canCreateTeam, canCreateUser]);
 
   // Stable no-op for the Organization view (its name isn't editable) so the
   // team-detail's fetch effect, which depends on onRename, can't re-fire.
@@ -241,7 +280,15 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     resolvedTeamName,
   ]);
 
-  const content = (() => {
+  const permissionPlaceholder = (
+    <ErrorPlaceHolder
+      className="tw:h-full tw:border-none"
+      permissionValue={t('label.create')}
+      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+    />
+  );
+
+  const renderView = () => {
     if (view.type === 'landing') {
       return <MembersLanding onNavigate={onNavigate} />;
     }
@@ -274,7 +321,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       );
     }
 
-    if (view.type === 'teams-add') {
+    if (view.type === TEAMS_ADD) {
       const parentFqn = view.parentFqn;
       const back = () =>
         parentFqn
@@ -290,7 +337,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       );
     }
 
-    if (view.type === 'teams-import') {
+    if (view.type === TEAMS_IMPORT) {
       const { fqn, importType } = view;
       const back = () =>
         fqn === 'Organization'
@@ -320,7 +367,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       );
     }
 
-    if (view.type === 'user-create') {
+    if (view.type === USER_CREATE) {
       return (
         <MembersCreateUserForm isAdmin={view.isAdmin} onNavigate={onNavigate} />
       );
@@ -331,7 +378,9 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     }
 
     return null;
-  })();
+  };
+
+  const content = isDeniedFormView ? permissionPlaceholder : renderView();
 
   return (
     <EntityExportModalProvider>

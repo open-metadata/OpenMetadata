@@ -14,7 +14,7 @@
 import { Box, SelectItemType, Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
@@ -60,6 +60,7 @@ import { getUsers } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
+import { getTableExpandableConfig } from '../../../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../../../utils/TeamUtils';
 import {
   showErrorToast,
@@ -69,6 +70,7 @@ import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
 import Loader from '../../../../../common/Loader/Loader';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import type { ExpandableConfig } from '../../../../../common/Table/Table.interface';
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import type { MembersTeamDetailProps } from './Members.types';
@@ -90,6 +92,8 @@ import {
   TEAM_DRAG_TYPE,
   TEAM_FIELDS,
   TEAM_USER_FIELDS,
+  updateTeamsHierarchy,
+  withTeamChildrenPlaceholder,
 } from './MembersTeamDetail.utils';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 import MembersTeamsTab from './MembersTeamsTab';
@@ -256,7 +260,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           TabSpecificField.PARENTS,
         ],
       });
-      setChildTeams(data);
+      setChildTeams(withTeamChildrenPlaceholder(data));
     } catch (error) {
       showErrorToast(error as AxiosError);
       setChildTeams([]);
@@ -264,6 +268,41 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       setIsChildTeamsLoading(false);
     }
   }, [team?.fullyQualifiedName, showDeletedTeam]);
+
+  // Lazy-load a row's sub-teams on first expand and graft them into the tree,
+  // so the hierarchy is revealed without fetching every level upfront.
+  const handleTeamExpand = useCallback(
+    async (record: Team) => {
+      if (!record.fullyQualifiedName || !isEmpty(record.children)) {
+        return;
+      }
+      try {
+        const { data } = await getTeams({
+          parentTeam: record.fullyQualifiedName,
+          include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
+          fields: [
+            TabSpecificField.USER_COUNT,
+            TabSpecificField.CHILDREN_COUNT,
+            TabSpecificField.OWNS,
+            TabSpecificField.PARENTS,
+          ],
+        });
+        setChildTeams((prev) => {
+          const next = cloneDeep(prev);
+          updateTeamsHierarchy(
+            next,
+            record.fullyQualifiedName as string,
+            withTeamChildrenPlaceholder(data)
+          );
+
+          return next;
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [showDeletedTeam]
+  );
 
   const fetchTeamUsers = useCallback(
     async (params?: { after?: string; before?: string }) => {
@@ -653,10 +692,19 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
   }, [movedTeam, team, t, fetchChildTeams]);
 
-  // DnD hooks for the team hierarchy table
+  // DnD hooks for the team hierarchy table — index nested teams too so dragging
+  // a lazily-loaded sub-team resolves its record.
   const teamByName = useMemo(() => {
     const map = new Map<string, Team>();
-    childTeams.forEach((ct) => map.set(ct.fullyQualifiedName ?? ct.name, ct));
+    const index = (teams: Team[]) => {
+      teams.forEach((ct) => {
+        map.set(ct.fullyQualifiedName ?? ct.name, ct);
+        if (ct.children && ct.children.length > 0) {
+          index(ct.children as unknown as Team[]);
+        }
+      });
+    };
+    index(childTeams);
 
     return map;
   }, [childTeams]);
@@ -710,6 +758,18 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const childTeamColumns = useMemo(
     () => getChildTeamColumns(t, onNavigate),
     [t, onNavigate]
+  );
+
+  const childTeamExpandable = useMemo<ExpandableConfig<Team>>(
+    () => ({
+      ...getTableExpandableConfig<Team>(true),
+      onExpand: (isOpen, record) => {
+        if (isOpen) {
+          handleTeamExpand(record);
+        }
+      },
+    }),
+    [handleTeamExpand]
   );
 
   const userColumns = useMemo(
@@ -991,6 +1051,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           <MembersTeamsTab
             canCreateTeam={canCreateTeam}
             childTeamColumns={childTeamColumns}
+            childTeamExpandable={childTeamExpandable}
             dragAndDropHooks={dragAndDropHooks}
             draggedTeamRef={draggedTeamRef}
             filteredChildTeams={filteredChildTeams}

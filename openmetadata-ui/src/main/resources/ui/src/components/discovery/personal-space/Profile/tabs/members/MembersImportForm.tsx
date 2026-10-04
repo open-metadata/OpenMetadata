@@ -55,30 +55,16 @@ import {
 } from '../../../../../../interface/entity/csv.interface';
 import { importTeam, importUserInTeam } from '../../../../../../rest/teamsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import type { MembersImportType } from './Members.types';
+import { STAGE_ICON_CLASS } from './Members.constants';
+import type {
+  ActiveJob,
+  MembersImportFormProps,
+  ProcessingType,
+  SelectedCsvFile,
+  StageState,
+} from './Members.types';
 import { getCsvFileSizeLabel, getCsvRowCount } from './Members.utils';
 import MembersImportResultTable from './MembersImportResultTable';
-
-type ProcessingType = 'preview' | 'import';
-type StageState = 'done' | 'active' | 'pending';
-
-interface SelectedCsvFile {
-  content: string;
-  name: string;
-  rowCount: number;
-  sizeLabel: string;
-}
-
-interface ActiveJob {
-  jobId?: string;
-  status?: string;
-}
-
-interface MembersImportFormProps {
-  fqn: string;
-  importType: MembersImportType;
-  onClose: () => void;
-}
 
 const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
   const { t } = useTranslation();
@@ -117,7 +103,7 @@ const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
                 className={`tw:inline-flex tw:size-4 tw:items-center tw:justify-center tw:rounded-full tw:text-[10px] tw:font-semibold ${circleClass}`}>
                 {isDone ? <Check size={10} strokeWidth={2.5} /> : index + 1}
               </span>
-              <span>{t(step.name)}</span>
+              <Typography as="span">{t(step.name)}</Typography>
             </Box>
             {index < ENTITY_IMPORT_STEPS.length - 1 && (
               <span
@@ -169,12 +155,6 @@ const SelectedFileCard: FC<{
   );
 };
 
-const STAGE_ICON_CLASS: Record<StageState, string> = {
-  done: 'tw:bg-success-secondary tw:text-fg-success-primary',
-  active: 'tw:bg-brand-secondary tw:text-brand-secondary',
-  pending: 'tw:bg-tertiary tw:text-fg-quaternary',
-};
-
 const renderStageIcon = (state: StageState) => {
   if (state === 'done') {
     return <CheckCircle size={14} />;
@@ -200,7 +180,7 @@ const ProcessingStage: FC<{ label: string; state: StageState }> = ({
       className={`tw:inline-flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full ${STAGE_ICON_CLASS[state]}`}>
       {renderStageIcon(state)}
     </span>
-    <span>{label}</span>
+    <Typography as="span">{label}</Typography>
   </Box>
 );
 
@@ -233,7 +213,9 @@ const ProcessingBanner: FC<{
         <Typography as="span" ellipsis={{ tooltip: fileName }}>
           {fileName}
         </Typography>
-        <span className="tw:shrink-0">{rowCountLabel}</span>
+        <Typography as="span" className="tw:shrink-0">
+          {rowCountLabel}
+        </Typography>
       </Box>
     </Box>
     <Box className="tw:w-full">

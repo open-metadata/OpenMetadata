@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import { expect, test } from '../../fixtures/pages';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
+  addUserToTeam,
   navigateToMembersPanel,
+  openCreatedTeam,
   openOrganizationTeams,
   openTeamByLink,
   openTeamTab,
+  waitForTeamPatch,
 } from '../../../utils/aiProfile';
 import { performAdminLogin } from '../../../utils/admin';
 import { uuid } from '../../../utils/common';
@@ -56,59 +59,6 @@ const makeTeam = async (
 
   return team;
 };
-
-/**
- * Drive the add-user UserTeamSelectableList popover (same widget as owner pick).
- * The option row renders the user's display name, so search/filter by that.
- */
-const addUserToTeam = async (
-  page: Page,
-  teamId: string,
-  userDisplayName: string
-): Promise<void> => {
-  await page.getByTestId('add-user').click();
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByRole('tab', { name: 'Users' })
-    .click();
-
-  const searchResponse = page.waitForResponse(
-    'api/v1/search/query?q=*&index=user*'
-  );
-  await page
-    .locator('[data-testid="owner-select-users-search-bar"]')
-    .fill(userDisplayName);
-  await searchResponse;
-
-  await page
-    .locator('[data-testid="owner-option"]')
-    .filter({ hasText: userDisplayName })
-    .click();
-
-  const patchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes(`/api/v1/teams/${teamId}`) &&
-      response.request().method() === 'PATCH'
-  );
-  await page
-    .locator('[data-testid="owner-select-users-panel"]')
-    .getByTestId('selectable-list-update-btn')
-    .click();
-  await patchResponse;
-};
-
-const openCreatedTeam = async (page: Page, team: TeamClass): Promise<void> => {
-  await navigateToMembersPanel(page);
-  await openOrganizationTeams(page);
-  await openTeamByLink(page, team.responseData.name);
-};
-
-const patchTeamWait = (page: Page, teamId: string) =>
-  page.waitForResponse(
-    (response) =>
-      response.url().includes(`/api/v1/teams/${teamId}`) &&
-      response.request().method() === 'PATCH'
-  );
 
 test.describe('AI Profile Team Detail', () => {
   test.beforeAll(async ({ browser }) => {
@@ -218,7 +168,7 @@ test.describe('AI Profile Team Detail', () => {
       .getByRole('textbox')
       .fill(`${team.data.displayName}-edited`);
 
-    const patch = patchTeamWait(page, team.responseData.id ?? '');
+    const patch = waitForTeamPatch(page, team.responseData.id ?? '');
     await page.getByTestId('save-display-name').click();
     await patch;
 
@@ -233,7 +183,7 @@ test.describe('AI Profile Team Detail', () => {
     await page.getByTestId('edit-email').click();
     await page.getByTestId('email-input').getByRole('textbox').fill(`team-${uuid()}@example.com`);
 
-    const patch = patchTeamWait(page, team.responseData.id ?? '');
+    const patch = waitForTeamPatch(page, team.responseData.id ?? '');
     await page.getByTestId('save-email').click();
     await patch;
   });
@@ -249,7 +199,7 @@ test.describe('AI Profile Team Detail', () => {
       .locator('[contenteditable="true"]')
       .fill('Updated team description');
 
-    const patch = patchTeamWait(page, team.responseData.id ?? '');
+    const patch = waitForTeamPatch(page, team.responseData.id ?? '');
     await page.getByTestId('save-description').click();
     await patch;
   });
@@ -331,7 +281,7 @@ test.describe('AI Profile Team Detail', () => {
     // Close the autocomplete dropdown so it doesn't intercept the Save click.
     await page.keyboard.press('Escape');
 
-    const addPatch = patchTeamWait(page, team.responseData.id ?? '');
+    const addPatch = waitForTeamPatch(page, team.responseData.id ?? '');
     await page.getByRole('button', { name: 'Save' }).click();
     await addPatch;
 
@@ -340,7 +290,7 @@ test.describe('AI Profile Team Detail', () => {
       .getByRole('button', { name: roleName });
     await expect(roleButton).toBeVisible();
 
-    const removePatch = patchTeamWait(page, team.responseData.id ?? '');
+    const removePatch = waitForTeamPatch(page, team.responseData.id ?? '');
     await page.getByTestId(`remove-${roleName}`).click();
     await page.getByTestId('delete-modal').waitFor();
     await page.getByTestId('confirm-button').click();
@@ -370,7 +320,7 @@ test.describe('AI Profile Team Detail', () => {
     // Close the autocomplete dropdown so it doesn't intercept the Save click.
     await page.keyboard.press('Escape');
 
-    const addPatch = patchTeamWait(page, team.responseData.id ?? '');
+    const addPatch = waitForTeamPatch(page, team.responseData.id ?? '');
     await page.getByRole('button', { name: 'Save' }).click();
     await addPatch;
 
@@ -379,7 +329,7 @@ test.describe('AI Profile Team Detail', () => {
       .getByRole('button', { name: policyName });
     await expect(policyButton).toBeVisible();
 
-    const removePatch = patchTeamWait(page, team.responseData.id ?? '');
+    const removePatch = waitForTeamPatch(page, team.responseData.id ?? '');
     await page.getByTestId(`remove-${policyName}`).click();
     await page.getByTestId('delete-modal').waitFor();
     await page.getByTestId('confirm-button').click();

@@ -12,28 +12,28 @@
  */
 
 import {
-    Autocomplete,
-    Box,
-    Button,
-    ButtonUtility,
-    FieldProp,
-    FieldTypes,
-    FormField,
-    FormFields,
-    FormItemLabel,
-    HookForm,
-    Input,
-    RadioButton,
-    RadioGroup,
-    SelectItemType,
-    Toggle,
-    Typography
+  Autocomplete,
+  Box,
+  Button,
+  ButtonUtility,
+  FieldProp,
+  FieldTypes,
+  FormField,
+  FormFields,
+  FormItemLabel,
+  HookForm,
+  Input,
+  RadioButton,
+  RadioGroup,
+  SelectItemType,
+  Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    Copy01,
-    Eye,
-    EyeOff,
-    RefreshCw01
+  Copy01,
+  Eye,
+  EyeOff,
+  RefreshCw01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compact, debounce } from 'lodash';
@@ -43,8 +43,8 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AGGREGATE_PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
 import {
-    EMAIL_REG_EX,
-    passwordRegex
+  EMAIL_REG_EX,
+  passwordRegex,
 } from '../../../../../../constants/regex.constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -60,15 +60,15 @@ import { getTeams } from '../../../../../../rest/teamsAPI';
 import { createUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import { getUserCreationErrorMessage } from '../../../../../../utils/UsersPureUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import { CreateUserFormData } from '../../../../../Settings/Users/CreateUser/CreateUser.interface';
-import type { MembersView } from './Members.types';
+import type { MembersCreateUserFormProps } from './Members.types';
 
 interface FormValues {
   email: string;
@@ -79,11 +79,6 @@ interface FormValues {
   teams: string[];
   roles: string[];
   personas: string[];
-}
-
-interface MembersCreateUserFormProps {
-  isAdmin?: boolean;
-  onNavigate: (view: MembersView) => void;
 }
 
 const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
@@ -378,257 +373,257 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
         form={form}>
         <div className="tw:overflow-y-auto">
-        <Box
-          className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
-          data-testid="create-user-container"
-          direction="col"
-          gap={5}>
-          <FormFields fields={nameFields} />
+          <Box
+            className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
+            data-testid="create-user-container"
+            direction="col"
+            gap={5}>
+            <FormFields fields={nameFields} />
 
-          <Box direction="col" gap={1}>
-            <Typography
-              className="tw:text-secondary"
-              size="text-sm"
-              weight="medium">
-              {t('label.description')}
-            </Typography>
-            <RichTextEditor
-              className="new-form-style"
-              data-testid="description"
-              placeHolder={t('message.write-your-description')}
-              ref={descEditorRef}
-            />
-          </Box>
+            <Box direction="col" gap={1}>
+              <Typography
+                className="tw:text-secondary"
+                size="text-sm"
+                weight="medium">
+                {t('label.description')}
+              </Typography>
+              <RichTextEditor
+                className="new-form-style"
+                data-testid="description"
+                placeHolder={t('message.write-your-description')}
+                ref={descEditorRef}
+              />
+            </Box>
 
-          {isAuthProviderBasic && (
-            <FormField control={form.control} name="passwordGenerator">
-              {({ field }) => (
-                <Box direction="col" gap={3}>
-                  <RadioGroup
-                    aria-label={t('label.password')}
-                    orientation="horizontal"
-                    value={field.value}
-                    onChange={field.onChange}>
-                    <RadioButton
-                      data-testid="password-auto-generate"
-                      label={t('label.automatically-generate')}
-                      value={CreatePasswordGenerator.AutomaticGenerate}
-                    />
-                    <RadioButton
-                      data-testid="password-create"
-                      label={t('label.password-type', {
-                        type: t('label.create'),
-                      })}
-                      value={CreatePasswordGenerator.CreatePassword}
-                    />
-                  </RadioGroup>
-
-                  {passwordGenerator ===
-                  CreatePasswordGenerator.CreatePassword ? (
-                    <FormFields fields={passwordFields} />
-                  ) : (
-                    <Box direction="col" gap={1}>
-                      <FormItemLabel
-                        label={t('label.password-type', {
-                          type: t('label.generate'),
-                        })}
+            {isAuthProviderBasic && (
+              <FormField control={form.control} name="passwordGenerator">
+                {({ field }) => (
+                  <Box direction="col" gap={3}>
+                    <RadioGroup
+                      aria-label={t('label.password')}
+                      orientation="horizontal"
+                      value={field.value}
+                      onChange={field.onChange}>
+                      <RadioButton
+                        data-testid="password-auto-generate"
+                        label={t('label.automatically-generate')}
+                        value={CreatePasswordGenerator.AutomaticGenerate}
                       />
-                      <Box align="center" direction="row" gap={2}>
-                        <Input
-                          isReadOnly
-                          data-testid="generated-password"
-                          type={showGeneratedPassword ? 'text' : 'password'}
-                          value={generatedPassword}
-                          wrapperClassName="tw:flex-1"
+                      <RadioButton
+                        data-testid="password-create"
+                        label={t('label.password-type', {
+                          type: t('label.create'),
+                        })}
+                        value={CreatePasswordGenerator.CreatePassword}
+                      />
+                    </RadioGroup>
+
+                    {passwordGenerator ===
+                    CreatePasswordGenerator.CreatePassword ? (
+                      <FormFields fields={passwordFields} />
+                    ) : (
+                      <Box direction="col" gap={1}>
+                        <FormItemLabel
+                          label={t('label.password-type', {
+                            type: t('label.generate'),
+                          })}
                         />
-                        <ButtonUtility
-                          color="tertiary"
-                          data-testid="toggle-password-visibility"
-                          icon={showGeneratedPassword ? EyeOff : Eye}
-                          size="sm"
-                          tooltip={String(
-                            showGeneratedPassword
-                              ? t('label.hide')
-                              : t('label.show')
-                          )}
-                          onClick={() =>
-                            setShowGeneratedPassword((prev) => !prev)
-                          }
-                        />
-                        <ButtonUtility
-                          color="tertiary"
-                          data-testid="password-generator"
-                          icon={RefreshCw01}
-                          isDisabled={isPasswordGenerating}
-                          size="sm"
-                          tooltip={String(t('label.regenerate'))}
-                          onClick={generateRandomPassword}
-                        />
-                        <ButtonUtility
-                          color="tertiary"
-                          data-testid="copy-password"
-                          icon={Copy01}
-                          size="sm"
-                          tooltip={String(t('label.copy'))}
-                          onClick={handleCopyPassword}
-                        />
+                        <Box align="center" direction="row" gap={2}>
+                          <Input
+                            isReadOnly
+                            data-testid="generated-password"
+                            type={showGeneratedPassword ? 'text' : 'password'}
+                            value={generatedPassword}
+                            wrapperClassName="tw:flex-1"
+                          />
+                          <ButtonUtility
+                            color="tertiary"
+                            data-testid="toggle-password-visibility"
+                            icon={showGeneratedPassword ? EyeOff : Eye}
+                            size="sm"
+                            tooltip={String(
+                              showGeneratedPassword
+                                ? t('label.hide')
+                                : t('label.show')
+                            )}
+                            onClick={() =>
+                              setShowGeneratedPassword((prev) => !prev)
+                            }
+                          />
+                          <ButtonUtility
+                            color="tertiary"
+                            data-testid="password-generator"
+                            icon={RefreshCw01}
+                            isDisabled={isPasswordGenerating}
+                            size="sm"
+                            tooltip={String(t('label.regenerate'))}
+                            onClick={generateRandomPassword}
+                          />
+                          <ButtonUtility
+                            color="tertiary"
+                            data-testid="copy-password"
+                            icon={Copy01}
+                            size="sm"
+                            tooltip={String(t('label.copy'))}
+                            onClick={handleCopyPassword}
+                          />
+                        </Box>
                       </Box>
+                    )}
+                  </Box>
+                )}
+              </FormField>
+            )}
+
+            <Toggle
+              data-testid="admin"
+              isSelected={isAdminUser}
+              label={t('label.admin')}
+              onChange={setIsAdminUser}
+            />
+
+            <Box direction="col" gap={1}>
+              <FormItemLabel label={t('label.domain-plural')} />
+              <DomainSelect
+                multiple
+                data-testid="domain-select"
+                selectedDomain={selectedDomains}
+                onUpdate={async (domains) => {
+                  if (Array.isArray(domains)) {
+                    setSelectedDomains(domains);
+
+                    return;
+                  }
+                  setSelectedDomains(domains ? [domains] : []);
+                }}
+              />
+            </Box>
+
+            {!isAdmin && (
+              <>
+                <FormField control={form.control} name="teams">
+                  {({ field }) => (
+                    <Box direction="col" gap={1}>
+                      <FormItemLabel label={t('label.team-plural')} />
+                      <Autocomplete
+                        data-testid="teams-dropdown"
+                        filterOption={(item, filterText) =>
+                          contains(item.label || '', filterText)
+                        }
+                        items={teamItems}
+                        placeholder={t('label.please-select-entity', {
+                          entity: t('label.team-plural'),
+                        })}
+                        selectedItems={selectedItems(
+                          field.value as string[],
+                          teamItems
+                        )}
+                        onItemCleared={(key) =>
+                          field.onChange(
+                            (field.value as string[]).filter(
+                              (id) => id !== String(key)
+                            )
+                          )
+                        }
+                        onItemInserted={(key) =>
+                          field.onChange([
+                            ...(field.value as string[]),
+                            String(key),
+                          ])
+                        }>
+                        {(item) => (
+                          <Autocomplete.Item id={item.id} key={item.id}>
+                            {item.label}
+                          </Autocomplete.Item>
+                        )}
+                      </Autocomplete>
                     </Box>
                   )}
-                </Box>
-              )}
-            </FormField>
-          )}
+                </FormField>
 
-          <Toggle
-            data-testid="admin"
-            isSelected={isAdminUser}
-            label={t('label.admin')}
-            onChange={setIsAdminUser}
-          />
+                <FormField control={form.control} name="roles">
+                  {({ field }) => (
+                    <Box direction="col" gap={1}>
+                      <FormItemLabel label={t('label.role-plural')} />
+                      <Autocomplete
+                        data-testid="roles-dropdown"
+                        items={roleItems}
+                        placeholder={t('label.please-select-entity', {
+                          entity: t('label.role-plural'),
+                        })}
+                        selectedItems={selectedItems(
+                          field.value as string[],
+                          roleItems
+                        )}
+                        onItemCleared={(key) =>
+                          field.onChange(
+                            (field.value as string[]).filter(
+                              (id) => id !== String(key)
+                            )
+                          )
+                        }
+                        onItemInserted={(key) =>
+                          field.onChange([
+                            ...(field.value as string[]),
+                            String(key),
+                          ])
+                        }
+                        onSearchChange={(value) =>
+                          debouncedFetchRoleOptions(value)
+                        }>
+                        {(item) => (
+                          <Autocomplete.Item id={item.id} key={item.id}>
+                            {item.label}
+                          </Autocomplete.Item>
+                        )}
+                      </Autocomplete>
+                    </Box>
+                  )}
+                </FormField>
 
-          <Box direction="col" gap={1}>
-            <FormItemLabel label={t('label.domain-plural')} />
-            <DomainSelect
-              multiple
-              data-testid="domain-select"
-              selectedDomain={selectedDomains}
-              onUpdate={async (domains) => {
-                if (Array.isArray(domains)) {
-                  setSelectedDomains(domains);
-
-                  return;
-                }
-                setSelectedDomains(domains ? [domains] : []);
-              }}
-            />
+                <FormField control={form.control} name="personas">
+                  {({ field }) => (
+                    <Box direction="col" gap={1}>
+                      <FormItemLabel label={t('label.persona-plural')} />
+                      <Autocomplete
+                        data-testid="personas-dropdown"
+                        filterOption={(item, filterText) =>
+                          contains(item.label || '', filterText)
+                        }
+                        items={personaItems}
+                        placeholder={t('label.please-select-entity', {
+                          entity: t('label.persona-plural'),
+                        })}
+                        selectedItems={selectedItems(
+                          field.value as string[],
+                          personaItems
+                        )}
+                        onItemCleared={(key) =>
+                          field.onChange(
+                            (field.value as string[]).filter(
+                              (id) => id !== String(key)
+                            )
+                          )
+                        }
+                        onItemInserted={(key) =>
+                          field.onChange([
+                            ...(field.value as string[]),
+                            String(key),
+                          ])
+                        }>
+                        {(item) => (
+                          <Autocomplete.Item id={item.id} key={item.id}>
+                            {item.label}
+                          </Autocomplete.Item>
+                        )}
+                      </Autocomplete>
+                    </Box>
+                  )}
+                </FormField>
+              </>
+            )}
           </Box>
-
-          {!isAdmin && (
-            <>
-              <FormField control={form.control} name="teams">
-                {({ field }) => (
-                  <Box direction="col" gap={1}>
-                    <FormItemLabel label={t('label.team-plural')} />
-                    <Autocomplete
-                      data-testid="teams-dropdown"
-                      filterOption={(item, filterText) =>
-                        contains(item.label || '', filterText)
-                      }
-                      items={teamItems}
-                      placeholder={t('label.please-select-entity', {
-                        entity: t('label.team-plural'),
-                      })}
-                      selectedItems={selectedItems(
-                        field.value as string[],
-                        teamItems
-                      )}
-                      onItemCleared={(key) =>
-                        field.onChange(
-                          (field.value as string[]).filter(
-                            (id) => id !== String(key)
-                          )
-                        )
-                      }
-                      onItemInserted={(key) =>
-                        field.onChange([
-                          ...(field.value as string[]),
-                          String(key),
-                        ])
-                      }>
-                      {(item) => (
-                        <Autocomplete.Item id={item.id} key={item.id}>
-                          {item.label}
-                        </Autocomplete.Item>
-                      )}
-                    </Autocomplete>
-                  </Box>
-                )}
-              </FormField>
-
-              <FormField control={form.control} name="roles">
-                {({ field }) => (
-                  <Box direction="col" gap={1}>
-                    <FormItemLabel label={t('label.role-plural')} />
-                    <Autocomplete
-                      data-testid="roles-dropdown"
-                      items={roleItems}
-                      placeholder={t('label.please-select-entity', {
-                        entity: t('label.role-plural'),
-                      })}
-                      selectedItems={selectedItems(
-                        field.value as string[],
-                        roleItems
-                      )}
-                      onItemCleared={(key) =>
-                        field.onChange(
-                          (field.value as string[]).filter(
-                            (id) => id !== String(key)
-                          )
-                        )
-                      }
-                      onItemInserted={(key) =>
-                        field.onChange([
-                          ...(field.value as string[]),
-                          String(key),
-                        ])
-                      }
-                      onSearchChange={(value) =>
-                        debouncedFetchRoleOptions(value)
-                      }>
-                      {(item) => (
-                        <Autocomplete.Item id={item.id} key={item.id}>
-                          {item.label}
-                        </Autocomplete.Item>
-                      )}
-                    </Autocomplete>
-                  </Box>
-                )}
-              </FormField>
-
-              <FormField control={form.control} name="personas">
-                {({ field }) => (
-                  <Box direction="col" gap={1}>
-                    <FormItemLabel label={t('label.persona-plural')} />
-                    <Autocomplete
-                      data-testid="personas-dropdown"
-                      filterOption={(item, filterText) =>
-                        contains(item.label || '', filterText)
-                      }
-                      items={personaItems}
-                      placeholder={t('label.please-select-entity', {
-                        entity: t('label.persona-plural'),
-                      })}
-                      selectedItems={selectedItems(
-                        field.value as string[],
-                        personaItems
-                      )}
-                      onItemCleared={(key) =>
-                        field.onChange(
-                          (field.value as string[]).filter(
-                            (id) => id !== String(key)
-                          )
-                        )
-                      }
-                      onItemInserted={(key) =>
-                        field.onChange([
-                          ...(field.value as string[]),
-                          String(key),
-                        ])
-                      }>
-                      {(item) => (
-                        <Autocomplete.Item id={item.id} key={item.id}>
-                          {item.label}
-                        </Autocomplete.Item>
-                      )}
-                    </Autocomplete>
-                  </Box>
-                )}
-              </FormField>
-            </>
-          )}
-        </Box>
-          </div>
+        </div>
       </HookForm>
 
       <Box

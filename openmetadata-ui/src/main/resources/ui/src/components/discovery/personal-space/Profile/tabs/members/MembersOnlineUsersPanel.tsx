@@ -217,11 +217,12 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
             </ProfileHashLink>
           ))}
           {overflow > 0 && (
-            <span
+            <Typography
+              as="span"
               className="tw:text-xs tw:text-tertiary"
               data-testid="plus-more-count">
               {`+${overflow} ${t('label.more')}`}
-            </span>
+            </Typography>
           )}
         </Box>
       );
@@ -307,7 +308,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
           const status = formatOnlineStatus(activityTime, t);
 
           return (
-            <Box className="tw:flex tw:flex-col tw:gap-0.5">
+            <Box className="tw:gap-0.5" direction="col">
               <Typography className={status.colorClass} size="text-sm">
                 {status.label}
               </Typography>

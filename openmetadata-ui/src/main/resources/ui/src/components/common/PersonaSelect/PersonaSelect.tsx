@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-    TreeSelect,
-    TreeSelectDataResponse,
-    TreeSelectNode
+  TreeSelect,
+  TreeSelectDataResponse,
+  TreeSelectNode,
 } from '@openmetadata/ui-core-components';
 import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -25,8 +25,8 @@ import { getAllPersonas, searchPersonas } from '../../../rest/PersonaAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PersonaSelectProps } from './PersonaSelect.types';
 import {
-    entityRefToTreeNode,
-    personasToTreeNodes
+  entityRefToTreeNode,
+  personasToTreeNodes,
 } from './PersonaSelect.utils';
 
 const withPersonaIcon = (

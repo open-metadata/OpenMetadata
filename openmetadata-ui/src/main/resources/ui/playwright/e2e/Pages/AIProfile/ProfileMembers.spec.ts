@@ -17,6 +17,7 @@ import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
+  clickMembersBreadcrumb,
   navigateToMembersPanel,
   openAdminsPanel,
   openOnlineUsersPanel,
@@ -28,18 +29,6 @@ import {
 } from '../../../utils/aiProfile';
 import { performAdminLogin } from '../../../utils/admin';
 import { uuid } from '../../../utils/common';
-
-const clickMembersBreadcrumb = async (
-  page: Parameters<typeof navigateToMembersPanel>[0]
-): Promise<void> => {
-  // The header breadcrumb is a react-aria link; scope to the header so it cannot
-  // collide with the "Members" sidebar nav button.
-  await page
-    .getByTestId('profile-content-header')
-    .getByRole('link', { name: 'Members' })
-    .click();
-  await expect(page.getByTestId('members-landing')).toBeVisible();
-};
 
 test.describe('AI Profile Members - navigation & basics', () => {
   test.beforeAll(async ({ browser }) => {
@@ -138,8 +127,10 @@ test.describe('AI Profile Members - navigation & basics', () => {
     await openOnlineUsersPanel(page);
     await expect(page.getByTestId('online-users-table')).toBeVisible();
 
-    const windowChangeResponse = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/users/online')
+    const windowChangeResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/online') &&
+        response.url().includes('timeWindow=10080')
     );
     await page.getByTestId('time-window-select').click();
     await page.getByRole('option', { name: 'Last 7 days' }).click();

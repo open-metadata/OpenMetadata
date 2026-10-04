@@ -22,7 +22,6 @@ import {
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnDragIcon } from '../../../../../../assets/svg/menu-duo.svg';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
@@ -141,23 +140,45 @@ export const UserRolesCell: FC<UserRolesCellProps> = ({ record, goTo }) => {
   );
 };
 
+// The child-team table is a lazy-loaded tree: a row with sub-teams carries an
+// empty `children` array (the expand placeholder TableV2 reads), a leaf carries
+// none. On expand the row's real children replace that placeholder.
+export const withTeamChildrenPlaceholder = (teams: Team[]): Team[] =>
+  teams.map((team) => ({
+    ...team,
+    children:
+      team.childrenCount && team.childrenCount > 0
+        ? (team.children as EntityReference[] | undefined) ?? []
+        : undefined,
+  }));
+
+// Walks the loaded tree and grafts a parent's freshly-fetched children in place
+// (mutates `teams`; the caller passes a clone). Mirrors the legacy TeamsPage.
+export const updateTeamsHierarchy = (
+  teams: Team[],
+  parentFqn: string,
+  children: Team[]
+): void => {
+  for (const team of teams) {
+    if (team.fullyQualifiedName === parentFqn) {
+      team.children = children as unknown as EntityReference[];
+
+      return;
+    }
+    if (team.children && team.children.length > 0) {
+      updateTeamsHierarchy(
+        team.children as unknown as Team[],
+        parentFqn,
+        children
+      );
+    }
+  }
+};
+
 export const getChildTeamColumns = (
   t: (key: string, options?: Record<string, unknown>) => string,
   onNavigate: (view: MembersView) => void
 ): ColumnsType<Team> => [
-  {
-    title: '',
-    dataIndex: 'drag',
-    key: 'drag',
-    width: 32,
-    render: () => (
-      <ColumnDragIcon
-        aria-hidden
-        className="tw:size-4 tw:text-tertiary tw:cursor-grab"
-        data-testid="drag-handle"
-      />
-    ),
-  },
   {
     title: t('label.team-plural'),
     dataIndex: 'name',
@@ -248,9 +269,9 @@ export const getUserColumns = (
     key: 'name',
     ellipsis: true,
     render: (_: unknown, record: User) => (
-      <span className="tw:truncate tw:block tw:max-w-full">
+      <Typography className="tw:truncate tw:block tw:max-w-full">
         {getEntityName(record)}
-      </span>
+      </Typography>
     ),
   },
   {

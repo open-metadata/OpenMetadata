@@ -35,6 +35,7 @@ import { TEAM_DRAG_TYPE } from './MembersTeamDetail.utils';
 const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
   team,
   childTeamColumns,
+  childTeamExpandable,
   filteredChildTeams,
   dragAndDropHooks,
   draggedTeamRef,
@@ -77,6 +78,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
           data-testid="sub-teams-table"
           dataSource={filteredChildTeams}
           dragAndDropHooks={dragAndDropHooks}
+          expandable={childTeamExpandable}
           extraTableFilters={
             <Box align="center" direction="row" gap={3}>
               <Toggle
