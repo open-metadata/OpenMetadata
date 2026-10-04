@@ -121,7 +121,10 @@ class LifeCycleQueryMixin:
                 # earlier runs are removed by the 2.1.0 data migration, not by ingestion.
                 if created is not None or updated is not None:
                     life_cycle = LifeCycle(created=created, updated=updated)  # pyright: ignore[reportCallIssue]
-                    yield Either(right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle))
+                    yield Either(
+                        left=None,
+                        right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle),
+                    )
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
