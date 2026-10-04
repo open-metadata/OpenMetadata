@@ -53,6 +53,12 @@ export const useSwitchActiveDomain = () => {
       }
       navigate(0);
     },
-    [currentUser?.id, currentUser?.defaultDomain]
+    [
+      currentUser?.id,
+      currentUser?.defaultDomain,
+      navigate,
+      updateActiveDomain,
+      updateCurrentUser,
+    ]
   );
 };
