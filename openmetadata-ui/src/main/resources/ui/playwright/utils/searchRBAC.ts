@@ -113,6 +113,13 @@ export const enableDisableSearchRBAC = async (
   }
   const initialSetting = await settingResponse.json();
 
+  // Callers re-assert this per test, so skip the write and the poll on a no-op.
+  if (
+    initialSetting.config_value?.globalSettings?.enableAccessControl === enable
+  ) {
+    return;
+  }
+
   const updatedSetting = {
     ...initialSetting,
     config_value: {
