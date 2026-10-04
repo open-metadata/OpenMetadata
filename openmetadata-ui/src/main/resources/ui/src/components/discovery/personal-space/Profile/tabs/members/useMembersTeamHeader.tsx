@@ -237,6 +237,14 @@ export const useMembersTeamHeader = (
     );
 
     onSetHeaderActions?.(buildHeaderActions(t, team, params));
+
+    // The parent no longer clears header slots on view change (that raced the
+    // child set), so clear what this hook owns when the team view unmounts.
+    return () => {
+      onSetHeaderActions?.(undefined);
+      onSetHeaderTitleInput?.(undefined);
+      onSetHeaderTitleSuffix?.(undefined);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     team,

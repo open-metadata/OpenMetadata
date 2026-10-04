@@ -50,6 +50,10 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: true }),
+}));
+
 import MembersUsersPanel from './MembersUsersPanel';
 
 const renderComponent = (isAdmin = false) =>
@@ -86,5 +90,31 @@ describe('MembersUsersPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('users-list-table')).toBeInTheDocument();
     });
+  });
+
+  // Regression: the add-user button is published as a header action and the
+  // parent no longer clears it, so the panel must set it for an admin and clear
+  // it itself on unmount.
+  it('publishes the add-user header action for an admin and clears it on unmount', async () => {
+    const onSetHeaderActions = jest.fn();
+    const { unmount } = render(
+      <MemoryRouter>
+        <MembersUsersPanel
+          isAdmin
+          onNavigate={jest.fn()}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(
+        onSetHeaderActions.mock.calls.some(([node]) => Boolean(node))
+      ).toBe(true)
+    );
+
+    unmount();
+
+    expect(onSetHeaderActions).toHaveBeenLastCalledWith(undefined);
   });
 });

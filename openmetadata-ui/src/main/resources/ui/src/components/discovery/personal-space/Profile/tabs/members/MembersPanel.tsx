@@ -248,7 +248,10 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const viewFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
 
   useEffect(() => {
-    setPanelHeaderActions(undefined);
+    // Header actions are owned by each child panel (set + unmount-cleanup), so
+    // the parent must NOT clear them here: React runs child effects before the
+    // parent's, so clearing would clobber a button the child just set in the
+    // same commit (the add-user button vanishing when isAdmin is already loaded).
     setDetailHeaderTitleInput(undefined);
     setDetailHeaderTitleSuffix(undefined);
     setResolvedTeamName('');
