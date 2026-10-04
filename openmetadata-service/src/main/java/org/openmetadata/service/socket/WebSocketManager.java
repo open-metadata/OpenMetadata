@@ -59,7 +59,8 @@ public class WebSocketManager {
   private final Map<String, Long> socketSessionValidatedAt = new ConcurrentHashMap<>();
 
   // Cross-pod delivery for sendToOne. Defaults to no-op (single-pod); a Redis or DB-backed relay is
-  // injected at startup on multi-pod deployments so a frame produced on one pod reaches the pod that
+  // injected at startup on multi-pod deployments so a frame produced on one pod reaches the pod
+  // that
   // holds the user's socket.
   private volatile WebSocketRelay relay = new NoopWebSocketRelay();
 
@@ -152,7 +153,8 @@ public class WebSocketManager {
 
   public void sendToOne(UUID receiver, String event, String message) {
     // Deliver to this pod's sockets, then relay to peers so a user's sockets on other pods (or a
-    // socket on a different pod than the one that produced this frame) are reached too. The relay is
+    // socket on a different pod than the one that produced this frame) are reached too. The relay
+    // is
     // a no-op on single-pod, keeping this a plain local send there.
     sendToOneLocal(receiver, event, message);
     relay.publish(receiver, event, message);
