@@ -12,11 +12,11 @@
  */
 
 import {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useSyncExternalStore
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
@@ -175,7 +175,18 @@ export const useSettingsHash = () => {
   useEffect(() => {
     const onPopState = () => setStoreHash(globalThis.location.hash);
     globalThis.addEventListener('popstate', onPopState);
-    onPopState();
+
+    // Initial sync (not a real popstate event). A deep link opened in a new tab
+    // is captured in the module-level `storeHash` at load time; the app's
+    // initial auth/landing redirect can strip the hash from the URL before this
+    // effect runs. Only adopt the live hash when it is non-empty, so that
+    // redirect can't wipe the deep link — the modal still opens on the deep
+    // view. Genuine browser navigation (Back/Forward to an empty hash) still
+    // clears via the `popstate` listener above.
+    const liveHash = globalThis.location.hash;
+    if (liveHash || !storeHash) {
+      setStoreHash(liveHash);
+    }
 
     return () => globalThis.removeEventListener('popstate', onPopState);
   }, []);

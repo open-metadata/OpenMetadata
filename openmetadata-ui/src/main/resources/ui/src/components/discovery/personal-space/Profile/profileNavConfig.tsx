@@ -202,7 +202,7 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     id: 'members',
     group: 'workspace',
     label: 'label.member-plural',
-    description: 'message.members-settings-description',
+    description: 'message.team-member-management-description',
     icon: Users01,
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,

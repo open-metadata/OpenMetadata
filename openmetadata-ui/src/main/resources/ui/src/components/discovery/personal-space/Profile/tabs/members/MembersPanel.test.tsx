@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 jest.mock('react-i18next', () => ({
@@ -32,9 +32,24 @@ jest.mock('./MembersLanding', () => () => (
   <div data-testid="members-landing" />
 ));
 
-jest.mock('./MembersTeamDetail', () => () => (
-  <div data-testid="members-team-detail" />
-));
+jest.mock(
+  './MembersTeamDetail',
+  () =>
+    ({ onRename }: { onRename?: (name: string) => void }) => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const React = require('react');
+      // Defer like the real component, which reports the name only after its
+      // async getTeamByName resolves — so the panel's sync clear-on-nav effect
+      // runs first and doesn't wipe it.
+      React.useEffect(() => {
+        const id = setTimeout(() => onRename?.('Engineering Team'), 0);
+
+        return () => clearTimeout(id);
+      }, [onRename]);
+
+      return <div data-testid="members-team-detail" />;
+    }
+);
 
 jest.mock('./MembersUsersPanel', () => () => (
   <div data-testid="members-users-panel" />
@@ -51,7 +66,6 @@ jest.mock('./MembersOnlineUsersPanel', () => () => (
 import MembersPanel from './MembersPanel';
 
 describe('MembersPanel', () => {
-
   it('renders landing view by default', () => {
     render(
       <MemoryRouter>
@@ -62,4 +76,24 @@ describe('MembersPanel', () => {
     expect(screen.getByTestId('members-landing')).toBeInTheDocument();
   });
 
+  it('shows the fetched team display name in the header, not the raw FQN', async () => {
+    window.location.hash = '#members/teams/Engineering';
+    const onHeaderChange = jest.fn();
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <MembersPanel onHeaderChange={onHeaderChange} />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() =>
+      expect(onHeaderChange).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Engineering Team' })
+      )
+    );
+
+    window.location.hash = '';
+  });
 });

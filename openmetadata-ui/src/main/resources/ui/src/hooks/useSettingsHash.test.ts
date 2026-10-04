@@ -35,6 +35,9 @@ describe('useSettingsHash', () => {
     mockHash = '';
     mockSearch = '';
     mockNavigate.mockClear();
+    // The hook reads the live URL from `window.location` (not react-router's
+    // useLocation), so drive it through the history API.
+    window.history.replaceState(null, '', '/');
   });
 
   it('should return null tab when no hash', () => {
@@ -46,7 +49,7 @@ describe('useSettingsHash', () => {
   });
 
   it('should parse #notification correctly', () => {
-    mockHash = '#notification';
+    window.history.replaceState(null, '', '#notification');
     const { result } = renderHook(() => useSettingsHash());
 
     expect(result.current.state.tab).toBe('notification');
@@ -55,7 +58,7 @@ describe('useSettingsHash', () => {
   });
 
   it('should parse #notification/subpath correctly', () => {
-    mockHash = '#notification/alerts';
+    window.history.replaceState(null, '', '#notification/alerts');
     const { result } = renderHook(() => useSettingsHash());
 
     expect(result.current.state.tab).toBe('notification');
@@ -63,7 +66,11 @@ describe('useSettingsHash', () => {
   });
 
   it('should parse hash with query params', () => {
-    mockHash = '#notification?page=2&cursorType=after';
+    window.history.replaceState(
+      null,
+      '',
+      '#notification?page=2&cursorType=after'
+    );
     const { result } = renderHook(() => useSettingsHash());
 
     expect(result.current.state.tab).toBe('notification');
@@ -100,7 +107,7 @@ describe('useSettingsHash', () => {
   });
 
   it('should preserve query string when setting hash', () => {
-    mockSearch = '?search=foo&bar=1';
+    window.history.replaceState(null, '', '/?search=foo&bar=1');
     const { result } = renderHook(() => useSettingsHash());
 
     act(() => {
@@ -126,5 +133,29 @@ describe('useSettingsHash', () => {
       { pathname: '/', search: '', hash: '' },
       { replace: true }
     );
+  });
+
+  // Deep link opened in a new tab: an initial app/auth redirect can strip the
+  // URL hash before the hook's mount sync runs. The captured hash must survive
+  // so the personal-space modal still opens on the role/policy detail.
+  it('keeps a captured deep-link hash when a later mount sees an empty URL hash', () => {
+    window.location.hash = '#access-control/roles-detail/Admin';
+    const first = renderHook(() => useSettingsHash());
+
+    expect(first.result.current.state.tab).toBe('access-control');
+
+    first.unmount();
+
+    // Simulate the initial redirect having wiped the URL hash.
+    window.location.hash = '';
+    const second = renderHook(() => useSettingsHash());
+
+    expect(second.result.current.state.tab).toBe('access-control');
+    expect(second.result.current.state.subPath).toBe('roles-detail/Admin');
+
+    // Reset the module-level store so later tests start clean.
+    act(() => {
+      second.result.current.clearHash();
+    });
   });
 });

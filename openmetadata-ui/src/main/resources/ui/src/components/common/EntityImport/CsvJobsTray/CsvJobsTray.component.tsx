@@ -34,6 +34,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { SOCKET_EVENTS } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
@@ -484,7 +485,10 @@ export const CsvJobsTray = () => {
     );
   };
 
-  return (
+  // Portal to body so the fixed tray shares the root stacking context with the
+  // modals (which also portal to body); otherwise an ancestor stacking context
+  // traps it below any open overlay regardless of its z-index.
+  return createPortal(
     <div className="csv-jobs-tray">
       {open && (
         <div className="csv-jobs-tray-popover tw:w-100!">
@@ -606,6 +610,7 @@ export const CsvJobsTray = () => {
           </button>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };

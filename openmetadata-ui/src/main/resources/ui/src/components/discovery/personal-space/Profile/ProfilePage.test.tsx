@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 
 let mockHashState: { tab: string | null; subPath: string; params: object } = {
@@ -33,6 +33,13 @@ const mockGetUserByName = jest.fn();
 jest.mock('rest/userAPI', () => ({
   getUserByName: (...a: unknown[]) => mockGetUserByName(...a),
   updateUserDetail: jest.fn(),
+}));
+
+const mockShowErrorToast = jest.fn();
+
+jest.mock('utils/ToastUtils', () => ({
+  showErrorToast: (...a: unknown[]) => mockShowErrorToast(...a),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('hooks/useApplicationStore', () => ({
@@ -183,7 +190,7 @@ describe('ProfilePage', () => {
 
   it('shows an empty placeholder (no loader) when the profile username is unknown', async () => {
     mockHashState = { tab: 'profile', subPath: 'does-not-exist', params: {} };
-    mockGetUserByName.mockRejectedValue(new Error('404'));
+    mockGetUserByName.mockRejectedValue({ response: { status: 404 } });
 
     await act(async () => {
       render(<ProfilePage />);
@@ -192,6 +199,78 @@ describe('ProfilePage', () => {
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(screen.getByText('label.no-entity-found')).toBeInTheDocument();
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+  });
+
+  it('shows a toast (not the empty placeholder) on a non-404 profile fetch error', async () => {
+    mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
+    mockGetUserByName.mockRejectedValue({ response: { status: 500 } });
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(mockShowErrorToast).toHaveBeenCalled();
+    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+  });
+
+  it('ignores a stale profile response when the target changes mid-flight', async () => {
+    let resolveBob: (value: unknown) => void = () => undefined;
+    const bobPromise = new Promise((resolve) => {
+      resolveBob = resolve;
+    });
+    mockGetUserByName.mockImplementation((name: string) =>
+      name === 'bob'
+        ? bobPromise
+        : Promise.resolve({
+            id: 'u-alice',
+            name: 'alice',
+            displayName: 'Alice',
+          })
+    );
+
+    mockHashState = { tab: 'profile', subPath: 'bob', params: {} };
+    const { rerender } = render(<ProfilePage />);
+
+    // Switch to alice before bob's (slower) request resolves.
+    mockHashState = { tab: 'profile', subPath: 'alice', params: {} };
+    await act(async () => {
+      rerender(<ProfilePage />);
+    });
+
+    // Now let bob resolve late — it must be discarded as stale.
+    await act(async () => {
+      resolveBob({ id: 'u-bob', name: 'bob', displayName: 'Bob' });
+      await bobPromise;
+    });
+
+    const header = screen.getByTestId('profile-content-header');
+
+    expect(within(header).getByText('Alice')).toBeInTheDocument();
+    expect(within(header).queryByText('Bob')).not.toBeInTheDocument();
+  });
+
+  it('keeps the profile breadcrumb static (nav label) when viewing another user', async () => {
+    mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
+    mockGetUserByName.mockResolvedValue({
+      id: 'u2',
+      name: 'jane',
+      displayName: 'Jane Doe',
+    });
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    const header = screen.getByTestId('profile-content-header');
+
+    // Title shows the viewed user's name...
+    expect(within(header).getByText('Jane Doe')).toBeInTheDocument();
+
+    // ...but the breadcrumb stays the nav label, never the user name.
+    const breadcrumb = within(header).getByRole('navigation');
+
+    expect(within(breadcrumb).getByText('label.profile')).toBeInTheDocument();
+    expect(within(breadcrumb).queryByText('Jane Doe')).not.toBeInTheDocument();
   });
 
   it('swaps the content panel when a nav item is clicked', async () => {

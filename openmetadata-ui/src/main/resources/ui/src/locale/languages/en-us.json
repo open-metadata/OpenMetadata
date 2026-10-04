@@ -4416,7 +4416,6 @@
     "mcp-chat-placeholder": "Ask anything...",
     "members-admins-description": "View and manage admin users in your organization. For regular users, please visit the Users page.",
     "members-online-users-description": "View users who have been active recently in the system.",
-    "members-settings-description": "Streamline access to users and teams in Collate.",
     "members-teams-description": "Represent your entire organizational structure with hierarchical teams.",
     "members-users-description": "View and manage regular users in your organization. For admin users, please visit the Admins page.",
     "memory-proposal-failed": "The last proposal attempt failed: {{message}}",

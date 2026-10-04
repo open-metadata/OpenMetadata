@@ -11,47 +11,47 @@
  *  limitations under the License.
  */
 import {
-    Alert,
-    Box,
-    Button,
-    FeaturedIcon,
-    FileUploadDropZone,
-    ProgressBar,
-    Typography
+  Alert,
+  Box,
+  Button,
+  FeaturedIcon,
+  FileUploadDropZone,
+  ProgressBar,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    AlertTriangle,
-    Check,
-    CheckCircle,
-    ChevronRight,
-    File06,
-    RefreshCw01,
-    XClose
+  AlertTriangle,
+  Check,
+  CheckCircle,
+  ChevronRight,
+  File06,
+  RefreshCw01,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import {
-    FC,
-    Fragment,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ENTITY_IMPORT_STEPS,
-    VALIDATION_STEP
+  ENTITY_IMPORT_STEPS,
+  VALIDATION_STEP,
 } from '../../../../../../constants/BulkImport.constant';
 import { SOCKET_EVENTS } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
 import {
-    CSVImportResult,
-    Status
+  CSVImportResult,
+  Status,
 } from '../../../../../../generated/type/csvImportResult';
 import {
-    CSVImportAsyncWebsocketResponse,
-    CSVImportJobType
+  CSVImportAsyncWebsocketResponse,
+  CSVImportJobType,
 } from '../../../../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { importTeam, importUserInTeam } from '../../../../../../rest/teamsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -150,11 +150,9 @@ const SelectedFileCard: FC<{
       <FeaturedIcon color="brand" icon={File06} size="md" theme="light" />
       <Box align="start" className="tw:min-w-0 tw:flex-1" direction="col">
         <div>
-        <Typography
-          ellipsis={{ tooltip: file.name }}
-          weight="semibold">
-          {file.name}
-        </Typography>
+          <Typography ellipsis={{ tooltip: file.name }} weight="semibold">
+            {file.name}
+          </Typography>
         </div>
         <Typography className="tw:text-tertiary tw:text-left" size="text-sm">
           {`${file.sizeLabel} · ${rowCountLabel}`}
@@ -585,7 +583,9 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
     if (!socket) {
       return;
     }
-    socket.on(SOCKET_EVENTS.CSV_IMPORT_CHANNEL, (payload: string) => {
+    // Keep a stable reference so cleanup removes only THIS listener — a bare
+    // socket.off(channel) would also drop the app-wide CsvJobsTray subscription.
+    const handleCsvImportChannel = (payload: string) => {
       if (!payload) {
         return;
       }
@@ -595,6 +595,20 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
         return;
       }
       setActiveJob({ jobId: response.jobId, status: response.status });
+      // A FAILED job must clear the spinner and drop back to an actionable step,
+      // otherwise the form hangs on the ProcessingBanner with no footer/retry.
+      if (response.status === 'FAILED') {
+        showErrorToast(response.error ?? t('server.unexpected-error'));
+        setProcessingType(undefined);
+        setActiveStep(
+          job.type === 'initialLoad'
+            ? VALIDATION_STEP.UPLOAD
+            : VALIDATION_STEP.EDIT_VALIDATE
+        );
+        activeJobRef.current = undefined;
+
+        return;
+      }
       if (response.status !== 'COMPLETED') {
         return;
       }
@@ -609,12 +623,14 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
         setActiveStep(VALIDATION_STEP.EDIT_VALIDATE);
       }
       activeJobRef.current = undefined;
-    });
+    };
+
+    socket.on(SOCKET_EVENTS.CSV_IMPORT_CHANNEL, handleCsvImportChannel);
 
     return () => {
-      socket.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
+      socket.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL, handleCsvImportChannel);
     };
-  }, [socket]);
+  }, [socket, t]);
 
   const previewProgress = useMemo(() => {
     if (!activeJob?.jobId) {
@@ -663,6 +679,27 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
   const rowCountLabel = getRowCountLabel(selectedFile?.rowCount ?? 0);
   const isProcessing = Boolean(processingType);
 
+  const renderUpdateBody = () => {
+    if (isAborted) {
+      return (
+        <AbortCard
+          reason={csvImportResult?.abortReason}
+          onBack={handleRetryUpload}
+        />
+      );
+    }
+
+    // A completed import that didn't fully succeed shows the result table with
+    // per-row failures, not a false "imported successfully" screen.
+    if (csvImportResult && csvImportResult.status !== Status.Success) {
+      return <PreviewContent result={csvImportResult} />;
+    }
+
+    return (
+      <SuccessContent entity={entity} fileName={selectedFile?.name ?? ''} />
+    );
+  };
+
   const renderBody = () => {
     if (processingType === 'preview') {
       return (
@@ -710,9 +747,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
     }
 
     if (activeStep === VALIDATION_STEP.UPDATE) {
-      return (
-        <SuccessContent entity={entity} fileName={selectedFile?.name ?? ''} />
-      );
+      return renderUpdateBody();
     }
 
     return null;

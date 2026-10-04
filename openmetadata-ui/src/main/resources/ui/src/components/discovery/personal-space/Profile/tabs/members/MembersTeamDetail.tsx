@@ -329,6 +329,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         include: Include.All,
       });
       setTeam(data);
+      // Report the fetched display name up so the panel header/breadcrumb show
+      // it instead of the raw FQN (and refresh after a rename-driven refetch).
+      onRename?.(getEntityName(data));
       const tabs = getAvailableTabs(data.teamType);
       if (!tabs.includes(activeTab)) {
         setActiveTab(tabs[0]);
@@ -338,7 +341,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [fqn]);
+  }, [fqn, onRename]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchChildTeams = useCallback(async () => {
     if (!team?.fullyQualifiedName) {
@@ -1359,79 +1362,83 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   return (
     <Box
-      className="tw:flex-1 tw:overflow-y-auto"
+      className="tw:h-full tw:min-h-0 tw:overflow-hidden"
       data-testid="team-detail"
       direction="col">
-      {/* Info widget section */}
-      <MembersTeamInfoWidgets
-        canEdit={canEditAll && !team.deleted}
-        team={team}
-        onPatch={handlePatchTeam}
-      />
+      {/* Fixed header: info widgets + description stay pinned; only the tab
+          table below scrolls, so the view no longer jumps to top on updates. */}
+      <Box className="tw:shrink-0" direction="col">
+        {/* Info widget section */}
+        <MembersTeamInfoWidgets
+          canEdit={canEditAll && !team.deleted}
+          team={team}
+          onPatch={handlePatchTeam}
+        />
 
-      {/* Description (inline editor — no modal) */}
-      <Card className="tw:mx-8 tw:mb-6">
-        <Card.Content className="tw:px-3">
-          <Box direction="col" gap={2}>
-            <Box align="center" direction="row" gap={2}>
-              <Typography className="tw:text-primary" weight="medium">
-                {t('label.description')}
-              </Typography>
-              {canEditDescInline && !isDescEditing && (
-                <ButtonUtility
-                  color="tertiary"
-                  data-testid="edit-description-btn"
-                  icon={Edit01}
-                  size="xs"
-                  tooltip={String(
-                    t('label.edit-entity', { entity: t('label.description') })
-                  )}
-                  tooltipPlacement="right"
-                  onClick={() => setIsDescEditing(true)}
-                />
+        {/* Description (inline editor — no modal) */}
+        <Card className="tw:mx-8 tw:mb-6">
+          <Card.Content className="tw:px-3">
+            <Box direction="col" gap={2}>
+              <Box align="center" direction="row" gap={2}>
+                <Typography className="tw:text-primary" weight="medium">
+                  {t('label.description')}
+                </Typography>
+                {canEditDescInline && !isDescEditing && (
+                  <ButtonUtility
+                    color="tertiary"
+                    data-testid="edit-description-btn"
+                    icon={Edit01}
+                    size="xs"
+                    tooltip={String(
+                      t('label.edit-entity', { entity: t('label.description') })
+                    )}
+                    tooltipPlacement="right"
+                    onClick={() => setIsDescEditing(true)}
+                  />
+                )}
+              </Box>
+              {isDescEditing && (
+                <Box direction="col" gap={2}>
+                  <RichTextEditor
+                    className="new-form-style"
+                    initialValue={team.description ?? ''}
+                    ref={descEditorRef}
+                  />
+                  <Box direction="row" gap={2} justify="end">
+                    <Button
+                      color="tertiary"
+                      data-testid="cancel-description"
+                      isDisabled={isDescSaving}
+                      size="sm"
+                      onPress={() => setIsDescEditing(false)}>
+                      {t('label.cancel')}
+                    </Button>
+                    <Button
+                      color="primary"
+                      data-testid="save-description"
+                      isLoading={isDescSaving}
+                      size="sm"
+                      onPress={handleDescriptionSave}>
+                      {t('label.save')}
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+              {!isDescEditing && team.description && (
+                <RichTextEditorPreviewerV1 markdown={team.description} />
+              )}
+              {!isDescEditing && !team.description && (
+                <Typography className="tw:text-tertiary" size="text-sm">
+                  {t('label.no-description')}
+                </Typography>
               )}
             </Box>
-            {isDescEditing && (
-              <Box direction="col" gap={2}>
-                <RichTextEditor
-                  className="new-form-style"
-                  initialValue={team.description ?? ''}
-                  ref={descEditorRef}
-                />
-                <Box direction="row" gap={2} justify="end">
-                  <Button
-                    color="tertiary"
-                    data-testid="cancel-description"
-                    isDisabled={isDescSaving}
-                    size="sm"
-                    onPress={() => setIsDescEditing(false)}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    color="primary"
-                    data-testid="save-description"
-                    isLoading={isDescSaving}
-                    size="sm"
-                    onPress={handleDescriptionSave}>
-                    {t('label.save')}
-                  </Button>
-                </Box>
-              </Box>
-            )}
-            {!isDescEditing && team.description && (
-              <RichTextEditorPreviewerV1 markdown={team.description} />
-            )}
-            {!isDescEditing && !team.description && (
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('label.no-description')}
-              </Typography>
-            )}
-          </Box>
-        </Card.Content>
-      </Card>
+          </Card.Content>
+        </Card>
+      </Box>
 
       {/* Tabs */}
-      <Box className="tw:px-8 tw:flex-1" direction="col">
+      <Box className="tw:px-8 tw:flex-1 tw:min-h-0" direction="col">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(key: Key) => setActiveTab(key as TeamTab)}>

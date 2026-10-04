@@ -16,7 +16,14 @@ import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -36,7 +43,6 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
-import { resolveProfileTarget } from './ProfilePage.utils';
 import {
   APPLICATION_NAV_ITEMS,
   DEFAULT_PROFILE_NAV_ID,
@@ -49,6 +55,7 @@ import {
   PROFILE_NAV_ITEMS,
   WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
+import { resolveProfileTarget } from './ProfilePage.utils';
 import ProfileSideNav from './ProfileSideNav';
 
 const ProfilePage: React.FC = () => {
@@ -69,6 +76,15 @@ const ProfilePage: React.FC = () => {
   // A `#profile/<unknown-user>` deep link resolves to a target that getUserByName
   // 404s on — track it to show an empty placeholder instead of a perpetual loader.
   const [isUserNotFound, setIsUserNotFound] = useState(false);
+  // Monotonic request id: a target change (e.g. #profile/bob → #profile/alice,
+  // or back to the current user) bumps it so a slower earlier response can't
+  // overwrite a faster later one and strand the wrong user's data.
+  const requestRef = useRef(0);
+  // Read the latest currentUser inside fetchUser without listing it as a dep —
+  // the store object identity can change between renders and would otherwise
+  // re-fire the fetch effect in a loop.
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
   const { state: hashState, setHash } = useSettingsHash();
 
   const { targetUsername, isViewingOtherUser } = useMemo(
@@ -102,13 +118,16 @@ const ProfilePage: React.FC = () => {
 
       return;
     }
+    const reqId = ++requestRef.current;
     setIsProfileLoading(true);
     setIsUserNotFound(false);
-    // Drop the current-user seed before fetching another user so their data
-    // doesn't flash the logged-in user first.
-    if (isViewingOtherUser) {
-      setUserData(undefined);
-    }
+    // Reset on every target change (not only when viewing another user): going
+    // back to your own profile must drop the previously-viewed user so their
+    // data — and their id in updateUserDetails — can't linger. For the current
+    // user we fall back to the store seed to avoid a flash of the loader.
+    setUserData(
+      isViewingOtherUser ? undefined : (currentUserRef.current as User)
+    );
     try {
       const res = await getUserByName(targetUsername, {
         fields: [
@@ -121,13 +140,26 @@ const ProfilePage: React.FC = () => {
         ],
         include: Include.All,
       });
-      setUserData(res);
+      // Ignore a stale response superseded by a newer target.
+      if (reqId === requestRef.current) {
+        setUserData(res);
+      }
     } catch (error) {
-      // An unknown username (e.g. a hand-typed hash) is an expected miss — show
-      // the empty placeholder below rather than a disruptive error toast.
-      setIsUserNotFound(true);
+      if (reqId !== requestRef.current) {
+        return;
+      }
+      // A 404 is an expected miss (e.g. a hand-typed hash) — show the empty
+      // placeholder. Surface everything else (500s, network, 403) as a toast
+      // rather than silently masquerading as "user not found".
+      if ((error as AxiosError).response?.status === 404) {
+        setIsUserNotFound(true);
+      } else {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsProfileLoading(false);
+      if (reqId === requestRef.current) {
+        setIsProfileLoading(false);
+      }
     }
   }, [targetUsername, isViewingOtherUser]);
 
@@ -254,8 +286,13 @@ const ProfilePage: React.FC = () => {
     headerOverride?.title ?? otherUserTitle ?? t(activeItem.label);
   const headerDescription =
     headerOverride?.description ?? t(activeItem.description);
-  const headerBreadcrumbs = headerOverride?.breadcrumbs;
   const headerBreadcrumbRoot = t(PROFILE_NAV_GROUP_LABEL[activeItem.group]);
+  // Tie the breadcrumb to the nav item, not the (possibly user-name-overridden)
+  // title — so viewing another user's profile still reads "Settings > Profile".
+  const headerBreadcrumbs = headerOverride?.breadcrumbs ?? [
+    { id: 'root', label: headerBreadcrumbRoot },
+    { id: 'current', label: t(activeItem.label) },
+  ];
   const headerBreadcrumbAction = headerOverride?.onBreadcrumbAction;
 
   return (

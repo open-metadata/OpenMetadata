@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { SOCKET_EVENTS } from '../../../../../../constants/constants';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -20,9 +28,13 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+// Controllable socket so tests can capture the registered handler and emit
+// payloads, and assert cleanup removes only this component's listener.
+const mockSocket = { on: jest.fn(), off: jest.fn() };
+
 jest.mock(
   '../../../../../../context/WebSocketProvider/WebSocketProvider',
-  () => ({ useWebSocketConnector: () => ({ socket: undefined }) })
+  () => ({ useWebSocketConnector: () => ({ socket: mockSocket }) })
 );
 
 jest.mock('../../../../../../rest/teamsAPI', () => ({
@@ -40,7 +52,37 @@ jest.mock('./MembersImportResultTable', () => () => (
 
 import MembersImportForm from './MembersImportForm';
 
+const emitCsvImportChannel = (payload: Record<string, unknown>) => {
+  const call = mockSocket.on.mock.calls.find(
+    ([channel]) => channel === SOCKET_EVENTS.CSV_IMPORT_CHANNEL
+  );
+  act(() => {
+    call?.[1](JSON.stringify(payload));
+  });
+};
+
+const selectFileAndStartPreview = async () => {
+  const input = screen.getByTestId('members-import-input');
+  const file = new File(['name,email\nfoo,foo@x.io'], 'teams.csv', {
+    type: 'text/csv',
+  });
+
+  await act(async () => {
+    fireEvent.change(input, { target: { files: [file] } });
+  });
+
+  await waitFor(() => expect(screen.getByTestId('next-preview')).toBeEnabled());
+
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('next-preview'));
+  });
+};
+
 describe('MembersImportForm', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('renders the stepper with the upload step active', () => {
     render(
       <MembersImportForm
@@ -76,5 +118,87 @@ describe('MembersImportForm', () => {
     fireEvent.click(screen.getByTestId('cancel-import'));
 
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('unsubscribes only its own socket handler on unmount', () => {
+    const { unmount } = render(
+      <MembersImportForm
+        fqn="Organization"
+        importType="teams"
+        onClose={jest.fn()}
+      />
+    );
+
+    const onCall = mockSocket.on.mock.calls.find(
+      ([channel]) => channel === SOCKET_EVENTS.CSV_IMPORT_CHANNEL
+    );
+
+    unmount();
+
+    // off must be called with the SAME channel + handler reference — a bare
+    // off(channel) would also drop the app-wide CsvJobsTray subscription.
+    expect(mockSocket.off).toHaveBeenCalledWith(onCall?.[0], onCall?.[1]);
+  });
+
+  it('clears the spinner and surfaces an error when the import job FAILS', async () => {
+    render(
+      <MembersImportForm
+        fqn="Organization"
+        importType="teams"
+        onClose={jest.fn()}
+      />
+    );
+
+    await selectFileAndStartPreview();
+
+    emitCsvImportChannel({ jobId: 'job-1', status: 'FAILED', error: 'Boom' });
+
+    expect(showErrorToast).toHaveBeenCalledWith('Boom');
+    // Spinner gone, back on the upload step the user can retry from.
+    expect(screen.getByTestId('active-step')).toHaveTextContent('0');
+    expect(screen.queryByTestId('members-import-footer')).toBeInTheDocument();
+  });
+
+  it('shows the result table (not a success screen) when the import result is a Failure', async () => {
+    render(
+      <MembersImportForm
+        fqn="Organization"
+        importType="teams"
+        onClose={jest.fn()}
+      />
+    );
+
+    await selectFileAndStartPreview();
+
+    // Preview passes → advances to the validate step.
+    emitCsvImportChannel({
+      jobId: 'job-1',
+      status: 'COMPLETED',
+      result: {
+        status: 'success',
+        numberOfRowsPassed: 1,
+        numberOfRowsProcessed: 1,
+        numberOfRowsFailed: 0,
+      },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-import'));
+    });
+
+    // The real import comes back a Failure.
+    emitCsvImportChannel({
+      jobId: 'job-1',
+      status: 'COMPLETED',
+      result: {
+        status: 'failure',
+        numberOfRowsPassed: 0,
+        numberOfRowsProcessed: 1,
+        numberOfRowsFailed: 1,
+      },
+    });
+
+    expect(screen.getByTestId('import-result-table')).toBeInTheDocument();
+    expect(screen.queryByTestId('import-success')).not.toBeInTheDocument();
   });
 });

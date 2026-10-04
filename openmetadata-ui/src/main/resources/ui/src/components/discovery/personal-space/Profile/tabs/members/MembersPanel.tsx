@@ -13,10 +13,10 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
-    Clock,
-    ShieldTick,
-    User01,
-    Users01
+  Clock,
+  ShieldTick,
+  User01,
+  Users01,
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -55,18 +55,29 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     [setHash]
   );
 
+  // Stable no-op for the Organization view (its name isn't editable) so the
+  // team-detail's fetch effect, which depends on onRename, can't re-fire.
+  const noopRename = useCallback(() => undefined, []);
+
   const [panelHeaderActions, setPanelHeaderActions] =
     useState<React.ReactNode>(undefined);
   const [detailHeaderTitleInput, setDetailHeaderTitleInput] =
     useState<React.ReactNode>(undefined);
   const [detailHeaderTitleSuffix, setDetailHeaderTitleSuffix] =
     useState<React.ReactNode>(undefined);
+  // The team-detail view's sub-path only carries the FQN; MembersTeamDetail
+  // reports the fetched team's display name back here so the header/breadcrumb
+  // show it (and update live on rename) instead of the raw FQN.
+  const [resolvedTeamName, setResolvedTeamName] = useState('');
+
+  const viewFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
 
   useEffect(() => {
     setPanelHeaderActions(undefined);
     setDetailHeaderTitleInput(undefined);
     setDetailHeaderTitleSuffix(undefined);
-  }, [view.type]);
+    setResolvedTeamName('');
+  }, [view.type, viewFqn]);
 
   useEffect(() => {
     if (!onHeaderChange) {
@@ -93,7 +104,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       view.type === TEAM_DETAIL ||
       view.type === 'teams-add';
     if (view.type === TEAM_DETAIL) {
-      teamName = view.name;
+      teamName = resolvedTeamName || view.name;
     }
 
     const settingsItem: BreadcrumbItemType = {
@@ -166,7 +177,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     };
 
     const descByType: Record<MembersView['type'], string> = {
-      landing: t('message.members-settings-description'),
+      landing: t('message.team-member-management-description'),
       teams: t('message.members-teams-description'),
       [TEAM_DETAIL]: t('message.members-teams-description'),
       'teams-add': t('message.members-teams-description'),
@@ -209,6 +220,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     panelHeaderActions,
     detailHeaderTitleInput,
     detailHeaderTitleSuffix,
+    resolvedTeamName,
   ]);
 
   const content = (() => {
@@ -222,9 +234,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
           fqn="Organization"
           key="Organization"
           onNavigate={onNavigate}
-          onRename={() => {
-            /* Organization name is not editable */
-          }}
+          onRename={noopRename}
           onSetHeaderActions={setPanelHeaderActions}
           onSetHeaderTitleInput={setDetailHeaderTitleInput}
           onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}
@@ -238,9 +248,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
           fqn={view.fqn}
           key={view.fqn}
           onNavigate={onNavigate}
-          onRename={() => {
-            /* Name update reflected on next fetch */
-          }}
+          onRename={setResolvedTeamName}
           onSetHeaderActions={setPanelHeaderActions}
           onSetHeaderTitleInput={setDetailHeaderTitleInput}
           onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}
