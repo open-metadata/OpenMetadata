@@ -18,6 +18,7 @@ import {
   TestCaseIncidentGroup,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
+import { TestCaseResolutionStatusTypes as ResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
   INCIDENT_TREND_COLORS,
@@ -27,15 +28,20 @@ import {
 } from './IncidentGroups.constants';
 import {
   countRecurringIncidentGroups,
-  getIncidentGroupAssignees,
   getIncidentGroupByOption,
+  getIncidentGroupSortQuery,
+  getIncidentGroupsQuery,
   getIncidentGroupStatusSegments,
   getIncidentGroupSubLine,
+  getIncidentGroupSubLineTitle,
   getIncidentTrendColor,
   getIncidentTrendPoints,
+  getPageAfterEmptyRead,
+  hasActiveIncidentGroupFilters,
   isRecurring,
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
+  parseIncidentGroupFilters,
 } from './IncidentGroups.utils';
 
 const group = (
@@ -81,49 +87,76 @@ describe('getIncidentGroupByOption', () => {
 });
 
 describe('getIncidentGroupSubLine', () => {
-  it('should place a table group under the rest of its FQN', () => {
-    expect(
-      getIncidentGroupSubLine(
-        group({
-          groupBy: IncidentGroupBy.Table,
-          name: 'dim_address',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
-        })
-      )
-    ).toBe('sample_data · ecommerce_db · shopify');
+  const tables = [
+    { id: 't1', type: 'table', name: 'customers' },
+    { id: 't2', type: 'table', name: 'orders', displayName: 'Orders' },
+  ];
+  const testDefinitions = [
+    {
+      id: 'd1',
+      type: 'testDefinition',
+      name: 'rowCount',
+      displayName: 'Row count',
+    },
+    { id: 'd2', type: 'testDefinition', name: 'uniqueness' },
+  ];
+
+  it('should list the tables of a test definition group', () => {
+    expect(getIncidentGroupSubLine(group({ tables, testDefinitions }))).toBe(
+      'customers · Orders'
+    );
   });
 
-  it('should keep a quoted FQN part whole', () => {
+  it('should list the test definitions of a table group', () => {
     expect(
       getIncidentGroupSubLine(
-        group({
-          groupBy: IncidentGroupBy.Table,
-          name: 'dim_address',
-          fullyQualifiedName: 'sample_data."ecommerce.db".shopify.dim_address',
-        })
+        group({ groupBy: IncidentGroupBy.Table, tables, testDefinitions })
       )
-    ).toBe('sample_data · ecommerce.db · shopify');
+    ).toBe('Row count · uniqueness');
   });
 
-  it('should leave a test definition and an owner without a sub-line', () => {
+  it('should list the tables of an owner group', () => {
     expect(
       getIncidentGroupSubLine(
-        group({ fullyQualifiedName: 'columnValuesToBeUnique' })
+        group({ groupBy: IncidentGroupBy.Owner, tables, testDefinitions })
       )
-    ).toBe('');
-    expect(
-      getIncidentGroupSubLine(
-        group({
-          groupBy: IncidentGroupBy.Owner,
-          name: 'adam.matthews',
-          fullyQualifiedName: 'adam.matthews',
-        })
-      )
-    ).toBe('');
+    ).toBe('customers · Orders');
   });
 
-  it('should return nothing when the group carries no FQN', () => {
+  it('should return nothing when the group names no related entity', () => {
     expect(getIncidentGroupSubLine(group())).toBe('');
+  });
+});
+
+describe('getIncidentGroupSubLineTitle', () => {
+  it('should tell same-named tables apart by their FQN, one per line', () => {
+    expect(
+      getIncidentGroupSubLineTitle(
+        group({
+          tables: [
+            {
+              id: 't1',
+              type: 'table',
+              name: 'gl_fx_rates',
+              fullyQualifiedName: 'warehouse.fin.gl.gl_fx_rates',
+            },
+            {
+              id: 't2',
+              type: 'table',
+              name: 'gl_fx_rates',
+              fullyQualifiedName: 'warehouse_eu.fin.gl.gl_fx_rates',
+            },
+            { id: 't3', type: 'table', name: 'orders' },
+          ],
+        })
+      )
+    ).toBe(
+      'warehouse.fin.gl.gl_fx_rates\nwarehouse_eu.fin.gl.gl_fx_rates\norders'
+    );
+  });
+
+  it('should return nothing when the group names no related entity', () => {
+    expect(getIncidentGroupSubLineTitle(group())).toBe('');
   });
 });
 
@@ -186,38 +219,6 @@ describe('getIncidentGroupStatusSegments', () => {
   it('should report nothing when the group carries no counts', () => {
     expect(getIncidentGroupStatusSegments()).toEqual([]);
     expect(getIncidentGroupStatusSegments([])).toEqual([]);
-  });
-});
-
-describe('getIncidentGroupAssignees', () => {
-  it('should count the overflow from assigneeCount, not from the capped array', () => {
-    expect(
-      getIncidentGroupAssignees(
-        group({ assignees: ['a', 'b', 'c'], assigneeCount: 7 })
-      )
-    ).toEqual({ visible: ['a', 'b', 'c'], overflowCount: 4 });
-  });
-
-  it('should show no more than three avatars', () => {
-    expect(
-      getIncidentGroupAssignees(
-        group({ assignees: ['a', 'b', 'c', 'd'], assigneeCount: 4 })
-      )
-    ).toEqual({ visible: ['a', 'b', 'c'], overflowCount: 1 });
-  });
-
-  it('should fall back to the array length when the count is absent', () => {
-    expect(getIncidentGroupAssignees(group({ assignees: ['a'] }))).toEqual({
-      visible: ['a'],
-      overflowCount: 0,
-    });
-  });
-
-  it('should report nothing for an unassigned group', () => {
-    expect(getIncidentGroupAssignees(group())).toEqual({
-      visible: [],
-      overflowCount: 0,
-    });
   });
 });
 
@@ -324,5 +325,187 @@ describe('countRecurringIncidentGroups', () => {
 
   it('should count nothing for an empty page', () => {
     expect(countRecurringIncidentGroups([])).toBe(0);
+  });
+});
+
+describe('parseIncidentGroupFilters', () => {
+  it('should read every filter the URL carries', () => {
+    expect(
+      parseIncidentGroupFilters({
+        testCaseFQN: 'svc.db.schema.table.case',
+        assignee: 'aaron',
+        status: ['New', 'Ack'],
+        severity: ['Severity1', 'none'],
+        dateField: 'updatedAt',
+        startTs: '1700000000000',
+        endTs: '1700086400000',
+      })
+    ).toEqual({
+      testCaseFQN: 'svc.db.schema.table.case',
+      assignee: 'aaron',
+      status: [ResolutionStatusTypes.New, ResolutionStatusTypes.ACK],
+      severity: ['Severity1', 'none'],
+      dateField: 'updatedAt',
+      startTs: 1700000000000,
+      endTs: 1700086400000,
+    });
+  });
+
+  it('should default to no filter on an empty URL', () => {
+    expect(parseIncidentGroupFilters({})).toEqual({
+      status: [],
+      severity: [],
+      dateField: 'timestamp',
+    });
+  });
+
+  it('should drop severities the endpoint rejects, and duplicates', () => {
+    expect(
+      parseIncidentGroupFilters({
+        severity: ['Severity9', 'Severity2', 'Severity2', 'none'],
+      }).severity
+    ).toEqual(['Severity2', 'none']);
+  });
+
+  it('should accept a single status as well as a repeated one', () => {
+    expect(parseIncidentGroupFilters({ status: 'Assigned' }).status).toEqual([
+      ResolutionStatusTypes.Assigned,
+    ]);
+  });
+
+  it('should drop statuses the groups endpoint rejects, and duplicates', () => {
+    expect(
+      parseIncidentGroupFilters({ status: ['Resolved', 'bogus', 'New', 'New'] })
+        .status
+    ).toEqual([ResolutionStatusTypes.New]);
+  });
+
+  it('should ignore empty, repeated or non-numeric values', () => {
+    expect(
+      parseIncidentGroupFilters({
+        testCaseFQN: '',
+        assignee: ['a', 'b'],
+        dateField: 'bogus',
+        startTs: 'yesterday',
+        endTs: '',
+      })
+    ).toEqual({ status: [], severity: [], dateField: 'timestamp' });
+  });
+});
+
+describe('severity filters', () => {
+  it('should count a severity as an active filter', () => {
+    expect(
+      hasActiveIncidentGroupFilters({
+        status: [],
+        severity: ['none'],
+        dateField: 'timestamp',
+      })
+    ).toBe(true);
+  });
+
+  it('should send the picked severities to the groups endpoint', () => {
+    expect(
+      getIncidentGroupsQuery({
+        status: [],
+        severity: ['Severity1', 'none'],
+        dateField: 'timestamp',
+      }).severity
+    ).toEqual(['Severity1', 'none']);
+  });
+});
+
+describe('getIncidentGroupsQuery', () => {
+  it('should send nothing for an unfiltered view', () => {
+    expect(
+      getIncidentGroupsQuery({
+        status: [],
+        severity: [],
+        dateField: 'timestamp',
+      })
+    ).toEqual({});
+  });
+
+  it('should send the test case, assignee and repeatable status', () => {
+    expect(
+      getIncidentGroupsQuery({
+        testCaseFQN: 'svc.db.schema.table.case',
+        assignee: 'aaron',
+        status: [ResolutionStatusTypes.New, ResolutionStatusTypes.Assigned],
+        severity: [],
+        dateField: 'timestamp',
+      })
+    ).toEqual({
+      testCaseFQN: 'svc.db.schema.table.case',
+      assignee: 'aaron',
+      status: [ResolutionStatusTypes.New, ResolutionStatusTypes.Assigned],
+    });
+  });
+
+  it('should apply a range to the creation date by default', () => {
+    expect(
+      getIncidentGroupsQuery({
+        status: [],
+        severity: [],
+        dateField: 'timestamp',
+        startTs: 1,
+        endTs: 2,
+      })
+    ).toEqual({ dateField: 'createdAt', startTs: 1, endTs: 2 });
+  });
+
+  it('should apply a range to the last update when asked to', () => {
+    expect(
+      getIncidentGroupsQuery({
+        status: [],
+        severity: [],
+        dateField: 'updatedAt',
+        startTs: 1,
+        endTs: 2,
+      })
+    ).toEqual({ dateField: 'updatedAt', startTs: 1, endTs: 2 });
+  });
+
+  it('should leave the date field out when no range is set', () => {
+    expect(
+      getIncidentGroupsQuery({
+        status: [],
+        severity: [],
+        dateField: 'updatedAt',
+      })
+    ).toEqual({});
+  });
+});
+
+describe('getPageAfterEmptyRead', () => {
+  it('should keep a page that has rows, and the first page even when empty', () => {
+    expect(getPageAfterEmptyRead(3, 2, 10, 13)).toBeUndefined();
+    expect(getPageAfterEmptyRead(0, 1, 10, 0)).toBeUndefined();
+  });
+
+  it('should step back to the last page the total still reaches', () => {
+    expect(getPageAfterEmptyRead(0, 4, 10, 15)).toBe(2);
+  });
+
+  it('should step back at least one page when the total lags behind', () => {
+    expect(getPageAfterEmptyRead(0, 3, 10, 30)).toBe(2);
+  });
+
+  it('should fall back to the first page when there is no total', () => {
+    expect(getPageAfterEmptyRead(0, 3, 10)).toBe(1);
+  });
+});
+
+describe('getIncidentGroupSortQuery', () => {
+  it('should leave the default field out and keep the direction', () => {
+    expect(
+      getIncidentGroupSortQuery({ field: 'incidentCount', type: 'asc' })
+    ).toEqual({ sortType: 'asc', sortField: undefined });
+  });
+
+  it('should send any other field', () => {
+    expect(
+      getIncidentGroupSortQuery({ field: 'severity', type: 'desc' })
+    ).toEqual({ sortType: 'desc', sortField: 'severity' });
   });
 });
