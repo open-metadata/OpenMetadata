@@ -97,6 +97,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     WorkflowDefinitionMasker.restoreMaskedSecrets(original, updated);
     if (operation != Operation.SOFT_DELETE) {
       WorkflowDefinitionMasker.requireNoMaskedSecrets(updated);
+      WorkflowDefinitionMasker.requireStoredEncryptedSecrets(original, updated);
     }
     // Encrypted before the diff, so the change description, the stored JSON and the BPMN that
     // postUpdate deploys all carry the ciphertext.
@@ -176,6 +177,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   private static void prepareSecretsForCreate(WorkflowDefinition entity) {
     WorkflowDefinitionMasker.requireNoMaskedSecrets(entity);
+    WorkflowDefinitionMasker.requireNoEncryptedSecrets(entity);
     WorkflowSinkSecrets.encrypt(entity);
   }
 

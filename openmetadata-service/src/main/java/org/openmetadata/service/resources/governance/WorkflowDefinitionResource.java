@@ -34,6 +34,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
@@ -57,6 +58,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonPatchUtils;
 
 @Path("/v1/governance/workflowDefinitions")
 @Tag(
@@ -374,6 +376,7 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    authorizeCopyAndMove(securityContext, patch, () -> getResourceContextById(id));
     return maskResponse(patchInternal(uriInfo, securityContext, id, patch));
   }
 
@@ -403,6 +406,7 @@ public class WorkflowDefinitionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    authorizeCopyAndMove(securityContext, patch, () -> getResourceContextByName(fqn));
     return maskResponse(patchInternal(uriInfo, securityContext, fqn, patch));
   }
 
@@ -759,6 +763,35 @@ public class WorkflowDefinitionResource
                 "resumedAt",
                 System.currentTimeMillis()))
         .build();
+  }
+
+  @Override
+  protected ResultList<WorkflowDefinition> listEntityHistoryByTimestampInternal(
+      SecurityContext securityContext,
+      long startTs,
+      long endTs,
+      String before,
+      String after,
+      int limit) {
+    return maskList(
+        super.listEntityHistoryByTimestampInternal(
+            securityContext, startTs, endTs, before, after, limit));
+  }
+
+  /**
+   * Requires EditAll for a patch with a {@code copy} or {@code move} operation, which reads the
+   * value at its {@code from} location; patch authorization covers each operation's target path.
+   */
+  private void authorizeCopyAndMove(
+      SecurityContext securityContext,
+      JsonPatch patch,
+      Supplier<ResourceContext<WorkflowDefinition>> resourceContext) {
+    if (JsonPatchUtils.readsFromAnotherPath(patch)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+          resourceContext.get());
+    }
   }
 
   private static ResultList<WorkflowDefinition> maskList(ResultList<WorkflowDefinition> list) {

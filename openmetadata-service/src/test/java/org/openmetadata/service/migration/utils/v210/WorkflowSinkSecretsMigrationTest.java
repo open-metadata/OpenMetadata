@@ -17,14 +17,21 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
+import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.Process;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SinkTask;
 import org.openmetadata.service.migration.utils.v210.WorkflowSinkSecretsMigration.StoredRow;
+import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 import org.slf4j.LoggerFactory;
 
 class WorkflowSinkSecretsMigrationTest {
@@ -64,6 +71,8 @@ class WorkflowSinkSecretsMigrationTest {
       {"id": "%s", "name": "%s", "nodes": [
         {"type": "startEvent", "subType": "startEvent", "name": "start"}]}
       """;
+
+  private static final Predicate<WorkflowDefinition> DEPLOYED_WITH_PLAINTEXT = definition -> true;
 
   private final Logger migrationLogger =
       (Logger) LoggerFactory.getLogger(WorkflowSinkSecretsMigration.class);
@@ -134,7 +143,7 @@ class WorkflowSinkSecretsMigrationTest {
   }
 
   @Test
-  void anAlreadyEncryptedActiveDefinitionIsRedeployedButDeletedAndSinklessOnesAreNot() {
+  void anActiveDefinitionDeployedWithPlaintextIsRedeployedButDeletedAndSinklessOnesAreNot() {
     StoredRow encrypted = encryptedDefinition(ROW_ID, "gitSinkWorkflow", false);
     StoredRow deleted =
         encryptedDefinition("3f1c2a4e-0000-4000-8000-000000000002", "deletedSink", true);
@@ -151,6 +160,7 @@ class WorkflowSinkSecretsMigrationTest {
         WorkflowSinkSecretsMigration.redeploySinkWorkflows(
             singlePage(List.of(encrypted, deleted, withoutSink)),
             initializations::incrementAndGet,
+            DEPLOYED_WITH_PLAINTEXT,
             recordDeploy());
 
     assertEquals(List.of("gitSinkWorkflow"), deployed);
@@ -174,7 +184,10 @@ class WorkflowSinkSecretsMigrationTest {
 
     List<String> failed =
         WorkflowSinkSecretsMigration.redeploySinkWorkflows(
-            singlePage(List.of(broken, healthy)), initializations::incrementAndGet, deployer);
+            singlePage(List.of(broken, healthy)),
+            initializations::incrementAndGet,
+            DEPLOYED_WITH_PLAINTEXT,
+            deployer);
 
     assertEquals(List.of("healthySink"), deployed);
     assertEquals(List.of("brokenSink (%s): flowable unavailable".formatted(ROW_ID)), failed);
@@ -194,7 +207,10 @@ class WorkflowSinkSecretsMigrationTest {
 
     List<String> failed =
         WorkflowSinkSecretsMigration.redeploySinkWorkflows(
-            singlePage(List.of(encrypted)), failingInitialization, recordDeploy());
+            singlePage(List.of(encrypted)),
+            failingInitialization,
+            DEPLOYED_WITH_PLAINTEXT,
+            recordDeploy());
 
     assertTrue(deployed.isEmpty());
     assertTrue(failed.isEmpty());
@@ -209,7 +225,10 @@ class WorkflowSinkSecretsMigrationTest {
     StoredRow withoutSink = new StoredRow(ROW_ID, null, WITHOUT_SINK.formatted(ROW_ID, "plain"));
 
     WorkflowSinkSecretsMigration.redeploySinkWorkflows(
-        singlePage(List.of(withoutSink)), initializations::incrementAndGet, recordDeploy());
+        singlePage(List.of(withoutSink)),
+        initializations::incrementAndGet,
+        DEPLOYED_WITH_PLAINTEXT,
+        recordDeploy());
 
     assertEquals(0, initializations.get());
     assertTrue(deployed.isEmpty());
@@ -233,12 +252,99 @@ class WorkflowSinkSecretsMigrationTest {
         };
 
     WorkflowSinkSecretsMigration.redeploySinkWorkflows(
-        pageAfter, initializations::incrementAndGet, recordDeploy());
+        pageAfter, initializations::incrementAndGet, DEPLOYED_WITH_PLAINTEXT, recordDeploy());
 
     assertEquals(rows.size(), deployed.size());
     assertEquals(1, initializations.get());
     assertEquals(2, cursors.size(), "a short page is the last one read");
     assertEquals(rows.get(WorkflowSinkSecretsMigration.PAGE_SIZE - 1), cursors.getLast());
+  }
+
+  @Test
+  void aDefinitionWhoseDeploymentHoldsNoPlaintextSecretIsNotRedeployed() {
+    StoredRow encrypted = encryptedDefinition(ROW_ID, "gitSinkWorkflow", false);
+    StoredRow stillPlaintext =
+        encryptedDefinition("3f1c2a4e-0000-4000-8000-000000000002", "plaintextDeployed", false);
+    List<String> checked = new ArrayList<>();
+    Predicate<WorkflowDefinition> isDeployedWithPlaintext =
+        definition -> {
+          checked.add(definition.getName());
+          return "plaintextDeployed".equals(definition.getName());
+        };
+
+    List<String> failed =
+        WorkflowSinkSecretsMigration.redeploySinkWorkflows(
+            singlePage(List.of(encrypted, stillPlaintext)),
+            initializations::incrementAndGet,
+            isDeployedWithPlaintext,
+            recordDeploy());
+
+    assertEquals(List.of("gitSinkWorkflow", "plaintextDeployed"), checked);
+    assertEquals(List.of("plaintextDeployed"), deployed);
+    assertEquals(1, initializations.get(), "the deployments are read through the handler");
+    assertTrue(failed.isEmpty());
+  }
+
+  @Test
+  void aDeploymentThatCannotBeReadIsLoggedAndTheOthersStillRun() {
+    StoredRow unreadable = encryptedDefinition(ROW_ID, "unreadableSink", false);
+    StoredRow healthy =
+        encryptedDefinition("3f1c2a4e-0000-4000-8000-000000000002", "healthySink", false);
+    Predicate<WorkflowDefinition> isDeployedWithPlaintext =
+        definition -> {
+          if ("unreadableSink".equals(definition.getName())) {
+            throw new IllegalStateException("bpmn unavailable");
+          }
+          return true;
+        };
+
+    List<String> failed =
+        WorkflowSinkSecretsMigration.redeploySinkWorkflows(
+            singlePage(List.of(unreadable, healthy)),
+            initializations::incrementAndGet,
+            isDeployedWithPlaintext,
+            recordDeploy());
+
+    assertEquals(List.of("healthySink"), deployed);
+    assertEquals(List.of("unreadableSink (%s): bpmn unavailable".formatted(ROW_ID)), failed);
+    assertTrue(onlyEventAt(Level.WARN).getFormattedMessage().contains(failed.getFirst()));
+  }
+
+  @Test
+  void theDeployedSinkConfigIsReadFromTheSinkTaskOfTheBpmn() {
+    WorkflowDefinition plaintext = JsonUtils.readValue(STORED_DEFINITION, WorkflowDefinition.class);
+    WorkflowDefinition encrypted =
+        JsonUtils.readValue(
+            encryptedDefinition(ROW_ID, "gitSinkWorkflow", false).json(), WorkflowDefinition.class);
+    BpmnModel plaintextModel = sinkTaskModel(plaintext);
+    BpmnModel encryptedModel = sinkTaskModel(encrypted);
+
+    String deployed =
+        WorkflowSinkSecretsMigration.deployedSinkConfig(plaintextModel, "gitSink").orElseThrow();
+
+    assertEquals(GIT_TOKEN, JsonUtils.readTree(deployed).at("/credentials/token").asText());
+    assertTrue(WorkflowSinkSecretsMigration.deployedSinkConfig(plaintextModel, "absent").isEmpty());
+    assertTrue(
+        WorkflowDefinitionMasker.hasPlaintextDeployedSecret(
+            encrypted,
+            nodeName -> WorkflowSinkSecretsMigration.deployedSinkConfig(plaintextModel, nodeName)));
+    assertFalse(
+        WorkflowDefinitionMasker.hasPlaintextDeployedSecret(
+            encrypted,
+            nodeName -> WorkflowSinkSecretsMigration.deployedSinkConfig(encryptedModel, nodeName)));
+  }
+
+  /** A BPMN model holding the sink tasks of {@code definition}, as the main workflow builds them. */
+  private static BpmnModel sinkTaskModel(WorkflowDefinition definition) {
+    BpmnModel model = new BpmnModel();
+    Process process = new Process();
+    process.setId(definition.getName());
+    model.addProcess(process);
+    definition.getNodes().stream()
+        .map(SinkTaskDefinition.class::cast)
+        .map(node -> new SinkTask(node, new WorkflowConfiguration()))
+        .forEach(sinkTask -> sinkTask.addToWorkflow(model, process));
+    return model;
   }
 
   private Consumer<WorkflowDefinition> recordDeploy() {

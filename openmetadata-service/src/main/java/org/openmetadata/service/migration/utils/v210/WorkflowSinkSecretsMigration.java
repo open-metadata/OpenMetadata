@@ -21,8 +21,14 @@ import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.FieldExtension;
+import org.flowable.bpmn.model.ServiceTask;
+import org.flowable.engine.RepositoryService;
+import org.flowable.engine.repository.ProcessDefinition;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -40,15 +46,20 @@ import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Fernet-encrypts plaintext sink secrets of stored workflow definitions: the current definition,
- * its change descriptions and every version snapshot. Every active definition with a sink secret is
- * then redeployed so its Flowable BPMN carries the ciphertext, including one an earlier run
- * encrypted but could not redeploy. Values already encrypted are left as they are, so running it
- * again changes no stored row. A redeploy that fails is logged and does not fail the upgrade.
+ * its change descriptions and every version snapshot. An active definition with a sink secret is
+ * then redeployed when its deployed Flowable BPMN still holds a plaintext sink secret, which also
+ * covers one an earlier run encrypted but could not redeploy. Values already encrypted are left as
+ * they are and a definition whose deployment holds no plaintext is not redeployed, so running it
+ * again changes neither a stored row nor a deployment. A redeploy that fails is logged and does not
+ * fail the upgrade.
  */
 @Slf4j
 public final class WorkflowSinkSecretsMigration {
   static final int PAGE_SIZE = 500;
   static final String REDEPLOY_ENDPOINT = "/v1/governance/workflowDefinitions/{id}/redeploy";
+
+  private static final String EXECUTE_SINK_ELEMENT = "executeSink";
+  private static final String SINK_CONFIG_FIELD = "sinkConfigExpr";
 
   private static final String REDEPLOY_ABORTED_MESSAGE =
       """
@@ -98,6 +109,7 @@ public final class WorkflowSinkSecretsMigration {
       redeploySinkWorkflows(
           cursor -> definitionPage(handle, connectionType, cursor),
           initializeWorkflowHandler,
+          WorkflowSinkSecretsMigration::isDeployedWithPlaintextSecret,
           WorkflowSinkSecretsMigration::deploy);
     } else {
       LOG.info("v210: no Fernet key is configured; workflow sink secrets are left as stored");
@@ -126,16 +138,19 @@ public final class WorkflowSinkSecretsMigration {
   }
 
   /**
-   * Redeploys, page by page, every stored definition that is not deleted and holds a sink secret.
-   * The workflow handler is initialized before the first redeploy only, so an installation without
-   * sink workflows never starts it. Neither a failed initialization nor a failed redeploy is
-   * thrown: both are logged with the endpoint that redeploys a definition by hand.
+   * Redeploys, page by page, every stored definition that is not deleted, holds a sink secret and
+   * whose deployment {@code isDeployedWithPlaintext} reports as holding a plaintext sink secret.
+   * The workflow handler is initialized before the first such definition is checked, so an
+   * installation without sink workflows never starts it. Neither a failed initialization nor a
+   * failed check or redeploy is thrown: each is logged with the endpoint that redeploys a
+   * definition by hand.
    *
-   * @return the definitions that could not be redeployed, as {@code name (id): cause}
+   * @return the definitions that could not be checked or redeployed, as {@code name (id): cause}
    */
   static List<String> redeploySinkWorkflows(
       Function<StoredRow, List<StoredRow>> pageAfter,
       Runnable initializeWorkflowHandler,
+      Predicate<WorkflowDefinition> isDeployedWithPlaintext,
       Consumer<WorkflowDefinition> deployer) {
     OnceRunnable initializeOnce = new OnceRunnable(initializeWorkflowHandler);
     List<String> failed = List.of();
@@ -145,7 +160,9 @@ public final class WorkflowSinkSecretsMigration {
               pageAfter,
               List.of(),
               (failedSoFar, page) ->
-                  Stream.concat(failedSoFar.stream(), redeployPage(page, initializeOnce, deployer))
+                  Stream.concat(
+                          failedSoFar.stream(),
+                          redeployPage(page, initializeOnce, isDeployedWithPlaintext, deployer))
                       .toList());
       logFailedRedeploys(failed);
     } catch (RuntimeException e) {
@@ -155,7 +172,10 @@ public final class WorkflowSinkSecretsMigration {
   }
 
   private static Stream<String> redeployPage(
-      List<StoredRow> page, Runnable initializeOnce, Consumer<WorkflowDefinition> deployer) {
+      List<StoredRow> page,
+      Runnable initializeOnce,
+      Predicate<WorkflowDefinition> isDeployedWithPlaintext,
+      Consumer<WorkflowDefinition> deployer) {
     List<WorkflowDefinition> candidates =
         page.stream()
             .map(WorkflowSinkSecretsMigration::redeployCandidate)
@@ -165,7 +185,7 @@ public final class WorkflowSinkSecretsMigration {
       initializeOnce.run();
     }
     return candidates.stream()
-        .map(definition -> redeployFailure(definition, deployer))
+        .map(definition -> redeployFailure(definition, isDeployedWithPlaintext, deployer))
         .flatMap(Optional::stream);
   }
 
@@ -188,12 +208,19 @@ public final class WorkflowSinkSecretsMigration {
     return candidate;
   }
 
-  /** Redeploys {@code definition}; returns {@code name (id): cause} when that fails. */
+  /**
+   * Redeploys {@code definition} when its deployment holds a plaintext sink secret; returns {@code
+   * name (id): cause} when the check or the redeploy fails.
+   */
   private static Optional<String> redeployFailure(
-      WorkflowDefinition definition, Consumer<WorkflowDefinition> deployer) {
+      WorkflowDefinition definition,
+      Predicate<WorkflowDefinition> isDeployedWithPlaintext,
+      Consumer<WorkflowDefinition> deployer) {
     Optional<String> failure = Optional.empty();
     try {
-      deployer.accept(definition);
+      if (isDeployedWithPlaintext.test(definition)) {
+        deployer.accept(definition);
+      }
     } catch (RuntimeException e) {
       LOG.debug("v210: failed to redeploy workflow definition '{}'", definition.getName(), e);
       failure =
@@ -211,6 +238,43 @@ public final class WorkflowSinkSecretsMigration {
 
   private static void deploy(WorkflowDefinition definition) {
     WorkflowHandler.getInstance().deploy(new Workflow(definition));
+  }
+
+  /**
+   * Whether the latest deployed main process of {@code definition} holds a plaintext sink secret.
+   * A definition without a deployment holds none.
+   */
+  private static boolean isDeployedWithPlaintextSecret(WorkflowDefinition definition) {
+    RepositoryService repositoryService = WorkflowHandler.getInstance().getRepositoryService();
+    ProcessDefinition deployed =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKey(definition.getName())
+            .latestVersion()
+            .singleResult();
+    boolean hasPlaintext = false;
+    if (deployed != null) {
+      BpmnModel model = repositoryService.getBpmnModel(deployed.getId());
+      hasPlaintext =
+          WorkflowDefinitionMasker.hasPlaintextDeployedSecret(
+              definition, nodeName -> deployedSinkConfig(model, nodeName));
+    }
+    return hasPlaintext;
+  }
+
+  /** The sink config JSON the deployed sink task named {@code nodeName} runs with. */
+  static Optional<String> deployedSinkConfig(BpmnModel model, String nodeName) {
+    Optional<String> sinkConfig = Optional.empty();
+    // BpmnModel returns every element as a generic FlowElement; a sink task runs as a ServiceTask.
+    if (model.getFlowElement(Workflow.getFlowableElementId(nodeName, EXECUTE_SINK_ELEMENT))
+        instanceof ServiceTask executeSink) {
+      sinkConfig =
+          executeSink.getFieldExtensions().stream()
+              .filter(field -> SINK_CONFIG_FIELD.equals(field.getFieldName()))
+              .map(FieldExtension::getStringValue)
+              .findFirst();
+    }
+    return sinkConfig;
   }
 
   /**

@@ -38,6 +38,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Slf4j
 public class JsonPatchUtils {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final String FROM_MEMBER = "from";
 
   private JsonPatchUtils() {}
 
@@ -85,6 +86,18 @@ public class JsonPatchUtils {
     }
 
     return uniqueOperations;
+  }
+
+  /**
+   * Whether an operation of {@code jsonPatch} reads a value from another location of the document,
+   * as {@code copy} and {@code move} do through their {@code from} member.
+   */
+  public static boolean readsFromAnotherPath(JsonPatch jsonPatch) {
+    // jakarta JsonPatch exposes its operations as untyped JsonValues; each operation is a JSON
+    // object.
+    return jsonPatch.toJsonArray().stream()
+        .anyMatch(
+            operation -> operation instanceof JsonObject object && object.containsKey(FROM_MEMBER));
   }
 
   private static JsonNode applyPatch(JsonNode targetJson, JsonPatch patch)

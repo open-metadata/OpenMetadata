@@ -21,12 +21,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -41,6 +43,8 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.SecretsManager;
 
 /**
  * Masks the credentials of governance workflow sink tasks in API responses and restores them when
@@ -79,6 +83,11 @@ public final class WorkflowDefinitionMasker {
   private static final JsonPointer SINK_CONFIG_POINTER = JsonPointer.compile("/config/sinkConfig");
   private static final String MASKED_SECRET_MESSAGE =
       "Workflow node '%s' still has a masked secret ('%s'); provide the actual value";
+  private static final String ENCRYPTED_SECRET_MESSAGE =
+      """
+      Workflow node '%s' has an encrypted secret ('%s'); encrypted values cannot be supplied, \
+      provide the actual value\
+      """;
 
   private WorkflowDefinitionMasker() {}
 
@@ -177,6 +186,89 @@ public final class WorkflowDefinitionMasker {
               throw new BadRequestException(
                   MASKED_SECRET_MESSAGE.formatted(sinkTask.getName(), pointer));
             });
+  }
+
+  /**
+   * Rejects an encrypted sink secret in a new definition: only the server encrypts secrets, and a
+   * new definition has no stored value one could match.
+   */
+  public static void requireNoEncryptedSecrets(WorkflowDefinition definition) {
+    requireStoredEncryptedSecrets(Map.of(), definition);
+  }
+
+  /**
+   * Rejects an encrypted sink secret in {@code updated} that is not the value stored for the same
+   * field of the sink node of the same name in {@code original}. Every secret location of every
+   * sink type is checked, as the runtime decrypts all of them whatever the sink type.
+   */
+  public static void requireStoredEncryptedSecrets(
+      WorkflowDefinition original, WorkflowDefinition updated) {
+    requireStoredEncryptedSecrets(sinkTasksByName(original), updated);
+  }
+
+  private static void requireStoredEncryptedSecrets(
+      Map<String, SinkTaskDefinition> storedSinkTasks, WorkflowDefinition updated) {
+    sinkTasks(updated)
+        .filter(WorkflowDefinitionMasker::hasSinkConfig)
+        .forEach(
+            sinkTask ->
+                requireStoredEncryptedSecret(
+                    sinkTask, storedSinkConfig(storedSinkTasks.get(sinkTask.getName()))));
+  }
+
+  private static void requireStoredEncryptedSecret(
+      SinkTaskDefinition sinkTask, JsonNode storedConfig) {
+    JsonNode sinkConfig = JsonUtils.valueToTree(sinkTask.getConfig().getSinkConfig());
+    ALL_SECRET_POINTERS.stream()
+        .filter(pointer -> Fernet.isTokenized(sinkConfig.at(pointer).textValue()))
+        .filter(
+            pointer ->
+                !sinkConfig.at(pointer).textValue().equals(storedConfig.at(pointer).textValue()))
+        .findFirst()
+        .ifPresent(
+            pointer -> {
+              throw new BadRequestException(
+                  ENCRYPTED_SECRET_MESSAGE.formatted(sinkTask.getName(), pointer));
+            });
+  }
+
+  /** The stored sink config of {@code stored}, or a missing node when there is none. */
+  private static JsonNode storedSinkConfig(SinkTaskDefinition stored) {
+    JsonNode storedConfig = MissingNode.getInstance();
+    if (stored != null && hasSinkConfig(stored)) {
+      storedConfig = JsonUtils.valueToTree(stored.getConfig().getSinkConfig());
+    }
+    return storedConfig;
+  }
+
+  /**
+   * Whether the sink config deployed for a sink task of {@code definition}, which {@code
+   * deployedSinkConfig} returns as JSON for the task's name, holds a plaintext secret: a non-empty
+   * value that is neither Fernet ciphertext nor a secret reference.
+   */
+  public static boolean hasPlaintextDeployedSecret(
+      WorkflowDefinition definition, Function<String, Optional<String>> deployedSinkConfig) {
+    return sinkTasks(definition)
+        .anyMatch(
+            sinkTask ->
+                deployedSinkConfig
+                    .apply(sinkTask.getName())
+                    .filter(json -> !json.isBlank())
+                    .map(JsonUtils::readTree)
+                    .filter(config -> hasPlaintextSecret(config, secretPointers(sinkTask)))
+                    .isPresent());
+  }
+
+  private static boolean hasPlaintextSecret(JsonNode sinkConfig, List<JsonPointer> pointers) {
+    return pointers.stream()
+        .map(pointer -> sinkConfig.at(pointer).textValue())
+        .anyMatch(WorkflowDefinitionMasker::isPlaintextSecret);
+  }
+
+  private static boolean isPlaintextSecret(String value) {
+    return !nullOrEmpty(value)
+        && !Fernet.isTokenized(value)
+        && !value.startsWith(SecretsManager.SECRET_FIELD_PREFIX);
   }
 
   static List<JsonPointer> passwordPointers(Class<?> type) {

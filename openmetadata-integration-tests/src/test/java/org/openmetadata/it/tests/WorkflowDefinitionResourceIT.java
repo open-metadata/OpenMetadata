@@ -64,6 +64,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -415,6 +416,7 @@ public class WorkflowDefinitionResourceIT {
     String passphrase = "itRawPassphrase_%s".formatted(UUID.randomUUID());
     String mask = PasswordEntityMasker.PASSWORD_MASK;
     List<String> plaintexts = List.of(rawToken, rotatedToken, privateKey, passphrase);
+    long createdFrom = System.currentTimeMillis();
 
     String createResponse =
         executeWorkflowRequest(
@@ -469,6 +471,22 @@ public class WorkflowDefinitionResourceIT {
         executeWorkflowRequest(
             client, HttpMethod.GET, BASE_PATH + "/" + workflowId + "/versions", null);
     assertNoSecretOrCiphertext(versions, plaintexts);
+    String rotatedVersion = MAPPER.readTree(rotateResponse).get("version").asText();
+    List.of(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.GET,
+                "%s/%s/versions/%s".formatted(BASE_PATH, workflowId, created.get("version")),
+                null),
+            executeWorkflowRequest(
+                client,
+                HttpMethod.GET,
+                "%s/%s/versions/%s".formatted(BASE_PATH, workflowId, rotatedVersion),
+                null),
+            aiContextJson(client, "%s/%s/context".formatted(BASE_PATH, workflowId)),
+            aiContextJson(client, "%s/name/%s/context".formatted(BASE_PATH, workflowName)))
+        .forEach(response -> assertNoSecretOrCiphertext(response, plaintexts));
+    assertHistoryMasked(client, workflowId, createdFrom, plaintexts);
     List<String> storedVersions = storedVersionJson(workflowId);
     assertFalse(storedVersions.isEmpty(), "the updates must have stored version snapshots");
     storedVersions.forEach(version -> assertNoSecret(version, plaintexts));
@@ -515,6 +533,13 @@ public class WorkflowDefinitionResourceIT {
                         .map(json -> json.substring(0, Math.min(json.length(), 1500)))
                         .toList()));
 
+    WorkflowHandler.getInstance()
+        .deploy(new Workflow(JsonUtils.readValue(restoredDefinition, WorkflowDefinition.class)));
+    assertEquals(
+        token,
+        JsonUtils.readTree(deployedSinkConfig(workflowName)).at("/credentials/token").asText(),
+        "the deployment must hold the plaintext the migration replaces");
+
     runSinkSecretsMigration();
 
     JsonNode encrypted =
@@ -524,12 +549,207 @@ public class WorkflowDefinitionResourceIT {
 
     String storedAfterFirstRun = storedDefinitionJson(workflowId);
     List<String> versionsAfterFirstRun = storedVersionJson(workflowId);
+    String deploymentAfterFirstRun = latestProcessDefinitionId(workflowName);
     runSinkSecretsMigration();
     assertEquals(storedAfterFirstRun, storedDefinitionJson(workflowId));
     assertEquals(versionsAfterFirstRun, storedVersionJson(workflowId));
     assertEquals(
+        deploymentAfterFirstRun,
+        latestProcessDefinitionId(workflowName),
+        "a deployment that holds no plaintext secret is not redeployed");
+    assertEquals(
         encrypted,
         assertSinkSecretsStoredEncrypted(workflowId, token, privateKey, passphrase, plaintexts));
+  }
+
+  /**
+   * A copy or move patch reads the value at its {@code from} location, which the authorization of
+   * its target path does not cover: copying a sink secret into the description needs EditAll, not
+   * EditDescription.
+   */
+  @Test
+  void test_sinkSecretCopyOrMovePatchNeedsEditAll(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient nonAdmin = SdkClients.user3Client();
+    String workflowName = ns.prefix("gitSinkPatchFrom");
+    String token = "ghp_itPatchFromToken_%s".formatted(UUID.randomUUID());
+    JsonNode created =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                admin,
+                HttpMethod.POST,
+                BASE_PATH,
+                buildGitSinkWorkflowRequest(workflowName, token, "itKey", "itPassphrase")));
+    trackWorkflowFromJson(created);
+    String workflowPath = "%s/%s".formatted(BASE_PATH, created.get("id").asText());
+    String tokenPath =
+        "/nodes/%d/config/sinkConfig/credentials/token".formatted(gitSinkIndex(created));
+
+    String described =
+        executeWorkflowRequest(
+            nonAdmin,
+            HttpMethod.PATCH,
+            workflowPath,
+            MAPPER.readTree(
+                """
+                [{"op": "replace", "path": "/description", "value": "edited by a non-admin user"}]
+                """));
+    assertEquals(
+        "edited by a non-admin user", MAPPER.readTree(described).get("description").asText());
+
+    for (String operation : List.of("copy", "move")) {
+      JsonNode patch =
+          MAPPER.readTree(
+              """
+              [{"op": "%s", "from": "%s", "path": "/description"}]
+              """
+                  .formatted(operation, tokenPath));
+      OpenMetadataException forbidden =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> executeWorkflowRequest(nonAdmin, HttpMethod.PATCH, workflowPath, patch));
+      assertEquals(403, forbidden.getStatusCode(), operation);
+    }
+
+    String stored = storedDefinitionJson(created.get("id").asText());
+    assertDecryptsTo(
+        token,
+        gitSinkNode(JsonUtils.readTree(stored))
+            .at("/config/sinkConfig/credentials/token")
+            .asText());
+    assertFalse(stored.contains(token), "plaintext secret");
+  }
+
+  /**
+   * Only the server encrypts sink secrets. A request may carry ciphertext only where it is the value
+   * already stored for that node and field, as a definition read back unmasked from storage does;
+   * ciphertext taken from another workflow, or sent on create, is rejected.
+   */
+  @Test
+  void test_sinkSecretCiphertextFromARequestIsRejectedUnlessStored(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String sourceName = ns.prefix("gitSinkCiphertextSource");
+    String targetName = ns.prefix("gitSinkCiphertextTarget");
+    String sourceToken = "ghp_itSourceToken_%s".formatted(UUID.randomUUID());
+    String targetToken = "ghp_itTargetToken_%s".formatted(UUID.randomUUID());
+    String mask = PasswordEntityMasker.PASSWORD_MASK;
+    JsonNode source =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                buildGitSinkWorkflowRequest(sourceName, sourceToken, "itKey", "itPassphrase")));
+    trackWorkflowFromJson(source);
+    JsonNode target =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                buildGitSinkWorkflowRequest(targetName, targetToken, "itKey", "itPassphrase")));
+    trackWorkflowFromJson(target);
+    String sourceCiphertext = storedGitToken(source.get("id").asText());
+    String targetCiphertext = storedGitToken(target.get("id").asText());
+
+    assertEncryptedValueRejected(
+        () ->
+            executeWorkflowRequest(
+                client,
+                HttpMethod.PUT,
+                BASE_PATH,
+                buildGitSinkWorkflowRequest(targetName, sourceCiphertext, mask, mask)));
+    assertEncryptedValueRejected(
+        () ->
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                buildGitSinkWorkflowRequest(
+                    ns.prefix("gitSinkCiphertextCreate"), sourceCiphertext, "itKey", "itPass")));
+    assertEquals(targetCiphertext, storedGitToken(target.get("id").asText()));
+
+    Map<String, Object> storedValueSentBack =
+        buildGitSinkWorkflowRequest(targetName, targetCiphertext, mask, mask);
+    storedValueSentBack.put("description", "Stored ciphertext sent back");
+    executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, storedValueSentBack);
+    assertDecryptsTo(targetToken, storedGitToken(target.get("id").asText()));
+  }
+
+  private static void assertEncryptedValueRejected(Executable request) {
+    OpenMetadataException rejected = assertThrows(OpenMetadataException.class, request);
+    assertEquals(400, rejected.getStatusCode());
+    assertTrue(
+        rejected.getMessage().contains("encrypted values cannot be supplied"),
+        rejected.getMessage());
+  }
+
+  private String storedGitToken(String workflowId) {
+    return gitSinkNode(JsonUtils.readTree(storedDefinitionJson(workflowId)))
+        .at("/config/sinkConfig/credentials/token")
+        .asText();
+  }
+
+  private static int gitSinkIndex(JsonNode workflow) {
+    JsonNode nodes = workflow.get("nodes");
+    return IntStream.range(0, nodes.size())
+        .filter(i -> "gitSink".equals(nodes.get(i).path("name").asText()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private static String aiContextJson(OpenMetadataClient client, String path) {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            path,
+            null,
+            RequestOptions.builder().queryParam("format", "json").build());
+  }
+
+  /**
+   * Walks every page of the version history from {@code startTs} until now, asserting none holds a
+   * sink secret and that the workflow's own versions are among them.
+   */
+  private static void assertHistoryMasked(
+      OpenMetadataClient client, String workflowId, long startTs, List<String> plaintexts)
+      throws Exception {
+    String endTs = String.valueOf(System.currentTimeMillis());
+    boolean workflowListed = false;
+    String after = null;
+    do {
+      RequestOptions.Builder options =
+          RequestOptions.builder()
+              .queryParam("startTs", String.valueOf(startTs))
+              .queryParam("endTs", endTs)
+              .queryParam("limit", "500");
+      if (after != null) {
+        options.queryParam("after", after);
+      }
+      String page =
+          client
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, BASE_PATH + "/history", null, options.build());
+      assertNoSecretOrCiphertext(page, plaintexts);
+      JsonNode history = MAPPER.readTree(page);
+      for (JsonNode version : history.path("data")) {
+        workflowListed |= workflowId.equals(version.path("id").asText());
+      }
+      after = history.path("paging").path("after").textValue();
+    } while (after != null);
+    assertTrue(workflowListed, "the workflow's versions must be in the history window");
+  }
+
+  private static String latestProcessDefinitionId(String workflowName) {
+    return WorkflowHandler.getInstance()
+        .getRepositoryService()
+        .createProcessDefinitionQuery()
+        .processDefinitionKey(workflowName)
+        .latestVersion()
+        .singleResult()
+        .getId();
   }
 
   private static final String UPDATE_STORED_DEFINITION_MYSQL =
