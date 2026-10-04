@@ -160,7 +160,7 @@ export const renderDomainLink = (
           },
           textClassName
         )}
-        data-testid={`domain-link-${getEntityName(domain)}`}
+        data-testid="domain-link"
         to={getDomainPath(domain?.fullyQualifiedName)}>
         {trimLink ? (
           <Typography

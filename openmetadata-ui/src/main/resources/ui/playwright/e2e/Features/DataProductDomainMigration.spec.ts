@@ -154,9 +154,9 @@ test.describe('Data Product Domain Migration', () => {
         page.locator('[data-testid="entity-header-name"]')
       ).toContainText(dataProduct.responseData.name);
 
-      await expect(
-        page.getByTestId(`domain-link-${sourceDomain.data.displayName}`)
-      ).toBeVisible();
+      await expect(page.getByTestId('domain-link').first()).toContainText(
+        sourceDomain.data.displayName
+      );
 
       // Verify assets are in the data product
       await page.getByTestId('assets').click();
@@ -190,9 +190,9 @@ test.describe('Data Product Domain Migration', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct.data);
 
-      await expect(
-        page.getByTestId(`domain-link-${targetDomain.data.displayName}`)
-      ).toBeVisible();
+      await expect(page.getByTestId('domain-link').first()).toContainText(
+        targetDomain.data.displayName
+      );
 
       // Verify assets are still in the data product
       await page.getByTestId('assets').click();
@@ -261,9 +261,9 @@ test.describe('Data Product Domain Migration', () => {
       ).toContainText(noAssetsDataProduct.responseData.name);
 
       // Verify data product is in original domain
-      await expect(
-        page.getByTestId(`domain-link-${noAssetsDomain.data.displayName}`)
-      ).toBeVisible();
+      await expect(page.getByTestId('domain-link').first()).toContainText(
+        noAssetsDomain.data.displayName
+      );
 
       // Change domain via API
       const patchResponse = await apiContext.patch(
@@ -295,9 +295,9 @@ test.describe('Data Product Domain Migration', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify domain changed
-      await expect(
-        page.getByTestId(`domain-link-${noAssetsDomain2.data.displayName}`)
-      ).toBeVisible();
+      await expect(page.getByTestId('domain-link').first()).toContainText(
+        noAssetsDomain2.data.displayName
+      );
 
       // Verify no assets
       await page.getByTestId('assets').click();
@@ -391,9 +391,9 @@ test.describe('Data Product Domain Migration', () => {
       await expect(page.getByTestId('entity-header-name')).toContainText(
         movedDataProduct.responseData.name
       );
-      await expect(
-        page.getByTestId(`domain-link-${vehicleDomain.data.displayName}`)
-      ).toBeVisible();
+      await expect(page.getByTestId('domain-link').first()).toContainText(
+        vehicleDomain.data.displayName
+      );
 
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, vehicleDomain.data);

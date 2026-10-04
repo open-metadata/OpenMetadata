@@ -171,8 +171,8 @@ test.describe('Move Assets Between Domains', () => {
       );
 
       await expect(
-        page.getByTestId(`domain-link-${domain1.data.displayName}`)
-      ).toBeVisible();
+        page.locator('[data-testid="domain-link"]').first()
+      ).toContainText(domain1.data.displayName);
 
       await table.patch({
         apiContext,
@@ -193,8 +193,8 @@ test.describe('Move Assets Between Domains', () => {
       await page.reload({ waitUntil: 'domcontentloaded' });
 
       await expect(
-        page.getByTestId(`domain-link-${domain2.data.displayName}`)
-      ).toBeVisible();
+        page.locator('[data-testid="domain-link"]').first()
+      ).toContainText(domain2.data.displayName);
 
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain1.data);
