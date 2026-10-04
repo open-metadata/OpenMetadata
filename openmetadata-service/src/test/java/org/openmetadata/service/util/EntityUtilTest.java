@@ -1113,6 +1113,46 @@ class EntityUtilTest {
     }
   }
 
+  @Test
+  void addDomainQueryParam_listKeyedBySeveralEntityIdsIsNotOneParent() {
+    // Some resources put a quoted id list in entityId (e.g. pages related to several users):
+    // there is no single parent, so the list is narrowed like any unscoped list.
+    EntityReference selected =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+    CatalogSecurityContext carried =
+        new CatalogSecurityContext(
+            () -> "viewer", "https", "digest", null, false, null, null, selected);
+    org.openmetadata.schema.entity.teams.User user =
+        new org.openmetadata.schema.entity.teams.User().withName("viewer");
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("page")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("page")).thenReturn(domainAwareRepository);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
+          .thenReturn(selected);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(carried))
+          .thenReturn(new SubjectContext(user, null));
+
+      ListFilter filter = new ListFilter();
+      filter.addQueryParam("entityId", "'" + UUID.randomUUID() + "','" + UUID.randomUUID() + "'");
+      filter.addQueryParam("entityType", "user");
+      EntityUtil.addDomainQueryParam(carried, filter, "page");
+
+      assertEquals(selected.getId().toString(), filter.getQueryParam("domainId"));
+      assertNull(filter.getQueryParam("domainAccessControl"));
+    }
+  }
+
   private static class NoDescriptionEntity {}
 
   private static class ThrowingFieldTable extends Table {

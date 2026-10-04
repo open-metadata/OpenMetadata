@@ -1155,7 +1155,23 @@ public final class EntityUtil {
   /** The entity a list is confined to, as identified for its authorization; null if none. */
   private static ResourceContextInterface listParent(ListFilter filter, String entityType) {
     ResourceContextInterface parent = filter.getResourceContext(entityType);
-    return entityType.equals(parent.getResource()) ? filter.getParentResourceContext() : parent;
+    if (!entityType.equals(parent.getResource())) {
+      return parent;
+    }
+    // entityId may hold several ids (e.g. a quoted id list): then there is no single parent.
+    return isSingleId(filter.getQueryParam("entityId")) ? filter.getParentResourceContext() : null;
+  }
+
+  private static boolean isSingleId(String id) {
+    if (nullOrEmpty(id)) {
+      return false;
+    }
+    try {
+      UUID.fromString(id);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   /** Where {@code parent}'s effective domain (own or inherited) sits relative to the selection. */
