@@ -4554,6 +4554,7 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/OnlineUsers.spec.ts",
         "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
@@ -9779,7 +9780,6 @@
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ProfileGovernance.spec.ts",
-        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
       ]
     },
@@ -9788,6 +9788,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileDetailsPanel.tsx"
       ],
       "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
       ]
     },
