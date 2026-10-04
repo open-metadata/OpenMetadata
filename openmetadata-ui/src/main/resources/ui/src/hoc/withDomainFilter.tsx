@@ -53,6 +53,14 @@ const collectMustClauses = (
   return mustArray;
 };
 
+// Reference data searched by pickers (tags, owners, team members) is never narrowed to the
+// selected domain, or a pick would hide the people and tags an asset can be given.
+const UNSCOPED_SEARCH_INDEXES = new Set<string>([
+  SearchIndex.TAG,
+  SearchIndex.USER,
+  SearchIndex.TEAM,
+]);
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
@@ -75,7 +83,7 @@ export const withDomainFilter = (
 
   if (isGetRequest && hasActiveDomain) {
     if (config.url?.includes('/search/query')) {
-      if (config.params?.index === SearchIndex.TAG) {
+      if (UNSCOPED_SEARCH_INDEXES.has(config.params?.index)) {
         return config;
       }
 

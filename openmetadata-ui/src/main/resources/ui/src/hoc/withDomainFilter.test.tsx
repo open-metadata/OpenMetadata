@@ -204,6 +204,22 @@ describe('withDomainFilter', () => {
       expect(result.params?.query_filter).toBeUndefined();
     });
 
+    it.each([SearchIndex.USER, SearchIndex.TEAM])(
+      'should return config unchanged for %s index searches (owner and member pickers)',
+      (index) => {
+        (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+          '/api/search'
+        );
+        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+        const config = createMockConfig('get', '/search/query', { index });
+        const result = withDomainFilter(config);
+
+        expect(result).toBe(config);
+        expect(result.params?.query_filter).toBeUndefined();
+      }
+    );
+
     it('should use fullyQualifiedName field for DOMAIN index searches', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
         '/api/search'
