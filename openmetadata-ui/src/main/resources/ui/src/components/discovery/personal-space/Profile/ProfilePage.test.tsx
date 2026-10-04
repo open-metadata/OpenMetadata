@@ -59,10 +59,14 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   default: () => <div data-testid="avatar" />,
 }));
 
-// Content leaf components mounted by the nav registry.
+// Content leaf components mounted by the nav registry. ProfileDetailsPanel
+// echoes the resolved user's display name so tests can assert which user loaded
+// (the header title is static and never shows the name).
 jest.mock('./ProfileDetailsPanel', () => ({
   __esModule: true,
-  default: () => <div data-testid="content-profile" />,
+  default: ({ userData }: { userData?: { displayName?: string } }) => (
+    <div data-testid="content-profile">{userData?.displayName}</div>
+  ),
 }));
 jest.mock('./components/AccessTokenPanel', () => ({
   __esModule: true,
@@ -214,7 +218,7 @@ describe('ProfilePage', () => {
   });
 
   it('ignores a stale profile response when the target changes mid-flight', async () => {
-    let resolveBob: (value: unknown) => void = () => undefined;
+    let resolveBob!: (value: unknown) => void;
     const bobPromise = new Promise((resolve) => {
       resolveBob = resolve;
     });
@@ -243,13 +247,14 @@ describe('ProfilePage', () => {
       await bobPromise;
     });
 
-    const header = screen.getByTestId('profile-content-header');
+    // Alice (the later target) wins; the stale Bob response is discarded.
+    const content = screen.getByTestId('content-profile');
 
-    expect(within(header).getByText('Alice')).toBeInTheDocument();
-    expect(within(header).queryByText('Bob')).not.toBeInTheDocument();
+    expect(content).toHaveTextContent('Alice');
+    expect(content).not.toHaveTextContent('Bob');
   });
 
-  it('keeps the profile breadcrumb static (nav label) when viewing another user', async () => {
+  it('always shows the static "Profile" header, never the user name, when viewing another user', async () => {
     mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
     mockGetUserByName.mockResolvedValue({
       id: 'u2',
@@ -263,14 +268,15 @@ describe('ProfilePage', () => {
 
     const header = screen.getByTestId('profile-content-header');
 
-    // Title shows the viewed user's name...
-    expect(within(header).getByText('Jane Doe')).toBeInTheDocument();
+    // Header title + breadcrumb stay the static nav label; the user name never
+    // appears there.
+    expect(within(header).getAllByText('label.profile').length).toBeGreaterThan(
+      0
+    );
+    expect(within(header).queryByText('Jane Doe')).not.toBeInTheDocument();
 
-    // ...but the breadcrumb stays the nav label, never the user name.
-    const breadcrumb = within(header).getByRole('navigation');
-
-    expect(within(breadcrumb).getByText('label.profile')).toBeInTheDocument();
-    expect(within(breadcrumb).queryByText('Jane Doe')).not.toBeInTheDocument();
+    // ...but the other user's data still loaded into the content panel.
+    expect(screen.getByTestId('content-profile')).toHaveTextContent('Jane Doe');
   });
 
   it('swaps the content panel when a nav item is clicked', async () => {

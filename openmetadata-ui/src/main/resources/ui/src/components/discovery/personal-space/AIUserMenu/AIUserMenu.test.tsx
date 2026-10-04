@@ -34,6 +34,12 @@ jest.mock('../../../../hooks/useSettingsHash', () => ({
   useSettingsHash: () => ({ setHash: mockSetHash }),
 }));
 
+const mockOpenPanel = jest.fn();
+jest.mock('../../../../hooks/usePersonalSpaceStore', () => ({
+  usePersonalSpaceStore: (selector: (state: unknown) => unknown) =>
+    selector({ open: mockOpenPanel }),
+}));
+
 const mockSetAppVersion = jest.fn();
 let mockAppVersion: string | undefined = '1.0.0';
 

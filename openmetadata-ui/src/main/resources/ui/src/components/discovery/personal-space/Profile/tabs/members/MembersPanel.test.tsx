@@ -36,7 +36,6 @@ jest.mock(
   './MembersTeamDetail',
   () =>
     ({ onRename }: { onRename?: (name: string) => void }) => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const React = require('react');
       // Defer like the real component, which reports the name only after its
       // async getTeamByName resolves — so the panel's sync clear-on-nav effect

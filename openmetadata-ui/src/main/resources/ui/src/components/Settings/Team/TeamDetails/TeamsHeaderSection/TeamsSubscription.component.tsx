@@ -19,13 +19,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
-    DE_ACTIVE_COLOR,
-    ICON_DIMENSION,
-    NO_DATA_PLACEHOLDER
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
 } from '../../../../../constants/constants';
 import {
-    SUBSCRIPTION_WEBHOOK,
-    SUBSCRIPTION_WEBHOOK_OPTIONS
+  SUBSCRIPTION_WEBHOOK,
+  SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../../constants/Teams.constants';
 import { Webhook } from '../../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
@@ -67,7 +67,7 @@ const TeamsSubscription = ({
         </a>
       </Typography>
     ),
-    []
+    [getWebhookIconByKey]
   );
 
   const subscriptionRenderElement = useMemo(() => {
@@ -96,7 +96,7 @@ const TeamsSubscription = ({
     }
 
     return cellItem(webhook[0], webhook[1]);
-  }, [subscription, hasEditPermission]);
+  }, [subscription, hasEditPermission, cellItem, t]);
 
   const handleSave = async (values: SubscriptionWebhook) => {
     setIsLoading(true);
@@ -115,7 +115,7 @@ const TeamsSubscription = ({
     if (isWebhookEmpty) {
       form.setFieldValue('endpoint', '');
     }
-  }, [isWebhookEmpty]);
+  }, [isWebhookEmpty, form]);
 
   useEffect(() => {
     if (subscription) {
@@ -125,7 +125,7 @@ const TeamsSubscription = ({
         endpoint: data[1].endpoint,
       });
     }
-  }, [subscription, editSubscription]);
+  }, [subscription, editSubscription, form]);
 
   const subscriptionWebhookTranslated = useMemo(
     () =>

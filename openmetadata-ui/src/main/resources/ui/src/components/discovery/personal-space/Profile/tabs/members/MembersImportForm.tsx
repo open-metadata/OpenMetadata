@@ -52,7 +52,7 @@ import {
 import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
-} from '../../../../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+} from '../../../../../../interface/entity/csv.interface';
 import { importTeam, importUserInTeam } from '../../../../../../rest/teamsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { MembersImportType } from './Members.types';

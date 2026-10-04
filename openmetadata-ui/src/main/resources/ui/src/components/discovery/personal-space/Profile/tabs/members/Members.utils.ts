@@ -19,6 +19,7 @@ const ADMINS = 'admins';
 const ADD = 'add';
 const CREATE = 'create';
 const ONLINE_USERS = 'online-users';
+const USER_CREATE = 'user-create';
 const IMPORT_TEAM = 'import-team';
 const IMPORT_USER = 'import-user';
 
@@ -67,14 +68,14 @@ export function hashSubPathToView(subPath: string): MembersView {
       return parseTeamsSubPath(parts);
     case USERS:
       return parts[1] === CREATE
-        ? { type: 'user-create', isAdmin: false }
+        ? { type: USER_CREATE, isAdmin: false }
         : { type: 'users' };
     case ADMINS:
       return parts[1] === CREATE
-        ? { type: 'user-create', isAdmin: true }
+        ? { type: USER_CREATE, isAdmin: true }
         : { type: 'admins' };
     case ONLINE_USERS:
-      return { type: 'online-users' };
+      return { type: ONLINE_USERS };
     default:
       return { type: 'landing' };
   }
@@ -107,10 +108,10 @@ export function viewToSubPath(view: MembersView): string | undefined {
   if (view.type === 'admins') {
     return ADMINS;
   }
-  if (view.type === 'online-users') {
+  if (view.type === ONLINE_USERS) {
     return ONLINE_USERS;
   }
-  if (view.type === 'user-create') {
+  if (view.type === USER_CREATE) {
     return view.isAdmin ? `${ADMINS}/${CREATE}` : `${USERS}/${CREATE}`;
   }
 

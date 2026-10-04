@@ -103,6 +103,10 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
 
   const filters = useMemo(
     () => parseFiltersFromUrl(),
+    // parseFiltersFromUrl is pure over location.search (via searchQuery) and
+    // initialFilters — the listed deps; including the function itself would
+    // recompute every render with no behavioural change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [location.search, initialFilters]
   );
 

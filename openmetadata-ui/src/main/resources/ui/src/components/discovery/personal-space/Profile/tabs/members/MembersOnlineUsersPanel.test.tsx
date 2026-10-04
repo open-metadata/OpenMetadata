@@ -13,6 +13,7 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 
 const mockGetOnlineUsers = jest.fn().mockResolvedValue({
   data: [],
@@ -66,36 +67,37 @@ jest.mock('../../../../../common/Table/TableV2', () =>
     }: {
       'data-testid'?: string;
       extraTableFilters?: React.ReactNode;
-    }) => (
-      <div data-testid={testId ?? 'table'}>{extraTableFilters}</div>
-    )
+    }) => <div data-testid={testId ?? 'table'}>{extraTableFilters}</div>
   )
 );
 
 import MembersOnlineUsersPanel from './MembersOnlineUsersPanel';
 
-describe('MembersOnlineUsersPanel', () => {
+const renderPanel = () =>
+  render(
+    <MemoryRouter>
+      <MembersOnlineUsersPanel onNavigate={jest.fn()} />
+    </MemoryRouter>
+  );
 
+describe('MembersOnlineUsersPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders with time window select', async () => {
-    render(<MembersOnlineUsersPanel onNavigate={jest.fn()} />);
+    renderPanel();
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('time-window-select')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('time-window-select')).toBeInTheDocument();
     });
   });
 
   it('calls getOnlineUsers on mount', async () => {
-    render(<MembersOnlineUsersPanel onNavigate={jest.fn()} />);
+    renderPanel();
 
     await waitFor(() => {
       expect(mockGetOnlineUsers).toHaveBeenCalled();
     });
   });
-
 });

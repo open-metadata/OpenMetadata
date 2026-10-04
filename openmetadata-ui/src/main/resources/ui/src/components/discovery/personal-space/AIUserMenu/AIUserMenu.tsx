@@ -44,6 +44,7 @@ import {
 } from '../../../../constants/Navbar.constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getVersion } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -224,6 +225,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
   const { setHash } = useSettingsHash();
+  const openPanel = usePersonalSpaceStore((state) => state.open);
   const {
     appVersion,
     currentUser,
@@ -413,6 +415,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
       handleLanguageChange,
       navigate,
       onLogoutHandler,
+      openPanel,
       selectedPersona,
       selectedPersonaName,
       setSelectedPersona,

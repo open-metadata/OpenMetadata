@@ -12,23 +12,23 @@
  */
 
 import {
-    Box,
-    Button,
-    EmptyPlaceholder,
-    PaginationCardWithControls,
-    Popover,
-    PopoverTrigger,
-    Select,
-    Typography
+  Box,
+  Button,
+  EmptyPlaceholder,
+  PaginationCardWithControls,
+  Popover,
+  PopoverTrigger,
+  Select,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    INITIAL_PAGING_VALUE,
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_LARGE,
-    PAGE_SIZE_MEDIUM
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
 import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -38,8 +38,8 @@ import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
-    getOnlineUsers,
-    OnlineUsersQueryParams
+  getOnlineUsers,
+  OnlineUsersQueryParams,
 } from '../../../../../../rest/userAPI';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -52,12 +52,12 @@ import Table from '../../../../../common/Table/TableV2';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
-import ProfileHashLink from './ProfileHashLink';
 import {
-    profileHash,
-    ProfileHashTarget,
-    toHashLocation
+  profileHash,
+  ProfileHashTarget,
+  toHashLocation,
 } from './profileHash.utils';
+import ProfileHashLink from './ProfileHashLink';
 
 const USER_FIELDS = 'profile,teams,roles,lastLoginTime,lastActivityTime';
 
@@ -190,6 +190,8 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     if (!searchText) {
       fetchOnlineUsers();
     }
+    // Refetch on time-window / page-size change; search is handled separately.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeWindow, pageSize]);
 
   const renderEntityLinks = useCallback(
@@ -236,9 +238,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
       const renderRoleItem = (role: EntityReference) => (
         <ProfileHashLink
           key={role.id}
-          target={profileHash.role(
-            role.fullyQualifiedName ?? role.name ?? ''
-          )}
+          target={profileHash.role(role.fullyQualifiedName ?? role.name ?? '')}
           onNavigate={goTo}>
           {getEntityName(role)}
         </ProfileHashLink>

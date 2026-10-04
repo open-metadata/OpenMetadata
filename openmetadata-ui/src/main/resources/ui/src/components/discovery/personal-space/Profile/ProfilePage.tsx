@@ -33,7 +33,6 @@ import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,
@@ -259,7 +258,9 @@ const ProfilePage: React.FC = () => {
     ];
   }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
 
-  // Clear header override whenever the user switches nav items.
+  // Clear header override whenever the user switches nav items. The profile tab
+  // carries the current user's name as its sub-path (`#profile/<username>`) so
+  // the URL is shareable/deep-linkable; other tabs own their own sub-paths.
   const handleNavSelect = useCallback(
     (id: ProfileNavId) => {
       if (id === selectedId) {
@@ -267,9 +268,12 @@ const ProfilePage: React.FC = () => {
       }
       setSelectedId(id);
       setHeaderOverride(null);
-      setHash(id);
+      setHash(
+        id,
+        id === DEFAULT_PROFILE_NAV_ID ? currentUser?.name : undefined
+      );
     },
-    [selectedId, setHash]
+    [selectedId, setHash, currentUser?.name]
   );
 
   const activeItem =
@@ -277,13 +281,9 @@ const ProfilePage: React.FC = () => {
 
   // Resolve header props — prefer panel-supplied override, fall back to defaults.
   const headerIcon = headerOverride?.icon ?? activeItem.icon;
-  // isViewingOtherUser already implies the profile tab (only `#profile/<user>`
-  // yields a target other than the current user).
-  const otherUserTitle = isViewingOtherUser
-    ? getEntityName(userData)
-    : undefined;
-  const headerTitle =
-    headerOverride?.title ?? otherUserTitle ?? t(activeItem.label);
+  // Always the static nav label (e.g. "Profile") — never the viewed user's name,
+  // for either your own or another user's profile.
+  const headerTitle = headerOverride?.title ?? t(activeItem.label);
   const headerDescription =
     headerOverride?.description ?? t(activeItem.description);
   const headerBreadcrumbRoot = t(PROFILE_NAV_GROUP_LABEL[activeItem.group]);
@@ -295,69 +295,74 @@ const ProfilePage: React.FC = () => {
   ];
   const headerBreadcrumbAction = headerOverride?.onBreadcrumbAction;
 
-  return (
-    <Box
-      className="ai-profile-page tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden"
-      data-testid="ai-profile-page"
-      direction="row">
-      {!userData ? (
-        isUserNotFound ? (
+  // Extracted so the nested loading/not-found branching lives in its own function
+  // (keeps the component's cyclomatic complexity down and avoids a nested ternary).
+  const renderContent = () => {
+    if (!userData) {
+      if (isUserNotFound) {
+        return (
           <Box className="tw:relative tw:flex-1">
             <EmptyPlaceholder
               icon={User01}
               title={t('label.no-entity-found', { entity: t('label.user') })}
             />
           </Box>
-        ) : (
-          <Loader />
-        )
-      ) : (
-        <>
-          <ProfileSideNav
-            items={navItems}
-            selectedId={selectedId}
-            onSelect={handleNavSelect}
+        );
+      }
+
+      return <Loader />;
+    }
+
+    const panel = activeItem.render({
+      userData,
+      isProfileLoading,
+      updateUserDetails,
+      onHeaderChange: setHeaderOverride,
+    });
+
+    return (
+      <>
+        <ProfileSideNav
+          items={navItems}
+          selectedId={selectedId}
+          onSelect={handleNavSelect}
+        />
+        <Box
+          className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
+          direction="col">
+          <ProfileContentHeader
+            actions={headerOverride?.actions}
+            breadcrumbRoot={headerBreadcrumbRoot}
+            breadcrumbs={headerBreadcrumbs}
+            description={headerDescription}
+            icon={headerIcon}
+            iconNode={headerOverride?.iconNode}
+            title={headerTitle}
+            titleInput={headerOverride?.titleInput}
+            titleSuffix={headerOverride?.titleSuffix}
+            onBreadcrumbAction={headerBreadcrumbAction}
           />
-          <Box
-            className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
-            direction="col">
-            <ProfileContentHeader
-              actions={headerOverride?.actions}
-              breadcrumbRoot={headerBreadcrumbRoot}
-              breadcrumbs={headerBreadcrumbs}
-              description={headerDescription}
-              icon={headerIcon}
-              iconNode={headerOverride?.iconNode}
-              title={headerTitle}
-              titleInput={headerOverride?.titleInput}
-              titleSuffix={headerOverride?.titleSuffix}
-              onBreadcrumbAction={headerBreadcrumbAction}
-            />
-            {activeItem.selfContainedLayout ? (
-              <React.Fragment key={selectedId}>
-                {activeItem.render({
-                  userData,
-                  isProfileLoading,
-                  updateUserDetails,
-                  onHeaderChange: setHeaderOverride,
-                })}
-              </React.Fragment>
-            ) : (
-              <div
-                className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0"
-                data-testid="profile-content-body"
-                key={selectedId}>
-                {activeItem.render({
-                  userData,
-                  isProfileLoading,
-                  updateUserDetails,
-                  onHeaderChange: setHeaderOverride,
-                })}
-              </div>
-            )}
-          </Box>
-        </>
-      )}
+          {activeItem.selfContainedLayout ? (
+            <React.Fragment key={selectedId}>{panel}</React.Fragment>
+          ) : (
+            <div
+              className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0"
+              data-testid="profile-content-body"
+              key={selectedId}>
+              {panel}
+            </div>
+          )}
+        </Box>
+      </>
+    );
+  };
+
+  return (
+    <Box
+      className="ai-profile-page tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden"
+      data-testid="ai-profile-page"
+      direction="row">
+      {renderContent()}
     </Box>
   );
 };
