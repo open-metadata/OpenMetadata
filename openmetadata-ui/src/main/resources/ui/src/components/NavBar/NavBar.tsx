@@ -45,6 +45,7 @@ import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurre
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
+import { useSwitchActiveDomain } from '../../hooks/useSwitchActiveDomain';
 import { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
 import { getVersion } from '../../rest/miscAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
@@ -108,10 +109,10 @@ const NavBar = () => {
   const {
     activeDomain,
     activeDomainEntityRef,
-    updateActiveDomain,
     userDomains,
     isDomainRestricted,
   } = useDomainStore();
+  const switchActiveDomain = useSwitchActiveDomain();
   const { t } = useTranslation();
   const searchRef = useRef<InputRef>(null);
   const [hasTaskNotification, setHasTaskNotification] =
@@ -461,11 +462,10 @@ const NavBar = () => {
 
   const handleDomainChange = useCallback(
     async (domain: EntityReference | EntityReference[] | undefined) => {
-      updateActiveDomain(domain as EntityReference);
       setIsDomainDropdownOpen(false);
-      navigate(0);
+      await switchActiveDomain(domain as EntityReference | undefined);
     },
-    []
+    [switchActiveDomain]
   );
 
   const domainDisplayName = useMemo(

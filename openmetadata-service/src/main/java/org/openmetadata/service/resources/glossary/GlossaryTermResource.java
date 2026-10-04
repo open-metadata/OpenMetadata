@@ -308,6 +308,22 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             .addQueryParam("parent", fqn)
             .addQueryParam("directChildrenOf", parentTermFQNParam)
             .addQueryParam("entityStatus", entityStatus);
+    // The terms inherit the domain of the parent term, else the glossary, they are listed under.
+    ResourceContextInterface parentContext = null;
+    if (parentTermParam != null) {
+      parentContext = new ResourceContext<>(Entity.GLOSSARY_TERM, parentTermParam, null);
+    } else if (glossary != null) {
+      parentContext = new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null);
+    } else if (!nullOrEmpty(parentTermFQNParam)) {
+      // directChildrenOf names either a glossary or a parent term.
+      String parentType =
+          Entity.findEntityByNameOrNull(Entity.GLOSSARY_TERM, parentTermFQNParam, Include.ALL)
+                  == null
+              ? Entity.GLOSSARY
+              : Entity.GLOSSARY_TERM;
+      parentContext = new ResourceContext<>(parentType, null, parentTermFQNParam);
+    }
+    EntityUtil.addDomainQueryParam(securityContext, filter, Entity.GLOSSARY_TERM, parentContext);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging

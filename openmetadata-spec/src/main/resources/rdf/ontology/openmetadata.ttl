@@ -2511,6 +2511,10 @@ om:default a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "default" .
 
+om:defaultDomain a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "defaultDomain" .
+
 om:defaultPersona a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "defaultPersona" .

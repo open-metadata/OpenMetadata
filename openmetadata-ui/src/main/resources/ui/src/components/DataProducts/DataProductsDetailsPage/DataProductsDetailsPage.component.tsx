@@ -108,6 +108,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -1064,6 +1065,11 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
+          <DomainMismatchAlert
+            className="tw:mx-5"
+            domains={dataProduct.domains}
+            entityId={dataProduct.id}
+          />
           <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-center tw:justify-between">
             <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader

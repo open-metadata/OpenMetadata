@@ -48,7 +48,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class SubjectCache {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
   private static final String USER_CONTEXT_FIELDS =
-      "roles,teams,isAdmin,profile,domains,personas,defaultPersona";
+      "roles,teams,isAdmin,profile,domains,personas,defaultPersona,defaultDomain";
 
   static class UserPoliciesContext {
     final List<PolicyContext> policies;

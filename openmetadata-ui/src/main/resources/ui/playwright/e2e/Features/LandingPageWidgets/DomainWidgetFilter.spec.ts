@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { Page } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
-import { expect, test } from '../../../support/fixtures/base';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
+import { UserClass } from '../../../support/user/UserClass';
 import {
   createNewPage,
   redirectToExplorePage,
@@ -24,10 +26,30 @@ import {
   setUserDefaultPersona,
   waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
-import { selectDomainFromNavbar } from '../../../utils/domain';
+import {
+  clearPersistedDomain,
+  selectDomainFromNavbar,
+} from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { performUserLogin } from '../../../utils/user';
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
+// The navbar pick is persisted per user: run as a dedicated admin and clear the pick after each
+// test so it never leaks into other specs' list views.
+const domainAdmin = new UserClass(undefined, true);
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const { page, apiContext, afterAction } = await performUserLogin(
+      browser,
+      domainAdmin
+    );
+    await use(page);
+    await clearPersistedDomain(apiContext);
+    await afterAction();
+  },
+});
+
+test.describe.configure({ mode: 'default' });
 
 const domainA = new Domain();
 const domainB = new Domain();
@@ -39,12 +61,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await domainA.create(apiContext);
   await domainB.create(apiContext);
 
-  const adminResponse = await apiContext.get(
-    '/api/v1/users/name/admin?fields=id'
-  );
-  const adminData = await adminResponse.json();
-
-  await persona.create(apiContext, [adminData.id]);
+  await domainAdmin.create(apiContext);
+  await persona.create(apiContext, [domainAdmin.responseData.id]);
   await afterAction();
 });
 
@@ -53,6 +71,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await domainA.delete(apiContext);
   await domainB.delete(apiContext);
   await persona.delete(apiContext);
+  await domainAdmin.delete(apiContext);
   await afterAction();
 });
 

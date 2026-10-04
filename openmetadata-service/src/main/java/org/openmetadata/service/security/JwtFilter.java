@@ -67,6 +67,7 @@ import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -302,6 +303,7 @@ public class JwtFilter implements ContainerRequestFilter {
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     ImpersonationContext.clear();
     ActivePersonaContext.clear();
+    ActiveDomainContext.clear();
 
     try {
       String tokenFromHeader = extractToken(requestContext.getHeaders());
@@ -339,6 +341,8 @@ public class JwtFilter implements ContainerRequestFilter {
 
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
       String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+      // The (possibly impersonated) user's persisted navbar selection; a view preference only.
+      EntityReference activeDomain = ActiveDomainContext.resolve(userName, isBotUser);
       CatalogSecurityContext catalogSecurityContext =
           new CatalogSecurityContext(
               catalogPrincipal,
@@ -347,7 +351,8 @@ public class JwtFilter implements ContainerRequestFilter {
               getUserRolesFromClaims(claims, isBotUser),
               isBotUser,
               impersonatedBy,
-              activePersona);
+              activePersona,
+              activeDomain);
       LOG.debug("SecurityContext {}", catalogSecurityContext);
       requestContext.setSecurityContext(catalogSecurityContext);
 
@@ -357,9 +362,11 @@ public class JwtFilter implements ContainerRequestFilter {
         ImpersonationContext.clear();
       }
       ActivePersonaContext.setActivePersona(activePersona);
+      ActiveDomainContext.setActiveDomain(activeDomain);
     } catch (Throwable t) {
       ImpersonationContext.clear();
       ActivePersonaContext.clear();
+      ActiveDomainContext.clear();
       throw t;
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
@@ -701,7 +708,8 @@ public class JwtFilter implements ContainerRequestFilter {
         getUserRolesFromClaims(claims, isBotUser),
         isBotUser,
         null,
-        activePersona);
+        activePersona,
+        ActiveDomainContext.resolve(resolvedIdentity.userName(), isBotUser));
   }
 
   private Algorithm createAlgorithmFromJwk(

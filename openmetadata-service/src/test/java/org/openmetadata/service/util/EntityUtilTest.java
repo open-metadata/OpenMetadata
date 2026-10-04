@@ -3,6 +3,7 @@ package org.openmetadata.service.util;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqn;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -49,7 +51,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -853,6 +857,299 @@ class EntityUtilTest {
       assertEquals("true", domainFilter.getQueryParam("domainAccessControl"));
       assertEquals("null", noDomainFilter.getQueryParam("domainId"));
       assertEquals("table", noDomainFilter.getQueryParam("entityType"));
+    }
+  }
+
+  @AfterEach
+  void clearActiveDomain() {
+    ActiveDomainContext.clear();
+  }
+
+  @Test
+  void addDomainQueryParam_appliesNavbarDomainAsViewFilter() {
+    EntityReference selected =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    // Raw type: the repository lookup is only consulted for supportsDomains.
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+
+    org.openmetadata.schema.entity.teams.User plain =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("viewer")
+            .withDefaultDomain(selected);
+    org.openmetadata.schema.entity.teams.User admin =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("admin")
+            .withIsAdmin(true)
+            .withDefaultDomain(selected);
+    org.openmetadata.schema.entity.teams.User bot =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("ingestion-bot")
+            .withIsBot(true)
+            .withDefaultDomain(selected);
+    org.openmetadata.schema.entity.teams.User restricted =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(selected))
+            .withDefaultDomain(selected);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      // Unit tests register no repositories; stand in for the intrinsic supportsDomains lookup.
+      entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
+      entity.when(() -> Entity.hasEntityRepository("user")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("user")).thenReturn(domainAwareRepository);
+      // The hook re-resolves the persisted ref (a deleted domain must fall back to no selection).
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
+          .thenReturn(selected);
+
+      ListFilter viewFilter = new ListFilter(); // plain user with a selected domain -> narrowed
+      ListFilter adminFilter = new ListFilter(); // view preference applies to admins too
+      ListFilter excludedFilter = new ListFilter(); // excluded type stays untouched
+      ListFilter explicitFilter = new ListFilter(); // explicit ?domain= keeps control
+      explicitFilter.addQueryParam("domainId", "'explicit'");
+      ListFilter botFilter = new ListFilter(); // bots are never scoped
+      ListFilter restrictedFilter =
+          new ListFilter(); // domain-only role -> narrowed within RBAC scope
+
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(plain, null))
+          .thenReturn(new SubjectContext(admin, null))
+          .thenReturn(new SubjectContext(plain, null))
+          .thenReturn(new SubjectContext(plain, null))
+          .thenReturn(new SubjectContext(bot, null))
+          .thenReturn(new SubjectContext(restricted, null));
+
+      // The auth filter resolved the persisted pick onto the request context.
+      ActiveDomainContext.setActiveDomain(selected);
+      EntityUtil.addDomainQueryParam(securityContext, viewFilter, "table");
+      EntityUtil.addDomainQueryParam(securityContext, adminFilter, "table");
+      EntityUtil.addDomainQueryParam(securityContext, excludedFilter, "user");
+      EntityUtil.addDomainQueryParam(securityContext, explicitFilter, "table");
+      EntityUtil.addDomainQueryParam(securityContext, botFilter, "table");
+      EntityUtil.addDomainQueryParam(securityContext, restrictedFilter, "table");
+
+      String id = selected.getId().toString();
+      assertEquals(id, viewFilter.getQueryParam("domainId"));
+      assertNull(viewFilter.getQueryParam("domainAccessControl")); // a filter, never enforcement
+      assertEquals(id, adminFilter.getQueryParam("domainId"));
+      assertTrue(excludedFilter.getQueryParams().isEmpty());
+      assertEquals("'explicit'", explicitFilter.getQueryParam("domainId"));
+      assertTrue(botFilter.getQueryParams().isEmpty());
+      assertEquals("'" + id + "'", restrictedFilter.getQueryParam("domainId"));
+      assertEquals("true", restrictedFilter.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void addDomainQueryParam_restrictedUserNarrowsToSelectedAllowedDomain() {
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Finance");
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference other =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Other");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    SecurityContext securityContext = mock(SecurityContext.class);
+
+    org.openmetadata.schema.entity.teams.User withinScope =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance, sales))
+            .withDefaultDomain(sales);
+    // Only reachable by setting defaultDomain through the API: the navbar never lists it.
+    org.openmetadata.schema.entity.teams.User outsideScope =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst-tampered")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance))
+            .withDefaultDomain(other);
+    org.openmetadata.schema.entity.teams.User noSelection =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst-none")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance, sales));
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+        org.mockito.Mockito.mockStatic(DefaultAuthorizer.class)) {
+      ListFilter narrowed = new ListFilter();
+      ListFilter guarded = new ListFilter();
+      ListFilter full = new ListFilter();
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(withinScope, null))
+          .thenReturn(new SubjectContext(outsideScope, null))
+          .thenReturn(new SubjectContext(noSelection, null));
+
+      ActiveDomainContext.setActiveDomain(sales);
+      EntityUtil.addDomainQueryParam(securityContext, narrowed, "table");
+      ActiveDomainContext.setActiveDomain(other);
+      EntityUtil.addDomainQueryParam(securityContext, guarded, "table");
+      ActiveDomainContext.clear();
+      EntityUtil.addDomainQueryParam(securityContext, full, "table");
+
+      // The pick narrows the list within the role's scope.
+      assertEquals("'" + sales.getId() + "'", narrowed.getQueryParam("domainId"));
+      assertEquals("true", narrowed.getQueryParam("domainAccessControl"));
+      // A pick outside the role's scope never widens it.
+      assertEquals("'" + finance.getId() + "'", guarded.getQueryParam("domainId"));
+      assertEquals("true", guarded.getQueryParam("domainAccessControl"));
+      // No pick keeps the full scope.
+      String fullScope = full.getQueryParam("domainId");
+      assertTrue(fullScope.contains(finance.getId().toString()));
+      assertTrue(fullScope.contains(sales.getId().toString()));
+      assertEquals("true", full.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void addDomainQueryParam_staleSelectionFallsBackToUnfiltered() {
+    // The persisted pick may outlive its domain (deleted after selection). Scoping to a domain
+    // that no longer exists would return nothing, so a stale ref must mean "no selection".
+    EntityReference gone =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Gone");
+    SecurityContext securityContext = mock(SecurityContext.class);
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+    org.openmetadata.schema.entity.teams.User user =
+        new org.openmetadata.schema.entity.teams.User().withName("viewer").withDefaultDomain(gone);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", gone.getId(), NON_DELETED))
+          .thenThrow(new EntityNotFoundException("domain not found"));
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(user, null));
+
+      ListFilter filter = new ListFilter();
+      ActiveDomainContext.setActiveDomain(gone);
+      EntityUtil.addDomainQueryParam(securityContext, filter, "table");
+
+      assertTrue(filter.getQueryParams().isEmpty(), "a stale selection must not scope the list");
+    }
+  }
+
+  @Test
+  void addDomainQueryParam_readsTheSelectionCarriedByTheRequest() {
+    // The auth filter resolves the persisted pick once per request; the list hook consumes only
+    // that, so a subject with a defaultDomain but no request-carried selection stays unfiltered.
+    EntityReference selected =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    SecurityContext securityContext = mock(SecurityContext.class);
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+    org.openmetadata.schema.entity.teams.User user =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("viewer")
+            .withDefaultDomain(selected);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
+          .thenReturn(selected);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(user, null));
+
+      ListFilter withoutRequestSelection = new ListFilter();
+      EntityUtil.addDomainQueryParam(securityContext, withoutRequestSelection, "table");
+      assertTrue(withoutRequestSelection.getQueryParams().isEmpty());
+
+      ListFilter fromSecurityContext = new ListFilter();
+      CatalogSecurityContext carried =
+          new CatalogSecurityContext(
+              () -> "viewer", "https", "digest", null, false, null, null, selected);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(carried))
+          .thenReturn(new SubjectContext(user, null));
+      EntityUtil.addDomainQueryParam(carried, fromSecurityContext, "table");
+      assertEquals(selected.getId().toString(), fromSecurityContext.getQueryParam("domainId"));
+    }
+  }
+
+  @Test
+  void addDomainQueryParam_listKeyedBySeveralEntityIdsIsNotOneParent() {
+    // Some resources put a quoted id list in entityId (e.g. pages related to several users):
+    // there is no single parent, so the list is narrowed like any unscoped list.
+    EntityReference selected =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+    CatalogSecurityContext carried =
+        new CatalogSecurityContext(
+            () -> "viewer", "https", "digest", null, false, null, null, selected);
+    org.openmetadata.schema.entity.teams.User user =
+        new org.openmetadata.schema.entity.teams.User().withName("viewer");
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("page")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("page")).thenReturn(domainAwareRepository);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
+          .thenReturn(selected);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(carried))
+          .thenReturn(new SubjectContext(user, null));
+
+      ListFilter filter = new ListFilter();
+      filter.addQueryParam("entityId", "'" + UUID.randomUUID() + "','" + UUID.randomUUID() + "'");
+      filter.addQueryParam("entityType", "user");
+      EntityUtil.addDomainQueryParam(carried, filter, "page");
+
+      assertEquals(selected.getId().toString(), filter.getQueryParam("domainId"));
+      assertNull(filter.getQueryParam("domainAccessControl"));
     }
   }
 

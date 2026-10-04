@@ -19,10 +19,10 @@ import {
 import classNames from 'classnames';
 import React, { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { useDomainStore } from '../../../hooks/useDomainStore';
+import { useSwitchActiveDomain } from '../../../hooks/useSwitchActiveDomain';
 import { getDomainDisplayName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 
@@ -45,8 +45,8 @@ export interface DomainScopeControlProps {
 /**
  * Domain scope filter docked at the bottom of the AI-mode sidebar. It shares the
  * global `useDomainStore` with the classic navbar selector, so picking a domain
- * here changes the app-wide active domain — and, like the navbar, reloads via
- * `navigate(0)` so every domain-scoped view refetches.
+ * here changes the app-wide active domain and persists it as the user's
+ * `defaultDomain`, through the same switch as the navbar.
  */
 /**
  * Restricted (single-domain) users cannot switch scope, so there is no menu to
@@ -101,15 +101,14 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   disabled,
 }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const {
     activeDomain,
     activeDomainEntityRef,
-    updateActiveDomain,
     userDomains,
     isDomainRestricted,
   } = useDomainStore();
   const [isOpen, setIsOpen] = useState(false);
+  const switchActiveDomain = useSwitchActiveDomain();
 
   const domainDisplayName = useMemo(
     () => getDomainDisplayName(activeDomainEntityRef, activeDomain),
@@ -126,11 +125,10 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
       // `undefined` is the "All Domains" reset row clearing the scope; the
       // store takes the sentinel rather than a reference in that case.
       const next = Array.isArray(domain) ? domain[0] : domain;
-      updateActiveDomain(next as EntityReference);
       setIsOpen(false);
-      navigate(0);
+      await switchActiveDomain(next);
     },
-    [navigate, updateActiveDomain]
+    [switchActiveDomain]
   );
 
   const cardClassName = classNames(

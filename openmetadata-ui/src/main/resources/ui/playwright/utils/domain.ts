@@ -1384,6 +1384,26 @@ export const addTagsAndGlossaryToDomain = async (
 };
 
 /**
+ * Clears the caller's persisted navbar selection (User.defaultDomain). The pick is stored on the
+ * user, so a spec that selects a domain must clear it or every later list call by that user
+ * (in this and other specs) stays scoped to it.
+ */
+export const clearPersistedDomain = async (apiContext: APIRequestContext) => {
+  const me = await (await apiContext.get('/api/v1/users/loggedInUser')).json();
+  await apiContext.patch(`/api/v1/users/${me.id}`, {
+    data: [{ op: 'add', path: '/defaultDomain', value: null }],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+};
+
+/** Clears the navbar selection through the UI ("All Domains"), which also clears the persisted pick. */
+export const clearDomainFromNavbar = async (page: Page) => {
+  await page.getByTestId('domain-dropdown').click();
+  await page.getByTestId('tree-node-All Domains').click();
+  await waitForAllLoadersToDisappear(page);
+};
+
+/**
  * Verifies if the active domain is set to All Domains (DEFAULT_DOMAIN_VALUE)
  */
 export const verifyActiveDomainIsDefault = async (page: Page) => {
