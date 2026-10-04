@@ -58,6 +58,11 @@ public class WebSocketManager {
   private final Map<String, String> socketSessionIds = new ConcurrentHashMap<>();
   private final Map<String, Long> socketSessionValidatedAt = new ConcurrentHashMap<>();
 
+  // Cross-pod delivery for sendToOne. Defaults to no-op (single-pod); a Redis or DB-backed relay is
+  // injected at startup on multi-pod deployments so a frame produced on one pod reaches the pod that
+  // holds the user's socket.
+  private volatile WebSocketRelay relay = new NoopWebSocketRelay();
+
   private WebSocketManager(EngineIoServerOptions eiOptions) {
     engineIoServer = new EngineIoServer(eiOptions);
     socketIoServer = new SocketIoServer(engineIoServer);
@@ -146,20 +151,40 @@ public class WebSocketManager {
   }
 
   public void sendToOne(UUID receiver, String event, String message) {
-    if (activityFeedEndpoints.containsKey(receiver)) {
-      activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
-    }
+    // Deliver to this pod's sockets, then relay to peers so a user's sockets on other pods (or a
+    // socket on a different pod than the one that produced this frame) are reached too. The relay is
+    // a no-op on single-pod, keeping this a plain local send there.
+    sendToOneLocal(receiver, event, message);
+    relay.publish(receiver, event, message);
   }
 
   public void sendToOne(String username, String event, String message) {
     try {
       UUID receiver = Entity.getEntityReferenceByName(USER, username, Include.NON_DELETED).getId();
-      if (activityFeedEndpoints.containsKey(receiver)) {
-        activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
-      }
+      sendToOne(receiver, event, message);
     } catch (EntityNotFoundException ex) {
       LOG.error("User with {} not found", username);
     }
+  }
+
+  /**
+   * Deliver to the given user's sockets on this pod only, without relaying. Used directly by the
+   * relay when a peer pod (or this pod's own loopback) hands off a frame, so a received frame is
+   * never re-published.
+   */
+  public void sendToOneLocal(UUID receiver, String event, String message) {
+    Map<String, SocketIoSocket> connections = activityFeedEndpoints.get(receiver);
+    if (connections != null) {
+      connections.forEach((key, value) -> value.send(event, message));
+    }
+  }
+
+  public void setRelay(WebSocketRelay relay) {
+    this.relay = relay == null ? new NoopWebSocketRelay() : relay;
+  }
+
+  public WebSocketRelay getRelay() {
+    return relay;
   }
 
   public void sendToManyWithUUID(Set<UUID> receivers, String event, String message) {
