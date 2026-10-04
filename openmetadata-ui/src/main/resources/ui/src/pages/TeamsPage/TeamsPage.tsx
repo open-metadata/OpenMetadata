@@ -35,13 +35,13 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import {
-  createTeam,
-  deleteUserFromTeam,
-  getTeamByName,
-  getTeams,
-  getTeamsAssetCounts,
-  patchTeamDetail,
-  updateUsersFromTeam,
+    createTeam,
+    deleteUserFromTeam,
+    getTeamByName,
+    getTeams,
+    getTeamsAssetCounts,
+    patchTeamDetail,
+    updateUsersFromTeam
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
@@ -49,6 +49,14 @@ import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
+// Shape a listed team for the tree table: key by FQN, and seed an empty children array only when
+// the team has children (so the row shows an expander and lazy-loads on expand).
+const toListTeam = (team: Team): Team => ({
+  ...team,
+  key: team.fullyQualifiedName,
+  children: team.childrenCount && team.childrenCount > 0 ? [] : undefined,
+});
+
 const TeamsPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -131,14 +139,7 @@ const TeamsPage = () => {
           include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
         });
 
-        const modifiedTeams: Team[] = data.map((team) => ({
-          ...team,
-          key: team.fullyQualifiedName,
-          children:
-            team.childrenCount && team.childrenCount > 0 ? [] : undefined,
-        }));
-
-        setChildTeams(modifiedTeams);
+        setChildTeams(data.map(toListTeam));
         setAdvancedFetchNonce((n) => n + 1);
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.unexpected-response'));
@@ -194,11 +195,7 @@ const TeamsPage = () => {
         return;
       }
 
-      const modifiedTeams: Team[] = data.map((team) => ({
-        ...team,
-        key: team.fullyQualifiedName,
-        children: team.childrenCount && team.childrenCount > 0 ? [] : undefined,
-      }));
+      const modifiedTeams: Team[] = data.map(toListTeam);
 
       if (updateChildNode) {
         const allTeamsData = cloneDeep(childTeams);
