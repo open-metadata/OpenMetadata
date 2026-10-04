@@ -42,6 +42,7 @@ import {
   openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
@@ -907,8 +908,12 @@ test.describe('Data Product Search and Filter', () => {
   });
 
   test('Filter data products by domain in global selector', async ({
-    page,
+    browser,
   }) => {
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
+    const { page, afterAction: pickerDone } = await loginAsIsolatedAdmin(
+      browser
+    );
     const { afterAction, apiContext } = await getApiContext(page);
     const domain1 = new Domain();
     const domain2 = new Domain();
@@ -966,6 +971,7 @@ test.describe('Data Product Search and Filter', () => {
       await domain1.delete(apiContext);
       await domain2.delete(apiContext);
       await afterAction();
+      await pickerDone();
     }
   });
 });

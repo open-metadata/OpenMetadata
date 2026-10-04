@@ -117,6 +117,7 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
@@ -2066,8 +2067,9 @@ test.describe('Glossary tests', () => {
     test.slow(true);
 
     const { afterAction, apiContext } = await performAdminLogin(browser);
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
     const { page: page1, afterAction: afterActionUser1 } =
-      await performUserLogin(browser, adminUser);
+      await loginAsIsolatedAdmin(browser);
     const domain = new Domain();
     const glossary = new Glossary();
 
