@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,9 +23,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.Process;
+import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableOptimisticLockingException;
 import org.flowable.engine.ManagementService;
+import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.runtime.ProcessInstanceQuery;
@@ -38,6 +43,7 @@ import org.openmetadata.service.exception.WorkflowInstanceConflictException;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator.Engine;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator.TerminationOutcome;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator.TerminationRequest;
+import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchEntitiesImpl;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository.StopRequest;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
@@ -48,10 +54,12 @@ class WorkflowInstanceTerminatorTest {
   private static final String ROOT_ID = "trigger-root";
   private static final String CHILD_ID = "main-child";
   private static final String GRANDCHILD_ID = "nested-child";
+  private static final String ROOT_DEFINITION_ID = "trigger-root-definition:1:1";
 
   private final UUID workflowInstanceId = UUID.randomUUID();
   private final RuntimeService runtimeService = mock(RuntimeService.class);
   private final ManagementService managementService = mock(ManagementService.class);
+  private final RepositoryService repositoryService = mock(RepositoryService.class);
   private final WorkflowTaskCloser taskCloser = mock(WorkflowTaskCloser.class);
   private final WorkflowInstanceRepository instanceRepository =
       mock(WorkflowInstanceRepository.class);
@@ -67,6 +75,7 @@ class WorkflowInstanceTerminatorTest {
   private Map<String, List<String>> childIdsBySuperId = Map.of();
   private Map<String, Long> jobsLockedHereByProcessInstanceId = Map.of();
   private boolean isStopRecordable = true;
+  private boolean isRootAPeriodicBatchTrigger = true;
 
   private WorkflowInstanceTerminator terminator;
 
@@ -74,12 +83,19 @@ class WorkflowInstanceTerminatorTest {
   void setUp() {
     terminator =
         new WorkflowInstanceTerminator(
-            new Engine(runtimeService, managementService, SERVER_LOCK_OWNER),
+            new Engine(runtimeService, managementService, repositoryService, SERVER_LOCK_OWNER),
             taskCloser,
             instanceRepository,
             stateRepository);
     when(runtimeService.createProcessInstanceQuery()).thenAnswer(invocation -> processQuery());
     when(managementService.createJobQuery()).thenAnswer(invocation -> jobQuery());
+    when(repositoryService.getBpmnModel(ROOT_DEFINITION_ID))
+        .thenAnswer(
+            invocation ->
+                triggerModel(
+                    isRootAPeriodicBatchTrigger
+                        ? FetchEntitiesImpl.class.getName()
+                        : "org.example.FilterEntityImpl"));
     doAnswer(
             invocation -> {
               // Flowable cascades the delete of a root into its call-activity children.
@@ -224,13 +240,90 @@ class WorkflowInstanceTerminatorTest {
   @Test
   void terminateKeepsTheOutcomeOfAProcessThatEndedOnItsOwn() {
     givenRunningTree();
-    storedInstance.set(instance(WorkflowStatus.EXCEPTION).withException("sink failed"));
+    storedInstance.set(instance(WorkflowStatus.FINISHED));
 
     WorkflowInstance terminated = terminator.terminate(request(null)).workflowInstance();
 
     assertTrue(runningProcessInstanceIds.isEmpty());
-    assertEquals(WorkflowStatus.EXCEPTION, terminated.getStatus());
-    assertEquals("sink failed", terminated.getException());
+    assertEquals(WorkflowStatus.FINISHED, terminated.getStatus());
+    verify(instanceRepository, never()).markInstanceAsFailed(any(UUID.class), anyString());
+  }
+
+  @Test
+  void anInstanceMarkedExceptionByAFailedJobAttemptIsTerminatedWithTheAdminsReason() {
+    givenRunningTree();
+    storedInstance.set(instance(WorkflowStatus.EXCEPTION).withException("attempt failed"));
+
+    WorkflowInstance terminated = terminator.terminate(request("retrying")).workflowInstance();
+
+    assertTrue(runningProcessInstanceIds.isEmpty());
+    assertEquals(WorkflowStatus.FAILURE, terminated.getStatus());
+    assertEquals("Terminated by admin: retrying", terminated.getException());
+  }
+
+  @Test
+  void anInstanceMarkedExceptionWhoseJobRunsHereIsAskedToStop() {
+    givenRunningTree();
+    storedInstance.set(instance(WorkflowStatus.EXCEPTION).withException("attempt failed"));
+    jobsLockedHereByProcessInstanceId = Map.of(CHILD_ID, 1L);
+
+    TerminationOutcome outcome = terminator.terminate(request("retrying"));
+
+    assertTrue(outcome.stopRequested());
+    assertEquals("Terminated by admin: retrying", recordedStopRequest.get().reason());
+    verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
+  }
+
+  @Test
+  void aJobHeldByThisServerOfATriggerThatReadsNoStopRequestIsRefused() {
+    givenRunningTree();
+    isRootAPeriodicBatchTrigger = false;
+    jobsLockedHereByProcessInstanceId = Map.of(CHILD_ID, 1L);
+
+    WorkflowInstanceConflictException refused =
+        assertThrows(
+            WorkflowInstanceConflictException.class,
+            () -> terminator.terminate(request("approval running")));
+
+    assertTrue(refused.getMessage().contains("retry after it finishes"), refused.getMessage());
+    assertNull(recordedStopRequest.get(), "no process of the instance reads a stop request");
+    verify(instanceRepository, never()).requestStop(any(UUID.class), any(StopRequest.class));
+    verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
+    verify(taskCloser, never()).closeTasks(any(), anyString(), anyString());
+    assertEquals(WorkflowStatus.RUNNING, storedInstance.get().getStatus());
+  }
+
+  @Test
+  void aBlockedDeleteOfATriggerThatReadsNoStopRequestIsRefused() {
+    givenRunningTree();
+    isRootAPeriodicBatchTrigger = false;
+    doAnswer(
+            invocation -> {
+              throw new FlowableOptimisticLockingException("revision changed");
+            })
+        .when(runtimeService)
+        .deleteProcessInstance(anyString(), anyString());
+
+    assertThrows(
+        WorkflowInstanceConflictException.class, () -> terminator.terminate(request("event")));
+
+    assertNull(recordedStopRequest.get());
+    verify(instanceRepository, never()).markInstanceAsFailed(any(UUID.class), anyString());
+    verify(taskCloser, never()).closeTasks(any(), anyString(), anyString());
+  }
+
+  @Test
+  void aTriggerThatReadsNoStopRequestIsDeletedWithoutOne() {
+    givenRunningTree();
+    isRootAPeriodicBatchTrigger = false;
+
+    TerminationOutcome outcome = terminator.terminate(request("pod died"));
+
+    assertFalse(outcome.stopRequested());
+    assertNull(recordedStopRequest.get());
+    assertEquals(List.of(ROOT_ID), deletedProcessInstanceIds);
+    assertEquals(WorkflowStatus.FAILURE, outcome.workflowInstance().getStatus());
+    assertEquals("Terminated by admin: pod died", outcome.workflowInstance().getException());
   }
 
   @Test
@@ -391,7 +484,20 @@ class WorkflowInstanceTerminatorTest {
   private ProcessInstance processInstance(String processInstanceId) {
     ProcessInstance processInstance = mock(ProcessInstance.class);
     when(processInstance.getId()).thenReturn(processInstanceId);
+    when(processInstance.getProcessDefinitionId()).thenReturn(ROOT_DEFINITION_ID);
     return processInstance;
+  }
+
+  private static BpmnModel triggerModel(String fetchOrFilterImplementation) {
+    ServiceTask task = new ServiceTask();
+    task.setId("trigger-task");
+    task.setImplementation(fetchOrFilterImplementation);
+    Process process = new Process();
+    process.setId("WorkflowTrigger");
+    process.addFlowElement(task);
+    BpmnModel model = new BpmnModel();
+    model.addProcess(process);
+    return model;
   }
 
   private JobQuery jobQuery() {

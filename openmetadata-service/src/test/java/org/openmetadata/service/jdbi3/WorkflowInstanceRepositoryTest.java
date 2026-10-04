@@ -81,15 +81,18 @@ class WorkflowInstanceRepositoryTest {
 
   /**
    * The partial updates as their SQL behaves: each sets only its own paths on the stored document,
-   * and the stop request only while the stored status is RUNNING.
+   * and the stop request only while the stored status is one of the two statuses it is given.
    */
   private void givenPartialUpdatesWithSqlSemantics() {
-    when(timeSeriesDao.requestStop(anyString(), anyString(), anyString()))
+    when(timeSeriesDao.requestStop(anyString(), anyString(), anyString(), anyString()))
         .thenAnswer(
             invocation -> {
               Map<String, Object> document = storedDocument();
-              boolean isRunning = invocation.getArgument(2).equals(document.get("status"));
-              if (isRunning) {
+              Object status = document.get("status");
+              boolean isStoppable =
+                  invocation.getArgument(2).equals(status)
+                      || invocation.getArgument(3).equals(status);
+              if (isStoppable) {
                 Map<String, Object> variables =
                     document.get("variables") instanceof Map<?, ?> stored
                         ? new HashMap<>(JsonUtils.convertValue(stored, Map.class))
@@ -100,7 +103,7 @@ class WorkflowInstanceRepositoryTest {
                 document.put("variables", variables);
                 storedJson.set(JsonUtils.pojoToJson(document));
               }
-              return isRunning ? 1 : 0;
+              return isStoppable ? 1 : 0;
             });
     when(timeSeriesDao.recordEnd(anyString(), anyString(), anyLong()))
         .thenAnswer(
@@ -254,14 +257,62 @@ class WorkflowInstanceRepositoryTest {
     assertEquals(WorkflowStatus.SUPERSEDED, storedInstance().getStatus());
   }
 
+  @Test
+  void aStopRequestedWhileAFailedJobAttemptIsRetriedIsRecordedAndEndsTheInstanceAsFailure() {
+    storeInstance(WorkflowStatus.EXCEPTION);
+    StopRequest stopRequest = new StopRequest(true, STOP_REASON, "admin", 1L);
+
+    assertTrue(repository.requestStop(workflowInstanceId, stopRequest));
+    assertEquals(WorkflowStatus.EXCEPTION, storedInstance().getStatus());
+
+    repository.updateWorkflowInstance(workflowInstanceId, 42L, Map.of());
+
+    WorkflowInstance ended = storedInstance();
+    assertEquals(WorkflowStatus.FAILURE, ended.getStatus());
+    assertEquals(STOP_REASON, ended.getException());
+    assertEquals("kept", ended.getVariables().get("existing"));
+  }
+
+  @Test
+  void aStopRequestOnAnInstanceThatEndedIsNotRecorded() {
+    for (WorkflowStatus ended :
+        List.of(WorkflowStatus.FINISHED, WorkflowStatus.FAILURE, WorkflowStatus.SUPERSEDED)) {
+      storeInstance(ended);
+
+      boolean isStopRecorded =
+          repository.requestStop(
+              workflowInstanceId, new StopRequest(true, STOP_REASON, "admin", 1L));
+
+      assertFalse(isStopRecorded, ended.value());
+      assertEquals(ended, storedInstance().getStatus());
+      assertEquals(Optional.empty(), repository.findStopRequest(workflowInstanceId));
+    }
+  }
+
+  @Test
+  void aTriggerWhoseSinkThrewEndsAsFailure() {
+    storeRunningInstance();
+
+    repository.updateWorkflowInstance(
+        workflowInstanceId,
+        42L,
+        Map.of(Workflow.FAILURE_VARIABLE, true, Workflow.EXCEPTION_VARIABLE, "sink stack trace"));
+
+    assertEquals(WorkflowStatus.FAILURE, storedInstance().getStatus());
+  }
+
   private void storeRunningInstance() {
+    storeInstance(WorkflowStatus.RUNNING);
+  }
+
+  private void storeInstance(WorkflowStatus status) {
     Map<String, Object> variables = new HashMap<>();
     variables.put("existing", "kept");
     storedJson.set(
         JsonUtils.pojoToJson(
             new WorkflowInstance()
                 .withId(workflowInstanceId)
-                .withStatus(WorkflowStatus.RUNNING)
+                .withStatus(status)
                 .withVariables(variables)));
   }
 

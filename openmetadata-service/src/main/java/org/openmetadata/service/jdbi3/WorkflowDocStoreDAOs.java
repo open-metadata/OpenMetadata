@@ -685,10 +685,11 @@ public interface WorkflowDocStoreDAOs {
         @Bind("newStem") String newStem);
 
     /**
-     * Sets {@code variables.stopRequest} on an instance still in {@code runningStatus}, leaving the
-     * rest of the document as it is in the database, so a concurrent end-of-process write is never
-     * overwritten. A missing or non-object {@code variables} becomes an object first: a nested set
-     * on a missing parent matches the row but writes nothing. Returns the rows updated.
+     * Sets {@code variables.stopRequest} on an instance in {@code runningStatus} or {@code
+     * exceptionStatus}, leaving the rest of the document as it is in the database, so a concurrent
+     * end-of-process write is never overwritten. A missing or non-object {@code variables} becomes
+     * an object first: a nested set on a missing parent matches the row but writes nothing. Returns
+     * the rows updated.
      */
     @ConnectionAwareSqlUpdate(
         value =
@@ -697,7 +698,7 @@ public interface WorkflowDocStoreDAOs {
                 + "IF(JSON_TYPE(JSON_EXTRACT(json, '$.variables')) = 'OBJECT', "
                 + "JSON_EXTRACT(json, '$.variables'), JSON_OBJECT()), "
                 + "'$.stopRequest', CAST(:stopRequest AS JSON))) "
-                + "WHERE id = :id AND status = :runningStatus",
+                + "WHERE id = :id AND status IN (:runningStatus, :exceptionStatus)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -706,12 +707,13 @@ public interface WorkflowDocStoreDAOs {
                 + "(CASE WHEN jsonb_typeof(json -> 'variables') = 'object' "
                 + "THEN json -> 'variables' ELSE CAST('{}' AS jsonb) END) "
                 + "|| jsonb_build_object('stopRequest', CAST(:stopRequest AS jsonb))) "
-                + "WHERE id = :id AND status = :runningStatus",
+                + "WHERE id = :id AND status IN (:runningStatus, :exceptionStatus)",
         connectionType = POSTGRES)
     int requestStop(
         @Bind("id") String id,
         @BindJson("stopRequest") String stopRequest,
-        @Bind("runningStatus") String runningStatus);
+        @Bind("runningStatus") String runningStatus,
+        @Bind("exceptionStatus") String exceptionStatus);
 
     /**
      * Records how an instance ended by setting only {@code status} and {@code endedAt}; {@code

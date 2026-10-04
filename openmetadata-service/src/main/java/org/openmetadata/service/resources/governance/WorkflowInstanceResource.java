@@ -144,10 +144,11 @@ public class WorkflowInstanceResource
       description =
           "Delete every running process of a Workflow Instance, including one left locked by a "
               + "server that stopped mid-job, and record the instance as FAILURE. When a job of "
-              + "the instance is executing now, a stop request is recorded instead: a batch sink "
-              + "stops before its next sub-batch and a periodic-batch trigger before its next "
-              + "batch, after which the instance is recorded as FAILURE. Any other job runs to "
-              + "its end first. Admin only.",
+              + "a periodic-batch trigger instance is executing now, a stop request is recorded "
+              + "instead: a batch sink stops before its next sub-batch and the trigger before its "
+              + "next batch, after which the instance is recorded as FAILURE. When a job of any "
+              + "other instance is executing now, the termination is refused; retry after it "
+              + "finishes. Admin only.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -159,8 +160,8 @@ public class WorkflowInstanceResource
         @ApiResponse(
             responseCode = "202",
             description =
-                "A job of the instance is executing now; a stop request is recorded and the "
-                    + "still running Workflow Instance is returned",
+                "A job of the instance's periodic-batch trigger is executing now; a stop request "
+                    + "is recorded and the still running Workflow Instance is returned",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -170,8 +171,9 @@ public class WorkflowInstanceResource
         @ApiResponse(
             responseCode = "409",
             description =
-                "The instance has already ended, and has no running process or one whose job "
-                    + "is executing now")
+                "The instance has already ended and has no running process, or a job of its "
+                    + "process is executing now and the process reads no stop request or the "
+                    + "instance has already ended")
       })
   public Response terminate(
       @Context SecurityContext securityContext,

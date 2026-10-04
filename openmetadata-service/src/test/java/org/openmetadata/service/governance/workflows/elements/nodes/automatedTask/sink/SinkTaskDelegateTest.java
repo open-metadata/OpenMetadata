@@ -411,6 +411,43 @@ class SinkTaskDelegateTest {
   }
 
   @Test
+  void aSinkThatThrowsIsPersistedAsAFailureForTheTriggerProcess() {
+    givenUnregisteredSinkType();
+
+    assertThrows(BpmnError.class, () -> delegate.execute(execution));
+
+    verify(execution).setVariable("global_failure", true);
+    verify(execution).setVariable(eq("global_exception"), any());
+  }
+
+  @Test
+  void aSinkThatThrowsWithItsFailureRoutedToABranchIsNotPersistedAsAWorkflowFailure()
+      throws Exception {
+    injectExpression(delegate, "failureHandledByBranchExpr", failureHandledByBranchExpr);
+    when(failureHandledByBranchExpr.getValue(execution)).thenReturn("true");
+    givenUnregisteredSinkType();
+
+    assertThrows(BpmnError.class, () -> delegate.execute(execution));
+
+    verify(execution, never()).setVariable(eq("global_failure"), any());
+    verify(execution).setVariable(eq("global_exception"), any());
+  }
+
+  private void givenUnregisteredSinkType() {
+    when(sinkTypeExpr.getValue(execution)).thenReturn("unknownSink");
+    when(sinkConfigExpr.getValue(execution)).thenReturn("{}");
+    when(syncModeExpr.getValue(execution)).thenReturn("overwrite");
+    when(outputFormatExpr.getValue(execution)).thenReturn("yaml");
+    when(hierarchyConfigExpr.getValue(execution)).thenReturn("{}");
+    when(entityFilterExpr.getValue(execution)).thenReturn("{}");
+    when(batchModeExpr.getValue(execution)).thenReturn("true");
+    when(timeoutSecondsExpr.getValue(execution)).thenReturn("300");
+    when(inputNamespaceMapExpr.getValue(execution))
+        .thenReturn(JsonUtils.pojoToJson(Map.of(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE)));
+    setupVariableAccess(List.of("<#E::table::db.schema.t1>"), false);
+  }
+
+  @Test
   void successfulBatchDoesNotRecordFailure() {
     runBatch(testProvider, 10, "300");
 

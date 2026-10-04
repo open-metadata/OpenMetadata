@@ -16,6 +16,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.api.FlowableOptimisticLockingException;
 import org.flowable.engine.ManagementService;
+import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance.WorkflowStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.WorkflowInstanceConflictException;
+import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
 import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
@@ -44,21 +46,25 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
  * held by this server's own async executor may be executing right now and hold the rows the
  * delete needs, so the process is then left running.
  *
- * <p>Every termination first records a stop request on the WorkflowInstance, which a batch sink
- * reads before its next sub-batch and the periodic-batch fetch loop before its next batch, on
- * whichever server runs them; a process left running then ends on its own and is recorded as
- * FAILURE with the request's reason. A lock held by another server cannot be told apart from a
- * dead server's lock, so such a process is deleted. If its job is in fact still executing, the
- * request stops it at its next batch boundary; should the delete instead have to wait for rows
- * that job holds, the process is left running once the database gives up the wait.
+ * <p>Terminating a periodic-batch trigger first records a stop request on the WorkflowInstance,
+ * which a batch sink reads before its next sub-batch and the periodic-batch fetch loop before its
+ * next batch, on whichever server runs them; a process left running then ends on its own and is
+ * recorded as FAILURE with the request's reason. No other process reads a stop request, so for any
+ * other trigger none is recorded, and a process that cannot be deleted because a job of it is
+ * executing is left as it is and the termination refused. A lock held by another server cannot be
+ * told apart from a dead server's lock, so such a process is deleted. If its job is in fact still
+ * executing, a periodic-batch trigger's request stops it at its next batch boundary; should the
+ * delete instead have to wait for rows that job holds, the process is left running once the
+ * database gives up the wait.
  *
  * <p>The OpenMetadata tasks still open for the process tree's user tasks are looked up before the
  * delete, which removes the Flowable tasks that link to them, and cancelled once the delete
  * succeeded; a process left running keeps its tasks open.
  *
- * <p>A stop request is recorded only on a RUNNING instance. When neither the delete nor the stop
- * request is possible, because the instance has already ended while a job of its process is still
- * executing, the termination is refused.
+ * <p>A stop request is recorded only on a RUNNING or EXCEPTION instance: a failed job attempt
+ * records EXCEPTION while Flowable retries the job. When neither the delete nor the stop request is
+ * possible, because the instance has already ended while a job of its process is still executing,
+ * the termination is refused.
  */
 @Slf4j
 public class WorkflowInstanceTerminator {
@@ -66,8 +72,13 @@ public class WorkflowInstanceTerminator {
   /** Postgres {@code lock_not_available}, raised when a lock_timeout expires. */
   static final String POSTGRES_LOCK_NOT_AVAILABLE = "55P03";
 
+  /** Why a process that reads no stop request is not terminated while a job of it executes. */
+  static final String JOB_EXECUTING_MESSAGE =
+      "Workflow instance %s cannot be terminated now: a job is executing for this workflow instance; retry after it finishes";
+
   private final RuntimeService runtimeService;
   private final ManagementService managementService;
+  private final RepositoryService repositoryService;
   private final String serverLockOwner;
   private final WorkflowTaskCloser taskCloser;
   private final WorkflowInstanceRepository workflowInstanceRepository;
@@ -82,14 +93,17 @@ public class WorkflowInstanceTerminator {
   }
 
   /**
-   * What a termination did: {@code stopRequested} means a job was executing, so the instance is
-   * still running and stops at its next batch boundary.
+   * What a termination did: {@code stopRequested} means a job of a periodic-batch trigger was
+   * executing, so the instance is still running and stops at its next batch boundary.
    */
   public record TerminationOutcome(WorkflowInstance workflowInstance, boolean stopRequested) {}
 
   /** The process engine of this server; {@code serverLockOwner} is its async executor's lock owner. */
   public record Engine(
-      RuntimeService runtimeService, ManagementService managementService, String serverLockOwner) {}
+      RuntimeService runtimeService,
+      ManagementService managementService,
+      RepositoryService repositoryService,
+      String serverLockOwner) {}
 
   public WorkflowInstanceTerminator(
       Engine engine,
@@ -98,6 +112,7 @@ public class WorkflowInstanceTerminator {
       WorkflowInstanceStateRepository workflowInstanceStateRepository) {
     this.runtimeService = engine.runtimeService();
     this.managementService = engine.managementService();
+    this.repositoryService = engine.repositoryService();
     this.serverLockOwner = engine.serverLockOwner();
     this.taskCloser = taskCloser;
     this.workflowInstanceRepository = workflowInstanceRepository;
@@ -114,6 +129,7 @@ public class WorkflowInstanceTerminator {
         new Engine(
             workflowHandler.getRuntimeService(),
             workflowHandler.getManagementService(),
+            workflowHandler.getRepositoryService(),
             asyncExecutor == null ? null : asyncExecutor.getLockOwner());
     WorkflowTaskCloser taskCloser =
         new WorkflowTaskCloser(
@@ -131,15 +147,17 @@ public class WorkflowInstanceTerminator {
     UUID workflowInstanceId = request.workflowInstanceId();
     WorkflowInstance workflowInstance =
         workflowInstanceRepository.getByIdOrNotFound(workflowInstanceId);
-    List<String> rootIds = findRootProcessInstanceIds(workflowInstanceId);
+    List<ProcessInstance> roots = findRootProcessInstances(workflowInstanceId);
+    List<String> rootIds = roots.stream().map(ProcessInstance::getId).toList();
     requireTerminable(workflowInstance, rootIds);
     List<String> processTreeIds = collectProcessTree(rootIds, this::findChildProcessInstanceIds);
-    boolean isStopRecorded = requestStop(request);
+    boolean isStoppable = roots.stream().anyMatch(this::isPeriodicBatchTrigger);
+    boolean isStopRecorded = isStoppable && requestStop(request);
     boolean isDeleted =
         countJobsLockedByThisServer(processTreeIds) == 0
             && deleteProcessTree(request, rootIds, processTreeIds);
     if (!isDeleted) {
-      requireStopRecorded(workflowInstanceId, isStopRecorded);
+      requireStopRecorded(workflowInstanceId, isStoppable, isStopRecorded);
     }
     return new TerminationOutcome(
         workflowInstanceRepository.getByIdOrNotFound(workflowInstanceId), !isDeleted);
@@ -161,7 +179,7 @@ public class WorkflowInstanceTerminator {
     return isDeleted;
   }
 
-  /** {@code false} when the instance is no longer RUNNING, so no stop request was recorded. */
+  /** {@code false} when the instance is neither RUNNING nor EXCEPTION, so none was recorded. */
   private boolean requestStop(TerminationRequest request) {
     return workflowInstanceRepository.requestStop(
         request.workflowInstanceId(),
@@ -169,8 +187,15 @@ public class WorkflowInstanceTerminator {
             true, request.auditMessage(), request.requestedBy(), System.currentTimeMillis()));
   }
 
-  /** A process left running must have a stop request to end it; otherwise nothing was done. */
-  private void requireStopRecorded(UUID workflowInstanceId, boolean isStopRecorded) {
+  /**
+   * A process left running must have a stop request it reads to end it; otherwise nothing was done.
+   */
+  private void requireStopRecorded(
+      UUID workflowInstanceId, boolean isStoppable, boolean isStopRecorded) {
+    if (!isStoppable) {
+      throw new WorkflowInstanceConflictException(
+          JOB_EXECUTING_MESSAGE.formatted(workflowInstanceId));
+    }
     if (!isStopRecorded) {
       throw new WorkflowInstanceConflictException(
           "Workflow instance %s is already %s and a job of its process is executing now; try again once it completes"
@@ -210,15 +235,18 @@ public class WorkflowInstanceTerminator {
     }
   }
 
-  private List<String> findRootProcessInstanceIds(UUID workflowInstanceId) {
+  private List<ProcessInstance> findRootProcessInstances(UUID workflowInstanceId) {
     return runtimeService
         .createProcessInstanceQuery()
         .processInstanceBusinessKey(workflowInstanceId.toString())
         .excludeSubprocesses(true)
-        .list()
-        .stream()
-        .map(ProcessInstance::getId)
-        .toList();
+        .list();
+  }
+
+  /** Whether the root runs a deployed periodic-batch trigger, whose process reads a stop request. */
+  private boolean isPeriodicBatchTrigger(ProcessInstance root) {
+    return PeriodicBatchEntityTrigger.isPeriodicBatchTrigger(
+        repositoryService.getBpmnModel(root.getProcessDefinitionId()));
   }
 
   private List<String> findChildProcessInstanceIds(String processInstanceId) {
@@ -289,18 +317,19 @@ public class WorkflowInstanceTerminator {
 
   private static void logDeleteBlocked(String rootProcessInstanceId, RuntimeException cause) {
     LOG.warn(
-        "[WorkflowTerminate] Process instance {} is held by a job executing now; requesting a stop",
+        "[WorkflowTerminate] Process instance {} is held by a job executing now; it is not deleted",
         rootProcessInstanceId,
         cause);
   }
 
   private void markTerminated(UUID workflowInstanceId, String auditMessage) {
     workflowInstanceStateRepository.markRunningStatesAsFailed(workflowInstanceId, auditMessage);
-    // A process that ended on its own between the lookup and the delete has already recorded
-    // its real outcome, which is kept.
+    // FINISHED, FAILURE or SUPERSEDED, recorded by a process that ended on its own between the
+    // lookup and the delete, is kept. EXCEPTION is also what a failed job attempt records while
+    // Flowable retries the job, so it gives way to the administrator's reason.
     WorkflowStatus currentStatus =
         workflowInstanceRepository.getByIdOrNotFound(workflowInstanceId).getStatus();
-    if (currentStatus == WorkflowStatus.RUNNING) {
+    if (currentStatus == WorkflowStatus.RUNNING || currentStatus == WorkflowStatus.EXCEPTION) {
       workflowInstanceRepository.markInstanceAsFailed(workflowInstanceId, auditMessage);
     }
   }

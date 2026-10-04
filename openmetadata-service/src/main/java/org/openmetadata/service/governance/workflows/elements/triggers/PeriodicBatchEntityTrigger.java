@@ -120,6 +120,17 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     }
   }
 
+  /**
+   * Whether a deployed model is a periodic-batch trigger. Its fetch task reads the WorkflowInstance's
+   * stop request before every batch, and a batch sink, which runs only beneath this trigger, before
+   * every sub-batch, so a running process of this model ends on its own once asked to stop.
+   */
+  public static boolean isPeriodicBatchTrigger(BpmnModel model) {
+    return model.getProcesses().stream()
+        .flatMap(process -> process.findFlowElementsOfType(ServiceTask.class).stream())
+        .anyMatch(task -> FetchEntitiesImpl.class.getName().equals(task.getImplementation()));
+  }
+
   private TimerEventDefinition getTimerEventDefinition(AppSchedule schedule) {
     if (schedule.getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
       return null;

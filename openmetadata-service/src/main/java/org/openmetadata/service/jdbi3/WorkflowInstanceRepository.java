@@ -62,8 +62,9 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
   /**
    * Records the end of an instance's process. Only status, endedAt and exception are written, so a
    * stop request is never overwritten by the document read here. A stop request recorded between
-   * that read and the end write still matched RUNNING; once the end is written no request can
-   * land, so the row read back afterwards holds every stop request the instance will ever get.
+   * that read and the end write still matched a stoppable status; once a FINISHED, FAILURE or
+   * SUPERSEDED end is written no request can land, so the row read back afterwards holds every stop
+   * request the instance gets while its process runs.
    */
   public void updateWorkflowInstance(
       UUID workflowInstanceId, Long endedAt, Map<String, Object> variables) {
@@ -154,19 +155,23 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
   }
 
   /**
-   * Records that an administrator asked a running workflow instance to stop. The instance stays
-   * RUNNING; a batch sink and the periodic-batch fetch loop read the request between batches, and
+   * Records that an administrator asked a running workflow instance to stop. The instance keeps its
+   * status; a batch sink and the periodic-batch fetch loop read the request between batches, and
    * the process-end update then records the instance as FAILURE with the request's reason. Only the
-   * stop request is written, and only while the instance is RUNNING, so an end recorded
-   * concurrently is neither overwritten nor reverted to RUNNING.
+   * stop request is written, and only while the instance is RUNNING or EXCEPTION, so a FINISHED,
+   * FAILURE or SUPERSEDED end recorded concurrently is neither overwritten nor reverted. EXCEPTION
+   * is accepted because a failed job attempt records it while Flowable retries the job and the
+   * process goes on running.
    *
-   * @return {@code false} when the instance is no longer RUNNING, so nothing was recorded
+   * @return {@code false} when the instance is neither RUNNING nor EXCEPTION, so nothing was
+   *     recorded
    */
   public boolean requestStop(UUID workflowInstanceId, StopRequest stopRequest) {
     return instanceDao.requestStop(
             workflowInstanceId.toString(),
             JsonUtils.pojoToJson(stopRequest),
-            WorkflowInstance.WorkflowStatus.RUNNING.value())
+            WorkflowInstance.WorkflowStatus.RUNNING.value(),
+            WorkflowInstance.WorkflowStatus.EXCEPTION.value())
         > 0;
   }
 

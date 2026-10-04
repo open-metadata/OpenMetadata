@@ -295,6 +295,30 @@ class PeriodicBatchEntityTriggerTest {
         "a configured size below the cap is kept");
   }
 
+  @Test
+  void itsDeployedModelIsRecognisedAsAPeriodicBatchTrigger() {
+    BpmnModel model = new BpmnModel();
+    new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", createTriggerDefinition(), true)
+        .addToWorkflow(model);
+
+    assertTrue(PeriodicBatchEntityTrigger.isPeriodicBatchTrigger(model));
+  }
+
+  @Test
+  void aModelWithoutTheFetchTaskIsNotAPeriodicBatchTrigger() {
+    ServiceTask filterTask = new ServiceTask();
+    filterTask.setId("filter");
+    filterTask.setImplementation("org.example.FilterEntityImpl");
+    Process process = new Process();
+    process.setId("EventWorkflowTrigger");
+    process.addFlowElement(filterTask);
+    BpmnModel model = new BpmnModel();
+    model.addProcess(process);
+
+    assertFalse(PeriodicBatchEntityTrigger.isPeriodicBatchTrigger(model));
+  }
+
   private int fetchBatchSize(PeriodicBatchEntityTrigger trigger) {
     BpmnModel model = new BpmnModel();
     trigger.addToWorkflow(model);
