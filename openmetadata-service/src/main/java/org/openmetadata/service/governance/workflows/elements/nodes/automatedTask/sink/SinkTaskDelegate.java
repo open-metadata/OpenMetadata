@@ -199,11 +199,10 @@ public class SinkTaskDelegate implements JavaDelegate {
           getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()),
           exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
-      if (!isFailureHandledByBranch(execution)) {
-        // A periodic-batch trigger maps the exception to a variable its end state does not read;
-        // the persisted failure flag reaches it, as it does for a sink that completes failed.
-        varHandler.setGlobalVariable(FAILURE_VARIABLE, true);
-      }
+      // The BpmnError ends the run at the Error end event, so no failure branch ever runs for it.
+      // A periodic-batch trigger maps the exception to a variable its end state does not read; the
+      // persisted failure flag reaches it, as it does for a sink that completes failed.
+      varHandler.setGlobalVariable(FAILURE_VARIABLE, true);
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     } finally {
       if (sinkProvider != null) {

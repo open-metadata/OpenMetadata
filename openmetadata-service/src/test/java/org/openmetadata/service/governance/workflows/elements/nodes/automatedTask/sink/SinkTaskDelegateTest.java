@@ -58,6 +58,7 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -421,16 +422,22 @@ class SinkTaskDelegateTest {
   }
 
   @Test
-  void aSinkThatThrowsWithItsFailureRoutedToABranchIsNotPersistedAsAWorkflowFailure()
-      throws Exception {
+  void aSinkThatThrowsWithAFailureBranchIsStillPersistedAsAFailure() throws Exception {
     injectExpression(delegate, "failureHandledByBranchExpr", failureHandledByBranchExpr);
     when(failureHandledByBranchExpr.getValue(execution)).thenReturn("true");
     givenUnregisteredSinkType();
 
     assertThrows(BpmnError.class, () -> delegate.execute(execution));
 
-    verify(execution, never()).setVariable(eq("global_failure"), any());
+    ArgumentCaptor<Object> persistedFailure = ArgumentCaptor.forClass(Object.class);
+    verify(execution).setVariable(eq("global_failure"), persistedFailure.capture());
     verify(execution).setVariable(eq("global_exception"), any());
+    // The call activity copies global_failure into the trigger, whose end state reads `failure`.
+    DelegateExecution trigger = mock(DelegateExecution.class);
+    when(trigger.getVariable(SubWorkflowFailureListener.SUB_WORKFLOW_FAILURE_VARIABLE))
+        .thenReturn(persistedFailure.getValue());
+    new SubWorkflowFailureListener().execute(trigger);
+    verify(trigger).setVariable("failure", true);
   }
 
   private void givenUnregisteredSinkType() {
