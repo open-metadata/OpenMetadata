@@ -14,7 +14,10 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { PAGE_SIZE_MEDIUM } from '../constants/constants';
+import {
+  PAGE_SIZE_MEDIUM,
+  SKIP_DOMAIN_FILTER_HEADER,
+} from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
@@ -390,7 +393,9 @@ export const searchGlossaryTerms = async (
 ) => {
   const apiUrl = `/search/query?q=${search ?? ''}`;
 
+  // Term pickers assign terms from any domain, so the selected navbar domain doesn't narrow them.
   const { data } = await APIClient.get(apiUrl, {
+    headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
     params: {
       index: SearchIndex.GLOSSARY_TERM,
       from: (page - 1) * PAGE_SIZE_MEDIUM,

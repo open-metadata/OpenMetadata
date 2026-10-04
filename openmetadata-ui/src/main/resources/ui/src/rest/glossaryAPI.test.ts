@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { Provenance, Status } from '../generated/api/data/updateTermRelation';
 import APIClient from './axiosClient';
 import {
@@ -18,6 +19,7 @@ import {
   getOntologyDataGraph,
   getOntologySummary,
   removeTermRelationById,
+  searchGlossaryTerms,
   updateTermRelationById,
 } from './glossaryAPI';
 
@@ -123,6 +125,21 @@ describe('glossaryAPI stable relationship operations', () => {
         params: { limit: 6, offset: 4 },
         signal: controller.signal,
       }
+    );
+  });
+});
+
+describe('searchGlossaryTerms', () => {
+  it('is not narrowed to the selected domain (term pickers assign terms from any domain)', async () => {
+    mockedApiClient.get.mockResolvedValueOnce({ data: { hits: { hits: [] } } });
+
+    await searchGlossaryTerms('rev');
+
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      expect.stringContaining('/search/query'),
+      expect.objectContaining({
+        headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
+      })
     );
   });
 });

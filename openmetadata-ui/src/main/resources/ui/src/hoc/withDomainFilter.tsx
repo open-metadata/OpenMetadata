@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { InternalAxiosRequestConfig } from 'axios';
-import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  SKIP_DOMAIN_FILTER_HEADER,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
@@ -81,6 +84,12 @@ export const withDomainFilter = (
   const activeDomain = useDomainStore.getState().activeDomain;
   const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
   const currentPath = getPathNameFromWindowLocation();
+
+  if (config.headers?.[SKIP_DOMAIN_FILTER_HEADER]) {
+    delete config.headers[SKIP_DOMAIN_FILTER_HEADER];
+
+    return config;
+  }
 
   const shouldNotIntercept = [
     '/domain',

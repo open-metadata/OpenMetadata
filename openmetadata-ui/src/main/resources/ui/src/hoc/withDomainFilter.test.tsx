@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { InternalAxiosRequestConfig } from 'axios';
-import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  SKIP_DOMAIN_FILTER_HEADER,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { useDomainStore } from '../hooks/useDomainStore';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
@@ -248,6 +251,24 @@ describe('withDomainFilter', () => {
       const result = withDomainFilter(config);
 
       expect(result.params?.query_filter).toBeDefined();
+    });
+
+    it('should leave a request marked to skip the domain filter unfiltered, and drop the marker', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.GLOSSARY_TERM,
+      });
+      config.headers = {
+        [SKIP_DOMAIN_FILTER_HEADER]: 'true',
+      } as unknown as InternalAxiosRequestConfig['headers'];
+      const result = withDomainFilter(config);
+
+      expect(result.params?.query_filter).toBeUndefined();
+      expect(result.headers?.[SKIP_DOMAIN_FILTER_HEADER]).toBeUndefined();
     });
 
     it('should use fullyQualifiedName field for DOMAIN index searches', () => {
