@@ -159,7 +159,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
         },
       },
     });
-    await taskResponse.json();
+    const freshTask = (await taskResponse.json()) as CreatedTask;
     await afterAction();
 
     await adminUser.signIn(page);
@@ -176,7 +176,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = getTaskCard(page, createdTask);
+    const taskCard = getTaskCard(page, freshTask);
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
