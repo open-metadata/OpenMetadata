@@ -17,8 +17,8 @@ import { FC, MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
+    getTeamAndUserDetailsPath,
+    getUserPath
 } from '../../../utils/RouterUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { PopoverContent } from './PopoverContent.component';

@@ -12,46 +12,46 @@
  */
 import { Button } from '@openmetadata/ui-core-components';
 import {
-  AlertCircle,
-  Check,
-  CheckCircle,
-  Download01,
-  Minus,
-  RefreshCw01,
-  StopCircle,
-  Trash01,
-  UploadCloud01,
-  XClose,
+    AlertCircle,
+    Check,
+    CheckCircle,
+    Download01,
+    Minus,
+    RefreshCw01,
+    StopCircle,
+    Trash01,
+    UploadCloud01,
+    XClose
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, kebabCase } from 'lodash';
 import {
-  FC,
-  SVGProps,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    SVGProps,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { SOCKET_EVENTS } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import {
-  cancelCsvAsyncJob,
-  CsvAsyncJob,
-  CsvAsyncJobOperation,
-  CsvAsyncJobStatus,
-  getCsvAsyncJobResult,
-  getCsvAsyncJobs,
+    cancelCsvAsyncJob,
+    CsvAsyncJob,
+    CsvAsyncJobOperation,
+    CsvAsyncJobStatus,
+    getCsvAsyncJobResult,
+    getCsvAsyncJobs
 } from '../../../../rest/csvAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './csv-jobs-tray.less';
 import {
-  CSV_JOBS_POST_ACTION_REFRESH_MS,
-  CSV_JOBS_REFRESH_EVENT,
-  isCsvJobOwned,
+    CSV_JOBS_POST_ACTION_REFRESH_MS,
+    CSV_JOBS_REFRESH_EVENT,
+    isCsvJobOwned
 } from './CsvJobsTray.constants';
 
 const ACTIVE_STATUSES: CsvAsyncJobStatus[] = [

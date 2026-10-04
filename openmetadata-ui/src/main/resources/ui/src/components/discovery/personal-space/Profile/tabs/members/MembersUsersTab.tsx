@@ -12,19 +12,19 @@
  */
 
 import {
-  Box,
-  Button,
-  Dropdown,
-  EmptyPlaceholder,
-  PaginationCardWithControls,
+    Box,
+    Button,
+    Dropdown,
+    EmptyPlaceholder,
+    PaginationCardWithControls
 } from '@openmetadata/ui-core-components';
 import { Download01, Upload01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM
 } from '../../../../../../constants/constants';
 import Table from '../../../../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';

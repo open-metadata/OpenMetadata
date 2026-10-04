@@ -12,18 +12,18 @@
  */
 
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  Dropdown,
-  Input,
+    Box,
+    Button,
+    ButtonUtility,
+    Dropdown,
+    Input
 } from '@openmetadata/ui-core-components';
 import {
-  Download01,
-  Edit01,
-  Lock01,
-  Trash01,
-  Upload01,
+    Download01,
+    Edit01,
+    Lock01,
+    Trash01,
+    Upload01
 } from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';

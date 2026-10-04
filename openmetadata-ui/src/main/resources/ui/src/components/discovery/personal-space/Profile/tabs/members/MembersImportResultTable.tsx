@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-  Badge,
-  Box,
-  Table,
-  Typography,
+    Badge,
+    Box,
+    Table,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -12,28 +12,28 @@
  */
 
 import {
-  Autocomplete,
-  Box,
-  Button,
-  ButtonUtility,
-  FieldProp,
-  FieldTypes,
-  FormField,
-  FormFields,
-  FormItemLabel,
-  HookForm,
-  Input,
-  RadioButton,
-  RadioGroup,
-  SelectItemType,
-  Toggle,
-  Typography,
+    Autocomplete,
+    Box,
+    Button,
+    ButtonUtility,
+    FieldProp,
+    FieldTypes,
+    FormField,
+    FormFields,
+    FormItemLabel,
+    HookForm,
+    Input,
+    RadioButton,
+    RadioGroup,
+    SelectItemType,
+    Toggle,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
-  Eye,
-  EyeOff,
-  RefreshCw01,
+    Copy01,
+    Eye,
+    EyeOff,
+    RefreshCw01
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compact, debounce } from 'lodash';
@@ -43,8 +43,8 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AGGREGATE_PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
 import {
-  EMAIL_REG_EX,
-  passwordRegex,
+    EMAIL_REG_EX,
+    passwordRegex
 } from '../../../../../../constants/regex.constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -60,8 +60,8 @@ import { getTeams } from '../../../../../../rest/teamsAPI';
 import { createUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import { getUserCreationErrorMessage } from '../../../../../../utils/UsersPureUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';

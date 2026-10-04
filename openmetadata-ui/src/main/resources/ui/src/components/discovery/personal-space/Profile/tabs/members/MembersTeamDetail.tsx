@@ -26,14 +26,14 @@ import { ExportTypes } from '../../../../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
-  EntityType,
-  TabSpecificField,
+    EntityType,
+    TabSpecificField
 } from '../../../../../../enums/entity.enum';
 import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import {
-  Operation,
-  Policy,
+    Operation,
+    Policy
 } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
@@ -48,13 +48,13 @@ import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { getPolicies, getRoles } from '../../../../../../rest/rolesAPIV1';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
-  deleteUserFromTeam,
-  exportTeam,
-  exportUserOfTeam,
-  getTeamByName,
-  getTeams,
-  patchTeamDetail,
-  restoreTeam,
+    deleteUserFromTeam,
+    exportTeam,
+    exportUserOfTeam,
+    getTeamByName,
+    getTeams,
+    patchTeamDetail,
+    restoreTeam
 } from '../../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -63,8 +63,8 @@ import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { getTableExpandableConfig } from '../../../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../../../utils/TeamUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
@@ -78,22 +78,22 @@ import MembersAssetsTab from './MembersAssetsTab';
 import MembersInlineEntityTab from './MembersInlineEntityTab';
 import MembersTeamDescription from './MembersTeamDescription';
 import type {
-  MovedTeam,
-  RemoveEntity,
-  TeamTab,
+    MovedTeam,
+    RemoveEntity,
+    TeamTab
 } from './MembersTeamDetail.types';
 import {
-  getAvailableTabs,
-  getChildTeamColumns,
-  getEntityRefColumns,
-  getTabLabel,
-  getUserColumns,
-  isTeamDropTarget,
-  TEAM_DRAG_TYPE,
-  TEAM_FIELDS,
-  TEAM_USER_FIELDS,
-  updateTeamsHierarchy,
-  withTeamChildrenPlaceholder,
+    getAvailableTabs,
+    getChildTeamColumns,
+    getEntityRefColumns,
+    getTabLabel,
+    getUserColumns,
+    isTeamDropTarget,
+    TEAM_DRAG_TYPE,
+    TEAM_FIELDS,
+    TEAM_USER_FIELDS,
+    updateTeamsHierarchy,
+    withTeamChildrenPlaceholder
 } from './MembersTeamDetail.utils';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 import MembersTeamsTab from './MembersTeamsTab';

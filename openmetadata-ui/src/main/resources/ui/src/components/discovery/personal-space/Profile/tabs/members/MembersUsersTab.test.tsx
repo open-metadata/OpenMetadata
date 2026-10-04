@@ -43,8 +43,9 @@ jest.mock(
         {children}
         <button
           data-testid="mock-select-update"
-          onClick={() => onUpdate([{ id: 'u1' }])}
-        />
+          onClick={() => onUpdate([{ id: 'u1' }])}>
+          update
+        </button>
       </div>
     ),
   })

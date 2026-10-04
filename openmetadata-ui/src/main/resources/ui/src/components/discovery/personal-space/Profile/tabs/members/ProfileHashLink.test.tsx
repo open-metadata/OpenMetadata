@@ -12,8 +12,8 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import ProfileHashLink from './ProfileHashLink';
 import { ProfileHashTarget } from './profileHash.utils';
+import ProfileHashLink from './ProfileHashLink';
 
 const target: ProfileHashTarget = { tab: 'members', subPath: 'teams/Org' };
 

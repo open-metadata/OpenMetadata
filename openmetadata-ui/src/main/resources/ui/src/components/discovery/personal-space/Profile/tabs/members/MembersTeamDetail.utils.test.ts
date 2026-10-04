@@ -12,8 +12,8 @@
  */
 import { Team } from '../../../../../../generated/entity/teams/team';
 import {
-  updateTeamsHierarchy,
-  withTeamChildrenPlaceholder,
+    updateTeamsHierarchy,
+    withTeamChildrenPlaceholder
 } from './MembersTeamDetail.utils';
 
 const team = (fqn: string, childrenCount = 0): Team =>

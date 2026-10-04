@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-  APPLICATION_NAV_ITEMS,
-  PROFILE_NAV_ITEMS,
-  WORKSPACE_NAV_ITEMS,
+    APPLICATION_NAV_ITEMS,
+    PROFILE_NAV_ITEMS,
+    WORKSPACE_NAV_ITEMS
 } from '../components/discovery/personal-space/Profile/profileNavConfig';
 import { PROFILE_NAV_IDS } from './Profile.constants';
 

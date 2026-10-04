@@ -11,26 +11,26 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  Divider,
-  Input,
-  Owner,
-  Popover,
-  PopoverTrigger,
-  Select,
-  SelectItemType,
-  Tooltip,
-  Typography,
+    Box,
+    Button,
+    ButtonUtility,
+    Divider,
+    Input,
+    Owner,
+    Popover,
+    PopoverTrigger,
+    Select,
+    SelectItemType,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Edit01, InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
 import {
-  SUBSCRIPTION_WEBHOOK,
-  SUBSCRIPTION_WEBHOOK_OPTIONS,
+    SUBSCRIPTION_WEBHOOK,
+    SUBSCRIPTION_WEBHOOK_OPTIONS
 } from '../../../../../../constants/Teams.constants';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
