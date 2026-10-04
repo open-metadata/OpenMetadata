@@ -551,17 +551,15 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   /**
-   * Issue #26311: the deployment is served at https://om.example.org but oidcConfiguration.serverUrl
-   * still holds the default localhost value, which used to make every SSO login fail with "Redirect
-   * URI must exactly match a trusted redirect URI". The configured OIDC callback URL is the one value
-   * that has to be right for login to work at all - the IdP rejects any other redirect_uri - so the
-   * landing page is trusted on its host. No request header is consulted.
+   * Issue #26311: the deployment is served at https://om.example.org but serverUrl still holds the
+   * default localhost value, which made every SSO login fail with "Redirect URI must exactly match a
+   * trusted redirect URI". The configured OIDC callback URL has to be right for login to work at
+   * all, so the landing page is trusted on its host.
    */
   @Test
   void requireRedirectUri_trustsTheLandingOnTheCallbackHostWhenServerUrlIsStale() throws Exception {
     AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(
-            "http://localhost:8585", "https://om.example.org/callback", List.of(), List.of());
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
 
     assertEquals(
         "https://om.example.org/auth/callback",
@@ -569,24 +567,9 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void requireRedirectUri_trustsTheLandingOnEveryAdditionalCallbackHost() throws Exception {
-    AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(
-            "http://localhost:8585",
-            "https://om.example.org/callback",
-            List.of("https://dr.example.org/callback"),
-            List.of());
-
-    assertEquals(
-        "https://dr.example.org/auth/callback",
-        invokeRequireRedirectUri(handler, "https://dr.example.org/auth/callback"));
-  }
-
-  @Test
   void requireRedirectUri_keepsTheConfiguredCallbackPort() throws Exception {
     AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(
-            "http://localhost:8585", "http://om.example.org:8080/callback", List.of(), List.of());
+        createRedirectHandler("http://localhost:8585", "http://om.example.org:8080/callback");
 
     assertEquals(
         "http://om.example.org:8080/auth/callback",
@@ -594,267 +577,78 @@ class AuthenticationCodeFlowHandlerTest {
     assertRejectedRedirect(handler, "http://om.example.org/auth/callback");
   }
 
-  /** Only OpenMetadata's own landing page is trusted on a callback host, not any path on it. */
+  /** Only OpenMetadata's own landing page is trusted on the callback host, not any path on it. */
   @Test
-  void requireRedirectUri_rejectsAnyOtherPathOnACallbackHost() throws Exception {
+  void requireRedirectUri_rejectsAnyOtherPathOnTheCallbackHost() throws Exception {
     AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(
-            "http://localhost:8585", "https://om.example.org/callback", List.of(), List.of());
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
 
     assertRejectedRedirect(handler, "https://om.example.org/steal?token=leak");
   }
 
-  /** The MCP flow stays anchored to serverUrl end to end, exactly as before #26311. */
+  /** The MCP flow stays anchored to serverUrl, exactly as before #26311. */
   @Test
-  void requireRedirectUri_doesNotTrustTheMcpCallbackOnACallbackHost() throws Exception {
+  void requireRedirectUri_doesNotTrustTheMcpCallbackOnTheCallbackHost() throws Exception {
     AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(
-            "http://localhost:8585", "https://om.example.org/callback", List.of(), List.of());
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
 
     assertRejectedRedirect(handler, "https://om.example.org" + MCP_CALLBACK);
   }
 
+  /** #26311: logout and the signin fallbacks follow the callback host, not a stale serverUrl. */
   @Test
-  void requireRedirectUri_rejectsAHostThatIsNotConfigured() throws Exception {
+  void deploymentUrl_usesTheCallbackHostWhenServerUrlIsStale() throws Exception {
     AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(
-            "https://om.example.org",
-            "https://om.example.org/callback",
-            List.of("https://dr.example.org/callback"),
-            List.of());
+        createRedirectHandler("http://localhost:8585", "https://om.example.org/callback");
 
-    assertRejectedRedirect(handler, "https://evil.example.com/auth/callback");
-  }
-
-  /** An unusable additional URL is skipped rather than aborting validation of a good one. */
-  @Test
-  void requireRedirectUri_ignoresAnUnparseableAdditionalCallbackUrl() throws Exception {
-    AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(
-            "http://localhost:8585",
-            "https://om.example.org/callback",
-            List.of("not a url"),
-            List.of());
-
-    assertEquals(
-        "https://om.example.org/auth/callback",
-        invokeRequireRedirectUri(handler, "https://om.example.org/auth/callback"));
-  }
-
-  private static final String PRIMARY_CALLBACK = "https://om.example.com/callback";
-  private static final String DR_CALLBACK = "https://dr.example.com/callback";
-
-  @Test
-  void additionalCallbackUrlFor_selectsTheUrlRegisteredForTheProxiedHost() throws Exception {
-    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
-
-    assertEquals(
-        DR_CALLBACK,
-        invokeWithRequest(
-            handler, "additionalCallbackUrlFor", proxiedRequest("https", "dr.example.com")));
-  }
-
-  @Test
-  void additionalCallbackUrlFor_returnsNullForAnUnregisteredForwardedHost() throws Exception {
-    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
-
-    assertNull(
-        invokeWithRequest(
-            handler, "additionalCallbackUrlFor", proxiedRequest("https", "evil.example.com")));
-  }
-
-  /** A single-host deployment must not even consult the request's origin headers. */
-  @Test
-  void additionalCallbackUrlFor_readsNothingFromTheRequestWhenNoneAreConfigured() throws Exception {
-    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of());
-    HttpServletRequest request = mock(HttpServletRequest.class);
-
-    assertNull(invokeWithRequest(handler, "additionalCallbackUrlFor", request));
-    verifyNoInteractions(request);
-  }
-
-  @Test
-  void callbackUrlSentToProvider_usesTheRecordedRedirectUri() throws Exception {
-    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
-    UserSession pendingSession = UserSession.builder().idpRedirectUri(DR_CALLBACK).build();
-
-    assertEquals(DR_CALLBACK, invokeCallbackUrlSentToProvider(handler, pendingSession));
-  }
-
-  /** Sessions that recorded none, including those written by older builds, were sent the primary. */
-  @Test
-  void callbackUrlSentToProvider_fallsBackToThePrimaryForSessionsWithoutOne() throws Exception {
-    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
-
-    assertEquals(
-        PRIMARY_CALLBACK, invokeCallbackUrlSentToProvider(handler, UserSession.builder().build()));
-  }
-
-  @Test
-  void ownUrl_staysOnARegisteredSecondaryHost() throws Exception {
-    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
-
-    assertEquals(
-        "https://dr.example.com/signin",
-        invokeOwnUrl(handler, proxiedRequest("https", "dr.example.com"), "/signin"));
-  }
-
-  @Test
-  void ownUrl_fallsBackToServerUrlForAnUnregisteredHost() throws Exception {
-    AuthenticationCodeFlowHandler handler = createCallbackSelectionHandler(List.of(DR_CALLBACK));
-
-    assertEquals(
-        "https://om.example.com/signin",
-        invokeOwnUrl(handler, proxiedRequest("https", "evil.example.com"), "/signin"));
-  }
-
-  /**
-   * The #26311 setup: serverUrl left at its localhost default while the primary callback URL names
-   * the real host. Signin and logout on that host must stay there instead of bouncing to serverUrl.
-   */
-  @Test
-  void ownUrl_staysOnThePrimaryCallbackHostWhenServerUrlIsStale() throws Exception {
-    AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(
-            "http://localhost:8585", "https://om.example.org/callback", List.of(), List.of());
-
-    assertEquals(
-        "https://om.example.org/logout",
-        invokeOwnUrl(handler, proxiedRequest("https", "om.example.org"), "/logout"));
+    assertEquals("https://om.example.org/logout", invokeDeploymentUrl(handler, "/logout"));
   }
 
   /** serverUrl carries a deployment's base path, so the callback URL's base must keep it too. */
   @Test
-  void ownUrl_keepsTheBasePathOfTheCallbackUrl() throws Exception {
+  void deploymentUrl_keepsTheBasePathOfTheCallbackUrl() throws Exception {
     AuthenticationCodeFlowHandler handler =
         createRedirectHandler(
-            "http://localhost:8585",
-            "https://om.example.org/openmetadata/callback",
-            List.of(),
-            List.of());
+            "http://localhost:8585", "https://om.example.org/openmetadata/callback");
 
     assertEquals(
-        "https://om.example.org/openmetadata/signin",
-        invokeOwnUrl(handler, proxiedRequest("https", "om.example.org"), "/signin"));
-  }
-
-  @Test
-  void ownUrl_givesAnUnregisteredHostServerUrlEvenWhenItIsStale() throws Exception {
-    AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(
-            "http://localhost:8585", "https://om.example.org/callback", List.of(), List.of());
-
-    assertEquals(
-        "http://localhost:8585/signin",
-        invokeOwnUrl(handler, proxiedRequest("https", "evil.example.com"), "/signin"));
+        "https://om.example.org/openmetadata/signin", invokeDeploymentUrl(handler, "/signin"));
   }
 
   /** A callback URL that is not the /callback servlet has no base to derive, so serverUrl stays. */
   @Test
-  void ownUrl_fallsBackToServerUrlWhenTheCallbackUrlIsNotTheCallbackServlet() throws Exception {
+  void deploymentUrl_fallsBackToServerUrlWhenTheCallbackUrlIsNotTheCallbackServlet()
+      throws Exception {
     AuthenticationCodeFlowHandler handler =
         createRedirectHandler(
-            "https://om-internal.example.org",
-            "https://om.example.org/oidc/return",
-            List.of(),
-            List.of());
+            "https://om-internal.example.org", "https://om.example.org/oidc/return");
 
-    assertEquals(
-        "https://om-internal.example.org/signin",
-        invokeOwnUrl(handler, proxiedRequest("https", "om.example.org"), "/signin"));
-  }
-
-  @Test
-  void handleLogout_redirectsToLogoutOnTheRegisteredRequestHost() throws Exception {
-    when(oidcClient.getCallbackUrl()).thenReturn(PRIMARY_CALLBACK);
-    AuthenticationCodeFlowHandler handler =
-        createHandlerWithMockedInternals(sessionService, oidcClient);
-    setField(handler, "serverUrl", "https://om.example.com");
-    setField(
-        handler,
-        "authenticationConfiguration",
-        new AuthenticationConfiguration().withAdditionalCallbackUrls(List.of(DR_CALLBACK)));
-
-    handler.handleLogout(proxiedRequest("https", "dr.example.com"), response);
-
-    verify(response).sendRedirect("https://dr.example.com/logout");
-  }
-
-  private AuthenticationCodeFlowHandler createCallbackSelectionHandler(
-      List<String> additionalCallbackUrls) throws Exception {
-    OidcClient primaryClient = new OidcClient();
-    primaryClient.setCallbackUrl(PRIMARY_CALLBACK);
-    AuthenticationCodeFlowHandler handler =
-        (AuthenticationCodeFlowHandler)
-            getUnsafe().allocateInstance(AuthenticationCodeFlowHandler.class);
-    setField(handler, "client", primaryClient);
-    setField(handler, "serverUrl", "https://om.example.com");
-    setField(
-        handler,
-        "authenticationConfiguration",
-        new AuthenticationConfiguration().withAdditionalCallbackUrls(additionalCallbackUrls));
-    return handler;
-  }
-
-  private String invokeWithRequest(
-      AuthenticationCodeFlowHandler handler, String methodName, HttpServletRequest request)
-      throws Exception {
-    Method method =
-        AuthenticationCodeFlowHandler.class.getDeclaredMethod(methodName, HttpServletRequest.class);
-    method.setAccessible(true);
-    return (String) method.invoke(handler, request);
-  }
-
-  private String invokeCallbackUrlSentToProvider(
-      AuthenticationCodeFlowHandler handler, UserSession pendingSession) throws Exception {
-    Method method =
-        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
-            "callbackUrlSentToProvider", UserSession.class);
-    method.setAccessible(true);
-    return (String) method.invoke(handler, pendingSession);
-  }
-
-  private String invokeOwnUrl(
-      AuthenticationCodeFlowHandler handler, HttpServletRequest request, String path)
-      throws Exception {
-    Method method =
-        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
-            "ownUrl", HttpServletRequest.class, String.class);
-    method.setAccessible(true);
-    return (String) method.invoke(handler, request, path);
+    assertEquals("https://om-internal.example.org/signin", invokeDeploymentUrl(handler, "/signin"));
   }
 
   private AuthenticationCodeFlowHandler createRedirectHandler(
       String serverUrl, String callbackUrl, List<String> additionalTrustedRedirectUris)
       throws Exception {
-    AuthenticationCodeFlowHandler handler =
-        createRedirectHandler(serverUrl, serverUrl + "/callback", List.of(), List.of());
     AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
     when(authConfig.getCallbackUrl()).thenReturn(callbackUrl);
     when(authConfig.getAdditionalTrustedRedirectUris()).thenReturn(additionalTrustedRedirectUris);
+
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(serverUrl, serverUrl + "/callback");
     setField(handler, "authenticationConfiguration", authConfig);
     return handler;
   }
 
   private AuthenticationCodeFlowHandler createRedirectHandler(
-      String serverUrl,
-      String oidcCallbackUrl,
-      List<String> additionalCallbackUrls,
-      List<String> additionalTrustedRedirectUris)
-      throws Exception {
-    OidcClient primaryClient = new OidcClient();
-    primaryClient.setCallbackUrl(oidcCallbackUrl);
+      String serverUrl, String oidcCallbackUrl) throws Exception {
+    OidcClient oidcClientForCallback = new OidcClient();
+    oidcClientForCallback.setCallbackUrl(oidcCallbackUrl);
     AuthenticationCodeFlowHandler handler =
         (AuthenticationCodeFlowHandler)
             getUnsafe().allocateInstance(AuthenticationCodeFlowHandler.class);
-    setField(handler, "client", primaryClient);
+    setField(handler, "client", oidcClientForCallback);
     setField(handler, "serverUrl", serverUrl);
-    setField(
-        handler,
-        "authenticationConfiguration",
-        new AuthenticationConfiguration()
-            .withAdditionalCallbackUrls(additionalCallbackUrls)
-            .withAdditionalTrustedRedirectUris(additionalTrustedRedirectUris));
+    setField(handler, "authenticationConfiguration", new AuthenticationConfiguration());
     return handler;
   }
 
@@ -863,6 +657,14 @@ class AuthenticationCodeFlowHandlerTest {
         assertThrows(
             IllegalArgumentException.class, () -> invokeRequireRedirectUri(handler, redirectUri));
     assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
+  }
+
+  private String invokeDeploymentUrl(AuthenticationCodeFlowHandler handler, String path)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("deploymentUrl", String.class);
+    method.setAccessible(true);
+    return (String) method.invoke(handler, path);
   }
 
   private String invokeRequireRedirectUri(AuthenticationCodeFlowHandler handler, String redirectUri)
@@ -881,13 +683,6 @@ class AuthenticationCodeFlowHandlerTest {
       throw e;
     }
     return result;
-  }
-
-  private HttpServletRequest proxiedRequest(String forwardedProto, String forwardedHost) {
-    HttpServletRequest req = mock(HttpServletRequest.class);
-    when(req.getHeader("X-Forwarded-Proto")).thenReturn(forwardedProto);
-    when(req.getHeader("X-Forwarded-Host")).thenReturn(forwardedHost);
-    return req;
   }
 
   private AuthenticationCodeFlowHandler createSelfSignupHandler(Set<String> allowedDomains)
@@ -2007,7 +1802,6 @@ class AuthenticationCodeFlowHandlerTest {
 
     setField(handler, "sessionService", sessionService);
     setField(handler, "client", client);
-    setField(handler, "authenticationConfiguration", new AuthenticationConfiguration());
 
     return handler;
   }

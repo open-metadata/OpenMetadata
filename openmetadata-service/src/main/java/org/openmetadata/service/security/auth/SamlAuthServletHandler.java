@@ -14,13 +14,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -50,9 +51,7 @@ import org.openmetadata.service.security.SamlIdentityResolver;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
-import org.openmetadata.service.security.saml.AcsDestinationSamlMessageFactory;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
-import org.openmetadata.service.security.session.PendingLoginState;
 import org.openmetadata.service.security.session.SessionRefreshInProgressException;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -178,26 +177,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         callbackUrl = req.getParameter("redirectUri");
       }
       callbackUrl = requireSamlRedirectUri(callbackUrl);
-      String additionalAcsUrl =
-          SamlSettingsHolder.getAdditionalAcsUrlFor(SecurityUtil.requestOrigin(req));
       UserSession pendingSession =
           sessionService.createPendingSession(
-              req,
-              resp,
-              authConfig.getProvider().value(),
-              PendingLoginState.builder()
-                  .redirectUri(callbackUrl)
-                  .idpRedirectUri(additionalAcsUrl)
-                  .build());
+              req, resp, authConfig.getProvider().value(), callbackUrl, null, null, null);
 
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
 
-      Auth auth =
-          new Auth(
-              SamlSettingsHolder.getSaml2SettingsForAcsUrl(additionalAcsUrl),
-              wrappedRequest,
-              wrappedResponse);
+      Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
       // Carry the pending-session id in the SAML RelayState so the ACS callback can recover it from
       // the POST body. The IdP callback is a cross-site POST that drops the SameSite=Lax OM_SESSION
       // cookie, so RelayState — not the cookie — is the reliable correlation across the round-trip.
@@ -286,13 +273,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
 
-      String additionalAcsUrl = mcpCallback ? null : pendingSession.getIdpRedirectUri();
-      Auth auth =
-          new Auth(
-              SamlSettingsHolder.getSaml2SettingsForAcsUrl(additionalAcsUrl),
-              wrappedRequest,
-              wrappedResponse);
-      auth.setSamlMessageFactory(new AcsDestinationSamlMessageFactory());
+      Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
       auth.processResponse();
 
       if (!auth.isAuthenticated()) {
@@ -720,26 +701,15 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
   private Set<String> trustedSamlRedirects() {
     Set<String> trusted =
-        SecurityUtil.trustedRedirects(authConfig.getCallbackUrl(), samlSpCallback());
-    trusted.addAll(samlAuthCallbacks());
+        SecurityUtil.trustedRedirects(
+            authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
     trusted.addAll(listOrEmpty(authConfig.getAdditionalTrustedRedirectUris()));
     return trusted;
   }
 
   private String requireSamlRedirectUri(String redirectUri) {
     String targetRedirectUri = nullOrEmpty(redirectUri) ? defaultSamlRedirectUri() : redirectUri;
-    Set<String> trusted = trustedSamlRedirects();
-    try {
-      return SecurityUtil.validateRedirectUri(targetRedirectUri, trusted);
-    } catch (IllegalArgumentException e) {
-      // Without the candidate set on the wire-facing 400 this is undiagnosable from the outside.
-      LOG.warn(
-          "Rejected SAML login redirect URI [{}] - trusted targets are {}: {}",
-          targetRedirectUri,
-          trusted,
-          e.getMessage());
-      throw e;
-    }
+    return SecurityUtil.validateRedirectUri(targetRedirectUri, trustedSamlRedirects());
   }
 
   private ServiceProviderConfig samlSp() {
@@ -747,26 +717,23 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     return samlConfig == null ? null : samlConfig.getSp();
   }
 
-  /**
-   * {@code /auth/callback} on the host of every configured Assertion Consumer Service, the primary's
-   * first: those are the hosts this deployment answers on.
-   */
-  private List<String> samlAuthCallbacks() {
+  private String samlAuthCallback() {
     ServiceProviderConfig sp = samlSp();
-    List<String> acsUrls = new ArrayList<>();
-    if (sp != null) {
-      acsUrls.add(sp.getAcs());
-      acsUrls.addAll(listOrEmpty(sp.getAdditionalAcsUrls()));
+    String acs = sp == null ? null : sp.getAcs();
+    String authCallback = null;
+    if (!nullOrEmpty(acs)) {
+      try {
+        URI uri = new URI(acs);
+        if (uri.getScheme() != null && uri.getHost() != null) {
+          URI origin =
+              new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
+          authCallback = origin + AUTH_CALLBACK_PATH;
+        }
+      } catch (URISyntaxException e) {
+        LOG.warn("Could not derive SAML server origin from ACS URL: {}", acs, e);
+      }
     }
-    return acsUrls.stream()
-        .map(SamlAuthServletHandler::authCallbackOnHostOf)
-        .filter(Objects::nonNull)
-        .toList();
-  }
-
-  private static String authCallbackOnHostOf(String acs) {
-    String origin = SecurityUtil.originOf(acs);
-    return origin == null ? null : origin + AUTH_CALLBACK_PATH;
+    return authCallback;
   }
 
   private String defaultSamlRedirectUri() {

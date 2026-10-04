@@ -40,8 +40,7 @@ public class SamlMetadataServlet extends HttpServlet {
           new HttpServletResponseWrapper(response);
 
       Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
-      String metadata =
-          SpMetadataBuilder.build(auth.getSettings(), SamlSettingsHolder.getAdditionalAcsUrls());
+      String metadata = auth.getSettings().getSPMetadata();
       response.setContentType("text/xml");
       response.getWriter().write(metadata);
     } catch (SAMLException | CertificateEncodingException ex) {

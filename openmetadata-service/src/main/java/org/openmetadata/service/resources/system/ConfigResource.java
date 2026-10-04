@@ -103,7 +103,6 @@ public class ConfigResource {
       responseAuthConfig.setClientId(yamlConfig.getClientId());
       responseAuthConfig.setAuthority(yamlConfig.getAuthority());
       responseAuthConfig.setCallbackUrl(yamlConfig.getCallbackUrl());
-      responseAuthConfig.setAdditionalCallbackUrls(yamlConfig.getAdditionalCallbackUrls());
       responseAuthConfig.setResponseType(yamlConfig.getResponseType());
       responseAuthConfig.setPublicKeyUrls(yamlConfig.getPublicKeyUrls());
       responseAuthConfig.setTokenValidationAlgorithm(yamlConfig.getTokenValidationAlgorithm());

@@ -69,7 +69,14 @@ class SessionServiceTest {
   @Test
   void createPendingSession_persistsSessionAndSetsCookie() {
     UserSession session =
-        sessionService.createPendingSession(request, response, "basic", pendingLogin().build());
+        sessionService.createPendingSession(
+            request,
+            response,
+            "basic",
+            "http://localhost:3000/callback",
+            "state-123",
+            "nonce-123",
+            "pkce-123");
 
     ArgumentCaptor<UserSession> sessionCaptor = ArgumentCaptor.forClass(UserSession.class);
     verify(repository).create(sessionCaptor.capture());
@@ -82,21 +89,6 @@ class SessionServiceTest {
     assertEquals("state-123", storedSession.getState());
     assertEquals("nonce-123", storedSession.getNonce());
     assertEquals("pkce-123", storedSession.getPkceVerifier());
-    assertEquals("http://localhost:3000/callback", storedSession.getRedirectUri());
-    assertNull(storedSession.getIdpRedirectUri());
-  }
-
-  @Test
-  void createPendingSession_persistsTheRedirectUriSentToTheIdentityProvider() {
-    sessionService.createPendingSession(
-        request,
-        response,
-        "google",
-        pendingLogin().idpRedirectUri("https://dr.example.com/callback").build());
-
-    ArgumentCaptor<UserSession> sessionCaptor = ArgumentCaptor.forClass(UserSession.class);
-    verify(repository).create(sessionCaptor.capture());
-    assertEquals("https://dr.example.com/callback", sessionCaptor.getValue().getIdpRedirectUri());
   }
 
   @Test
@@ -245,7 +237,14 @@ class SessionServiceTest {
   @Test
   void getSessionById_returnsCachedSessionWithoutDatabaseLookup() {
     UserSession createdSession =
-        sessionService.createPendingSession(request, response, "basic", pendingLogin().build());
+        sessionService.createPendingSession(
+            request,
+            response,
+            "basic",
+            "http://localhost:3000/callback",
+            "state-123",
+            "nonce-123",
+            "pkce-123");
 
     Optional<UserSession> maybeSession = sessionService.getSessionById(createdSession.getId());
 
@@ -1108,13 +1107,5 @@ class SessionServiceTest {
         .mapToInt(Integer::parseInt)
         .findFirst()
         .orElseThrow();
-  }
-
-  private static PendingLoginState.PendingLoginStateBuilder pendingLogin() {
-    return PendingLoginState.builder()
-        .redirectUri("http://localhost:3000/callback")
-        .state("state-123")
-        .nonce("nonce-123")
-        .pkceVerifier("pkce-123");
   }
 }

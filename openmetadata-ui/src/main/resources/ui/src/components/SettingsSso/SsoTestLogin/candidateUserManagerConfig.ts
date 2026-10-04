@@ -23,8 +23,7 @@ import { AuthenticationConfigurationWithScope } from '../../Auth/AuthProviders/A
  * Build an isolated UserManager config used ONLY for the SSO "Test Login" popup.
  * The tested identity's tokens stay in memory and its sign-in state goes to a
  * dedicated prefixed store (never the app's oidcTokenStorage), but the popup
- * uses the SAME callback URL the real login would send from this host (the
- * primary, or the additional one registered for it) — so
+ * uses the SAME configured callback URL the real login uses — so
  * the test exercises the actual registered redirect URI and never requires the
  * admin to register an extra one. Isolation is achieved by diverting the popup
  * at the callback (see isSsoTestLoginPopup), not by using a separate route.
@@ -36,7 +35,6 @@ export const getCandidateUserManagerConfig = (
     authority = '',
     clientId = '',
     callbackUrl,
-    additionalCallbackUrls,
     scope,
     responseType,
   } = authClient;
@@ -44,7 +42,7 @@ export const getCandidateUserManagerConfig = (
   return {
     authority,
     client_id: clientId,
-    redirect_uri: getRedirectUri(callbackUrl, additionalCallbackUrls),
+    redirect_uri: getRedirectUri(callbackUrl),
     response_type: responseType ?? 'id_token',
     scope: scope || OIDC_SCOPE,
     loadUserInfo: false,

@@ -18,7 +18,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
@@ -1286,340 +1285,6 @@ class SecurityUtilTest {
   }
 
   @Test
-  void requestOrigin_prefersForwardedHeadersOverConnector() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
-    when(request.getScheme()).thenReturn("http");
-    when(request.getServerName()).thenReturn("localhost");
-    when(request.getServerPort()).thenReturn(8585);
-
-    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_keepsForwardedHostPort() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org:8443");
-
-    assertEquals("https://om.example.org:8443", SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_fallsBackToConnectorSchemeWhenProtoHeaderMissing() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
-    when(request.getScheme()).thenReturn("https");
-
-    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_fallsBackToConnectorAuthorityWhenNoHostHeader() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getScheme()).thenReturn("https");
-    when(request.getServerName()).thenReturn("om.example.org");
-    when(request.getServerPort()).thenReturn(443);
-
-    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_rejectsForwardedHostCarryingPath() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org/evil");
-
-    assertNull(SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_rejectsForwardedHostCarryingUserInfo() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("attacker@om.example.org");
-
-    assertNull(SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_rejectsNonWebForwardedProto() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Proto")).thenReturn("javascript");
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
-
-    assertNull(SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_normalizesForwardedProtoCase() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Proto")).thenReturn("HTTPS");
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
-
-    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_returnsNullWhenForwardedHostHasNoUsableScheme() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
-
-    assertNull(SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_returnsNullWhenNothingIdentifiesTheOrigin() {
-    assertNull(SecurityUtil.requestOrigin(null));
-    assertNull(SecurityUtil.requestOrigin(mock(HttpServletRequest.class)));
-  }
-
-  /** AWS ALB sets X-Forwarded-Proto and passes Host through, but never sets X-Forwarded-Host. */
-  @Test
-  void requestOrigin_honoursForwardedProtoWhenOnlyHostIsPassedThrough() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
-    when(request.getHeader("Host")).thenReturn("om.example.org");
-    when(request.getScheme()).thenReturn("http");
-    when(request.getServerName()).thenReturn("om.example.org");
-    when(request.getServerPort()).thenReturn(8585);
-
-    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_prefersHostHeaderOverConnectorPort() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("Host")).thenReturn("om.example.org");
-    when(request.getScheme()).thenReturn("https");
-    when(request.getServerName()).thenReturn("om.example.org");
-    when(request.getServerPort()).thenReturn(8585);
-
-    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
-  }
-
-  /**
-   * A proxy that appends rather than replaces leaves the caller's own value left-most, so the
-   * right-most entry - written by the hop closest to this server - is the one to trust.
-   */
-  @Test
-  void requestOrigin_ignoresCallerSuppliedValuePrependedToForwardedHost() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Proto")).thenReturn("https");
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("evil.example.com, om.example.org");
-
-    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
-  }
-
-  @Test
-  void requestOrigin_ignoresCallerSuppliedValuePrependedToForwardedProto() {
-    HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("X-Forwarded-Proto")).thenReturn("javascript, https");
-    when(request.getHeader("X-Forwarded-Host")).thenReturn("om.example.org");
-
-    assertEquals("https://om.example.org", SecurityUtil.requestOrigin(request));
-  }
-
-  private static final String PRIMARY_CALLBACK = "https://om.example.com/callback";
-  private static final String DR_CALLBACK = "https://dr.example.com/callback";
-
-  @Test
-  void sameOriginCallbackUrl_selectsEntryOnTheRequestOrigin() {
-    assertEquals(
-        DR_CALLBACK,
-        SecurityUtil.sameOriginCallbackUrl(
-            "https://dr.example.com",
-            PRIMARY_CALLBACK,
-            List.of("https://lb.example.com/callback", DR_CALLBACK)));
-  }
-
-  @Test
-  void sameOriginCallbackUrl_returnsNullForUnregisteredOrigin() {
-    assertNull(
-        SecurityUtil.sameOriginCallbackUrl(
-            "https://evil.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
-  }
-
-  @Test
-  void sameOriginCallbackUrl_keepsPrimaryOnItsOwnOrigin() {
-    assertNull(
-        SecurityUtil.sameOriginCallbackUrl(
-            "https://om.example.com",
-            PRIMARY_CALLBACK,
-            List.of("https://om.example.com:443/callback", DR_CALLBACK)));
-  }
-
-  /** The identity provider compares the registered spelling, so it must come back untouched. */
-  @Test
-  void sameOriginCallbackUrl_matchesDefaultPortButReturnsConfiguredSpelling() {
-    assertEquals(
-        "https://dr.example.com:443/callback",
-        SecurityUtil.sameOriginCallbackUrl(
-            "https://dr.example.com",
-            PRIMARY_CALLBACK,
-            List.of("https://dr.example.com:443/callback")));
-  }
-
-  @Test
-  void sameOriginCallbackUrl_ignoresEntryWhosePathDiffersFromPrimary() {
-    assertNull(
-        SecurityUtil.sameOriginCallbackUrl(
-            "https://dr.example.com",
-            PRIMARY_CALLBACK,
-            List.of("https://dr.example.com/auth/callback")));
-  }
-
-  @Test
-  void sameOriginCallbackUrl_ignoresSchemeMismatch() {
-    assertNull(
-        SecurityUtil.sameOriginCallbackUrl(
-            "http://dr.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
-  }
-
-  @Test
-  void sameOriginCallbackUrl_comparesSchemeAndHostCaseInsensitively() {
-    assertEquals(
-        DR_CALLBACK,
-        SecurityUtil.sameOriginCallbackUrl(
-            "HTTPS://DR.Example.COM", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
-  }
-
-  @Test
-  void sameOriginCallbackUrl_skipsUnusableEntriesAndKeepsScanning() {
-    assertEquals(
-        DR_CALLBACK,
-        SecurityUtil.sameOriginCallbackUrl(
-            "https://dr.example.com",
-            PRIMARY_CALLBACK,
-            List.of(
-                "not a url",
-                "https://user@dr.example.com/callback",
-                "https://dr.example.com/callback#fragment",
-                " ",
-                DR_CALLBACK)));
-  }
-
-  @Test
-  void sameOriginCallbackUrl_returnsNullWithoutOriginPrimaryOrEntries() {
-    assertNull(SecurityUtil.sameOriginCallbackUrl(null, PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
-    assertNull(
-        SecurityUtil.sameOriginCallbackUrl("https://dr.example.com", null, List.of(DR_CALLBACK)));
-    assertNull(
-        SecurityUtil.sameOriginCallbackUrl("https://dr.example.com", PRIMARY_CALLBACK, null));
-    assertNull(
-        SecurityUtil.sameOriginCallbackUrl("https://dr.example.com", PRIMARY_CALLBACK, List.of()));
-  }
-
-  @Test
-  void registeredCallbackUrl_returnsThePrimaryOnItsOwnHost() {
-    assertEquals(
-        PRIMARY_CALLBACK,
-        SecurityUtil.registeredCallbackUrl(
-            "https://om.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
-  }
-
-  /** The identity provider compares the registered spelling, so it must come back untouched. */
-  @Test
-  void registeredCallbackUrl_matchesThePrimaryAcrossADefaultPort() {
-    assertEquals(
-        "https://om.example.com:443/callback",
-        SecurityUtil.registeredCallbackUrl(
-            "https://om.example.com", "https://om.example.com:443/callback", List.of()));
-  }
-
-  @Test
-  void registeredCallbackUrl_returnsTheAdditionalEntryOnItsHost() {
-    assertEquals(
-        DR_CALLBACK,
-        SecurityUtil.registeredCallbackUrl(
-            "https://dr.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
-  }
-
-  @Test
-  void registeredCallbackUrl_returnsNullForAnUnregisteredOrUnknownHost() {
-    assertNull(
-        SecurityUtil.registeredCallbackUrl(
-            "https://evil.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
-    assertNull(SecurityUtil.registeredCallbackUrl(null, PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
-    assertNull(SecurityUtil.registeredCallbackUrl("https://om.example.com", null, List.of()));
-  }
-
-  @Test
-  void isAlternativeCallbackUrl_acceptsAnotherHostWithThePrimaryPath() {
-    assertTrue(SecurityUtil.isAlternativeCallbackUrl(DR_CALLBACK, PRIMARY_CALLBACK));
-  }
-
-  @Test
-  void isAlternativeCallbackUrl_rejectsEntriesLoginCouldNeverSelect() {
-    List<String> unusable =
-        List.of(
-            "https://dr.example.com/auth/callback",
-            "/callback",
-            "ftp://dr.example.com/callback",
-            "https://user@dr.example.com/callback",
-            "https://dr.example.com/callback#fragment",
-            "not a url",
-            " ");
-    for (String candidate : unusable) {
-      assertFalse(SecurityUtil.isAlternativeCallbackUrl(candidate, PRIMARY_CALLBACK), candidate);
-    }
-  }
-
-  @Test
-  void isAlternativeCallbackUrl_rejectsEverythingWithoutAPrimary() {
-    assertFalse(SecurityUtil.isAlternativeCallbackUrl(DR_CALLBACK, null));
-  }
-
-  @Test
-  void sameOriginCallbackUrl_returnsNullForAnUnparseablePrimary() {
-    assertNull(
-        SecurityUtil.sameOriginCallbackUrl(
-            "https://dr.example.com", "not a url", List.of(DR_CALLBACK)));
-  }
-
-  /** A hostless trusted entry can never vouch for a redirect to an absolute origin. */
-  @Test
-  void validateRedirectUri_neverMatchesAHostlessTrustedEntryAgainstAnAbsoluteRedirect() {
-    IllegalArgumentException error =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                SecurityUtil.validateRedirectUri(
-                    "https://app.example.com/auth/callback", List.of("/auth/callback")));
-
-    assertEquals("Redirect URI must exactly match a trusted redirect URI", error.getMessage());
-  }
-
-  @Test
-  void originOf_keepsSchemeHostAndExplicitPortOnly() {
-    assertEquals(
-        "https://dr.example.com:8443",
-        SecurityUtil.originOf("https://dr.example.com:8443/callback?x=1#frag"));
-    assertEquals(
-        "https://dr.example.com", SecurityUtil.originOf("  https://dr.example.com/callback "));
-  }
-
-  @Test
-  void originOf_keepsBracketedIpv6Hosts() {
-    assertEquals("http://[::1]:8585", SecurityUtil.originOf("http://[::1]:8585/api/v1/saml/acs"));
-  }
-
-  @Test
-  void originOf_dropsUserInfo() {
-    assertEquals("https://om.example.org", SecurityUtil.originOf("https://user@om.example.org/cb"));
-  }
-
-  @Test
-  void originOf_returnsNullForAnythingWithoutAnOrigin() {
-    assertNull(SecurityUtil.originOf(null));
-    assertNull(SecurityUtil.originOf("  "));
-    assertNull(SecurityUtil.originOf("/callback"));
-    assertNull(SecurityUtil.originOf("not a url"));
-    assertNull(SecurityUtil.originOf("mailto:admin@example.org"));
-  }
-
-  @Test
   void testBuildPrincipalClaimsMappingKeepsAColonInsideTheClaimName() {
     // Splitting on every colon dropped this entry via the length filter (and before #28780
     // truncated it to "urn"), silently losing the email mapping.
@@ -1634,6 +1299,34 @@ class SecurityUtilTest {
     assertEquals(
         Map.of("email", "email"),
         SecurityUtil.buildPrincipalClaimsMapping(List.of("email:email", "garbage-no-colon")));
+  }
+
+  @Test
+  void originOf_keepsSchemeHostAndExplicitPortOnly() {
+    assertEquals(
+        "https://om.example.org:8443",
+        SecurityUtil.originOf("https://om.example.org:8443/callback?x=1#frag"));
+    assertEquals(
+        "https://om.example.org", SecurityUtil.originOf("  https://om.example.org/callback "));
+  }
+
+  @Test
+  void originOf_keepsBracketedIpv6Hosts() {
+    assertEquals("http://[::1]:8585", SecurityUtil.originOf("http://[::1]:8585/callback"));
+  }
+
+  @Test
+  void originOf_dropsUserInfo() {
+    assertEquals("https://om.example.org", SecurityUtil.originOf("https://user@om.example.org/cb"));
+  }
+
+  @Test
+  void originOf_returnsNullForAnythingWithoutAnOrigin() {
+    assertNull(SecurityUtil.originOf(null));
+    assertNull(SecurityUtil.originOf("  "));
+    assertNull(SecurityUtil.originOf("/callback"));
+    assertNull(SecurityUtil.originOf("not a url"));
+    assertNull(SecurityUtil.originOf("mailto:admin@example.org"));
   }
 
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {

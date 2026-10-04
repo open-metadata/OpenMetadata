@@ -66,7 +66,6 @@ export const SAML_SSO_DEFAULTS = {
 // Provider-specific schema field lists
 export const OIDC_SPECIFIC_FIELDS = [
   'callbackUrl',
-  'additionalCallbackUrls',
   'clientId',
   'authority',
   'publicKeyUrls',
@@ -336,12 +335,6 @@ export const SAML_UI_SCHEMA = {
           'Auto-generated Assertion Consumer Service URL. Copy this value and paste it as ACS URL (or Reply URL) in your SAML Identity Provider configuration.',
       },
       callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
-      additionalAcsUrls: {
-        'ui:title': i18next.t('label.additional-acs-url-plural'),
-        'ui:placeholder': i18next.t('label.enter-each-value-and-press-enter'),
-        'ui:help': i18next.t('message.additional-acs-url-help'),
-        'ui:field': 'ArrayField',
-      },
       spX509Certificate: {
         'ui:title': 'SP X.509 Certificate',
         'ui:widget': 'textarea',
@@ -603,12 +596,6 @@ export const COMMON_FIELD_TITLES = {
   },
   clientId: COMMON_UI_FIELDS.clientId,
   callbackUrl: COMMON_UI_FIELDS.callbackUrl,
-  additionalCallbackUrls: {
-    'ui:title': i18next.t('label.additional-callback-url-plural'),
-    'ui:placeholder': i18next.t('label.enter-each-value-and-press-enter'),
-    'ui:help': i18next.t('message.additional-callback-url-help'),
-    'ui:field': 'ArrayField',
-  },
   publicKeyUrls: COMMON_UI_FIELDS.publicKeyUrls,
   tokenValidationAlgorithm: { 'ui:title': 'Token Validation Algorithm' },
   jwtPrincipalClaims: {

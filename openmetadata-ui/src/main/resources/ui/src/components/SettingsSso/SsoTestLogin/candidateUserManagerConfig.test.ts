@@ -19,11 +19,6 @@ import { AuthProvider } from '../../../generated/settings/settings';
 import { AuthenticationConfigurationWithScope } from '../../Auth/AuthProviders/AuthProvider.interface';
 import { getCandidateUserManagerConfig } from './candidateUserManagerConfig';
 
-// getRedirectUri answers with the Vite dev-server URL in development, which would mask the host choice.
-jest.mock('../../../utils/EnvironmentUtils', () => ({
-  isDev: jest.fn().mockReturnValue(false),
-}));
-
 const withScope = (
   overrides: Partial<AuthenticationConfigurationWithScope> = {}
 ): AuthenticationConfigurationWithScope =>
@@ -64,16 +59,5 @@ describe('getCandidateUserManagerConfig — SSO test-login popup respects respon
     );
 
     expect(config.response_type).toBe('code');
-  });
-});
-
-describe('getCandidateUserManagerConfig — uses the callback URL registered for the current host (#28870)', () => {
-  it('should use the current-host callback URL for the SSO test-login popup', () => {
-    const currentHostCallbackUrl = `${globalThis.location.origin}/callback`;
-    const config = getCandidateUserManagerConfig(
-      withScope({ additionalCallbackUrls: [currentHostCallbackUrl] })
-    );
-
-    expect(config.redirect_uri).toBe(currentHostCallbackUrl);
   });
 });

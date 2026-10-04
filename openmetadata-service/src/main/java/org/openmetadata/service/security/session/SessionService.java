@@ -183,7 +183,10 @@ public class SessionService implements Managed {
       jakarta.servlet.http.HttpServletRequest request,
       jakarta.servlet.http.HttpServletResponse response,
       String provider,
-      PendingLoginState loginState) {
+      String redirectUri,
+      String state,
+      String nonce,
+      String pkceVerifier) {
     long now = System.currentTimeMillis();
     long pendingExpiry = now + TimeUnit.SECONDS.toMillis(PENDING_SESSION_TIMEOUT_SECONDS);
     UserSession session =
@@ -192,11 +195,10 @@ public class SessionService implements Managed {
             .type(SessionType.AUTH)
             .provider(provider)
             .status(SessionStatus.PENDING)
-            .redirectUri(loginState.redirectUri())
-            .idpRedirectUri(loginState.idpRedirectUri())
-            .state(loginState.state())
-            .nonce(loginState.nonce())
-            .pkceVerifier(loginState.pkceVerifier())
+            .redirectUri(redirectUri)
+            .state(state)
+            .nonce(nonce)
+            .pkceVerifier(pkceVerifier)
             .version(0L)
             .createdAt(now)
             .updatedAt(now)

@@ -28,7 +28,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.onelogin.saml2.Auth;
-import com.onelogin.saml2.settings.Saml2Settings;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -41,7 +40,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,8 +52,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
-import org.openmetadata.catalog.type.IdentityProviderConfig;
-import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -69,10 +65,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.security.saml.AcsDestinationSamlMessageFactory;
-import org.openmetadata.service.security.saml.MockSamlIdp;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
-import org.openmetadata.service.security.session.PendingLoginState;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -122,7 +115,10 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq(redirectOnly("https://example.com/callback"))))
+            eq("https://example.com/callback"),
+            any(),
+            any(),
+            any()))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -134,7 +130,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", redirectOnly("https://example.com/callback"));
+            request, response, "saml", "https://example.com/callback", null, null, null);
   }
 
   @Test
@@ -145,7 +141,10 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq(redirectOnly("https://example.com/callback"))))
+            eq("https://example.com/callback"),
+            any(),
+            any(),
+            any()))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -157,7 +156,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", redirectOnly("https://example.com/callback"));
+            request, response, "saml", "https://example.com/callback", null, null, null);
   }
 
   @Test
@@ -178,7 +177,10 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq(redirectOnly("https://app.example.com/auth/callback"))))
+            eq("https://app.example.com/auth/callback"),
+            any(),
+            any(),
+            any()))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -190,7 +192,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", redirectOnly("https://app.example.com/auth/callback"));
+            request, response, "saml", "https://app.example.com/auth/callback", null, null, null);
   }
 
   @Test
@@ -202,7 +204,10 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq(redirectOnly("http://[::1]:8585/auth/callback"))))
+            eq("http://[::1]:8585/auth/callback"),
+            any(),
+            any(),
+            any()))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -214,7 +219,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", redirectOnly("http://[::1]:8585/auth/callback"));
+            request, response, "saml", "http://[::1]:8585/auth/callback", null, null, null);
   }
 
   @Test
@@ -226,7 +231,10 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq(redirectOnly("https://saml.example.com/callback"))))
+            eq("https://saml.example.com/callback"),
+            any(),
+            any(),
+            any()))
         .thenReturn(new UserSession());
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -238,7 +246,7 @@ class SamlAuthServletHandlerTest {
 
     verify(sessionService)
         .createPendingSession(
-            request, response, "saml", redirectOnly("https://saml.example.com/callback"));
+            request, response, "saml", "https://saml.example.com/callback", null, null, null);
   }
 
   @Test
@@ -249,7 +257,10 @@ class SamlAuthServletHandlerTest {
             eq(request),
             eq(response),
             eq("saml"),
-            eq(redirectOnly("https://example.com/callback"))))
+            eq("https://example.com/callback"),
+            any(),
+            any(),
+            any()))
         .thenReturn(pending);
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -260,35 +271,6 @@ class SamlAuthServletHandlerTest {
       handler.handleLogin(request, response);
 
       verify(authConstruction.constructed().get(0)).login("pending-session-id");
-    }
-  }
-
-  /** The ACS callback validates against the ACS this login sent, recorded on the pending session. */
-  @Test
-  void handleCallback_validatesAgainstTheAcsRecordedAtLogin() throws Exception {
-    String drAcs = "https://dr.example.com/api/v1/saml/acs";
-    SamlSettingsHolder.initSettings(multiHostSamlConfig(drAcs));
-    when(request.getParameter("RelayState")).thenReturn("pending-session-id");
-    UserSession pendingSession =
-        UserSession.builder()
-            .id("pending-session-id")
-            .status(SessionStatus.PENDING)
-            .redirectUri("https://example.com/callback")
-            .idpRedirectUri(drAcs)
-            .build();
-    when(sessionService.getPendingSessionById("pending-session-id"))
-        .thenReturn(Optional.of(pendingSession));
-    AtomicReference<Saml2Settings> validatedWith = new AtomicReference<>();
-
-    try (MockedConstruction<Auth> authConstruction =
-        mockConstruction(
-            Auth.class,
-            (auth, context) -> validatedWith.set((Saml2Settings) context.arguments().get(0)))) {
-      handler.handleCallback(request, response);
-
-      assertEquals(drAcs, validatedWith.get().getSpAssertionConsumerServiceUrl().toString());
-      verify(authConstruction.constructed().get(0))
-          .setSamlMessageFactory(any(AcsDestinationSamlMessageFactory.class));
     }
   }
 
@@ -612,26 +594,5 @@ class SamlAuthServletHandlerTest {
       }
       throw e;
     }
-  }
-
-  private static PendingLoginState redirectOnly(String redirectUri) {
-    return PendingLoginState.builder().redirectUri(redirectUri).build();
-  }
-
-  private static SamlSSOClientConfig multiHostSamlConfig(String additionalAcsUrl) {
-    String idpEntityId = "https://idp.example.com/metadata";
-    return new SamlSSOClientConfig()
-        .withIdp(
-            new IdentityProviderConfig()
-                .withEntityId(idpEntityId)
-                .withSsoLoginUrl("https://idp.example.com/sso")
-                .withIdpX509Certificate(new MockSamlIdp(idpEntityId).idpCertificatePem()))
-        .withSp(
-            new ServiceProviderConfig()
-                .withEntityId("https://example.com/api/v1/saml/metadata")
-                .withAcs("https://example.com/api/v1/saml/acs")
-                .withCallback("https://example.com/saml/callback")
-                .withAdditionalAcsUrls(List.of(additionalAcsUrl)))
-        .withSecurity(new SamlSecurityConfig());
   }
 }
