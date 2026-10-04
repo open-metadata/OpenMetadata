@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -91,6 +91,13 @@ const TeamsPage = () => {
   const [advancedFetchNonce, setAdvancedFetchNonce] = useState<number>(0);
   const [isFetchAllTeamAdvancedDetails, setIsFetchAllTeamAdvancedDetails] =
     useState<boolean>(false);
+  // Request id for the all-teams advanced fetch: the nonce lets a newer fetch start before an older
+  // one resolves, so only the latest request may apply results or clear the loading flag — an older
+  // response must not overwrite the list with stale (pre-create) data.
+  const advancedFetchIdRef = useRef<number>(0);
+  // Latest fqn, read by the nonce effect so fqn is not an effect dependency (that fired a duplicate
+  // advanced fetch on navigation — once from the fqn change, once from the following nonce bump).
+  const fqnRef = useRef<string>(fqn);
   const [teamAssetCounts, setTeamAssetCounts] = useState<
     Record<string, number>
   >({});
@@ -156,6 +163,16 @@ const TeamsPage = () => {
     parentTeam?: string,
     updateChildNode = false
   ) => {
+    // Staleness tracking applies only to full-list refreshes: those replace the whole list, so an
+    // older one resolving last would overwrite it with pre-create data. Expand calls
+    // (updateChildNode) merge into a specific subtree and target different parents, so they must not
+    // invalidate each other — they skip the request-id bump entirely.
+    const isFullRefresh = !updateChildNode;
+    const fetchId = isFullRefresh
+      ? ++advancedFetchIdRef.current
+      : advancedFetchIdRef.current;
+    const isLatestFullRefresh = () =>
+      !isFullRefresh || fetchId === advancedFetchIdRef.current;
     loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
     setIsFetchAllTeamAdvancedDetails(true);
 
@@ -172,6 +189,11 @@ const TeamsPage = () => {
         ],
       });
 
+      // A newer full refresh started while this one was in flight — drop this stale response.
+      if (!isLatestFullRefresh()) {
+        return;
+      }
+
       const modifiedTeams: Team[] = data.map((team) => ({
         ...team,
         key: team.fullyQualifiedName,
@@ -186,11 +208,16 @@ const TeamsPage = () => {
         setChildTeams(modifiedTeams);
       }
     } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      if (isLatestFullRefresh()) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      }
     } finally {
-      setIsFetchAllTeamAdvancedDetails(false);
+      // A superseded full refresh leaves the loading flag to the newer one, so skeletons stay up.
+      if (isLatestFullRefresh()) {
+        setIsFetchAllTeamAdvancedDetails(false);
+      }
+      loading && setIsDataLoading((isDataLoading) => --isDataLoading);
     }
-    loading && setIsDataLoading((isDataLoading) => --isDataLoading);
   };
 
   const getParentTeam = async (
@@ -554,10 +581,14 @@ const TeamsPage = () => {
   }, [showDeletedTeam]);
 
   useEffect(() => {
-    if (advancedFetchNonce > 0 && fqn) {
-      fetchAllTeamsAdvancedDetails(false, fqn);
+    fqnRef.current = fqn;
+  }, [fqn]);
+
+  useEffect(() => {
+    if (advancedFetchNonce > 0 && fqnRef.current) {
+      fetchAllTeamsAdvancedDetails(false, fqnRef.current);
     }
-  }, [advancedFetchNonce, fqn]);
+  }, [advancedFetchNonce]);
 
   if (isPageLoading) {
     return <Loader />;
