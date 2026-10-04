@@ -638,7 +638,8 @@ const editFirstDisplayNameCell = async (page: Page, value: string) => {
 };
 
 const editFirstDisplayNameCellAndBlur = async (page: Page, value: string) => {
-  const firstRow = page.getByTestId('rdg-row-0');
+  // eslint-disable-next-line om-playwright/no-positional-locator -- metric grid rows are keyed by the metric uuid, so there is no rdg-row-0
+  const firstRow = page.locator('.rdg-row').first();
   const displayNameCell = firstRow.locator('[aria-colindex="3"]');
 
   await displayNameCell.dblclick();
@@ -1328,7 +1329,8 @@ test.describe(
       await page.getByRole('button', { name: 'Revert Changes' }).click();
       await expect(nextButton).toBeDisabled();
       await expect(
-        page.getByTestId('rdg-row-0').locator('[aria-colindex="3"]')
+        // eslint-disable-next-line om-playwright/no-positional-locator -- metric grid rows are keyed by the metric uuid
+        page.locator('.rdg-row').first().locator('[aria-colindex="3"]')
       ).toContainText(originalDisplayName);
     });
 
