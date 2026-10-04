@@ -18,6 +18,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, create_autospec
+from uuid import uuid4
 
 import pytest
 from presidio_analyzer.nlp_engine import NlpEngine
@@ -92,7 +93,7 @@ def _shipped_tag(classification: Classification, tag_name: str, recognizer_names
         autoClassificationEnabled=True,
         autoClassificationPriority=tag_data["autoClassificationPriority"],
         recognizers=[
-            Recognizer.model_validate(config)
+            Recognizer.model_validate({**config, "id": str(uuid4())})
             for config in tag_data["recognizers"]
             if recognizer_names is None or config["name"] in recognizer_names
         ],
@@ -169,6 +170,63 @@ def test_shipped_network_evidence_and_default_tagging(tag_name, recognizer_name,
         classification_manager=FakeClassificationManager((classification, [tag])),
     )
     assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
+
+
+@pytest.mark.parametrize(
+    ("tag_name", "recognizer_name", "column_name", "value", "expected_tag"),
+    [
+        ("NonSensitive", "UrlRecognizer", "service_url", "https://example.company/path", "PII.NonSensitive"),
+        ("Sensitive", "IpRecognizer", "session_ip", "2001:db8::1", "PII.Sensitive"),
+    ],
+)
+def test_network_configured_context_preserves_recognizer_metadata(
+    tag_name, recognizer_name, column_name, value, expected_tag
+):
+    classification = _shipped_classification()
+    tag = _shipped_tag(classification, tag_name, {recognizer_name})
+    column = Column(
+        name=column_name, fullyQualifiedName=f"db.schema.table.{column_name}", dataType=DataType.VARCHAR, tags=[]
+    )
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, [tag])),
+    )
+
+    labels = processor.create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == [expected_tag]
+    assert labels[0].metadata is not None
+    assert labels[0].metadata.recognizer.recognizerId == tag.recognizers[0].id
+    assert labels[0].metadata.recognizer.recognizerName == recognizer_name
+
+
+def test_luhn_valid_operational_lookalike_remains_ambiguous():
+    classification = _shipped_classification()
+    tag = _shipped_tag(classification, "Sensitive", {"EnglishCreditCardRecognizer"})
+    column = Column(
+        name="batch_reference", fullyQualifiedName="db.schema.table.batch_reference", dataType=DataType.VARCHAR, tags=[]
+    )
+    value = "Batch 4111111111111111 processed"
+    analyzer = TagAnalyzer(tag, column, load_nlp_engine(classification_language=ClassificationLanguage.en))
+    analysis = analyzer.analyze([value])
+    assert [(value[result.start : result.end], result.score) for result in analysis.recognizer_results] == [
+        ("4111111111111111", 1.0)
+    ]
+
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, [tag])),
+    )
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == ["PII.Sensitive"]
 
 
 @pytest.mark.parametrize(

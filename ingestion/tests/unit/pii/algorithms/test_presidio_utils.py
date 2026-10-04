@@ -40,7 +40,7 @@ from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
     ],
 )
 def test_card_results_use_original_candidate_spans(text, expected):
-    recognizer = recognizer_factories.get(CreditCardRecognizer)()
+    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
     results = recognizer.analyze(text, ["CREDIT_CARD"])
 
     assert any(text[result.start : result.end] == expected for result in results)
@@ -60,10 +60,13 @@ def test_card_results_use_original_candidate_spans(text, expected):
         "41111111111111111",
         "4111--1111--1111--1111",
         "1234 4111111111111111",
+        "4111111111111111.25",
+        "4111111111111111e2",
+        "4111111111111111_suffix",
     ],
 )
 def test_card_rejects_invalid_enclosing_candidate(text):
-    recognizer = recognizer_factories.get(CreditCardRecognizer)()
+    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
     assert recognizer.analyze(text, ["CREDIT_CARD"]) == []
 
 
@@ -73,6 +76,12 @@ def test_card_rejects_invalid_enclosing_candidate(text):
         (UrlRecognizer, "URL", "Visit https://example.com/a.b?x=1&y=2.", "https://example.com/a.b?x=1&y=2", 0.6),
         (UrlRecognizer, "URL", "https://example.com/a?value=wow!", "https://example.com/a?value=wow!", 0.6),
         (UrlRecognizer, "URL", "https://example.com/v1;", "https://example.com/v1;", 0.6),
+        (UrlRecognizer, "URL", "https://example.company/path", "https://example.company/path", 0.6),
+        (UrlRecognizer, "URL", "https://example.community/path", "https://example.community/path", 0.6),
+        (UrlRecognizer, "URL", "https://example.international/path", "https://example.international/path", 0.6),
+        (UrlRecognizer, "URL", "https://example.com:8443/path", "https://example.com:8443/path", 0.6),
+        (UrlRecognizer, "URL", "Visit https://example.org!", "https://example.org", 0.6),
+        (UrlRecognizer, "URL", "https://example.org/a://b", "https://example.org/a://b", 0.6),
         (UrlRecognizer, "URL", "('http://example.org/a(b)c')", "http://example.org/a(b)c", 0.6),
         (IpRecognizer, "IP_ADDRESS", "IP 2001:db8::1 recorded", "2001:db8::1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "é 192.168.1.1 and 2001:db8::1", "192.168.1.1", 0.6),
@@ -84,11 +93,12 @@ def test_card_rejects_invalid_enclosing_candidate(text):
             0.6,
         ),
         (IpRecognizer, "IP_ADDRESS", "fe80::1%eth0", "fe80::1%eth0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "::ffff:192.0.2.128", "::ffff:192.0.2.128", 0.6),
         (IpRecognizer, "IP_ADDRESS", "::", "::", 0.1),
     ],
 )
 def test_network_results_use_complete_original_candidate(recognizer_class, entity, text, expected, score):
-    recognizer = recognizer_factories.get(recognizer_class)()
+    recognizer = recognizer_factories.get(recognizer_class, recognizer_class)()
     results = recognizer.analyze(text, [entity])
 
     assert any(text[result.start : result.end] == expected and result.score == score for result in results)
@@ -104,6 +114,7 @@ def test_network_results_use_complete_original_candidate(recognizer_class, entit
         (UrlRecognizer, "URL", "http://app.internal.local/path"),
         (UrlRecognizer, "URL", "https://example.com.invalid/path"),
         (UrlRecognizer, "URL", "user@example.com"),
+        (UrlRecognizer, "URL", "https://example.org:abc/path"),
         (IpRecognizer, "IP_ADDRESS", "2001:db8::1g"),
         (IpRecognizer, "IP_ADDRESS", "192.168.1.999"),
         (IpRecognizer, "IP_ADDRESS", "x192.168.1.1"),
@@ -113,8 +124,61 @@ def test_network_results_use_complete_original_candidate(recognizer_class, entit
     ],
 )
 def test_network_rejects_invalid_longer_candidate(recognizer_class, entity, text):
-    recognizer = recognizer_factories.get(recognizer_class)()
+    recognizer = recognizer_factories.get(recognizer_class, recognizer_class)()
     assert recognizer.analyze(text, [entity]) == []
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text", "expected"),
+    [
+        (
+            CreditCardRecognizer,
+            "CREDIT_CARD",
+            "é 4111111111111111 5555555555554444",
+            [(2, 18, "4111111111111111"), (19, 35, "5555555555554444")],
+        ),
+        (
+            IpRecognizer,
+            "IP_ADDRESS",
+            "é 192.168.1.1 2001:db8::1",
+            [(2, 13, "192.168.1.1"), (14, 25, "2001:db8::1")],
+        ),
+        (
+            UrlRecognizer,
+            "URL",
+            "https://example.com/x https://example.org/y",
+            [(0, 21, "https://example.com/x"), (22, 43, "https://example.org/y")],
+        ),
+    ],
+)
+def test_multiple_candidates_have_exact_independent_spans(recognizer_class, entity, text, expected):
+    recognizer = recognizer_factories.get(recognizer_class, recognizer_class)()
+    results = recognizer.analyze(text, [entity])
+    assert [(result.start, result.end, text[result.start : result.end]) for result in results] == expected
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text"),
+    [
+        (CreditCardRecognizer, "CREDIT_CARD", "4" * 10000),
+        (IpRecognizer, "IP_ADDRESS", "f:" * 5000),
+        (UrlRecognizer, "URL", "https://example.com/" + "a" * 5000),
+    ],
+)
+def test_pathological_candidate_runs_are_bounded(recognizer_class, entity, text):
+    recognizer = recognizer_factories.get(recognizer_class, recognizer_class)()
+    assert recognizer.analyze(text, [entity]) == []
+
+
+def test_legacy_analyzer_uses_complete_candidate_spans():
+    analyzer = build_analyzer_engine()
+    text = "Card 4111-1111-1111-1111, https://example.company/a and 2001:db8::1"
+    results = analyzer.analyze(text, language="en", entities=["CREDIT_CARD", "URL", "IP_ADDRESS"])
+    assert {(result.entity_type, text[result.start : result.end]) for result in results} == {
+        ("CREDIT_CARD", "4111-1111-1111-1111"),
+        ("URL", "https://example.company/a"),
+        ("IP_ADDRESS", "2001:db8::1"),
+    }
 
 
 def test_analyzer_supports_all_expected_pii_entities():

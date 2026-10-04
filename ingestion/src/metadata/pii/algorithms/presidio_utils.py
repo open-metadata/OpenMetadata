@@ -21,6 +21,7 @@ from collections.abc import Callable, Iterable
 from functools import cache, wraps
 from itertools import groupby
 from typing import ClassVar, cast
+from urllib.parse import urlsplit
 
 import spacy
 from dateutil import parser
@@ -39,11 +40,15 @@ from presidio_analyzer.predefined_recognizers import (
     CreditCardRecognizer,
     DateRecognizer,
     InAadhaarRecognizer,
-    IpRecognizer,
     NhsRecognizer,
-    UrlRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
+)
+from presidio_analyzer.predefined_recognizers import (
+    IpRecognizer as PresidioIpRecognizer,
+)
+from presidio_analyzer.predefined_recognizers import (
+    UrlRecognizer as PresidioUrlRecognizer,
 )
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
@@ -188,20 +193,33 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
         results: list[RecognizerResult] = []
         for match in re.finditer(r"\d[\d -]*\d|\d", text):
             start, end = match.span()
-            if (start and (text[start - 1].isalnum() or text[start - 1] == "-")) or (
-                end < len(text) and (text[end].isalnum() or text[end] == "-")
+            if (start and (text[start - 1].isalnum() or text[start - 1] in "_-")) or (
+                end < len(text)
+                and (
+                    text[end].isalnum() or text[end] in "_-" or (text[end] == "." and text[end + 1 : end + 2].isdigit())
+                )
             ):
                 continue
             candidate = match.group()
-            if len(candidate) > 37:
+            if len(candidate) > 2048:
                 continue
-            normalized = self.sanitize_value(candidate, self.replacement_pairs)
-            if not 12 <= len(normalized) <= 19 or not re.fullmatch(r"\d+(?:[ -]\d+)*", candidate):
-                continue
-            for result in super().analyze(normalized, entities, nlp_artifacts, regex_flags):
-                if result.start == 0 and result.end == len(normalized):
-                    result.start, result.end = start, end
-                    results.append(result)
+            spans = [(start, end)]
+            if len(self.sanitize_value(candidate, self.replacement_pairs)) > 19:
+                parts = list(re.finditer(r"\S+", candidate))
+                if len(parts) < 2 or any(
+                    not 12 <= len(self.sanitize_value(part.group(), self.replacement_pairs)) <= 19 for part in parts
+                ):
+                    continue
+                spans = [(start + part.start(), start + part.end()) for part in parts]
+            for candidate_start, candidate_end in spans:
+                original = text[candidate_start:candidate_end]
+                normalized = self.sanitize_value(original, self.replacement_pairs)
+                if not 12 <= len(normalized) <= 19 or not re.fullmatch(r"\d+(?:[ -]\d+)*", original):
+                    continue
+                for result in super().analyze(normalized, entities, nlp_artifacts, regex_flags):
+                    if result.start == 0 and result.end == len(normalized):
+                        result.start, result.end = candidate_start, candidate_end
+                        results.append(result)
         return results
 
 
@@ -220,7 +238,7 @@ def credit_card_factory(
     )
 
 
-class CompleteUrlRecognizer(UrlRecognizer):
+class UrlRecognizer(PresidioUrlRecognizer):
     def analyze(
         self,
         text: str,
@@ -250,13 +268,24 @@ class CompleteUrlRecognizer(UrlRecognizer):
             candidate = text[start:end]
             if len(candidate) > 2048 or depth or not candidate:
                 continue
-            scheme_end = candidate.find("://") + 3 if "://" in candidate else 0
-            host_end_match = re.search(r"[/?#]", candidate[scheme_end:])
-            host_end = scheme_end + (host_end_match.start() if host_end_match else len(candidate) - scheme_end)
-            if not any(
-                result.start == 0 and result.end >= host_end
-                for result in super().analyze(candidate, entities, nlp_artifacts, regex_flags)
+            try:
+                has_scheme = candidate.startswith(("http://", "https://"))
+                parsed = urlsplit(candidate if has_scheme else f"//{candidate}")
+                if not parsed.path and not parsed.query and candidate[-1] in "!;":
+                    end -= 1
+                    candidate = text[start:end]
+                    parsed = urlsplit(candidate if has_scheme else f"//{candidate}")
+                host = parsed.hostname
+                port = parsed.port
+            except ValueError:
+                continue
+            if (
+                parsed.scheme not in ("", "http", "https")
+                or not host
+                or not re.fullmatch(self.BASE_URL_REGEX, host, flags=re.IGNORECASE)
             ):
+                continue
+            if port is not None and not 1 <= port <= 65535:
                 continue
             if (start, end) not in seen:
                 match.start, match.end = start, end
@@ -266,18 +295,18 @@ class CompleteUrlRecognizer(UrlRecognizer):
 
 
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
-    UrlRecognizer
+    PresidioUrlRecognizer
 )
-def url_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None) -> CompleteUrlRecognizer:
-    return CompleteUrlRecognizer(supported_language=supported_language, context=context)
+def url_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None) -> UrlRecognizer:
+    return UrlRecognizer(supported_language=supported_language, context=context)
 
 
-class CompleteIpRecognizer(IpRecognizer):
+class IpRecognizer(PresidioIpRecognizer):
     def __init__(self, *, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None):
         super().__init__(
             patterns=[
                 Pattern("IPv4", r"^[0-9.]+$", 0.6),
-                Pattern("IPv6", r"^(?!::$)[0-9a-fA-F:]+(?:%[a-zA-Z0-9]+)?$", 0.6),
+                Pattern("IPv6", r"^(?!::$)[0-9a-fA-F:.]+(?:%[a-zA-Z0-9]+)?$", 0.6),
                 Pattern("IPv6", r"^::$", 0.1),
             ],
             supported_language=supported_language,
@@ -311,10 +340,10 @@ class CompleteIpRecognizer(IpRecognizer):
 
 
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
-    IpRecognizer
+    PresidioIpRecognizer
 )
-def ip_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None) -> CompleteIpRecognizer:
-    return CompleteIpRecognizer(supported_language=supported_language, context=context)
+def ip_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None) -> IpRecognizer:
+    return IpRecognizer(supported_language=supported_language, context=context)
 
 
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]

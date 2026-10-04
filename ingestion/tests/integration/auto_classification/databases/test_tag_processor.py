@@ -137,6 +137,9 @@ def test_it_returns_the_expected_classifications(
         timestamp_column,
         user_name_column,
         version_column,
+        card_note_column,
+        service_url_column,
+        session_ip_column,
     ) = metadata.get_table_columns(
         f"{db_service.fullyQualifiedName.root}.test_db.public.example_table",
         fields=["tags"],
@@ -194,3 +197,24 @@ def test_it_returns_the_expected_classifications(
     # type or semantics (#29083); date_time_patcher now drops them because a bare year names no
     # month or day.
     assert academic_year_code_column.tags == []
+    assert card_note_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `SanitizedCreditCardRecognizer`", "Patterns matched:"),
+        ),
+    ]
+    assert service_url_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.NonSensitive"),
+            reason=Contains("Detected by `UrlRecognizer`", "Patterns matched:"),
+        ),
+    ]
+    assert session_ip_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `IpRecognizer`", "Patterns matched:"),
+        ),
+    ]
