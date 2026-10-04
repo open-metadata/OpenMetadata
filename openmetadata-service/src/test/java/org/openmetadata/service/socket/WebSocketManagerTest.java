@@ -187,7 +187,8 @@ class WebSocketManagerTest {
 
     verify(socket, times(1)).send(WebSocketManager.CSV_IMPORT_CHANNEL, "payload");
     assertEquals(1, relay.count);
-    assertEquals(userId, relay.lastUser);
+    assertEquals(WebSocketRelay.SCOPE_USER, relay.lastScope);
+    assertEquals(userId.toString(), relay.lastTarget);
     assertEquals(WebSocketManager.CSV_IMPORT_CHANNEL, relay.lastEvent);
     assertEquals("payload", relay.lastMessage);
   }
@@ -202,7 +203,49 @@ class WebSocketManagerTest {
 
     // No local socket: the peer pod holding it must still be reached via the relay.
     assertEquals(1, relay.count);
-    assertEquals(userId, relay.lastUser);
+    assertEquals(WebSocketRelay.SCOPE_USER, relay.lastScope);
+    assertEquals(userId.toString(), relay.lastTarget);
+  }
+
+  @Test
+  void deliverRelayedFrame_userScopeDeliversToThatUserLocally() {
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket socket = mock(SocketIoSocket.class);
+    when(socket.getId()).thenReturn("s1");
+    Map<String, SocketIoSocket> sockets = new ConcurrentHashMap<>();
+    sockets.put("s1", socket);
+    manager.getActivityFeedEndpoints().put(userId, sockets);
+    CapturingRelay relay = new CapturingRelay();
+    manager.setRelay(relay);
+
+    manager.deliverRelayedFrame(
+        WebSocketRelay.SCOPE_USER, userId.toString(), WebSocketManager.CSV_IMPORT_CHANNEL, "p");
+
+    verify(socket, times(1)).send(WebSocketManager.CSV_IMPORT_CHANNEL, "p");
+    // A received frame is delivered locally only — never re-published.
+    assertEquals(0, relay.count);
+  }
+
+  @Test
+  void deliverRelayedFrame_allScopeBroadcastsToEveryLocalSocket() {
+    UUID userA = UUID.randomUUID();
+    UUID userB = UUID.randomUUID();
+    SocketIoSocket socketA = mock(SocketIoSocket.class);
+    SocketIoSocket socketB = mock(SocketIoSocket.class);
+    when(socketA.getId()).thenReturn("a");
+    when(socketB.getId()).thenReturn("b");
+    Map<String, SocketIoSocket> sa = new ConcurrentHashMap<>();
+    sa.put("a", socketA);
+    Map<String, SocketIoSocket> sb = new ConcurrentHashMap<>();
+    sb.put("b", socketB);
+    manager.getActivityFeedEndpoints().put(userA, sa);
+    manager.getActivityFeedEndpoints().put(userB, sb);
+
+    manager.deliverRelayedFrame(
+        WebSocketRelay.SCOPE_ALL, null, WebSocketManager.ANNOUNCEMENT_CHANNEL, "all");
+
+    verify(socketA, times(1)).send(WebSocketManager.ANNOUNCEMENT_CHANNEL, "all");
+    verify(socketB, times(1)).send(WebSocketManager.ANNOUNCEMENT_CHANNEL, "all");
   }
 
   @Test
@@ -231,14 +274,16 @@ class WebSocketManagerTest {
 
   private static final class CapturingRelay implements WebSocketRelay {
     private int count;
-    private UUID lastUser;
+    private String lastScope;
+    private String lastTarget;
     private String lastEvent;
     private String lastMessage;
 
     @Override
-    public void publish(UUID userId, String event, String message) {
+    public void publish(String scope, String target, String event, String message) {
       count++;
-      lastUser = userId;
+      lastScope = scope;
+      lastTarget = target;
       lastEvent = event;
       lastMessage = message;
     }

@@ -417,12 +417,17 @@ CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
 CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
     ON sso_test_login_session (expires_at);
 
--- Cross-pod WebSocket relay (DB fallback when no Redis). A pod that produces a frame for a user
--- whose socket lives on another pod inserts it here; every pod polls rows newer than its cursor and
+-- Cross-pod WebSocket relay (DB fallback when no Redis). A pod that produces a frame whose target
+-- socket may live on another pod inserts it here; every pod polls rows newer than its cursor and
 -- delivers to its own local sockets. Rows are transient and expire by expiresAt.
+-- Generic by design so one table serves every WebSocketManager delivery pattern:
+--   scope='USER' + target=<userId>  -> sendToOne (targeted)
+--   scope='ALL'  + target=NULL      -> broadCastMessageToAll (every connected user)
+-- and leaves room for future scopes (e.g. 'TEAM', 'ROLE') with target = that id, no new migration.
 CREATE TABLE IF NOT EXISTS ws_relay_message (
   id BIGSERIAL PRIMARY KEY,
-  userId VARCHAR(36) NOT NULL,
+  scope VARCHAR(16) NOT NULL,
+  target VARCHAR(256) NULL,
   event VARCHAR(256) NOT NULL,
   payload TEXT NOT NULL,
   senderPod VARCHAR(256) NOT NULL,

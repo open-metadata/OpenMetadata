@@ -12,17 +12,15 @@
  */
 package org.openmetadata.service.socket;
 
-import java.util.UUID;
-
 /**
  * Default relay for single-pod deployments (and any deployment without a cross-pod transport
- * configured). Publishing is a no-op, so {@link WebSocketManager#sendToOne} delivers only to local
- * sockets — the pre-relay behavior, which is correct when every socket is on this one pod.
+ * configured). Publishing is a no-op, so {@link WebSocketManager} delivers only to local sockets —
+ * the pre-relay behavior, which is correct when every socket is on this one pod.
  */
 public class NoopWebSocketRelay implements WebSocketRelay {
 
   @Override
-  public void publish(UUID userId, String event, String message) {
-    // Single-pod: the local send in WebSocketManager.sendToOne already reaches every socket.
+  public void publish(String scope, String target, String event, String message) {
+    // Single-pod: the local send in WebSocketManager already reaches every socket.
   }
 }
