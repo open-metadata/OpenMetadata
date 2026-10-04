@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '../../fixtures/pages';
 import { UserClass } from '../../../support/user/UserClass';
+import { performAdminLogin } from '../../../utils/admin';
 import {
   navigateToMembersPanel,
   openOnlineUsersPanel,
 } from '../../../utils/aiProfile';
-import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
+import { expect, test } from '../../fixtures/pages';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 // Ports e2e/Features/OnlineUsers.spec.ts onto the AI-mode Online Users panel.
@@ -53,9 +53,10 @@ test.describe('AI Profile Online Users', () => {
     await navigateToMembersPanel(page);
     await openOnlineUsersPanel(page);
 
-    const filtered = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/users/online') &&
-      response.url().includes('timeWindow=60')
+    const filtered = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/online') &&
+        response.url().includes('timeWindow=60')
     );
     await page.getByTestId('time-window-select').click();
     await page.getByRole('option', { name: 'Last hour' }).click();

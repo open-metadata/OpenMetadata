@@ -12,11 +12,11 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
-import { expect, test } from '../../fixtures/pages';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
+import { performAdminLogin } from '../../../utils/admin';
 import {
   addUserToTeam,
   navigateToMembersPanel,
@@ -26,8 +26,8 @@ import {
   openTeamTab,
   waitForTeamPatch,
 } from '../../../utils/aiProfile';
-import { performAdminLogin } from '../../../utils/admin';
 import { uuid } from '../../../utils/common';
+import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of e2e/Pages/Teams.spec.ts onto the AI-mode team
 // detail (MembersTeamDetail), using core-ui selectors. Deferred (not ported):
@@ -181,7 +181,10 @@ test.describe('AI Profile Team Detail', () => {
     await openCreatedTeam(page, team);
 
     await page.getByTestId('edit-email').click();
-    await page.getByTestId('email-input').getByRole('textbox').fill(`team-${uuid()}@example.com`);
+    await page
+      .getByTestId('email-input')
+      .getByRole('textbox')
+      .fill(`team-${uuid()}@example.com`);
 
     const patch = waitForTeamPatch(page, team.responseData.id ?? '');
     await page.getByTestId('save-email').click();
@@ -204,7 +207,10 @@ test.describe('AI Profile Team Detail', () => {
     await patch;
   });
 
-  test('Should add and remove a user from the team', async ({ browser, page }) => {
+  test('Should add and remove a user from the team', async ({
+    browser,
+    page,
+  }) => {
     const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
@@ -229,9 +235,7 @@ test.describe('AI Profile Team Detail', () => {
         response.url().includes(`/api/v1/teams/${team.responseData.id}`) &&
         ['PATCH', 'DELETE'].includes(response.request().method())
     );
-    await page
-      .getByTestId(`remove-user-${member.responseData.name}`)
-      .click();
+    await page.getByTestId(`remove-user-${member.responseData.name}`).click();
     await page.getByTestId('delete-modal').waitFor();
     await page.getByTestId('confirm-button').click();
     await removeResponse;
@@ -241,7 +245,10 @@ test.describe('AI Profile Team Detail', () => {
     ).toBeHidden();
   });
 
-  test('Should render and update the team user count', async ({ browser, page }) => {
+  test('Should render and update the team user count', async ({
+    browser,
+    page,
+  }) => {
     const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext, {
       users: [member.responseData.id].filter(Boolean) as string[],
@@ -255,15 +262,19 @@ test.describe('AI Profile Team Detail', () => {
     await navigateToMembersPanel(page);
     await openOrganizationTeams(page);
 
-    const deletedFetch = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/teams?') &&
-      response.url().includes('include=deleted')
+    const deletedFetch = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/teams?') &&
+        response.url().includes('include=deleted')
     );
     await page.getByTestId('show-deleted-teams').click();
     await deletedFetch;
   });
 
-  test('Should add and remove a role on the team', async ({ browser, page }) => {
+  test('Should add and remove a role on the team', async ({
+    browser,
+    page,
+  }) => {
     const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
@@ -276,7 +287,10 @@ test.describe('AI Profile Team Detail', () => {
     await page.getByTestId('add-role').click();
     await rolesList;
 
-    await page.getByTestId('add-role-select').getByRole('combobox').fill(roleName);
+    await page
+      .getByTestId('add-role-select')
+      .getByRole('combobox')
+      .fill(roleName);
     await page.getByRole('option', { name: roleName }).click();
     // Close the autocomplete dropdown so it doesn't intercept the Save click.
     await page.keyboard.press('Escape');
@@ -299,7 +313,10 @@ test.describe('AI Profile Team Detail', () => {
     await expect(roleButton).toBeHidden();
   });
 
-  test('Should add and remove a policy on the team', async ({ browser, page }) => {
+  test('Should add and remove a policy on the team', async ({
+    browser,
+    page,
+  }) => {
     const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
     await openCreatedTeam(page, team);
@@ -418,9 +435,10 @@ test.describe('AI Profile Team Detail', () => {
     // Re-open with deleted teams shown, restore it.
     await navigateToMembersPanel(page);
     await openOrganizationTeams(page);
-    const deletedFetch = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/teams?') &&
-      response.url().includes('include=deleted')
+    const deletedFetch = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/teams?') &&
+        response.url().includes('include=deleted')
     );
     await page.getByTestId('show-deleted-teams').click();
     await deletedFetch;
@@ -475,18 +493,18 @@ test.describe('AI Profile Team Detail', () => {
 
     const csv =
       'name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n' +
-      `PW%imp-${uuid()},Imported Team,desc,Group,${team.responseData.name},,true,,`;
+      `PW%imp-${uuid()},Imported Team,desc,Group,${
+        team.responseData.name
+      },,true,,`;
 
     const previewResponse = page.waitForResponse((response) =>
       response.url().includes('/import')
     );
-    await page
-      .getByTestId('members-import-input')
-      .setInputFiles({
-        name: 'teams.csv',
-        mimeType: 'text/csv',
-        buffer: Buffer.from(csv),
-      });
+    await page.getByTestId('members-import-input').setInputFiles({
+      name: 'teams.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from(csv),
+    });
     await page.getByTestId('next-preview').click();
     await previewResponse;
 

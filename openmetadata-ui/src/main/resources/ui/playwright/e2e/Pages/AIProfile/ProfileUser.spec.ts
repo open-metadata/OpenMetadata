@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '../../fixtures/pages';
 import { Domain } from '../../../support/domain/Domain';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
+import { performAdminLogin } from '../../../utils/admin';
 import {
   navigateToMembersPanel,
   openAdminsPanel,
@@ -22,8 +22,8 @@ import {
   openUsersPanel,
   searchUserRow,
 } from '../../../utils/aiProfile';
-import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
+import { expect, test } from '../../fixtures/pages';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 // Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
@@ -133,7 +133,10 @@ test.describe('AI Profile Users', () => {
     await navigateToMembersPanel(page);
     await openUsersPanel(page);
     await page.getByTestId('add-user').click();
-    await page.getByTestId('email').getByRole('textbox').fill(existing.data.email);
+    await page
+      .getByTestId('email')
+      .getByRole('textbox')
+      .fill(existing.data.email);
 
     const createResponse = page.waitForResponse(
       (response) =>
@@ -196,9 +199,10 @@ test.describe('AI Profile Users', () => {
     await openUsersPanel(page);
     await searchUserRow(page, userName);
 
-    const softDelete = page.waitForResponse((response) =>
-      response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
-      response.url().includes('hardDelete=false')
+    const softDelete = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
+        response.url().includes('hardDelete=false')
     );
     await page.getByTestId(`delete-user-btn-${userName}`).click();
     await page.getByTestId('delete-modal').waitFor();
@@ -230,9 +234,10 @@ test.describe('AI Profile Users', () => {
     await openUsersPanel(page);
     await searchUserRow(page, userName);
 
-    const hardDelete = page.waitForResponse((response) =>
-      response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
-      response.url().includes('hardDelete=true')
+    const hardDelete = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
+        response.url().includes('hardDelete=true')
     );
     await page.getByTestId(`delete-user-btn-${userName}`).click();
     await page.getByTestId('delete-modal').waitFor();
@@ -241,7 +246,10 @@ test.describe('AI Profile Users', () => {
     await hardDelete;
   });
 
-  test('Should edit the preferred name on a user profile', async ({ browser, page }) => {
+  test('Should edit the preferred name on a user profile', async ({
+    browser,
+    page,
+  }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
@@ -287,7 +295,10 @@ test.describe('AI Profile Users', () => {
     );
   });
 
-  test('Should assign a domain on a user profile', async ({ browser, page }) => {
+  test('Should assign a domain on a user profile', async ({
+    browser,
+    page,
+  }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 

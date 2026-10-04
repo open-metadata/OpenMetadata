@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '../../fixtures/pages';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
+import { performAdminLogin } from '../../../utils/admin';
 import {
   clickMembersBreadcrumb,
   navigateToMembersPanel,
@@ -27,8 +27,8 @@ import {
   openUsersPanel,
   searchUserRow,
 } from '../../../utils/aiProfile';
-import { performAdminLogin } from '../../../utils/admin';
 import { uuid } from '../../../utils/common';
+import { expect, test } from '../../fixtures/pages';
 
 test.describe('AI Profile Members - navigation & basics', () => {
   test.beforeAll(async ({ browser }) => {

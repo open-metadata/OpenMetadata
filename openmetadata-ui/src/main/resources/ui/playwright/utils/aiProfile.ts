@@ -12,8 +12,8 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import { TeamClass } from '../support/team/TeamClass';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
+import { TeamClass } from '../support/team/TeamClass';
 import { redirectToHomePage } from './common';
 
 /**
@@ -204,7 +204,9 @@ export const openUserProfile = async (
   const userCell = await searchUserRow(page, userName);
 
   const profileResponse = page.waitForResponse((response) =>
-    response.url().includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
+    response
+      .url()
+      .includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
   );
   await userCell.click();
   await profileResponse;
