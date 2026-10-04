@@ -570,7 +570,7 @@ const TeamsPage = () => {
     if (hasViewPermission) {
       fetchTeamBasicDetails(fqn, true).then(loadAdvancedDetails);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run only on view/fqn change; the fetchers are stable triggers, not reactive inputs
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable fetchers, not reactive inputs
   }, [hasViewPermission, fqn]);
 
   useEffect(() => {
@@ -583,7 +583,7 @@ const TeamsPage = () => {
     if (hasViewPermission && fqn) {
       fetchAllTeamsBasicDetails(fqn);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when the deleted toggle flips; fqn/permission changes are handled by the fetch-on-navigation effect above
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on deleted-toggle only; nav handled above
   }, [showDeletedTeam]);
 
   useEffect(() => {
@@ -594,7 +594,7 @@ const TeamsPage = () => {
     if (advancedFetchNonce > 0 && fqnRef.current) {
       fetchAllTeamsAdvancedDetails(false, fqnRef.current);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire only on the nonce; fetchAllTeamsAdvancedDetails reads the latest fqn via fqnRef
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire on nonce only; latest fqn read via fqnRef
   }, [advancedFetchNonce]);
 
   if (isPageLoading) {
