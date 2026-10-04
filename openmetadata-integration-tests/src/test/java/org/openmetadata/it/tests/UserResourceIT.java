@@ -720,6 +720,19 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         terms.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
         "a term whose own domain is outside the selection must not be listed");
+
+    // The glossary page lists a glossary's terms by its FQN (directChildrenOf), not by id.
+    ListParams byFqn = new ListParams();
+    byFqn.setLimit(100);
+    byFqn.addQueryParam("directChildrenOf", glossary.getFullyQualifiedName());
+    ListResponse<GlossaryTerm> children =
+        SdkClients.createClient(email, email, new String[] {}).glossaryTerms().list(byFqn);
+    assertTrue(
+        children.getData().stream().anyMatch(t -> t.getId().equals(term.getId())),
+        "directChildrenOf must list the term inheriting the selected domain");
+    assertTrue(
+        children.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
+        "directChildrenOf must not list a term whose own domain is outside the selection");
   }
 
   @Test
