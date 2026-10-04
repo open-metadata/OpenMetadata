@@ -3721,6 +3721,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts",
         "playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
@@ -4241,6 +4242,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/isolatedDomainUser.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts"
@@ -11168,6 +11170,7 @@
         "playwright/e2e/Features/TableSearch.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
+        "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
         "playwright/e2e/Features/Tasks/TaskContainerEntity.spec.ts",
         "playwright/e2e/Features/Tasks/TaskEntityResolution.spec.ts",
