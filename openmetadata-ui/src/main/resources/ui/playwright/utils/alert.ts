@@ -193,7 +193,9 @@ export const findPageWithAlert = async (
   // pagination past the alert, and because the walk is forward-only and returns
   // silently, the caller's click then waited out the whole test budget on a row
   // sitting on an earlier page. Wait for the body to paint before sampling.
-  await expect(page.locator('[data-row-key]').first()).toBeVisible();
+  await expect(
+    page.locator('[data-row-key]').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   // Support both core-ui Table (id attr) and legacy Ant Design Table (data-row-key)
   const alertRow = page.locator(`[id="${id}"], [data-row-key="${id}"]`);

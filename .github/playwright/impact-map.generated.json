@@ -4788,6 +4788,8 @@
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts"
       ]
     },
