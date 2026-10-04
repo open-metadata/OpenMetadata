@@ -30,6 +30,7 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v200.MigrationUtil.TaskWorkflow;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
@@ -47,6 +48,8 @@ public class Migration extends MigrationProcessImpl {
     refreshConversationNotificationTemplates();
     addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
     alignHybridSearchWeightsWithDefaults();
+    initializeWorkflowHandler();
+    new TaskWorkflow(handle).migrateRemainingThreadTasks();
     new MigrationUtil(handle, MYSQL).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, MYSQL);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
