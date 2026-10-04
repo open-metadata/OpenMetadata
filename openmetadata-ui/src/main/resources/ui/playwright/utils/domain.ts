@@ -1414,11 +1414,32 @@ export const setPersistedDomain = async (
   });
 };
 
+/**
+ * Runs a navbar domain pick and waits for it to settle: the pick is saved on the user, then the
+ * page reloads. Interacting before the reload races it (e.g. a second pick lands first).
+ */
+export const switchNavbarDomain = async (
+  page: Page,
+  pick: () => Promise<void>
+) => {
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      /\/api\/v1\/users\/[^/]+$/.test(new URL(response.url()).pathname)
+  );
+  const reloaded = page.waitForEvent('load');
+  await pick();
+  await saved;
+  await reloaded;
+  await waitForAllLoadersToDisappear(page);
+};
+
 /** Clears the navbar selection through the UI ("All Domains"), which also clears the persisted pick. */
 export const clearDomainFromNavbar = async (page: Page) => {
-  await page.getByTestId('domain-dropdown').click();
-  await page.getByTestId('tree-node-All Domains').click();
-  await waitForAllLoadersToDisappear(page);
+  await switchNavbarDomain(page, async () => {
+    await page.getByTestId('domain-dropdown').click();
+    await page.getByTestId('tree-node-All Domains').click();
+  });
 };
 
 /**
@@ -2225,8 +2246,9 @@ export const selectDomainFromNavbar = async (
   await page.keyboard.press('Control+a');
   await domainSearch.pressSequentially(searchTerm);
 
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
-  await waitForAllLoadersToDisappear(page);
+  await switchNavbarDomain(page, () =>
+    page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click()
+  );
 };
 
 /**

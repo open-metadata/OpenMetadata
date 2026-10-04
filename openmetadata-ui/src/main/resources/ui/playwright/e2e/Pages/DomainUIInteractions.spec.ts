@@ -24,8 +24,10 @@ import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../utils/common';
 import {
   checkAssetsCount,
+  clearDomainFromNavbar,
   selectDataProduct,
   selectDomain,
+  switchNavbarDomain,
 } from '../../utils/domain';
 import {
   fillDeleteConfirmationIfPresent,
@@ -754,10 +756,8 @@ test.describe('Domain Global Dropdown', () => {
       );
 
       if (await domainOption.isVisible()) {
-        await domainOption.click();
-
-        await page.getByTestId('domain-dropdown').click();
-        await page.getByTestId('tree-node-All Domains').click();
+        await switchNavbarDomain(page, () => domainOption.click());
+        await clearDomainFromNavbar(page);
 
         await expect(page.getByTestId('domain-dropdown')).toContainText(
           'All Domains'
