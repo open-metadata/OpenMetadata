@@ -307,15 +307,15 @@ const SearchSettingsPage = () => {
   };
 
   // Turning column indexing off deletes the column index, so it waits for a confirmation.
-  const handleColumnIndexingChange = (enabled: boolean) => {
-    if (enabled) {
-      handleUpdateSearchConfig({
-        enabled,
+  const handleColumnIndexingToggle = () => {
+    if (isColumnIndexingEnabled(searchConfig)) {
+      setShowDisableColumnIndexingModal(true);
+    } else {
+      void handleUpdateSearchConfig({
+        enabled: true,
         field: 'enableColumnIndexing',
         successMessage: t('message.column-indexing-enabled-reindex'),
       });
-    } else {
-      setShowDisableColumnIndexingModal(true);
     }
   };
 
@@ -592,7 +592,7 @@ const SearchSettingsPage = () => {
                 data-testid="enable-column-indexing-switch"
                 isDisabled={isUpdating}
                 isSelected={isColumnIndexingEnabled(searchConfig)}
-                onChange={handleColumnIndexingChange}
+                onChange={handleColumnIndexingToggle}
               />
             </Col>
             {globalSettings.map(({ key, label, max, min }) => (
