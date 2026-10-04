@@ -139,4 +139,14 @@ class DomainNavFilterTest {
     assertEquals("'22222222-2222-2222-2222-222222222222'", filter.getQueryParams().get("domainId"));
     assertNull(filter.getQueryParams().get("domainAccessControl"));
   }
+
+  @Test
+  void apply_doesNotStampEntityType() {
+    // entityType is a list param with resource-specific meaning (e.g. the type of the entity a
+    // list is "about"); the domain condition doesn't need it, so the filter must not add it.
+    ListFilter filter = new ListFilter();
+    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha");
+    assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
+    assertNull(filter.getQueryParams().get("entityType"));
+  }
 }

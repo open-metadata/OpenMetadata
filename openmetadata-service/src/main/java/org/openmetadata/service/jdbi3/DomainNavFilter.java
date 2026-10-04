@@ -110,21 +110,17 @@ public final class DomainNavFilter {
     }
     if (shouldApply(
         entityType, supportsDomains, hasExplicitDomain && !echoesSelection, selectedDomainIds)) {
-      stamp(filter, entityType, selectedDomainIds, selectedDomainFqnHash);
+      stamp(filter, selectedDomainIds, selectedDomainFqnHash);
       if (parent == ParentScope.IN_SELECTION) {
         filter.addQueryParam("domainAccessControl", Boolean.TRUE.toString());
       }
     }
   }
 
-  private static void stamp(
-      ListFilter filter, String entityType, String domainIds, String domainFqnHash) {
+  private static void stamp(ListFilter filter, String domainIds, String domainFqnHash) {
     filter.addQueryParam("domainId", domainIds);
     if (!nullOrEmpty(domainFqnHash)) {
       filter.addQueryParam("domainFqnHash", domainFqnHash);
-    }
-    if (filter.getQueryParams().get("entityType") == null) {
-      filter.addQueryParam("entityType", entityType);
     }
   }
 }
