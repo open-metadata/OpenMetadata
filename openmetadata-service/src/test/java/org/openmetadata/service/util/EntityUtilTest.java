@@ -907,6 +907,8 @@ class EntityUtilTest {
             org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
         MockedStatic<Entity> entity =
             org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      // Other test classes leave a SearchRepository set statically; pin the no-search fallback.
+      entity.when(Entity::getSearchRepository).thenReturn(null);
       // Unit tests register no repositories; stand in for the intrinsic supportsDomains lookup.
       entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
       entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
@@ -1050,6 +1052,8 @@ class EntityUtilTest {
             org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
         MockedStatic<Entity> entity =
             org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      // Other test classes leave a SearchRepository set statically; pin the no-search fallback.
+      entity.when(Entity::getSearchRepository).thenReturn(null);
       entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
       entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
       entity
@@ -1088,6 +1092,8 @@ class EntityUtilTest {
             org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
         MockedStatic<Entity> entity =
             org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      // Other test classes leave a SearchRepository set statically; pin the no-search fallback.
+      entity.when(Entity::getSearchRepository).thenReturn(null);
       entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
       entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
       entity
@@ -1134,6 +1140,8 @@ class EntityUtilTest {
             org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
         MockedStatic<Entity> entity =
             org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      // Other test classes leave a SearchRepository set statically; pin the no-search fallback.
+      entity.when(Entity::getSearchRepository).thenReturn(null);
       entity.when(() -> Entity.hasEntityRepository("page")).thenReturn(true);
       entity.when(() -> Entity.getEntityRepository("page")).thenReturn(domainAwareRepository);
       entity
