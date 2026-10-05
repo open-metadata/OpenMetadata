@@ -57,6 +57,12 @@ export default [
     ],
   },
 
+  // A disable directive that suppresses nothing silently hides whatever is added
+  // under it later, so fail lint and make the fix that left it stale delete it too.
+  {
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+  },
+
   // Base config for JavaScript and TypeScript files
   {
     files: ['src/**/*.{js,jsx,ts,tsx}'],
