@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   EXTENSION_POINTS,
@@ -45,6 +46,7 @@ import {
   findNotificationMenuItem,
   getNotificationMenuItems,
   hashSubPathToView,
+  isNotificationMenuItemVisible,
   splitSectionPath,
   viewToSubPath,
 } from './Notification.utils';
@@ -62,6 +64,7 @@ interface NotificationPanelProps {
 const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
   const { extensionRegistry, contributionsVersion } = useApplicationsProvider();
   const { state: hashState, setHash } = useSettingsHash();
 
@@ -173,12 +176,15 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       (item: NotificationSectionContribution) => item.key === viewSectionKey
     );
     const menuItem = findNotificationMenuItem(
-      getNotificationMenuItems(permissions),
+      getNotificationMenuItems(permissions, Boolean(isAdminUser)),
       viewSectionKey
     );
+    // Same rule as the landing cards, so a hidden card cannot be reached by URL.
+    const isAllowed = isNotificationMenuItemVisible(menuItem);
 
     return {
-      Component: contribution?.component,
+      Component: isAllowed ? contribution?.component : undefined,
+      isDenied: Boolean(contribution) && !isAllowed,
       label: menuItem?.category ?? menuItem?.label ?? viewSectionKey,
       description: menuItem?.description,
       // Same resolution as the landing card, so header and card match.
@@ -186,15 +192,31 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
         | NotificationIcon
         | undefined,
     };
-  }, [viewSectionKey, sectionContributions, permissions]);
+  }, [viewSectionKey, sectionContributions, permissions, isAdminUser]);
 
   const sectionContent = useMemo(() => {
     const SectionComponent = section?.Component;
 
+    // Until permissions load every gated item looks hidden; wait rather than
+    // flash Access Denied on a deep link.
+    if (!SectionComponent && isEmpty(permissions)) {
+      return <Loader />;
+    }
+
     if (!SectionComponent) {
       return (
         <Box className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder title={t('label.no-data')} variant="blank" />
+          <EmptyPlaceholder
+            icon={
+              section?.isDenied ? (
+                <Lock className="tw:text-secondary" />
+              ) : undefined
+            }
+            title={t(
+              section?.isDenied ? 'label.access-denied' : 'label.no-data'
+            )}
+            variant="blank"
+          />
         </Box>
       );
     }
@@ -210,6 +232,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     );
   }, [
     section,
+    permissions,
     t,
     onNavigate,
     sectionSubPath,

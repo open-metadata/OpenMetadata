@@ -39,6 +39,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Bell01: jest.fn(() => <span data-testid="bell-icon" />),
+  Lightbulb05: jest.fn(() => <span />),
+  Lock01: jest.fn(() => <span data-testid="lock-icon" />),
 }));
 
 let mockSubPath = '';
@@ -83,13 +85,30 @@ jest.mock(
   })
 );
 
-const mockGetGlobalSettingsMenu = jest.fn().mockReturnValue([]);
+// Sections render only for a Notifications menu item the user may see.
+const VISIBLE_SECTIONS_MENU = [
+  {
+    key: 'notifications',
+    items: [
+      { key: 'notifications.weekly-emails', category: 'Weekly emails' },
+      { key: 'notifications.templates', category: 'Templates' },
+    ],
+  },
+];
+const mockGetGlobalSettingsMenu = jest.fn();
 
 jest.mock('../../../../../../utils/GlobalSettingsClassBase', () => ({
   __esModule: true,
   default: {
-    getGlobalSettingsMenuWithPermission: () => mockGetGlobalSettingsMenu(),
+    getGlobalSettingsMenuWithPermission: (...args: unknown[]) =>
+      mockGetGlobalSettingsMenu(...args),
   },
+}));
+
+let mockIsAdminUser = true;
+
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: mockIsAdminUser }),
 }));
 
 let capturedLandingProps: { onNavigate: (v: NotificationView) => void };
@@ -121,7 +140,8 @@ describe('NotificationPanel', () => {
     jest.clearAllMocks();
     mockSubPath = '';
     mockGetContributions.mockReturnValue([]);
-    mockGetGlobalSettingsMenu.mockReturnValue([]);
+    mockGetGlobalSettingsMenu.mockReturnValue(VISIBLE_SECTIONS_MENU);
+    mockIsAdminUser = true;
   });
 
   it('should render NotificationLanding by default', () => {
@@ -297,9 +317,69 @@ describe('NotificationPanel', () => {
 
     render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
 
+    expect(screen.getByText('label.no-data')).toBeInTheDocument();
     expect(
       screen.queryByTestId('weekly-emails-section')
     ).not.toBeInTheDocument();
+  });
+
+  it('should deny a deep-linked section whose menu item the user may not see', () => {
+    mockSubPath = 'section/weekly-emails';
+    mockGetGlobalSettingsMenu.mockReturnValue([
+      {
+        key: 'notifications',
+        items: [
+          {
+            key: 'notifications.weekly-emails',
+            category: 'Weekly emails',
+            isProtected: false,
+          },
+        ],
+      },
+    ]);
+    mockGetContributions.mockReturnValue([
+      {
+        key: 'weekly-emails',
+        component: () => <div data-testid="weekly-emails-section" />,
+      },
+    ]);
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('weekly-emails-section')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should deny a deep-linked section that has no menu item at all', () => {
+    mockSubPath = 'section/weekly-emails';
+    mockGetGlobalSettingsMenu.mockReturnValue([]);
+    mockGetContributions.mockReturnValue([
+      {
+        key: 'weekly-emails',
+        component: () => <div data-testid="weekly-emails-section" />,
+      },
+    ]);
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+  });
+
+  it('should build the settings menu with the real admin flag', () => {
+    mockIsAdminUser = false;
+    mockSubPath = 'section/weekly-emails';
+    mockGetContributions.mockReturnValue([
+      { key: 'weekly-emails', component: () => <div /> },
+    ]);
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    expect(mockGetGlobalSettingsMenu).toHaveBeenCalledWith(
+      expect.anything(),
+      false
+    );
   });
 
   it('should navigate to a section view from the landing', () => {

@@ -48,8 +48,15 @@ const mockGetGlobalSettingsMenu = jest.fn().mockReturnValue([]);
 jest.mock('../../../../../../utils/GlobalSettingsClassBase', () => ({
   __esModule: true,
   default: {
-    getGlobalSettingsMenuWithPermission: () => mockGetGlobalSettingsMenu(),
+    getGlobalSettingsMenuWithPermission: (...args: unknown[]) =>
+      mockGetGlobalSettingsMenu(...args),
   },
+}));
+
+let mockIsAdminUser = true;
+
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: mockIsAdminUser }),
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -97,6 +104,7 @@ describe('NotificationLanding', () => {
     jest.clearAllMocks();
     mockGetContributions.mockReturnValue([]);
     mockGetGlobalSettingsMenu.mockReturnValue([]);
+    mockIsAdminUser = true;
   });
 
   it('should render the notification landing card', () => {
@@ -273,5 +281,19 @@ describe('NotificationLanding', () => {
     expect(
       screen.queryByTestId('notification-card-weekly-emails')
     ).not.toBeInTheDocument();
+  });
+
+  it('builds the cards with the real admin flag, not a hardcoded true', () => {
+    mockIsAdminUser = false;
+    mockGetContributions.mockReturnValue([
+      { key: 'weekly-emails', component: () => <span /> },
+    ]);
+
+    render(<NotificationLanding onNavigate={mockOnNavigate} />);
+
+    expect(mockGetGlobalSettingsMenu).toHaveBeenCalledWith(
+      expect.anything(),
+      false
+    );
   });
 });

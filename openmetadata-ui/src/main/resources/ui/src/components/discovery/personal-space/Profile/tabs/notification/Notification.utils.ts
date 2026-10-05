@@ -34,16 +34,30 @@ export const toSectionKey = (menuKey: string): string =>
     ? menuKey.slice(NOTIFICATIONS_PREFIX.length)
     : menuKey;
 
-/** Items of the global-settings Notifications category the user may see. */
+/**
+ * Items of the global-settings Notifications category for this user. The real
+ * admin flag matters: the class base gates admin-only items on it via
+ * `isProtected`, so passing `true` would show them to everyone.
+ */
 export const getNotificationMenuItems = (
-  permissions: UIPermission
+  permissions: UIPermission,
+  isAdminUser: boolean
 ): SettingMenuItem[] =>
   globalSettingsClassBase
-    .getGlobalSettingsMenuWithPermission(permissions, true)
+    .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
     .find(
       (category: SettingMenuItem) =>
         category.key === GlobalSettingsMenuCategory.NOTIFICATIONS
     )?.items ?? [];
+
+/**
+ * Whether a contributed section may be shown: it needs a Notifications menu
+ * item the user is allowed to see. The landing cards and a deep-linked section
+ * use this one rule, so a hidden card cannot be reached by URL.
+ */
+export const isNotificationMenuItemVisible = (
+  item?: SettingMenuItem
+): item is SettingMenuItem => Boolean(item) && item?.isProtected !== false;
 
 /** The Notifications menu item for a section key, if any. */
 export const findNotificationMenuItem = (
@@ -69,7 +83,7 @@ export const buildSectionCards = (
     const key = toSectionKey(item.key);
     const contribution = byKey.get(key);
 
-    if (item.isProtected !== false && contribution) {
+    if (isNotificationMenuItemVisible(item) && contribution) {
       cards.push({
         id: key,
         icon: (contribution.icon ?? item.icon) as NotificationIcon,

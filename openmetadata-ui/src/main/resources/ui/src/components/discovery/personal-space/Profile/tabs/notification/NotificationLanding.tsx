@@ -15,6 +15,7 @@ import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import {
   EXTENSION_POINTS,
   NotificationSectionContribution,
@@ -33,6 +34,7 @@ import {
 const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
   // `contributionsVersion` changes once plugins have contributed; the registry's
   // identity never does, so memoizing on it alone would miss late sections.
   const { extensionRegistry, contributionsVersion } = useApplicationsProvider();
@@ -60,14 +62,14 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
     return [
       alertsCard,
       ...buildSectionCards(
-        getNotificationMenuItems(permissions),
+        getNotificationMenuItems(permissions, Boolean(isAdminUser)),
         contributions
       ),
     ];
     // contributionsVersion is the only signal that plugins have registered their
     // sections; removing it as "unnecessary" hides the downstream cards.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
-  }, [extensionRegistry, contributionsVersion, permissions, t]);
+  }, [extensionRegistry, contributionsVersion, permissions, isAdminUser, t]);
 
   return (
     <Box

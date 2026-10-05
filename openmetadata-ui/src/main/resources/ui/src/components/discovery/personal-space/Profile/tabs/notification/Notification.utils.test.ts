@@ -17,6 +17,7 @@ import {
   findNotificationMenuItem,
   getNotificationMenuItems,
   hashSubPathToView,
+  isNotificationMenuItemVisible,
   splitSectionPath,
   toSectionKey,
   viewToSubPath,
@@ -273,19 +274,40 @@ describe('getNotificationMenuItems', () => {
       { key: 'notifications', items: MENU_ITEMS },
     ]);
 
-    expect(getNotificationMenuItems(permissions)).toBe(MENU_ITEMS);
+    expect(getNotificationMenuItems(permissions, true)).toBe(MENU_ITEMS);
     expect(getMenu).toHaveBeenCalledWith(permissions, true);
   });
 
   it('returns no items when the Notifications category is absent', () => {
     getMenu.mockReturnValueOnce([{ key: 'services', items: [] }]);
 
-    expect(getNotificationMenuItems(permissions)).toEqual([]);
+    expect(getNotificationMenuItems(permissions, true)).toEqual([]);
+  });
+
+  it('passes the real admin flag so admin-only items stay gated', () => {
+    getMenu.mockReturnValueOnce([]);
+    getNotificationMenuItems(permissions, false);
+
+    expect(getMenu).toHaveBeenCalledWith(permissions, false);
   });
 
   it('returns no items when the category has no items', () => {
     getMenu.mockReturnValueOnce([{ key: 'notifications' }]);
 
-    expect(getNotificationMenuItems(permissions)).toEqual([]);
+    expect(getNotificationMenuItems(permissions, true)).toEqual([]);
+  });
+});
+
+describe('isNotificationMenuItemVisible', () => {
+  it('allows an item that is not explicitly protected away', () => {
+    expect(isNotificationMenuItemVisible(MENU_ITEMS[0])).toBe(true);
+    expect(
+      isNotificationMenuItemVisible({ ...MENU_ITEMS[0], isProtected: true })
+    ).toBe(true);
+  });
+
+  it('rejects a missing item or one the user may not see', () => {
+    expect(isNotificationMenuItemVisible(undefined)).toBe(false);
+    expect(isNotificationMenuItemVisible(MENU_ITEMS[2])).toBe(false);
   });
 });
