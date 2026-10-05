@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 class OntologyChangePreflightTest {
   @Test
@@ -61,6 +62,42 @@ class OntologyChangePreflightTest {
           BadRequestException.class,
           () -> preflight.validate(changeSet(glossaryId), List.of(proposal)));
     }
+  }
+
+  @Test
+  void acceptsAnOperationThatAnotherApprovedSourceStillGrounds() {
+    final UUID glossaryId = UUID.randomUUID();
+    final UUID retired = UUID.randomUUID();
+    final UUID approved = UUID.randomUUID();
+    final OntologyChangeOperation proposal =
+        createOperation(storedTerm(glossaryId, null))
+            .withSourceMemoryIds(Set.of(retired, approved));
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) ->
+                new ContextMemory()
+                    .withId(id)
+                    .withEntityStatus(
+                        id.equals(retired) ? EntityStatus.REJECTED : EntityStatus.APPROVED));
+
+    assertDoesNotThrow(() -> preflight.validate(changeSet(glossaryId), List.of(proposal)));
+  }
+
+  @Test
+  void rejectsAProposalWhoseOnlySourceMemoryNoLongerExists() {
+    final UUID glossaryId = UUID.randomUUID();
+    final OntologyChangeOperation proposal =
+        createOperation(storedTerm(glossaryId, null))
+            .withSourceMemoryIds(Set.of(UUID.randomUUID()));
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) -> {
+              throw EntityNotFoundException.byMessage("contextMemory " + id + " not found");
+            });
+
+    assertThrows(
+        BadRequestException.class,
+        () -> preflight.validate(changeSet(glossaryId), List.of(proposal)));
   }
 
   @Test

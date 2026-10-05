@@ -400,6 +400,39 @@ public class OntologyChangeSetIT {
   }
 
   @Test
+  void appliesAProposalThatAnotherApprovedSourceStillGrounds(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
+    ContextMemory rejected =
+        ns.trackRoot(
+            "contextMemory", memories.create(memoryRequest(ns.prefix("rejectedCoSource"))));
+    ContextMemory approved =
+        ns.trackRoot(
+            "contextMemory", memories.create(memoryRequest(ns.prefix("approvedCoSource"))));
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    UUID termId = UUID.randomUUID();
+    OntologyChangeOperation operation =
+        termFromMemory(glossary, termId, rejected, ns)
+            .withSourceMemoryIds(Set.of(rejected.getId(), approved.getId()));
+    OntologyChangeSet changeSet = createChangeSet(client, glossary, operation, ns);
+    memories.patch(
+        rejected.getId().toString(),
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Rejected\"}]"));
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("coSourceEditor"));
+
+    OntologyChangeSet applied =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+    assertEquals(
+        Set.of(rejected.getId(), approved.getId()),
+        client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
+  }
+
+  @Test
   void cannotApplyADraftWhoseSourceMemoryWasDeleted(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());

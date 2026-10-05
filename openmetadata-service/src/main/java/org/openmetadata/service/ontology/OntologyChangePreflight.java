@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -34,6 +36,7 @@ import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 public final class OntologyChangePreflight {
   private final EntityLoader entityLoader;
@@ -47,33 +50,42 @@ public final class OntologyChangePreflight {
     final Set<UUID> scope = glossaryScope(changeSet);
     final List<GlossaryTerm> plannedTerms = plannedTerms(operations);
     final List<VersionGuard> versionGuards = new ArrayList<>();
-    final Set<UUID> checkedSourceMemories = new HashSet<>();
+    final Map<UUID, Boolean> activeSourceMemories = new HashMap<>();
     for (final OntologyChangeOperation operation : operations) {
-      validateSourceMemories(operation, checkedSourceMemories);
+      validateSourceMemories(operation, activeSourceMemories);
       validateScope(operation, scope, plannedTerms);
       validateTargetVersion(operation, plannedTerms, versionGuards);
     }
   }
 
+  /**
+   * An operation stays applicable while one of its source memories still grounds it. A batch draft
+   * puts every memory on its CREATE_GLOSSARY operation and merges co-sources onto shared terms, so
+   * requiring all of them would let one retired memory block the whole draft.
+   */
   private void validateSourceMemories(
-      final OntologyChangeOperation operation, final Set<UUID> checkedSourceMemories) {
-    if (operation.getSourceMemoryIds() == null) {
-      return;
+      final OntologyChangeOperation operation, final Map<UUID, Boolean> activeSourceMemories) {
+    final Set<UUID> sources = operation.getSourceMemoryIds();
+    if (!nullOrEmpty(sources)
+        && sources.stream()
+            .noneMatch(id -> activeSourceMemories.computeIfAbsent(id, this::isActiveSource))) {
+      throw new BadRequestException(
+          "Ontology operation '" + operation.getId() + "' has no active source memory left");
     }
-    for (final UUID memoryId : operation.getSourceMemoryIds()) {
-      if (checkedSourceMemories.add(memoryId)) {
-        final ContextMemory memory =
-            (ContextMemory) entityLoader.load(Entity.CONTEXT_MEMORY, memoryId);
-        if (Boolean.TRUE.equals(memory.getDeleted())
-            || effectiveStatus(memory.getEntityStatus()) != EntityStatus.APPROVED) {
-          throw new BadRequestException(
-              "Ontology operation '"
-                  + operation.getId()
-                  + "' has an inactive source memory: "
-                  + memoryId);
-        }
-      }
+  }
+
+  private boolean isActiveSource(final UUID memoryId) {
+    boolean active;
+    try {
+      final ContextMemory memory =
+          (ContextMemory) entityLoader.load(Entity.CONTEXT_MEMORY, memoryId);
+      active =
+          !Boolean.TRUE.equals(memory.getDeleted())
+              && effectiveStatus(memory.getEntityStatus()) == EntityStatus.APPROVED;
+    } catch (EntityNotFoundException e) {
+      active = false;
     }
+    return active;
   }
 
   private static Set<UUID> glossaryScope(final OntologyChangeSet changeSet) {
