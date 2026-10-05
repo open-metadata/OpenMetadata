@@ -102,6 +102,13 @@ import MembersUsersTab from './MembersUsersTab';
 import { profileHash, ProfileHashTarget } from './profileHash.utils';
 import { useMembersTeamHeader } from './useMembersTeamHeader';
 
+// The global `.drag-icon { width: 6px }` LESS rule is tuned for the legacy 8×15
+// drag.svg; the square 20×20 Reorder icon collapses to ~6px there. An inline
+// size beats the unlayered LESS rule so the handle stays usable.
+const ReorderDragIcon: FC<{ className?: string }> = ({ className }) => (
+  <Reorder className={className} style={{ height: 16, width: 16 }} />
+);
+
 const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   fqn,
   onNavigate,
@@ -768,7 +775,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   const childTeamExpandable = useMemo<ExpandableConfig<Team>>(
     () => ({
-      ...getTableExpandableConfig<Team>(true, undefined, Reorder),
+      ...getTableExpandableConfig<Team>(true, undefined, ReorderDragIcon),
       onExpand: (isOpen, record) => {
         if (isOpen) {
           void handleTeamExpand(record);
