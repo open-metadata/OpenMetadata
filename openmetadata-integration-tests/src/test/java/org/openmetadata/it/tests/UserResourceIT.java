@@ -87,6 +87,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   {
     // User CSV export/import is done through the Team endpoint, not User endpoint
     // The actual export is /v1/teams/name/{teamName}/export which exports users in that team
+    supportsEntityStatus = false;
     supportsImportExport = false;
   }
 

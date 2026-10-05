@@ -38,6 +38,7 @@ import org.openmetadata.sdk.services.learning.LearningResourceService;
 public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLearningResource> {
 
   public LearningResourceIT() {
+    supportsEntityStatus = false;
     supportsPatch = true;
     supportsFollowers = false;
     supportsTags = true;

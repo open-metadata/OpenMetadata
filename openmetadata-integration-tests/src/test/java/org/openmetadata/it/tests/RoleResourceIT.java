@@ -49,6 +49,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
 
   public RoleResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = false;
     supportsDomains = false;
