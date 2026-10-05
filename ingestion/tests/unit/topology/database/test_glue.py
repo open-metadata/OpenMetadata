@@ -1597,6 +1597,15 @@ class TestGlueExternalTableContainerMatch:
 
         assert request.edge.fromEntity.id == events.id
 
+    def test_a_container_without_its_table_gets_no_edge(self, glue_source):
+        """The table search only finds the events table, so a location recorded for any other
+        table leaves the edge without its target."""
+        glue_source.external_location_map[(MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root, "orders")] = (
+            "s3://bucket/events/"
+        )
+
+        assert self._lineage(glue_source, _container_at("s3://bucket/events")) == []
+
     def test_no_container_means_no_table_search(self, glue_source):
         self._ingest(glue_source, "s3://bucket/events/")
         index = _ContainerIndex()
