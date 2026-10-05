@@ -48,6 +48,7 @@ class DbWebSocketRelayTest {
 
     UUID user = UUID.randomUUID();
     podA.publishToUser(user, WebSocketManager.CSV_IMPORT_CHANNEL, "done");
+    podA.flushQueue();
 
     podB.dispatchOnce();
     podA.dispatchOnce();
@@ -73,12 +74,36 @@ class DbWebSocketRelayTest {
     podB.start();
 
     podA.publishToAll(WebSocketManager.ANNOUNCEMENT_CHANNEL, "maintenance at 9pm");
+    podA.flushQueue();
     podB.dispatchOnce();
 
     assertEquals(1, capB.rows.size());
     assertEquals(WebSocketRelay.SCOPE_ALL, capB.rows.get(0).scope());
     assertNull(capB.rows.get(0).target(), "a broadcast frame has no single target");
     assertEquals("maintenance at 9pm", capB.rows.get(0).payload());
+
+    podA.stop();
+    podB.stop();
+  }
+
+  @Test
+  void manyFramesAreWrittenInaSingleBatch() {
+    InMemoryDao dao = new InMemoryDao();
+    Capture capB = new Capture();
+    DbWebSocketRelay podA = relay(dao, "podA", HOUR, new Capture());
+    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
+    podA.start();
+    podB.start();
+
+    for (int i = 0; i < 5; i++) {
+      podA.publishToUser(UUID.randomUUID(), "e", "m" + i);
+    }
+    podA.flushQueue(); // one drain
+
+    assertEquals(
+        List.of(5), dao.batchSizes, "5 queued frames must be one insert of 5, not 5 inserts");
+    podB.dispatchOnce();
+    assertEquals(5, capB.rows.size(), "all batched frames are delivered");
 
     podA.stop();
     podB.stop();
@@ -94,6 +119,7 @@ class DbWebSocketRelayTest {
     podB.start();
 
     podA.publishToUser(UUID.randomUUID(), "e", "m");
+    podA.flushQueue();
     podB.dispatchOnce();
     podB.dispatchOnce(); // no new rows
 
@@ -142,6 +168,7 @@ class DbWebSocketRelayTest {
     podB.start();
 
     podA.publishToUser(UUID.randomUUID(), "e", "m");
+    podA.flushQueue();
     podB.dispatchOnce();
 
     assertTrue(capB.rows.isEmpty(), "expired frame must be filtered out");
@@ -154,7 +181,7 @@ class DbWebSocketRelayTest {
   void startSeedsCursorAtTailSoPreexistingFramesAreNotReplayed() {
     InMemoryDao dao = new InMemoryDao();
     // A frame already exists before podB starts.
-    dao.insert(
+    dao.seed(
         WebSocketRelay.SCOPE_USER,
         UUID.randomUUID().toString(),
         "e",
@@ -173,7 +200,8 @@ class DbWebSocketRelayTest {
 
   private DbWebSocketRelay relay(InMemoryDao dao, String id, long ttlMs, Capture capture) {
     Consumer<WsRelayDAO.RelayRow> deliver = capture.rows::add;
-    return new DbWebSocketRelay(dao, id, NEVER, ttlMs, NEVER, deliver);
+    // NEVER flush/poll in the background; tests drive flushQueue() and dispatchOnce() explicitly.
+    return new DbWebSocketRelay(dao, id, NEVER, ttlMs, NEVER, NEVER, deliver);
   }
 
   private static final class Capture {
@@ -184,9 +212,27 @@ class DbWebSocketRelayTest {
   private static final class InMemoryDao implements WsRelayDAO {
     private final List<Row> rows = new ArrayList<>();
     private final AtomicLong seq = new AtomicLong(0);
+    // Track batched inserts so a test can assert N frames collapse into one round-trip.
+    private final List<Integer> batchSizes = new CopyOnWriteArrayList<>();
 
     @Override
-    public synchronized void insert(
+    public synchronized void insertBatch(List<Frame> frames) {
+      batchSizes.add(frames.size());
+      for (Frame f : frames) {
+        rows.add(
+            new Row(
+                seq.incrementAndGet(),
+                f.getScope(),
+                f.getTarget(),
+                f.getEvent(),
+                f.getPayload(),
+                f.getSenderPod(),
+                f.getExpiresAt()));
+      }
+    }
+
+    // Append a pre-existing row (bypasses the relay) to model a frame that predates a pod's start.
+    synchronized void seed(
         String scope,
         String target,
         String event,

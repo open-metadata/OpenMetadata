@@ -13,12 +13,15 @@
 package org.openmetadata.service.socket;
 
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,10 +31,11 @@ import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * DB-backed relay used when no Redis is configured. The producing pod inserts a frame into
- * {@code ws_relay_message}; every pod polls for new rows (skipping its own and expired) and delivers
- * to its local sockets. Broadcast, not claim — a socket is single-homed, so each pod delivering to
- * its own sockets is exactly-once; no lease needed.
+ * DB-backed relay used when no Redis is configured. The producing pod enqueues a frame and a writer
+ * thread drains the queue into {@code ws_relay_message} in batched inserts, so callers never block on
+ * the DB; every pod polls for new rows (skipping its own and expired) and delivers to its local
+ * sockets. Broadcast, not claim — a socket is single-homed, so each pod delivering to its own sockets
+ * is exactly-once; no lease needed.
  */
 @Slf4j
 public class DbWebSocketRelay implements WebSocketRelay {
@@ -39,7 +43,15 @@ public class DbWebSocketRelay implements WebSocketRelay {
   static final long DEFAULT_POLL_INTERVAL_MS = 1000L;
   static final long DEFAULT_MESSAGE_TTL_MS = TimeUnit.MINUTES.toMillis(1);
   static final long DEFAULT_CLEANUP_INTERVAL_MS = TimeUnit.SECONDS.toMillis(30);
+  // How often the writer thread drains queued frames; well under the poll interval so producer-side
+  // batching adds no visible latency on top of the consumer's 1s poll.
+  static final long DEFAULT_FLUSH_INTERVAL_MS = 100L;
   private static final int FETCH_LIMIT = 500;
+  // Caller offers are dropped (logged) once the queue is full, keeping publish bounded and
+  // non-blocking; frames are transient, so shedding under extreme backpressure is acceptable.
+  private static final int QUEUE_CAPACITY = 10_000;
+  // Max frames pulled into one batched insert; the drain loops until the queue is empty.
+  private static final int MAX_BATCH = 1_000;
   // Each poll re-reads this many ids below the cursor (kept well under FETCH_LIMIT so new rows are
   // never starved) to catch rows that committed after a higher id the cursor already passed.
   private static final long LOOKBACK_IDS = 100;
@@ -52,8 +64,12 @@ public class DbWebSocketRelay implements WebSocketRelay {
   private final long pollIntervalMs;
   private final long messageTtlMs;
   private final long cleanupIntervalMs;
+  private final long flushIntervalMs;
   // Seam for tests: default delivers to the live WebSocketManager; a test can route to a probe.
   private final Consumer<WsRelayDAO.RelayRow> deliver;
+
+  // Frames published by callers, drained off-thread by the writer into batched inserts.
+  private final BlockingQueue<WsRelayDAO.Frame> pending = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
 
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final AtomicLong cursor = new AtomicLong(0);
@@ -69,7 +85,10 @@ public class DbWebSocketRelay implements WebSocketRelay {
               return size() > DELIVERED_IDS_MAX;
             }
           });
+  // Reads (poll + cleanup) and writes (drain) run on separate single threads so a slow insert never
+  // delays delivery and vice versa.
   private ScheduledExecutorService scheduler;
+  private ScheduledExecutorService writer;
 
   public DbWebSocketRelay(WsRelayDAO dao) {
     this(
@@ -78,6 +97,7 @@ public class DbWebSocketRelay implements WebSocketRelay {
         DEFAULT_POLL_INTERVAL_MS,
         DEFAULT_MESSAGE_TTL_MS,
         DEFAULT_CLEANUP_INTERVAL_MS,
+        DEFAULT_FLUSH_INTERVAL_MS,
         DbWebSocketRelay::deliverToLocalManager);
   }
 
@@ -87,12 +107,14 @@ public class DbWebSocketRelay implements WebSocketRelay {
       long pollIntervalMs,
       long messageTtlMs,
       long cleanupIntervalMs,
+      long flushIntervalMs,
       Consumer<WsRelayDAO.RelayRow> deliver) {
     this.dao = dao;
     this.instanceId = instanceId;
     this.pollIntervalMs = pollIntervalMs;
     this.messageTtlMs = messageTtlMs;
     this.cleanupIntervalMs = cleanupIntervalMs;
+    this.flushIntervalMs = flushIntervalMs;
     this.deliver = deliver;
   }
 
@@ -122,6 +144,15 @@ public class DbWebSocketRelay implements WebSocketRelay {
         this::dispatchSafely, pollIntervalMs, pollIntervalMs, TimeUnit.MILLISECONDS);
     scheduler.scheduleWithFixedDelay(
         this::cleanupSafely, cleanupIntervalMs, cleanupIntervalMs, TimeUnit.MILLISECONDS);
+    writer =
+        Executors.newSingleThreadScheduledExecutor(
+            runnable -> {
+              Thread thread = new Thread(runnable, "ws-relay-db-writer");
+              thread.setDaemon(true);
+              return thread;
+            });
+    writer.scheduleWithFixedDelay(
+        this::flushSafely, flushIntervalMs, flushIntervalMs, TimeUnit.MILLISECONDS);
     LOG.info("DbWebSocketRelay started instance={} pollMs={}", instanceId, pollIntervalMs);
   }
 
@@ -130,6 +161,11 @@ public class DbWebSocketRelay implements WebSocketRelay {
     if (!running.compareAndSet(true, false)) {
       return;
     }
+    if (writer != null) {
+      writer.shutdownNow();
+      writer = null;
+    }
+    flushQueue(); // best-effort drain of frames queued before shutdown
     if (scheduler != null) {
       scheduler.shutdownNow();
       scheduler = null;
@@ -142,11 +178,35 @@ public class DbWebSocketRelay implements WebSocketRelay {
     if (!running.get() || scope == null) {
       return;
     }
+    // Enqueue off the caller's thread; the writer drains in batches. Never block the caller on the
+    // DB — local delivery already happened, and frames are transient so a full queue just sheds.
+    long expiresAt = System.currentTimeMillis() + messageTtlMs;
+    WsRelayDAO.Frame frame =
+        new WsRelayDAO.Frame(scope, target, event, message, instanceId, expiresAt);
+    if (!pending.offer(frame)) {
+      LOG.debug("ws relay queue full, dropping frame scope={} event={}", scope, event);
+    }
+  }
+
+  // Visible for test/trigger. Drains all queued frames into batched inserts.
+  void flushQueue() {
+    List<WsRelayDAO.Frame> batch = new ArrayList<>(MAX_BATCH);
+    while (pending.drainTo(batch, MAX_BATCH) > 0) {
+      try {
+        dao.insertBatch(batch);
+      } catch (Exception e) {
+        LOG.debug("Failed to insert {} ws relay frame(s)", batch.size(), e);
+      }
+      batch.clear();
+    }
+  }
+
+  private void flushSafely() {
     try {
-      long expiresAt = System.currentTimeMillis() + messageTtlMs;
-      dao.insert(scope, target, event, message, instanceId, expiresAt);
-    } catch (Exception e) {
-      LOG.debug("Failed to insert ws relay frame: scope={} event={}", scope, event, e);
+      flushQueue();
+    } catch (Throwable t) {
+      // Keep the writer alive: a throwing task cancels future firings on the executor.
+      LOG.warn("DbWebSocketRelay flush failed", t);
     }
   }
 

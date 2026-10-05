@@ -15,10 +15,13 @@ package org.openmetadata.service.socket;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import lombok.Getter;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
@@ -30,16 +33,15 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
  */
 public interface WsRelayDAO {
 
-  @SqlUpdate(
+  /**
+   * Batched insert of queued frames in a single JDBC round-trip. The relay enqueues off the caller's
+   * thread and drains here, so callers never block on the DB and a burst (e.g. a broadcast to many
+   * receivers) costs one statement instead of one per frame.
+   */
+  @SqlBatch(
       "INSERT INTO ws_relay_message (scope, target, event, payload, senderPod, expiresAt) "
           + "VALUES (:scope, :target, :event, :payload, :senderPod, :expiresAt)")
-  void insert(
-      @Bind("scope") String scope,
-      @Bind("target") String target,
-      @Bind("event") String event,
-      @Bind("payload") String payload,
-      @Bind("senderPod") String senderPod,
-      @Bind("expiresAt") long expiresAt);
+  void insertBatch(@BindBean List<Frame> frames);
 
   /** Highest id currently in the table, or 0 when empty — used to seed a pod's start cursor. */
   @SqlQuery("SELECT COALESCE(MAX(id), 0) FROM ws_relay_message")
@@ -64,6 +66,32 @@ public interface WsRelayDAO {
   int deleteExpired(@Bind("now") long now);
 
   record RelayRow(long id, String scope, String target, String event, String payload) {}
+
+  /** A frame queued for insert. Getters supply the {@code :name} binds for {@link #insertBatch}. */
+  @Getter
+  class Frame {
+    private final String scope;
+    private final String target;
+    private final String event;
+    private final String payload;
+    private final String senderPod;
+    private final long expiresAt;
+
+    Frame(
+        String scope,
+        String target,
+        String event,
+        String payload,
+        String senderPod,
+        long expiresAt) {
+      this.scope = scope;
+      this.target = target;
+      this.event = event;
+      this.payload = payload;
+      this.senderPod = senderPod;
+      this.expiresAt = expiresAt;
+    }
+  }
 
   class RelayRowMapper implements RowMapper<RelayRow> {
     @Override
