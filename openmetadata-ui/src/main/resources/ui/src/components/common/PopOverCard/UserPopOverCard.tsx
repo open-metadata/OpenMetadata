@@ -36,6 +36,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   children,
   className,
   profileWidth = 24,
+  trigger = 'hover',
 }) => {
   const isTeam = type === OwnerType.TEAM;
   const profilePicture = (
@@ -72,7 +73,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
           />
         )
       }
-      trigger="hover">
+      trigger={trigger}>
       {(children as ReactNode) ?? (
         <Link
           className={classNames(

@@ -28,11 +28,18 @@ import {
   ThumbsUp,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { uniqBy } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useInView } from 'react-intersection-observer';
 import { Link } from 'react-router-dom';
@@ -64,14 +71,18 @@ import searchClassBase from '../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { ActivityKind, ACTIVITY_TYPE_KIND } from '../activityKind';
 import {
+  ACTIVITY_CLOCK_FORMAT,
   ACTIVITY_DATE_FORMAT,
+  applyReaction,
   getActivityChange,
   getActivityEventLabel,
   getActivityTypeKey,
-  toggleActivityReaction,
-  toggleConversationReaction,
+  getFeedSortTimestamp,
+  isSameLocalDay,
+  sendReaction,
 } from '../inbox.utils';
 import { createThreadReply, useActivityReplies } from '../useActivityReplies';
+import { writeInboxReactions } from '../useInboxActivity';
 import './activity-feed-item.less';
 import ActivityChangePanel from './ActivityChangePanel';
 import ActivityThread from './ActivityThread';
@@ -265,6 +276,25 @@ const getEventTimestamp = (
 ): number | undefined =>
   isActivity ? activity?.timestamp : feed?.createdAt ?? feed?.updatedAt;
 
+// A conversation is filed under the day of its last reply; started on an
+// earlier day, a bare clock time under that day's header would mislead, so the
+// time carries its date.
+const getCardTimeFormat = (
+  timeFormat: string,
+  timestamp?: number,
+  feed?: Conversation
+): string =>
+  timeFormat === ACTIVITY_CLOCK_FORMAT &&
+  feed &&
+  !isSameLocalDay(timestamp, getFeedSortTimestamp(feed))
+    ? ACTIVITY_DATE_FORMAT
+    : timeFormat;
+
+const UNDO_REACTION: Record<ReactionOperation, ReactionOperation> = {
+  [ReactionOperation.ADD]: ReactionOperation.REMOVE,
+  [ReactionOperation.REMOVE]: ReactionOperation.ADD,
+};
+
 // The header's right side: whether it names the viewer, and when it happened.
 const CardMeta = ({
   isMentioned,
@@ -316,18 +346,27 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const actorName = getActorName(isActivity, activity, feed);
   const [, , user] = useUserProfile({ permission: false, name: actorName });
 
-  const [reactions, setReactions] = useState<Reaction[]>(() =>
+  const queryClient = useQueryClient();
+  const [reactions, setReactionsState] = useState<Reaction[]>(() =>
     getSourceReactions(isActivity, activity, feed)
   );
+  // Each reaction builds on the latest list, not the one its click rendered
+  // with, so two quick reactions both land.
+  const reactionsRef = useRef(reactions);
+  const setReactions = useCallback((next: Reaction[]) => {
+    reactionsRef.current = next;
+    setReactionsState(next);
+  }, []);
 
   useEffect(() => {
     setReactions(getSourceReactions(isActivity, activity, feed));
-  }, [activity, feed, isActivity]);
+  }, [activity, feed, isActivity, setReactions]);
 
   const authorName = getAuthorName(user, isActivity, activity, feed, actorName);
   const actionLabel = getActionLabel(activity, feed, t);
   const { entity, entityName } = getEventEntity(isActivity, activity, feed);
   const timestamp = getEventTimestamp(isActivity, activity, feed);
+  const cardTimeFormat = getCardTimeFormat(timeFormat, timestamp, feed);
   const { icon: KindIcon, badgeClassName: kindClassName } =
     getActivityBadge(activity);
   const target = getEntityTarget(entity, entityName, activity?.about);
@@ -370,41 +409,49 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
     setIsReplying(focusComposer);
   };
 
+  // A refused reply (e.g. on an activity whose asset was deleted) rejects, so
+  // the composer puts the draft back.
   const handleReply = async (message: string) => {
     try {
       await createThreadReply(message, threadIds);
-      refetch();
     } catch (error) {
-      // e.g. a reply on an activity whose asset was deleted is refused.
       showErrorToast(error as AxiosError);
+
+      throw error;
     }
+    refetch();
   };
 
+  // Shown at once and rolled back if the server refuses; a repeat of the same
+  // reaction changes nothing and sends nothing.
   const handleReactionSelect = async (
     reactionType: ReactionType,
     operation: ReactionOperation
   ) => {
+    const before = reactionsRef.current;
+    const next = applyReaction(before, reactionType, operation, currentUser);
+    if (next === before) {
+      return;
+    }
+    setReactions(next);
     try {
-      const updated =
-        isActivity && activity
-          ? await toggleActivityReaction(
-              activity.id,
-              reactions,
-              reactionType,
-              operation,
-              currentUser
-            )
-          : await toggleConversationReaction(
-              feed?.id as string,
-              reactions,
-              reactionType,
-              operation,
-              currentUser
-            );
-      setReactions(updated);
+      await sendReaction(threadIds, reactionType, operation);
     } catch (error) {
+      setReactions(
+        applyReaction(
+          reactionsRef.current,
+          reactionType,
+          UNDO_REACTION[operation],
+          currentUser
+        )
+      );
       showErrorToast(error as AxiosError);
     }
+    writeInboxReactions(
+      queryClient,
+      activity?.id ?? feed?.id ?? '',
+      reactionsRef.current
+    );
   };
 
   return (
@@ -417,7 +464,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
       <Box className="tw:px-5 tw:pt-4" direction="col" gap={3}>
         <Box gap={3}>
           <span className="tw:relative tw:h-10 tw:shrink-0">
-            <AuthorPopover userName={actorName}>
+            <AuthorPopover decorative userName={actorName}>
               <ProfilePicture
                 borderless
                 displayName={authorName}
@@ -448,7 +495,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               </Typography>
               <CardMeta
                 isMentioned={isMentioned}
-                timeFormat={timeFormat}
+                timeFormat={cardTimeFormat}
                 timestamp={timestamp}
               />
             </Box>
@@ -511,7 +558,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               )
             }>
             {likes.length
-              ? `${t('label.like')} · ${likes.length}`
+              ? t('label.like-with-count', { count: likes.length })
               : t('label.like')}
           </Button>
           <Reactions

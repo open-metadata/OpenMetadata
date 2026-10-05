@@ -12,37 +12,72 @@
  */
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import AuthorPopover from './AuthorPopover';
 
 // The card itself is the shared user popover with its own suite; this checks
-// only when the inbox asks for one.
+// when the inbox asks for one and how it is reached.
 jest.mock(
   '../../../../../components/common/PopOverCard/UserPopOverCard',
   () => ({
     __esModule: true,
     default: ({
       userName,
+      trigger,
       children,
     }: {
       userName: string;
+      trigger: string | string[];
       children: ReactNode;
-    }) => <div data-testid={`user-card-${userName}`}>{children}</div>,
+    }) => (
+      <div
+        data-testid={`user-card-${userName}`}
+        data-trigger={[trigger].flat().join(',')}>
+        {children}
+      </div>
+    ),
   })
 );
 
-describe('AuthorPopover', () => {
-  it('opens the user card for a named author', () => {
-    render(<AuthorPopover userName="priya.sharma">Priya</AuthorPopover>);
+const renderPopover = (node: ReactNode) =>
+  render(<MemoryRouter>{node}</MemoryRouter>);
 
-    expect(screen.getByTestId('user-card-priya.sharma')).toHaveTextContent(
-      'Priya'
+describe('AuthorPopover', () => {
+  // A keyboard reaches the name, and its focus opens the card.
+  it('links a named author to their profile and opens the card on focus too', () => {
+    renderPopover(<AuthorPopover userName="priya.sharma">Priya</AuthorPopover>);
+
+    const trigger = screen.getByTestId('author-popover-trigger');
+
+    expect(trigger).toHaveAttribute('href', expect.stringContaining('priya'));
+    expect(trigger).not.toHaveAttribute('tabindex');
+    expect(screen.getByTestId('user-card-priya.sharma')).toHaveAttribute(
+      'data-trigger',
+      'hover,focus'
     );
-    expect(screen.getByTestId('author-popover-trigger')).toBeInTheDocument();
+  });
+
+  // The avatar repeats the name beside it, so it stays out of the tab order.
+  it('keeps a decorative avatar out of the tab order and hover only', () => {
+    renderPopover(
+      <AuthorPopover decorative userName="priya.sharma">
+        P
+      </AuthorPopover>
+    );
+
+    const trigger = screen.getByTestId('author-popover-trigger');
+
+    expect(trigger).toHaveAttribute('tabindex', '-1');
+    expect(trigger).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByTestId('user-card-priya.sharma')).toHaveAttribute(
+      'data-trigger',
+      'hover'
+    );
   });
 
   // An event with no actor has no user to look up.
   it('renders the author bare when there is no user name', () => {
-    render(<AuthorPopover userName="">System</AuthorPopover>);
+    renderPopover(<AuthorPopover userName="">System</AuthorPopover>);
 
     expect(screen.getByText('System')).toBeInTheDocument();
     expect(

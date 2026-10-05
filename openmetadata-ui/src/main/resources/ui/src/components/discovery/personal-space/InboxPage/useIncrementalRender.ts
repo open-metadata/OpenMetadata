@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  RefObject,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 const ROOT_MARGIN = '400px';
 
@@ -39,14 +46,29 @@ export function useIncrementalRender<T>(
   batchSize: number,
   resetKey?: string
 ): UseIncrementalRender<T> {
-  const [count, setCount] = useState(batchSize);
+  // The revealed count belongs to the list and batch size it was revealed
+  // under. A new `resetKey` or batch size reads the first batch in the same
+  // render, rather than mounting the old count's worth of cards and trimming
+  // them after.
+  const [revealed, setRevealed] = useState({
+    key: resetKey,
+    batchSize,
+    count: batchSize,
+  });
+  const isSameList =
+    revealed.key === resetKey && revealed.batchSize === batchSize;
+  const count = isSameList ? revealed.count : batchSize;
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const hasMore = count < items.length;
 
-  useEffect(() => {
-    setCount(batchSize);
-  }, [resetKey, batchSize]);
+  // A new list starts at its top, not at the old list's scroll position, which
+  // would also put the sentinel in view and reveal a batch at once.
+  useLayoutEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [resetKey]);
 
   // Re-created after every batch, so a sentinel still in view (a short list
   // on a tall screen) reveals the next batch too.
@@ -59,7 +81,14 @@ export function useIncrementalRender<T>(
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setCount((current) => current + batchSize);
+          setRevealed((current) => ({
+            key: resetKey,
+            batchSize,
+            count:
+              (current.key === resetKey && current.batchSize === batchSize
+                ? current.count
+                : batchSize) + batchSize,
+          }));
         }
       },
       { root, rootMargin: ROOT_MARGIN }
@@ -67,7 +96,7 @@ export function useIncrementalRender<T>(
     observer.observe(sentinel);
 
     return () => observer.disconnect();
-  }, [hasMore, batchSize, count]);
+  }, [hasMore, batchSize, count, resetKey]);
 
   const visibleItems = useMemo(() => items.slice(0, count), [items, count]);
 

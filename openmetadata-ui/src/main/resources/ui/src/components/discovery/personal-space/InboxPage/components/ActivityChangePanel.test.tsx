@@ -69,6 +69,22 @@ describe('ActivityChangePanel', () => {
     expect(screen.getByText('−1')).toBeInTheDocument();
   });
 
+  // Two owners can share a display name; each still gets its own chip.
+  it('shows each of two values that read the same', () => {
+    render(
+      <ActivityChangePanel
+        change={{
+          labelKey: 'label.owner-plural',
+          before: [],
+          after: ['Data Team', 'Data Team'],
+          isText: false,
+        }}
+      />
+    );
+
+    expect(screen.getAllByText('+ Data Team')).toHaveLength(2);
+  });
+
   it('shows a description as text, without counts or signs', () => {
     render(
       <ActivityChangePanel

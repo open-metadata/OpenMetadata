@@ -38,15 +38,18 @@ class MockIntersectionObserver {
 const makeItems = (length: number, prefix = 'item') =>
   Array.from({ length }, (_, index) => `${prefix}-${index}`);
 
+const renderedLengths: number[] = [];
+
 const Harness: React.FC<{ items: string[]; resetKey?: string }> = ({
   items,
   resetKey,
 }) => {
   const { visibleItems, hasMore, scrollRef, sentinelRef } =
     useIncrementalRender(items, 3, resetKey);
+  renderedLengths.push(visibleItems.length);
 
   return (
-    <div ref={scrollRef}>
+    <div data-testid="scroller" ref={scrollRef}>
       {visibleItems.map((item) => (
         <span data-testid="row" key={item}>
           {item}
@@ -110,5 +113,26 @@ describe('useIncrementalRender', () => {
     rerender(<Harness items={makeItems(8)} resetKey="b" />);
 
     expect(screen.getAllByTestId('row')).toHaveLength(3);
+  });
+
+  // The new list must not first mount the old count's worth of rows.
+  it('reads the first batch in the same render as the reset', () => {
+    const { rerender } = render(<Harness items={makeItems(8)} resetKey="a" />);
+    act(() => intersect?.());
+    renderedLengths.length = 0;
+
+    rerender(<Harness items={makeItems(8)} resetKey="b" />);
+
+    expect(renderedLengths.every((length) => length === 3)).toBe(true);
+  });
+
+  it('starts a new list at its top', () => {
+    const { rerender } = render(<Harness items={makeItems(8)} resetKey="a" />);
+    const scroller = screen.getByTestId('scroller');
+    scroller.scrollTop = 120;
+
+    rerender(<Harness items={makeItems(8)} resetKey="b" />);
+
+    expect(scroller.scrollTop).toBe(0);
   });
 });

@@ -17,6 +17,7 @@ import { ComponentProps, ComponentType, ReactNode } from 'react';
 const mockGetTaskById = jest.fn();
 const mockResolveTask = jest.fn();
 const mockAddComment = jest.fn();
+const mockSetEditorContent = jest.fn();
 const mockEditComment = jest.fn();
 const mockDeleteComment = jest.fn();
 const mockShowErrorToast = jest.fn();
@@ -251,14 +252,33 @@ jest.mock('./TaskActivityTimeline', () => ({
 
 jest.mock(
   'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew',
-  () => ({
-    __esModule: true,
-    default: ({ onSave }: { onSave?: (m: string) => void }) => (
-      <button data-testid="comment-editor" onClick={() => onSave?.('edited')}>
-        editor
-      </button>
-    ),
-  })
+  () => {
+    const { forwardRef, useImperativeHandle } = jest.requireActual('react');
+
+    return {
+      __esModule: true,
+      default: forwardRef(
+        (
+          { onSave }: { onSave?: (m: string) => void },
+          ref: React.Ref<unknown>
+        ) => {
+          useImperativeHandle(ref, () => ({
+            getEditorContent: () => '',
+            clearEditorContent: jest.fn(),
+            setEditorContent: mockSetEditorContent,
+          }));
+
+          return (
+            <button
+              data-testid="comment-editor"
+              onClick={() => onSave?.('edited')}>
+              editor
+            </button>
+          );
+        }
+      ),
+    };
+  }
 );
 
 jest.mock('components/common/Loader/Loader', () => ({
@@ -1376,6 +1396,23 @@ describe('TaskDetailPanel', () => {
       await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
 
       expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+    });
+
+    // The panel rejects a refused comment, so the composer puts it back.
+    it('keeps a refused comment in the composer', async () => {
+      const refused = new Error('refused');
+      mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });
+      mockAddComment.mockRejectedValueOnce(refused);
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('comment-editor'));
+      });
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(refused);
+      expect(mockSetEditorContent).toHaveBeenCalledWith(
+        expect.stringContaining('edited')
+      );
     });
 
     it('resolves an approve without a transitionId, carrying newValue and the payload', async () => {

@@ -44,6 +44,19 @@ const COLUMN_TONE_CLASS: Record<ChangeTone, { column: string; title: string }> =
     },
   };
 
+// Two values can read the same (two owners sharing a display name), so each
+// key carries how many times its value came before it.
+const keyValues = (values: string[]) => {
+  const seen = new Map<string, number>();
+
+  return values.map((value) => {
+    const occurrence = seen.get(value) ?? 0;
+    seen.set(value, occurrence + 1);
+
+    return { value, key: `${value}-${occurrence}` };
+  });
+};
+
 const ChangeColumn = ({ title, values, tone, isText }: ChangeColumnProps) => (
   <Box
     className={classNames(
@@ -66,8 +79,8 @@ const ChangeColumn = ({ title, values, tone, isText }: ChangeColumnProps) => (
       />
     ) : (
       <Box className="tw:gap-1.5" wrap="wrap">
-        {values.map((value) => (
-          <Badge color={tone} key={value} size="sm" type="color">
+        {keyValues(values).map(({ value, key }) => (
+          <Badge color={tone} key={key} size="sm" type="color">
             {`${CHANGE_SIGN[tone]} ${value}`}
           </Badge>
         ))}

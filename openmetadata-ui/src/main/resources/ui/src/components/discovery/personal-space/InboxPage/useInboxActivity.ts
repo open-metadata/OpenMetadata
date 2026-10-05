@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { QueryClient, useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../../generated/entity/feed/conversation';
 import { ConversationFilterType } from '../../../../generated/type/conversationFilterType';
+import { Reaction } from '../../../../generated/type/reaction';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   getActivityEvents,
@@ -137,14 +138,43 @@ export const fetchInboxActivity = async (
       ? conversationRes.value.data ?? []
       : [];
 
+  const clipped = clipToWindow(filter, activities, { startTs, endTs });
+
   return {
-    activities: clipToWindow(filter, activities, { startTs, endTs }),
+    activities: clipped,
     threads,
+    // A full page may hold only the newest of more events, unless the clip
+    // dropped some: then the page already reached past the window's start, so
+    // the window is complete.
     isCapped:
-      activities.length >= ACTIVITY_LIMIT ||
+      (activities.length >= ACTIVITY_LIMIT &&
+        clipped.length === activities.length) ||
       threads.length >= CONVERSATION_LIMIT,
   };
 };
+
+/**
+ * Write a card's reactions into every cached sub-tab list that holds it, so a
+ * card read back from the cache after switching sub-tab keeps the reaction.
+ */
+export const writeInboxReactions = (
+  queryClient: QueryClient,
+  itemId: string,
+  reactions: Reaction[]
+) =>
+  queryClient.setQueriesData<InboxActivityResult>(
+    { queryKey: [INBOX_ACTIVITY_QUERY_KEY] },
+    (data) =>
+      data && {
+        ...data,
+        activities: data.activities.map((activity) =>
+          activity.id === itemId ? { ...activity, reactions } : activity
+        ),
+        threads: data.threads.map((thread) =>
+          thread.id === itemId ? { ...thread, reactions } : thread
+        ),
+      }
+  );
 
 // One query per sub-tab and window, so the list and every count share a fetch.
 const inboxActivityQuery = (

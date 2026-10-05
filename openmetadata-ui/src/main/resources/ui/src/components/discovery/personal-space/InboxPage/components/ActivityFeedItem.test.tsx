@@ -11,17 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
-const mockToggle = jest.fn();
-const mockToggleConversation = jest.fn();
+const mockSendReaction = jest.fn();
+const mockWriteInboxReactions = jest.fn();
+const mockReplyRejected = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockGetActivityChange = jest.fn();
 const mockCreateThreadReply = jest.fn();
@@ -47,6 +42,12 @@ jest.mock('../useActivityReplies', () => ({
 }));
 
 // Exercised by its own suite; here it reports how it was opened and posts.
+// Has its own suite; here it only passes the author through.
+jest.mock('./AuthorPopover', () => ({
+  __esModule: true,
+  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 jest.mock('./ActivityThread', () => ({
   __esModule: true,
   default: ({
@@ -54,12 +55,13 @@ jest.mock('./ActivityThread', () => ({
     onReply,
   }: {
     focusComposer: boolean;
-    onReply: (message: string) => void;
+    onReply: (message: string) => Promise<void>;
   }) => (
+    // The real composer catches a rejected save to put the draft back.
     <button
       data-focus-composer={String(focusComposer)}
       data-testid="activity-thread"
-      onClick={() => onReply('hello')}>
+      onClick={() => onReply('hello').catch(mockReplyRejected)}>
       thread
     </button>
   ),
@@ -71,9 +73,22 @@ jest.mock('../inbox.utils', () => ({
   getActivityEventLabel: () => 'updated description for',
   getActivityTypeKey: () => 'label.other',
   ACTIVITY_TYPE_OTHER: 'label.other',
-  toggleActivityReaction: (...args: unknown[]) => mockToggle(...args),
-  toggleConversationReaction: (...args: unknown[]) =>
-    mockToggleConversation(...args),
+  ACTIVITY_CLOCK_FORMAT: 'hh:mm a',
+  ACTIVITY_DATE_FORMAT: 'MMM dd, yyyy, hh:mm a',
+  // The real list logic, so a test sees what a click does to the reactions.
+  applyReaction: jest.requireActual('../inbox.utils').applyReaction,
+  getFeedSortTimestamp: (feed: { updatedAt?: number; createdAt?: number }) =>
+    feed.updatedAt ?? feed.createdAt ?? 0,
+  isSameLocalDay: jest.requireActual('../inbox.utils').isSameLocalDay,
+  sendReaction: (...args: unknown[]) => mockSendReaction(...args),
+}));
+
+jest.mock('../useInboxActivity', () => ({
+  writeInboxReactions: (...args: unknown[]) => mockWriteInboxReactions(...args),
+}));
+
+jest.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => 'query-client',
 }));
 
 // Exercised by its own suite; here it only shows which change it was given.
@@ -158,7 +173,9 @@ jest.mock('utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: (ts: number) => ts,
   getCurrentMillis: () => 0,
   formatDateTime: () => 'Jun 05, 2026, 03:01 PM',
-  formatDateTimeLong: () => '03:01 PM',
+  // Echoes the format, so a test can tell a clock time from a dated one.
+  formatDateTimeLong: (_: number, format?: string) =>
+    format === 'hh:mm a' ? '03:01 PM' : `dated:${format}`,
 }));
 
 jest.mock('utils/EntityNameUtils', () => ({
@@ -337,56 +354,94 @@ describe('ActivityFeedItem', () => {
     expect(screen.getByText('Hello thread')).toBeInTheDocument();
   });
 
+  describe('time under a day header', () => {
+    const at = (iso: string) => new Date(iso).getTime();
+
+    it('shows a clock time for a conversation from the same day', () => {
+      render(
+        <ActivityFeedItem
+          feed={
+            {
+              ...baseFeed,
+              createdAt: at('2026-10-05T09:00:00'),
+              updatedAt: at('2026-10-05T11:00:00'),
+            } as Conversation
+          }
+          timeFormat="hh:mm a"
+        />
+      );
+
+      expect(screen.getByText('03:01 PM')).toBeInTheDocument();
+    });
+
+    // Filed under the day of its last reply, a thread started earlier shows
+    // its date, not a bare time that reads as today's.
+    it('shows the date for a conversation started on an earlier day', () => {
+      render(
+        <ActivityFeedItem
+          feed={
+            {
+              ...baseFeed,
+              createdAt: at('2026-10-02T09:00:00'),
+              updatedAt: at('2026-10-05T11:00:00'),
+            } as Conversation
+          }
+          timeFormat="hh:mm a"
+        />
+      );
+
+      expect(
+        screen.getByText('dated:MMM dd, yyyy, hh:mm a')
+      ).toBeInTheDocument();
+    });
+  });
+
   it('reacts to a conversation via the conversation endpoint', async () => {
-    mockToggleConversation.mockResolvedValue([
-      { reactionType: 'heart', user: { id: 'u1' } },
-    ]);
+    mockSendReaction.mockResolvedValue({});
     render(<ActivityFeedItem feed={baseFeed} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('react-btn'));
     });
 
-    expect(mockToggleConversation).toHaveBeenCalledWith(
-      'f1',
-      expect.any(Array),
+    expect(mockSendReaction).toHaveBeenCalledWith(
+      { activityId: undefined, conversationId: 'f1' },
       'heart',
-      'add',
-      expect.objectContaining({ id: 'u1' })
+      'add'
     );
-    expect(mockToggle).not.toHaveBeenCalled();
+    expect(screen.getByTestId('react-btn')).toHaveTextContent('r1');
   });
 
-  it('updates reactions on a successful toggle', async () => {
-    mockToggle.mockResolvedValue([
-      { reactionType: 'heart', user: { id: 'u1' } },
-    ]);
-
+  it('shows a reaction before the server answers', async () => {
+    let settle: () => void = () => undefined;
+    mockSendReaction.mockReturnValue(
+      new Promise<void>((resolve) => {
+        settle = resolve;
+      })
+    );
     render(<ActivityFeedItem activity={baseActivity} />);
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByTestId('react-btn'));
     });
 
-    expect(mockToggle).toHaveBeenCalledWith(
-      'a1',
-      expect.any(Array),
-      'heart',
-      'add',
-      expect.objectContaining({ id: 'u1' })
-    );
+    expect(screen.getByTestId('react-btn')).toHaveTextContent('r1');
 
-    await waitFor(() =>
-      expect(screen.getByTestId('react-btn')).toHaveTextContent('r1')
+    await act(async () => settle());
+
+    expect(mockSendReaction).toHaveBeenCalledWith(
+      { activityId: 'a1', conversationId: undefined },
+      'heart',
+      'add'
     );
   });
 
-  it('drops the reaction on a successful remove toggle', async () => {
+  it('drops the reaction on remove', async () => {
+    mockSendReaction.mockResolvedValue({});
     const reacted = {
       ...baseActivity,
       reactions: [{ reactionType: 'heart', user: { id: 'u1' } }],
     } as unknown as ActivityEvent;
-    mockToggle.mockResolvedValue([]);
 
     render(<ActivityFeedItem activity={reacted} />);
 
@@ -396,48 +451,53 @@ describe('ActivityFeedItem', () => {
       fireEvent.click(screen.getByTestId('react-remove-btn'));
     });
 
-    expect(mockToggle).toHaveBeenCalledWith(
-      'a1',
-      expect.any(Array),
+    expect(mockSendReaction).toHaveBeenCalledWith(
+      { activityId: 'a1', conversationId: undefined },
       'heart',
-      'remove',
-      expect.objectContaining({ id: 'u1' })
+      'remove'
     );
-
-    await waitFor(() =>
-      expect(screen.getByTestId('react-btn')).toHaveTextContent('r0')
-    );
+    expect(screen.getByTestId('react-btn')).toHaveTextContent('r0');
   });
 
-  it('keeps accepting toggles after a reaction change (not latched)', async () => {
-    mockToggle
-      .mockResolvedValueOnce([{ reactionType: 'heart', user: { id: 'u1' } }])
-      .mockResolvedValueOnce([]);
-
+  // Two reactions in flight at once must both land: each builds on the
+  // latest list, not the one its click rendered with.
+  it('keeps both of two quick reactions', async () => {
+    const pending: (() => void)[] = [];
+    mockSendReaction.mockImplementation(
+      () => new Promise<void>((resolve) => pending.push(resolve))
+    );
     render(<ActivityFeedItem activity={baseActivity} />);
 
-    // Add, then remove the same reaction: the second toggle must still fire
-    // (the Reactions remount keys off the reaction set, clearing any latch).
-    await act(async () => {
+    act(() => {
+      fireEvent.click(screen.getByTestId('activity-like'));
       fireEvent.click(screen.getByTestId('react-btn'));
     });
-    await waitFor(() =>
-      expect(screen.getByTestId('react-btn')).toHaveTextContent('r1')
-    );
+    await act(async () => pending.forEach((resolve) => resolve()));
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('react-remove-btn'));
-    });
-    await waitFor(() =>
-      expect(screen.getByTestId('react-btn')).toHaveTextContent('r0')
+    expect(mockSendReaction).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('activity-like')).toHaveTextContent(
+      'label.like-with-count'
     );
-
-    expect(mockToggle).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('react-btn')).toHaveTextContent('r1');
   });
 
-  it('shows an error toast when the reaction toggle rejects', async () => {
+  // A double click on Like must not count the viewer twice.
+  it('ignores a repeat of a reaction the viewer already has', async () => {
+    mockSendReaction.mockReturnValue(new Promise(() => undefined));
+    render(<ActivityFeedItem activity={baseActivity} />);
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('react-btn'));
+      fireEvent.click(screen.getByTestId('react-btn'));
+    });
+
+    expect(mockSendReaction).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('react-btn')).toHaveTextContent('r1');
+  });
+
+  it('rolls the reaction back and says so when the server refuses it', async () => {
     const err = new Error('fail');
-    mockToggle.mockRejectedValue(err);
+    mockSendReaction.mockRejectedValue(err);
 
     render(<ActivityFeedItem activity={baseActivity} />);
 
@@ -447,6 +507,23 @@ describe('ActivityFeedItem', () => {
 
     expect(mockShowErrorToast).toHaveBeenCalledWith(err);
     expect(screen.getByTestId('react-btn')).toHaveTextContent('r0');
+  });
+
+  // A card read back from the cache after a sub-tab switch keeps it.
+  it('writes the reactions back to the cached feeds', async () => {
+    mockSendReaction.mockResolvedValue({});
+    render(<ActivityFeedItem activity={baseActivity} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('react-btn'));
+    });
+
+    expect(mockWriteInboxReactions).toHaveBeenCalledWith('query-client', 'a1', [
+      expect.objectContaining({
+        reactionType: 'heart',
+        user: expect.objectContaining({ id: 'u1' }),
+      }),
+    ]);
   });
 
   it('re-syncs local reactions when the activity prop changes', () => {
@@ -469,10 +546,7 @@ describe('ActivityFeedItem', () => {
   });
 
   it('likes the activity with the thumbs-up reaction', async () => {
-    mockToggle.mockResolvedValue([
-      { reactionType: 'thumbsUp', user: { id: 'u1' } },
-    ]);
-
+    mockSendReaction.mockResolvedValue({});
     render(<ActivityFeedItem activity={baseActivity} />);
 
     expect(screen.getByTestId('activity-like')).toHaveTextContent('label.like');
@@ -481,15 +555,13 @@ describe('ActivityFeedItem', () => {
       fireEvent.click(screen.getByTestId('activity-like'));
     });
 
-    expect(mockToggle).toHaveBeenCalledWith(
-      'a1',
-      expect.any(Array),
+    expect(mockSendReaction).toHaveBeenCalledWith(
+      { activityId: 'a1', conversationId: undefined },
       'thumbsUp',
-      'add',
-      expect.objectContaining({ id: 'u1' })
+      'add'
     );
     expect(screen.getByTestId('activity-like')).toHaveTextContent(
-      'label.like · 1'
+      'label.like-with-count'
     );
     expect(screen.getByTestId('activity-like')).toHaveAttribute(
       'aria-pressed',
@@ -500,7 +572,7 @@ describe('ActivityFeedItem', () => {
   });
 
   it('removes the like when the viewer already liked it', async () => {
-    mockToggle.mockResolvedValue([]);
+    mockSendReaction.mockResolvedValue({});
     const liked = {
       ...baseActivity,
       reactions: [{ reactionType: 'thumbsUp', user: { id: 'u1' } }],
@@ -512,13 +584,12 @@ describe('ActivityFeedItem', () => {
       fireEvent.click(screen.getByTestId('activity-like'));
     });
 
-    expect(mockToggle).toHaveBeenCalledWith(
-      'a1',
-      expect.any(Array),
+    expect(mockSendReaction).toHaveBeenCalledWith(
+      { activityId: 'a1', conversationId: undefined },
       'thumbsUp',
-      'remove',
-      expect.objectContaining({ id: 'u1' })
+      'remove'
     );
+    expect(screen.getByTestId('activity-like')).toHaveTextContent('label.like');
   });
 
   describe('thread', () => {
@@ -621,6 +692,8 @@ describe('ActivityFeedItem', () => {
 
       expect(mockShowErrorToast).toHaveBeenCalledWith(err);
       expect(mockRefetchReplies).not.toHaveBeenCalled();
+      // Rejecting is what tells the composer to put the draft back.
+      expect(mockReplyRejected).toHaveBeenCalledWith(err);
     });
   });
 });

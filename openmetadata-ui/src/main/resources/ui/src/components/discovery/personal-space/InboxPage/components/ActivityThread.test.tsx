@@ -77,6 +77,12 @@ jest.mock(
   })
 );
 
+// Has its own suite; here it only passes the author through.
+jest.mock('./AuthorPopover', () => ({
+  __esModule: true,
+  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 jest.mock('./InboxCommentComposer', () => ({
   __esModule: true,
   default: ({

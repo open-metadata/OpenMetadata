@@ -148,7 +148,7 @@ const ReplyRow = ({
 
   return (
     <Box className="tw:group" data-testid="feed-reply-card" gap={3}>
-      <AuthorPopover userName={authorLogin}>
+      <AuthorPopover decorative userName={authorLogin}>
         <ProfilePicture
           borderless
           displayName={authorName}

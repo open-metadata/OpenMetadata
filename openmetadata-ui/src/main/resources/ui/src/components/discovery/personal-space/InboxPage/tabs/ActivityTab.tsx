@@ -21,6 +21,7 @@ import {
   Hourglass01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { countBy, groupBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,12 +65,12 @@ const GROUPING: Record<
   ActivityGrouping,
   {
     key: (item: InboxActivityItem) => string;
-    title: (item: InboxActivityItem) => string;
+    title: (item: InboxActivityItem, t: TFunction) => string;
   }
 > = {
   [ActivityGrouping.Day]: {
     key: (item) => formatDate(getInboxItemTimestamp(item)),
-    title: (item) => getActivityDayLabel(getInboxItemTimestamp(item)),
+    title: (item, t) => getActivityDayLabel(getInboxItemTimestamp(item), t),
   },
   [ActivityGrouping.Asset]: {
     key: (item) => getItemEntity(item)?.id ?? '',
@@ -152,11 +153,11 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
     return Object.values(groupBy(visibleItems, key)).map((groupItems) => ({
       key: key(groupItems[0]),
-      title: title(groupItems[0]),
+      title: title(groupItems[0], t),
       items: groupItems,
       total: totals[key(groupItems[0])],
     }));
-  }, [filteredItems, visibleItems, grouping]);
+  }, [filteredItems, visibleItems, grouping, t]);
   const timeFormat =
     grouping === ActivityGrouping.Day
       ? ACTIVITY_CLOCK_FORMAT

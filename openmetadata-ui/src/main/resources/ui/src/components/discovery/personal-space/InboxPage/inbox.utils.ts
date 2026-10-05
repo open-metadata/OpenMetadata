@@ -324,11 +324,17 @@ export const getActivityTypeKey = (activity?: ActivityEvent): string =>
   (activity && CHANGE_LABEL_KEY[activity.eventType]) ?? ACTIVITY_TYPE_OTHER;
 
 // "Today · Thu, Jul 30", "2 days ago · Wed, Jul 28"
-export const getActivityDayLabel = (timestamp: number): string =>
-  `${getRelativeCalendar(timestamp, undefined, 'days')} · ${formatDateTimeLong(
-    timestamp,
-    ACTIVITY_DAY_FORMAT
-  )}`;
+export const getActivityDayLabel = (timestamp: number, t: TFunction): string =>
+  t('label.relative-day-with-date', {
+    day: getRelativeCalendar(timestamp, undefined, 'days'),
+    date: formatDateTimeLong(timestamp, ACTIVITY_DAY_FORMAT),
+  });
+
+/** Whether two timestamps fall on the same local calendar day. */
+export const isSameLocalDay = (first?: number, second?: number): boolean =>
+  first !== undefined &&
+  second !== undefined &&
+  DateTime.fromMillis(first).hasSame(DateTime.fromMillis(second), 'day');
 
 // Selected date window for the Inbox (Activity + Tasks), passed to the feed/task
 // list APIs as startTs/endTs (server-side filtering).
@@ -490,89 +496,65 @@ export interface ReactionUser {
 }
 
 /**
- * Toggle the user's reaction on an activity event via PUT/DELETE
- * /activity/{id}/reaction; returns the optimistic list.
+ * The reaction list after the user adds or removes one reaction. Adding one
+ * they already have, or removing one they don't, returns the same list, so a
+ * repeated click is a no-op rather than a duplicate.
  */
-export const toggleActivityReaction = async (
-  activityId: string,
-  currentReactions: Reaction[],
+export const applyReaction = (
+  reactions: Reaction[],
   reactionType: ReactionType,
   operation: ReactionOperation,
   currentUser?: ReactionUser
-): Promise<Reaction[]> => {
-  const existing = currentReactions;
-  const updated =
-    operation === ReactionOperation.ADD
-      ? [
-          ...existing,
-          {
-            reactionType,
-            // Carry name/displayName so the reaction tooltip can show who
-            // reacted without a follow-up user lookup.
-            user: {
-              id: currentUser?.id as string,
-              type: 'user',
-              name: currentUser?.name,
-              displayName: currentUser?.displayName,
-            },
-          } as Reaction,
-        ]
-      : existing.filter(
-          (reaction) =>
-            !(
-              reaction.reactionType === reactionType &&
-              reaction.user?.id === currentUser?.id
-            )
-        );
+): Reaction[] => {
+  const isMine = (reaction: Reaction) =>
+    reaction.reactionType === reactionType &&
+    reaction.user?.id === currentUser?.id;
+  const hasIt = reactions.some(isMine);
 
-  if (operation === ReactionOperation.ADD) {
-    await addActivityReaction(activityId, reactionType);
-  } else {
-    await removeActivityReaction(activityId, reactionType);
+  if (operation === ReactionOperation.REMOVE) {
+    return hasIt
+      ? reactions.filter((reaction) => !isMine(reaction))
+      : reactions;
   }
 
-  return updated;
+  return hasIt
+    ? reactions
+    : [
+        ...reactions,
+        {
+          reactionType,
+          // Carry name/displayName so the reaction tooltip can show who
+          // reacted without a follow-up user lookup.
+          user: {
+            id: currentUser?.id as string,
+            type: 'user',
+            name: currentUser?.name,
+            displayName: currentUser?.displayName,
+          },
+        } as Reaction,
+      ];
 };
 
 /**
- * Toggle the user's reaction on a conversation root via PUT/DELETE
- * /conversations/{id}/reaction; returns the optimistic list.
+ * Send one reaction change: PUT/DELETE /activity/{id}/reaction for an activity
+ * event, /conversations/{id}/reaction for a conversation root.
  */
-export const toggleConversationReaction = async (
-  conversationId: string,
-  currentReactions: Reaction[],
+export const sendReaction = (
+  {
+    activityId,
+    conversationId,
+  }: { activityId?: string; conversationId?: string },
   reactionType: ReactionType,
-  operation: ReactionOperation,
-  currentUser?: ReactionUser
-): Promise<Reaction[]> => {
-  const existing = currentReactions;
-  const updated =
-    operation === ReactionOperation.ADD
-      ? [
-          ...existing,
-          {
-            reactionType,
-            user: {
-              id: currentUser?.id as string,
-              type: 'user',
-              name: currentUser?.name,
-              displayName: currentUser?.displayName,
-            },
-          } as Reaction,
-        ]
-      : existing.filter(
-          (reaction) =>
-            !(
-              reaction.reactionType === reactionType &&
-              reaction.user?.id === currentUser?.id
-            )
-        );
-
-  if (operation === ReactionOperation.ADD) {
-    await addConversationReaction(conversationId, reactionType);
-  } else {
-    await removeConversationReaction(conversationId, reactionType);
+  operation: ReactionOperation
+): Promise<unknown> => {
+  const isAdd = operation === ReactionOperation.ADD;
+  if (activityId) {
+    return isAdd
+      ? addActivityReaction(activityId, reactionType)
+      : removeActivityReaction(activityId, reactionType);
   }
 
-  return updated;
+  return isAdd
+    ? addConversationReaction(conversationId ?? '', reactionType)
+    : removeConversationReaction(conversationId ?? '', reactionType);
 };

@@ -43,8 +43,10 @@ jest.mock('hooks/useApplicationStore', () => ({
 import { ActivityFilter } from './inbox.utils';
 import {
   fetchInboxActivity,
+  INBOX_ACTIVITY_QUERY_KEY,
   useInboxActivity,
   useInboxActivityCounts,
+  writeInboxReactions,
 } from './useInboxActivity';
 
 // Inside the 100–200 window the range tests use.
@@ -237,12 +239,62 @@ describe('fetchInboxActivity', () => {
     }
   );
 
+  // A full page that the window clip trimmed already reached past the
+  // window's start, so the window is complete and the count exact.
+  it('does not flag a full page the window clipped as capped', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({
+        id: i,
+        timestamp: i < 150 ? 150 : 10,
+      })),
+    });
+    mockListConversations.mockResolvedValue({ data: [] });
+
+    const result = await fetchInboxActivity(ActivityFilter.All, 'u1', 100, 200);
+
+    expect(result.activities).toHaveLength(150);
+    expect(result.isCapped).toBe(false);
+  });
+
   it('returns empty lists when the user id is not resolved yet', async () => {
     const result = await fetchInboxActivity(ActivityFilter.All, undefined);
 
     expect(result).toEqual({ activities: [], threads: [], isCapped: false });
     expect(mockGetActivityEvents).not.toHaveBeenCalled();
     expect(mockListConversations).not.toHaveBeenCalled();
+  });
+});
+
+describe('writeInboxReactions', () => {
+  // A card read back from any cached sub-tab after a switch keeps the change.
+  it("writes a card's reactions into every cached feed that holds it", () => {
+    const queryClient = new QueryClient();
+    const keyAll = [INBOX_ACTIVITY_QUERY_KEY, ActivityFilter.All];
+    const keyMine = [INBOX_ACTIVITY_QUERY_KEY, ActivityFilter.MyAssets];
+    queryClient.setQueryData(keyAll, {
+      activities: [{ id: 'a1' }, { id: 'a2' }],
+      threads: [{ id: 'f1' }],
+      isCapped: false,
+    });
+    queryClient.setQueryData(keyMine, {
+      activities: [{ id: 'a1' }],
+      threads: [],
+      isCapped: false,
+    });
+    const reactions = [{ reactionType: 'heart' }] as never;
+
+    writeInboxReactions(queryClient, 'a1', reactions);
+
+    expect(queryClient.getQueryData(keyAll)).toEqual({
+      activities: [{ id: 'a1', reactions }, { id: 'a2' }],
+      threads: [{ id: 'f1' }],
+      isCapped: false,
+    });
+    expect(queryClient.getQueryData(keyMine)).toEqual({
+      activities: [{ id: 'a1', reactions }],
+      threads: [],
+      isCapped: false,
+    });
   });
 });
 

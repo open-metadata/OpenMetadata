@@ -24,8 +24,11 @@ import {
 
 export const ACTIVITY_REPLIES_QUERY_KEY = 'inbox-activity-replies';
 
-// The most a replies read returns; also what an activity thread shows.
+// The most one replies read returns; the server caps a page at 100.
 const REPLIES_LIMIT = 100;
+// ponytail: a thread reads at most this many pages (1000 replies); page on
+// scroll if threads ever grow past it.
+const MAX_REPLY_PAGES = 10;
 
 const REPLIES_STALE_TIME = 30 * 1000;
 
@@ -37,10 +40,32 @@ interface ThreadIds {
 // An activity's replies live in a conversation whose id is the activity id
 // (open-metadata/OpenMetadata#30909), so once a reply exists, editing and
 // deleting it go through the same conversation endpoints as any comment.
-const listThreadReplies = ({ activityId, conversationId }: ThreadIds) =>
+const listThreadReplies = (
+  { activityId, conversationId }: ThreadIds,
+  after?: string
+) =>
   activityId
-    ? listActivityReplies(activityId, { limit: REPLIES_LIMIT })
-    : listConversationReplies(conversationId ?? '', { limit: REPLIES_LIMIT });
+    ? listActivityReplies(activityId, { limit: REPLIES_LIMIT, after })
+    : listConversationReplies(conversationId ?? '', {
+        limit: REPLIES_LIMIT,
+        after,
+      });
+
+// Replies come oldest first, a page at a time, so a long thread is read page
+// by page to its newest reply; otherwise a reply posted past the first page
+// would never show.
+const listAllThreadReplies = async (
+  ids: ThreadIds,
+  after?: string,
+  page = 1
+): Promise<ConversationReply[]> => {
+  const { data = [], paging } = await listThreadReplies(ids, after);
+  const isLastPage = !paging?.after || page >= MAX_REPLY_PAGES;
+
+  return isLastPage
+    ? data
+    : [...data, ...(await listAllThreadReplies(ids, paging.after, page + 1))];
+};
 
 export const createThreadReply = (
   message: string,
@@ -69,7 +94,7 @@ export const useActivityReplies = (
   const threadId = ids.conversationId ?? ids.activityId;
   const { data, isLoading, refetch } = useQuery({
     queryKey: [ACTIVITY_REPLIES_QUERY_KEY, threadId],
-    queryFn: () => listThreadReplies(ids).then((res) => res.data ?? []),
+    queryFn: () => listAllThreadReplies(ids),
     enabled: enabled && Boolean(threadId),
     staleTime: REPLIES_STALE_TIME,
   });

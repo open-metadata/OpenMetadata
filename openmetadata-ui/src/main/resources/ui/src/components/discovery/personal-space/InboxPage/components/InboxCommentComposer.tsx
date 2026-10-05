@@ -19,11 +19,16 @@ import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/Activi
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../../../../../components/common/RichTextEditor/RichTextEditor.interface';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import { getBackendFormat } from '../../../../../utils/FeedUtilsPure';
+import {
+  getBackendFormat,
+  getFrontEndFormat,
+  MarkdownToHTMLConverter,
+} from '../../../../../utils/FeedUtilsPure';
 import './inbox-comment-composer.less';
 
 export interface InboxCommentComposerProps {
-  onSave: (message: string) => void;
+  // A rejected promise puts the draft back in the editor.
+  onSave: (message: string) => void | Promise<unknown>;
   placeHolder?: string;
   focused?: boolean;
 }
@@ -55,22 +60,27 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
     setHasText(message.trim().length > 0);
   }, []);
 
-  // Enter sends through the editor, which clears itself; the draft is gone.
-  const handleEditorSave = useCallback(
+  // The editor is already empty when this runs, so a save that fails writes
+  // the draft back rather than losing it.
+  const submit = useCallback(
     (message: string) => {
       setHasText(false);
-      onSave(message);
+      Promise.resolve(onSave(message)).catch(() => {
+        editorRef.current?.setEditorContent(
+          MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(message))
+        );
+        setHasText(true);
+      });
     },
     [onSave]
   );
 
-  // Mirrors the editor's own Enter-to-send: post the content, then clear it.
+  // Mirrors the editor's own Enter-to-send, which clears itself first.
   const handleSend = () => {
     const content = editorRef.current?.getEditorContent();
     if (content) {
       editorRef.current?.clearEditorContent();
-      setHasText(false);
-      onSave(getBackendFormat(content));
+      submit(getBackendFormat(content));
     }
   };
 
@@ -115,7 +125,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
           focused={focused}
           placeHolder={placeholderText}
           ref={editorRef}
-          onSave={handleEditorSave}
+          onSave={submit}
           onTextChange={handleTextChange}
         />
       </div>

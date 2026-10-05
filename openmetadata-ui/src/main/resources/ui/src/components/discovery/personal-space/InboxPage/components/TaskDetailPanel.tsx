@@ -612,12 +612,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       if (!task || !message) {
         return;
       }
+      // A refused comment rejects, so the composer puts the draft back; the
+      // refresh after a saved one does not.
       try {
         await addTaskComment(task.id, message);
-        await handleCommentMutated();
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        throw error;
       }
+      await handleCommentMutated();
     },
     [task, handleCommentMutated]
   );

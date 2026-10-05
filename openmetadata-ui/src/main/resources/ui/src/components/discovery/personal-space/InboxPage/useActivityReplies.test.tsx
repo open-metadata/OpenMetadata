@@ -61,7 +61,10 @@ describe('useActivityReplies', () => {
     await waitFor(() => expect(result.current.replies).toHaveLength(2));
 
     expect(result.current.threadId).toBe('A');
-    expect(mockListActivityReplies).toHaveBeenCalledWith('A', { limit: 100 });
+    expect(mockListActivityReplies).toHaveBeenCalledWith('A', {
+      limit: 100,
+      after: undefined,
+    });
     expect(mockListConversationReplies).not.toHaveBeenCalled();
   });
 
@@ -75,7 +78,54 @@ describe('useActivityReplies', () => {
 
     expect(mockListConversationReplies).toHaveBeenCalledWith('T', {
       limit: 100,
+      after: undefined,
     });
+  });
+
+  // Replies come oldest first a page at a time: the newest, including one just
+  // posted, sit on the last page.
+  it('reads a long thread page by page to its newest reply', async () => {
+    mockListActivityReplies
+      .mockResolvedValueOnce({ data: [{ id: 'r1' }], paging: { after: 'p2' } })
+      .mockResolvedValueOnce({ data: [{ id: 'r2' }], paging: { after: 'p3' } })
+      .mockResolvedValueOnce({ data: [{ id: 'r3' }], paging: {} });
+
+    const { result } = renderHook(
+      () => useActivityReplies({ activityId: 'A' }, true),
+      { wrapper }
+    );
+
+    await waitFor(() =>
+      expect(result.current.replies.map(({ id }) => id)).toEqual([
+        'r1',
+        'r2',
+        'r3',
+      ])
+    );
+
+    expect(mockListActivityReplies).toHaveBeenLastCalledWith('A', {
+      limit: 100,
+      after: 'p3',
+    });
+  });
+
+  it('stops paging at the read cap', async () => {
+    mockListActivityReplies.mockImplementation(
+      (_id: string, { after }: { after?: string }) =>
+        Promise.resolve({
+          data: [{ id: after ?? 'first' }],
+          paging: { after: `${after ?? ''}x` },
+        })
+    );
+
+    const { result } = renderHook(
+      () => useActivityReplies({ activityId: 'A' }, true),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.replies).toHaveLength(10));
+
+    expect(mockListActivityReplies).toHaveBeenCalledTimes(10);
   });
 
   it('waits until the card is on screen', () => {

@@ -11,24 +11,40 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import UserPopOverCard from '../../../../../components/common/PopOverCard/UserPopOverCard';
+import { getUserPath } from '../../../../../utils/RouterUtils';
 
 interface AuthorPopoverProps {
   userName: string;
   children: ReactNode;
+  // An avatar beside the author's name repeats it: hover only, kept out of the
+  // tab order and away from screen readers.
+  decorative?: boolean;
 }
 
 /**
- * The user card on hover over an author's avatar or name, as elsewhere in the
- * app. The popover listens on a plain span, since the core Avatar does not
- * forward mouse events; an event with no actor has no card to show.
+ * The user card over an author's avatar or name, as elsewhere in the app. The
+ * trigger is a link to their profile, so a keyboard reaches the name and its
+ * focus opens the card too; an event with no actor has no card to show.
  */
-const AuthorPopover = ({ userName, children }: AuthorPopoverProps) =>
+const AuthorPopover = ({
+  userName,
+  children,
+  decorative = false,
+}: AuthorPopoverProps) =>
   userName ? (
-    <UserPopOverCard userName={userName}>
-      <span className="tw:cursor-pointer" data-testid="author-popover-trigger">
+    <UserPopOverCard
+      trigger={decorative ? 'hover' : ['hover', 'focus']}
+      userName={userName}>
+      <Link
+        aria-hidden={decorative || undefined}
+        className="tw:text-inherit tw:no-underline"
+        data-testid="author-popover-trigger"
+        tabIndex={decorative ? -1 : undefined}
+        to={getUserPath(userName)}>
         {children}
-      </span>
+      </Link>
     </UserPopOverCard>
   ) : (
     <>{children}</>

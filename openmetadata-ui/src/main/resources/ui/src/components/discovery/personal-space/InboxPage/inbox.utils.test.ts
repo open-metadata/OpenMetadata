@@ -52,16 +52,17 @@ jest.mock('../../../../rest/conversationsAPI', () => ({
 
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
+  applyReaction,
   formatInboxCount,
   formatInboxDate,
   formatInboxDateTime,
   getActivityChange,
   getActivityEventLabel,
   getFeedSortTimestamp,
+  isSameLocalDay,
   isTaskOpen,
   pairFieldChanges,
-  toggleActivityReaction,
-  toggleConversationReaction,
+  sendReaction,
 } from './inbox.utils';
 
 const mockAddReaction = addActivityReaction as jest.Mock;
@@ -276,114 +277,132 @@ describe('inbox.utils', () => {
     });
   });
 
-  describe('toggleConversationReaction', () => {
-    beforeEach(() => {
-      mockAddConversationReaction.mockClear();
-      mockRemoveConversationReaction.mockClear();
-    });
-
+  describe('applyReaction', () => {
     const user = { id: 'u1', name: 'alice', displayName: 'Alice' };
 
-    // The reaction endpoints exist because a conversation PATCH is author-gated —
-    // reacting to someone else's conversation has to be its own operation.
-    it('adds a reaction via the conversation reaction endpoint', async () => {
-      const result = await toggleConversationReaction(
-        'f1',
-        [],
+    it('adds the user reaction with their details', () => {
+      expect(
+        applyReaction([], ReactionType.Heart, ReactionOperation.ADD, user)
+      ).toEqual([
+        {
+          reactionType: ReactionType.Heart,
+          user: { id: 'u1', type: 'user', name: 'alice', displayName: 'Alice' },
+        },
+      ]);
+    });
+
+    it("removes only the current user's reaction of that type", () => {
+      const existing = [
+        { reactionType: ReactionType.Heart, user: { id: 'u1' } },
+        { reactionType: ReactionType.Heart, user: { id: 'u2' } },
+        { reactionType: ReactionType.Laugh, user: { id: 'u1' } },
+      ] as Reaction[];
+
+      expect(
+        applyReaction(
+          existing,
+          ReactionType.Heart,
+          ReactionOperation.REMOVE,
+          user
+        ).map((r) => `${r.reactionType}:${r.user?.id}`)
+      ).toEqual(['heart:u2', 'laugh:u1']);
+    });
+
+    // A double click must not count the user twice.
+    it('returns the same list when adding a reaction the user already has', () => {
+      const existing = [
+        { reactionType: ReactionType.ThumbsUp, user: { id: 'u1' } },
+      ] as Reaction[];
+
+      expect(
+        applyReaction(
+          existing,
+          ReactionType.ThumbsUp,
+          ReactionOperation.ADD,
+          user
+        )
+      ).toBe(existing);
+    });
+
+    it('returns the same list when removing a reaction the user lacks', () => {
+      const existing = [
+        { reactionType: ReactionType.Heart } as Reaction,
+      ] as Reaction[];
+
+      expect(
+        applyReaction(
+          existing,
+          ReactionType.Heart,
+          ReactionOperation.REMOVE,
+          user
+        )
+      ).toBe(existing);
+    });
+  });
+
+  describe('sendReaction', () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    it('sends an activity reaction to the activity endpoints', async () => {
+      await sendReaction(
+        { activityId: 'a1' },
         ReactionType.Heart,
-        ReactionOperation.ADD,
-        user
+        ReactionOperation.ADD
+      );
+      await sendReaction(
+        { activityId: 'a1' },
+        ReactionType.Heart,
+        ReactionOperation.REMOVE
       );
 
-      expect(result).toHaveLength(1);
+      expect(mockAddReaction).toHaveBeenCalledWith('a1', ReactionType.Heart);
+      expect(mockRemoveReaction).toHaveBeenCalledWith('a1', ReactionType.Heart);
+      expect(mockAddConversationReaction).not.toHaveBeenCalled();
+    });
+
+    // A conversation PATCH is author-gated, so reacting to someone else's
+    // conversation has to go through its own reaction endpoint.
+    it('sends a conversation reaction to the conversation endpoints', async () => {
+      await sendReaction(
+        { conversationId: 'f1' },
+        ReactionType.Heart,
+        ReactionOperation.ADD
+      );
+      await sendReaction(
+        { conversationId: 'f1' },
+        ReactionType.Heart,
+        ReactionOperation.REMOVE
+      );
+
       expect(mockAddConversationReaction).toHaveBeenCalledWith(
         'f1',
         ReactionType.Heart
       );
-      expect(mockRemoveConversationReaction).not.toHaveBeenCalled();
-    });
-
-    it('removes the current user reaction', async () => {
-      const existing = [
-        { reactionType: ReactionType.Heart, user: { id: 'u1' } },
-        { reactionType: ReactionType.Heart, user: { id: 'u2' } },
-      ] as Reaction[];
-
-      const result = await toggleConversationReaction(
-        'f1',
-        existing,
-        ReactionType.Heart,
-        ReactionOperation.REMOVE,
-        user
-      );
-
-      expect(result.map((r) => r.user?.id)).toEqual(['u2']);
       expect(mockRemoveConversationReaction).toHaveBeenCalledWith(
         'f1',
         ReactionType.Heart
       );
-      expect(mockAddConversationReaction).not.toHaveBeenCalled();
+      expect(mockAddReaction).not.toHaveBeenCalled();
     });
   });
 
-  describe('toggleActivityReaction', () => {
-    beforeEach(() => {
-      mockAddReaction.mockClear();
-      mockRemoveReaction.mockClear();
+  describe('isSameLocalDay', () => {
+    const at = (iso: string) => new Date(iso).getTime();
+
+    it('matches two times on one local day', () => {
+      expect(
+        isSameLocalDay(at('2026-10-05T09:00:00'), at('2026-10-05T23:30:00'))
+      ).toBe(true);
     });
 
-    const user = { id: 'u1', name: 'alice', displayName: 'Alice' };
-
-    it('adds a reaction with the user details and calls addActivityReaction', async () => {
-      const result = await toggleActivityReaction(
-        'a1',
-        [],
-        ReactionType.Heart,
-        ReactionOperation.ADD,
-        user
-      );
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        reactionType: ReactionType.Heart,
-        user: { id: 'u1', type: 'user', name: 'alice', displayName: 'Alice' },
-      });
-      expect(mockAddReaction).toHaveBeenCalledWith('a1', ReactionType.Heart);
+    it('tells apart times on different days', () => {
+      expect(
+        isSameLocalDay(at('2026-10-04T23:59:00'), at('2026-10-05T00:01:00'))
+      ).toBe(false);
     });
 
-    it('removes the current user reaction and calls removeActivityReaction', async () => {
-      const existing = [
-        { reactionType: ReactionType.Heart, user: { id: 'u1' } },
-        { reactionType: ReactionType.Heart, user: { id: 'u2' } },
-      ] as Reaction[];
-
-      const result = await toggleActivityReaction(
-        'a1',
-        existing,
-        ReactionType.Heart,
-        ReactionOperation.REMOVE,
-        user
-      );
-
-      expect(result.map((r) => r.user?.id)).toEqual(['u2']);
-      expect(mockRemoveReaction).toHaveBeenCalledWith('a1', ReactionType.Heart);
-    });
-
-    it('does not crash when a reaction has no user', async () => {
-      const existing = [
-        { reactionType: ReactionType.Heart } as Reaction,
-        { reactionType: ReactionType.Heart, user: { id: 'u1' } } as Reaction,
-      ];
-
-      const result = await toggleActivityReaction(
-        'a1',
-        existing,
-        ReactionType.Heart,
-        ReactionOperation.REMOVE,
-        user
-      );
-
-      expect(result).toHaveLength(1);
+    it('is false when either time is missing', () => {
+      expect(isSameLocalDay(undefined, at('2026-10-05T09:00:00'))).toBe(false);
     });
   });
 
