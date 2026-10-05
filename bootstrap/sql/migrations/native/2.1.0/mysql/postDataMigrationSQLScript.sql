@@ -340,3 +340,14 @@ SET json = JSON_SET(
 )
 WHERE serviceType = 'MicrosoftFabric'
   AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.clientSecret');
+
+-- Version history goes through the same connection converter on read, so its snapshots move too.
+UPDATE entity_extension
+SET json = JSON_SET(
+    JSON_REMOVE(json, '$.connection.config.clientSecret'),
+    '$.connection.config.authType',
+    JSON_OBJECT('clientSecret', JSON_EXTRACT(json, '$.connection.config.clientSecret'))
+)
+WHERE extension LIKE 'databaseService.version.%'
+  AND json->>'$.serviceType' = 'MicrosoftFabric'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.clientSecret');

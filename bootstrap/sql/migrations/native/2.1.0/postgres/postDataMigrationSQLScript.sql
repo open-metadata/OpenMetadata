@@ -315,3 +315,15 @@ SET json = jsonb_set(
 )
 WHERE serviceType = 'MicrosoftFabric'
   AND jsonb_exists(json -> 'connection' -> 'config', 'clientSecret');
+
+-- Version history goes through the same connection converter on read, so its snapshots move too.
+UPDATE entity_extension
+SET json = jsonb_set(
+    json #- '{connection,config,clientSecret}',
+    '{connection,config,authType}',
+    jsonb_build_object('clientSecret', json #> '{connection,config,clientSecret}'),
+    true
+)
+WHERE extension LIKE 'databaseService.version.%'
+  AND json ->> 'serviceType' = 'MicrosoftFabric'
+  AND jsonb_exists(json -> 'connection' -> 'config', 'clientSecret');
