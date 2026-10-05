@@ -236,9 +236,14 @@ describe('inbox.utils', () => {
       expect(formatInboxCount({ total: 128, isCapped: false })).toBe('99+');
     });
 
-    // A full page is a floor, not a total.
-    it('caps a count that is only a floor', () => {
+    it('caps a floor past 99', () => {
       expect(formatInboxCount({ total: 300, isCapped: true })).toBe('99+');
+    });
+
+    // A full page can pair and clip down to few cards: still a floor, but
+    // never more than the list shows.
+    it('marks a floor under the cap with a plus, not as 99+', () => {
+      expect(formatInboxCount({ total: 30, isCapped: true })).toBe('30+');
     });
   });
 

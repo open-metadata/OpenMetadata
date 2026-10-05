@@ -388,15 +388,19 @@ export interface InboxCount {
   isCapped: boolean;
 }
 
-// Badges stop counting here: past it the exact figure stops helping triage, and a
-// capped list's length is only a floor anyway.
+// Badges stop counting here: past it the exact figure stops helping triage.
 const MAX_DISPLAYED_COUNT = 99;
 
-// "42", or "99+" once the count passes the cap or is only a floor.
-export const formatInboxCount = ({ total, isCapped }: InboxCount): string =>
-  isCapped || total > MAX_DISPLAYED_COUNT
-    ? `${MAX_DISPLAYED_COUNT}+`
-    : String(total);
+// "42"; "30+" when the count is only a floor; "99+" once it passes the cap. A
+// capped page shrinks after pairing and window clipping, so the floor is the
+// visible count, not the page size.
+export const formatInboxCount = ({ total, isCapped }: InboxCount): string => {
+  if (total > MAX_DISPLAYED_COUNT) {
+    return `${MAX_DISPLAYED_COUNT}+`;
+  }
+
+  return isCapped ? `${total}+` : String(total);
+};
 
 /**
  * Whether a millis timestamp falls inside the selected Inbox date window.
