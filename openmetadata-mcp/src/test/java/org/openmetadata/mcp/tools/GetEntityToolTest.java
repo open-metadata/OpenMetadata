@@ -46,6 +46,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -204,6 +206,71 @@ class GetEntityToolTest {
     }
 
     assertThat(castMap(result.get("content")).get("content")).isEqualTo("the secret answer");
+  }
+
+  @Test
+  void contentQuerySearchesTheMemorysPassagesAsTheCaller() throws Exception {
+    SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
+
+    Map<String, Object> result = readMemoryContentWithQuery(alice, List.of("the matching passage"));
+
+    assertThat(castMap(result.get("content")).get("content")).isEqualTo("the matching passage");
+  }
+
+  @Test
+  void contentQueryFallsBackToTheFullBodyWhenSearchReturnsNoPassage() throws Exception {
+    SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
+
+    Map<String, Object> result = readMemoryContentWithQuery(alice, List.of());
+
+    assertThat(castMap(result.get("content")).get("content")).isEqualTo("the secret answer");
+  }
+
+  /**
+   * The memory read is already authorized, so chunk search must not hide it again: it runs as the
+   * caller, and when search still withholds every chunk (an anchored or retired memory, or one not
+   * chunked yet) the caller gets the full body instead of nothing.
+   */
+  private static Map<String, Object> readMemoryContentWithQuery(
+      SubjectContext caller, List<String> passages) throws Exception {
+    String fqn = "alices-private-note";
+    ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
+    CatalogSecurityContext securityContext = securityContextFor("alice");
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(vectorService.searchChunksByParent(memory.getId().toString(), "retention", 2, caller))
+        .thenReturn(passages);
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.CONTEXT_MEMORY, fqn, "owners,primaryEntity", Include.NON_DELETED))
+          .thenReturn(memory);
+      entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(caller);
+      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+
+      return new GetEntityTool()
+          .execute(
+              mock(Authorizer.class),
+              securityContext,
+              Map.of(
+                  "entityType",
+                  Entity.CONTEXT_MEMORY,
+                  "fqn",
+                  fqn,
+                  "include",
+                  List.of("content"),
+                  "query",
+                  "retention",
+                  "passages",
+                  2));
+    }
   }
 
   private static ContextMemory privateMemoryOwnedBy(String owner, String fqn) {
