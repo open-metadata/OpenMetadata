@@ -12,6 +12,7 @@
  */
 import { compare } from 'fast-json-patch';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import { ROUTES } from '../../../constants/constants';
 import { MEMORY_TYPE_OPTIONS } from '../../../constants/ContextCenter.constants';
 import {
   ContextMemory,
@@ -55,6 +56,21 @@ const resolveMemoryType = (
   (MEMORY_TYPE_OPTIONS.some((option) => option.id === stored)
     ? undefined
     : stored);
+
+// Opening a successor keeps the Context Center's other query parameters; from
+// anywhere else it starts fresh, so another page's parameters do not leak in.
+export const getSuccessorSearch = (
+  currentPathname: string,
+  currentSearch: string,
+  successorName: string
+): string => {
+  const params = new URLSearchParams(
+    currentPathname === ROUTES.CONTEXT_CENTER_MEMORIES ? currentSearch : ''
+  );
+  params.set('memory', successorName);
+
+  return params.toString();
+};
 
 // Patches only the fields that actually changed, preserving a pre-existing
 // shareConfig — or adding one — only when there is a reason to (an existing

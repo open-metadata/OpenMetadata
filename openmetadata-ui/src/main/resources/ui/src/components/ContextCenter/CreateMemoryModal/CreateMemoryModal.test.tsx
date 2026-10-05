@@ -772,6 +772,33 @@ describe('CreateMemoryModal', () => {
     );
   });
 
+  it('keeps the other Context Center parameters when opening the successor', () => {
+    render(
+      <MemoryRouter
+        initialEntries={['/context-center/memories?memory=old-memory&tab=all']}>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          memoryToEdit={{
+            id: 'old-memory',
+            name: 'old-memory',
+            entityStatus: EntityStatus.Deprecated,
+            supersededBy: {
+              id: 'new-memory',
+              type: 'contextMemory',
+              name: 'new-memory',
+            },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('new-memory')).toHaveAttribute(
+      'href',
+      '/context-center/memories?memory=new-memory&tab=all'
+    );
+  });
+
   it('does not offer successor navigation while the memory is being edited', () => {
     render(
       <MemoryRouter>

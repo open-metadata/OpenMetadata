@@ -59,7 +59,7 @@ import {
 import { Control, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import {
@@ -116,6 +116,7 @@ import {
   buildMemoryFormState,
   getAssetKey,
   getPrimaryAndRelatedEntities,
+  getSuccessorSearch,
   removeAssetByKey,
   submitMemoryCreate,
   submitMemoryUpdate,
@@ -662,15 +663,21 @@ const MemorySuccessor: FC<{
   successor: EntityReference;
   isViewOnly: boolean;
 }> = ({ successor, isViewOnly }) => {
+  const location = useLocation();
   const successorName = successor.fullyQualifiedName || successor.name;
 
   return isViewOnly && successorName ? (
     <Link
       className="tw:text-brand-secondary tw:hover:underline"
       data-testid="memory-lifecycle-successor"
-      to={`${ROUTES.CONTEXT_CENTER_MEMORIES}?memory=${encodeURIComponent(
-        successorName
-      )}`}>
+      to={{
+        pathname: ROUTES.CONTEXT_CENTER_MEMORIES,
+        search: getSuccessorSearch(
+          location.pathname,
+          location.search,
+          successorName
+        ),
+      }}>
       {getEntityName(successor)}
     </Link>
   ) : (
