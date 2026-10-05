@@ -270,6 +270,50 @@ def test_full_shipped_recognizer_interactions(value, expected_entities, expected
     assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
 
 
+@pytest.mark.parametrize(
+    ("column_name", "value", "expected_card", "expected_ip", "expected_labels"),
+    [
+        ("phone", "+49 1512 3456787", None, None, ["PII.NonSensitive"]),
+        ("notes", "Call me on +49 1512 3456787 tomorrow", None, None, []),
+        ("notes", "Scores 41 12 34 56 78 90 12 38 final", None, None, []),
+        ("description", "Batch 5 312 34567 8901233 done", None, None, []),
+        ("description", "Card 4111111111111111 2025", "4111111111111111", None, ["PII.Sensitive"]),
+        ("description", "4111 1111 1111 1111 123", "4111 1111 1111 1111", None, ["PII.Sensitive"]),
+        ("ip_address", "10.1.2.3:51234", None, "10.1.2.3", ["PII.Sensitive"]),
+        ("ip_address", "10.0.0.0/8", None, "10.0.0.0", ["PII.Sensitive"]),
+    ],
+)
+def test_shipped_recognizers_preserve_numeric_family_boundaries(
+    column_name, value, expected_card, expected_ip, expected_labels
+):
+    classification = _shipped_classification()
+    tags = [_shipped_tag(classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
+    column = Column(
+        name=column_name,
+        fullyQualifiedName=f"db.schema.table.{column_name}",
+        dataType=DataType.VARCHAR,
+        tags=[],
+    )
+    nlp_engine = load_nlp_engine(classification_language=ClassificationLanguage.en)
+    evidence = [
+        result for tag in tags for result in TagAnalyzer(tag, column, nlp_engine).analyze([value]).recognizer_results
+    ]
+    for entity, expected in (("CREDIT_CARD", expected_card), ("IP_ADDRESS", expected_ip)):
+        spans = [value[result.start : result.end] for result in evidence if result.entity_type == entity]
+        assert spans == ([expected] if expected else [])
+
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
+
+
 class FakeScoreTagsForColumn:
     def __init__(self, scored_tags: list[ScoredTag]) -> None:
         self.scored_tags = scored_tags

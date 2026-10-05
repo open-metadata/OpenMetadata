@@ -182,6 +182,14 @@ def _get_all_entity_recognizer_classes() -> Iterable[type[EntityRecognizer]]:
 recognizer_factories = class_register()
 
 
+def _has_card_shape(candidate: str) -> bool:
+    return bool(
+        re.fullmatch(r"\d{12,19}", candidate)
+        or re.fullmatch(r"\d{4}(?P<sep>[ -])\d{4}(?P=sep)\d{4}(?P=sep)\d{4}(?:(?P=sep)\d{3})?", candidate)
+        or re.fullmatch(r"\d{4}(?P<sep>[ -])\d{6}(?P=sep)\d{5}", candidate)
+    )
+
+
 class SanitizedCreditCardRecognizer(CreditCardRecognizer):
     def analyze(
         self,
@@ -193,33 +201,46 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
         results: list[RecognizerResult] = []
         for match in re.finditer(r"\d[\d -]*\d|\d", text):
             start, end = match.span()
-            if (start and (text[start - 1].isalnum() or text[start - 1] in "_.-")) or (
-                end < len(text)
-                and (
-                    text[end].isalnum() or text[end] in "_-" or (text[end] == "." and text[end + 1 : end + 2].isdigit())
+            preceding = start - 1
+            while preceding >= 0 and text[preceding] in " \t":
+                preceding -= 1
+            if (
+                (start and (text[start - 1].isalnum() or text[start - 1] in "_.-+"))
+                or (
+                    end < len(text)
+                    and (
+                        text[end].isalnum()
+                        or text[end] in "_-"
+                        or (text[end] == "." and text[end + 1 : end + 2].isdigit())
+                    )
                 )
+                or (preceding >= 0 and text[preceding] == "+")
             ):
                 continue
             candidate = match.group()
             if len(candidate) > 2048:
                 continue
             spans = [(start, end)]
-            if len(self.sanitize_value(candidate, self.replacement_pairs)) > 19:
-                parts = list(re.finditer(r"\S+", candidate))
-                if len(parts) < 2 or any(
-                    not 12 <= len(self.sanitize_value(part.group(), self.replacement_pairs)) <= 19 for part in parts
-                ):
-                    continue
+            parts = list(re.finditer(r"\S+", candidate))
+            if len(parts) >= 2 and all(_has_card_shape(part.group()) for part in parts):
                 spans = [(start + part.start(), start + part.end()) for part in parts]
+            # A short number after a complete card can be a year or another field.
+            prefix, separator, suffix = candidate.rpartition(" ")
+            if separator and 1 <= len(suffix) <= 4 and suffix.isdecimal() and _has_card_shape(prefix):
+                spans.append((start, start + len(prefix)))
             for candidate_start, candidate_end in spans:
                 original = text[candidate_start:candidate_end]
                 normalized = self.sanitize_value(original, self.replacement_pairs)
-                if not 12 <= len(normalized) <= 19 or not re.fullmatch(r"\d+(?:[ -]\d+)*", original):
+                if not _has_card_shape(original) or not 12 <= len(normalized) <= 19:
                     continue
+                validated = False
                 for result in super().analyze(normalized, entities, nlp_artifacts, regex_flags):
                     if result.start == 0 and result.end == len(normalized):
                         result.start, result.end = candidate_start, candidate_end
                         results.append(result)
+                        validated = True
+                if validated and candidate_start == start and candidate_end == end:
+                    break
         return results
 
 
@@ -323,28 +344,41 @@ class IpRecognizer(PresidioIpRecognizer):
         results: list[RecognizerResult] = []
         for match in re.finditer(r"(?<![\w:.%-])[0-9a-fA-F:][\w:.%-]*[.:%][\w:.%-]*", text):
             start, end = match.span()
+            token_end = end
             in_url_authority = bool(re.search(r"https?://\[?$", text[max(0, start - 10) : start], re.IGNORECASE))
             while end > start and text[end - 1] == ".":
                 end -= 1
             candidate = text[start:end]
             if len(candidate) > 45:
                 continue
-            if in_url_authority and candidate.count(":") == 1:
+            if candidate.count(":") == 1:
                 address, _, port = candidate.rpartition(":")
-                if port.isdigit() and 1 <= int(port) <= 65535:
-                    try:
-                        ipaddress.IPv4Address(address)
-                    except ValueError:
-                        pass
-                    else:
-                        candidate = address
-                        end = start + len(address)
-            if not in_url_authority and end < len(text) and text[end] == "/" and text[end + 1 : end + 2].isdigit():
-                continue
+                try:
+                    ipaddress.IPv4Address(address)
+                except ValueError:
+                    pass
+                else:
+                    if not port.isdecimal() or not 1 <= int(port) <= 65535:
+                        continue
+                    candidate = address
+                    end = start + len(address)
             try:
-                ipaddress.ip_address(candidate)
+                parsed_address = ipaddress.ip_address(candidate)
             except ValueError:
                 continue
+            if not in_url_authority and token_end < len(text) and text[token_end] == "/":
+                if token_end != end:
+                    continue
+                suffix = re.match(r"/(\d{1,3})", text[token_end:])
+                if suffix is None or int(suffix.group(1)) > parsed_address.max_prefixlen:
+                    continue
+                suffix_end = end + suffix.end()
+                if suffix_end < len(text) and (
+                    text[suffix_end].isalnum()
+                    or text[suffix_end] in "_/:%-"
+                    or (text[suffix_end] == "." and text[suffix_end + 1 : suffix_end + 2].isdigit())
+                ):
+                    continue
             for result in super().analyze(candidate, entities, nlp_artifacts, regex_flags):
                 if result.start == 0 and result.end == len(candidate):
                     result.start, result.end = start, end

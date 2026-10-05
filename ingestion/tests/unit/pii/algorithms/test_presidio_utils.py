@@ -36,6 +36,10 @@ from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
         ("Card 4111111111111111 issued", "4111111111111111"),
         ("(4111-1111-1111-1111)", "4111-1111-1111-1111"),
         ("'4111 1111 1111 1111'", "4111 1111 1111 1111"),
+        ("Card 4111111111111111 2025", "4111111111111111"),
+        ("4111 1111 1111 1111 123", "4111 1111 1111 1111"),
+        ("3782 822463 10005", "3782 822463 10005"),
+        ("6221 2600 0000 0000 001", "6221 2600 0000 0000 001"),
         ("é 4111111111111111 and 5555555555554444", "4111111111111111"),
     ],
 )
@@ -64,6 +68,15 @@ def test_card_results_use_original_candidate_spans(text, expected):
         "0.4111111111111111",
         "4111111111111111e2",
         "4111111111111111_suffix",
+        "+49 1512 3456787",
+        "Call me on +49 1512 3456787 tomorrow",
+        "+ 49 1512 3456787",
+        "+ 4111111111111111",
+        ("+" + " " * 20 + "4111111111111111"),
+        "Scores 41 12 34 56 78 90 12 38 final",
+        "Batch 5 312 34567 8901233 done",
+        "4111-1111 1111-1111",
+        "4111 1111 1111 1111 123 45",
     ],
 )
 def test_card_rejects_invalid_enclosing_candidate(text):
@@ -99,6 +112,9 @@ def test_card_rejects_invalid_enclosing_candidate(text):
         (IpRecognizer, "IP_ADDRESS", "::ffff:192.0.2.128", "::ffff:192.0.2.128", 0.6),
         (IpRecognizer, "IP_ADDRESS", "http://192.168.1.1/123", "192.168.1.1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "http://192.168.1.1:8080/path", "192.168.1.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234", "10.1.2.3", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/8", "10.0.0.0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1/64", "2001:db8::1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "::", "::", 0.1),
     ],
 )
@@ -125,7 +141,14 @@ def test_network_results_use_complete_original_candidate(recognizer_class, entit
         (IpRecognizer, "IP_ADDRESS", "x192.168.1.1"),
         (IpRecognizer, "IP_ADDRESS", "192.168.1.1-invalid"),
         (IpRecognizer, "IP_ADDRESS", "fe80::1%bad-scope"),
-        (IpRecognizer, "IP_ADDRESS", "2001:db8::1/64"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:65536"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:abc"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/33"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/abc"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/8/24"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234/8"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234/abc"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1/129"),
     ],
 )
 def test_network_rejects_invalid_longer_candidate(recognizer_class, entity, text):
