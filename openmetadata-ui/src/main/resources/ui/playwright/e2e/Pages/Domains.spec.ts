@@ -344,10 +344,8 @@ test.describe('Domains', () => {
       // a direct visit: service > database > schema > table.
       const table = assets[0] as TableClass;
       const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-      const tableName =
-        table.entityResponseData.displayName ??
-        table.entityResponseData.name ??
-        '';
+      // The breadcrumb current crumb renders the entity name, not displayName.
+      const tableName = table.entityResponseData.name ?? '';
 
       const tableRes = page.waitForResponse(
         `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
@@ -359,10 +357,13 @@ test.describe('Domains', () => {
       await tableRes;
       await waitForAllLoadersToDisappear(page);
 
+      // The trail auto-collapses: the schema ancestor sits in the overflow
+      // menu while the current crumb (aria-current) stays inline. Both were
+      // dropped before the fix.
       await expectBreadcrumbToContainAncestor(page, table.schema.name);
       await expect(
-        page.getByTestId('breadcrumb').getByText(tableName)
-      ).toBeVisible();
+        page.getByTestId('breadcrumb').locator('[aria-current="page"]')
+      ).toContainText(tableName);
 
       // Return to the domain page so the next step can create data products.
       await redirectToHomePage(page);
