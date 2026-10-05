@@ -572,4 +572,87 @@ class ListFilterTest {
   void test_getServiceCondition_absentServiceYieldsNoCondition() {
     assertEquals("", new ListFilter(Include.NON_DELETED).getServiceCondition("table_entity"));
   }
+
+  /**
+   * The generic list and count paths call {@code getCondition()}, which passes a null table name,
+   * so these predicates have to survive that rather than keying off the table.
+   */
+  @Test
+  void test_announcementStatus_derivesTheWindowWithoutATableName() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementStatus", "Expired");
+
+    String condition = filter.getCondition();
+
+    assertTrue(condition.contains("endTime <"), condition);
+  }
+
+  @Test
+  void test_announcementStatus_scheduledLooksAtStartTime() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementStatus", "Scheduled");
+
+    assertTrue(filter.getCondition().contains("startTime >"));
+  }
+
+  /**
+   * The stored {@code status} column is a snapshot of the last write, so the announcement filter
+   * must never fall through to it - and the generic {@code status} parameter, which other resources
+   * share, must keep meaning that column.
+   */
+  @Test
+  void test_announcementStatus_doesNotTouchTheStoredStatusColumn() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementStatus", "Active");
+
+    String condition = filter.getCondition();
+
+    assertFalse(condition.contains("status IN"), condition);
+    assertFalse(condition.contains("status LIKE"), condition);
+    assertTrue(condition.contains("startTime <="), condition);
+    assertTrue(condition.contains("endTime >="), condition);
+  }
+
+  @Test
+  void test_isTimeDependent_coversTheWindowDerivedFilters() {
+    // These two compare the announcement window against the wall clock, so their row set changes
+    // with nothing written — ListCountCache has to skip them rather than cache a total that
+    // invalidation hooks will never clear.
+    ListFilter byStatus = new ListFilter(Include.NON_DELETED);
+    byStatus.addQueryParam("announcementStatus", "Active");
+
+    ListFilter byActive = new ListFilter(Include.NON_DELETED);
+    byActive.addQueryParam("active", "true");
+
+    assertTrue(byStatus.isTimeDependent());
+    assertTrue(byActive.isTimeDependent());
+  }
+
+  @Test
+  void test_isTimeDependent_isFalseForFiltersDerivedFromStoredState() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementType", "Notice");
+
+    assertFalse(filter.isTimeDependent());
+    assertFalse(new ListFilter(Include.NON_DELETED).isTimeDependent());
+  }
+
+  @Test
+  void test_active_appliesWithoutATableName() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("active", "true");
+
+    String condition = filter.getCondition();
+
+    assertTrue(condition.contains("startTime <="), condition);
+    assertTrue(condition.contains("endTime >="), condition);
+  }
+
+  @Test
+  void test_announcementType_filtersOnTheGeneratedColumn() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementType", "Deprecation");
+
+    assertTrue(filter.getCondition().contains("type = :announcementType"));
+  }
 }
