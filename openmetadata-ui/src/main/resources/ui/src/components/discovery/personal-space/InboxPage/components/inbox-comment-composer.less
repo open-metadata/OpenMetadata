@@ -44,6 +44,24 @@
     border-bottom: 1px solid var(--om-color-border-secondary);
   }
 
+  // Quill draws its icons with a fixed #444 stroke, which is near-invisible on
+  // a dark surface, while the text-glyph buttons (@, #) take the panel's
+  // near-white text. Give every toolbar icon one muted tone in dark; light
+  // keeps Quill's look.
+  .dark-mode & .ql-toolbar.ql-snow {
+    button {
+      color: var(--om-color-text-tertiary);
+    }
+
+    .ql-stroke {
+      stroke: var(--om-color-text-tertiary);
+    }
+
+    .ql-fill {
+      fill: var(--om-color-text-tertiary);
+    }
+  }
+
   .ql-editor,
   .ql-editor.ql-blank {
     min-height: 44px;
@@ -89,6 +107,12 @@
     content: var(--inbox-composer-placeholder, 'Add Comment');
     font-style: normal;
     left: 14px;
+
+    // Quill's default placeholder is rgba(0, 0, 0, 0.6), invisible on a dark
+    // surface; light keeps it.
+    .dark-mode & {
+      color: var(--om-color-text-placeholder);
+    }
   }
 
   // The OSS link bubble is a fixed 300px with nowrap content, so its
