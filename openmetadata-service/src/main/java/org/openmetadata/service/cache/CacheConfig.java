@@ -14,12 +14,6 @@ public class CacheConfig {
 
   public Provider provider = Provider.none;
 
-  // Cross-pod WebSocket relay (fixes sendToOne drops on multi-pod). With provider=redis the relay
-  // uses Redis pub/sub automatically. With provider=none, set this true on a multi-pod deployment
-  // to
-  // enable the DB-poll fallback; leave false for single-pod (no relay overhead).
-  public boolean webSocketRelayEnabled = false;
-
   // TTL settings in seconds
   public int entityTtlSeconds = 3600; // 1 hour
   public int relationshipTtlSeconds = 3600; // 1 hour
