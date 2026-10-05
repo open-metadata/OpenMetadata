@@ -151,7 +151,10 @@ def mode_source():
     source.context.get().__dict__["charts"] = []
     source.context.get().__dict__["dataModels"] = []
     source.status = MagicMock()
-    return source
+    yield source
+    # context is a class attribute shared by every DashboardServiceSource subclass
+    for key in ("dashboard_service", "charts", "dataModels"):
+        source.context.get().__dict__[key] = None
 
 
 def _details(mode_source, queries=None):
