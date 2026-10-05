@@ -17,6 +17,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { useParams } from 'react-router-dom';
 import { TagLabel, TestCase } from '../../../../generated/tests/testCase';
 import {
   LabelType,
@@ -476,6 +477,47 @@ describe('TestCaseResultTab', () => {
 
     mockTestCaseData.useDynamicAssertion = false;
     mockUseTestCaseStore.showAILearningBanner = false;
+  });
+
+  describe('version page', () => {
+    beforeEach(() => {
+      (useParams as jest.Mock).mockImplementation(() => ({ version: '0.2' }));
+      mockUseTestCaseStore.testCase = {
+        ...mockTestCaseData,
+        parameterValues: [{ name: 'columnCount', value: '12000' }],
+        changeDescription: {
+          fieldsAdded: [],
+          fieldsDeleted: [],
+          fieldsUpdated: [
+            {
+              name: 'parameterValues',
+              oldValue: [{ name: 'columnCount', value: '10000' }],
+              newValue: [{ name: 'columnCount', value: '12000' }],
+            },
+          ],
+        },
+      };
+    });
+
+    afterEach(() => {
+      (useParams as jest.Mock).mockImplementation(() => ({
+        version: undefined,
+      }));
+      mockUseTestCaseStore.testCase = mockTestCaseData;
+    });
+
+    it("should show each parameter's change in the Configuration card's rows", async () => {
+      render(<TestCaseResultTab />);
+
+      const row = await screen.findByTestId(
+        'configuration-parameter-columnCount'
+      );
+
+      expect(row).toHaveTextContent('10000 → 12000');
+      expect(
+        screen.queryByTestId('configuration-version-diff')
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe('Compute Row Count visibility', () => {

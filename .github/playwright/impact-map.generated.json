@@ -778,6 +778,7 @@
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
+        "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts",
         "playwright/e2e/Pages/UserCreationWithPersona.spec.ts"
@@ -1725,6 +1726,7 @@
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
+        "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
@@ -3036,6 +3038,7 @@
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
+        "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/TaskFormSettings.spec.ts",
@@ -3514,6 +3517,7 @@
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
+        "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
@@ -5717,7 +5721,8 @@
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts",
-        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts"
+        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
+        "playwright/e2e/Pages/TableCreationTime.spec.ts"
       ]
     },
     {
@@ -11088,6 +11093,7 @@
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
+        "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
@@ -12177,26 +12183,10 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/shared/DiffView/DiffView.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/shared/DiffViewNew.tsx"
       ],
       "specs": [
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/shared/TagsDiffView.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
       ]
     },
     {
@@ -12292,14 +12282,6 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/EntityDiffUtils.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
       ]
     },
     {

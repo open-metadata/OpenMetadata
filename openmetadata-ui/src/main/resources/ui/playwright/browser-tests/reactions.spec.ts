@@ -92,9 +92,9 @@ test('every reaction can be selected and removed through the animated product po
     });
   });
   await page.goto('http://reactions.test/', { waitUntil: 'domcontentloaded' });
-  await page.addStyleTag({ path: 'node_modules/antd/dist/antd.css' });
   await page.addStyleTag({
-    content: '.ant-btn-popover-reaction {font-size:20px}',
+    content:
+      '@keyframes zoom-in { from { transform: scale(0.2) } } [data-testid="feed-reactions-popover"][data-entering] { animation: zoom-in 0.4s }',
   });
   page.on('pageerror', (error) => {
     throw error;
@@ -159,7 +159,6 @@ test('an existing reaction remains usable after completion and a rejected update
   await page.goto('http://reactions.test/?existing', {
     waitUntil: 'domcontentloaded',
   });
-  await page.addStyleTag({ path: 'node_modules/antd/dist/antd.css' });
   await page.addScriptTag({ content: await bundle });
   const button = page.getByTestId('emoji-button');
   await expect(button).toHaveText(/1$/);

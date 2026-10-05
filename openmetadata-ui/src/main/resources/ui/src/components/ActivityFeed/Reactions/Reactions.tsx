@@ -13,12 +13,12 @@
 
 import '@github/g-emoji-element';
 import {
-  ButtonUtility,
+  Button,
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
 import { groupBy } from 'lodash';
-import { FC, useState } from 'react';
+import { FC, MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {
@@ -33,7 +33,6 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
-import './reactions.less';
 
 interface ReactionsProps {
   reactions: ReactionProp[];
@@ -98,24 +97,31 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div className="d-flex items-center" data-testid="feed-reaction-container">
+    <div
+      className="tw:inline-flex tw:items-center tw:gap-2"
+      data-testid="feed-reaction-container">
       {emojis}
       <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="add-reactions"
-          icon={<AddReactionIcon height={16} width={16} />}
-          size="xs"
-          tooltip={t('label.add-entity', {
+        <Button
+          aria-label={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),
           })}
+          className="tw:size-[22px] tw:rounded-md! tw:p-[3px]!"
+          color="tertiary"
+          data-testid="add-reactions"
+          iconLeading={<AddReactionIcon data-icon height={16} width={16} />}
+          size="xs"
+          title={t('label.add-entity', {
+            entity: t('label.reaction-lowercase-plural'),
+          })}
+          onClick={(e: MouseEvent) => e.stopPropagation()}
         />
-        <Popover arrow className="feed-reactions-popover" placement="top start">
-          <div
-            className="tw:flex tw:gap-2 tw:p-1"
-            data-testid="feed-reactions-popover">
-            {reactionList}
-          </div>
+        <Popover
+          arrow
+          containerClassName="tw:flex tw:gap-2 tw:p-1"
+          data-testid="feed-reactions-popover"
+          placement="top start">
+          {reactionList}
         </Popover>
       </PopoverTrigger>
     </div>
