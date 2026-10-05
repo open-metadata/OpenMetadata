@@ -77,11 +77,7 @@ import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
 import type { MembersUsersPanelProps } from './Members.types';
-import {
-  profileHash,
-  ProfileHashTarget,
-  toHashLocation,
-} from './profileHash.utils';
+import { profileHash, toHashLocation } from './profileHash.utils';
 import ProfileHashLink from './ProfileHashLink';
 
 const USER_FIELDS = [
@@ -98,16 +94,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const { permissions } = usePermissionProvider();
-  const { setHash } = useSettingsHash();
-
-  // The cross-tab links below render as hrefs for middle-click/open-in-new-tab,
-  // but the in-app click must write the hash synchronously via setHash: a plain
-  // react-router push is not mirrored into useSettingsHash (popstate-only), so
-  // href-only navigation leaves the panel view on the stale tab/sub-path.
-  const goTo = useCallback(
-    (target: ProfileHashTarget) => setHash(target.tab, target.subPath),
-    [setHash]
-  );
+  const { goTo } = useSettingsHash();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleted, setShowDeleted] = useState(false);

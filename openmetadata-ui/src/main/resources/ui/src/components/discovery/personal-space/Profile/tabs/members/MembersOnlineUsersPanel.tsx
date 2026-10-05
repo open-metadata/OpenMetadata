@@ -68,15 +68,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [timeWindow, setTimeWindow] = useState<number>(DEFAULT_TIME_WINDOW);
-  const { setHash } = useSettingsHash();
-
-  // In-app clicks must write the hash synchronously; a plain react-router push
-  // is not mirrored into useSettingsHash (popstate-only), so href-only links
-  // leave the panel view on the stale tab. href stays for open-in-new-tab.
-  const goTo = useCallback(
-    (target: ProfileHashTarget) => setHash(target.tab, target.subPath),
-    [setHash]
-  );
+  const { goTo } = useSettingsHash();
 
   const {
     paging,

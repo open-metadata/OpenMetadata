@@ -99,7 +99,7 @@ import {
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 import MembersTeamsTab from './MembersTeamsTab';
 import MembersUsersTab from './MembersUsersTab';
-import { profileHash, ProfileHashTarget } from './profileHash.utils';
+import { profileHash } from './profileHash.utils';
 import { useMembersTeamHeader } from './useMembersTeamHeader';
 
 // The global `.drag-icon { width: 6px }` LESS rule is tuned for the legacy 8×15
@@ -123,14 +123,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { showModal } = useEntityExportModalProvider();
   const { currentUser } = useApplicationStore();
   const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
-  const { setHash } = useSettingsHash();
-
-  // location.hash-driven (href) navigation is starved by this panel's streaming
-  // header updates, so cross-tab links must write the hash synchronously.
-  const goTo = useCallback(
-    (target: ProfileHashTarget) => setHash(target.tab, target.subPath),
-    [setHash]
-  );
+  const { goTo } = useSettingsHash();
 
   const [team, setTeam] = useState<Team>();
   const [childTeams, setChildTeams] = useState<Team[]>([]);

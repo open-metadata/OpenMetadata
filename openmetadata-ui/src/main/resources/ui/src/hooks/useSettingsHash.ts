@@ -18,7 +18,7 @@ import {
   useRef,
   useSyncExternalStore,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
 
 /**
@@ -148,6 +148,7 @@ const getStoreHash = (): string => storeHash;
  */
 export const useSettingsHash = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Keep navigate reachable from the stable callbacks below without listing it
   // (or location) as a dependency — an unstable `setHash` identity propagates
@@ -155,6 +156,12 @@ export const useSettingsHash = () => {
   // depend on them, re-firing those effects every render (infinite loop).
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
+  // Read pathname/search from react-router's location (via a ref so the callbacks
+  // stay referentially stable) rather than globalThis.location — the two agree
+  // under BrowserRouter but diverge under MemoryRouter, and setHash must preserve
+  // the real pathname so an in-modal hash change never looks like a route change.
+  const locationRef = useRef(location);
+  locationRef.current = location;
 
   const hash = useSyncExternalStore(
     subscribeStoreHash,
@@ -191,6 +198,22 @@ export const useSettingsHash = () => {
     return () => globalThis.removeEventListener('popstate', onPopState);
   }, []);
 
+  // A react-router <Link>/navigate() to a different route uses pushState (no
+  // popstate), so the urgent store would keep the modal's old hash and
+  // PersonalSpaceModal would stay open after navigating away. On a genuine
+  // pathname CHANGE (not the initial mount, which the deep-link sync above owns),
+  // resync the store to the live hash (usually empty → closes the modal). setHash
+  // keeps the pathname fixed, so this never fires for in-modal navigation.
+  const didMountPathRef = useRef(false);
+  useEffect(() => {
+    if (!didMountPathRef.current) {
+      didMountPathRef.current = true;
+
+      return;
+    }
+    setStoreHash(globalThis.location.hash);
+  }, [location.pathname]);
+
   // pathname/search are read from `globalThis.location` at call time (mirroring
   // useTableFilters) so these callbacks stay referentially stable.
   const setHash = useCallback(
@@ -205,8 +228,8 @@ export const useSettingsHash = () => {
         setStoreHash(next);
         void navigateRef.current(
           {
-            pathname: globalThis.location.pathname,
-            search: globalThis.location.search,
+            pathname: locationRef.current.pathname,
+            search: locationRef.current.search,
             hash: next.slice(1),
           },
           { replace: true }
@@ -221,8 +244,8 @@ export const useSettingsHash = () => {
       setStoreHash('');
       void navigateRef.current(
         {
-          pathname: globalThis.location.pathname,
-          search: globalThis.location.search,
+          pathname: locationRef.current.pathname,
+          search: locationRef.current.search,
           hash: '',
         },
         { replace: true }
@@ -242,7 +265,15 @@ export const useSettingsHash = () => {
     [state.tab, state.subPath, state.params, setHash]
   );
 
-  return { state, setHash, clearHash, updateParams };
+  // In-app navigation to a hash target; shared so panels don't each re-declare
+  // `(t) => setHash(t.tab, t.subPath)`.
+  const goTo = useCallback(
+    (target: { tab: string; subPath?: string }) =>
+      setHash(target.tab, target.subPath),
+    [setHash]
+  );
+
+  return { state, setHash, clearHash, updateParams, goTo };
 };
 
 /**

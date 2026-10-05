@@ -75,7 +75,8 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { profileHash, ProfileHashTarget } from '../members/profileHash.utils';
+import CopyLinkButton from '../../../../../CopyLinkButton/CopyLinkButton.component';
+import { profileHash } from '../members/profileHash.utils';
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
@@ -775,17 +776,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   } = usePolicyDetail(fqn);
 
   const [activeTab, setActiveTab] = useState<PolicyTab>('rules');
-  const { setHash } = useSettingsHash();
-
-  const goTo = useCallback(
-    (target: ProfileHashTarget) => setHash(target.tab, target.subPath),
-    [setHash]
-  );
-
-  const handleCopyLink = useCallback(async () => {
-    await navigator.clipboard.writeText(window.location.href);
-    showSuccessToast(t('message.copied-to-clipboard'));
-  }, [t]);
+  const { goTo } = useSettingsHash();
 
   useEffect(() => {
     if (policy) {
@@ -872,15 +863,12 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
             setIsRenameOpen(true);
           }}
         />
-        <ButtonUtility
-          color="tertiary"
-          data-testid="copy-link-btn"
-          icon={Copy01}
-          size="xs"
+        <CopyLinkButton
+          testId="copy-link-btn"
           tooltip={String(t('label.copy'))}
-          tooltipPlacement="right"
-          onPress={handleCopyLink}
-        />
+          url={window.location.href}>
+          <Copy01 className="tw:size-3" />
+        </CopyLinkButton>
       </Box>
     );
 
@@ -910,7 +898,6 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     renameValue,
     isSavingRename,
     handleSaveRename,
-    handleCopyLink,
     t,
     onSetHeaderActions,
     onSetHeaderTitleInput,
