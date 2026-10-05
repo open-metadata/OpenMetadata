@@ -40,7 +40,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -86,11 +88,29 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public class SettingsCache {
   private static volatile boolean initialized = false;
-  protected static final LoadingCache<String, Settings> CACHE =
+
+  /**
+   * Counts invalidations. Guava ignores invalidate() for a key whose load is still running, so a
+   * load that read a setting just before an update committed would cache the old value until it
+   * expires. Each cached value records the count its load started from, and a read reloads a value
+   * loaded before the latest invalidation.
+   */
+  private static final AtomicLong INVALIDATIONS = new AtomicLong();
+
+  private static final int MAX_STALE_RELOADS = 3;
+
+  protected static final LoadingCache<String, LoadedSettings> CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(1000)
           .expireAfterWrite(3, TimeUnit.MINUTES)
           .build(new SettingsLoader());
+
+  /** A cached setting and the invalidation count its load started from. */
+  record LoadedSettings(Settings settings, long invalidationsAtLoad) {
+    boolean predatesTheLatestInvalidation() {
+      return invalidationsAtLoad < INVALIDATIONS.get();
+    }
+  }
 
   private SettingsCache() {
     // Private constructor for singleton
@@ -586,7 +606,7 @@ public class SettingsCache {
 
   public static <T> T getSetting(SettingsType settingName, Class<T> clazz) {
     try {
-      Object configValue = CACHE.get(settingName.toString()).getConfigValue();
+      Object configValue = currentSettings(settingName.toString()).getConfigValue();
       return JsonUtils.convertValue(configValue, clazz);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
@@ -598,7 +618,7 @@ public class SettingsCache {
       SettingsType settingName, T defaultValue, Class<T> clazz) {
     T result = defaultValue;
     try {
-      Object configValue = CACHE.get(settingName.toString()).getConfigValue();
+      Object configValue = currentSettings(settingName.toString()).getConfigValue();
       result = JsonUtils.convertValue(configValue, clazz);
     } catch (CacheLoader.InvalidCacheLoadException ex) {
       // The loader returns null for a setting that was never configured. Serving the caller's
@@ -610,13 +630,26 @@ public class SettingsCache {
     return result;
   }
 
+  private static Settings currentSettings(String settingsName) throws ExecutionException {
+    LoadedSettings loaded = CACHE.get(settingsName);
+    for (int reload = 0;
+        reload < MAX_STALE_RELOADS && loaded.predatesTheLatestInvalidation();
+        reload++) {
+      CACHE.invalidate(settingsName);
+      loaded = CACHE.get(settingsName);
+    }
+    return loaded.settings();
+  }
+
   public static void cleanUp() {
+    INVALIDATIONS.incrementAndGet();
     CACHE.invalidateAll();
     initialized = false;
   }
 
   public static void invalidateSettings(String settingsName) {
     try {
+      INVALIDATIONS.incrementAndGet();
       CACHE.invalidate(settingsName);
       // If search settings are being invalidated, also invalidate aggregated fields
       if (SEARCH_SETTINGS.toString().equals(settingsName)) {
@@ -640,7 +673,7 @@ public class SettingsCache {
   @SuppressWarnings("unchecked")
   public static Map<String, Float> getAggregatedSearchFields() {
     try {
-      Settings aggregatedFields = CACHE.get(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+      Settings aggregatedFields = currentSettings(SEARCH_SETTINGS_AGGREGATED_FIELDS);
       return (Map<String, Float>) aggregatedFields.getConfigValue();
     } catch (Exception ex) {
       LOG.error("Failed to fetch aggregated search fields", ex);
@@ -688,9 +721,18 @@ public class SettingsCache {
   public static final String SEARCH_SETTINGS_AGGREGATED_FIELDS =
       "SEARCH_SETTINGS_AGGREGATED_FIELDS";
 
-  static class SettingsLoader extends CacheLoader<String, Settings> {
+  static class SettingsLoader extends CacheLoader<String, LoadedSettings> {
+    /** A null result reaches callers as InvalidCacheLoadException, meaning the setting is unset. */
     @Override
-    public @NonNull Settings load(@CheckForNull String settingsName) {
+    public @NonNull LoadedSettings load(@CheckForNull String settingsName) {
+      long invalidationsAtLoad = INVALIDATIONS.get();
+      Settings fetchedSettings = fetch(settingsName);
+      return fetchedSettings == null
+          ? null
+          : new LoadedSettings(fetchedSettings, invalidationsAtLoad);
+    }
+
+    private Settings fetch(String settingsName) {
       Settings fetchedSettings;
 
       // Handle special case for aggregated fields
