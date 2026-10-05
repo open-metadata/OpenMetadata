@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T04:09:12Z",
+  "generatedAt": "2026-10-05T03:30:16Z",
   "window": 10,
   "threshold": 2,
   "runs": [
@@ -28,6 +28,11 @@
       "runId": "37174398749",
       "sourceSha": "507f5d783c6ca2ee22c76c0eb92b44ff6055cc79",
       "recordedAt": "2026-10-04T04:09:12Z"
+    },
+    {
+      "runId": "37257479217",
+      "sourceSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
+      "recordedAt": "2026-10-05T03:30:16Z"
     }
   ],
   "entries": {
@@ -71,6 +76,16 @@
       "lastSeenSha": "3bded8388307ee861eda07353ec99d121a085c13",
       "hardFailure": false
     },
+    "chromium :: Features/DataQuality/ColumnLevelTests.spec.ts :: Column Level Data Quality Test Cases \u203a Column Values To Be In Set": {
+      "observations": [
+        "37257479217"
+      ],
+      "project": "chromium",
+      "file": "Features/DataQuality/ColumnLevelTests.spec.ts",
+      "title": "Column Level Data Quality Test Cases \u203a Column Values To Be In Set",
+      "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
+      "hardFailure": false
+    },
     "chromium :: Pages/DomainAdvanced.spec.ts :: Domain Description Editing \u203a Admin can edit domain description": {
       "observations": [
         "36808101811"
@@ -91,6 +106,16 @@
       "lastSeenSha": "170677437861064916f8ac34ceea410bb4ca8273",
       "hardFailure": false
     },
+    "chromium :: Pages/Domains.spec.ts :: Domains \u203a Verify redirect path on data product delete": {
+      "observations": [
+        "37257479217"
+      ],
+      "project": "chromium",
+      "file": "Pages/Domains.spec.ts",
+      "title": "Domains \u203a Verify redirect path on data product delete",
+      "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
+      "hardFailure": false
+    },
     "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for apiEndpoint -> mlModel": {
       "observations": [
         "37174398749"
@@ -99,6 +124,16 @@
       "file": "Pages/Lineage/DataAssetLineage.spec.ts",
       "title": "Column Level Lineage \u203a Column lineage for apiEndpoint -> mlModel",
       "lastSeenSha": "507f5d783c6ca2ee22c76c0eb92b44ff6055cc79",
+      "hardFailure": false
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Database Schema \u203a Announcement create, edit & delete": {
+      "observations": [
+        "37257479217"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Database Schema \u203a Announcement create, edit & delete",
+      "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
       "hardFailure": false
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Delete Api Service": {
