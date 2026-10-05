@@ -598,7 +598,7 @@ const TeamsPage = () => {
 
   useEffect(() => {
     if (advancedFetchNonce > 0 && fqnRef.current) {
-      fetchAllTeamsAdvancedDetails(false, fqnRef.current);
+      void fetchAllTeamsAdvancedDetails(false, fqnRef.current);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fire on nonce only; latest fqn read via fqnRef
   }, [advancedFetchNonce]);
