@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Tag } from 'antd';
+import {
+  Badge,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -87,18 +92,22 @@ const ContractSecurityCard: React.FC<{
             {isEmpty(policy.identities)
               ? NO_DATA_PLACEHOLDER
               : policy.identities?.map((identity) => (
-                  <Tag
-                    className="custom-tag"
+                  <Badge
+                    bordered={false}
+                    className="tw:mr-2.5 tw:mb-2.5 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                    color="gray"
                     data-testid={`contract-security-identities-${index}-${identity}`}
-                    key={identity}>
+                    key={identity}
+                    size="sm"
+                    type="color">
                     {identity}
-                  </Tag>
+                  </Badge>
                 ))}
           </div>
 
           {!isEmpty(policy.rowFilters) && (
             <>
-              <Divider className="contract-dash-separator" />
+              <Divider dashed className="contract-dash-separator" />
 
               <div className="contract-security-policy-card-row-filter-container">
                 <Typography className="contract-security-policy-subtitle-label">
@@ -107,17 +116,21 @@ const ContractSecurityCard: React.FC<{
 
                 {policy.rowFilters?.map((filter, filterIndex) => {
                   return (
-                    <Tag
-                      className="custom-tag"
+                    <Badge
+                      bordered={false}
+                      className="tw:mr-2.5 tw:mb-2.5 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                      color="gray"
                       data-testid={`contract-security-rowFilter-${index}-${filterIndex}`}
-                      key={filter.columnName}>
+                      key={filter.columnName}
+                      size="sm"
+                      type="color">
                       {`${
                         tableColumnNameMap?.get(filter.columnName ?? '') ??
                         filter.columnName ??
                         NO_DATA_PLACEHOLDER
                       } = `}
                       {renderRowFilterValues(filter)}
-                    </Tag>
+                    </Badge>
                   );
                 })}
               </div>
@@ -141,9 +154,16 @@ const ContractSecurityCard: React.FC<{
           {isEmpty(security?.dataClassification)
             ? NO_DATA_PLACEHOLDER
             : security?.dataClassification?.split(',').map((item) => (
-                <Tag className="custom-tag" color="pink">
+                <Badge
+                  bordered={false}
+                  className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                  color="pink"
+                  data-testid="contract-security-classification-tag"
+                  key={item}
+                  size="sm"
+                  type="color">
                   {item}
-                </Tag>
+                </Badge>
               ))}
         </Card>
       </Col>

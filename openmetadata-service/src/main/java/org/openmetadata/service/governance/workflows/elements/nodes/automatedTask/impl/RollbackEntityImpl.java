@@ -252,11 +252,10 @@ public class RollbackEntityImpl implements JavaDelegate {
     JsonPatch patch =
         JsonUtils.getJsonPatch(
             JsonUtils.pojoToJson(currentEntity), JsonUtils.pojoToJson(targetEntity));
-    // Workflow automation is attributed to the acting user with governance-bot as impersonator, as
-    // SetEntityAttribute does, so audits and approval admission can tell it from the user's edits.
-    String impersonatedBy = GOVERNANCE_BOT.equals(updatedBy) ? null : GOVERNANCE_BOT;
+    // Impersonating the governance bot marks this as the workflow's own write, which may move a
+    // lifecycle stage the workflow owns.
     repository.patch(
-        null, currentEntity.getFullyQualifiedName(), updatedBy, patch, null, null, impersonatedBy);
+        null, currentEntity.getFullyQualifiedName(), updatedBy, patch, null, null, GOVERNANCE_BOT);
   }
 
   private void setOutcomeVariables(

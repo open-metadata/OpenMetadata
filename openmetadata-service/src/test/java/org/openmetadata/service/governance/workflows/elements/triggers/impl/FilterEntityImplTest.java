@@ -13,9 +13,7 @@
 
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -482,79 +480,6 @@ class FilterEntityImplTest {
     assertFalse(invokeFilterFor("dataContract", List.of(fieldChange("sla")), null, excludeFields));
     assertTrue(
         invokeFilterFor("dataContract", List.of(fieldChange("schema")), null, excludeFields));
-  }
-
-  // sanitizeFilterValue: guards against the historical UI bug where an incomplete
-  // filter tree was serialized as a JSON-encoded empty string \"\" and persisted
-  // per entity in the trigger config. Also handles \"{}\" and whitespace forms.
-
-  @Test
-  void testSanitizeFilterValueTreatsNullAsNoFilter() throws Exception {
-    assertNull(invokeSanitize(null));
-  }
-
-  @Test
-  void testSanitizeFilterValueTreatsEmptyStringAsNoFilter() throws Exception {
-    assertNull(invokeSanitize(""));
-    assertNull(invokeSanitize("   "));
-  }
-
-  @Test
-  void testSanitizeFilterValueTreatsJsonEncodedEmptyAsNoFilter() throws Exception {
-    assertNull(invokeSanitize("\"\""));
-    assertNull(invokeSanitize("  \"\"  "));
-  }
-
-  @Test
-  void testSanitizeFilterValueTreatsEmptyObjectAsNoFilter() throws Exception {
-    assertNull(invokeSanitize("{}"));
-    assertNull(invokeSanitize("  {}  "));
-  }
-
-  @Test
-  void testSanitizeFilterValuePreservesRealFilter() throws Exception {
-    String filter = "{\"==\":[{\"var\":\"name\"},\"foo\"]}";
-    assertEquals(filter, invokeSanitize(filter));
-  }
-
-  // extractFromFilterMap: entity-specific value wins over default; poisoned values
-  // are skipped instead of leaking into RuleEngine (which fails and would flip the
-  // exclusion filter's fail-open semantics into a hard reject).
-
-  @Test
-  void testExtractFromFilterMapPrefersEntitySpecificOverDefault() throws Exception {
-    Map<String, String> map = new HashMap<>();
-    map.put("default", "{\"==\":[1,1]}");
-    map.put("glossaryTerm", "{\"==\":[{\"var\":\"name\"},\"foo\"]}");
-    assertEquals("{\"==\":[{\"var\":\"name\"},\"foo\"]}", invokeExtract(map, "glossaryTerm"));
-  }
-
-  @Test
-  void testExtractFromFilterMapFallsBackToDefault() throws Exception {
-    Map<String, String> map = new HashMap<>();
-    map.put("default", "{\"==\":[1,1]}");
-    assertEquals("{\"==\":[1,1]}", invokeExtract(map, "glossaryTerm"));
-  }
-
-  @Test
-  void testExtractFromFilterMapPoisonedEntitySpecificFallsBackToDefault() throws Exception {
-    Map<String, String> map = new HashMap<>();
-    map.put("default", "{\"==\":[1,1]}");
-    map.put("glossaryTerm", "\"\"");
-    assertEquals("{\"==\":[1,1]}", invokeExtract(map, "glossaryTerm"));
-  }
-
-  @Test
-  void testExtractFromFilterMapAllPoisonedReturnsNull() throws Exception {
-    Map<String, String> map = new HashMap<>();
-    map.put("default", "\"\"");
-    map.put("glossaryTerm", "\"\"");
-    assertNull(invokeExtract(map, "glossaryTerm"));
-  }
-
-  @Test
-  void testExtractFromFilterMapEmptyMapReturnsNull() throws Exception {
-    assertNull(invokeExtract(new HashMap<>(), "glossaryTerm"));
   }
 
   private boolean invokeFilter(

@@ -372,10 +372,10 @@ BEGIN
 END $$;
 
 -- Announcement type: stored generated column so the list API can filter by type. Rows written
--- before the field existed have no type key and read back as the Information default.
+-- before the field existed have no type key and read back as the Notice default.
 ALTER TABLE announcement_entity
   ADD COLUMN IF NOT EXISTS type character varying(32)
-  GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Information')) STORED;
+  GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Notice')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 
 -- Approval-gated change requests: request aggregate, immutable revisions, reviewer decisions and
@@ -470,3 +470,57 @@ SET json = jsonb_set(
 WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('ViewAll')));
+
+-- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
+-- the result polls, the credentials) that can reach different servers, so its state lives here
+-- rather than in one server's memory. pending_state holds the candidate configuration with its
+-- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
+CREATE TABLE IF NOT EXISTS sso_test_login_session (
+    test_session_id VARCHAR(64) NOT NULL PRIMARY KEY,
+    admin_principal VARCHAR(256) NOT NULL,
+    protocol VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    pending_state TEXT,
+    result TEXT,
+    credentials_submitted_at BIGINT,
+    expires_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
+    ON sso_test_login_session (admin_principal, credentials_submitted_at);
+CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
+    ON sso_test_login_session (expires_at);
+
+-- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
+-- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
+-- version is reprocessed statement-by-statement against SERVER_MIGRATION_SQL_LOGS, and the
+-- ADD COLUMN above is both unchanged (so it never re-runs) and IF NOT EXISTS (so it would be a
+-- no-op if it did). Any database that already applied 2.1.0 therefore still holds the old names,
+-- and must be rewritten here.
+UPDATE announcement_entity
+SET json = jsonb_set(json, '{type}', '"Notice"')
+WHERE json ->> 'type' = 'Information';
+
+UPDATE announcement_entity
+SET json = jsonb_set(json, '{type}', '"Critical"')
+WHERE json ->> 'type' = 'Issue';
+
+-- Rows predating #33980 carry no type key at all and read back through the column's COALESCE
+-- default, so the default has to move with the enum or `?type=Notice` never matches them.
+-- Postgres cannot redefine a generated expression in place, so the column is dropped and rebuilt;
+-- that takes idx_announcement_type with it, hence the re-create.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'announcement_entity'
+      AND column_name = 'type'
+      AND generation_expression LIKE '%Information%'
+  ) THEN
+    ALTER TABLE announcement_entity DROP COLUMN type;
+    ALTER TABLE announcement_entity
+      ADD COLUMN type character varying(32)
+      GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Notice')) STORED;
+    CREATE INDEX idx_announcement_type ON announcement_entity (type);
+  END IF;
+END $$;

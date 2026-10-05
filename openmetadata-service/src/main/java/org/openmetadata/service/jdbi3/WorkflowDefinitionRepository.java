@@ -30,6 +30,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -65,6 +66,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     // the
     // gate reflects it on the next edit instead of after the cache TTL.
     GovernanceApprovalRegistry.invalidate();
+    EntityStatusWorkflows.invalidate();
   }
 
   @Override
@@ -78,6 +80,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
           updated.getId(),
           "Approval workflow %s no longer reviews changes".formatted(updated.getName()));
     }
+    EntityStatusWorkflows.invalidate();
   }
 
   @Override
@@ -87,6 +90,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     GovernanceApprovalRegistry.invalidate();
     ChangeRequestService.cancelAllForWorkflow(
         entity.getId(), "Approval workflow %s was deleted".formatted(entity.getName()));
+    EntityStatusWorkflows.invalidate();
   }
 
   @Override
@@ -582,6 +586,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       EntityRepository.invalidateCacheForEntity(
           entityType, workflow.getId(), workflow.getFullyQualifiedName());
       GovernanceApprovalRegistry.invalidate();
+      EntityStatusWorkflows.invalidate();
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -609,6 +614,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
           entityType, workflow.getId(), workflow.getFullyQualifiedName());
       GovernanceApprovalRegistry.invalidate();
       ChangeRequestService.redeliverStuck(workflow.getId());
+      EntityStatusWorkflows.invalidate();
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);

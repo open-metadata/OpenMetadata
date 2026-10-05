@@ -55,8 +55,10 @@ import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityStatusMoveNotInLifecycle;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityStatusNotInLifecycle;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityStatusOwnedByWorkflow;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -237,11 +239,14 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.governance.approval.ApprovedApplication;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.approval.StagedChange;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
+import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -555,6 +560,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
   @Getter protected final boolean supportsEntityStatus;
+
+  /**
+   * Lifecycle stage a new entity starts in when its create request carries none. Most entities
+   * describe assets that already exist in the data infrastructure, so they start Approved; entity
+   * types created and reviewed in OpenMetadata start in Draft instead.
+   */
+  protected EntityStatus defaultEntityStatus = EntityStatus.UNPROCESSED;
+
+  /**
+   * Whether an active governance workflow that sets this entity type's lifecycle stage is the only
+   * way to change it. Off for entity types whose stage a dedicated service drives through its own
+   * endpoints, such as AI asset governance.
+   */
+  protected boolean workflowsOwnEntityStatus = true;
+
+  /** Whether only a reviewer may delete an entity of this type while it is in review. */
+  protected boolean onlyReviewersDeleteInReview = false;
+
+  /**
+   * Whether an approval task on an entity of this type reviews its lifecycle stage, so the open
+   * task closes once the stage leaves review or goes back to Draft. Elsewhere an approval task can
+   * review any change, such as a tag, and stays with the workflow run that opened it.
+   */
+  protected boolean approvalTaskReviewsEntityStatus = false;
+
+  /** Decides which active governance workflows own an entity's lifecycle stage. */
+  protected StageOwnership stageOwnership = EntityStatusWorkflows.ACTIVE;
+
+  /**
+   * The lifecycle stages this entity type uses and the moves between them. Most types use the
+   * general lifecycle; a type with stages of its own declares its lifecycle here.
+   */
+  protected EntityLifecycle entityLifecycle = EntityLifecycle.GENERAL;
+
   protected boolean quoteFqn =
       false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
   protected boolean renameAllowed = false; // Entity can be renamed
@@ -1423,20 +1462,182 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Set default status for entities that support status field.
-   * All entities use EntityStatus.APPROVED as the default.
-   * Override this method only for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
+   * Lifecycle stage a new entity starts in: the one its create request asked for, else {@link
+   * #defaultEntityStatus}. Override when the stage must be derived whatever the request says, e.g.
+   * from the reviewers who will approve the entity. Only consulted at creation: an update that
+   * omits the stage keeps the stored one.
    */
-  protected void setDefaultStatus(T entity, boolean update) {
-    if (!supportsEntityStatus) {
-      return;
+  protected EntityStatus initialEntityStatus(T entity) {
+    return Objects.requireNonNullElse(entity.getEntityStatus(), defaultEntityStatus);
+  }
+
+  /** Puts a new entity in the stage it starts in; every create path calls it before storing. */
+  void assignInitialEntityStatus(T entity) {
+    if (supportsEntityStatus) {
+      requireStageInLifecycle(entity.getEntityStatus());
+      if (requestsStageOwnedByWorkflow(entity)) {
+        entity.setEntityStatus(null);
+      }
+      entity.setEntityStatus(initialEntityStatus(entity));
     }
-    // Skip if status is already set
-    if (entity.getEntityStatus() != null) {
-      return;
+  }
+
+  // A new entity cannot be created straight into a stage that a workflow owns: it starts where
+  // every new entity of its type starts, and the workflow moves it from there.
+  private boolean requestsStageOwnedByWorkflow(T entity) {
+    return entity.getEntityStatus() != null
+        && workflowsOwnEntityStatus
+        && !EntityStatusWorkflows.isWorkflowChange(entity)
+        && stageOwnership.owningStageOf(entityType, entity).isPresent();
+  }
+
+  /** Active workflows that own this entity type's lifecycle stage, sorted; empty when none can. */
+  public List<String> getStageWorkflows() {
+    return supportsEntityStatus && workflowsOwnEntityStatus
+        ? stageOwnership.owningStageOf(entityType)
+        : List.of();
+  }
+
+  private void validateEntityStatusChange(T current, T change, EntityStatus from, EntityStatus to) {
+    requireMoveInLifecycle(from, to);
+    checkEntityStatusNotOwnedByWorkflow(current, change);
+    // A workflow's approval task already decided who may approve (reviewers, owners or named
+    // candidates), so the reviewer rule only guards direct edits and imports.
+    if (from == EntityStatus.IN_REVIEW
+        && (to == EntityStatus.APPROVED || to == EntityStatus.REJECTED)
+        && !EntityStatusWorkflows.isWorkflowChange(change)) {
+      checkUpdatedByReviewer(current, change.getUpdatedBy());
     }
-    // Set default status to UNPROCESSED
-    entity.setEntityStatus(EntityStatus.UNPROCESSED);
+  }
+
+  /**
+   * Applies the update path's stage rules to a CSV row that the batched import stores without an
+   * {@link EntityUpdater}: a row without a stage keeps the stored one, and a stage change must be a
+   * move in the type's lifecycle that no active workflow owns. Throws so the row is reported as
+   * failed instead of silently leaving the lifecycle.
+   */
+  public void applyEntityStatusRulesForImport(T original, T updated, String importedBy) {
+    if (supportsEntityStatus) {
+      if (updated.getEntityStatus() == null) {
+        updated.setEntityStatus(original.getEntityStatus());
+      }
+      EntityStatus from = original.getEntityStatus();
+      EntityStatus to = updated.getEntityStatus();
+      if (from != to) {
+        updated.setUpdatedBy(importedBy);
+        loadReviewersForStageCheck(original, from);
+        validateEntityStatusChange(original, updated, from, to);
+      }
+    }
+  }
+
+  // An import row is matched from stored JSON, which holds no relationship fields, so the reviewer
+  // rule would see an entity without reviewers. Load them the way a PATCH does, inherited ones
+  // included, before checking who may move the entity out of review.
+  private void loadReviewersForStageCheck(T original, EntityStatus from) {
+    if (supportsReviewers && from == EntityStatus.IN_REVIEW) {
+      T withReviewers =
+          get(null, original.getId(), getFields(FIELD_REVIEWERS), Include.NON_DELETED, false);
+      original.setReviewers(withReviewers.getReviewers());
+    }
+  }
+
+  private void checkEntityStatusNotOwnedByWorkflow(T current, T change) {
+    if (workflowsOwnEntityStatus && !EntityStatusWorkflows.isWorkflowChange(change)) {
+      stageOwnership
+          .owningStageOf(entityType, current)
+          .ifPresent(
+              workflow -> {
+                throw new AuthorizationException(
+                    entityStatusOwnedByWorkflow(
+                        entityType, current.getFullyQualifiedName(), workflow));
+              });
+    }
+  }
+
+  public EntityLifecycle getEntityLifecycle() {
+    return entityLifecycle;
+  }
+
+  private void requireStageInLifecycle(EntityStatus stage) {
+    if (stage != null && !entityLifecycle.includes(stage)) {
+      throw new BadRequestException(entityStatusNotInLifecycle(entityType, stage.value()));
+    }
+  }
+
+  // An entity saved before it had a stage can take any stage of its lifecycle
+  private void requireMoveInLifecycle(EntityStatus from, EntityStatus to) {
+    if (from == null) {
+      requireStageInLifecycle(to);
+    } else if (!entityLifecycle.allows(from, to)) {
+      throw new BadRequestException(
+          entityStatusMoveNotInLifecycle(entityType, from.value(), to.value()));
+    }
+  }
+
+  /** When an entity has reviewers, only one of them may approve, reject or delete it in review. */
+  public static void checkUpdatedByReviewer(EntityInterface entity, String updatedBy) {
+    List<EntityReference> reviewers = entity.getReviewers();
+    if (!nullOrEmpty(reviewers)) {
+      boolean isReviewer =
+          reviewers.stream()
+              .anyMatch(
+                  e -> {
+                    if (e.getType().equals(TEAM)) {
+                      Team team =
+                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                      return team.getUsers().stream()
+                          .anyMatch(
+                              u ->
+                                  u.getName().equals(updatedBy)
+                                      || u.getFullyQualifiedName().equals(updatedBy));
+                    } else {
+                      return e.getName().equals(updatedBy)
+                          || e.getFullyQualifiedName().equals(updatedBy);
+                    }
+                  });
+      if (!isReviewer) {
+        throw new AuthorizationException(notReviewer(updatedBy));
+      }
+    }
+  }
+
+  private void checkInReviewEntityDeletedByReviewer(T entity, String deletedBy) {
+    if (onlyReviewersDeleteInReview && entity.getEntityStatus() == EntityStatus.IN_REVIEW) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
+  /**
+   * An open approval task only applies while the entity is in review. Once the entity is approved,
+   * rejected or sent back to Draft, the task is closed instead of being left dangling.
+   */
+  private void closeApprovalTaskOnEntityStatusChange(T original, T updated) {
+    if (approvalTaskReviewsEntityStatus && updated.getUpdatedBy() != null) {
+      approvalTaskClosingComment(entityType, original.getEntityStatus(), updated.getEntityStatus())
+          .ifPresent(comment -> closeApprovalTask(updated, comment));
+    }
+  }
+
+  static Optional<String> approvalTaskClosingComment(
+      String entityType, EntityStatus from, EntityStatus to) {
+    String entityTypeName =
+        entityType.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase(Locale.ROOT);
+    Optional<String> comment = Optional.empty();
+    if (from == EntityStatus.IN_REVIEW && to == EntityStatus.APPROVED) {
+      comment = Optional.of("Approved the " + entityTypeName);
+    } else if (from == EntityStatus.IN_REVIEW && to == EntityStatus.REJECTED) {
+      comment = Optional.of("Rejected the " + entityTypeName);
+    } else if (from != EntityStatus.DRAFT && to == EntityStatus.DRAFT) {
+      comment = Optional.of("Closed due to " + entityTypeName + " going back to DRAFT.");
+    }
+    return comment;
+  }
+
+  private void closeApprovalTask(T entity, String comment) {
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   /**
@@ -3104,7 +3305,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
-    setDefaultStatus(entity, update);
     if (!update) {
       // Only on create: on PATCH the incoming entity carries the *stored* certification even when
       // the patch never touched it, so validating there would start rejecting unrelated edits to
@@ -4018,6 +4218,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T entity : entities) {
       entity.setImpersonatedBy(impersonatedBy);
     }
+    entities.forEach(this::assignInitialEntityStatus);
 
     // 3. Store entities and relationships in one atomic transaction. Cache invalidations issued by
     // storeRelationshipsInternal are recorded and drained post-commit (no Redis round trip while
@@ -4200,13 +4401,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ListCountCache.invalidate(entityType);
   }
 
-  @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
     try (var ignored = phase("lifecycleDispatch")) {
       EntityLifecycleEventDispatcher.getInstance()
           .onEntityUpdated(updated, updated.getChangeDescription(), null);
     }
     RdfUpdater.updateEntity(updated);
+    closeApprovalTaskOnEntityStatusChange(original, updated);
   }
 
   @SuppressWarnings("unused")
@@ -4801,6 +5002,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected DeleteLifecycle beginDeleteLifecycle(T entity, String deletedBy) {
+    checkInReviewEntityDeletedByReviewer(entity, deletedBy);
     preDelete(entity, deletedBy);
     return DeleteLifecycle.NOOP;
   }
@@ -5414,6 +5616,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createNewEntityFlush(T entity) {
+    assignInitialEntityStatus(entity);
     flushInOneTransaction(() -> createNewEntityFlushBody(entity));
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
@@ -5711,6 +5914,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createManyEntitiesFlush(List<T> entities) {
+    entities.forEach(this::assignInitialEntityStatus);
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
@@ -9209,11 +9413,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // which would cause original.getFullyQualifiedName() to return an outdated value.
     @Getter private final String originalFqn;
 
-    // The status persisted before this request, captured for the same reason as originalFqn: a
-    // status a workflow step set in an earlier, now consolidated version is not this request's
-    // change.
-    private final EntityStatus storedEntityStatus;
-
     protected boolean shouldCompare(String fieldName) {
       if (patchedFields == null || fieldName == null) {
         return true;
@@ -9296,7 +9495,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updated = updated;
       this.operation = operation;
       this.originalFqn = original.getFullyQualifiedName();
-      this.storedEntityStatus = original.getEntityStatus();
       User updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
@@ -9888,55 +10086,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    private void updateEntityStatus(boolean consolidatingChanges) {
-      if (supportsEntityStatus) {
-        if (original.getEntityStatus() == updated.getEntityStatus()) {
-          return;
+    void updateEntityStatus(boolean consolidatingChanges) {
+      if (!supportsEntityStatus) {
+        return;
+      }
+      keepStoredEntityStatusWhenOmitted();
+      EntityStatus from = original.getEntityStatus();
+      EntityStatus to = updated.getEntityStatus();
+      if (from != to) {
+        if (!consolidatingChanges && !isDiffFromSessionStart()) {
+          validateEntityStatusChange(from, to);
         }
-        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status. A workflow
-        // step (impersonated by governance-bot) applies the decision of its own approval task,
-        // whose assignees already decided who may approve; checking the entity's reviewers again
-        // would read the list as changed by the edit being approved. A consolidated update
-        // replays from an earlier version, so a status a workflow step already set there is
-        // checked only when this request changes it.
-        if (!consolidatingChanges
-            && !GOVERNANCE_BOT.equals(updated.getImpersonatedBy())
-            && storedEntityStatus != updated.getEntityStatus()
-            && original.getEntityStatus() == EntityStatus.IN_REVIEW
-            && (updated.getEntityStatus() == EntityStatus.APPROVED
-                || updated.getEntityStatus() == EntityStatus.REJECTED)) {
-          checkUpdatedByReviewer(original, updated.getUpdatedBy());
-        }
-        recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
+        recordChange(FIELD_ENTITY_STATUS, from, to);
       }
     }
 
-    public static void checkUpdatedByReviewer(EntityInterface entity, String updatedBy) {
-      // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-      List<EntityReference> reviewers = entity.getReviewers();
-      if (!nullOrEmpty(reviewers)) {
-        // Updating user must be one of the reviewers
-        boolean isReviewer =
-            reviewers.stream()
-                .anyMatch(
-                    e -> {
-                      if (e.getType().equals(TEAM)) {
-                        Team team =
-                            Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                        return team.getUsers().stream()
-                            .anyMatch(
-                                u ->
-                                    u.getName().equals(updatedBy)
-                                        || u.getFullyQualifiedName().equals(updatedBy));
-                      } else {
-                        return e.getName().equals(updatedBy)
-                            || e.getFullyQualifiedName().equals(updatedBy);
-                      }
-                    });
-        if (!isReviewer) {
-          throw new AuthorizationException(notReviewer(updatedBy));
-        }
+    // A consolidated update diffs from the version before the user's session, so its stage change
+    // can include one an earlier version made, such as a workflow approving on the user's behalf.
+    // This request's own stage change was already validated against the stored entity.
+    private boolean isDiffFromSessionStart() {
+      return previous != null && original == previous;
+    }
+
+    // Most create requests cannot carry a stage, so a PUT, bulk or import update built from one
+    // arrives without it and must not reset the stage the entity is in.
+    private void keepStoredEntityStatusWhenOmitted() {
+      if (updated.getEntityStatus() == null) {
+        updated.setEntityStatus(original.getEntityStatus());
       }
+    }
+
+    private void validateEntityStatusChange(EntityStatus from, EntityStatus to) {
+      EntityRepository.this.validateEntityStatusChange(original, updated, from, to);
     }
 
     private void updateOwners() {

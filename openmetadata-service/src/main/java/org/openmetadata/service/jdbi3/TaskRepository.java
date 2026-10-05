@@ -1104,8 +1104,7 @@ public class TaskRepository extends EntityRepository<Task> {
     }
     EntityInterface target = Entity.getEntity(task.getAbout(), Entity.FIELD_REVIEWERS, NON_DELETED);
     if (target.getEntityStatus() == EntityStatus.IN_REVIEW && !nullOrEmpty(target.getReviewers())) {
-      EntityRepository.EntityUpdater.checkUpdatedByReviewer(
-          target, securityContext.getUserPrincipal().getName());
+      EntityRepository.checkUpdatedByReviewer(target, securityContext.getUserPrincipal().getName());
     }
   }
 

@@ -462,7 +462,7 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- Announcement type: stored generated column so the list API can filter by type. Rows written
--- before the field existed have no $.type and read back as the Information default.
+-- before the field existed have no $.type and read back as the Notice default.
 SET @announcement_type_column_ddl = (
   SELECT IF(
     EXISTS (
@@ -473,7 +473,7 @@ SET @announcement_type_column_ddl = (
         AND column_name = 'type'
     ),
     'SELECT 1',
-    'ALTER TABLE announcement_entity ADD COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Information'')) STORED'
+    'ALTER TABLE announcement_entity ADD COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Notice'')) STORED'
   )
 );
 PREPARE announcement_type_column_stmt FROM @announcement_type_column_ddl;
@@ -589,6 +589,58 @@ SET json = JSON_ARRAY_APPEND(
 WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'), '$.rules')
   AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('ViewAll')), '$.rules');
+
+-- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
+-- the result polls, the credentials) that can reach different servers, so its state lives here
+-- rather than in one server's memory. pending_state holds the candidate configuration with its
+-- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
+CREATE TABLE IF NOT EXISTS sso_test_login_session (
+    test_session_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    admin_principal VARCHAR(256) NOT NULL,
+    protocol VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    pending_state MEDIUMTEXT,
+    result MEDIUMTEXT,
+    credentials_submitted_at BIGINT,
+    expires_at BIGINT NOT NULL,
+    PRIMARY KEY (test_session_id),
+    INDEX idx_sso_test_login_session_admin (admin_principal, credentials_submitted_at),
+    INDEX idx_sso_test_login_session_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
+-- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
+-- version is reprocessed statement-by-statement against SERVER_MIGRATION_SQL_LOGS, and the
+-- ADD COLUMN above is both unchanged (so it never re-runs) and guarded on the column's existence
+-- (so it would be a no-op if it did). Any database that already applied 2.1.0 therefore still
+-- holds the old names, and must be rewritten here.
+UPDATE announcement_entity
+SET json = JSON_SET(json, '$.type', 'Notice')
+WHERE json_unquote(json_extract(json, '$.type')) = 'Information';
+
+UPDATE announcement_entity
+SET json = JSON_SET(json, '$.type', 'Critical')
+WHERE json_unquote(json_extract(json, '$.type')) = 'Issue';
+
+-- Rows predating #33980 carry no $.type at all and read back through the column's COALESCE
+-- default, so the default has to move with the enum or `?type=Notice` never matches them.
+SET @announcement_type_default_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND column_name = 'type'
+        AND generation_expression LIKE '%Information%'
+    ),
+    'ALTER TABLE announcement_entity MODIFY COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Notice'')) STORED',
+    'SELECT 1'
+  )
+);
+PREPARE announcement_type_default_stmt FROM @announcement_type_default_ddl;
+EXECUTE announcement_type_default_stmt;
+DEALLOCATE PREPARE announcement_type_default_stmt;
 
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.

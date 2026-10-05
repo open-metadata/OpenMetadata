@@ -99,6 +99,22 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     await checkServiceFieldSectionHighlighting(page, 'hostPort');
     await page.fill('#root\\/database', redshiftDatabase);
     await checkServiceFieldSectionHighlighting(page, 'database');
+
+    // The e2e Redshift cluster rejects non-SSL connections, and sslMode defaults to disable
+    await page
+      .getByTestId('connection-section-advanced')
+      .getByRole('button', { name: /Advanced Config/i })
+      .click();
+    const sslModeTrigger = page
+      .getByTestId('select-widget-root/sslMode')
+      .getByRole('button');
+
+    await sslModeTrigger.click();
+    await page
+      .locator('.core-select-widget-popover')
+      .getByRole('option', { name: 'require', exact: true })
+      .click();
+    await expect(sslModeTrigger).toContainText('require');
   }
 
   async fillIngestionDetails(page: Page) {
@@ -189,10 +205,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       if (await metadataTab2.isVisible()) {
         await metadataTab2.click();
       }
-      await page
-        .getByLabel('agents')
-        .getByTestId('loader')
-        .waitFor({ state: 'detached' });
+      await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
       const response = await apiContext
         .get(

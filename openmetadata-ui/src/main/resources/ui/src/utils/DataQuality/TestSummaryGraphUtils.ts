@@ -10,19 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import isEmpty from 'lodash/isEmpty';
 import isNumber from 'lodash/isNumber';
 import isUndefined from 'lodash/isUndefined';
 import omitBy from 'lodash/omitBy';
 import round from 'lodash/round';
-import { CartesianViewBox } from 'recharts/types/util/types';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import {
-  BLUE_500,
-  GREEN_3,
-  RED_3,
-  YELLOW_3,
-} from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
 import { Task } from '../../generated/entity/tasks/task';
 import {
@@ -318,22 +312,20 @@ export const applyStatusPlacements = (
   });
 };
 
-// Aborted and Queued used to share one colour, which read as a single state:
-// a run that produced no result and a run that has not happened yet.
-export const getStatusDotColor = (status: TestCaseStatus): string => {
+export const getStatusChartStatus = (status?: TestCaseStatus): ChartStatus => {
   if (status === TestCaseStatus.Success) {
-    return GREEN_3;
+    return 'success';
   }
 
   if (status === TestCaseStatus.Failed) {
-    return RED_3;
+    return 'failed';
   }
 
   if (status === TestCaseStatus.Queued) {
-    return BLUE_500;
+    return 'info';
   }
 
-  return YELLOW_3;
+  return 'warning';
 };
 
 export const formatTestSummaryYAxis = (
@@ -378,14 +370,14 @@ export const isSameTooltipPosition = (
   Math.abs(current.y - next.y) < TOOLTIP_POSITION_EPSILON;
 
 /**
- * Recharts types every view-box coordinate as optional, while overflow-aware
+ * Chart view boxes may carry any coordinate as undefined, while overflow-aware
  * placement requires complete finite bounds. Invalid bounds intentionally fall
  * back to the dot-relative position instead of hiding the tooltip.
  */
 export const isTestSummaryTooltipBoundary = (
-  viewBox: CartesianViewBox
-): viewBox is TooltipBoundary =>
-  [viewBox.height, viewBox.width, viewBox.x, viewBox.y].every((value) =>
+  box: Partial<TooltipBoundary>
+): box is TooltipBoundary =>
+  [box.height, box.width, box.x, box.y].every((value) =>
     Number.isFinite(value)
   );
 

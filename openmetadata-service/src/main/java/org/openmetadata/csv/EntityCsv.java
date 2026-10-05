@@ -1134,6 +1134,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       // Validate entity against platform rules (for BOTH dry run and actual import)
       if (isUpdate) {
         RuleEngine.getInstance().evaluateUpdate(original, entity);
+        repository.applyEntityStatusRulesForImport(original, entity, importedBy);
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
@@ -1234,6 +1235,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       // Validate entity against platform rules (for BOTH dry run and actual import)
       if (isUpdate) {
         RuleEngine.getInstance().evaluateUpdate(original, entity);
+        repository.applyEntityStatusRulesForImport(original, entity, importedBy);
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }

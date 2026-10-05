@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.RollbackEntityImpl.RejectionOutcome;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -255,7 +256,7 @@ class RollbackEntityImplTest {
             patchCaptor.capture(),
             isNull(),
             isNull(),
-            eq("governance-bot"));
+            eq(WorkflowEventConsumer.GOVERNANCE_BOT));
     return applyPatch(current, patchCaptor.getValue());
   }
 

@@ -29,13 +29,14 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
@@ -83,6 +84,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     ContextMemoryBodyTextContributor.INSTANCE.register();
   }
 
+  /**
+   * A memory is drafted, approved for agents to use, and archived once it no longer holds; an
+   * archived memory can be approved again, but no memory goes back to Draft.
+   */
+  public static final EntityLifecycle LIFECYCLE =
+      new EntityLifecycle(
+          Map.of(
+              EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+              EntityStatus.APPROVED, Set.of(EntityStatus.ARCHIVED),
+              EntityStatus.ARCHIVED, Set.of(EntityStatus.APPROVED)));
+
   public ContextMemoryRepository() {
     super(
         ContextMemoryResource.COLLECTION_PATH,
@@ -92,6 +104,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    entityLifecycle = LIFECYCLE;
+    defaultEntityStatus = EntityStatus.APPROVED;
   }
 
   @Override
@@ -371,7 +385,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   private Map<UUID, EntityReference> batchFetchSources(List<ContextMemory> entities) {
-    Map<UUID, EntityReference> sourceById = new HashMap<>();
+    Map<UUID, List<EntityReference>> sourcesById = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
@@ -383,9 +397,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     for (CollectionDAO.EntityRelationshipObject record : records) {
       EntityReference ref = refById.get(record.getFromId());
       if (ref != null) {
-        sourceById.putIfAbsent(UUID.fromString(record.getToId()), ref);
+        sourcesById
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(ref);
       }
     }
+    Map<UUID, EntityReference> sourceById = new HashMap<>();
+    sourcesById.forEach(
+        (id, refs) -> {
+          refs.sort(EntityUtil.compareEntityReference);
+          sourceById.put(id, refs.getFirst());
+        });
     return sourceById;
   }
 
@@ -545,42 +567,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   // Lifecycle enforcement
   // ------------------------------------------------------------------
 
-  /**
-   * Valid status transitions:
-   *   DRAFT → ACTIVE
-   *   DRAFT → ARCHIVED
-   *   ACTIVE → ARCHIVED
-   *   ARCHIVED → ACTIVE (re-activate)
-   *
-   * Invalid:
-   *   ARCHIVED → DRAFT (cannot revert to draft)
-   *   ACTIVE → DRAFT (cannot revert to draft)
-   */
-  private static final Map<ContextMemoryStatus, Set<ContextMemoryStatus>> VALID_TRANSITIONS =
-      Map.of(
-          ContextMemoryStatus.DRAFT,
-              Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ACTIVE, Set.of(ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ARCHIVED, Set.of(ContextMemoryStatus.ACTIVE));
-
-  /** Validate that a status transition is allowed. */
-  public static void validateStatusTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
-    if (from == to) {
-      return; // No change
-    }
-    Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.get(from);
-    if (allowed == null) {
-      throw new BadRequestException(
-          String.format("No transitions defined for status %s", from.value()));
-    }
-    if (!allowed.contains(to)) {
-      throw new BadRequestException(
-          String.format(
-              "Invalid memory status transition from %s to %s. Allowed transitions from %s: %s",
-              from.value(), to.value(), from.value(), allowed));
-    }
-  }
-
   @Override
   public EntityUpdater getUpdater(
       ContextMemory original, ContextMemory updated, Operation operation, ChangeSource source) {
@@ -616,15 +602,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           "machineRepresentation",
           original.getMachineRepresentation(),
           updated.getMachineRepresentation());
-
-      // Validate lifecycle transition before recording status change
-      if (original.getStatus() != null
-          && updated.getStatus() != null
-          && original.getStatus() != updated.getStatus()) {
-        validateStatusTransition(original.getStatus(), updated.getStatus());
-      }
-      recordChange("status", original.getStatus(), updated.getStatus());
-
       recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig());
 
       // Relationship-backed fields: these helpers record the version change and delete only

@@ -75,7 +75,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
     // Extract entity-specific filter
     String filterLogic =
-        WorkflowTriggerFilters.extractEntitySpecificFilter(
+        TriggerEntityFilter.forEntityType(
             filterExpr != null ? filterExpr.getValue(execution) : null, entityType);
 
     ChangeRequestRun changeRequest = ChangeRequestRun.from(varHandler).orElse(null);
@@ -176,7 +176,7 @@ public class FilterEntityImpl implements JavaDelegate {
               || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter);
     }
 
-    return fieldBasedFilter && !WorkflowTriggerFilters.matchesExclusionFilter(filterLogic, entity);
+    return fieldBasedFilter && !TriggerEntityFilter.excludes(filterLogic, entity);
   }
 
   private List<FieldChange> getAllChangedFields(ChangeDescription changeDescription) {
