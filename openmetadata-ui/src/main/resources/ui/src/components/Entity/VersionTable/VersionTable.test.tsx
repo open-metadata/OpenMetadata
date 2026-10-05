@@ -55,4 +55,20 @@ describe('VersionTable component', () => {
     // Check Display Name
     expect(screen.getByText('Address Id')).toBeInTheDocument();
   });
+
+  it('keeps rendering when table constraint diffs are malformed', () => {
+    render(
+      <VersionTable
+        {...mockVersionTableProps}
+        addedTableConstraintDiffs={[
+          { name: 'tableConstraints', newValue: '{invalid' },
+        ]}
+        deletedTableConstraintDiffs={[
+          { name: 'tableConstraints', oldValue: '[{"columns":42}]' },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('address_id')).toBeInTheDocument();
+  });
 });

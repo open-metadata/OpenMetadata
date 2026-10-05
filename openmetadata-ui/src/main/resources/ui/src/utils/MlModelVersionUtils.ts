@@ -25,10 +25,23 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
+  hasVersionDiffArrayProperty,
+  hasVersionDiffStringProperty,
+  parseVersionDiffArray,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
 import type { TagLabelWithStatus } from './EntityVersionUtils.interface';
 import { getTagsDiff, removeDuplicateTags } from './EntityVersionUtilsPure';
+
+const isMlFeatureDiff = (value: unknown) => {
+  if (!hasVersionDiffStringProperty(value, 'name')) {
+    return false;
+  }
+
+  return hasVersionDiffArrayProperty(value, 'tags', (tag) =>
+    hasVersionDiffStringProperty(tag, 'tagFQN')
+  );
+};
 
 const handleFeatureDescriptionChangeDiff = (
   colList: Mlmodel['mlFeatures'],
@@ -58,12 +71,12 @@ const handleFeatureTagChangeDiff = (
         const flag: { [x: string]: boolean } = {};
         const uniqueTags: Array<TagLabelWithStatus> = [];
         const oldTag = removeDuplicateTags(
-          oldDiffs[index].tags ?? [],
+          oldDiffs[index]?.tags ?? [],
           newDiff.tags ?? []
         );
         const newTag = removeDuplicateTags(
           newDiff.tags ?? [],
-          oldDiffs[index].tags ?? []
+          oldDiffs[index]?.tags ?? []
         );
         const tagsDiff = getTagsDiff(oldTag, newTag);
 
@@ -97,8 +110,14 @@ export const getMlFeatureVersionData = (
   changedEntities.forEach((changedField) => {
     if (changedField === EntityField.ML_FEATURES) {
       const featureDiff = getDiffByFieldName(changedField, changeDescription);
-      const oldDiff = JSON.parse(getChangedEntityOldValue(featureDiff) ?? '[]');
-      const newDiff = JSON.parse(getChangedEntityNewValue(featureDiff) ?? '[]');
+      const oldDiff = parseVersionDiffArray<MlFeature>(
+        getChangedEntityOldValue(featureDiff),
+        isMlFeatureDiff
+      );
+      const newDiff = parseVersionDiffArray<MlFeature>(
+        getChangedEntityNewValue(featureDiff),
+        isMlFeatureDiff
+      );
 
       handleFeatureDescriptionChangeDiff(featureList, oldDiff, newDiff);
 
