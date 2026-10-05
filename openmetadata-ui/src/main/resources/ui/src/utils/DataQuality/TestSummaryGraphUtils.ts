@@ -303,13 +303,17 @@ export const applyStatusPlacements = (
     const placement = placementByStatus[point.status as TestCaseStatus];
 
     // A run that did record a value keeps it, whatever its status.
-    const missing = seriesLabels.filter((label) => !isNumber(point[label]));
+    const placedKeys = seriesLabels.reduce<string[]>((keys, label) => {
+      if (!isNumber(point[label])) {
+        keys.push(placedSeriesKey(label));
+      }
 
-    if (isUndefined(placement) || isEmpty(missing)) {
+      return keys;
+    }, []);
+
+    if (isUndefined(placement) || isEmpty(placedKeys)) {
       return point;
     }
-
-    const placedKeys = missing.map(placedSeriesKey);
 
     return {
       ...point,

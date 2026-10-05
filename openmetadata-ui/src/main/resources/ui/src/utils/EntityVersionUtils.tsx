@@ -210,6 +210,11 @@ type ParameterValueDiff = ReturnType<
   typeof Pure.getParameterValuesDiff
 >[number];
 
+interface ParameterDiffRow {
+  label: string;
+  value: ReactNode;
+}
+
 const PARAMETER_CHANGE_ARROW = ' → ';
 
 // Token colours rather than the shared `diff-added` class, which sets its own
@@ -257,17 +262,18 @@ const getParameterDiffValue = (diff: ParameterValueDiff): ReactNode => {
 export const getParameterValueDiffRows = (
   changeDescription: ChangeDescription,
   defaultValues?: TestCaseParameterValue[]
-): { rows: { label: string; value: ReactNode }[]; sqlDiff?: ReactNode } => {
+): { rows: ParameterDiffRow[]; sqlDiff?: ReactNode } => {
   const diffs = Pure.getParameterValuesDiff(changeDescription, defaultValues);
   const sqlParamDiff = diffs.find((diff) => diff.name === 'sqlExpression');
 
   return {
-    rows: diffs
-      .filter((diff) => diff.name !== 'sqlExpression')
-      .map((diff) => ({
-        label: diff.name,
-        value: getParameterDiffValue(diff),
-      })),
+    rows: diffs.reduce<ParameterDiffRow[]>((rows, diff) => {
+      if (diff.name !== 'sqlExpression') {
+        rows.push({ label: diff.name, value: getParameterDiffValue(diff) });
+      }
+
+      return rows;
+    }, []),
     sqlDiff: sqlParamDiff && (
       <>
         <Typography className="right-panel-label">

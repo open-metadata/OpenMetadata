@@ -405,17 +405,21 @@ function TestSummaryGraph({
     // Aborted and queued runs as dots alone, after the lines so no line's
     // palette colour shifts. Named like their line, so the legend lists and
     // toggles the two once.
-    const placed = seriesLabels
-      .filter((label) =>
-        plottedData.some((point) => !isUndefined(point[placedSeriesKey(label)]))
-      )
-      .map<ChartSeries>((label) => ({
-        key: placedSeriesKey(label),
-        name: label,
-        type: 'line',
-        pointStyle: pointStyleOf(placedSeriesKey(label)),
-        seriesOption: { lineStyle: { opacity: 0 } },
-      }));
+    const placed = seriesLabels.reduce<ChartSeries[]>((series, label) => {
+      const key = placedSeriesKey(label);
+
+      if (plottedData.some((point) => !isUndefined(point[key]))) {
+        series.push({
+          key,
+          name: label,
+          type: 'line',
+          pointStyle: pointStyleOf(key),
+          seriesOption: { lineStyle: { opacity: 0 } },
+        });
+      }
+
+      return series;
+    }, []);
 
     return [...band, ...lines, ...placed];
   }, [plottedData, seriesLabels, isSingleSeries, activeRunTimestamp, t]);

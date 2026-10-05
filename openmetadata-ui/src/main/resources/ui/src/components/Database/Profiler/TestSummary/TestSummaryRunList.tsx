@@ -18,6 +18,12 @@ import { TestCaseChartDataType } from '../ProfilerDashboard/profilerDashboard.in
 
 type PlottedPoint = TestCaseChartDataType['data'][number];
 
+interface RunEntry {
+  id: string;
+  label: string;
+  point: PlottedPoint;
+}
+
 interface TestSummaryRunListProps {
   points: PlottedPoint[];
   seriesLabels: string[];
@@ -39,16 +45,20 @@ const TestSummaryRunList = ({
   const entries = useMemo(
     () =>
       points.flatMap((point, position) =>
-        seriesLabels
-          .filter(
-            (label) =>
-              isNumber(point[label]) || isNumber(point[placedSeriesKey(label)])
-          )
-          .map((label) => ({
-            id: `${String(point.name)}-${label}-${position}`,
-            label,
-            point,
-          }))
+        seriesLabels.reduce<RunEntry[]>((pointEntries, label) => {
+          if (
+            isNumber(point[label]) ||
+            isNumber(point[placedSeriesKey(label)])
+          ) {
+            pointEntries.push({
+              id: `${String(point.name)}-${label}-${position}`,
+              label,
+              point,
+            });
+          }
+
+          return pointEntries;
+        }, [])
       ),
     [points, seriesLabels]
   );
