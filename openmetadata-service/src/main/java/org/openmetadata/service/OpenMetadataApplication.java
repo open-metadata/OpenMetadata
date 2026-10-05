@@ -947,6 +947,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     try {
       LOG.info("Starting authentication system reinitialization");
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
+      AuthServeletHandler previousHandler =
+          AuthServeletHandlerRegistry.getHandler(contextHandler.getServletContext());
+      AuthenticatorHandler previousAuthenticator = authenticatorHandler;
       SessionService sessionService =
           AuthServeletHandlerRegistry.getSessionService(contextHandler.getServletContext());
       if (sessionService == null) {
@@ -983,6 +986,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         LOG.info("Reinitializing SAML settings during authentication reinitialization");
         registerSamlServlets(config, environment);
       }
+
+      // An LDAP handler left open would keep its pool connected to, and probing, the directory
+      // it was built for, even after the provider moved away from LDAP.
+      previousHandler.close();
+      previousAuthenticator.close();
 
       LOG.info("Successfully reinitialized authentication system");
     } catch (Exception e) {

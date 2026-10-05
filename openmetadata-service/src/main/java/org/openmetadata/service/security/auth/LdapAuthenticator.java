@@ -20,9 +20,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.Filter;
+import com.unboundid.ldap.sdk.GetEntryLDAPConnectionPoolHealthCheck;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
+import com.unboundid.ldap.sdk.LDAPConnectionPoolHealthCheck;
 import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldap.sdk.SearchRequest;
@@ -85,6 +87,11 @@ import org.springframework.util.CollectionUtils;
 public class LdapAuthenticator implements AuthenticatorHandler {
   static final String AD_RECURSIVE_GROUP_MATCHING_RULE = "1.2.840.113556.1.4.1941";
   static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection ";
+  private static final String ROOT_DSE = "";
+  // Below the idle timeout of common load balancers and firewalls, so the background probe also
+  // keeps them from silently dropping pooled connections that sit idle between logins.
+  private static final long POOL_HEALTH_CHECK_INTERVAL_MILLIS = 60_000L;
+  private static final long POOL_HEALTH_CHECK_TIMEOUT_MILLIS = 5_000L;
   private static final int MAX_RETRIES = 3;
   private static final int BASE_DELAY_MS = 500;
   private static final String DEFAULT_EMAIL_ATTRIBUTE = "mail";
@@ -101,7 +108,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     if (SecurityConfigurationManager.getCurrentAuthConfig().getProvider().equals(AuthProvider.LDAP)
         && SecurityConfigurationManager.getCurrentAuthConfig().getLdapConfiguration() != null) {
       ldapLookupConnectionPool =
-          getLdapConnectionPool(
+          createLookupConnectionPool(
               SecurityConfigurationManager.getCurrentAuthConfig().getLdapConfiguration());
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
@@ -115,38 +122,60 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         SecurityConfigurationManager.getCurrentAuthConfig().getEnableSelfSignup();
   }
 
-  private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
-    LDAPConnectionPool connectionPool;
+  static LDAPConnectionPool createLookupConnectionPool(LdapConfiguration ldapConfiguration) {
     try {
-      if (Boolean.TRUE.equals(ldapConfiguration.getSslEnabled())) {
-        LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
-        LdapUtil ldapUtil = new LdapUtil();
-        SSLUtil sslUtil =
-            new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
-        LDAPConnection connection =
-            new LDAPConnection(
-                sslUtil.createSSLSocketFactory(),
-                connectionOptions,
-                ldapConfiguration.getHost(),
-                ldapConfiguration.getPort(),
-                ldapConfiguration.getDnAdminPrincipal(),
-                ldapConfiguration.getDnAdminPassword());
-        // Use the connection here.
-        connectionPool = new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
-      } else {
-        LDAPConnection conn =
-            new LDAPConnection(
-                ldapConfiguration.getHost(),
-                ldapConfiguration.getPort(),
-                ldapConfiguration.getDnAdminPrincipal(),
-                ldapConfiguration.getDnAdminPassword());
-        connectionPool = new LDAPConnectionPool(conn, ldapConfiguration.getMaxPoolSize());
-      }
+      LDAPConnectionPool connectionPool =
+          new LDAPConnectionPool(
+              openLookupConnection(ldapConfiguration), ldapConfiguration.getMaxPoolSize());
+      connectionPool.setHealthCheck(rootDseHealthCheck());
+      connectionPool.setHealthCheckIntervalMillis(POOL_HEALTH_CHECK_INTERVAL_MILLIS);
+      connectionPool.setRetryFailedOperationsDueToInvalidConnections(true);
+      return connectionPool;
     } catch (LDAPException | GeneralSecurityException e) {
       LOG.error("[LDAP] Issue in creating a LookUp Connection", e);
       throw new IllegalStateException(LDAP_ERR_MSG, e);
     }
-    return connectionPool;
+  }
+
+  private static LDAPConnection openLookupConnection(LdapConfiguration ldapConfiguration)
+      throws LDAPException, GeneralSecurityException {
+    LDAPConnection connection = openConnection(ldapConfiguration, new LDAPConnectionOptions());
+    try {
+      connection.bind(
+          ldapConfiguration.getDnAdminPrincipal(), ldapConfiguration.getDnAdminPassword());
+    } catch (LDAPException e) {
+      connection.close();
+      throw e;
+    }
+    return connection;
+  }
+
+  /**
+   * Reads the root DSE to prove a pooled connection still gets answers: before each checkout, on
+   * every background pass, and after an error that may have broken it. A connection that stays
+   * silent past the timeout is replaced instead of stalling the login that drew it.
+   */
+  private static LDAPConnectionPoolHealthCheck rootDseHealthCheck() {
+    boolean invokeOnCreate = false;
+    boolean invokeOnCheckout = true;
+    boolean invokeOnRelease = false;
+    boolean invokeForBackgroundChecks = true;
+    boolean invokeOnException = true;
+    return new GetEntryLDAPConnectionPoolHealthCheck(
+        ROOT_DSE,
+        POOL_HEALTH_CHECK_TIMEOUT_MILLIS,
+        invokeOnCreate,
+        invokeOnCheckout,
+        invokeOnRelease,
+        invokeForBackgroundChecks,
+        invokeOnException);
+  }
+
+  @Override
+  public void close() {
+    if (ldapLookupConnectionPool != null) {
+      ldapLookupConnectionPool.close();
+    }
   }
 
   @Override
