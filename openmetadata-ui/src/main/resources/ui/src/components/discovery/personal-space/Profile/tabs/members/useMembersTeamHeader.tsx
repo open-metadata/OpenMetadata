@@ -22,8 +22,8 @@ import {
 import {
   Download01,
   Edit01,
-  FlipBackward,
   Lock01,
+  Restore,
   Trash01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
@@ -147,7 +147,7 @@ const buildManageMenuItems = (
       {team.deleted && canRestore && !parentDeleted && (
         <Dropdown.Item
           data-testid="restore-team"
-          icon={FlipBackward}
+          icon={Restore}
           onAction={onRestoreTeam}>
           {t('label.restore-entity', {
             entity: t('label.team'),
