@@ -72,10 +72,10 @@
     position: relative;
     overflow: hidden;
     isolation: isolate;
-    background-color: var(--om-color-bg-primary);
+    background-color: var(--tw-background-color-primary);
     background-image: radial-gradient(
       circle,
-      var(--om-color-border-secondary) var(--om-space-1),
+      var(--tw-border-color-secondary) var(--om-space-1),
       transparent var(--om-space-1)
     );
     background-size: var(--om-space-24) var(--om-space-24);
@@ -104,25 +104,14 @@
   }
 
   .kg-band-direct {
-    fill: var(--om-color-brand-25);
-    stroke: var(--om-color-brand-200);
+    fill: var(--tw-color-utility-brand-50);
+    stroke: var(--tw-color-utility-brand-200);
     opacity: 0.9;
-
-    // Raw palette steps don't flip, so the light band glares on the dark canvas.
-    .dark-mode & {
-      fill: var(--om-color-bg-brand);
-      stroke: var(--om-color-border-brand-subtle);
-      opacity: 1;
-    }
   }
 
   .kg-band-extended {
     fill: none;
-    stroke: var(--om-color-gray-300);
-
-    .dark-mode & {
-      stroke: var(--om-color-border-primary);
-    }
+    stroke: var(--tw-border-color-tertiary);
   }
 
   // Font size is a scaled SVG attribute, so the label tracks the zoom.
@@ -133,15 +122,11 @@
   }
 
   .kg-band-label-direct {
-    fill: var(--om-color-brand-600);
-
-    .dark-mode & {
-      fill: var(--om-color-text-brand);
-    }
+    fill: var(--tw-color-fg-brand-primary);
   }
 
   .kg-band-label-extended {
-    fill: var(--om-color-text-quaternary);
+    fill: var(--tw-text-color-quaternary);
   }
 
   // Design: the list takes a little over a third of the pane, capped so the
@@ -154,7 +139,7 @@
   }
 
   .kg-details-tabs [role='tablist'] {
-    background: var(--om-color-bg-secondary);
+    background: var(--tw-background-color-secondary);
     border-radius: var(--om-radius-md);
     padding: var(--om-space-2);
     gap: var(--om-space-2);
@@ -200,15 +185,15 @@
     min-width: 0;
     height: 100%;
     overflow: hidden;
-    background: var(--om-color-bg-primary);
-    border-left: var(--om-space-1) solid var(--om-color-border-secondary);
+    background: var(--tw-background-color-surface);
+    border-left: var(--om-space-1) solid var(--tw-border-color-secondary);
     z-index: var(--om-z-10);
   }
 
   .kg-inspector-header {
     flex-shrink: 0;
     padding: var(--om-space-14) var(--om-space-14) var(--om-space-12);
-    border-bottom: var(--om-space-1) solid var(--om-color-border-secondary);
+    border-bottom: var(--om-space-1) solid var(--tw-border-color-secondary);
   }
 
   .kg-inspector-body {
@@ -241,8 +226,8 @@
 
   .kg-inspector-statement {
     padding: var(--om-space-12);
-    background: var(--om-color-bg-secondary);
-    border: var(--om-space-1) solid var(--om-color-border-secondary);
+    background: var(--tw-background-color-secondary);
+    border: var(--om-space-1) solid var(--tw-border-color-secondary);
     border-radius: var(--om-radius-lg);
   }
 
@@ -258,7 +243,7 @@
     font-weight: var(--om-font-weight-semibold);
     letter-spacing: var(--om-letter-spacing-wide);
     text-transform: uppercase;
-    color: var(--om-color-text-quaternary);
+    color: var(--tw-text-color-quaternary);
   }
 
   .kg-inspector-row {
@@ -282,8 +267,8 @@
   .kg-inspector-actions {
     flex-shrink: 0;
     padding: var(--om-space-12) var(--om-space-14);
-    background: var(--om-color-bg-primary);
-    border-top: var(--om-space-1) solid var(--om-color-border-secondary);
+    background: var(--tw-background-color-surface);
+    border-top: var(--om-space-1) solid var(--tw-border-color-secondary);
 
     > * {
       flex: 1;
@@ -301,7 +286,7 @@
       grid-row: 3;
       max-height: 40vh;
       border-left: 0;
-      border-top: var(--om-space-1) solid var(--om-color-border-secondary);
+      border-top: var(--om-space-1) solid var(--tw-border-color-secondary);
     }
   }
 
@@ -311,9 +296,9 @@
     right: var(--om-space-16);
     z-index: var(--om-z-1001);
     display: inline-flex;
-    background: var(--om-color-bg-primary);
+    background: var(--tw-background-color-surface);
     border-radius: var(--om-radius-sm);
-    border: var(--om-space-1) solid var(--om-color-border-primary);
+    border: var(--om-space-1) solid var(--tw-border-color-primary);
     overflow: hidden;
 
     .kg-control-btn {
@@ -324,10 +309,10 @@
       justify-content: center;
       background: transparent;
       border: none;
-      border-right: var(--om-space-1) solid var(--om-color-border-primary);
+      border-right: var(--om-space-1) solid var(--tw-border-color-primary);
       cursor: pointer;
       padding: 0;
-      color: var(--om-color-text-tertiary);
+      color: var(--tw-text-color-tertiary);
       transition: background-color var(--om-duration-150) ease;
 
       &:last-child {
@@ -335,11 +320,11 @@
       }
 
       &:hover {
-        background-color: var(--om-color-bg-secondary);
+        background-color: var(--tw-background-color-secondary);
       }
 
       &:focus-visible {
-        outline: var(--om-space-2) solid var(--om-color-border-brand);
+        outline: var(--om-space-2) solid var(--tw-border-color-brand);
         outline-offset: calc(-1 * var(--om-space-2));
       }
 
@@ -357,7 +342,7 @@
   position: fixed;
   inset: 0;
   padding: var(--om-space-16);
-  background: var(--om-color-bg-primary);
+  background: var(--tw-background-color-primary);
   overflow: auto;
   z-index: var(--om-z-900);
 
@@ -377,8 +362,8 @@
 .kg-edge-tooltip {
   z-index: var(--om-z-1500);
   pointer-events: none;
-  background: var(--om-color-bg-primary);
-  border: var(--om-space-1) solid var(--om-color-border-primary);
+  background: var(--tw-background-color-surface);
+  border: var(--om-space-1) solid var(--tw-border-color-primary);
   border-radius: var(--om-radius-md);
   padding: var(--om-space-6) var(--om-space-10);
   box-shadow: var(--om-shadow-lg);
@@ -387,7 +372,7 @@
   line-height: var(--om-line-height-normal);
 
   &__direction {
-    color: var(--om-color-text-tertiary);
+    color: var(--tw-text-color-tertiary);
     margin-bottom: var(--om-space-4);
     white-space: nowrap;
     overflow: hidden;
@@ -395,7 +380,7 @@
   }
 
   &__label {
-    color: var(--om-color-text-primary);
+    color: var(--tw-text-color-primary);
     font-weight: var(--om-font-weight-medium);
     word-break: break-word;
   }

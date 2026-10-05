@@ -334,10 +334,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     }
     try {
       const url = await toPng(container, {
-        backgroundColor: resolveCssColor(
-          'var(--om-color-bg-primary)',
-          '#ffffff'
-        ),
+        backgroundColor: resolveCssColor('var(--color-bg-primary)', '#ffffff'),
         pixelRatio: 2,
         filter: (node) =>
           !(node instanceof HTMLElement) ||

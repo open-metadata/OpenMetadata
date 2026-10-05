@@ -111,7 +111,9 @@ it('lists the gaps first, names what is missing and links to the asset to fix it
   // review — they are not a gap and belong in Columns.
   expect(within(grid).queryByText('orders')).not.toBeInTheDocument();
   expect(within(grid).getByText('svc.db.sales · label.table')).toBeVisible();
-  expect(within(grid).getByText('label.kg-missing-glossary-term')).toBeVisible();
+  expect(
+    within(grid).getByText('label.kg-missing-glossary-term')
+  ).toBeVisible();
   expect(
     within(grid).getByRole('link', { name: 'label.kg-map-glossary-term' })
   ).toHaveAttribute('href', '/test/entity/path');

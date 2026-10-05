@@ -73,7 +73,7 @@ const describeBundle = (
       .filter(Boolean)
       .join(' → '),
     code: bundle?.data.relationType ?? bundle?.data.label,
-    color: style?.color ?? 'var(--om-color-gray-400)',
+    color: style?.color ?? 'var(--tw-color-fg-quaternary)',
     family: style ? t(style.labelKey) + ' · ' + direction : '',
   };
 };

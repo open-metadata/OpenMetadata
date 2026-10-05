@@ -497,7 +497,7 @@ const KnowledgeGraphDetails = ({
   return (
     <Box
       aria-label={titles[drawer]}
-      className="kg-details tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary"
+      className="kg-details tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface"
       data-testid="graph-details"
       direction="col"
       role="region"
