@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Popover, Select, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import {
@@ -27,7 +28,6 @@ import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.s
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
-
 import { TERM_ADMIN } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
@@ -259,9 +259,9 @@ const UserProfileRoles = ({
           <RoleIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="text-sm font-medium">
+          <Typography className="text-sm font-medium">
             {t('label.role-plural')}
-          </Typography.Text>
+          </Typography>
           <Popover
             destroyTooltipOnHide
             content={
@@ -275,9 +275,9 @@ const UserProfileRoles = ({
                   <div className="d-flex flex-start items-center">
                     <RoleIcon height={16} />
                   </div>
-                  <Typography.Text className="user-profile-edit-popover-card-title">
+                  <Typography className="user-profile-edit-popover-card-title">
                     {t('label.role-plural')}
-                  </Typography.Text>
+                  </Typography>
                 </div>
 
                 <div
@@ -370,14 +370,7 @@ const UserProfileRoles = ({
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="d-flex flex-center user-page-icon">
-          <Divider
-            style={{
-              height: '100%',
-              width: '1px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
+          <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         <div>{rolesRenderElement}</div>
       </div>

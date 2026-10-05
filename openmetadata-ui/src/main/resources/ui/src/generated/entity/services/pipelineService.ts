@@ -246,6 +246,8 @@ export interface PipelineConnection {
  * Salesforce Data 360 Pipeline Connection Config
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
+ *
+ * Tableau Pipeline Connection Config
  */
 export interface Connection {
     /**
@@ -275,12 +277,16 @@ export interface Connection {
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      *
      * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
+     *
+     * Tableau Server URL.
      */
     hostPort?: string;
     /**
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -291,6 +297,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -326,6 +334,8 @@ export interface Connection {
     messagingServiceName?: string;
     /**
      * Airbyte API version.
+     *
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      */
     apiVersion?: string;
     /**
@@ -417,6 +427,8 @@ export interface Connection {
      * Choose between different authentication types for Databricks.
      *
      * Choose between Prefect Cloud or a self-hosted Prefect Server.
+     *
+     * Types of methods used to authenticate to the tableau instance
      */
     authType?:            Authentication;
     connectionArguments?: { [key: string]: any };
@@ -600,6 +612,16 @@ export interface Connection {
      * HANA database username with access to BW metadata tables.
      */
     username?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
+    /**
+     * Tableau Site Name.
+     */
+    siteName?: string;
     [property: string]: any;
 }
 
@@ -663,6 +685,12 @@ export interface PurpleAuthentication {
  *
  * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
  * empty if the server has no auth enabled.
+ *
+ * Types of methods used to authenticate to the tableau instance
+ *
+ * Basic Auth Credentials
+ *
+ * Access Token Auth Credentials
  */
 export interface Authentication {
     /**
@@ -709,6 +737,22 @@ export interface Authentication {
      * 'user:password'. Leave empty if the server has no auth enabled.
      */
     authString?: string;
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Personal Access Token Name.
+     */
+    personalAccessTokenName?: string;
+    /**
+     * Personal Access Token Secret.
+     */
+    personalAccessTokenSecret?: string;
 }
 
 /**
@@ -1391,6 +1435,8 @@ export interface AuthConfigurationType {
  * Regex to only include/exclude pipelines that matches the pattern.
  *
  * Regex to only include/exclude Process Chains that match the pattern.
+ *
+ * Regex exclude or include pipelines that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1682,6 +1728,7 @@ export enum PipelineServiceType {
     Spline = "Spline",
     Ssis = "SSIS",
     Stitch = "Stitch",
+    TableauPipeline = "TableauPipeline",
     Wherescape = "Wherescape",
 }
 
@@ -1757,8 +1804,9 @@ export interface EntityReference {
 /**
  * Status of the entity.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",

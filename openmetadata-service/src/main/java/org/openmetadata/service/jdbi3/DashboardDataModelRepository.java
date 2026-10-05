@@ -28,6 +28,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
@@ -36,11 +37,11 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -48,6 +49,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
+  private final TableMetadataLoader columnExtensions;
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
 
   public DashboardDataModelRepository() {
@@ -67,6 +69,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    // The loader's column-extension read is keyed by column FQN hash, not by entity type, so it
+    // serves data model columns exactly as it does table columns.
+    columnExtensions = new TableMetadataLoader(() -> daoCollection.entityExtensionDAO());
   }
 
   @Override
@@ -150,32 +155,14 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
     if (fields.contains("columns") && fields.contains("extension")) {
-      if (dashboardDataModel.getColumns() != null) {
-        for (Column column : dashboardDataModel.getColumns()) {
-          column.setExtension(
-              getColumnExtension(dashboardDataModel.getId(), column.getFullyQualifiedName()));
-        }
-      }
+      columnExtensions.loadColumnExtensions(
+          dashboardDataModel.getId(), dashboardDataModel.getColumns());
     }
   }
 
   private void setDefaultFields(DashboardDataModel dashboardDataModel) {
     EntityReference service = getContainer(dashboardDataModel.getId());
     dashboardDataModel.withService(service);
-  }
-
-  private Object getColumnExtension(UUID dataModelId, String columnFQN) {
-    try {
-      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
-      String extensionJson =
-          daoCollection.entityExtensionDAO().getExtension(dataModelId, extensionKey);
-      if (extensionJson != null) {
-        return JsonUtils.readValue(extensionJson, Object.class);
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
-    }
-    return null;
   }
 
   // Individual field fetchers registered in constructor
@@ -255,7 +242,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       DashboardDataModel updated,
       Operation operation,
       ChangeSource changeSource) {
-    return new DataModelUpdater(original, updated, operation);
+    return new DataModelUpdater(original, updated, operation, changeSource);
   }
 
   @Override
@@ -267,8 +254,16 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public class DataModelUpdater extends ColumnEntityUpdater {
 
     public DataModelUpdater(
-        DashboardDataModel original, DashboardDataModel updated, Operation operation) {
-      super(original, updated, operation);
+        DashboardDataModel original,
+        DashboardDataModel updated,
+        Operation operation,
+        ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
+    }
+
+    @Override
+    protected boolean supportsColumnExtension() {
+      return true;
     }
 
     @Transaction
@@ -317,35 +312,35 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     DashboardDataModel fullDataModel =
         get(null, dataModel.getId(), getFields(Set.of("columns")), include, false);
 
-    List<Column> allColumns = fullDataModel.getColumns();
-    if (allColumns == null || allColumns.isEmpty()) {
-      return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
-    }
+    // A null sortBy keeps the stored column order, which is this endpoint's contract and differs
+    // from the table endpoint's name-ascending default.
+    ResultList<FieldInterface> page =
+        new ChildFieldPageReader(this, ChildFieldResolver.specFor(Entity.DASHBOARD_DATA_MODEL))
+            .read(
+                fullDataModel,
+                limit,
+                offset,
+                fieldsParam,
+                null,
+                null,
+                (parent, columns, requestedFields) ->
+                    addColumnExtensions(dataModel, columns, requestedFields));
 
-    // Apply pagination
-    int total = allColumns.size();
-    int fromIndex = Math.min(offset, total);
-    int toIndex = Math.min(offset + limit, total);
+    ResultList<Column> result = new ResultList<>();
+    result.setData(page.getData().stream().map(Column.class::cast).toList());
+    result.setPaging(page.getPaging());
+    return result;
+  }
 
-    List<Column> paginatedColumns = allColumns.subList(fromIndex, toIndex);
-
-    // Apply field processing if needed
-    if (fieldsParam != null && fieldsParam.contains("tags")) {
-      populateEntityFieldTags(
-          entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
-    }
-
+  private List<FieldInterface> addColumnExtensions(
+      DashboardDataModel dataModel, List<FieldInterface> page, String fieldsParam) {
     if (fieldsParam != null && fieldsParam.contains("extension")) {
-      for (Column column : paginatedColumns) {
-        column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
-      }
+      // The page holds Columns typed as FieldInterface, and the loader sets the extension on
+      // the elements, so the mapped list reaches the same objects.
+      columnExtensions.loadColumnExtensions(
+          dataModel.getId(), page.stream().map(Column.class::cast).toList());
     }
-
-    // Calculate pagination metadata
-    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-    String after = toIndex < total ? String.valueOf(toIndex) : null;
-
-    return new ResultList<>(paginatedColumns, before, after, total);
+    return page;
   }
 
   public Column enrichSingleColumnFields(
@@ -358,7 +353,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
     }
     if (fieldsParam.contains("extension")) {
-      column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+      columnExtensions.loadColumnExtensions(dataModel.getId(), singleton);
     }
     return column;
   }

@@ -41,6 +41,22 @@ jest.mock('../../../rest/queries/topicQuery', () => ({
   prefetchTopic: (...args: unknown[]) => mockPrefetchTopic(...args),
 }));
 
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+
+  return {
+    ...actual,
+    Link: jest.fn(({ children, to, state, ...rest }) => (
+      <a
+        {...rest}
+        data-state={JSON.stringify(state)}
+        href={typeof to === 'string' ? to : to?.pathname}>
+        {children}
+      </a>
+    )),
+  };
+});
+
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
 }));
@@ -89,6 +105,12 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
+jest.mock('../../common/CertificationTag/CertificationTag', () =>
+  jest.fn(({ certification }) => (
+    <div data-testid={`certification-${certification.tagLabel.tagFQN}`} />
+  ))
+);
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
@@ -110,6 +132,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     // StatusBadge renders the core Badge; keep the real one (a plain span).
     Badge: actual.Badge,
+    Divider: actual.Divider,
     Breadcrumbs: jest.fn(({ items = [] }) => (
       <nav data-testid="breadcrumbs">
         {items.map(
@@ -135,10 +158,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )}
       </nav>
     )),
+    Button: actual.Button,
     Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+    Checkbox: actual.Checkbox,
     Owner: jest.fn().mockReturnValue(null),
     toOwnerRef: actual.toOwnerRef,
     toOwnerRefs: actual.toOwnerRefs,
+    Typography: actual.Typography,
   };
 });
 
@@ -215,6 +241,38 @@ describe('ExploreSearchCard - Domain section', () => {
     renderCard({ domains: [] });
 
     expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - navigation breadcrumb state', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('passes the full breadcrumb trail including the current entity, without dropping any crumb', () => {
+    const fullTrail = [
+      { name: 'svc', url: '/service/svc' },
+      { name: 'db', url: '/database/db' },
+      { name: 'schema', url: '/schema/schema' },
+      { name: 'table', url: '' },
+    ];
+    (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue(
+      fullTrail
+    );
+
+    renderCard({ fullyQualifiedName: 'svc.db.schema.table' });
+
+    expect(searchClassBase.getEntityBreadcrumbs).toHaveBeenCalledWith(
+      expect.anything(),
+      'table',
+      true
+    );
+
+    const state = JSON.parse(
+      screen.getByTestId('entity-link').getAttribute('data-state') ?? '{}'
+    );
+
+    expect(state.breadcrumbData).toEqual(fullTrail);
   });
 });
 
@@ -481,6 +539,29 @@ describe('ExploreSearchCard - Entity type tags', () => {
 
     expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
     expect(screen.queryByText(Constraint.PrimaryKey)).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - Certification badge', () => {
+  const certification = { tagLabel: { tagFQN: 'Certification.Gold' } };
+
+  it('renders the certification badge for a certified table', () => {
+    renderCard({ certification } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.getByTestId('certification-Certification.Gold')
+    ).toBeInTheDocument();
+  });
+
+  it('does not render the table certification inherited by a column', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      certification,
+    } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.queryByTestId('certification-Certification.Gold')
+    ).not.toBeInTheDocument();
   });
 });
 

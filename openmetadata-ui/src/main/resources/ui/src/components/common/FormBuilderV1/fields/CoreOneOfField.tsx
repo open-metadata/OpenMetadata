@@ -12,6 +12,7 @@
  */
 
 import { Box, Select, Typography } from '@openmetadata/ui-core-components';
+import { Hexagon01 } from '@openmetadata/ui-core-components/icons';
 import {
   FieldProps,
   getDiscriminatorFieldFromSchema,

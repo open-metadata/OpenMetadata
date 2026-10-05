@@ -445,3 +445,36 @@ SET json = JSON_REMOVE(json, '$.sampleDataStorageConfig')
 WHERE extension IN ('database.databaseProfilerConfig',
                     'databaseSchema.databaseSchemaProfilerConfig')
   AND JSON_CONTAINS_PATH(json, 'one', '$.sampleDataStorageConfig');
+
+-- Context memories move from their own Draft/Active/Archived `status` onto `entityStatus`, the
+-- lifecycle stage every entity type shares: Active becomes Approved, and a memory with no status
+-- was documented as Active, so it becomes Approved too. Version history is rewritten as well:
+-- `status` is no longer part of the ContextMemory schema, so rows still carrying it would fail to
+-- load. Idempotent: rows without `status` are untouched.
+UPDATE context_memory
+SET json = JSON_REMOVE(
+  JSON_SET(json, '$.entityStatus',
+    CASE JSON_UNQUOTE(JSON_EXTRACT(json, '$.status'))
+      WHEN 'Draft' THEN 'Draft'
+      WHEN 'Archived' THEN 'Archived'
+      ELSE 'Approved'
+    END),
+  '$.status')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.status');
+
+UPDATE context_memory
+SET json = JSON_SET(json, '$.entityStatus', 'Approved')
+WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL
+   OR JSON_TYPE(JSON_EXTRACT(json, '$.entityStatus')) = 'NULL';
+
+UPDATE entity_extension
+SET json = JSON_REMOVE(
+  JSON_SET(json, '$.entityStatus',
+    CASE JSON_UNQUOTE(JSON_EXTRACT(json, '$.status'))
+      WHEN 'Draft' THEN 'Draft'
+      WHEN 'Archived' THEN 'Archived'
+      ELSE 'Approved'
+    END),
+  '$.status')
+WHERE jsonSchema = 'contextMemory'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.status');

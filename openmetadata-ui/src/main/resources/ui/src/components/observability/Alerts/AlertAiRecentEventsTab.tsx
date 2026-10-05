@@ -29,7 +29,7 @@ import {
   CheckCircle,
   Clock,
   FilterLines,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';

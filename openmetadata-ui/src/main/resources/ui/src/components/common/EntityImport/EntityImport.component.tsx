@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -254,12 +255,12 @@ export const EntityImport = ({
                   className="w-full justify-center p-lg text-center"
                   direction="vertical"
                   size={16}>
-                  <Typography.Text
+                  <Typography
                     className="text-center"
                     data-testid="abort-reason">
                     <strong className="d-block">{t('label.aborted')}</strong>{' '}
                     {csvImportResult.abortReason}
-                  </Typography.Text>
+                  </Typography>
                   <Space size={16}>
                     <Button
                       ghost
@@ -317,10 +318,10 @@ export const EntityImport = ({
                 size={16}>
                 <SuccessBadgeIcon data-testid="success-badge" width={36} />
 
-                <Typography.Text>
+                <Typography>
                   <strong data-testid="file-name">{fileName}</strong>{' '}
                   {`${t('label.successfully-uploaded')}.`}
-                </Typography.Text>
+                </Typography>
                 <Space size={16}>
                   <Button
                     data-testid="preview-button"

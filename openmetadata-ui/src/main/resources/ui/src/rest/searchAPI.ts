@@ -248,6 +248,29 @@ export const searchPreview = async (payload: PreviewSearchRequest) => {
   return response.data;
 };
 
+export const searchEntityTypeCounts = async (
+  request: Pick<
+    SearchRequest<SearchIndex[]>,
+    'query' | 'searchIndex' | 'queryFilter' | 'postFilter' | 'includeDeleted'
+  > & { includeTopHit?: boolean }
+) => {
+  const response = await APIClient.get<SearchResponse<SearchIndex>>(
+    '/search/entityTypeCounts',
+    {
+      params: {
+        q: request.query,
+        index: request.searchIndex?.join(','),
+        query_filter: JSON.stringify(request.queryFilter),
+        post_filter: JSON.stringify(request.postFilter),
+        deleted: request.includeDeleted,
+        include_top_hit: request.includeTopHit,
+      },
+    }
+  );
+
+  return formatSearchQueryResponse(response.data);
+};
+
 export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
   const {
     pageNumber = 1,

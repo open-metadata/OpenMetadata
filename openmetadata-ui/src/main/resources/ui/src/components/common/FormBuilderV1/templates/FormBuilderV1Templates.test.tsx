@@ -154,7 +154,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span aria-hidden="true">chevron-down-icon</span>,
   Plus: () => <span>plus-icon</span>,
   Trash01: () => <span>trash-icon</span>,

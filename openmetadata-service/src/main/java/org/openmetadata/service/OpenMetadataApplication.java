@@ -102,6 +102,7 @@ import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.context.center.ContextMemoryExtractionJobHandler;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
@@ -141,6 +142,7 @@ import org.openmetadata.service.monitoring.JettyQoSIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.ontology.OntologyBulkJobHandler;
 import org.openmetadata.service.ontology.OntologyBulkJobManager;
+import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -180,6 +182,7 @@ import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLoginSessionSweeper;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -531,6 +534,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         CsvAsyncJobManager.CSV_JOB_HANDLER_NAME,
         new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
     registry.register(OntologyBulkJobManager.HANDLER_NAME, ontologyBulkJobHandler);
+    registry.register(new ContextMemoryExtractionJobHandler());
+    registry.register(OntologyMemoryDerivationJobHandler.createDefault());
     return registry;
   }
 
@@ -551,6 +556,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
     environment.lifecycle().manage(sessionService);
     environment.lifecycle().manage(new WebSocketSessionValidator(sessionService));
+    environment.lifecycle().manage(new TestLoginSessionSweeper());
     setAuthServletAttributes(
         contextHandler,
         AuthServeletHandlerFactory.getHandler(config, sessionService),
@@ -714,6 +720,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
 
     int createdIndexCount = searchRepository.createMissingIndexes();
+    // Drops a column index left behind while column indexing was off, e.g. one a server with a
+    // stale settings cache recreated by writing to it.
+    searchRepository.reconcileColumnIndex();
     searchRepository.createOrUpdateIndexTemplates(createdIndexCount);
 
     LOG.info("Core search infrastructure initialization completed");
@@ -792,12 +801,19 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
 
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    // The ACS is registered whatever the live provider, so a SAML candidate can be tested from any
+    // instance. While SAML is not live it answers 404 to anything that is not such a test.
+    if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
+      contextHandler.addServlet(
+          new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+    }
+
     // Ensure we have a session handler
     if (SecurityConfigurationManager.getCurrentAuthConfig() != null
         && SecurityConfigurationManager.getCurrentAuthConfig()
             .getProvider()
             .equals(AuthProvider.SAML)) {
-      MutableServletContextHandler contextHandler = environment.getApplicationContext();
       if (contextHandler.getSessionHandler() == null) {
         contextHandler.setSessionHandler(new SessionHandler());
       }
@@ -808,10 +824,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Only register servlets if they don't already exist to prevent duplicate registration
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/login")) {
         contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
-      }
-      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
-        contextHandler.addServlet(
-            new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
       }
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/metadata")) {
         contextHandler.addServlet(

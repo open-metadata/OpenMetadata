@@ -168,6 +168,22 @@ public interface RdfInfraDAOs {
   }
 
   interface OntologyChangeSetDAO extends EntityDAO<OntologyChangeSet> {
+    String OPEN_MEMORY_DRAFTS =
+        "FROM ontology_change_set_entity cs JOIN entity_relationship er ON er.fromId = cs.id "
+            + "WHERE er.toId = :memoryId AND er.fromEntity = 'ontologyChangeSet' "
+            + "AND er.toEntity = 'contextMemory' AND er.relation = :relation "
+            + "AND er.deleted = FALSE "
+            + "AND cs.state IN ('DRAFT', 'SUBMITTED', 'APPLY_FAILED') "
+            + "AND (cs.deleted IS NULL OR cs.deleted = FALSE) "
+            + "ORDER BY cs.updatedAt DESC LIMIT 100";
+
+    @ConnectionAwareSqlQuery(value = "SELECT cs.json " + OPEN_MEMORY_DRAFTS, connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT cs.json::text " + OPEN_MEMORY_DRAFTS,
+        connectionType = POSTGRES)
+    List<String> findOpenBySourceMemoryId(
+        @Bind("memoryId") String memoryId, @Bind("relation") int relation);
+
     @Override
     default String getTableName() {
       return "ontology_change_set_entity";

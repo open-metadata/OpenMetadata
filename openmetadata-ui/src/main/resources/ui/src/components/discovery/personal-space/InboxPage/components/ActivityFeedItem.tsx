@@ -18,7 +18,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { MessageDotsCircle } from '@untitledui/icons';
+import { MessageDotsCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
@@ -213,6 +213,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           className="tw:relative tw:z-[3] tw:flex-wrap"
           gap={2}>
           <ProfilePicture
+            matchRingToFill
             displayName={authorName}
             name={actorName}
             width="28"

@@ -48,4 +48,6 @@ public interface ServiceEntityInterface extends EntityInterface {
   default ServiceAttributes getServiceAttributes() {
     return null;
   }
+
+  default void setServiceAttributes(ServiceAttributes serviceAttributes) {}
 }

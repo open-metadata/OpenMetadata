@@ -157,8 +157,8 @@ test.describe(
           'Success'
         );
         await expect(
-          agentCard.getByTestId('agent-run-dot').first()
-        ).toBeVisible();
+          agentCard.getByTestId('agent-run-dot').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Card shows the configured schedule', async () => {

@@ -513,8 +513,9 @@ export interface EntityReference {
 /**
  * Status of the Pipeline.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -844,6 +845,7 @@ export enum PipelineServiceType {
     Spline = "Spline",
     Ssis = "SSIS",
     Stitch = "Stitch",
+    TableauPipeline = "TableauPipeline",
     Wherescape = "Wherescape",
 }
 

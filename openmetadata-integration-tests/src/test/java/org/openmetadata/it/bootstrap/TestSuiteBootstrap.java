@@ -14,6 +14,8 @@
 package org.openmetadata.it.bootstrap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import io.dropwizard.configuration.ConfigurationException;
@@ -49,12 +51,15 @@ import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
@@ -237,12 +242,37 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       System.setProperty("IT_BASE_URL", "http://localhost:" + APP.getLocalPort() + "/api");
 
       SharedEntities.initialize(SdkClients.adminClient());
+      excludeGlossaryStatusFixturesFromApproval();
 
     } catch (Exception e) {
       LOG.error("Failed to start test infrastructure", e);
       cleanup();
       throw new RuntimeException("TestSuiteBootstrap initialization failed", e);
     }
+  }
+
+  // Status and search tests seed their own stages. Exclude their marked glossaries before any
+  // tests run so queued approval events cannot overwrite them or require draining the event stream.
+  private static void excludeGlossaryStatusFixturesFromApproval() {
+    String exclusion =
+        JsonUtils.pojoToJson(
+            Map.of(
+                "in",
+                List.of(
+                    GlossaryTestFactory.STATUS_TEST_GLOSSARY_PREFIX + "__",
+                    Map.of("var", "fullyQualifiedName"))));
+    ArrayNode patch = JsonNodeFactory.instance.arrayNode();
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/trigger/config/filter/glossaryTerm")
+        .put("value", exclusion);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/governance/workflowDefinitions/name/GlossaryTermApprovalWorkflow",
+            patch);
   }
 
   @Override
@@ -294,7 +324,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // 30-day expiry, and keeps it in the datadir — the tmpfs below. That is a second,
           // append-only copy of every write, kept for replication and point-in-time recovery that
           // a throwaway single-node test database never uses.
-          "--skip-log-bin");
+          "--skip-log-bin",
+          // A deadlock error only names the statement that lost. InnoDB can log both
+          // transactions and their locks, but writes the report as a Note, which the default
+          // error-log verbosity of 2 drops.
+          "--innodb_print_all_deadlocks=ON",
+          "--log_error_verbosity=3");
+      mysql.withLogConsumer(
+          new InnoDbDeadlockReportLogger(
+              report -> LOG.warn("InnoDB deadlock report:{}{}", System.lineSeparator(), report)));
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
