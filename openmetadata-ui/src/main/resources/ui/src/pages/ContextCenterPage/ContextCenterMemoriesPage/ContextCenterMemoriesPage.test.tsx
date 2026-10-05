@@ -11,9 +11,21 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { getListContextMemories } from '../../../rest/contextMemoryAPI';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { Link, MemoryRouter, useLocation } from 'react-router-dom';
+import { CreateMemoryModalProps } from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.interface';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import {
+  getContextMemoryById,
+  getContextMemoryByName,
+  getListContextMemories,
+} from '../../../rest/contextMemoryAPI';
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import ContextCenterMemoriesPage from './ContextCenterMemoriesPage';
 
@@ -104,12 +116,35 @@ jest.mock(
     __esModule: true,
     default: jest
       .fn()
-      .mockImplementation(({ canEdit }) => (
-        <div
-          data-can-edit={String(Boolean(canEdit))}
-          data-testid="create-memory-modal"
-        />
-      )),
+      .mockImplementation(
+        ({
+          canEdit,
+          isOpen,
+          memoryToEdit,
+          onClose,
+          onEditMemory,
+          viewOnly,
+        }: CreateMemoryModalProps) => (
+          <div
+            data-can-edit={String(Boolean(canEdit))}
+            data-open={String(isOpen)}
+            data-testid={
+              viewOnly ? 'view-memory-modal' : 'create-memory-modal'
+            }>
+            {isOpen && (
+              <>
+                <span>{memoryToEdit?.name}</span>
+                <button onClick={onClose}>Close memory</button>
+                {viewOnly && memoryToEdit && (
+                  <button onClick={() => onEditMemory?.(memoryToEdit)}>
+                    Edit memory
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )
+      ),
   })
 );
 
@@ -131,10 +166,22 @@ jest.mock(
   })
 );
 
-const renderPage = () =>
+const MemoryRouteControls = () => {
+  const { search } = useLocation();
+
+  return (
+    <>
+      <output data-testid="memory-route">{search}</output>
+      <Link to="?memory=memory-two&author=test.user">Open successor</Link>
+    </>
+  );
+};
+
+const renderPage = (route = '/') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[route]}>
       <ContextCenterMemoriesPage />
+      <MemoryRouteControls />
     </MemoryRouter>
   );
 
@@ -284,5 +331,91 @@ describe('ContextCenterMemoriesPage — permissions', () => {
         })
       );
     });
+  });
+});
+
+describe('ContextCenterMemoriesPage — memory links', () => {
+  const memory: ContextMemory = { id: 'memory-1', name: 'memory-one' };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    (getContextMemoryByName as jest.Mock).mockResolvedValue(memory);
+    (getContextMemoryById as jest.Mock).mockResolvedValue(memory);
+  });
+
+  it('clears a closed memory link while preserving unrelated query parameters', async () => {
+    renderPage('/?memory=memory-one&author=test.user');
+
+    await screen.findByRole('button', { name: 'Close memory' });
+    fireEvent.click(screen.getByRole('button', { name: 'Close memory' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('memory-route')).toHaveTextContent(
+        '?author=test.user'
+      );
+      expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument();
+    });
+  });
+
+  it('keeps the view modal closed when editing and clears the link when the editor closes', async () => {
+    renderPage('/?memory=memory-one&author=test.user');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit memory' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('create-memory-modal')).toHaveAttribute(
+        'data-open',
+        'true'
+      );
+      expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Close memory' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('memory-route')).toHaveTextContent(
+        '?author=test.user'
+      );
+      expect(screen.getByTestId('create-memory-modal')).toHaveAttribute(
+        'data-open',
+        'false'
+      );
+      expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument();
+    });
+  });
+
+  it('ignores a successor response that arrives after the modal is closed', async () => {
+    const successor: ContextMemory = { id: 'memory-2', name: 'memory-two' };
+    let resolveSuccessor: ((value: ContextMemory) => void) | undefined;
+    const pendingSuccessor = new Promise<ContextMemory>((resolve) => {
+      resolveSuccessor = resolve;
+    });
+    (getContextMemoryByName as jest.Mock).mockImplementation((name: string) =>
+      name === successor.name ? pendingSuccessor : Promise.resolve(memory)
+    );
+    (getContextMemoryById as jest.Mock).mockImplementation((id: string) =>
+      Promise.resolve(id === successor.id ? successor : memory)
+    );
+    renderPage('/?memory=memory-one');
+
+    await screen.findByRole('button', { name: 'Close memory' });
+    fireEvent.click(screen.getByRole('link', { name: 'Open successor' }));
+    await waitFor(() => {
+      expect(getContextMemoryByName).toHaveBeenCalledWith(
+        'memory-two',
+        expect.any(String)
+      );
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Close memory' }));
+
+    await act(async () => {
+      resolveSuccessor?.(successor);
+      await pendingSuccessor;
+    });
+
+    expect(screen.getByTestId('memory-route')).toHaveTextContent(
+      '?author=test.user'
+    );
+    expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument();
   });
 });

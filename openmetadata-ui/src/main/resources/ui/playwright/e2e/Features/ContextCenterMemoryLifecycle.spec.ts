@@ -175,5 +175,49 @@ test.describe(
         dialog.getByRole('button', { name: /propose term/i })
       ).not.toBeVisible();
     });
+
+    test('linked memory modals stay closed after cancel, escape, editing and successor navigation', async ({
+      page,
+    }) => {
+      await page.goto(`${MEMORIES_URL}?memory=${superseded.name}`);
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
+        'Deprecated'
+      );
+      await dialog.getByTestId('memory-lifecycle-successor').click();
+      await expect(
+        dialog.getByText(successor.title, { exact: true })
+      ).toBeVisible();
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(page).not.toHaveURL(/memory=/);
+      await expect(dialog).not.toBeVisible();
+
+      const preservedQuery = 'source=modal-regression';
+      const memoryUrl = `${MEMORIES_URL}?memory=${successor.name}&${preservedQuery}`;
+      await page.goto(memoryUrl);
+      await expect(dialog).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page).toHaveURL(new RegExp(`\\?${preservedQuery}$`));
+      await expect(dialog).not.toBeVisible();
+
+      await page.goto(memoryUrl);
+      await dialog.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(
+        dialog.getByRole('textbox', { name: 'Title', exact: true })
+      ).toBeEditable();
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`\\?${preservedQuery}$`));
+      await expect(dialog).not.toBeVisible();
+
+      await page.goto(memoryUrl);
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`\\?${preservedQuery}$`));
+      await expect(dialog).not.toBeVisible();
+      await page.getByTestId('memory-status-filter').click();
+      await expect(
+        page.getByRole('menuitemcheckbox', { name: 'Approved' })
+      ).toBeVisible();
+    });
   }
 );

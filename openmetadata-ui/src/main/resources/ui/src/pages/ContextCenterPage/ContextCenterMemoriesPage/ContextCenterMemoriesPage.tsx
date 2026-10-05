@@ -279,6 +279,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { currentUser } = useApplicationStore();
   const [searchParams, setSearchParams] = useSearchParams();
+  const memoryName = searchParams.get('memory');
   const { getResourcePermission } = usePermissionProvider();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
@@ -672,59 +673,65 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const handleViewMemory = useCallback(
-    async (memory: ContextMemory) => {
-      const completeMemory = await fetchCompleteMemory(memory);
-      setMemoryToView(completeMemory);
-      setIsViewModalOpen(true);
+    (memory: ContextMemory) => {
       setSearchParams((prev) => {
-        if (completeMemory.name) {
-          prev.set('memory', completeMemory.name);
-        }
+        const next = new URLSearchParams(prev);
+        next.set('memory', memory.name);
 
-        return prev;
+        return next;
       });
     },
-    [fetchCompleteMemory, setSearchParams]
+    [setSearchParams]
   );
 
   const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
     setMemoryToEdit(undefined);
-  }, []);
-
-  const handleViewModalClose = useCallback(() => {
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
-    setSearchParams((prev) => {
-      prev.delete('memory');
+    if (memoryName !== null) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('memory');
 
-      return prev;
-    });
-  }, [setSearchParams]);
+        return next;
+      });
+    }
+  }, [memoryName, setSearchParams]);
 
   useEffect(() => {
-    const memoryName = searchParams.get('memory');
-    if (!memoryName || (isViewModalOpen && memoryName === memoryToView?.name)) {
+    if (!memoryName) {
+      setIsViewModalOpen(false);
+      setMemoryToView(undefined);
+
       return;
     }
 
+    let isCurrentSelection = true;
     getContextMemoryByName(memoryName, MEMORY_FIELDS)
-      .then((memory) => handleViewMemory(memory))
+      .then((memory) => {
+        if (isCurrentSelection) {
+          setMemoryToView(memory);
+          setIsViewModalOpen(true);
+        }
+      })
       .catch((err: AxiosError) => {
+        if (!isCurrentSelection) {
+          return;
+        }
         showErrorToast(err);
         setSearchParams((prev) => {
-          prev.delete('memory');
+          const next = new URLSearchParams(prev);
+          next.delete('memory');
 
-          return prev;
+          return next;
         });
       });
-  }, [
-    searchParams,
-    handleViewMemory,
-    setSearchParams,
-    isViewModalOpen,
-    memoryToView?.name,
-  ]);
+
+    return () => {
+      isCurrentSelection = false;
+    };
+  }, [memoryName, setSearchParams]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
@@ -1164,7 +1171,7 @@ const ContextCenterMemoriesPage: FC = () => {
         onEditMemory={handleEditMemory}
         onModalClose={handleModalClose}
         onModalSuccess={handleModalSuccess}
-        onViewModalClose={handleViewModalClose}
+        onViewModalClose={handleModalClose}
       />
     </Box>
   );
