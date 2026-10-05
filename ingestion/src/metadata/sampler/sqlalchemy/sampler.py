@@ -392,7 +392,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             columns = list(rnd.keys())
         return TableData(
             columns=columns,
-            rows=[[self._truncate_cell(cell) for cell in row] for row in rnd.fetchmany(100)],
+            rows=[[self._truncate_cell(cell) for cell in row] for row in rnd.fetchmany(self.sample_limit)],
         )
 
     def _rdn_sample_from_user_query(self) -> Query:
