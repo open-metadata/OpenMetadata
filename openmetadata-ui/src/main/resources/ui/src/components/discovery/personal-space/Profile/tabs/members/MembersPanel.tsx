@@ -34,7 +34,6 @@ import { EntityExportModalProvider } from '../../../../../Entity/EntityExportMod
 import type { MembersPanelProps, MembersView } from './Members.types';
 import { hashSubPathToView, viewToSubPath } from './Members.utils';
 import MembersAddTeamForm from './MembersAddTeamForm';
-import MembersAdminsPanel from './MembersAdminsPanel';
 import MembersCreateUserForm from './MembersCreateUserForm';
 import MembersImportForm from './MembersImportForm';
 import MembersLanding from './MembersLanding';
@@ -372,7 +371,8 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
 
     if (view.type === 'admins') {
       return (
-        <MembersAdminsPanel
+        <MembersUsersPanel
+          isAdmin
           onNavigate={onNavigate}
           onSetHeaderActions={setPanelHeaderActions}
         />

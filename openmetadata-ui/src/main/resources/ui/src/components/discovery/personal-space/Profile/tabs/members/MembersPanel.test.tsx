@@ -58,10 +58,6 @@ jest.mock('./MembersUsersPanel', () => () => (
   <div data-testid="members-users-panel" />
 ));
 
-jest.mock('./MembersAdminsPanel', () => () => (
-  <div data-testid="members-admins-panel" />
-));
-
 jest.mock('./MembersOnlineUsersPanel', () => () => (
   <div data-testid="members-online-users-panel" />
 ));

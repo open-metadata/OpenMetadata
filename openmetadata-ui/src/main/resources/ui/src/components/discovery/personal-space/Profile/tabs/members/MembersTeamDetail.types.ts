@@ -44,7 +44,8 @@ export interface RemoveEntity {
 export interface MembersTeamInfoWidgetsProps {
   team: Team;
   canEdit: boolean;
-  onPatch: (updated: Team) => void | Promise<void>;
+  // Resolves true only when the patch succeeded, so editors can close on success.
+  onPatch: (updated: Team) => Promise<boolean>;
 }
 
 export interface MembersTeamsTabProps {

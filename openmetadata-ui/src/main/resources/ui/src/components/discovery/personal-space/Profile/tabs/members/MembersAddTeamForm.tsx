@@ -65,8 +65,14 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<EntityReference[]>([]);
   const [parentTeamId, setParentTeamId] = useState<string>();
+  const [parentResolveFailed, setParentResolveFailed] = useState(false);
   const [resolvedParentType, setResolvedParentType] =
     useState<TeamType>(parentTeamType);
+
+  // A sub-team must carry its parent id; until the fqn→id lookup resolves (or if
+  // it fails) saving would send parents: undefined and create the team under
+  // Organization, so Save stays disabled until the parent is known.
+  const isParentPending = Boolean(parentTeamFqn) && !parentTeamId;
 
   // Resolve the parent fqn to its id + team type once, so the new team nests
   // correctly and the team-type options reflect what the parent can contain.
@@ -75,6 +81,7 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
       return;
     }
     let active = true;
+    setParentResolveFailed(false);
     getTeamByName(parentTeamFqn)
       .then((parent) => {
         if (active) {
@@ -82,7 +89,12 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
           setResolvedParentType(parent.teamType ?? parentTeamType);
         }
       })
-      .catch((error) => showErrorToast(error as AxiosError));
+      .catch((error) => {
+        if (active) {
+          setParentResolveFailed(true);
+        }
+        showErrorToast(error as AxiosError);
+      });
 
     return () => {
       active = false;
@@ -213,6 +225,11 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
   );
 
   const onSubmit = async (data: AddTeamFormValues) => {
+    // Guard the race: never create under Organization when a parent was intended
+    // but its id hasn't resolved (or failed to).
+    if (isParentPending || parentResolveFailed) {
+      return;
+    }
     const description = descEditorRef.current?.getEditorContent() ?? '';
 
     setIsSaving(true);
@@ -312,6 +329,7 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
         <Button
           color="primary"
           data-testid="submit-btn"
+          isDisabled={isParentPending || parentResolveFailed}
           isLoading={isSaving}
           onPress={() => handleSubmit(onSubmit)()}>
           {t('label.save')}

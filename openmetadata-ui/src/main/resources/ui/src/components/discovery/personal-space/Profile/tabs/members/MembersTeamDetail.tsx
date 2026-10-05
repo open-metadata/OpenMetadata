@@ -386,14 +386,16 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [team?.fullyQualifiedName, activeTab, usersPageSize]);
 
+  // Returns true only when the PATCH succeeded (or was a no-op), so callers can
+  // gate side effects (close editor, rename header) on actual success.
   const handlePatchTeam = useCallback(
-    async (updatedTeam: Team) => {
+    async (updatedTeam: Team): Promise<boolean> => {
       if (!team) {
-        return;
+        return false;
       }
       const patch = compare(team, updatedTeam);
       if (patch.length === 0) {
-        return;
+        return true;
       }
       try {
         const res = await patchTeamDetail(team.id, patch);
@@ -401,8 +403,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         showSuccessToast(
           t('server.update-entity-success', { entity: t('label.team') })
         );
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       }
     },
     [team, t]
@@ -415,21 +421,23 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     const value = descEditorRef.current?.getEditorContent() ?? '';
     setIsDescSaving(true);
     try {
-      await handlePatchTeam({ ...team, description: value });
-      setIsDescEditing(false);
+      if (await handlePatchTeam({ ...team, description: value })) {
+        setIsDescEditing(false);
+      }
     } finally {
       setIsDescSaving(false);
     }
   }, [team, handlePatchTeam]);
 
-  const handleSaveDisplayName = useCallback(() => {
+  const handleSaveDisplayName = useCallback(async () => {
     if (!team) {
       return;
     }
     const trimmed = editNameValue.trim();
-    void handlePatchTeam({ ...team, displayName: trimmed });
-    onRename?.(trimmed || team.name);
-    setIsEditingName(false);
+    if (await handlePatchTeam({ ...team, displayName: trimmed })) {
+      onRename?.(trimmed || team.name);
+      setIsEditingName(false);
+    }
   }, [team, editNameValue, handlePatchTeam, onRename]);
 
   const handleRestoreTeam = useCallback(async () => {

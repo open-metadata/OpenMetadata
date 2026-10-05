@@ -128,7 +128,7 @@ const DomainField: FC<MembersTeamInfoWidgetsProps> = ({
             selectedDomain={domains}
             triggerVariant="button"
             onUpdate={(next) =>
-              onPatch({ ...team, domains: toDomainArray(next) })
+              void onPatch({ ...team, domains: toDomainArray(next) })
             }
           />
         )
@@ -166,7 +166,7 @@ const PersonaField: FC<MembersTeamInfoWidgetsProps> = ({
             selectedPersona={team.defaultPersona}
             triggerVariant="button"
             onUpdate={(persona) =>
-              onPatch({ ...team, defaultPersona: persona })
+              void onPatch({ ...team, defaultPersona: persona })
             }
           />
         )
@@ -200,7 +200,7 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | undefined>();
 
-  const save = useCallback(() => {
+  const save = useCallback(async () => {
     const trimmed = value.trim();
     // An empty string fails the backend email @Pattern (only null/absent is
     // valid) and then makes every team GET 400; send undefined to clear it.
@@ -211,8 +211,10 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
 
       return;
     }
-    void onPatch({ ...team, email: trimmed || undefined });
-    setIsEditing(false);
+    // Close only on a successful patch so a failed save keeps the editor open.
+    if (await onPatch({ ...team, email: trimmed || undefined })) {
+      setIsEditing(false);
+    }
   }, [team, value, onPatch, t]);
 
   // Seed the field from the current email each time the popover opens.
@@ -352,7 +354,7 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     [team.profile?.subscription]
   );
 
-  const save = useCallback(() => {
+  const save = useCallback(async () => {
     if (webhook) {
       if (!endpoint.trim()) {
         setError(
@@ -374,7 +376,8 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     const data: SubscriptionWebhook | undefined = webhook
       ? { webhook, endpoint }
       : undefined;
-    void onPatch({
+    // Close only on a successful patch so a failed save keeps the editor open.
+    const ok = await onPatch({
       ...team,
       profile: {
         subscription: data
@@ -382,7 +385,9 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
           : undefined,
       },
     });
-    setIsEditing(false);
+    if (ok) {
+      setIsEditing(false);
+    }
   }, [team, webhook, endpoint, onPatch, t]);
 
   const handleWebhookChange = useCallback((key: string | number | null) => {
@@ -505,7 +510,7 @@ const OwnerField: FC<MembersTeamInfoWidgetsProps> = ({
           <UserTeamSelectableList
             hasPermission
             owner={owners}
-            onUpdate={(next) => onPatch({ ...team, owners: next })}>
+            onUpdate={(next) => void onPatch({ ...team, owners: next })}>
             <EditPencil
               dataTestId="edit-owners"
               entity={t('label.owner-plural')}
