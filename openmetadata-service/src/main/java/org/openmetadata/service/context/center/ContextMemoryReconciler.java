@@ -3,11 +3,13 @@ package org.openmetadata.service.context.center;
 import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
@@ -27,13 +29,16 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
  * fact keeps its pill identity (and the usageCount/lastUsedAt retrieval telemetry that rides it)
  * even when the model rephrases the question between runs. An automated pill that is no longer
  * derived from its last source is hard-deleted; a shared pill is detached from only the changed
- * source. A pill a human has
- * edited (sourceType flipped to Manual) is left untouched. Equivalent file-derived facts may be
- * linked to more than one source; retiring one source preserves the memory while another still
- * references it.
+ * source. A pill a human has edited (sourceType flipped to Manual) is left untouched, and a retired
+ * one (Deprecated, Rejected) is never rewritten or approved again. Equivalent file-derived facts
+ * may be linked to more than one source; retiring one source preserves the memory while another
+ * still references it.
  */
 @Slf4j
 public class ContextMemoryReconciler {
+  private static final Set<EntityStatus> RETIRED_STATUSES =
+      EnumSet.of(EntityStatus.DEPRECATED, EntityStatus.REJECTED);
+
   private final ContextMemoryRepository memoryRepository;
   private final DuplicateFinder duplicateFinder;
 
@@ -86,13 +91,13 @@ public class ContextMemoryReconciler {
 
     // Pass 1: exact normalized-question match. Always claim the matching question, even for a
     // human-owned (Manual) pill: it stops a re-derived duplicate from being created alongside it.
-    // Only automated pills are then updated; a pill a human edited is left exactly as-is.
+    // Only engine-managed pills are then updated; a pill a human edited or retired is left as-is.
     List<ContextMemory> unmatched = new ArrayList<>();
     for (ContextMemory pill : existing) {
       ContextMemory match = derivedByQuestion.remove(questionKey(pill));
       if (match == null) {
         unmatched.add(pill);
-      } else if (isAutomated(pill)) {
+      } else if (isEngineManaged(pill)) {
         if (releaseSharedIfChanged(sourceRef, pill, match, derivedByQuestion)) {
           counts.deleted++;
         } else if (applyDerived(pill, match)) {
@@ -113,7 +118,7 @@ public class ContextMemoryReconciler {
           memoryRepository.releaseExtractedMemory(pill.getId(), sourceRef);
           counts.deleted++;
         }
-      } else if (isAutomated(pill)) {
+      } else if (isEngineManaged(pill)) {
         if (releaseSharedIfChanged(sourceRef, pill, match, derivedByQuestion)) {
           counts.deleted++;
         } else if (applyDerived(pill, match)) {
@@ -252,6 +257,14 @@ public class ContextMemoryReconciler {
   private boolean isAutomated(ContextMemory pill) {
     return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
         || pill.getSourceType() == ContextMemorySourceType.PAGE_EXTRACTION;
+  }
+
+  /**
+   * A Deprecated or Rejected pill carries a reviewer's verdict; re-extracting its fact must not
+   * rewrite it or approve it again.
+   */
+  private boolean isEngineManaged(ContextMemory pill) {
+    return isAutomated(pill) && !RETIRED_STATUSES.contains(pill.getEntityStatus());
   }
 
   private String questionKey(ContextMemory pill) {
