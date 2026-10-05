@@ -268,14 +268,12 @@ export default [
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
 
-      // Design-system import discipline. Raw SVG imports from assets/ are an
-      // error; the ~489 pre-existing violations are baselined in
-      // eslint-suppressions.json (native ESLint bulk suppressions — the same
-      // mechanism already used for the playwright rules), so only NEW imports
-      // fail CI. Regenerate the baseline with:
-      //   yarn lint:base --suppress-rule no-restricted-imports './src/**/*.{ts,tsx}'
+      // Design-system import discipline — editor-time nudge (warn). Enforcement
+      // of "no NEW raw-SVG debt" is done by tw-deprecation-guard.js (the same
+      // git-diff guard, pre-commit + ui-checkstyle, that blocks new antd/less
+      // debt), so existing violations don't fail CI on unrelated edits.
       'no-restricted-imports': [
-        'error',
+        'warn',
         {
           patterns: [
             {
