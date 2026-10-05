@@ -111,6 +111,7 @@
         "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/Markdown.spec.ts",
         "playwright/e2e/Features/MetricAssets.spec.ts",
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
@@ -1743,6 +1744,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/TaskClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Pages/Tasks.spec.ts"
@@ -2293,6 +2295,14 @@
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/taskActivity.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts"
       ]
     },
     {
@@ -3329,6 +3339,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/LanguageOverride.spec.ts",
         "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
         "playwright/e2e/Features/LineagePipelineAnnotator.spec.ts",
@@ -3590,6 +3601,7 @@
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
@@ -3873,6 +3885,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/MetricAssets.spec.ts",
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
         "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
@@ -10765,6 +10778,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/LanguageOverride.spec.ts",
         "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
         "playwright/e2e/Features/LineagePipelineAnnotator.spec.ts",
