@@ -132,7 +132,9 @@ test.describe('Domain Owner Management', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
     } finally {
       await domain.delete(apiContext);
       await user.delete(apiContext);
@@ -174,7 +176,9 @@ test.describe('Domain Owner Management', () => {
         timeout: 10000,
       });
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       // Click edit owner button
       await page.getByTestId('edit-owner').click();
@@ -473,7 +477,9 @@ test.describe('Data Product UI Operations', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
     } finally {
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
