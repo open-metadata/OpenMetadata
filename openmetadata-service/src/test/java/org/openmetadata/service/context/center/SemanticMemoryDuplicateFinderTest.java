@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -70,8 +71,27 @@ class SemanticMemoryDuplicateFinderTest {
     when(repository.get(
             isNull(), eq(candidate.getId()), isNull(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(candidate);
+    lenient().when(repository.hasOrgWideAnchor(candidate)).thenReturn(true);
     return new SemanticMemoryDuplicateFinder(
         repository, () -> vectorService, () -> searchRepository, completionClient, () -> SYSTEM);
+  }
+
+  /** A linked fact stays anchored to its own file, hiding it from readers of a restricted one. */
+  @Test
+  void factAnchoredToARestrictedFileIsNotReused() throws Exception {
+    ContextMemory candidate =
+        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.");
+    SemanticMemoryDuplicateFinder finder = finderWithCandidate(candidate);
+    when(repository.hasOrgWideAnchor(candidate)).thenReturn(false);
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    when(searchRepository.getIndexOrAliasName("contextMemory"))
+        .thenReturn("context_memory_search_index");
+    when(searchClient.searchForExport(any(SearchRequest.class), eq(SYSTEM)))
+        .thenReturn(new SearchResultListMapper(List.of(), 0));
+
+    assertNull(
+        finder.findEquivalent(
+            memory(UUID.randomUUID(), candidate.getQuestion(), candidate.getAnswer())));
   }
 
   @Test
@@ -129,6 +149,7 @@ class SemanticMemoryDuplicateFinderTest {
     when(repository.get(
             isNull(), eq(candidate.getId()), isNull(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(candidate);
+    when(repository.hasOrgWideAnchor(candidate)).thenReturn(true);
 
     ContextMemory found =
         new SemanticMemoryDuplicateFinder(

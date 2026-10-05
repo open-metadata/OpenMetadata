@@ -47,6 +47,7 @@ import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -892,6 +893,26 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         source.getType(),
         Entity.CONTEXT_MEMORY,
         Relationship.MENTIONED_IN);
+  }
+
+  /**
+   * Whether linking this memory to another source keeps it readable there. It stays anchored to
+   * its own file, so only a memory every reader of that file can reach is safe to share.
+   */
+  public boolean hasOrgWideAnchor(ContextMemory memory) {
+    EntityReference anchor = getPrimaryEntity(memory);
+    return anchor == null
+        || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+  }
+
+  private static boolean isOrgWideFile(EntityReference file) {
+    boolean orgWide;
+    try {
+      orgWide = ContextFileVisibility.isOrgWide(Entity.getEntity(file, "", Include.NON_DELETED));
+    } catch (EntityNotFoundException e) {
+      orgWide = false;
+    }
+    return orgWide;
   }
 
   public boolean hasOtherSources(UUID memoryId, EntityReference source) {

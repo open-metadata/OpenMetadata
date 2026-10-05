@@ -200,7 +200,8 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
         && candidate.getShareConfig().getVisibility() == MemoryVisibility.ENTITY
         && candidate.getMemoryScope() == derived.getMemoryScope()
         && candidate.getMemoryType() == derived.getMemoryType()
-        && !hasConflictingNumbers(candidate, derived);
+        && !hasConflictingNumbers(candidate, derived)
+        && repository.hasOrgWideAnchor(candidate);
   }
 
   private boolean hasConflictingNumbers(ContextMemory candidate, ContextMemory derived) {
