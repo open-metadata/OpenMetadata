@@ -184,10 +184,6 @@ export const addUserToTeam = async (
   userDisplayName: string
 ): Promise<void> => {
   await page.getByTestId('add-user').click();
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByRole('tab', { name: 'Users' })
-    .click();
 
   const searchResponse = page.waitForResponse(
     (response) =>
