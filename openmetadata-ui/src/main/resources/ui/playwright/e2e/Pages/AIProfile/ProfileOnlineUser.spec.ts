@@ -14,11 +14,10 @@
 import { performAdminLogin } from '../../../utils/admin';
 import {
   navigateToMembersPanel,
+  openAiProfile,
   openOnlineUsersPanel,
 } from '../../../utils/aiProfile';
-import { redirectToHomePage } from '../../../utils/common';
 import { expect, test } from '../../fixtures/pages';
-import { enableAiAppMode } from '../../Utils/appMode';
 
 // Ports e2e/Features/OnlineUsers.spec.ts onto the AI-mode Online Users panel.
 // The classic antd `.ant-select-dropdown` + positional `td:nth-child` selectors
@@ -76,15 +75,7 @@ test.describe('AI Profile Online Users', () => {
   test('Non-admin users cannot access the Members surface', async ({
     dataConsumerPage,
   }) => {
-    await enableAiAppMode(dataConsumerPage);
-    await redirectToHomePage(dataConsumerPage);
-
-    await expect(
-      dataConsumerPage.getByTestId('ask-ai-user-menu-trigger')
-    ).toBeVisible();
-    await dataConsumerPage.getByTestId('ask-ai-user-menu-trigger').click();
-    await dataConsumerPage.getByTestId('ai-user-menu-profile').click();
-    await dataConsumerPage.getByTestId('ai-profile-page').waitFor();
+    await openAiProfile(dataConsumerPage);
 
     await expect(
       dataConsumerPage.getByTestId('profile-nav-members')

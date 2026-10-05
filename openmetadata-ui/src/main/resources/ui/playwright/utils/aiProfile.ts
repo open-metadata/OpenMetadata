@@ -17,11 +17,14 @@ import { TeamClass } from '../support/team/TeamClass';
 import { redirectToHomePage } from './common';
 
 /**
- * Open the AI-mode profile and land on the Members landing view. The profile is
- * a hash-driven surface reached from the AI user menu (not a route), so the only
- * stable entry is: enable AI mode → home → user menu → profile → Members nav.
+ * Open the AI-mode profile. The profile is a hash-driven surface reached from the
+ * AI user menu (not a route), so the only stable entry is: enable AI mode → home →
+ * user menu → profile. Pass a `navId` (a left-nav testid) to also open that tab.
  */
-export const navigateToMembersPanel = async (page: Page): Promise<void> => {
+export const openAiProfile = async (
+  page: Page,
+  navId?: string
+): Promise<void> => {
   await enableAiAppMode(page);
   await redirectToHomePage(page);
 
@@ -31,7 +34,14 @@ export const navigateToMembersPanel = async (page: Page): Promise<void> => {
   await page.getByTestId('ai-user-menu-profile').click();
   await page.getByTestId('ai-profile-page').waitFor();
 
-  await page.getByTestId('profile-nav-members').click();
+  if (navId) {
+    await page.getByTestId(navId).click();
+  }
+};
+
+/** Open the AI-mode profile and land on the Members landing view. */
+export const navigateToMembersPanel = async (page: Page): Promise<void> => {
+  await openAiProfile(page, 'profile-nav-members');
   await expect(page.getByTestId('members-landing')).toBeVisible();
 };
 
@@ -153,6 +163,14 @@ export const waitForTeamPatch = (page: Page, teamId: string) =>
   page.waitForResponse(
     (response) =>
       response.url().includes(`/api/v1/teams/${teamId}`) &&
+      response.request().method() === 'PATCH'
+  );
+
+/** Wait for the PATCH that updates a given user (entity-id scoped for parallel safety). */
+export const waitForUserPatch = (page: Page, userId: string) =>
+  page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/users/${userId}`) &&
       response.request().method() === 'PATCH'
   );
 

@@ -18,13 +18,14 @@ import { performAdminLogin } from '../../../utils/admin';
 import {
   navigateToMembersPanel,
   openAdminsPanel,
+  openAiProfile,
   openUserProfile,
   openUsersPanel,
   searchUserRow,
+  waitForUserPatch,
 } from '../../../utils/aiProfile';
-import { redirectToHomePage, uuid } from '../../../utils/common';
+import { uuid } from '../../../utils/common';
 import { expect, test } from '../../fixtures/pages';
-import { enableAiAppMode } from '../../Utils/appMode';
 
 // Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
 // AI-mode Users/Admins panels and the user profile view (ProfileDetailsPanel).
@@ -242,11 +243,7 @@ test.describe('AI Profile Users', () => {
       .getByRole('textbox')
       .fill(`${user.responseData.name}-edited`);
 
-    const patch = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
-        response.request().method() === 'PATCH'
-    );
+    const patch = waitForUserPatch(page, user.responseData.id ?? '');
     await page.getByTestId('preferred-name-save').click();
     await patch;
   });
@@ -263,11 +260,7 @@ test.describe('AI Profile Users', () => {
       .getByRole('option', { name: persona.responseData.displayName })
       .click();
 
-    const patch = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
-        response.request().method() === 'PATCH'
-    );
+    const patch = waitForUserPatch(page, user.responseData.id ?? '');
     await page.getByTestId('persona-save').click();
     await patch;
 
@@ -291,11 +284,7 @@ test.describe('AI Profile Users', () => {
       .getByRole('option', { name: domain.responseData.displayName })
       .click();
 
-    const patch = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/api/v1/users/${user.responseData.id}`) &&
-        response.request().method() === 'PATCH'
-    );
+    const patch = waitForUserPatch(page, user.responseData.id ?? '');
     await page.getByTestId('domains-save').click();
     await patch;
   });
@@ -303,15 +292,8 @@ test.describe('AI Profile Users', () => {
   test('Non-admin can edit own name but not persona', async ({
     dataConsumerPage,
   }) => {
-    await enableAiAppMode(dataConsumerPage);
-    await redirectToHomePage(dataConsumerPage);
-
     // Non-admins cannot reach Members; open their own profile directly.
-    await expect(
-      dataConsumerPage.getByTestId('ask-ai-user-menu-trigger')
-    ).toBeVisible();
-    await dataConsumerPage.getByTestId('ask-ai-user-menu-trigger').click();
-    await dataConsumerPage.getByTestId('ai-user-menu-profile').click();
+    await openAiProfile(dataConsumerPage);
     await expect(
       dataConsumerPage.getByTestId('profile-details-panel')
     ).toBeVisible();
