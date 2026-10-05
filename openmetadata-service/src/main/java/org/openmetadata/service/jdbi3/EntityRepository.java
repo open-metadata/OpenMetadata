@@ -9905,10 +9905,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (operation.isPut()
           && !nullOrEmpty(original.getDescription())
           && updatedByBot()
-          && !overrideMetadata) {
+          && (!overrideMetadata || nullOrEmpty(updated.getDescription()))) {
         // Revert change to non-empty description if it is being updated by a bot
         // This is to prevent bots from overwriting the description. Description need to be
-        // updated with a PATCH request, or via the bulk path with overrideMetadata=true
+        // updated with a PATCH request, or via the bulk path with overrideMetadata=true. Even
+        // then an empty value never blanks it: a source with no comment omits the field, and an
+        // override run must not read that absence as "delete the description".
         updated.setDescription(original.getDescription());
         return;
       }
@@ -9945,11 +9947,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // authorizes with the coarse EDIT_ALL operation, which does not intersect that field-level
       // deny, so re-apply it here. Bots the policy allows - for example the SCIM bot syncing
       // identity attributes through the repository - fall through and update it. A bulk force-sync
-      // (overrideMetadata=true) also bypasses this guard.
+      // (overrideMetadata=true) also bypasses this guard, unless it would blank the displayName.
       boolean preserveUserDisplayName =
           updatedByBot()
               && !nullOrEmpty(original.getDisplayName())
-              && !overrideMetadata
+              && (!overrideMetadata || nullOrEmpty(updated.getDisplayName()))
               && !Objects.equals(original.getDisplayName(), updated.getDisplayName())
               && updatingBotDeniedOperation(MetadataOperation.EDIT_DISPLAY_NAME);
       if (preserveUserDisplayName) {
@@ -10557,11 +10559,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (operation.isPut()
           && !nullOrEmpty(original.getCertification())
           && updatedByBot()
-          && !overrideMetadata) {
+          && (!overrideMetadata || updatedCertification == null)) {
         // Revert change to non-empty certification if it is being updated by a bot, matching the
         // guard on description/owners: a stored value wins over anything a scheduled re-sync
         // sends. Certification can still be updated with a PATCH request, or via the bulk path
-        // with overrideMetadata=true.
+        // with overrideMetadata=true when the request carries one.
         updated.setCertification(original.getCertification());
         return;
       }
