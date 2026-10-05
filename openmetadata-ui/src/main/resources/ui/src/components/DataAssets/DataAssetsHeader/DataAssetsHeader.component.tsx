@@ -25,7 +25,7 @@ import {
   RefreshCcw01,
   ThumbsDown,
   ThumbsUp,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
@@ -93,6 +93,7 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
@@ -711,8 +712,9 @@ export const DataAssetsHeader = ({
   ]);
 
   const sourceUrlButton = useMemo(() => {
-    const sourceUrl =
-      get(dataAsset, 'sourceUrl') ?? get(dataAsset, 'endpointURL');
+    const sourceUrl = getSafeHttpUrl(
+      get(dataAsset, 'sourceUrl') ?? get(dataAsset, 'endpointURL')
+    );
     if (!sourceUrl) {
       return null;
     }
@@ -1200,7 +1202,6 @@ export const DataAssetsHeader = ({
           className="tw:mt-3"
           testId="entity-header-announcements"
           onItemClick={handleOpenAnnouncementDrawer}
-          onViewAll={handleOpenAnnouncementDrawer}
         />
       )}
 

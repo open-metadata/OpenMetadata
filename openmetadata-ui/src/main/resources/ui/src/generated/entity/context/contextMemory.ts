@@ -44,6 +44,13 @@ export interface ContextMemory {
      */
     domains?: EntityReference[];
     /**
+     * Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be
+     * set at creation, for example when importing an already-archived memory; the Draft ->
+     * Approved -> Archived transition rules are enforced on later updates. When omitted at
+     * creation, the memory starts Approved.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Fully qualified name of the memory.
      */
     fullyQualifiedName?: string;
@@ -55,6 +62,10 @@ export interface ContextMemory {
      * Unique identifier of the memory.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Incremental change that led to this version.
      */
@@ -126,7 +137,6 @@ export interface ContextMemory {
      */
     sourceHumanMessage?: string;
     sourceType?:         SourceType;
-    status?:             MemoryStatus;
     /**
      * Optional summary of the memory.
      */
@@ -294,6 +304,26 @@ export interface EntityReference {
 }
 
 /**
+ * Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be
+ * set at creation, for example when importing an already-archived memory; the Draft ->
+ * Approved -> Archived transition rules are enforced on later updates. When omitted at
+ * creation, the memory starts Approved.
+ *
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * Optional machine-oriented representation used for prompt packing.
  */
 export interface MachineRepresentation {
@@ -424,6 +454,7 @@ export enum ShareRole {
 export enum ShareVisibility {
     Entity = "Entity",
     Private = "Private",
+    Public = "Public",
     Shared = "Shared",
 }
 
@@ -436,17 +467,6 @@ export enum SourceType {
     Manual = "Manual",
     PageExtraction = "PageExtraction",
     RememberRequest = "RememberRequest",
-}
-
-/**
- * Lifecycle state of the memory. Any status may be set at creation (e.g. importing an
- * already-archived memory); the Draft -> Active -> Archived transition rules are only
- * enforced on subsequent updates.
- */
-export enum MemoryStatus {
-    Active = "Active",
-    Archived = "Archived",
-    Draft = "Draft",
 }
 
 /**

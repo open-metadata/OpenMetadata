@@ -483,9 +483,9 @@ const selectOwnersOnTab = async (
     await page.getByTestId(searchBarTestId).clear();
     await page.getByTestId(searchBarTestId).fill(owner);
     await searchOwner;
-    await expect(
-      page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
-    ).toHaveCount(0);
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="select-owner-tabs"]')
+    );
 
     // Scope to the open tab's panel, as addOwnerWithoutValidation does: the
     // picker keeps a visited tab's panel mounted, so after the Users pass the
@@ -964,6 +964,11 @@ export const validateImportStatus = async (
   page: Page,
   status: { passed: string; failed: string; processed: string }
 ) => {
+  // `processed-row` is rendered from the async CSV-import job result delivered over the
+  // CSV_IMPORT websocket channel, not from the importAsync PUT response. The IMPORT_STATUS_TIMEOUT
+  // here is the ceiling for that job to complete and the socket message to land. Residual infra
+  // risk: a backend job that legitimately runs longer, or a dropped/reconnecting socket, will time
+  // out here regardless of test code — it is not a locator/selector problem.
   await page
     .getByTestId('processed-row')
     .waitFor({ timeout: IMPORT_STATUS_TIMEOUT });
@@ -1571,8 +1576,9 @@ export const fillRecursiveColumnDetails = async (
 };
 
 export const firstTimeGridAddRowAction = async (page: Page) => {
-  const firstRow = page.locator('.rdg-row').first();
+  const firstRow = page.getByTestId('rdg-row-0');
   if ((await firstRow.count()) > 0) {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- react-data-grid virtualises columns, so the name column is not always rendered; the leftmost rendered cell is what the focus assertions below are about
     const firstCell = firstRow.locator('.rdg-cell').first();
     const hasFirstRowContent = await firstRow
       .locator('.rdg-cell')
@@ -1612,11 +1618,19 @@ export const addGridRowAndSelectFirstCell = async (page: Page) => {
   await page.click('[data-testid="add-row-btn"]');
   await expect(rows).toHaveCount(rowCount + 1);
 
-  const lastRowFirstCell = rows.last().locator('.rdg-cell').first();
+  // The grid assigns a new row the id of the pre-add row count, so the row
+  // just created can be named instead of taken as "the last one" -- which
+  // drifts the moment the grid is sorted or another row is appended.
+  const lastRowFirstCell = page
+    .getByTestId(`rdg-row-${rowCount}`)
+    .locator('.rdg-cell')
+    .first();
 
   await scrollIntoViewCenter(lastRowFirstCell);
   await lastRowFirstCell.click();
-  await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR).first()).toBeVisible();
+  await expect(
+    page.locator(RDG_ACTIVE_CELL_SELECTOR).filter({ visible: true })
+  ).not.toHaveCount(0);
   await selectActiveRowCellByColumn(page, 'name');
 };
 
@@ -1726,7 +1740,8 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
     name: 'Display Name',
   });
 
-  const firstRow = page.locator('.rdg-row').first();
+  const firstRow = page.getByTestId('rdg-row-0');
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see firstTimeGridAddRowAction: column virtualisation means a column class may not be rendered
   const firstCell = firstRow.locator('.rdg-cell').nth(1);
 
   await displayNameHeader.click();

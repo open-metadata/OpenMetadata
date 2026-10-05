@@ -22,7 +22,7 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit03, Trash01 } from '@untitledui/icons';
+import { Edit03, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

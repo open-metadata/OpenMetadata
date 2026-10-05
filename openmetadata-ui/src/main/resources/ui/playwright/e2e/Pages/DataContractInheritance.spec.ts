@@ -107,7 +107,12 @@ const fillSemanticsForm = async (
   await page.fill('#semantics_0_name', semanticsData.name);
   await page.fill('#semantics_0_description', semanticsData.description);
 
-  const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+  // The form fills semantics row 0, so scope the builder to that row's card
+  // rather than indexing the builders on the page — the same way
+  // DataContracts.spec.ts already does it.
+  const ruleLocator = page
+    .getByTestId('contract-semantics-card-0')
+    .getByTestId('query-builder-group-card');
   await selectOption(
     page,
     ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1217,7 +1222,8 @@ test.describe('Data Contract Inheritance', () => {
       const assetFqn =
         tableForRemoveAssetTest.entityResponseData.fullyQualifiedName;
       await page
-        .locator(`[data-testid="table-data-card_${assetFqn}"] input`)
+        .locator(`[data-testid="table-data-card_${assetFqn}"]`)
+        .getByTestId('asset-checkbox')
         .check();
 
       // Click delete button

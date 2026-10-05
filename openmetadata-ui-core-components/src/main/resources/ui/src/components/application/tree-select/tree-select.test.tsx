@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TreeSelectNode } from './tree-select.types';
 import { TreeSelect } from './tree-select';
@@ -139,5 +139,132 @@ describe('TreeSelect', () => {
     );
 
     await waitFor(() => expect(fetchData).toHaveBeenCalledTimes(1));
+  });
+
+  // The row carries the keyboard affordance: inside a react-aria Tree, arrow
+  // keys move between rows and never reach the button inside one.
+  it('loads the next page when the load-more row is activated', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementation(
+        async ({ parentId, after }: { parentId?: string; after?: string }) => {
+          if (!parentId) {
+            return {
+              nodes: [{ id: 'a', label: 'Node A', value: 'a', isLeaf: false }],
+            };
+          }
+
+          return after
+            ? {
+                nodes: [
+                  { id: 'a.2', label: 'Second', value: 'a.2', isLeaf: true },
+                ],
+                hasMore: false,
+                total: 2,
+              }
+            : {
+                nodes: [
+                  { id: 'a.1', label: 'First', value: 'a.1', isLeaf: true },
+                ],
+                hasMore: true,
+                total: 2,
+                nextCursor: 'cursor-1',
+              };
+        }
+      );
+
+    render(
+      <TreeSelect
+        isOpen
+        lazyLoad
+        defaultExpandedKeys={['a']}
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    const row = await screen.findByTestId('tree-node-load-more-a');
+    const treeItem = row.closest('[role="row"], [role="treeitem"]');
+
+    expect(treeItem).not.toBeNull();
+
+    fireEvent.keyDown(treeItem as Element, { key: 'Enter' });
+    fireEvent.keyUp(treeItem as Element, { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(fetchData).toHaveBeenCalledWith(
+        expect.objectContaining({ parentId: 'a', after: 'cursor-1' })
+      )
+    );
+  });
+
+  it('loads the next root page when its load-more row is activated', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementation(async ({ after }: { after?: string }) =>
+        after
+          ? {
+              nodes: [{ id: 'g2', label: 'Second', value: 'g2', isLeaf: true }],
+              hasMore: false,
+              total: 2,
+            }
+          : {
+              nodes: [{ id: 'g1', label: 'First', value: 'g1', isLeaf: true }],
+              hasMore: true,
+              total: 2,
+              nextCursor: 'root-cursor-1',
+            }
+      );
+
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    const row = await screen.findByTestId('tree-node-load-more-root');
+    const treeItem = row.closest('[role="row"], [role="treeitem"]');
+
+    expect(treeItem).not.toBeNull();
+
+    fireEvent.keyDown(treeItem as Element, { key: 'Enter' });
+    fireEvent.keyUp(treeItem as Element, { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(fetchData).toHaveBeenCalledWith(
+        expect.objectContaining({ after: 'root-cursor-1' })
+      )
+    );
+    expect(await screen.findByTestId('tree-node-g2')).toBeInTheDocument();
+    expect(screen.getByTestId('tree-node-g1')).toBeInTheDocument();
+  });
+
+  // A container row is not pickable, but it is not blocked either — only a
+  // genuinely disabled row may read as forbidden.
+  it('keeps the plain cursor on an unselectable container row', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        { id: 'g', label: 'Glossary', value: 'g', allowSelection: false },
+        { id: 'd', label: 'Blocked', value: 'd', disabled: true },
+      ],
+    });
+
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    const container = await screen.findByTestId('tree-node-g');
+
+    expect(container.className).toContain('cursor-default');
+    expect(container.className).not.toContain('cursor-not-allowed');
+    expect(screen.getByTestId('tree-node-d').className).toContain(
+      'cursor-not-allowed'
+    );
   });
 });

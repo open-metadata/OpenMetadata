@@ -35,6 +35,7 @@ public class DriveServiceResourceIT extends BaseServiceIT<DriveService, CreateDr
   private static final String DRIVE_SERVICES_ENDPOINT = "/v1/services/driveServices";
 
   {
+    supportsEntityStatus = false;
     supportsListHistoryByTimestamp = true;
   }
 

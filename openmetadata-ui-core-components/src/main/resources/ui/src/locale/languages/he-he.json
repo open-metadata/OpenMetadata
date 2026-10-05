@@ -7,6 +7,7 @@
     "close": "סגור",
     "close-navigation-menu": "סגור תפריט ניווט",
     "copy-link": "העתק קישור",
+    "count-remaining": "נותרו {{count}}",
     "count-selected": "{{count}} נבחרו",
     "current-page": "עמוד נוכחי",
     "date-range-picker": "בוחר טווח תאריכים",
@@ -36,6 +37,7 @@
     "select-date": "בחר תאריך",
     "select-dates": "בחר תאריכים",
     "select-only-one-row": "בחר שורה אחת",
+    "show-count-more": "הצג עוד {{count}}",
     "show-hidden-breadcrumbs": "הצג פירורי לחם מוסתרים",
     "today": "היום",
     "tree-select": "בחירת עץ"

@@ -14,16 +14,18 @@ import { WidgetProps } from '@rjsf/utils';
 import { Col, InputNumber, Row, Slider } from 'antd';
 
 export const CustomRangeWidget = (props: WidgetProps) => {
+  const min = props.schema.minimum ?? 0;
+
   return (
     <Row data-testid="percentage-input" gutter={20}>
       <Col span={20}>
         <Slider
           marks={{
-            0: '0%',
+            [min]: `${min}%`,
             100: '100%',
           }}
           max={100}
-          min={0}
+          min={min}
           tooltip={{ open: false }}
           value={props.value}
           onChange={props.onChange}
@@ -35,7 +37,7 @@ export const CustomRangeWidget = (props: WidgetProps) => {
           formatter={(value) => `${value}%`}
           id={props.id}
           max={100}
-          min={0}
+          min={min}
           name={props.name}
           step={1}
           value={props.value}

@@ -27,7 +27,7 @@ import {
   ProgressBarBase,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchLg, XClose } from '@untitledui/icons';
+import { Search, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
@@ -662,7 +662,7 @@ const AccessControlAuditLogsPanel: React.FC<
               data-testid="audit-log-search-container">
               <Input
                 className="tw:max-w-86"
-                icon={SearchLg as React.FC}
+                icon={Search as React.FC}
                 inputDataTestId="audit-log-search"
                 placeholder={t('label.search-audit-logs')}
                 value={searchInputValue}

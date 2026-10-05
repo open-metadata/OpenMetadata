@@ -48,7 +48,11 @@ import {
   Table as UntitledTable,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
+import {
+  ChevronDown,
+  ChevronRight,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
 import type { ComponentProps } from 'react';
@@ -72,6 +76,7 @@ import {
   ResizableTableContainer,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { twMerge } from 'tailwind-merge';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
@@ -1759,8 +1764,9 @@ const TableV2 = <T extends object>(
 
   return (
     <div
-      className={classNames(
+      className={twMerge(
         'table-container',
+        'tw:border tw:border-utility-gray-200',
         'tw:[&_tbody_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
@@ -2053,7 +2059,7 @@ const TableV2 = <T extends object>(
                         (rest.locale?.emptyText as ReactNode) ?? (
                           <EmptyPlaceholder
                             icon={
-                              <SearchLg className="tw:text-fg-brand-primary" />
+                              <Search className="tw:text-fg-brand-primary" />
                             }
                             title={t('label.no-data')}
                             variant="blank"

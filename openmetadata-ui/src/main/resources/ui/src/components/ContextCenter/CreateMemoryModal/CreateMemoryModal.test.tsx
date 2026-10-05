@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -20,11 +20,28 @@ import {
   useForm,
   useFormContext,
 } from 'react-hook-form';
+import { MemoryRouter } from 'react-router-dom';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import {
+  getMemoryOntologyProposalStatus,
+  proposeTermFromMemory,
+} from '../../../rest/ontologyAPI';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('react-markdown', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Database01: jest.fn(() => null),
+  FileLock02: jest.fn(() => null),
+  InfoCircle: jest.fn(() => null),
+  Lightbulb03: jest.fn(() => null),
+  Lock01: jest.fn(() => null),
+  Plus: jest.fn(() => null),
+  Share07: jest.fn(() => null),
+  X: jest.fn(() => null),
 }));
 
 jest.mock(
@@ -39,6 +56,11 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
   updateContextMemory: jest.fn(),
   deleteContextMemory: jest.fn(),
+}));
+
+jest.mock('../../../rest/ontologyAPI', () => ({
+  getMemoryOntologyProposalStatus: jest.fn(),
+  proposeTermFromMemory: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -302,6 +324,13 @@ describe('CreateMemoryModal', () => {
     onCreated: jest.fn(),
   };
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getMemoryOntologyProposalStatus as jest.Mock).mockImplementation(
+      () => new Promise(() => {})
+    );
+  });
+
   it('renders the content input', () => {
     render(<CreateMemoryModal {...defaultProps} />);
 
@@ -313,5 +342,350 @@ describe('CreateMemoryModal', () => {
 
     expect(screen.getByTestId('memory-title-input')).toBeInTheDocument();
     expect(screen.getByTestId('memory-type-select')).toBeInTheDocument();
+  });
+
+  it('links applied glossary terms from the memory modal', () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'monthlyRecurringRevenue',
+      title: 'Monthly recurring revenue',
+      memory: 'Recurring subscription revenue each month.',
+      derivedEntities: [
+        {
+          id: 'term-id',
+          type: 'glossaryTerm',
+          name: 'monthly_recurring_revenue',
+          displayName: 'Monthly recurring revenue',
+          fullyQualifiedName: 'subscription_metrics.monthly_recurring_revenue',
+        },
+      ],
+    } as ContextMemory;
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    const derivedOntology = screen.getByTestId('memory-derived-ontology');
+
+    expect(derivedOntology).toBeInTheDocument();
+    expect(
+      screen
+        .getByTestId('memory-metadata-section')
+        .compareDocumentPosition(derivedOntology) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    const termLink = screen.getByRole('link', {
+      name: 'Monthly recurring revenue',
+    });
+
+    expect(termLink).toHaveAttribute(
+      'href',
+      '/glossary/subscription_metrics.monthly_recurring_revenue'
+    );
+
+    fireEvent.click(termLink);
+
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides Propose Term when the memory already has an applied term', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'churn-risk-score',
+      entityStatus: 'Approved',
+      shareConfig: { visibility: 'Entity' },
+      derivedEntities: [
+        {
+          id: 'term-id',
+          type: 'glossaryTerm',
+          name: 'churn_risk_score',
+          fullyQualifiedName: 'business.churn_risk_score',
+        },
+      ],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      enabled: true,
+      proposals: [],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          isAdminUser
+          viewOnly
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole('link', { name: 'churn_risk_score' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('lets the creator propose a restricted memory for Studio review', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'inactive-customer',
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Shared' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (proposeTermFromMemory as jest.Mock).mockResolvedValue({ id: 42 });
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      enabled: true,
+      proposals: [],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    const proposeButton = await screen.findByRole('button', {
+      name: 'label.propose-term',
+    });
+
+    expect(
+      screen.getByText('message.memory-proposal-reviewer-visibility')
+    ).toBeInTheDocument();
+
+    fireEvent.click(proposeButton);
+    await waitFor(() =>
+      expect(proposeTermFromMemory).toHaveBeenCalledWith('memory-id')
+    );
+  });
+
+  it('links an open Studio draft and hides the proposal action', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'inactive-customer',
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Shared' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      enabled: true,
+      proposals: [
+        {
+          changeSet: {
+            id: 'draft-id',
+            name: 'memory-glossary-16',
+            type: 'ontologyChangeSet',
+          },
+          terms: ['Inactive Customer'],
+        },
+      ],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    const draftLink = await screen.findByRole('link', {
+      name: 'label.draft: Inactive Customer',
+    });
+
+    expect(draftLink).toHaveAttribute(
+      'href',
+      '/governance/ontology?draft=draft-id'
+    );
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-derived-ontology')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(draftLink);
+
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers proposal for a file-derived entity memory with no draft', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'metrics.md-f02e2a5c',
+      entityStatus: 'Approved',
+      shareConfig: { visibility: 'Entity' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      enabled: true,
+      proposals: [],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          isAdminUser
+          viewOnly
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'label.propose-term' })
+    ).toBeInTheDocument();
+  });
+
+  it('keeps proposal action unavailable while derivation is queued', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'inactive-customer',
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Shared' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      enabled: true,
+      proposals: [],
+      queued: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('label.queued')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides proposal actions when memory derivation is disabled', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'inactive-customer',
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Shared' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      enabled: false,
+      proposals: [],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(getMemoryOntologyProposalStatus).toHaveBeenCalledWith('memory-id')
+    );
+
+    expect(
+      screen.queryByTestId('memory-derived-ontology')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('explains why the last proposal attempt produced nothing', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'inactive-customer',
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Shared' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      enabled: true,
+      proposals: [],
+      queued: false,
+      lastJob: { result: 'NO_NEW_TERMS', completedAt: 1 },
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByText('message.memory-proposal-no-new-terms')
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the memory readable when proposal status cannot load', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'inactive-customer',
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Shared' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockRejectedValue(
+      new Error('forbidden')
+    );
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(getMemoryOntologyProposalStatus).toHaveBeenCalledWith('memory-id')
+    );
+
+    expect(
+      screen.queryByText('server.unexpected-error')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
   });
 });

@@ -40,6 +40,7 @@ export interface ApplicationStore
   isApplicationLoading: boolean;
   setApplicationLoading: (loading: boolean) => void;
   isAuthenticating: boolean;
+  setIsAuthenticating: (authenticating: boolean) => void;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
   selectedPersona?: EntityReference;

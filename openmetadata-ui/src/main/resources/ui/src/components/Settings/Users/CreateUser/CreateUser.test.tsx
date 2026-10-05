@@ -83,6 +83,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   // this suite need not exercise the picker internals.
   TreeSelect: jest.fn(() => <div data-testid="tree-select" />),
   DomainTag: jest.fn(() => <span data-testid="domain-tag" />),
+  Toggle: jest.requireActual('@openmetadata/ui-core-components').Toggle,
 }));
 
 jest.mock('../../Team/TeamsSelectable/TeamsSelectable', () => {

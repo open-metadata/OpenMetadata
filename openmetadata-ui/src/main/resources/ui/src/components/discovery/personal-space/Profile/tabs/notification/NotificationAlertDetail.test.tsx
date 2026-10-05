@@ -83,12 +83,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  Delete: jest.fn(() => <span>delete-icon</span>),
-  Edit: jest.fn(() => <span>edit-icon</span>),
-}));
-
-jest.mock('@untitledui/icons', () => ({
+  Edit01: jest.fn(() => <span>edit-icon</span>),
   RefreshCw01: jest.fn(() => <span>refresh-icon</span>),
+  Trash01: jest.fn(() => <span>delete-icon</span>),
 }));
 
 jest.mock('../../../../../../rest/alertsAPI', () => ({

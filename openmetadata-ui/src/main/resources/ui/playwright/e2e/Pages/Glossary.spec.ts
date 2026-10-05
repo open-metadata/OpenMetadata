@@ -1370,7 +1370,7 @@ test.describe('Glossary tests', () => {
 
     // Login on this page (WebSocket is fully mocked, no real server connection)
     const admin = new AdminClass();
-    await admin.login(page);
+    await admin.signIn(page);
     await redirectToHomePage(page);
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);
@@ -1464,7 +1464,7 @@ test.describe('Glossary tests', () => {
 
     // Login on this page
     const admin = new AdminClass();
-    await admin.login(page);
+    await admin.signIn(page);
     await redirectToHomePage(page);
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);

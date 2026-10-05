@@ -58,7 +58,7 @@ jest.mock('../../../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
 
-jest.mock('../../../../../utils/StringUtils', () => ({
+jest.mock('../../../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((html: string) => html),
 }));
 

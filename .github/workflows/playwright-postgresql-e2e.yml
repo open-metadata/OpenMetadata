@@ -22,7 +22,7 @@
 #   * `refresh-timing-baseline` — full workflow_dispatch on main; direct commit
 #                                 that keeps `.github/playwright/timing-baseline.json`
 #                                 fresh from that run (merge groups upload no
-#                                 reports, so they cannot feed it)
+#                                 timing metrics, so they cannot feed it)
 #                                 (materiality-gated; see the job comment).
 #
 # Reusable jobs are reported as `<caller-job> / <sub-job>` — GH always
@@ -37,7 +37,7 @@
 name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
-  # Daily full run on main. Merge groups upload no reports, so this (plus manual
+  # Daily full run on main. Merge groups upload no timing metrics, so this (plus manual
   # full dispatches) is what feeds ci/playwright-timing and the full-suite timing
   # artifacts PR planning downloads.
   schedule:
@@ -139,6 +139,8 @@ jobs:
     timeout-minutes: 20
     permissions:
       actions: read
+      # Reads shard annotations for the merge-queue flaky alert.
+      checks: read
       contents: read
       # For the budget-breach tracked issue (Signal Playwright budget
       # breaches step below).
@@ -172,9 +174,13 @@ jobs:
           console.log(`${matrix.length} shards passed tests and local coverage verification.`);
           NODE
 
-      # Merge-queue failures go to #ci-cleanup. Queue runs upload no reports and
-      # never check out code here, so this is inline: the failed shards' results
-      # (they upload on failure only), the failed jobs, and the queued PRs.
+      # Merge-queue failures are not posted from here: a failed run does not
+      # always dequeue its PR (when an entry ahead leaves, GitHub rebuilds the
+      # group and lets the old run finish). This leaves the failed tests as one
+      # annotation on this check instead, and merge-queue-dequeue-report.yml adds
+      # them to its single #ci-cleanup alert, which fires only on a real dequeue.
+      # Inline because this runs before Checkout; queue runs upload results JSON
+      # only on failure.
       - name: Download failed merge-queue shard results
         if: ${{ failure() && github.event_name == 'merge_group' }}
         continue-on-error: true
@@ -186,9 +192,32 @@ jobs:
           path: queue-results
           merge-multiple: false
 
-      - name: Build the merge-queue failure message
-        id: queue-slack
+      - name: Annotate the failed merge-queue tests
         if: ${{ failure() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          # shellcheck disable=SC2016 # \(...) is jq interpolation, not shell
+          tests=$(find queue-results -name results.json -type f -print0 2>/dev/null |
+            xargs -0 -r jq -r '[.. | objects | select(has("tests") and has("title")) | . as $s | .tests[] | select(.status == "unexpected") | "\($s.file) › \($s.title)"] | .[]' 2>/dev/null |
+            sort -u | head -n 15 || true)
+          if [[ -z "$tests" ]]; then
+            echo "No failed tests in the results; the dequeue report lists the failed jobs."
+            exit 0
+          fi
+          # One annotation for the whole list; the dequeue report reads it by title.
+          # Workflow-command escaping: % -> %25, newline -> %0A.
+          encoded=${tests//'%'/'%25'}
+          encoded=${encoded//$'\n'/'%0A'}
+          echo "::error title=Merge queue failed tests::$encoded"
+
+      # Queue flakes go to #pw-health with the daily main-run flakes. Each shard
+      # leaves one "Retry pass in merge queue" annotation listing its retry
+      # passes (one per line), so this reads those instead of uploading reports;
+      # inline for the same reason as the failed-test annotation above.
+      - name: Build the merge-queue flaky message
+        id: queue-flaky
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -198,31 +227,38 @@ jobs:
         run: |
           set -uo pipefail
           prs=$(grep -oE 'pr-[0-9]+' <<< "$HEAD_REF" | sed 's/pr-//' | sort -u | tr '\n' ' ')
-          jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
-            --jq '.jobs[] | select(.conclusion == "failure") | .name' 2>/dev/null | sort -u || true)
+          flaky=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+              --jq '.jobs[] | select(.name | contains("playwright-ci")) | .id' 2>/dev/null |
+            while read -r job; do
+              gh api --paginate "repos/$GITHUB_REPOSITORY/check-runs/$job/annotations" \
+                --jq '.[] | select(.title == "Retry pass in merge queue") | .message' 2>/dev/null
+            done | sed '/^$/d' | sort -u)
+          if [[ -z "$flaky" ]]; then
+            echo "No retry passes in this queue run."
+            exit 0
+          fi
           # shellcheck disable=SC2016 # \(...) is jq interpolation, not shell
-          tests=$(find queue-results -name results.json -type f -print0 2>/dev/null |
-            xargs -0 -r jq -r '[.. | objects | select(has("tests") and has("title")) | . as $s | .tests[] | select(.status == "unexpected") | "\($s.file) › \($s.title)"] | .[]' 2>/dev/null |
-            sort -u || true)
-          jq -n --arg channel C0AC5T013V1 --arg prs "$prs" --arg jobs "$jobs" --arg tests "$tests" \
+          jq -n --arg channel C0C008ZAK0V --arg prs "$prs" --arg flaky "$flaky" \
             --arg run "$RUN_URL" --arg repo "$REPO_URL" '
             def lines($s): $s | split("\n") | map(select(length > 0));
+            (lines($flaky)) as $tests |
             {channel: $channel, text: ([
-              ":red_circle: *Merge queue: Playwright failed*" +
+              ":large_yellow_circle: *Merge queue: \($tests | length) test(s) passed only on retry*" +
                 (if ($prs | length) > 0 then " for " + ([$prs | split(" ")[] | select(length > 0) | "<\($repo)/pull/\(.)|#\(.)>"] | join(", ")) else "" end)
-            ] + [lines($tests)[:15][] | "• FAILED `\(.)`"]
-              + (if (lines($tests) | length) == 0 then [lines($jobs)[:10][] | "• job `\(.)`"] else [] end)
-              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/queue-slack.json"
+            ] + [$tests[:15][] | "• FLAKY `\(.)`"]
+              + (if ($tests | length) > 15 then ["…and \(($tests | length) - 15) more (see the run)"] else [] end)
+              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/queue-flaky.json"
+          echo "posted=true" >> "$GITHUB_OUTPUT"
 
-      - name: Post the merge-queue failure to Slack (ci-cleanup)
-        if: ${{ failure() && github.event_name == 'merge_group' && steps.queue-slack.outcome == 'success' }}
+      - name: Post merge-queue flaky tests to Slack (pw-health)
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.queue-flaky.outputs.posted == 'true' }}
         continue-on-error: true
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           method: chat.postMessage
           token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
           errors: true
-          payload-file-path: ${{ runner.temp }}/queue-slack.json
+          payload-file-path: ${{ runner.temp }}/queue-flaky.json
 
       # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
       # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we
@@ -232,10 +268,12 @@ jobs:
       # rewrite the check result. Use the base branch's SHA on pull_request_target so
       # only reviewed-and-merged versions of these scripts ever run. Everything else
       # keeps github.sha (PR merge commit / dispatch ref). Merge groups use the
-      # inline gate and alert above and never execute checked-out code here.
+      # inline gate and alert above; they check out only to merge the HTML
+      # report so queue failures and retry passes keep their traces.
       - name: Checkout
-        if: ${{ github.event_name != 'merge_group' }}
         id: checkout
+        # always(): a failed merge-group gate must not skip the trace report.
+        if: always()
         continue-on-error: true
         uses: actions/checkout@v7
         with:
@@ -244,7 +282,7 @@ jobs:
 
       - name: Download blob reports
         id: download-blobs
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -332,7 +370,7 @@ jobs:
 
       - name: Setup Node.js
         id: setup-node
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/setup-node@v5
         with:
@@ -357,7 +395,7 @@ jobs:
 
       - name: Install report dependencies
         id: install-report-dependencies
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
@@ -373,7 +411,7 @@ jobs:
 
       - name: Merge HTML report
         id: merge-report
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
@@ -436,7 +474,7 @@ jobs:
 
       - name: Upload merged Playwright report
         id: upload-report
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -681,7 +719,7 @@ jobs:
           if-no-files-found: ignore
 
   # Auto-refresh the checked-in timing baseline from successful full-mode
-  # workflow_dispatch runs on main. Merge groups upload no reports (their
+  # workflow_dispatch runs on main. Merge groups upload no timing metrics (their
   # shards verify coverage locally), so they cannot be the source. Without this, `.github/playwright/timing-baseline.json`
   # only gets updated by hand — and it drifts fast (see PR #30871 for the
   # 12-day, 23%-dead-title snapshot that triggered this workflow addition).
@@ -696,7 +734,7 @@ jobs:
   # merge-queue entries, which is why the materiality threshold exists.
   #
   # Guards:
-  #   * workflow_dispatch on main only (merge groups upload no reports;
+  #   * workflow_dispatch on main only (merge groups upload no timing metrics;
   #     a PR run is not a known-good snapshot of main)
   #   * full execution mode only (targeted PR plans do not exercise every
   #     spec — a targeted refresh would lose coverage)

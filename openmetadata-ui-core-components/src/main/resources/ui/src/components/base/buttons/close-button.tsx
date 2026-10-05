@@ -1,8 +1,9 @@
-import { X as CloseIcon } from '@untitledui/icons';
+import { X as CloseIcon } from '../../../icons';
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,
 } from 'react-aria-components';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 
 const sizes = {
@@ -31,10 +32,12 @@ export const CloseButton = ({
   theme = 'light',
   ...otherProps
 }: CloseButtonProps) => {
+  const { t } = useCoreTranslation();
+
   return (
     <AriaButton
       {...otherProps}
-      aria-label={label || 'Close'}
+      aria-label={label || t('label.close')}
       className={(state) =>
         cx(
           'tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:p-2 tw:transition tw:duration-100 tw:ease-linear tw:focus:outline-hidden',

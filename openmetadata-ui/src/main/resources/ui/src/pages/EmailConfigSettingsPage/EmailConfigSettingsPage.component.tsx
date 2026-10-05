@@ -12,7 +12,11 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Skeleton, Typography } from 'antd';
+import {
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -106,14 +110,14 @@ function EmailConfigSettingsPage() {
           <Col key={title} span={12}>
             <Row align="middle">
               <Col span={24}>
-                <Typography.Text className="m-0 text-grey-muted">
+                <Typography className="m-0" color="secondary">
                   {`${title}:`}
-                </Typography.Text>
+                </Typography>
               </Col>
               <Col span={24}>
-                <Typography.Text className="">
+                <Typography className="">
                   {isEmpty(displayValue) ? '--' : displayValue}
-                </Typography.Text>
+                </Typography>
               </Col>
             </Row>
           </Col>
@@ -138,7 +142,7 @@ function EmailConfigSettingsPage() {
     return (
       <>
         {loading ? (
-          <Skeleton title paragraph={{ rows: 8 }} />
+          <SkeletonParagraph animation={false} rows={8} />
         ) : (
           <Row align="middle" gutter={[16, 16]}>
             {configValues}

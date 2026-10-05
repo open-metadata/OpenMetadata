@@ -10,21 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  BLUE_500,
-  GREEN_3,
-  RED_3,
-  YELLOW_3,
-} from '../../constants/Color.constants';
 import { Task } from '../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
   applyStatusPlacements,
   formatTestSummaryYAxis,
-  getStatusDotColor,
+  getStatusChartStatus,
   getTestSummaryTooltipPosition,
   getThresholdReference,
   isSameTooltipPosition,
+  isTestSummaryTooltipBoundary,
+  PLACED_KEYS_FIELD,
   prepareChartData,
   PrepareChartDataType,
 } from './TestSummaryGraphUtils';
@@ -488,29 +484,47 @@ describe('prepareChartData', () => {
           task: undefined,
         },
       ],
-      information: [],
+      // No run measured anything, so one series stands in for their points.
+      information: [{ label: 'value', color: '#7147E8' }],
       showAILearningBanner: true,
     });
   });
+
+  it('should name no series when there are no runs', () => {
+    expect(
+      prepareChartData({
+        testCaseParameterValue: [],
+        testCaseResults: [],
+        tasks: [],
+      } as PrepareChartDataType).information
+    ).toEqual([]);
+  });
 });
 
-describe('getStatusDotColor', () => {
-  it('should return GREEN_3 for Success', () => {
-    expect(getStatusDotColor(TestCaseStatus.Success)).toBe(GREEN_3);
+describe('getStatusChartStatus', () => {
+  it.each([
+    [TestCaseStatus.Success, 'success'],
+    [TestCaseStatus.Failed, 'failed'],
+    [TestCaseStatus.Queued, 'info'],
+    [TestCaseStatus.Aborted, 'warning'],
+    [undefined, 'warning'],
+  ])('should map %s to the %s chart status', (status, expected) => {
+    expect(getStatusChartStatus(status)).toBe(expected);
+  });
+});
+
+describe('isTestSummaryTooltipBoundary', () => {
+  it('should accept a box with every coordinate finite', () => {
+    expect(
+      isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10, height: 5 })
+    ).toBe(true);
   });
 
-  it('should return RED_3 for Failed', () => {
-    expect(getStatusDotColor(TestCaseStatus.Failed)).toBe(RED_3);
-  });
-
-  it('should return YELLOW_3 for Aborted', () => {
-    expect(getStatusDotColor(TestCaseStatus.Aborted)).toBe(YELLOW_3);
-  });
-
-  // Aborted and Queued read as the same run to a colour-blind eye when they
-  // share a dot: one produced no result, the other has not run yet.
-  it('should return BLUE_500 for Queued', () => {
-    expect(getStatusDotColor(TestCaseStatus.Queued)).toBe(BLUE_500);
+  it('should reject a box with a missing or non-finite coordinate', () => {
+    expect(isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10 })).toBe(false);
+    expect(
+      isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10, height: NaN })
+    ).toBe(false);
   });
 });
 
@@ -768,12 +782,16 @@ describe('applyStatusPlacements', () => {
     expect(applyStatusPlacements([point], series)).toEqual([point]);
   });
 
-  it('should place nothing when no run plotted a value and no line exists', () => {
+  it('should place runs on the zero line when no run plotted a value and no line exists', () => {
     const data = applyStatusPlacements(
-      [{ name: 1, status: TestCaseStatus.Aborted }],
+      [
+        { name: 1, status: TestCaseStatus.Aborted },
+        { name: 2, status: TestCaseStatus.Queued },
+      ],
       series
     );
 
-    expect(data[0]).toEqual({ name: 1, status: TestCaseStatus.Aborted });
+    expect(data.map((point) => point[series[0]])).toEqual([0, 0]);
+    expect(data[0][PLACED_KEYS_FIELD]).toEqual(series);
   });
 });
