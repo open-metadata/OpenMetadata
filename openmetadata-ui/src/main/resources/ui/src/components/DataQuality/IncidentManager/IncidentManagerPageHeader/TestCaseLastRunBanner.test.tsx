@@ -148,7 +148,7 @@ describe('TestCaseLastRunBanner', () => {
       );
       expect(
         screen.getByTestId('test-case-last-run-right-section')
-      ).toHaveClass('tw:justify-end', 'tw:lg:w-80');
+      ).toHaveClass('tw:justify-end', 'tw:lg:min-w-80');
       expect(screen.getByText(result)).toHaveClass(TEXT_XS_CLASS);
       expect(
         screen.getByTestId('test-case-run-description')
