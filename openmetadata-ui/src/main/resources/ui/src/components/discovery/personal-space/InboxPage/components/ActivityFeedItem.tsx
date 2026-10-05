@@ -75,6 +75,7 @@ import { createThreadReply, useActivityReplies } from '../useActivityReplies';
 import './activity-feed-item.less';
 import ActivityChangePanel from './ActivityChangePanel';
 import ActivityThread from './ActivityThread';
+import AuthorPopover from './AuthorPopover';
 
 // Repliers shown on the collapsed thread toggle.
 const MAX_REPLY_FACES = 3;
@@ -416,12 +417,14 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
       <Box className="tw:px-5 tw:pt-4" direction="col" gap={3}>
         <Box gap={3}>
           <span className="tw:relative tw:h-10 tw:shrink-0">
-            <ProfilePicture
-              matchRingToFill
-              displayName={authorName}
-              name={actorName}
-              width="40"
-            />
+            <AuthorPopover userName={actorName}>
+              <ProfilePicture
+                borderless
+                displayName={authorName}
+                name={actorName}
+                width="40"
+              />
+            </AuthorPopover>
             <span
               className={classNames(
                 'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-white tw:outline-2 tw:outline-bg-primary',
@@ -436,9 +439,11 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               <Typography
                 className="tw:min-w-0 tw:flex-1 tw:text-tertiary"
                 size="text-md">
-                <span className="tw:font-semibold tw:text-primary">
-                  {authorName}
-                </span>{' '}
+                <AuthorPopover userName={actorName}>
+                  <span className="tw:font-semibold tw:text-primary">
+                    {authorName}
+                  </span>
+                </AuthorPopover>{' '}
                 {actionLabel}
               </Typography>
               <CardMeta

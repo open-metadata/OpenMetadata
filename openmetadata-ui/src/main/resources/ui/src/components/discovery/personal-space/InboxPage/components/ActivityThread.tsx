@@ -48,6 +48,7 @@ import {
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { formatActivityTime } from '../inbox.utils';
 import { useFeedDeleteAccess } from '../useFeedDeleteAccess';
+import AuthorPopover from './AuthorPopover';
 import InboxCommentComposer from './InboxCommentComposer';
 
 // Admins bypass policy evaluation server-side. ConditionalAllow → author
@@ -147,17 +148,21 @@ const ReplyRow = ({
 
   return (
     <Box className="tw:group" data-testid="feed-reply-card" gap={3}>
-      <ProfilePicture
-        matchRingToFill
-        displayName={authorName}
-        name={authorLogin}
-        width="28"
-      />
+      <AuthorPopover userName={authorLogin}>
+        <ProfilePicture
+          borderless
+          displayName={authorName}
+          name={authorLogin}
+          width="28"
+        />
+      </AuthorPopover>
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
         <Box align="center" gap={2}>
-          <Typography size="text-sm" weight="semibold">
-            {authorName}
-          </Typography>
+          <AuthorPopover userName={authorLogin}>
+            <Typography size="text-sm" weight="semibold">
+              {authorName}
+            </Typography>
+          </AuthorPopover>
           <Typography className="tw:text-quaternary" size="text-xs">
             {formatActivityTime(reply.createdAt)}
           </Typography>

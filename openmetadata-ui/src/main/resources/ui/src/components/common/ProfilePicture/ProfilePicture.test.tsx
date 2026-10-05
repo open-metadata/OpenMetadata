@@ -107,4 +107,18 @@ describe('Test ProfilePicture component', () => {
     expect(matched.borderColor).toBe(`hsl(${hue}, 70%, 80%)`);
     expect(plain.borderColor).toBeUndefined();
   });
+
+  it('draws no outline, ring or tinted border when borderless', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} borderless matchRingToFill />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.contrastBorder).toBe(false);
+    expect(props.colorVariant).toBe('neutral');
+    expect(props.style.borderColor).toBeUndefined();
+    expect(props.style.backgroundColor).toMatch(/^hsl\(/);
+  });
 });

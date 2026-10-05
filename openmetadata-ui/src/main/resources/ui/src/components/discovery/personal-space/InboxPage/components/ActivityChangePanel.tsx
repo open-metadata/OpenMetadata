@@ -13,6 +13,7 @@
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ActivityChange } from '../inbox.utils';
@@ -28,13 +29,34 @@ interface ChangeColumnProps {
   isText: boolean;
 }
 
+// What was there reads recessed on a subtle surface; what replaced it sits on
+// the panel's own surface, its label a step darker. The padding leaves room
+// for the arrow on the rule between them.
+const COLUMN_TONE_CLASS: Record<ChangeTone, { column: string; title: string }> =
+  {
+    error: {
+      column: 'tw:bg-secondary_subtle tw:pt-3 tw:pr-4.5 tw:pb-3.5 tw:pl-3.5',
+      title: 'tw:text-quaternary',
+    },
+    success: {
+      column: 'tw:pt-3 tw:pr-3.5 tw:pb-3.5 tw:pl-5.5',
+      title: 'tw:text-secondary',
+    },
+  };
+
 const ChangeColumn = ({ title, values, tone, isText }: ChangeColumnProps) => (
   <Box
-    className="tw:min-w-0 tw:flex-1 tw:px-4.5 tw:py-3.5"
+    className={classNames(
+      'tw:min-w-0 tw:flex-1',
+      COLUMN_TONE_CLASS[tone].column
+    )}
     data-testid={`activity-change-${tone}`}
     direction="col"
     gap={2}>
-    <Typography className="tw:text-quaternary" size="text-xs" weight="medium">
+    <Typography
+      className={COLUMN_TONE_CLASS[tone].title}
+      size="text-xs"
+      weight="medium">
       {title}
     </Typography>
     {isText ? (
@@ -103,7 +125,10 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
         {hasBoth && (
           <span
             aria-hidden
-            className="tw:absolute tw:top-1/2 tw:left-1/2 tw:flex tw:size-6 tw:-translate-1/2 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-primary">
+            className={classNames(
+              'tw:absolute tw:top-1/2 tw:left-1/2 tw:flex tw:size-6 tw:-translate-1/2 tw:items-center tw:justify-center',
+              'tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:shadow-xs'
+            )}>
             <ArrowRight className="tw:size-3.5 tw:text-fg-quaternary" />
           </span>
         )}
