@@ -21,6 +21,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -44,6 +45,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContainerRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for Container entity operations.
@@ -1336,7 +1338,8 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
    * (see {@link org.openmetadata.service.jdbi3.EntityRepository#processDeletionBatch}).
    * We simulate that exact state here by deleting the relationship row directly and
    * assert the root listing now excludes the orphan via the FQN-depth predicate
-   * ({@code fqnHash NOT LIKE :serviceHashChild}).
+   * ({@code parentFqnHash LIKE :serviceHashExact}), which is derived from the FQN rather
+   * than from entity_relationship.
    */
   @Test
   void test_rootListingExcludesOrphanedChild(TestNamespace ns) {
@@ -1444,7 +1447,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
    * relied on the parent CONTAINS edge being present on every non-root container; orphans
    * and bulk-imported leaves missing that edge would surface at the service root with a
    * deeply-nested FQN, contradicting the breadcrumb the UI shows on click. The FQN-depth
-   * predicate ({@code fqnHash NOT LIKE :serviceHashChild}) makes the FQN itself the source
+   * predicate ({@code parentFqnHash LIKE :serviceHashExact}) makes the FQN itself the source
    * of truth. This test exercises the depth check at three levels (root, child, grandchild)
    * to guard against regressions in either direction (over-filtering or under-filtering).
    */
@@ -1482,11 +1485,12 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   /**
    * {@code ?root=true} without {@code ?service=} must succeed: it returns every direct
    * child of any service across the whole tenant. The depth predicate
-   * ({@code fqnHash NOT LIKE :serviceHashChild}) needs the bind to be present even in
+   * ({@code parentFqnHash LIKE :serviceHashExact}) needs the bind to be present even in
    * this case, but {@link org.openmetadata.service.jdbi3.ListFilter#getServiceCondition}
    * only adds it when {@code ?service=} is present — the
-   * {@code ContainerDAO.rootListingParams} default ({@code '%.%.%'}) is what makes the
-   * SQL runnable here.
+   * {@code ContainerDAO.rootListingParams} default ({@code '%'}) is what makes the SQL
+   * runnable here, leaving the companion {@code parentFqnHash NOT LIKE '%.%'} to keep only
+   * containers whose parent is a bare service hash.
    *
    * <p>Regression guard for the "GET /containers?root=true (no service) crashes with a
    * missing-named-parameter error" bug. Also verifies the depth check still excludes
@@ -1598,8 +1602,8 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
    * The {@code /containers/name/{fqn}/children} endpoint must list direct children only —
    * grandchildren stay hidden. The previous entity_relationship implementation got this
    * right when the parent CONTAINS edges existed. The FQN-depth implementation gets it
-   * right by construction (a grandchild has two more segments than the parent and so is
-   * excluded by {@code fqnHash NOT LIKE :parentHashChild}).
+   * right by construction: a grandchild's {@code parentFqnHash} is its own parent's hash,
+   * not this container's, so it cannot match the listing's equality.
    */
   @Test
   void test_listChildren_excludesGrandchildren(TestNamespace ns) throws Exception {
@@ -1800,7 +1804,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
    * deleted flag, never recurses.
    *
    * <p>Both the direct-children-only depth predicate
-   * ({@code fqnHash NOT LIKE :parentHashChild}) and the include filter contribute to
+   * ({@code parentFqnHash = :parentHash}) and the include filter contribute to
    * this guarantee; a regression that drops the depth check while keeping the include
    * check would silently start surfacing deleted descendants from deeper levels at
    * ancestor /children listings.
@@ -1873,8 +1877,8 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
    * <p>This is the per-level dual of {@link #test_rootListing_excludesContainersBelowFirstLevel}.
    * The depth check is mathematical (a fqnHash exactly one MD5 segment below the parent
    * has exactly one extra '.' separator), so it should hold uniformly at every depth;
-   * a regression at level N (e.g. a planner choosing the wrong index, or someone
-   * computing parentHashChild from the wrong prefix) would only surface in this kind of
+   * a regression at level N (e.g. a planner choosing the wrong index, or the generated
+   * parentFqnHash column being derived from the wrong prefix) would only surface in this kind of
    * iterative test.
    */
   @Test
@@ -3183,6 +3187,241 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
                 .anyMatch(f -> "parent".equals(f.getName()));
     assertTrue(
         parentInChangeDescription, "change description should record the parent field change");
+  }
+
+  // ===================================================================
+  // DIRECT-CHILDREN LISTING: INDEXED PARENT LOOKUP (#22530)
+  // ===================================================================
+
+  /**
+   * The shape reported in #22530: a container near the root of a deeply nested S3-style tree.
+   * Its subtree is large but it has only a handful of direct children, which is precisely the
+   * case the old {@code fqnHash LIKE '<hash>.%' AND fqnHash NOT LIKE '<hash>.%.%'} predicate
+   * handled worst — with no indexable equality the planner fell back to the
+   * (deleted, name, id) index that already satisfied {@code ORDER BY name, id LIMIT n} and
+   * scanned container rows until the page filled, so the work scaled with the number of
+   * containers in the deployment rather than the number of children being returned.
+   *
+   * <p>Listing is now an equality on the generated {@code parentFqnHash} column. This test
+   * pins the behaviour that equality has to preserve: every direct child is returned, no
+   * descendant from any deeper level leaks in, and {@code paging.total} counts direct
+   * children only — even though the subtree below is an order of magnitude larger.
+   */
+  @Test
+  void test_listChildren_parentWithLargeSubtreeReturnsOnlyDirectChildren(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("wide_subtree_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    // Three direct children under the root...
+    List<Container> directChildren = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      directChildren.add(createChild(ns, service, root, "wide_direct_" + i));
+    }
+
+    // ...and a deep chain plus a fan-out hanging off the first of them, so the root's
+    // subtree is much larger than its direct-child count.
+    Set<UUID> descendantIds = new HashSet<>();
+    Container current = directChildren.getFirst();
+    for (int level = 0; level < 6; level++) {
+      current = createChild(ns, service, current, "wide_deep_l" + level);
+      descendantIds.add(current.getId());
+      for (int fan = 0; fan < 3; fan++) {
+        descendantIds.add(
+            createChild(ns, service, current, "wide_fan_l" + level + "_" + fan).getId());
+      }
+    }
+
+    ContainerResultList page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + root.getFullyQualifiedName() + "/children",
+                null,
+                ContainerResultList.class);
+
+    assertNotNull(page);
+    assertNotNull(page.getData());
+    Set<UUID> returned =
+        page.getData().stream().map(Container::getId).collect(java.util.stream.Collectors.toSet());
+
+    for (Container child : directChildren) {
+      assertTrue(
+          returned.contains(child.getId()),
+          "direct child " + child.getName() + " must appear in the root's /children page");
+    }
+    for (UUID descendantId : descendantIds) {
+      assertFalse(
+          returned.contains(descendantId),
+          "no descendant below the first level may leak into the root's /children page");
+    }
+    assertEquals(
+        directChildren.size(),
+        returned.size(),
+        "the root has exactly " + directChildren.size() + " direct children");
+    assertEquals(
+        directChildren.size(),
+        page.getPaging().getTotal(),
+        "paging.total must count direct children only, not the "
+            + descendantIds.size()
+            + " deeper descendants");
+  }
+
+  /**
+   * {@code parentFqnHash} is computed in SQL (strip the last '.'-separated segment of
+   * {@code fqnHash}) but matched against a value the service computes in Java
+   * ({@link FullyQualifiedName#buildHash}). Nothing in the type system ties those two
+   * derivations together: if they ever disagree, {@code /children} silently returns an
+   * empty page rather than failing, so the drift would reach users as "my containers
+   * disappeared" instead of as an error.
+   *
+   * <p>This asserts the two agree on the cases where they most plausibly wouldn't — a name
+   * containing dots (which {@code FullyQualifiedName} quotes, so one name is one FQN
+   * segment despite the dots) and a container several levels deep.
+   */
+  @Test
+  void test_parentFqnHashColumn_matchesJavaComputedParentHash(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("parenthash_root"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container root = createEntity(rootRequest);
+
+    // A dotted name is quoted into a single FQN segment; the stored fqnHash therefore has
+    // one hash component for it, not three.
+    Container dotted = createChild(ns, service, root, "parenthash_mid.with.dots");
+    Container leaf = createChild(ns, service, dotted, "parenthash_leaf");
+
+    assertParentHashMatchesParentFqn(root, service.getFullyQualifiedName());
+    assertParentHashMatchesParentFqn(dotted, root.getFullyQualifiedName());
+    assertParentHashMatchesParentFqn(leaf, dotted.getFullyQualifiedName());
+  }
+
+  /**
+   * Reads the DB-generated {@code parentFqnHash} for {@code child} and asserts it equals the
+   * hash the service would compute for {@code expectedParentFqn} — the value the children
+   * listing binds.
+   */
+  private void assertParentHashMatchesParentFqn(Container child, String expectedParentFqn) {
+    String stored =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery(
+                            "SELECT parentFqnHash FROM storage_container_entity WHERE id = :id")
+                        .bind("id", child.getId().toString())
+                        .mapTo(String.class)
+                        .one());
+    assertEquals(
+        FullyQualifiedName.buildHash(expectedParentFqn),
+        stored,
+        "parentFqnHash generated for "
+            + child.getFullyQualifiedName()
+            + " must equal FullyQualifiedName.buildHash(\""
+            + expectedParentFqn
+            + "\"), otherwise /children silently returns nothing for that parent");
+  }
+
+  /**
+   * The migration half of #22530. The children listing binds an equality against
+   * {@code parentFqnHash}; that only stops the planner scanning container rows if the
+   * supporting index actually exists on the deployed schema. A missing index is invisible to
+   * every correctness test here — the same rows come back, just by scanning — so assert the
+   * index is present rather than inferring it from a query plan (at IT scale a handful of
+   * containers fits on one page, and a sequential scan is genuinely the cheapest plan, so
+   * plan shape says nothing either way).
+   */
+  @Test
+  void test_parentChildrenIndex_existsOnDeployedSchema() {
+    boolean mysql = "mysql".equalsIgnoreCase(System.getProperty("databaseType", "postgres"));
+    String indexQuery =
+        mysql
+            ? "SELECT COUNT(*) FROM information_schema.statistics "
+                + "WHERE table_schema = DATABASE() AND table_name = 'storage_container_entity' "
+                + "AND index_name = :indexName"
+            : "SELECT COUNT(*) FROM pg_indexes "
+                + "WHERE tablename = 'storage_container_entity' AND indexname = :indexName";
+
+    int indexedColumns =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery(indexQuery)
+                        .bind("indexName", PARENT_CHILDREN_INDEX)
+                        .mapTo(Integer.class)
+                        .one());
+
+    assertTrue(
+        indexedColumns > 0,
+        PARENT_CHILDREN_INDEX
+            + " must exist — without it the direct-children equality still scans container"
+            + " rows and #22530 returns at the next deployment");
+  }
+
+  private static final String PARENT_CHILDREN_INDEX =
+      "idx_storage_container_entity_parent_children";
+
+  /**
+   * Re-parenting a container (#24294) rewrites descendant FQNs with a bulk SQL
+   * {@code UPDATE ... SET fqnHash = REPLACE(fqnHash, ...)} that bypasses the entity layer
+   * entirely. {@code parentFqnHash} is a generated column precisely so it cannot miss that
+   * rewrite — a plain column maintained by application code would go stale here and the moved
+   * subtree would keep answering {@code /children} under its old parent.
+   *
+   * <p>{@link #patch_containerParent_cascadesFqnToChildren_200} already covers the FQNs
+   * themselves; this covers the listings built on top of them, which is where a stale parent
+   * hash would actually surface to a user.
+   */
+  @Test
+  void test_listChildren_followsContainerReparent(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container oldParent = createUnderService(ns, service, "reparentFrom");
+    Container newParent = createUnderService(ns, service, "reparentTo");
+    Container child = createUnderParent(ns, service, oldParent, "reparentChild");
+    Container grandchild = createUnderParent(ns, service, child, "reparentGrandchild");
+
+    assertTrue(
+        childIdsOf(client, oldParent.getFullyQualifiedName()).contains(child.getId()),
+        "setup: the child starts under oldParent");
+
+    child.setParent(parentRefOf(newParent));
+    Container moved = patchEntity(child.getId().toString(), child);
+
+    assertTrue(
+        childIdsOf(client, newParent.getFullyQualifiedName()).contains(moved.getId()),
+        "after the move the child must be listed under its new parent — the generated"
+            + " parentFqnHash has to track the bulk fqnHash rewrite");
+    assertFalse(
+        childIdsOf(client, oldParent.getFullyQualifiedName()).contains(moved.getId()),
+        "the child must no longer be listed under its old parent");
+    assertTrue(
+        childIdsOf(client, moved.getFullyQualifiedName()).contains(grandchild.getId()),
+        "the grandchild moved with its parent, so it must still be listed one level below it");
+  }
+
+  /** Ids on the first {@code /children} page of {@code parentFqn}. */
+  private Set<UUID> childIdsOf(OpenMetadataClient client, String parentFqn) throws Exception {
+    ContainerResultList page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/containers/name/" + parentFqn + "/children",
+                null,
+                ContainerResultList.class);
+    return page.getData().stream()
+        .map(Container::getId)
+        .collect(java.util.stream.Collectors.toSet());
   }
 
   // ===================================================================
