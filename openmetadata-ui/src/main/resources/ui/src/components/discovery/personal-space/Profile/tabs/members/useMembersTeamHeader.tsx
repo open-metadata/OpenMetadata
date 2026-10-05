@@ -22,6 +22,7 @@ import {
 import {
   Download01,
   Edit01,
+  FlipBackward,
   Lock01,
   Trash01,
   Upload01,
@@ -144,7 +145,10 @@ const buildManageMenuItems = (
         </Dropdown.Item>
       )}
       {team.deleted && canRestore && !parentDeleted && (
-        <Dropdown.Item data-testid="restore-team" onAction={onRestoreTeam}>
+        <Dropdown.Item
+          data-testid="restore-team"
+          icon={FlipBackward}
+          onAction={onRestoreTeam}>
           {t('label.restore-entity', {
             entity: t('label.team'),
           })}
