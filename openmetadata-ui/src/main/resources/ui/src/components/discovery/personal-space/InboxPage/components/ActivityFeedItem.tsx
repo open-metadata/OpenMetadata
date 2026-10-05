@@ -41,7 +41,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useInView } from 'react-intersection-observer';
 import { Link } from 'react-router-dom';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
@@ -228,20 +227,27 @@ const getRepliesToggleLabel = (
 
 interface RepliesToggleProps {
   isOpen: boolean;
+  count: number;
+  // Loaded only once the thread has been opened; until then no faces show.
   replies: ConversationReply[];
   onToggle: () => void;
 }
 
-// Who replied and how many; stays while the thread is open, so it can close
-// even once its last reply is deleted.
-const RepliesToggle = ({ isOpen, replies, onToggle }: RepliesToggleProps) => {
+// How many replied, and who once they are loaded; stays while the thread is
+// open, so it can close even once its last reply is deleted.
+const RepliesToggle = ({
+  isOpen,
+  count,
+  replies,
+  onToggle,
+}: RepliesToggleProps) => {
   const { t } = useTranslation();
   const replyFaces = uniqBy(replies, ({ author }) => author?.name).slice(
     0,
     MAX_REPLY_FACES
   );
 
-  return replies.length > 0 || isOpen ? (
+  return count > 0 || isOpen ? (
     <Button
       aria-expanded={isOpen}
       className={classNames({
@@ -264,7 +270,7 @@ const RepliesToggle = ({ isOpen, replies, onToggle }: RepliesToggleProps) => {
       iconTrailing={isOpen ? ChevronUp : ChevronDown}
       size="sm"
       onPress={onToggle}>
-      {getRepliesToggleLabel(isOpen, replies.length, t)}
+      {getRepliesToggleLabel(isOpen, count, t)}
     </Button>
   ) : null;
 };
@@ -392,15 +398,14 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
     [isActivity, activity?.summary, feed?.message]
   );
 
-  // Replies load once the card is on screen, so the collapsed toggle can show
-  // their count and who wrote them.
-  const { ref, inView } = useInView({ triggerOnce: true, rootMargin: '200px' });
-  const threadIds = { activityId: activity?.id, conversationId: feed?.id };
-  const { threadId, replies, isLoading, refetch } = useActivityReplies(
-    threadIds,
-    inView
-  );
   const [isThreadOpen, setIsThreadOpen] = useState(false);
+  // Replies load when the thread is opened. Until then a conversation counts
+  // them from its own replyCount; an activity event carries no count, so its
+  // collapsed card shows only Reply.
+  const threadIds = { activityId: activity?.id, conversationId: feed?.id };
+  const { threadId, replies, hasLoaded, isLoading, refetch } =
+    useActivityReplies(threadIds, isThreadOpen);
+  const replyCount = hasLoaded ? replies.length : feed?.replyCount ?? 0;
   // Opened with Reply rather than the toggle: focus the composer.
   const [isReplying, setIsReplying] = useState(false);
 
@@ -459,8 +464,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
       className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:pb-4 tw:shadow-xs tw:transition-colors tw:hover:border-primary"
       data-testid="activity-feed-item"
       direction="col"
-      gap={4}
-      ref={ref}>
+      gap={4}>
       <Box className="tw:px-5 tw:pt-4" direction="col" gap={3}>
         <Box gap={3}>
           <span className="tw:relative tw:h-10 tw:shrink-0">
@@ -579,6 +583,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             {t('label.reply')}
           </Button>
           <RepliesToggle
+            count={replyCount}
             isOpen={isThreadOpen}
             replies={replies}
             onToggle={() =>

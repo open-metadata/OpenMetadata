@@ -22,23 +22,28 @@ const mockGetActivityChange = jest.fn();
 const mockCreateThreadReply = jest.fn();
 const mockRefetchReplies = jest.fn();
 let mockReplies: { id: string; author?: { name: string } }[] = [];
-
-// Cards are on screen in tests, so their replies load straight away.
-jest.mock('react-intersection-observer', () => ({
-  useInView: () => ({ ref: jest.fn(), inView: true }),
-}));
+// Whether a thread's replies were read before (cached) even while closed.
+let mockRepliesCached = false;
+const mockRepliesEnabled = jest.fn();
 
 jest.mock('../useActivityReplies', () => ({
   createThreadReply: (...args: unknown[]) => mockCreateThreadReply(...args),
-  useActivityReplies: (ids: {
-    activityId?: string;
-    conversationId?: string;
-  }) => ({
-    threadId: ids.conversationId ?? ids.activityId,
-    replies: mockReplies,
-    isLoading: false,
-    refetch: mockRefetchReplies,
-  }),
+  // Like the real hook, replies arrive only while enabled (or from cache).
+  useActivityReplies: (
+    ids: { activityId?: string; conversationId?: string },
+    enabled: boolean
+  ) => {
+    mockRepliesEnabled(enabled);
+    const hasLoaded = enabled || mockRepliesCached;
+
+    return {
+      threadId: ids.conversationId ?? ids.activityId,
+      replies: hasLoaded ? mockReplies : [],
+      hasLoaded,
+      isLoading: false,
+      refetch: mockRefetchReplies,
+    };
+  },
 }));
 
 // Exercised by its own suite; here it reports how it was opened and posts.
@@ -278,6 +283,7 @@ describe('ActivityFeedItem', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockReplies = [];
+    mockRepliesCached = false;
   });
 
   it('renders actor, action, entity and message', () => {
@@ -616,9 +622,30 @@ describe('ActivityFeedItem', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('counts the replies on the toggle, which opens and hides them', () => {
-      mockReplies = [reply('r1', 'bob'), reply('r2', 'carol')];
+    // Scrolling the feed must not read every card's thread.
+    it('reads the replies only once the thread is opened', () => {
       render(<ActivityFeedItem activity={baseActivity} />);
+
+      expect(mockRepliesEnabled).toHaveBeenLastCalledWith(false);
+
+      fireEvent.click(screen.getByTestId('activity-reply'));
+
+      expect(mockRepliesEnabled).toHaveBeenLastCalledWith(true);
+    });
+
+    // An activity event carries no reply count, so a closed card cannot know.
+    it('shows no count on a closed activity card', () => {
+      mockReplies = [reply('r1', 'bob')];
+      render(<ActivityFeedItem activity={baseActivity} />);
+
+      expect(
+        screen.queryByTestId('activity-replies-toggle')
+      ).not.toBeInTheDocument();
+    });
+
+    it('counts a closed conversation from its reply count, which opens and hides them', () => {
+      mockReplies = [reply('r1', 'bob'), reply('r2', 'carol')];
+      render(<ActivityFeedItem feed={baseFeed} />);
       const toggle = screen.getByTestId('activity-replies-toggle');
 
       expect(toggle).toHaveTextContent('label.number-reply-plural');
@@ -655,6 +682,20 @@ describe('ActivityFeedItem', () => {
     });
 
     it('reads one reply as one', () => {
+      render(
+        <ActivityFeedItem
+          feed={{ ...baseFeed, replyCount: 1 } as Conversation}
+        />
+      );
+
+      expect(screen.getByTestId('activity-replies-toggle')).toHaveTextContent(
+        'label.one-reply'
+      );
+    });
+
+    // Once read, the list itself is the count, even with the thread closed.
+    it('counts a closed card from its replies once they were read', () => {
+      mockRepliesCached = true;
       mockReplies = [reply('r1', 'bob')];
       render(<ActivityFeedItem activity={baseActivity} />);
 

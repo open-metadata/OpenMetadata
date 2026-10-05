@@ -78,14 +78,15 @@ export const createThreadReply = (
 export interface UseActivityReplies {
   threadId?: string;
   replies: ConversationReply[];
+  // Whether the replies have been read; until then the list is empty, not zero.
+  hasLoaded: boolean;
   isLoading: boolean;
   refetch: () => void;
 }
 
 /**
- * A card's replies, read once the card is on screen.
- * ponytail: one replies read per visible card, because activity events carry
- * no reply count; drop the read for collapsed cards once the server adds one.
+ * A card's replies, read only once its thread is opened, so scrolling the feed
+ * fetches nothing.
  */
 export const useActivityReplies = (
   ids: ThreadIds,
@@ -102,6 +103,7 @@ export const useActivityReplies = (
   return {
     threadId,
     replies: data ?? [],
+    hasLoaded: data !== undefined,
     isLoading: enabled && isLoading,
     refetch: () => {
       refetch();
