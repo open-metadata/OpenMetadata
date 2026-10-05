@@ -38,6 +38,10 @@ import type { Selection } from 'react-aria-components';
 import { Heading } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { normalizeGraphLevel } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import {
+  groupEntityTypeChoices,
+  KnowledgeGraphEntityGroupSection,
+} from '../../../utils/discovery/knowledge-graph/knowledgeGraphEntityGroups';
 import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
 import ExportGraphPanel from '../../OntologyExplorer/ExportGraphPanel';
 import { ExportFormat } from '../../OntologyExplorer/ExportGraphPanel.interface';
@@ -49,39 +53,180 @@ import {
 
 type GraphControl = 'level' | 'find' | 'view';
 
-const GraphFilterControls = ({
+const asIdSet = (
+  all: GraphFilterChoiceLite[] | undefined,
+  keys: Selection
+): string[] =>
+  keys === 'all'
+    ? (all ?? []).map((item) => item.id)
+    : Array.from(keys, String);
+
+interface GraphFilterChoiceLite {
+  id: string;
+  label: string;
+  count?: number;
+}
+
+interface EntityTypePickerProps {
+  filters: KnowledgeGraphToolbarProps['filters'];
+  filterOptions: KnowledgeGraphToolbarProps['filterOptions'];
+  onFiltersChange: KnowledgeGraphToolbarProps['onFiltersChange'];
+}
+
+/**
+ * Entity Type dropdown — grouped by the Explore mental model
+ * (Databases, Dashboards, …, Owners). Section headers are visual only;
+ * selection stays per-type, matching the current `filters.entityTypes` shape.
+ */
+const EntityTypePicker = ({
   filters,
   filterOptions,
+  onFiltersChange,
+}: EntityTypePickerProps) => {
+  const { t } = useTranslation();
+  const [entitySearch, setEntitySearch] = useState('');
+  const sections = useMemo<KnowledgeGraphEntityGroupSection[]>(() => {
+    const choices = (filterOptions?.entityTypes ?? []).filter((item) =>
+      item.label.toLowerCase().includes(entitySearch.toLowerCase())
+    );
+
+    return groupEntityTypeChoices(choices);
+  }, [filterOptions?.entityTypes, entitySearch]);
+  const selected = new Set(filters.entityTypes);
+  const applySelection = (keys: Selection) =>
+    onFiltersChange({
+      ...filters,
+      entityTypes: asIdSet(filterOptions?.entityTypes, keys),
+    });
+
+  return (
+    <Dropdown.Root onOpenChange={() => setEntitySearch('')}>
+      <Button
+        color="secondary"
+        data-testid="graph-entity-type-filter"
+        iconTrailing={ChevronDown}
+        isDisabled={!filterOptions?.entityTypes.length}
+        size="sm">
+        {t('label.entity-type')}
+        {filters.entityTypes.length > 0
+          ? ' (' + filters.entityTypes.length + ')'
+          : ''}
+      </Button>
+      <Dropdown.Popover>
+        <Box className="tw:px-3 tw:py-2">
+          <Input
+            aria-label={t('label.entity-type')}
+            placeholder={t('label.search')}
+            size="sm"
+            value={entitySearch}
+            onChange={setEntitySearch}
+            onKeyDown={(event) => event.stopPropagation()}
+          />
+        </Box>
+        <Dropdown.Menu
+          disallowEmptySelection={false}
+          selectedKeys={selected}
+          selectionMode="multiple"
+          onSelectionChange={applySelection}>
+          {sections.map((section) => (
+            <Dropdown.Section
+              data-testid={'graph-entity-group-' + section.key}
+              key={section.key}>
+              <Dropdown.SectionHeader>
+                {t(section.labelKey)}
+              </Dropdown.SectionHeader>
+              {section.choices.map((item) => (
+                <Dropdown.Item
+                  showCheckbox
+                  id={item.id}
+                  key={item.id}
+                  label={item.label + ' (' + item.count + ')'}
+                />
+              ))}
+            </Dropdown.Section>
+          ))}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
+interface RelationshipTypePickerProps {
+  filters: KnowledgeGraphToolbarProps['filters'];
+  filterOptions: KnowledgeGraphToolbarProps['filterOptions'];
+  onFiltersChange: KnowledgeGraphToolbarProps['onFiltersChange'];
+}
+
+/** Relationship Type dropdown — flat multi-select, unchanged behaviour from before. */
+const RelationshipTypePicker = ({
+  filters,
+  filterOptions,
+  onFiltersChange,
+}: RelationshipTypePickerProps) => {
+  const { t } = useTranslation();
+  const [relationshipSearch, setRelationshipSearch] = useState('');
+  const items = (filterOptions?.relationshipTypes ?? []).filter((item) =>
+    item.label.toLowerCase().includes(relationshipSearch.toLowerCase())
+  );
+  const applySelection = (keys: Selection) =>
+    onFiltersChange({
+      ...filters,
+      relationshipTypes: asIdSet(filterOptions?.relationshipTypes, keys),
+    });
+
+  return (
+    <Dropdown.Root onOpenChange={() => setRelationshipSearch('')}>
+      <Button
+        color="secondary"
+        data-testid="graph-relationship-type-filter"
+        iconTrailing={ChevronDown}
+        isDisabled={!filterOptions?.relationshipTypes.length}
+        size="sm">
+        {t('label.relationship-type')}
+        {filters.relationshipTypes.length > 0
+          ? ' (' + filters.relationshipTypes.length + ')'
+          : ''}
+      </Button>
+      <Dropdown.Popover>
+        <Box className="tw:px-3 tw:py-2">
+          <Input
+            aria-label={t('label.relationship-type')}
+            placeholder={t('label.search')}
+            size="sm"
+            value={relationshipSearch}
+            onChange={setRelationshipSearch}
+            onKeyDown={(event) => event.stopPropagation()}
+          />
+        </Box>
+        <Dropdown.Menu
+          disallowEmptySelection={false}
+          items={items}
+          selectedKeys={new Set(filters.relationshipTypes)}
+          selectionMode="multiple"
+          onSelectionChange={applySelection}>
+          {(item) => (
+            <Dropdown.Item
+              showCheckbox
+              id={item.id}
+              label={item.label + ' (' + item.count + ')'}
+            />
+          )}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
+const GraphFilterControls = ({
   excludedFamilies,
   familyCounts,
   onToggleFamily,
   onClearFilters,
-  onFiltersChange,
 }: Pick<
   KnowledgeGraphToolbarProps,
-  | 'filters'
-  | 'filterOptions'
-  | 'excludedFamilies'
-  | 'familyCounts'
-  | 'onToggleFamily'
-  | 'onClearFilters'
-  | 'onFiltersChange'
+  'excludedFamilies' | 'familyCounts' | 'onToggleFamily' | 'onClearFilters'
 >) => {
   const { t } = useTranslation();
-  const [entitySearch, setEntitySearch] = useState('');
-  const [relationshipSearch, setRelationshipSearch] = useState('');
-  const selectFilter = (
-    field: 'entityTypes' | 'relationshipTypes',
-    keys: Selection
-  ) => {
-    onFiltersChange({
-      ...filters,
-      [field]:
-        keys === 'all'
-          ? (filterOptions?.[field] ?? []).map((item) => item.id)
-          : Array.from(keys, String),
-    });
-  };
 
   return (
     <Box align="center" gap={3} wrap="wrap">
@@ -109,90 +254,6 @@ const GraphFilterControls = ({
           </Button>
         )
       )}
-      <Dropdown.Root onOpenChange={() => setEntitySearch('')}>
-        <Button
-          color="secondary"
-          iconTrailing={ChevronDown}
-          isDisabled={!filterOptions?.entityTypes.length}
-          size="sm">
-          {t('label.entity-type')}
-          {filters.entityTypes.length > 0
-            ? ' (' + filters.entityTypes.length + ')'
-            : ''}
-        </Button>
-        <Dropdown.Popover>
-          <Box className="tw:px-3 tw:py-2">
-            <Input
-              aria-label={t('label.entity-type')}
-              placeholder={t('label.search')}
-              size="sm"
-              value={entitySearch}
-              onChange={setEntitySearch}
-              onKeyDown={(event) => event.stopPropagation()}
-            />
-          </Box>
-          <Dropdown.Menu
-            disallowEmptySelection={false}
-            items={(filterOptions?.entityTypes ?? []).filter((item) =>
-              item.label.toLowerCase().includes(entitySearch.toLowerCase())
-            )}
-            selectedKeys={new Set(filters.entityTypes)}
-            selectionMode="multiple"
-            onSelectionChange={(keys) => selectFilter('entityTypes', keys)}>
-            {(item) => (
-              <Dropdown.Item
-                showCheckbox
-                id={item.id}
-                label={item.label + ' (' + item.count + ')'}
-              />
-            )}
-          </Dropdown.Menu>
-        </Dropdown.Popover>
-      </Dropdown.Root>
-      <Dropdown.Root onOpenChange={() => setRelationshipSearch('')}>
-        <Button
-          color="secondary"
-          iconTrailing={ChevronDown}
-          isDisabled={!filterOptions?.relationshipTypes.length}
-          size="sm">
-          {t('label.relationship-type')}
-          {filters.relationshipTypes.length > 0
-            ? ' (' + filters.relationshipTypes.length + ')'
-            : ''}
-        </Button>
-        <Dropdown.Popover>
-          <Box className="tw:px-3 tw:py-2">
-            <Input
-              aria-label={t('label.relationship-type')}
-              placeholder={t('label.search')}
-              size="sm"
-              value={relationshipSearch}
-              onChange={setRelationshipSearch}
-              onKeyDown={(event) => event.stopPropagation()}
-            />
-          </Box>
-          <Dropdown.Menu
-            disallowEmptySelection={false}
-            items={(filterOptions?.relationshipTypes ?? []).filter((item) =>
-              item.label
-                .toLowerCase()
-                .includes(relationshipSearch.toLowerCase())
-            )}
-            selectedKeys={new Set(filters.relationshipTypes)}
-            selectionMode="multiple"
-            onSelectionChange={(keys) =>
-              selectFilter('relationshipTypes', keys)
-            }>
-            {(item) => (
-              <Dropdown.Item
-                showCheckbox
-                id={item.id}
-                label={item.label + ' (' + item.count + ')'}
-              />
-            )}
-          </Dropdown.Menu>
-        </Dropdown.Popover>
-      </Dropdown.Root>
       <Button color="link-gray" size="sm" onPress={onClearFilters}>
         {t('label.clear-filter-plural')}
       </Button>
@@ -243,10 +304,7 @@ const KnowledgeGraphToolbar = ({
       return current === control ? null : current;
     });
   };
-  const filterCount =
-    filters.entityTypes.length +
-    filters.relationshipTypes.length +
-    excludedFamilies.length;
+  const filterCount = excludedFamilies.length;
   const levels = [
     {
       id: '1',
@@ -383,6 +441,16 @@ const KnowledgeGraphToolbar = ({
           }}>
           {(item) => <Select.Item {...item} />}
         </Select.ComboBox>
+        <EntityTypePicker
+          filterOptions={filterOptions}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
+        <RelationshipTypePicker
+          filterOptions={filterOptions}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
         <Button
           aria-expanded={filtersOpen}
           color="secondary"
@@ -512,10 +580,7 @@ const KnowledgeGraphToolbar = ({
         <GraphFilterControls
           excludedFamilies={excludedFamilies}
           familyCounts={familyCounts}
-          filterOptions={filterOptions}
-          filters={filters}
           onClearFilters={onClearFilters}
-          onFiltersChange={onFiltersChange}
           onToggleFamily={onToggleFamily}
         />
       )}
