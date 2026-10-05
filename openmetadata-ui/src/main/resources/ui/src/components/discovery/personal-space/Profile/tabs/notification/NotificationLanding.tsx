@@ -72,7 +72,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
   }, [extensionRegistry, contributionsVersion, permissions, isAdminUser, t]);
 
   return (
-    <Box
+    <div
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:px-8 tw:pb-8"
       data-testid="notification-landing">
       {cards.map((card) => {
@@ -123,7 +123,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
           </Card>
         );
       })}
-    </Box>
+    </div>
   );
 };
 
