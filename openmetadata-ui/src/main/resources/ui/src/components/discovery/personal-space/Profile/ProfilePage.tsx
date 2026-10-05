@@ -328,7 +328,7 @@ const ProfilePage: React.FC = () => {
           onSelect={handleNavSelect}
         />
         <Box
-          className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-hidden"
           direction="col">
           <ProfileContentHeader
             actions={headerOverride?.actions}
@@ -359,7 +359,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <Box
-      className="ai-profile-page tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden"
+      className="ai-profile-page tw:min-h-0 tw:flex-1 tw:overflow-hidden"
       data-testid="ai-profile-page"
       direction="row">
       {renderContent()}

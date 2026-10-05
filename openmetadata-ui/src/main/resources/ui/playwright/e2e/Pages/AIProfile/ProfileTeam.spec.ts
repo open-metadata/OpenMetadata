@@ -34,10 +34,9 @@ import { expect, test } from '../../fixtures/pages';
 // the full permission-role matrix (editOnly/dataConsumer/owner variants); the
 // classic /settings routes and antd manage-button have no AI-profile equivalent.
 
-const policy = new PolicyClass();
-const role = new RolesClass();
-const member = new UserClass();
-
+let policy: PolicyClass;
+let role: RolesClass;
+let member: UserClass;
 let createdTeams: TeamClass[] = [];
 
 const makeTeam = async (
@@ -63,6 +62,9 @@ const makeTeam = async (
 test.describe('AI Profile Team Detail', () => {
   test.beforeAll(async ({ browser }) => {
     createdTeams = [];
+    policy = new PolicyClass();
+    role = new RolesClass();
+    member = new UserClass();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await member.create(apiContext);
     await policy.create(apiContext, [

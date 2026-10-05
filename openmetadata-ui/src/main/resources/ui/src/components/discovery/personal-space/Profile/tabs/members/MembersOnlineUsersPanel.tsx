@@ -219,8 +219,9 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
           {overflow > 0 && (
             <Typography
               as="span"
-              className="tw:text-xs tw:text-tertiary"
-              data-testid="plus-more-count">
+              className="tw:text-tertiary"
+              data-testid="plus-more-count"
+              size="text-xs">
               {`+${overflow} ${t('label.more')}`}
             </Typography>
           )}

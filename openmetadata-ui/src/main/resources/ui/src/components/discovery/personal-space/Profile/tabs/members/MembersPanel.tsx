@@ -12,8 +12,10 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
   Clock,
+  Lock01,
   ShieldTick,
   User01,
   Users01,
@@ -24,12 +26,10 @@ import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../../enums/common.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
-import ErrorPlaceHolder from '../../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { MembersPanelProps, MembersView } from './Members.types';
 import { hashSubPathToView, viewToSubPath } from './Members.utils';
@@ -289,11 +289,15 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   ]);
 
   const permissionPlaceholder = (
-    <ErrorPlaceHolder
-      className="tw:h-full tw:border-none"
-      permissionValue={t('label.create')}
-      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-    />
+    <Box
+      className="tw:relative tw:h-full"
+      data-testid="permission-error-placeholder">
+      <EmptyPlaceholder
+        description={t('message.no-permission-for-action')}
+        icon={<Lock01 />}
+        title={t('label.no-access')}
+      />
+    </Box>
   );
 
   const renderView = () => {

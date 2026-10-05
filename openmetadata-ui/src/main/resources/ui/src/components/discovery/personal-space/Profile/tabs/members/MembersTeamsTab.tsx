@@ -148,9 +148,10 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
                   size="lg"
                   theme="light"
                 />
-                <div
-                  className="tw:flex tw:flex-col tw:gap-0.5 tw:mt-4 tw:min-w-0 tw:w-full"
-                  data-testid="modal-header">
+                <Box
+                  className="tw:gap-0.5 tw:mt-4 tw:min-w-0 tw:w-full"
+                  data-testid="modal-header"
+                  direction="col">
                   <Typography size="text-md" weight="semibold">
                     {t('label.move-the-entity', {
                       entity: t('label.team'),
@@ -175,7 +176,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
                       })
                     )}
                   </Typography>
-                </div>
+                </Box>
               </Dialog.Header>
               <Box
                 className="tw:p-4 tw:pt-6 tw:sm:px-6 tw:sm:pt-8 tw:sm:pb-6"
