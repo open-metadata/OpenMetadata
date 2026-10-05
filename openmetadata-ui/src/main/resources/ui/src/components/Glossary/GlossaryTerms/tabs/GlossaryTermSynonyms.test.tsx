@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -102,13 +108,15 @@ describe('GlossaryTermSynonyms', () => {
       render(<GlossaryTermSynonyms />);
       await user.click(screen.getByTestId('edit-button'));
 
-      return screen.getByTestId('synonyms-input');
+      return within(screen.getByTestId('synonyms-select')).getByRole(
+        'combobox'
+      );
     };
 
-    it('adds synonyms on Enter and comma and saves them', async () => {
+    it('adds synonyms on Enter and saves them', async () => {
       const input = await startEditing();
 
-      await user.type(input, 'test{Enter}revenue,');
+      await user.type(input, 'test{Enter}revenue{Enter}');
 
       expect(screen.getByText('message.unsaved-changes')).toBeInTheDocument();
 
@@ -154,23 +162,35 @@ describe('GlossaryTermSynonyms', () => {
       );
     });
 
-    it('rejects a case-insensitive duplicate and keeps the typed text', async () => {
+    it('flags a case-insensitive duplicate while typing', async () => {
+      const input = await startEditing();
+
+      await user.type(input, ' Accessory ');
+
+      expect(
+        screen.getByText('message.entity-already-exists')
+      ).toBeInTheDocument();
+    });
+
+    it('does not add a case-insensitive duplicate on Enter', async () => {
       const input = await startEditing();
 
       await user.type(input, 'Accessory{Enter}');
 
-      expect(input).toHaveValue('Accessory');
-      expect(input).toHaveAttribute('aria-invalid', 'true');
-      expect(
-        screen.getByText('message.entity-is-already-a-synonym')
-      ).toBeInTheDocument();
       expect(screen.getAllByTestId(/^remove-synonym-/)).toHaveLength(1);
+      expect(
+        screen.getByText('message.entity-already-exists')
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByTestId('save-synonym-btn'));
+
+      expect(mockContext.onUpdate).not.toHaveBeenCalled();
     });
 
-    it('removes the last synonym on Backspace in an empty input', async () => {
+    it('removes the last synonym with Backspace (focus, then remove)', async () => {
       const input = await startEditing();
 
-      await user.type(input, '{Backspace}');
+      await user.type(input, '{Backspace}{Backspace}');
       await user.click(screen.getByTestId('save-synonym-btn'));
 
       expect(mockContext.onUpdate).toHaveBeenCalledWith(

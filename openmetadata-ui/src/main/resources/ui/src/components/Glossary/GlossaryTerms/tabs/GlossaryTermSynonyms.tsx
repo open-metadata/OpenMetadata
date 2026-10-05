@@ -11,13 +11,27 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
+import {
+  Autocomplete,
+  BadgeWithButton,
+  Box,
+  Button,
+  SelectItemType,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
+import { MAX_VISIBLE_SYNONYMS } from '../../../../constants/Glossary.contant';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import {
@@ -33,18 +47,25 @@ import {
 import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { SynonymBadge } from '../../GlossaryTermBadges/GlossaryTermBadges';
-import GlossaryTermSynonymsEditor from './GlossaryTermSynonymsEditor';
-
-const MAX_VISIBLE_SYNONYMS = 6;
 
 // Narrower than SynonymBadge's default so two long synonyms fit per row.
 const SYNONYM_BADGE_CLASS = 'tw:max-w-24';
+
+// Synonyms are free text: there is nothing to suggest, only typed values.
+const NO_SUGGESTIONS: SelectItemType[] = [];
+
+interface DuplicateSynonym {
+  typed: string;
+  existing: string;
+}
 
 const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [saving, setSaving] = useState<boolean>(false);
   const [isListExpanded, setIsListExpanded] = useState(false);
+  const [duplicate, setDuplicate] = useState<DuplicateSynonym>();
+  const editorRef = useRef<HTMLDivElement>(null);
   const {
     data: glossaryTerm,
     onUpdate: onGlossaryTermUpdate,
@@ -65,11 +86,84 @@ const GlossaryTermSynonyms = () => {
     () => (glossaryTerm.synonyms ?? []).filter((synonym) => !isEmpty(synonym)),
     [glossaryTerm.synonyms]
   );
+  const selectedSynonyms = useMemo<SelectItemType[]>(
+    () => synonyms.map((synonym) => ({ id: synonym, label: synonym })),
+    [synonyms]
+  );
   const hiddenSynonymCount = synonyms.length - MAX_VISIBLE_SYNONYMS;
+
+  // Case-insensitive, so "Test" is rejected when "test" already exists.
+  const findDuplicate = (value: string) => {
+    const normalized = value.trim().toLowerCase();
+
+    return normalized
+      ? synonyms.find((synonym) => synonym.toLowerCase() === normalized)
+      : undefined;
+  };
+
+  const handleSearchChange = (value: string) => {
+    const existing = findDuplicate(value);
+    setDuplicate(existing ? { typed: value.trim(), existing } : undefined);
+  };
+
+  const handleSynonymInserted = (key: string | number) => {
+    const value = String(key);
+    const existing = findDuplicate(value);
+    if (existing) {
+      setDuplicate({ typed: value, existing });
+      // Autocomplete has already shown the chip; a fresh array re-syncs it
+      // from selectedItems so the rejected value disappears again.
+      setSynonyms((prev) => [...prev]);
+
+      return;
+    }
+    setDuplicate(undefined);
+    setSynonyms((prev) => [...prev, value]);
+  };
+
+  const handleSynonymCleared = (key: string | number) => {
+    setDuplicate(undefined);
+    setSynonyms((prev) => prev.filter((synonym) => synonym !== key));
+  };
+
+  // Enter also confirms an IME (ja/zh/ko) candidate; stop it before
+  // Autocomplete's own Enter handler turns the half-composed text into a chip.
+  const handleEditorKeyDownCapture = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' && event.nativeEvent.isComposing) {
+      event.stopPropagation();
+    }
+  };
+
+  const renderSynonymTag = (item: SelectItemType, onRemove: () => void) => (
+    <BadgeWithButton
+      buttonLabel={t('label.remove-entity', { entity: item.label })}
+      buttonTestId={`remove-synonym-${item.id}`}
+      color={item.id === duplicate?.existing ? 'error' : 'gray'}
+      key={item.id}
+      size="sm"
+      tooltip={item.label}
+      type="color"
+      onButtonClick={onRemove}
+      // A custom tag drops Autocomplete's own chip keyboard handling, so
+      // Backspace/Delete on the focused remove button is wired here.
+      onButtonKeyDown={(event) => {
+        if (event.key === 'Backspace' || event.key === 'Delete') {
+          event.preventDefault();
+          onRemove();
+          editorRef.current
+            ?.querySelector<HTMLInputElement>('[role="combobox"]')
+            ?.focus();
+        }
+      }}>
+      <span className={`tw:block tw:truncate ${SYNONYM_BADGE_CLASS}`}>
+        {item.label}
+      </span>
+    </BadgeWithButton>
+  );
 
   const getSynonyms = () =>
     !canEditAll || !isEmpty(synonyms) ? (
-      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-1">
+      <Box align="center" gap={1} wrap="wrap">
         {(isListExpanded
           ? synonyms
           : synonyms.slice(0, MAX_VISIBLE_SYNONYMS)
@@ -96,9 +190,9 @@ const GlossaryTermSynonyms = () => {
         )}
 
         {!canEditAll && synonyms.length === 0 && (
-          <div>{NO_DATA_PLACEHOLDER}</div>
+          <Box>{NO_DATA_PLACEHOLDER}</Box>
         )}
-      </div>
+      </Box>
     ) : null;
 
   const getSynonymsContainer = useCallback(() => {
@@ -134,11 +228,11 @@ const GlossaryTermSynonyms = () => {
       isEmpty(deletedSynonyms);
 
     if (noSynonyms) {
-      return <div>{NO_DATA_PLACEHOLDER}</div>;
+      return <Box>{NO_DATA_PLACEHOLDER}</Box>;
     }
 
     return (
-      <div className="tw:flex tw:flex-wrap tw:gap-1">
+      <Box gap={1} wrap="wrap">
         {unchangedSynonyms
           .filter((synonym) => !isEmpty(synonym))
           .map((synonym) => (
@@ -168,13 +262,19 @@ const GlossaryTermSynonyms = () => {
               versionStatus={{ removed: true }}
             />
           ))}
-      </div>
+      </Box>
     );
   }, [glossaryTerm, isVersionView, getSynonyms]);
 
+  const closeEditor = () => {
+    setDuplicate(undefined);
+    setIsListExpanded(false);
+    setIsViewMode(true);
+  };
+
   const handleCancel = () => {
     setSynonyms(savedSynonyms);
-    setIsViewMode(true);
+    closeEditor();
   };
 
   const handleSynonymsSave = async () => {
@@ -188,7 +288,7 @@ const GlossaryTermSynonyms = () => {
       await onGlossaryTermUpdate(updatedGlossaryTerm);
       setSaving(false);
     }
-    setIsViewMode(true);
+    closeEditor();
   };
 
   useEffect(() => {
@@ -197,6 +297,67 @@ const GlossaryTermSynonyms = () => {
       setSynonyms(glossaryTerm.synonyms.filter((synonym) => !isEmpty(synonym)));
     }
   }, [glossaryTerm]);
+
+  const getSynonymsEditor = () => (
+    <Box
+      direction="col"
+      ref={editorRef}
+      onKeyDownCapture={handleEditorKeyDownCapture}>
+      <Autocomplete
+        allowsCreation
+        hideDropdown
+        multiple
+        aria-label={t('label.synonym-plural')}
+        data-testid="synonyms-select"
+        hint={
+          duplicate
+            ? t('message.entity-already-exists', { entity: duplicate.typed })
+            : t('message.synonym-input-hint')
+        }
+        icon={null}
+        isInvalid={Boolean(duplicate)}
+        items={NO_SUGGESTIONS}
+        placeholder={
+          isEmpty(synonyms)
+            ? t('message.synonym-placeholder')
+            : t('label.add-another')
+        }
+        renderTag={renderSynonymTag}
+        selectedItems={selectedSynonyms}
+        onItemCleared={handleSynonymCleared}
+        onItemInserted={handleSynonymInserted}
+        onSearchChange={handleSearchChange}>
+        {null}
+      </Autocomplete>
+    </Box>
+  );
+
+  const getEditorFooter = () => (
+    <Box align="center" gap={2}>
+      {!isEqual(synonyms, savedSynonyms) && (
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          {t('message.unsaved-changes')}
+        </Typography>
+      )}
+      <Box className="tw:ml-auto" gap={2}>
+        <Button
+          color="secondary"
+          data-testid="cancel-synonym-btn"
+          size="sm"
+          onClick={handleCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid="save-synonym-btn"
+          isLoading={saving}
+          size="sm"
+          onClick={handleSynonymsSave}>
+          {t('label.save')}
+        </Button>
+      </Box>
+    </Box>
+  );
 
   const headerExtra =
     canEditAll &&
@@ -226,23 +387,12 @@ const GlossaryTermSynonyms = () => {
 
   return (
     <WidgetCard
-      contentClassName={classNames({ 'tw:p-0': !isViewMode })}
       dataTestId="synonyms-container"
+      footer={isViewMode ? undefined : getEditorFooter()}
       headerExtra={headerExtra}
       isExpandDisabled={isExpandDisabled}
       title={t('label.synonym-plural')}>
-      {isViewMode ? (
-        getSynonymsContainer()
-      ) : (
-        <GlossaryTermSynonymsEditor
-          isSaving={saving}
-          savedSynonyms={savedSynonyms}
-          synonyms={synonyms}
-          onCancel={handleCancel}
-          onChange={setSynonyms}
-          onSave={handleSynonymsSave}
-        />
-      )}
+      {isViewMode ? getSynonymsContainer() : getSynonymsEditor()}
     </WidgetCard>
   );
 };

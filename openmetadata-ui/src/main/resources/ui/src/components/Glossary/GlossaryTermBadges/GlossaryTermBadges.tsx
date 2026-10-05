@@ -14,6 +14,7 @@ import { Badge, Tooltip } from '@openmetadata/ui-core-components';
 import { Link01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
+import { useIsTextClamped } from '../../../hooks/useIsTextClamped';
 import { VersionStatus } from '../../../utils/EntityVersionUtils.interface';
 import { getSafeHttpUrl } from '../../../utils/StringUtils';
 
@@ -44,12 +45,14 @@ export const SynonymBadge = ({
   className?: string;
 }) => {
   const versionProps = getVersionBadgeProps(versionStatus);
+  const { ref, isClamped } = useIsTextClamped<HTMLSpanElement>(synonym);
 
   return (
     // Badge is a plain span, so the Tooltip wraps it in a hover-only trigger
-    // rather than adding a tab stop per synonym.
+    // rather than adding a tab stop per synonym; it only opens when the text is cut off.
     <Tooltip
       excludeTriggerFromTabOrder
+      isDisabled={!isClamped}
       title={synonym}
       triggerClassName="tw:flex">
       <Badge
@@ -59,7 +62,9 @@ export const SynonymBadge = ({
         data-testid={synonym}
         size="sm"
         type="color">
-        <span className="tw:truncate">{synonym}</span>
+        <span className="tw:truncate" ref={ref}>
+          {synonym}
+        </span>
       </Badge>
     </Tooltip>
   );

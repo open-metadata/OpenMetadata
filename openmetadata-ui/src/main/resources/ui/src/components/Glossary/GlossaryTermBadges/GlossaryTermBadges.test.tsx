@@ -43,19 +43,42 @@ describe('ReferenceBadge', () => {
 });
 
 describe('SynonymBadge', () => {
-  it('shows the full synonym in a tooltip on hover', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+  const hoverSynonym = async (text: string) => {
     // react-aria ignores hover until a pointer modality is established.
     fireEvent.mouseMove(document);
-    render(<SynonymBadge synonym="gross sales" />);
-
-    expect(screen.getByTestId('gross sales')).not.toHaveAttribute('title');
-
-    await user.hover(screen.getByText('gross sales'));
+    await user.hover(screen.getByText(text));
     jest.advanceTimersByTime(500);
+  };
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('shows the full synonym in a tooltip when it is truncated', async () => {
+    jest
+      .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+      .mockReturnValue(200);
+    jest.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(96);
+    render(<SynonymBadge synonym="gross sales adjusted" />);
+
+    expect(screen.getByTestId('gross sales adjusted')).not.toHaveAttribute(
+      'title'
+    );
+
+    await hoverSynonym('gross sales adjusted');
 
     await waitFor(() =>
-      expect(screen.getByRole('tooltip')).toHaveTextContent('gross sales')
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'gross sales adjusted'
+      )
     );
+  });
+
+  it('shows no tooltip when the synonym fits', async () => {
+    render(<SynonymBadge synonym="tax" />);
+
+    await hoverSynonym('tax');
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 });

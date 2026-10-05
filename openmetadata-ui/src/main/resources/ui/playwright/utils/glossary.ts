@@ -1111,7 +1111,9 @@ export const deleteGlossaryOrGlossaryTerm = async (
 
 export const addSynonyms = async (page: Page, synonyms: string[]) => {
   await page.getByTestId('synonym-add-button').click();
-  const synonymsInput = page.getByTestId('synonyms-input');
+  const synonymsInput = page
+    .getByTestId('synonyms-select')
+    .getByRole('combobox');
 
   for (const synonym of synonyms) {
     await synonymsInput.fill(synonym);
