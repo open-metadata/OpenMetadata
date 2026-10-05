@@ -92,6 +92,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   // keeps them from silently dropping pooled connections that sit idle between logins.
   private static final long POOL_HEALTH_CHECK_INTERVAL_MILLIS = 60_000L;
   private static final long POOL_HEALTH_CHECK_TIMEOUT_MILLIS = 5_000L;
+  private static final int DIRECTORY_TIMEOUT_MILLIS = 5_000;
   private static final int MAX_RETRIES = 3;
   private static final int BASE_DELAY_MS = 500;
   private static final String DEFAULT_EMAIL_ATTRIBUTE = "mail";
@@ -543,6 +544,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
     return new LDAPConnection(
         connectionOptions, ldapConfiguration.getHost(), ldapConfiguration.getPort());
+  }
+
+  /** For a connection opened on a request thread: an unreachable directory must fail in seconds. */
+  static LDAPConnectionOptions boundedConnectionOptions() {
+    LDAPConnectionOptions options = new LDAPConnectionOptions();
+    options.setConnectTimeoutMillis(DIRECTORY_TIMEOUT_MILLIS);
+    options.setResponseTimeoutMillis(DIRECTORY_TIMEOUT_MILLIS);
+    return options;
   }
 
   /** The attribute login matches the entered email against: emailClaim, else mailAttributeName. */
