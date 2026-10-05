@@ -26,16 +26,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * DB-backed relay used when no Redis is configured. The producing pod enqueues a frame and a writer
  * thread drains the queue into {@code ws_relay_message} in batched inserts, so callers never block on
- * the DB; every pod polls for new rows (skipping its own and expired) and delivers to its local
- * sockets. Broadcast, not claim — a socket is single-homed, so each pod delivering to its own sockets
- * is exactly-once; no lease needed.
+ * the DB; every pod polls a trailing time window for new rows (skipping its own) and delivers to its
+ * local sockets. Broadcast, not claim — a socket is single-homed, so each pod delivering to its own
+ * sockets is exactly-once; no lease needed. Keying the poll on time rather than an auto-increment id
+ * means a frame that becomes visible out of insert order (e.g. a batch committing at once) is still
+ * inside the window; a bounded dedupe set stops re-delivery across polls.
  */
 @Slf4j
 public class DbWebSocketRelay implements WebSocketRelay {
@@ -46,24 +47,20 @@ public class DbWebSocketRelay implements WebSocketRelay {
   // How often the writer thread drains queued frames; well under the poll interval so producer-side
   // batching adds no visible latency on top of the consumer's 1s poll.
   static final long DEFAULT_FLUSH_INTERVAL_MS = 100L;
+  // Each poll re-reads frames from the last this-many ms. Must exceed the longest gap between a
+  // consumer's successful polls — commit latency plus any dispatch stall such as a GC pause — so a
+  // frame created during a stall is still re-read on the next poll; kept well under the message
+  // TTL.
+  static final long DEFAULT_RESCAN_WINDOW_MS = 15_000L;
+  // Max rows delivered per poll and max frames per batched insert; the drain loops until the queue
+  // empties. Not tied to correctness — purely memory/round-trip tuning.
   private static final int FETCH_LIMIT = 1000;
+  private static final int MAX_BATCH = 1000;
   // Offers are dropped once the queue is full; frames are transient, so shedding is acceptable.
   private static final int QUEUE_CAPACITY = 10_000;
-  // Re-scan window below the cursor, catching rows that committed after a higher id (under
-  // FETCH_LIMIT). Must be >= MAX_BATCH, since a batch commits atomically and its whole id span can
-  // surface below the cursor at once.
-  private static final long LOOKBACK_IDS = 500;
-  // Frames per batched insert; the drain loops until the queue empties.
-  private static final int MAX_BATCH = 100;
-  // Dedupe set for the re-read window; must exceed LOOKBACK_IDS (eldest ids evicted first).
-  private static final int DELIVERED_IDS_MAX = 2000;
-
-  static {
-    if (MAX_BATCH > LOOKBACK_IDS) {
-      throw new IllegalStateException(
-          "MAX_BATCH must be <= LOOKBACK_IDS: a batch commits atomically");
-    }
-  }
+  // Dedupe set over the rescan window; sized well above its row count so a window id is not evicted
+  // before it ages out (eldest ids drop first). An overflow re-delivers a frame, never drops one.
+  private static final int DELIVERED_IDS_MAX = 4096;
 
   private final WsRelayDAO dao;
   private final String instanceId;
@@ -71,6 +68,7 @@ public class DbWebSocketRelay implements WebSocketRelay {
   private final long messageTtlMs;
   private final long cleanupIntervalMs;
   private final long flushIntervalMs;
+  private final long rescanWindowMs;
   // Seam for tests: default delivers to the live WebSocketManager; a test can route to a probe.
   private final Consumer<WsRelayDAO.RelayRow> deliver;
 
@@ -78,9 +76,6 @@ public class DbWebSocketRelay implements WebSocketRelay {
   private final BlockingQueue<WsRelayDAO.Frame> pending = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
 
   private final AtomicBoolean running = new AtomicBoolean(false);
-  private final AtomicLong cursor = new AtomicLong(0);
-  // Ids at or below the tail at startup predate this pod; never (re)deliver them.
-  private volatile long startFloor = 0;
   // Bounded LRU of delivered ids (insertion-order eviction). Accessed only from the single
   // dispatcher thread (and directly from tests), so it needs no synchronization.
   private final Set<Long> delivered =
@@ -104,6 +99,7 @@ public class DbWebSocketRelay implements WebSocketRelay {
         DEFAULT_MESSAGE_TTL_MS,
         DEFAULT_CLEANUP_INTERVAL_MS,
         DEFAULT_FLUSH_INTERVAL_MS,
+        DEFAULT_RESCAN_WINDOW_MS,
         DbWebSocketRelay::deliverToLocalManager);
   }
 
@@ -114,6 +110,7 @@ public class DbWebSocketRelay implements WebSocketRelay {
       long messageTtlMs,
       long cleanupIntervalMs,
       long flushIntervalMs,
+      long rescanWindowMs,
       Consumer<WsRelayDAO.RelayRow> deliver) {
     this.dao = dao;
     this.instanceId = instanceId;
@@ -121,6 +118,7 @@ public class DbWebSocketRelay implements WebSocketRelay {
     this.messageTtlMs = messageTtlMs;
     this.cleanupIntervalMs = cleanupIntervalMs;
     this.flushIntervalMs = flushIntervalMs;
+    this.rescanWindowMs = rescanWindowMs;
     this.deliver = deliver;
   }
 
@@ -129,16 +127,16 @@ public class DbWebSocketRelay implements WebSocketRelay {
     if (!running.compareAndSet(false, true)) {
       return;
     }
-    // Seed the cursor at the current tail so a starting pod does not replay history.
-    long tail = 0;
-    try {
-      tail = dao.maxId();
-    } catch (Exception e) {
-      LOG.warn("DbWebSocketRelay could not seed cursor, starting from 0", e);
-    }
-    cursor.set(tail);
-    startFloor = tail;
     delivered.clear();
+    // Seed the dedupe set with frames already in the window so a starting pod does not replay them.
+    try {
+      for (WsRelayDAO.RelayRow row :
+          dao.fetchRecent(instanceId, recentFloor(System.currentTimeMillis()), FETCH_LIMIT)) {
+        delivered.add(row.id());
+      }
+    } catch (Exception e) {
+      LOG.warn("DbWebSocketRelay could not seed dedupe set", e);
+    }
     scheduler =
         Executors.newSingleThreadScheduledExecutor(
             runnable -> {
@@ -216,17 +214,12 @@ public class DbWebSocketRelay implements WebSocketRelay {
     }
   }
 
-  // Visible for test/trigger. Reads one batch of new frames and delivers them locally.
+  // Visible for test/trigger. Delivers peer frames in the rescan window not yet seen.
   void dispatchOnce() {
     long now = System.currentTimeMillis();
-    // Re-scan a trailing window, not just id > cursor: ids are assigned at INSERT but visible at
-    // COMMIT, so a lower id can commit after the cursor passed a higher one. The seen-set dedupes
-    // the
-    // re-read; the start floor skips rows predating this pod.
-    long from = Math.max(startFloor, cursor.get() - LOOKBACK_IDS);
-    List<WsRelayDAO.RelayRow> rows = dao.fetchNewer(from, instanceId, now, FETCH_LIMIT);
+    List<WsRelayDAO.RelayRow> rows = dao.fetchRecent(instanceId, recentFloor(now), FETCH_LIMIT);
     for (WsRelayDAO.RelayRow row : rows) {
-      if (row.id() <= startFloor || !delivered.add(row.id())) {
+      if (!delivered.add(row.id())) {
         continue;
       }
       try {
@@ -234,10 +227,13 @@ public class DbWebSocketRelay implements WebSocketRelay {
       } catch (Exception e) {
         LOG.debug("Failed to deliver relayed frame id={} scope={}", row.id(), row.scope(), e);
       }
-      // Advance even on delivery failure: the row is a best-effort transient notification, and the
-      // seen-set prevents re-delivery within the window regardless of the cursor.
-      cursor.updateAndGet(current -> Math.max(current, row.id()));
     }
+  }
+
+  // Frames live until createdAt + messageTtlMs, so "created within the rescan window" is
+  // "expiresAt > now + messageTtlMs - rescanWindow" — a predicate the expiresAt index serves.
+  private long recentFloor(long now) {
+    return now + messageTtlMs - rescanWindowMs;
   }
 
   private void dispatchSafely() {

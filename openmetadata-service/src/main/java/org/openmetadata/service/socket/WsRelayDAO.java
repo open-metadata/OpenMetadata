@@ -43,24 +43,19 @@ public interface WsRelayDAO {
           + "VALUES (:scope, :target, :event, :payload, :senderPod, :expiresAt)")
   void insertBatch(@BindBean List<Frame> frames);
 
-  /** Highest id currently in the table, or 0 when empty — used to seed a pod's start cursor. */
-  @SqlQuery("SELECT COALESCE(MAX(id), 0) FROM ws_relay_message")
-  long maxId();
-
   /**
-   * Frames newer than {@code from} that this pod did not publish and have not expired. Ordered by id
-   * so the caller can advance its cursor to the last row read.
+   * Frames this pod did not publish that are still within the rescan window, i.e. {@code expiresAt >
+   * recentFloor} where {@code recentFloor = now + ttl - rescanWindow}. Keyed on expiry (= createdAt +
+   * ttl) so a frame that becomes visible out of insert order is still returned while recent; the
+   * caller dedupes by id. Uses the expiresAt index.
    */
   @SqlQuery(
       "SELECT id, scope, target, event, payload FROM ws_relay_message "
-          + "WHERE id > :from AND senderPod <> :self AND expiresAt > :now "
-          + "ORDER BY id ASC LIMIT :limit")
+          + "WHERE senderPod <> :self AND expiresAt > :recentFloor "
+          + "ORDER BY expiresAt ASC, id ASC LIMIT :limit")
   @RegisterRowMapper(RelayRowMapper.class)
-  List<RelayRow> fetchNewer(
-      @Bind("from") long from,
-      @Bind("self") String self,
-      @Bind("now") long now,
-      @Bind("limit") int limit);
+  List<RelayRow> fetchRecent(
+      @Bind("self") String self, @Bind("recentFloor") long recentFloor, @Bind("limit") int limit);
 
   @SqlUpdate("DELETE FROM ws_relay_message WHERE expiresAt < :now")
   int deleteExpired(@Bind("now") long now);
