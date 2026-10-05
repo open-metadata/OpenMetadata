@@ -142,6 +142,7 @@ export const OntologyConceptRealization: React.FC<
     }
     try {
       const response = await searchQuery({
+        skipDomainFilter: true,
         pageNumber: 1,
         pageSize: 5,
         searchIndex: SearchIndex.TABLE,

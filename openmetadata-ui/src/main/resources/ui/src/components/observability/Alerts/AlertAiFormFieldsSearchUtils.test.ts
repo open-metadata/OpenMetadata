@@ -21,6 +21,11 @@ import {
 } from './AlertAiFormFieldsSearchUtils';
 
 const mockSearchContracts = jest.fn();
+const mockSearchQuery = jest.fn();
+
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: (...args: unknown[]) => mockSearchQuery(...args),
+}));
 
 jest.mock('../../../rest/contractAPI', () => ({
   searchContracts: (...args: unknown[]) => mockSearchContracts(...args),
@@ -79,5 +84,19 @@ describe('AlertAiFormFieldsSearchUtils', () => {
     ]);
 
     expect(mockSearchContracts).toHaveBeenCalledWith('orders', 50);
+  });
+
+  it('searches assets in every domain, not just the selected navbar domain', async () => {
+    mockSearchQuery.mockResolvedValue({ hits: { hits: [] } });
+
+    await searchAlertAiArgumentOptions({
+      argument: 'fqnList',
+      searchText: 'orders',
+      selectedSource: 'table',
+    });
+
+    expect(mockSearchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ skipDomainFilter: true })
+    );
   });
 });

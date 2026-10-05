@@ -89,6 +89,7 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
     queryKey: ['related-metric-options', debouncedSearch],
     queryFn: () =>
       searchQuery({
+        skipDomainFilter: true,
         query: debouncedSearch,
         pageNumber: 1,
         pageSize: 20,

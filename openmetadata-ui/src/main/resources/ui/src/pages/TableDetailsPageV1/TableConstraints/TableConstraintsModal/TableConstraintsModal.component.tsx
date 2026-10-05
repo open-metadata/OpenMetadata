@@ -75,6 +75,7 @@ const TableConstraintsModal = ({
     try {
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const data = await searchQuery({
+        skipDomainFilter: true,
         query:
           value &&
           `(columns.name.keyword:*${encodedValue}*) OR (columns.fullyQualifiedName:*${encodedValue}*)`,

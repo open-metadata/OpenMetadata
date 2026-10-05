@@ -85,6 +85,7 @@ export async function suggestions(
   } else {
     let hashValues = [];
     const data = await searchQuery({
+      skipDomainFilter: true,
       query: searchTerm ?? '',
       pageNumber: 1,
       pageSize: 5,

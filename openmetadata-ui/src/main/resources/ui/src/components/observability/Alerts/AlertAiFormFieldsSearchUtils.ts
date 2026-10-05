@@ -73,6 +73,7 @@ const searchAlertAiEntityIdOptions = async ({
 }): Promise<SelectItemType[]> => {
   try {
     const response = await searchQuery({
+      skipDomainFilter: true,
       pageNumber: 1,
       pageSize: PAGE_SIZE_LARGE,
       query: searchText,
@@ -167,6 +168,7 @@ const searchAlertAiEntityOptions = async ({
 }): Promise<SelectItemType[]> => {
   try {
     const response = await searchQuery({
+      skipDomainFilter: true,
       pageNumber: 1,
       pageSize: PAGE_SIZE_LARGE,
       query: searchText,

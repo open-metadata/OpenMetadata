@@ -104,6 +104,7 @@ const AddQueryPage = () => {
   ): Promise<DefaultOptionType[]> => {
     try {
       const data = await searchQuery({
+        skipDomainFilter: true,
         query: searchValue,
         pageNumber: INITIAL_PAGING_VALUE,
         pageSize: PAGE_SIZE_MEDIUM,

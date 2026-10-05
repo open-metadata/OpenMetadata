@@ -125,6 +125,7 @@ const TableDiffForm = ({
     setIsOptionsLoading(true);
     try {
       const response = await searchQuery({
+        skipDomainFilter: true,
         query: `*${search}*`,
         pageNumber: 1,
         pageSize: PAGE_SIZE_LARGE,
