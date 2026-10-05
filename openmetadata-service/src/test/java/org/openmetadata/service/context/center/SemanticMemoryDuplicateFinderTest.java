@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -35,9 +36,15 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @ExtendWith(MockitoExtension.class)
 class SemanticMemoryDuplicateFinderTest {
+  /** Every extracted pill is anchored, so an anonymous lookup would never find one. */
+  private static final SubjectContext SYSTEM =
+      new SubjectContext(
+          new User().withId(UUID.randomUUID()).withName("admin").withIsAdmin(true), null);
+
   @Mock private ContextMemoryRepository repository;
   @Mock private VectorIndexService vectorService;
   @Mock private LLMCompletionClient completionClient;
@@ -56,7 +63,7 @@ class SemanticMemoryDuplicateFinderTest {
 
   private SemanticMemoryDuplicateFinder finderWithCandidate(ContextMemory candidate) {
     when(vectorService.search(
-            anyString(), any(), eq(5), eq(0), eq(20), eq(0.0), isNull(), isNull()))
+            anyString(), any(), eq(5), eq(0), eq(20), eq(0.0), isNull(), eq(SYSTEM)))
         .thenReturn(
             new VectorSearchResponse(
                 1L, List.of(Map.of("parentId", candidate.getId().toString()))));
@@ -64,7 +71,7 @@ class SemanticMemoryDuplicateFinderTest {
             isNull(), eq(candidate.getId()), isNull(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(candidate);
     return new SemanticMemoryDuplicateFinder(
-        repository, () -> vectorService, () -> searchRepository, completionClient);
+        repository, () -> vectorService, () -> searchRepository, completionClient, () -> SYSTEM);
   }
 
   @Test
@@ -112,7 +119,7 @@ class SemanticMemoryDuplicateFinderTest {
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
     when(searchRepository.getIndexOrAliasName("contextMemory"))
         .thenReturn("context_memory_search_index");
-    when(searchClient.searchForExport(any(SearchRequest.class), isNull()))
+    when(searchClient.searchForExport(any(SearchRequest.class), eq(SYSTEM)))
         .thenReturn(new SearchResultListMapper(List.of(), 0));
     assertNull(finderWithCandidate(candidate).findEquivalent(derived));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
@@ -123,12 +130,12 @@ class SemanticMemoryDuplicateFinderTest {
     ContextMemory candidate =
         memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.");
     when(vectorService.search(
-            anyString(), any(), eq(5), eq(0), eq(20), eq(0.0), isNull(), isNull()))
+            anyString(), any(), eq(5), eq(0), eq(20), eq(0.0), isNull(), eq(SYSTEM)))
         .thenThrow(new IllegalStateException("vector index unavailable"));
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
     when(searchRepository.getIndexOrAliasName("contextMemory"))
         .thenReturn("context_memory_search_index");
-    when(searchClient.searchForExport(any(SearchRequest.class), isNull()))
+    when(searchClient.searchForExport(any(SearchRequest.class), eq(SYSTEM)))
         .thenReturn(
             new SearchResultListMapper(List.of(Map.of("id", candidate.getId().toString())), 1));
     when(repository.get(
@@ -137,13 +144,17 @@ class SemanticMemoryDuplicateFinderTest {
 
     ContextMemory found =
         new SemanticMemoryDuplicateFinder(
-                repository, () -> vectorService, () -> searchRepository, completionClient)
+                repository,
+                () -> vectorService,
+                () -> searchRepository,
+                completionClient,
+                () -> SYSTEM)
             .findEquivalent(
                 memory(UUID.randomUUID(), candidate.getQuestion(), candidate.getAnswer()));
 
     assertEquals(candidate, found);
     ArgumentCaptor<SearchRequest> request = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(searchClient).searchForExport(request.capture(), isNull());
+    verify(searchClient).searchForExport(request.capture(), eq(SYSTEM));
     assertTrue(request.getValue().getQuery().contains("what is churn"));
     assertTrue(request.getValue().getQueryFilter().contains("FileExtraction"));
   }
@@ -151,16 +162,20 @@ class SemanticMemoryDuplicateFinderTest {
   @Test
   void unavailableSearchDoesNotCreateAnUncheckedDuplicate() throws Exception {
     when(vectorService.search(
-            anyString(), any(), eq(5), eq(0), eq(20), eq(0.0), isNull(), isNull()))
+            anyString(), any(), eq(5), eq(0), eq(20), eq(0.0), isNull(), eq(SYSTEM)))
         .thenThrow(new IllegalStateException("vector index unavailable"));
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
     when(searchRepository.getIndexOrAliasName("contextMemory"))
         .thenReturn("context_memory_search_index");
-    when(searchClient.searchForExport(any(SearchRequest.class), isNull()))
+    when(searchClient.searchForExport(any(SearchRequest.class), eq(SYSTEM)))
         .thenThrow(new IOException("search index unavailable"));
     SemanticMemoryDuplicateFinder finder =
         new SemanticMemoryDuplicateFinder(
-            repository, () -> vectorService, () -> searchRepository, completionClient);
+            repository,
+            () -> vectorService,
+            () -> searchRepository,
+            completionClient,
+            () -> SYSTEM);
 
     assertThrows(
         IllegalStateException.class,

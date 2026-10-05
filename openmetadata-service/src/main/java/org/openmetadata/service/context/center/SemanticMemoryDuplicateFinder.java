@@ -30,6 +30,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /** Finds an existing org-visible extracted fact before a new file creates another memory. */
 @Slf4j
@@ -49,23 +50,35 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   private final Supplier<VectorIndexService> vectorServiceSupplier;
   private final Supplier<SearchRepository> searchRepositorySupplier;
   private final LLMCompletionClient completionClient;
+  private final Supplier<SubjectContext> searchSubject;
 
+  /**
+   * Searches as the admin that owns every extracted memory: an anonymous search admits only
+   * unanchored memories, and every extracted memory is anchored to its source.
+   */
   public SemanticMemoryDuplicateFinder(
       ContextMemoryRepository repository,
       Supplier<VectorIndexService> vectorServiceSupplier,
       LLMCompletionClient completionClient) {
-    this(repository, vectorServiceSupplier, Entity::getSearchRepository, completionClient);
+    this(
+        repository,
+        vectorServiceSupplier,
+        Entity::getSearchRepository,
+        completionClient,
+        () -> SubjectContext.getSubjectContext(Entity.ADMIN_USER_NAME));
   }
 
   SemanticMemoryDuplicateFinder(
       ContextMemoryRepository repository,
       Supplier<VectorIndexService> vectorServiceSupplier,
       Supplier<SearchRepository> searchRepositorySupplier,
-      LLMCompletionClient completionClient) {
+      LLMCompletionClient completionClient,
+      Supplier<SubjectContext> searchSubject) {
     this.repository = repository;
     this.vectorServiceSupplier = vectorServiceSupplier;
     this.searchRepositorySupplier = searchRepositorySupplier;
     this.completionClient = completionClient;
+    this.searchSubject = searchSubject;
   }
 
   @Override
@@ -80,21 +93,22 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   private List<ContextMemory> candidates(ContextMemory derived) {
+    SubjectContext subject = searchSubject.get();
     VectorIndexService vectorService = vectorServiceSupplier.get();
     if (vectorService == null) {
-      return keywordCandidates(derived);
+      return keywordCandidates(derived, subject);
     }
     try {
-      List<ContextMemory> vectorMatches = vectorCandidates(vectorService, derived);
-      return vectorMatches.isEmpty() ? keywordCandidates(derived) : vectorMatches;
+      List<ContextMemory> vectorMatches = vectorCandidates(vectorService, derived, subject);
+      return vectorMatches.isEmpty() ? keywordCandidates(derived, subject) : vectorMatches;
     } catch (RuntimeException e) {
       LOG.warn("Vector memory lookup failed; checking the memory search index", e);
-      return keywordCandidates(derived);
+      return keywordCandidates(derived, subject);
     }
   }
 
   private List<ContextMemory> vectorCandidates(
-      VectorIndexService vectorService, ContextMemory derived) {
+      VectorIndexService vectorService, ContextMemory derived, SubjectContext subject) {
     Map<String, List<String>> filters =
         Map.of(
             "entityType", List.of(Entity.CONTEXT_MEMORY),
@@ -109,11 +123,11 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
             KNN_LIMIT,
             0,
             null,
-            null);
+            subject);
     return loadCandidates(response == null ? null : response.getHits(), derived);
   }
 
-  private List<ContextMemory> keywordCandidates(ContextMemory derived) {
+  private List<ContextMemory> keywordCandidates(ContextMemory derived, SubjectContext subject) {
     SearchRepository searchRepository = searchRepositorySupplier.get();
     if (searchRepository == null || searchRepository.getSearchClient() == null) {
       throw new IllegalStateException("Memory search index is unavailable");
@@ -130,7 +144,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
             .withIncludeAggregations(false);
     try {
       SearchResultListMapper result =
-          searchRepository.getSearchClient().searchForExport(request, null);
+          searchRepository.getSearchClient().searchForExport(request, subject);
       return loadCandidates(result.getResults(), derived);
     } catch (IOException e) {
       throw new IllegalStateException("Memory search index lookup failed", e);
