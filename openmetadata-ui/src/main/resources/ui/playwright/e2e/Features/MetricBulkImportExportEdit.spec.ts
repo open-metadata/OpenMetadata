@@ -1212,7 +1212,8 @@ test.describe(
             `team:${fixtures.reviewer.name}`,
             fixtures.domain.fullyQualifiedName,
             fixtures.dataProduct.fullyQualifiedName,
-            'Approved',
+            // MetricApprovalWorkflow owns metric stages, so a CSV row cannot move one; blank keeps it.
+            '',
             `${metricCustomPropertyName}:updated custom value`,
             '',
             '',

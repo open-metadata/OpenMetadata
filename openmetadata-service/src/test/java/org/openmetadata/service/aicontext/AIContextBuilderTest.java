@@ -33,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -49,6 +48,7 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -283,12 +283,12 @@ class AIContextBuilderTest {
         AIContextBuilder.isActivePill(new ContextMemory()),
         "pre-lifecycle memories (no status) stay visible");
     assertTrue(
-        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ACTIVE)));
+        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.APPROVED)));
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.DRAFT)),
+        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.DRAFT)),
         "Draft memories are not settled knowledge");
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ARCHIVED)),
+        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.ARCHIVED)),
         "Archived memories must not reach agents as current context");
   }
 

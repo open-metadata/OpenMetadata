@@ -19,6 +19,7 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../generated/entity/data/metric';
+import { Pipeline } from '../generated/entity/data/pipeline';
 import { getDataAssetsVersionHeaderInfo } from './DataAssetsVersionHeaderUtils';
 
 const mockMetric = {
@@ -55,6 +56,33 @@ describe('DataAssetsVersionHeaderUtils', () => {
     expect(screen.getByText('Leads')).toBeInTheDocument();
     expect(screen.queryByText(UnitOfMeasurement.Other)).not.toBeInTheDocument();
   });
+
+  it.each([
+    ['https://airflow.example.com/dag', true],
+    ['javascript:alert(1)', false],
+  ])(
+    'should only link a pipeline sourceUrl when it is http(s): %s',
+    (sourceUrl, isLink) => {
+      const pipeline = {
+        id: 'id',
+        name: 'etl',
+        sourceUrl,
+        changeDescription: {
+          fieldsAdded: [],
+          fieldsUpdated: [],
+          fieldsDeleted: [],
+        },
+      } as unknown as Pipeline;
+
+      render(
+        <>{getDataAssetsVersionHeaderInfo(EntityType.PIPELINE, pipeline)}</>
+      );
+
+      expect(screen.getByText('etl').closest('a')?.getAttribute('href')).toBe(
+        isLink ? sourceUrl : null
+      );
+    }
+  );
 
   describe('metric unit version diff direction', () => {
     const baseMetric = {
