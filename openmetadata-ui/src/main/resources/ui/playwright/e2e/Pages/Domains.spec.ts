@@ -115,7 +115,7 @@ const test = base.extend<{
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await setPage(page);
     await page.close();
   },
@@ -3441,7 +3441,10 @@ test.describe('Domain asset dryRun — add confirmation', () => {
       .getByTestId('searchbar')
       .fill(name);
     await searchRes;
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   };
 
   test('shows preview modal on cross-domain move and commits on Move Anyway', async ({
@@ -3783,10 +3786,11 @@ test.describe('Domain description editor popups', () => {
 
     await test.step('Mention popup inserts a user mention', async () => {
       await description.pressSequentially(' @admin');
+      // hasText is a case-insensitive substring match, so plain 'admin' also
+      // picks up team entries like "Legal Admin"; require an exact name node.
       await page
         .locator('.mention-item')
-        .filter({ hasText: 'admin' })
-        .first()
+        .filter({ has: page.getByText('admin', { exact: true }) })
         .click();
 
       await expect(description.locator('a[data-type="mention"]')).toBeVisible();

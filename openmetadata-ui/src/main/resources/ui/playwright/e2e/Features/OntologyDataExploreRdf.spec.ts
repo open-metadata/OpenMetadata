@@ -35,7 +35,7 @@ import {
 const suffix = uuid().replaceAll('-', '');
 const fixture = new OntologyRdfFixture(`pw_data_${suffix}`);
 const foreignFixture = new OntologyRdfFixture(`pw_data_foreign_${suffix}`);
-const tableFixture = new TableClass(`pw_data_asset_${suffix}_0`);
+const tableFixture = new TableClass({ name: `pw_data_asset_${suffix}_0` });
 const PRIMARY_ASSET_COUNT = 101;
 const PAGINATION_DECOY_COUNT = 11;
 const SELECTED_GLOSSARY_TERM_COUNT = PAGINATION_DECOY_COUNT + 3;

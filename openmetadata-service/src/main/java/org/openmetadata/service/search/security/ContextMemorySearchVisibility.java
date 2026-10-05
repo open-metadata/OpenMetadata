@@ -82,22 +82,30 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * Returns a filter admitting only org-wide ({@link MemoryVisibility#ENTITY}) memories. This is the
-   * fail-closed default for search paths that carry no {@link SubjectContext} and therefore cannot
-   * decide who a restricted memory belongs to — they get the memories everyone may read and nothing
-   * else. Like {@link #buildVisibilityFilter}, non-memory documents always pass.
+   * Returns a filter admitting only org-wide memories and files. This is the fail-closed default for
+   * search paths that carry no {@link SubjectContext} and therefore cannot decide who a restricted
+   * document belongs to. Documents without per-entity visibility rules always pass.
    */
   public OMQueryBuilder buildOrgWideOnlyFilter() {
-    OMQueryBuilder orgWide =
+    OMQueryBuilder orgWideMemory =
+        queryBuilderFactory
+            .boolQuery()
+            .should(
+                List.of(
+                    queryBuilderFactory.termQuery(
+                        FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
+                    queryBuilderFactory.termQuery(
+                        FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value())));
+    OMQueryBuilder orgWideFile =
         queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value());
     return scopeGovernedTypes(
-        orgWide, queryBuilderFactory.boolQuery().should(List.of(unstamped(), orgWide)));
+        orgWideMemory, queryBuilderFactory.boolQuery().should(List.of(unstamped(), orgWideFile)));
   }
 
   /**
    * The document-level equivalent of {@link #buildOrgWideOnlyFilter}, for fetch-by-id paths that
-   * run no query to filter. Returns false only for a restricted (non-org-wide) context memory;
-   * every other document passes.
+   * run no query to filter. Returns false for restricted memories and files; documents without
+   * per-entity visibility rules pass.
    */
   public static boolean isOrgWideReadable(Map<String, Object> document) {
     boolean readable = true;
@@ -105,7 +113,9 @@ public class ContextMemorySearchVisibility {
       Object entityType = document.get(FIELD_ENTITY_TYPE);
       Object visibility = document.get(FIELD_VISIBILITY);
       if (Entity.CONTEXT_MEMORY.equals(entityType)) {
-        readable = MemoryVisibility.ENTITY.value().equals(visibility);
+        readable =
+            MemoryVisibility.ENTITY.value().equals(visibility)
+                || MemoryVisibility.PUBLIC.value().equals(visibility);
       } else if (Entity.CONTEXT_FILE.equals(entityType)) {
         readable = visibility == null || MemoryVisibility.ENTITY.value().equals(visibility);
       }
@@ -135,7 +145,7 @@ public class ContextMemorySearchVisibility {
   }
 
   private OMQueryBuilder buildFilter(User user) {
-    return scopeGovernedTypes(buildVisibleToUserClause(user), buildVisibleFileClause(user));
+    return scopeGovernedTypes(buildVisibleToUserClause(user, true), buildVisibleFileClause(user));
   }
 
   /**
@@ -177,7 +187,7 @@ public class ContextMemorySearchVisibility {
   private OMQueryBuilder buildVisibleFileClause(User user) {
     return queryBuilderFactory
         .boolQuery()
-        .should(List.of(unstamped(), buildVisibleToUserClause(user)));
+        .should(List.of(unstamped(), buildVisibleToUserClause(user, false)));
   }
 
   private OMQueryBuilder unstamped() {
@@ -186,9 +196,12 @@ public class ContextMemorySearchVisibility {
         .mustNot(List.of(queryBuilderFactory.existsQuery(FIELD_VISIBILITY)));
   }
 
-  private OMQueryBuilder buildVisibleToUserClause(User user) {
+  private OMQueryBuilder buildVisibleToUserClause(User user, boolean allowPublic) {
     List<OMQueryBuilder> clauses = new ArrayList<>();
     clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    if (allowPublic) {
+      clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
+    }
     clauses.add(
         queryBuilderFactory.nestedQuery(
             FIELD_OWNERS, queryBuilderFactory.termQuery(FIELD_OWNERS_ID, user.getId().toString())));

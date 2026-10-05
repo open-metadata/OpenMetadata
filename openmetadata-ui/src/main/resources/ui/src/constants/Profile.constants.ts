@@ -19,4 +19,5 @@ export const PROFILE_NAV_IDS = new Set([
   'access-control',
   'custom-properties',
   'notification',
+  'governance',
 ]);

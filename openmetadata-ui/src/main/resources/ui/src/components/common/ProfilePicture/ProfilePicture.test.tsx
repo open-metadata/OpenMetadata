@@ -91,4 +91,20 @@ describe('Test ProfilePicture component', () => {
       expect.objectContaining({ size: 'md' })
     );
   });
+
+  it('paints the ring in the fill hue only when asked to', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} matchRingToFill />);
+    render(<ProfilePicture {...mockData} />);
+
+    const [matched, plain] = (Avatar as jest.Mock).mock.calls.map(
+      ([props]) => props.style
+    );
+    const hue = matched.backgroundColor.match(/hsl\((\d+)/)[1];
+
+    expect(matched.borderColor).toBe(`hsl(${hue}, 70%, 80%)`);
+    expect(plain.borderColor).toBeUndefined();
+  });
 });
