@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.ResponseBudget;
 
 /**
  * Shared payload-trimming primitives for MCP tools. The truncation budgets, the response size cap,
@@ -39,7 +39,7 @@ public final class McpResponseTrim {
   public static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
 
   /** Final safety net: even slimmed, a wide payload can blow the LLM/MCP context limit. */
-  public static final int MAX_RESPONSE_CHARS = 100_000;
+  public static final int MAX_RESPONSE_CHARS = ResponseBudget.DEFAULT_MAX_RESPONSE_CHARS;
 
   /**
    * Machine-readable marker keys shared by tools, the dispatch layer and MCP clients. A tool signals
@@ -242,7 +242,7 @@ public final class McpResponseTrim {
 
   /** Serialized JSON length of a result, used by the size-budget checks. */
   public static int serializedLength(Object result) {
-    return JsonUtils.pojoToJson(result).length();
+    return ResponseBudget.serializedLength(result);
   }
 
   /**

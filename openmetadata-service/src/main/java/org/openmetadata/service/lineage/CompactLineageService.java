@@ -14,7 +14,6 @@ import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.Authorizer;
@@ -49,7 +48,7 @@ public class CompactLineageService {
   public CompactLineage getLineage(CompactLineageRequest request, SecurityContext securityContext) {
     authorizeRoot(request, securityContext);
     String column = requireExistingColumn(request, securityContext);
-    LOG.info(
+    LOG.debug(
         "Getting compact lineage for {} '{}', upstreamDepth: {}, downstreamDepth: {}, column: {}",
         request.entityType(),
         request.fqn(),
@@ -57,13 +56,19 @@ public class CompactLineageService {
         request.downstreamDepth(),
         column);
     VisibleGraph graph = visibleGraph(request, column, securityContext);
-    CompactLineage page =
-        LineageEdgePager.page(
-            CompactLineageSlimmer.toSlim(
-                graph.lineage(), request.edgeOptions(), graph.pipelineVisible()),
-            request.from(),
-            request.limit(),
-            request.maxResponseChars());
+    return describeVisibility(page(request, graph), graph);
+  }
+
+  private static CompactLineage page(CompactLineageRequest request, VisibleGraph graph) {
+    return LineageEdgePager.page(
+        CompactLineageSlimmer.toSlim(
+            graph.lineage(), request.edgeOptions(), graph.pipelineVisible()),
+        request.from(),
+        request.limit(),
+        request.maxResponseChars());
+  }
+
+  private static CompactLineage describeVisibility(CompactLineage page, VisibleGraph graph) {
     return page.withColumnUnmappedEdges(graph.columnUnmappedEdges())
         .withHiddenNodes(graph.filtered().hiddenNodes() + graph.domainHiddenNodes())
         .withHiddenNodesUnchecked(graph.filtered().hiddenUnchecked())
@@ -90,12 +95,8 @@ public class CompactLineageService {
     if (column != null) {
       ColumnLineageScope.requireColumnOf(request.fqn(), column);
       EntityInterface entity =
-          Entity.getEntityByName(
-              request.entityType(),
-              request.fqn(),
-              ContextMemoryVisibility.guardFields(request.entityType(), ""),
-              Include.NON_DELETED);
-      ContextMemoryVisibility.enforceVisibility(entity, securityContext);
+          ContextMemoryVisibility.readEntityForCaller(
+              request.entityType(), request.fqn(), "", Include.NON_DELETED, securityContext);
       ColumnLineageScope.requireColumnExists(entity, column);
     }
     return column;

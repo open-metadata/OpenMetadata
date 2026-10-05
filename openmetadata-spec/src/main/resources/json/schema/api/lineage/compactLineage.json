@@ -27,7 +27,6 @@
         "source": { "description": "How the edge was recorded (for example query lineage or manual).", "type": "string" },
         "assetEdges": { "description": "Number of asset-level edges this edge stands for.", "type": "integer" },
         "sqlQuery": { "description": "The transformation SQL, only when it was requested.", "type": "string" },
-        "sqlTruncated": { "description": "True when the returned SQL was cut.", "type": "boolean" },
         "hasSql": { "description": "True when the edge has transformation SQL, whether or not it was returned.", "type": "boolean" },
         "tempLineageTables": {
           "description": "Temporary-table hops parsed from the SQL, only when the SQL was requested.",

@@ -15,7 +15,7 @@ package org.openmetadata.mcp.tools;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
-import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.service.util.ResponseBudget;
 
 /**
  * Size-bounding for the opaque RDF payloads (SPARQL bodies, Turtle graphs, SHACL reports) the

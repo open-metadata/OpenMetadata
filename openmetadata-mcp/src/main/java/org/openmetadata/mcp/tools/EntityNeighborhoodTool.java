@@ -23,9 +23,9 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.util.ResponseBudget;
 
 /** Returns the bounded n-hop RDF neighborhood of an entity. */
 @Slf4j

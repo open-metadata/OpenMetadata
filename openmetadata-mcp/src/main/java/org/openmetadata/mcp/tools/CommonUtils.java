@@ -43,11 +43,8 @@ public class CommonUtils {
       String fields,
       Include include,
       SecurityContext securityContext) {
-    EntityInterface entity =
-        Entity.getEntityByName(
-            entityType, fqn, ContextMemoryVisibility.guardFields(entityType, fields), include);
-    ContextMemoryVisibility.enforceVisibility(entity, securityContext);
-    return entity;
+    return ContextMemoryVisibility.readEntityForCaller(
+        entityType, fqn, fields, include, securityContext);
   }
 
   /**

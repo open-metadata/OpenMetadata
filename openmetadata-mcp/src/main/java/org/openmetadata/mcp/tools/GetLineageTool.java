@@ -56,17 +56,18 @@ public class GetLineageTool implements McpTool {
   }
 
   private static CompactLineageRequest toRequest(Map<String, Object> params) {
-    return new CompactLineageRequest(
-        (String) params.get("entityType"),
-        (String) params.get("fqn"),
-        clampDepth(McpParams.getInt(params, "upstreamDepth", DEFAULT_DEPTH)),
-        clampDepth(McpParams.getInt(params, "downstreamDepth", DEFAULT_DEPTH)),
-        McpParams.getString(params, PARAM_COLUMN, null),
-        McpParams.getBoolean(params, PARAM_INCLUDE_COLUMN_LINEAGE, false),
-        McpParams.getBoolean(params, PARAM_INCLUDE_SQL, false),
-        VectorPagingContract.cursorOffsetOrDefault(params, 0),
-        Integer.MAX_VALUE,
-        McpResponseTrim.MAX_RESPONSE_CHARS);
+    return CompactLineageRequest.builder()
+        .entityType((String) params.get("entityType"))
+        .fqn((String) params.get("fqn"))
+        .upstreamDepth(clampDepth(McpParams.getInt(params, "upstreamDepth", DEFAULT_DEPTH)))
+        .downstreamDepth(clampDepth(McpParams.getInt(params, "downstreamDepth", DEFAULT_DEPTH)))
+        .column(McpParams.getString(params, PARAM_COLUMN, null))
+        .includeColumnLineage(McpParams.getBoolean(params, PARAM_INCLUDE_COLUMN_LINEAGE, false))
+        .includeSql(McpParams.getBoolean(params, PARAM_INCLUDE_SQL, false))
+        .from(VectorPagingContract.cursorOffsetOrDefault(params, 0))
+        .limit(Integer.MAX_VALUE)
+        .maxResponseChars(McpResponseTrim.MAX_RESPONSE_CHARS)
+        .build();
   }
 
   @VisibleForTesting
@@ -127,10 +128,12 @@ public class GetLineageTool implements McpTool {
     appendMessage(
         result,
         String.format(
-            "%d edge(s) were too large for any response and were skipped; %d of them are named in"
+            "%d edge(s) were too large for any response and were skipped; up to %d are named in"
                 + " '%s'. Their size is usually SQL (includeSql) or a very long column-mapping"
                 + " list (includeColumnLineage); without those they can be returned.",
-            page.getOversizedEdgeCount(), named.size(), OVERSIZED_EDGES_KEY));
+            page.getOversizedEdgeCount(),
+            LineageEdgePager.MAX_NAMED_OVERSIZED_EDGES,
+            OVERSIZED_EDGES_KEY));
   }
 
   /**

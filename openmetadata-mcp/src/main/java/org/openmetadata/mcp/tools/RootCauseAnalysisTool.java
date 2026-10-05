@@ -20,7 +20,6 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
-import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -40,6 +39,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ResponseBudget;
 
 @Slf4j
 public class RootCauseAnalysisTool implements McpTool {

@@ -53,19 +53,31 @@ public final class LineageGraphPruner {
   private static Set<UUID> reachableNodeIds(UUID rootId, Set<UUID> visible, EntityLineage lineage) {
     Set<UUID> reachable = new HashSet<>();
     if (visible.contains(rootId)) {
-      Map<UUID, Set<UUID>> adjacency = buildAdjacency(lineage, visible);
-      Deque<UUID> queue = new ArrayDeque<>();
-      queue.add(rootId);
-      reachable.add(rootId);
-      while (!queue.isEmpty()) {
-        for (UUID neighbor : adjacency.getOrDefault(queue.poll(), Set.of())) {
-          if (reachable.add(neighbor)) {
-            queue.add(neighbor);
-          }
+      reachable.addAll(hopsFrom(rootId, buildAdjacency(lineage, visible)).keySet());
+    }
+    return reachable;
+  }
+
+  /** Hops from the root to every node it reaches, ignoring edge direction. */
+  static Map<UUID, Integer> hopsFromRoot(EntityLineage lineage) {
+    UUID rootId = lineage.getEntity().getId();
+    Set<UUID> everyNode = new HashSet<>(Set.of(rootId));
+    listOrEmpty(lineage.getNodes()).forEach(node -> everyNode.add(node.getId()));
+    return hopsFrom(rootId, buildAdjacency(lineage, everyNode));
+  }
+
+  private static Map<UUID, Integer> hopsFrom(UUID rootId, Map<UUID, Set<UUID>> adjacency) {
+    Map<UUID, Integer> hops = new HashMap<>(Map.of(rootId, 0));
+    Deque<UUID> queue = new ArrayDeque<>(List.of(rootId));
+    while (!queue.isEmpty()) {
+      UUID node = queue.poll();
+      for (UUID neighbor : adjacency.getOrDefault(node, Set.of())) {
+        if (hops.putIfAbsent(neighbor, hops.get(node) + 1) == null) {
+          queue.add(neighbor);
         }
       }
     }
-    return reachable;
+    return hops;
   }
 
   /**

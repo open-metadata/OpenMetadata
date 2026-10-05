@@ -99,6 +99,23 @@ public final class ContextMemoryVisibility {
     }
   }
 
+  /**
+   * Reads an entity by name for the caller, applying the visibility rule every read of a governed
+   * type needs. One implementation for the MCP tools and the REST endpoints that read on a caller's
+   * behalf, so a rule added here covers both.
+   */
+  public static EntityInterface readEntityForCaller(
+      String entityType,
+      String fqn,
+      String fields,
+      Include include,
+      SecurityContext securityContext) {
+    EntityInterface entity =
+        Entity.getEntityByName(entityType, fqn, guardFields(entityType, fields), include);
+    enforceVisibility(entity, securityContext);
+    return entity;
+  }
+
   /** Whether reads of {@code entityType} are governed by a per-entity visibility rule. */
   public static boolean hasVisibilityRules(String entityType) {
     return Entity.CONTEXT_MEMORY.equals(entityType);

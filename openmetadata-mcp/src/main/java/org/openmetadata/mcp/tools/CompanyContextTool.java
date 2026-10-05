@@ -12,7 +12,6 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
-import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
@@ -29,6 +28,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.ResponseBudget;
 
 /**
  * Reads Company Context knowledge pills, by question or by name.
