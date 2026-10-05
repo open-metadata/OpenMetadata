@@ -64,6 +64,7 @@ export const UserTeamSelectableList = ({
   multiple = { user: false, team: false },
   label,
   previewSelected = false,
+  showTeamsTab = true,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
   tooltipText,
   overlayClassName,
@@ -81,7 +82,9 @@ export const UserTeamSelectableList = ({
   // unaffected (they start closed anyway).
   const [isMounted, setIsMounted] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
+  const [activeTab, setActiveTab] = useState<'teams' | 'users'>(
+    showTeamsTab ? 'teams' : 'users'
+  );
   const [count, setCount] = useState({ team: 0, user: 0 });
   // react-aria Tabs unmount the inactive panel, so each SelectableList
   // re-mounts (and would re-fetch) every time its tab is re-activated. Cache
@@ -441,27 +444,16 @@ export const UserTeamSelectableList = ({
       </div>
     ) : null;
 
-  const popoverContent = (
-    // Stop click/enter from bubbling to parent collapsible panels
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div
-      className="tw:w-80"
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}>
-      {renderPreviewSection()}
-      <Tabs
-        data-testid="select-owner-tabs"
-        selectedKey={activeTab}
-        onSelectionChange={(key) => setActiveTab(key as 'teams' | 'users')}>
-        <Tabs.List className="tw:px-2 tw:pt-2" size="sm" type="underline">
-          <Tabs.Item badge={count.team} id="teams">
-            {t('label.team-plural')}
-          </Tabs.Item>
-          <Tabs.Item badge={count.user} id="users">
-            {t('label.user-plural')}
-          </Tabs.Item>
-        </Tabs.List>
-        <Tabs.Panel data-testid="owner-select-teams-panel" id="teams">
+  // Built via a single conditional (keeps the component under the cyclomatic cap)
+  const [teamsTabItem, teamsTabPanel] = showTeamsTab
+    ? [
+        <Tabs.Item badge={count.team} id="teams" key="teams-item">
+          {t('label.team-plural')}
+        </Tabs.Item>,
+        <Tabs.Panel
+          data-testid="owner-select-teams-panel"
+          id="teams"
+          key="teams-panel">
           <SelectableList
             customTagRenderer={TeamListItemRenderer}
             fetchOptions={fetchTeamOptions}
@@ -476,7 +468,29 @@ export const UserTeamSelectableList = ({
             onChange={isMultiTeam ? handleChange : noop}
             onUpdate={handleUpdate}
           />
-        </Tabs.Panel>
+        </Tabs.Panel>,
+      ]
+    : [null, null];
+
+  const popoverContent = (
+    // Stop click/enter from bubbling to parent collapsible panels
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
+      className="tw:w-80"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}>
+      {renderPreviewSection()}
+      <Tabs
+        data-testid="select-owner-tabs"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => setActiveTab(key as 'teams' | 'users')}>
+        <Tabs.List className="tw:px-2 tw:pt-2" size="sm" type="underline">
+          {teamsTabItem}
+          <Tabs.Item badge={count.user} id="users">
+            {t('label.user-plural')}
+          </Tabs.Item>
+        </Tabs.List>
+        {teamsTabPanel}
         <Tabs.Panel data-testid="owner-select-users-panel" id="users">
           <SelectableList
             fetchOptions={fetchUserOptions}

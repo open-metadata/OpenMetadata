@@ -64,6 +64,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
                 hasPermission
                 multiple={{ user: true, team: false }}
                 owner={team.users ?? []}
+                showTeamsTab={false}
                 onUpdate={(users) => onAddUsers(users ?? [])}>
                 <Button color="primary" data-testid="add-user" size="sm">
                   {t('label.add-entity', { entity: t('label.user') })}
