@@ -189,10 +189,14 @@ const TeamsPage = () => {
       : advancedFetchIdRef.current;
     const isLatestFullRefresh = () =>
       !isFullRefresh || fetchId === advancedFetchIdRef.current;
+    // The whole-table skeleton flag belongs to full refreshes only. Guard both the set and the clear
+    // on this, so an expand never toggles it — not even to false while a full refresh is mid-flight.
+    const isActiveFullRefresh = () =>
+      isFullRefresh && fetchId === advancedFetchIdRef.current;
     loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
-    // Whole-table count skeletons are for full refreshes only; an expand fetches one subtree and
-    // must not blank every row's columns.
-    setIsFetchAllTeamAdvancedDetails(isFullRefresh);
+    if (isFullRefresh) {
+      setIsFetchAllTeamAdvancedDetails(true);
+    }
 
     try {
       const { data } = await getTeams({
@@ -218,8 +222,8 @@ const TeamsPage = () => {
         showErrorToast(error as AxiosError, t('server.unexpected-response'));
       }
     } finally {
-      // A superseded full refresh leaves the loading flag to the newer one, so skeletons stay up.
-      if (isLatestFullRefresh()) {
+      // Clear only the latest full refresh's flag; an expand or a superseded refresh leaves it alone.
+      if (isActiveFullRefresh()) {
         setIsFetchAllTeamAdvancedDetails(false);
       }
       loading && setIsDataLoading((isDataLoading) => --isDataLoading);
