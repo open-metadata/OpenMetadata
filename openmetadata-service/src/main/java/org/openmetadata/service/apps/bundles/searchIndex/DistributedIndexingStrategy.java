@@ -438,7 +438,9 @@ public class DistributedIndexingStrategy {
       stats.getEntityStats().getAdditionalProperties().put(entityType, entityStats);
     }
 
-    if (entities.contains(Entity.TABLE) && !entities.contains(Entity.TABLE_COLUMN)) {
+    if (entities.contains(Entity.TABLE)
+        && !entities.contains(Entity.TABLE_COLUMN)
+        && searchRepository.isColumnIndexingEnabled()) {
       StepStats columnEntityStats = new StepStats();
       columnEntityStats.setTotalRecords(0);
       columnEntityStats.setSuccessRecords(0);
