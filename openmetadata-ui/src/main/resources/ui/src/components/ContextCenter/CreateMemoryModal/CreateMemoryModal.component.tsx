@@ -80,6 +80,7 @@ import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
+  EntityReference,
   EntityStatus,
   MemoryType,
   ShareVisibility,
@@ -655,10 +656,38 @@ const getEntityStatusColor = (
   return 'gray';
 };
 
+// Navigating from the editor would open the successor over unsaved edits, so it
+// only links in view mode.
+const MemorySuccessor: FC<{
+  successor: EntityReference;
+  isViewOnly: boolean;
+}> = ({ successor, isViewOnly }) => {
+  const successorName = successor.fullyQualifiedName || successor.name;
+
+  return isViewOnly && successorName ? (
+    <Link
+      className="tw:text-brand-secondary tw:hover:underline"
+      data-testid="memory-lifecycle-successor"
+      to={`${ROUTES.CONTEXT_CENTER_MEMORIES}?memory=${encodeURIComponent(
+        successorName
+      )}`}>
+      {getEntityName(successor)}
+    </Link>
+  ) : (
+    <Typography
+      className="tw:text-tertiary"
+      data-testid="memory-lifecycle-successor"
+      size="text-sm">
+      {successorName ? getEntityName(successor) : successor.id}
+    </Typography>
+  );
+};
+
 const MemoryLifecycleRows: FC<{
   memoryToEdit?: ContextMemory;
+  isViewOnly: boolean;
   t: TFunc;
-}> = ({ memoryToEdit, t }) => (
+}> = ({ memoryToEdit, isViewOnly, t }) => (
   <>
     {memoryToEdit?.entityStatus && (
       <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
@@ -699,25 +728,10 @@ const MemoryLifecycleRows: FC<{
               {t('label.superseded-by')}
             </Typography>
           </div>
-          {memoryToEdit.supersededBy.fullyQualifiedName ||
-          memoryToEdit.supersededBy.name ? (
-            <Link
-              className="tw:text-brand-secondary tw:hover:underline"
-              data-testid="memory-lifecycle-successor"
-              to={`${
-                ROUTES.CONTEXT_CENTER_MEMORIES
-              }?memory=${encodeURIComponent(
-                memoryToEdit.supersededBy.fullyQualifiedName ??
-                  memoryToEdit.supersededBy.name ??
-                  ''
-              )}`}>
-              {getEntityName(memoryToEdit.supersededBy)}
-            </Link>
-          ) : (
-            <Typography className="tw:text-tertiary" size="text-sm">
-              {memoryToEdit.supersededBy.id}
-            </Typography>
-          )}
+          <MemorySuccessor
+            isViewOnly={isViewOnly}
+            successor={memoryToEdit.supersededBy}
+          />
         </div>
       )}
   </>
@@ -725,10 +739,15 @@ const MemoryLifecycleRows: FC<{
 
 const MemoryMetadataExtraRows: FC<{
   memoryToEdit?: ContextMemory;
+  isViewOnly: boolean;
   t: TFunc;
-}> = ({ memoryToEdit, t }) => (
+}> = ({ memoryToEdit, isViewOnly, t }) => (
   <>
-    <MemoryLifecycleRows memoryToEdit={memoryToEdit} t={t} />
+    <MemoryLifecycleRows
+      isViewOnly={isViewOnly}
+      memoryToEdit={memoryToEdit}
+      t={t}
+    />
     {Boolean(memoryToEdit?.updatedAt) && (
       <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
         <div className="tw:basis-[30%]">
@@ -804,7 +823,11 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
         t={t}
       />
 
-      <MemoryMetadataExtraRows memoryToEdit={memoryToEdit} t={t} />
+      <MemoryMetadataExtraRows
+        isViewOnly={isViewOnly}
+        memoryToEdit={memoryToEdit}
+        t={t}
+      />
     </Card>
   </div>
 );

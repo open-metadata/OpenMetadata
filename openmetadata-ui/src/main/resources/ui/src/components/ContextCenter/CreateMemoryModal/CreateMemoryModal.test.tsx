@@ -771,4 +771,27 @@ describe('CreateMemoryModal', () => {
       '/context-center/memories?memory=new-memory'
     );
   });
+
+  it('does not offer successor navigation while the memory is being edited', () => {
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          canEdit
+          memoryToEdit={{
+            id: 'old-memory',
+            name: 'old-memory',
+            entityStatus: EntityStatus.Deprecated,
+            supersededBy: {
+              id: 'new-memory',
+              type: 'contextMemory',
+              name: 'new-memory',
+            },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('new-memory')).not.toHaveAttribute('href');
+  });
 });

@@ -16,6 +16,7 @@ import { MEMORY_TYPE_OPTIONS } from '../../../constants/ContextCenter.constants'
 import {
   ContextMemory,
   EntityReference,
+  MemoryType,
   ShareVisibility,
 } from '../../../generated/entity/context/contextMemory';
 import { queryClient } from '../../../queryClient';
@@ -43,6 +44,17 @@ export const removeAssetByKey = (
   assets: DataAssetOption[],
   fqn: string
 ): DataAssetOption[] => assets.filter((asset) => getAssetKey(asset) !== fqn);
+
+// The form offers only the types people choose by hand, so a stored type it
+// cannot show (an agent's Learning) survives unless the editor picks another.
+const resolveMemoryType = (
+  stored: MemoryType | undefined,
+  selected: MemoryType | undefined
+): MemoryType | undefined =>
+  selected ??
+  (MEMORY_TYPE_OPTIONS.some((option) => option.id === stored)
+    ? undefined
+    : stored);
 
 // Patches only the fields that actually changed, preserving a pre-existing
 // shareConfig — or adding one — only when there is a reason to (an existing
@@ -89,7 +101,7 @@ export const submitMemoryUpdate = async ({
     summary: '',
     answer: memory.trim(),
     question: memory.trim(),
-    memoryType: memoryTypeValue,
+    memoryType: resolveMemoryType(memoryToEdit.memoryType, memoryTypeValue),
     tags: selectedTags,
     primaryEntity,
     relatedEntities,
