@@ -19,15 +19,34 @@ import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../enums/entity.enum';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { Persona } from '../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../generated/entity/type';
 import { getAllPersonas, searchPersonas } from '../../../rest/PersonaAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PersonaSelectProps } from './PersonaSelect.types';
-import {
-  entityRefToTreeNode,
-  personasToTreeNodes,
-} from './PersonaSelect.utils';
+
+// Map an EntityReference into a flat, leaf TreeSelect node that round-trips the
+// reference in `data` (personas have no hierarchy).
+const entityRefToTreeNode = (
+  ref: EntityReference
+): TreeSelectNode<EntityReference> => {
+  const id = ref.fullyQualifiedName ?? ref.name ?? ref.id;
+
+  return { id, value: id, label: getEntityName(ref), data: ref, isLeaf: true };
+};
+
+const personasToTreeNodes = (
+  personas: Persona[]
+): TreeSelectNode<EntityReference>[] =>
+  personas.map((persona) =>
+    entityRefToTreeNode(
+      getEntityReferenceFromEntity<Persona>(persona, EntityType.PERSONA)
+    )
+  );
 
 const withPersonaIcon = (
   nodes: TreeSelectNode<EntityReference>[]

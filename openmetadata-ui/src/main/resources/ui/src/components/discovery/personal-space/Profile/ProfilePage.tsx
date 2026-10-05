@@ -54,7 +54,7 @@ import {
   PROFILE_NAV_ITEMS,
   WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
-import { resolveProfileTarget } from './ProfilePage.utils';
+import { safeDecodeURIComponent } from './tabs/members/Members.utils';
 import ProfileSideNav from './ProfileSideNav';
 
 const ProfilePage: React.FC = () => {
@@ -86,10 +86,21 @@ const ProfilePage: React.FC = () => {
   currentUserRef.current = currentUser;
   const { state: hashState, setHash } = useSettingsHash();
 
-  const { targetUsername, isViewingOtherUser } = useMemo(
-    () => resolveProfileTarget(hashState, currentUser?.name),
-    [hashState, currentUser?.name]
-  );
+  // The `profile` tab may deep-link to another user via its sub-path
+  // (`#profile/<username>`); fall back to the current user when absent.
+  const { targetUsername, isViewingOtherUser } = useMemo(() => {
+    const username =
+      hashState.tab === 'profile' && hashState.subPath
+        ? safeDecodeURIComponent(hashState.subPath)
+        : currentUser?.name;
+
+    return {
+      targetUsername: username,
+      isViewingOtherUser: Boolean(
+        username && currentUser?.name && username !== currentUser.name
+      ),
+    };
+  }, [hashState, currentUser?.name]);
 
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     (hashState.tab as ProfileNavId) || DEFAULT_PROFILE_NAV_ID
@@ -270,7 +281,10 @@ const ProfilePage: React.FC = () => {
       setHeaderOverride(null);
       setHash(
         id,
-        id === DEFAULT_PROFILE_NAV_ID ? currentUser?.name : undefined
+        // Encode so usernames containing `%`/`?` round-trip through the hash.
+        id === DEFAULT_PROFILE_NAV_ID && currentUser?.name
+          ? encodeURIComponent(currentUser.name)
+          : undefined
       );
     },
     [selectedId, setHash, currentUser?.name]

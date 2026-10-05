@@ -36,8 +36,22 @@ const USER_CREATE = 'user-create';
 const IMPORT_TEAM = 'import-team';
 const IMPORT_USER = 'import-user';
 
+// A malformed percent-escape (e.g. a hand-edited `#...%ZZ`) makes
+// decodeURIComponent throw URIError, which would unmount the whole panel; fall
+// back to the raw value so a bad hash degrades gracefully instead of crashing.
+export const safeDecodeURIComponent = (value: string): string => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 // fqns are URL-encoded in the hash to survive the round-trip (they can contain
 // `%`, `.`, `/`); decode the fqn segments back here.
+// ponytail: a team literally named `add`/`import-team`/`import-user` collides with
+// the form-route suffixes and routes to the form instead of team-detail — tolerated
+// for now since those names are unusual; disambiguate with a sentinel if it bites.
 function parseTeamsSubPath(parts: string[]): MembersView {
   if (parts.length === 1) {
     return { type: 'teams' };
@@ -50,7 +64,7 @@ function parseTeamsSubPath(parts: string[]): MembersView {
     const parentFqn =
       parts.length === 2
         ? undefined
-        : decodeURIComponent(parts.slice(1, -1).join('/'));
+        : safeDecodeURIComponent(parts.slice(1, -1).join('/'));
 
     return { type: 'teams-add', parentFqn };
   }
@@ -59,12 +73,12 @@ function parseTeamsSubPath(parts: string[]): MembersView {
     // `teams/<fqn>/import-team` or `.../import-user` — fqn is everything between.
     return {
       type: 'teams-import',
-      fqn: decodeURIComponent(parts.slice(1, -1).join('/')),
+      fqn: safeDecodeURIComponent(parts.slice(1, -1).join('/')),
       importType: last === IMPORT_USER ? 'users' : 'teams',
     };
   }
 
-  const fqn = decodeURIComponent(parts.slice(1).join('/'));
+  const fqn = safeDecodeURIComponent(parts.slice(1).join('/'));
 
   return { type: 'team-detail', fqn, name: fqn };
 }

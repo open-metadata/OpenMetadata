@@ -462,7 +462,14 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             data-testid="ai-user-menu-profile"
             id="profile-header"
             textValue={displayName}
-            onAction={() => setHash('profile', currentUser?.name)}>
+            onAction={() =>
+              setHash(
+                'profile',
+                currentUser?.name
+                  ? encodeURIComponent(currentUser.name)
+                  : undefined
+              )
+            }>
             <Box
               align="center"
               className="tw:relative tw:rounded-md tw:px-2.5 tw:py-2 tw:transition tw:duration-100 tw:ease-linear tw:group-hover:bg-primary_hover"
