@@ -687,7 +687,7 @@ test.describe(
 
         // Click on a cell to edit - find the first row's description cell
         // Navigate to description column (3rd column) and edit
-        await page.locator('.rdg-row').nth(0).click();
+        await page.getByTestId('rdg-row-0').click();
         const descriptionCell1 = page
           .locator('.rdg-row')
           .nth(0)

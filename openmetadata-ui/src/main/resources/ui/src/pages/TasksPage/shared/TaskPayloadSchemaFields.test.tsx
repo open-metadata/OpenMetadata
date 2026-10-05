@@ -31,6 +31,7 @@ import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import TaskPayloadSchemaFields from './TaskPayloadSchemaFields';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
   Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Button: ({
     children,

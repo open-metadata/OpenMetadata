@@ -68,6 +68,7 @@ test.describe('Topic entity specific tests ', () => {
       page,
       buttonTestId: 'copy-field-link-button',
       containerTestId: 'topic-schema-fields-table',
+      rowName: topic.children[0].name,
       expectedUrlPath: '/topic/',
       entityFqn: topic.entityResponseData?.['fullyQualifiedName'] ?? '',
     });

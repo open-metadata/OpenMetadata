@@ -39,6 +39,7 @@ import {
 } from '../../utils/domain';
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{ page: Page }>({
@@ -752,8 +753,8 @@ test.describe('Domain Filter - User Behavior Tests', () => {
             name: dataProductInDomainA.data.displayName,
             exact: true,
           })
-          .first()
-      ).toBeVisible();
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
 
       // Verify subDomainA's data product IS visible (subdomain data products should be included)
       await expect(
@@ -762,8 +763,8 @@ test.describe('Domain Filter - User Behavior Tests', () => {
             name: dataProductInSubDomainA.data.displayName,
             exact: true,
           })
-          .first()
-      ).toBeVisible();
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
 
       // Verify domainB's data product is NOT visible
       await expect(
@@ -826,11 +827,23 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
     // Helper to verify asset visibility
     const expectVisible = async (fqn: string | undefined) => {
-      await expect(page.locator(`a[href*="${fqn}"]`).first()).toBeVisible();
+      await expect(
+        page.locator(`a[href*="${fqn}"]`).filter({ visible: true })
+      ).not.toHaveCount(0);
     };
 
     const expectNotVisible = async (fqn: string | undefined) => {
       await expect(page.locator(`a[href*="${fqn}"]`).first()).not.toBeVisible();
+    };
+
+    // The open dropdown is capped at 10 buckets ordered by key, so a crowded facet hides the option; typing re-queries for it.
+    const searchInDropdown = async (searchText: string) => {
+      const aggregation = waitForAggregation(page, { value: searchText });
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('search-input')
+        .fill(searchText);
+      await aggregation;
     };
 
     // Helper to apply Tier filter
@@ -842,6 +855,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         state: 'visible',
       });
       const checkbox = page.getByTestId('drop-down-menu').getByTestId(tier);
+      await searchInDropdown(tier);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(
@@ -884,6 +898,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       const checkbox = page
         .getByTestId('drop-down-menu')
         .getByTestId(entityType);
+      await searchInDropdown(entityType);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(

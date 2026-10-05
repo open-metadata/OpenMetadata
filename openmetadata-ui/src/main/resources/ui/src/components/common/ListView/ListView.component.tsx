@@ -14,9 +14,10 @@ import Icon from '@ant-design/icons';
 import {
   ButtonGroup,
   ButtonGroupItem,
+  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Switch } from 'antd';
+import { Col, Row, Space } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,9 +93,9 @@ export const ListView = <T extends object = Record<string, unknown>>({
         <Space align="center">
           {!isUndefined(handleDeletedSwitchChange) && (
             <span className="flex-center gap-2">
-              <Switch
-                checked={deleted}
+              <Toggle
                 data-testid="show-deleted-switch"
+                isSelected={deleted}
                 onChange={handleDeletedSwitchChange}
               />
               <Typography>{t('label.deleted')}</Typography>

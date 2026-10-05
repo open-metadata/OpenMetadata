@@ -275,7 +275,7 @@ export const reactOnActivity = async (
 export const navigateToActivityFeedTab = async (page: Page) => {
   await page.getByTestId('activity_feed').click();
   await waitForPageLoaded(page);
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 /**

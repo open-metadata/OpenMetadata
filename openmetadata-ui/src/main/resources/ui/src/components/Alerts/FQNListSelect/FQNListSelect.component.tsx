@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { SelectProps, Tag } from 'antd';
+import {
+  Badge,
+  BadgeWithButton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { SelectProps } from 'antd';
 import { isEmpty } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
@@ -72,6 +77,7 @@ const FQNListSelect = ({
   containerEntities = [],
   ...rest
 }: FQNListSelectProps) => {
+  const { t } = useTranslation();
   const [wildcardFqns, setWildcardFqns] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -104,15 +110,26 @@ const FQNListSelect = ({
       event.stopPropagation();
     };
 
-    return (
-      <Tag
-        closable={closable}
-        data-testid={`fqn-tag-${fqn}`}
-        title={label}
-        onClose={onClose}
-        onMouseDown={onPreventMouseDown}>
-        <Typography className="break-all">{label}</Typography>
-      </Tag>
+    const badgeProps = {
+      className: 'tw:mr-2 tw:inline-flex tw:max-w-full',
+      color: 'gray' as const,
+      'data-testid': `fqn-tag-${fqn}`,
+      size: 'sm' as const,
+      title: label,
+      type: 'color' as const,
+      onMouseDown: onPreventMouseDown,
+    };
+    const content = <Typography className="break-all">{label}</Typography>;
+
+    return closable ? (
+      <BadgeWithButton
+        {...badgeProps}
+        buttonLabel={t('label.remove')}
+        onButtonClick={onClose}>
+        {content}
+      </BadgeWithButton>
+    ) : (
+      <Badge {...badgeProps}>{content}</Badge>
     );
   };
 
