@@ -15,12 +15,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import {
-  Divider,
-  Skeleton,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { AlertProps, Checkbox, Col, MenuProps, Select, Tooltip } from 'antd';
+import { Divider, Skeleton } from '@openmetadata/ui-core-components';
+import { AlertProps, Checkbox, Col, Select, Tooltip } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqBy } from 'lodash';
@@ -633,20 +629,11 @@ export const getSourceOptionsFromResourceList = (
     value: resource ?? '',
   }));
 
-export const getAlertRecentEventsFilterOptions = () => {
-  const filters: MenuProps['items'] = Object.values(
-    AlertRecentEventFilters
-  ).map((status) => {
-    const label = getAlertEventsFilterLabels(status);
-
-    return {
-      label: <Typography>{label}</Typography>,
-      key: status,
-    };
-  });
-
-  return filters;
-};
+export const getAlertRecentEventsFilterOptions = () =>
+  Object.values(AlertRecentEventFilters).map((status) => ({
+    label: getAlertEventsFilterLabels(status),
+    key: status,
+  }));
 
 export const getAlertStatusIcon = (status: Status): JSX.Element | null => {
   switch (status) {

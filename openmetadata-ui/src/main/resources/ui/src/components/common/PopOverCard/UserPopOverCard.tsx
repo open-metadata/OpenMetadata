@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { HoverCard } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -48,31 +48,30 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   );
 
   return (
-    <Popover
-      align={{ targetOffset: [0, -10] }}
+    <HoverCard
       content={
-        isTeam ? (
-          <TeamPopoverContent teamName={userName} />
-        ) : (
-          <PopoverContent type={type} userName={userName} />
-        )
-      }
-      overlayClassName="ant-popover-card"
-      title={
-        isTeam ? (
-          <TeamPopoverTitle
-            profilePicture={profilePicture}
-            teamName={userName}
-          />
-        ) : (
-          <PopoverTitle
-            profilePicture={profilePicture}
-            type={type}
-            userName={userName}
-          />
-        )
-      }
-      trigger="hover">
+        <div
+          className="tw:flex tw:flex-col tw:gap-3"
+          data-testid="user-popover-card">
+          {isTeam ? (
+            <TeamPopoverTitle
+              profilePicture={profilePicture}
+              teamName={userName}
+            />
+          ) : (
+            <PopoverTitle
+              profilePicture={profilePicture}
+              type={type}
+              userName={userName}
+            />
+          )}
+          {isTeam ? (
+            <TeamPopoverContent teamName={userName} />
+          ) : (
+            <PopoverContent type={type} userName={userName} />
+          )}
+        </div>
+      }>
       {(children as ReactNode) ?? (
         <Link
           className={classNames(
@@ -94,7 +93,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
           ) : null}
         </Link>
       )}
-    </Popover>
+    </HoverCard>
   );
 };
 

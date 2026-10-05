@@ -12,13 +12,17 @@
  */
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
-import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { Button, Col, Dropdown, MenuProps, Row, Space } from 'antd';
+import {
+  Button as CoreButton,
+  ButtonGroup,
+  ButtonGroupItem,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
@@ -83,21 +87,9 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     }
   };
 
-  const handleMenuClick: MenuProps['onClick'] = useCallback(
-    (event: MenuInfo) =>
-      setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
+  const handleMenuClick = useCallback(
+    (key: Key) => setStatus(MenuOptions[key as keyof typeof MenuOptions]),
     []
-  );
-
-  const statusMenuItems = useMemo(
-    () => ({
-      items: map(MenuOptions, (value, key) => ({
-        key: key,
-        label: value,
-      })),
-      onClick: handleMenuClick,
-    }),
-    [handleMenuClick]
   );
 
   const onDateChange: RangePickerProps['onChange'] = (values) => {
@@ -167,15 +159,28 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
             </ButtonGroup>
 
             <Space>
-              <Dropdown menu={statusMenuItems} placement="bottom">
-                <Button
-                  ghost
+              <Dropdown.Root>
+                <CoreButton
+                  className="tw:text-brand-secondary tw:after:outline-brand"
+                  color="secondary"
                   data-testid="status-button"
-                  icon={<Icon component={FilterIcon} size={12} />}
-                  type="primary">
+                  iconLeading={<FilterIcon height={12} width={12} />}
+                  size="sm">
                   {status === MenuOptions.all ? t('label.status') : status}
-                </Button>
-              </Dropdown>
+                </CoreButton>
+                <Dropdown.Popover className="tw:w-auto" placement="bottom">
+                  <Dropdown.Menu
+                    aria-label={t('label.status')}
+                    selectionMode="none"
+                    onAction={handleMenuClick}>
+                    {map(MenuOptions, (value, key) => (
+                      <Dropdown.Item id={key} key={key}>
+                        {value}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
                 <>
                   <Button

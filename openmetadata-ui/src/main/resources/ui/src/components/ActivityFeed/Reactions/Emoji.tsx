@@ -12,7 +12,8 @@
  */
 
 import '@github/g-emoji-element';
-import { Button, Popover } from 'antd';
+import { HoverCard } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { createElement, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +41,6 @@ const Emoji: FC<EmojiProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [visible, setVisible] = useState(false);
 
   const reactionObject = useMemo(
     () => REACTION_LIST.find((value) => value.reaction === reaction),
@@ -103,13 +103,7 @@ const Emoji: FC<EmojiProps> = ({
   );
 
   return (
-    <Popover
-      content={popoverContent}
-      key={reaction}
-      open={visible}
-      trigger="hover"
-      zIndex={9999}
-      onOpenChange={setVisible}>
+    <HoverCard className="tw:p-3" content={popoverContent()} key={reaction}>
       <Button
         className={classNames(
           'ant-btn-reaction m-r-xss flex-center transparent',
@@ -122,8 +116,7 @@ const Emoji: FC<EmojiProps> = ({
         key={reaction}
         shape="round"
         size="small"
-        onClick={handleEmojiOnClick}
-        onMouseOver={() => setVisible(true)}>
+        onClick={handleEmojiOnClick}>
         {element}
         <span className="text-xs m-l-xs self-center" data-testid="emoji-count">
           {reactionList.length.toLocaleString('en-US', {
@@ -131,7 +124,7 @@ const Emoji: FC<EmojiProps> = ({
           })}
         </span>
       </Button>
-    </Popover>
+    </HoverCard>
   );
 };
 

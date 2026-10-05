@@ -219,7 +219,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await plusMoreButton.click();
         const combinedPoliciesText = [
           await roleRow.textContent(),
-          await page.locator('.ant-popover-content').textContent(),
+          await page.getByRole('dialog').textContent(),
         ]
           .filter(Boolean)
           .join(' ');

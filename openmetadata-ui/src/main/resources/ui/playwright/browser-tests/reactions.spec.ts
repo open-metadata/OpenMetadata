@@ -94,8 +94,7 @@ test('every reaction can be selected and removed through the animated product po
   await page.goto('http://reactions.test/', { waitUntil: 'domcontentloaded' });
   await page.addStyleTag({ path: 'node_modules/antd/dist/antd.css' });
   await page.addStyleTag({
-    content:
-      '.ant-popover-feed-reactions .ant-popover-inner-content {display:flex; gap:8px} .ant-btn-popover-reaction {font-size:20px} .ant-zoom-big-appear,.ant-zoom-big-enter,.ant-zoom-big-leave {animation-duration:0.4s !important}',
+    content: '.ant-btn-popover-reaction {font-size:20px}',
   });
   page.on('pageerror', (error) => {
     throw error;

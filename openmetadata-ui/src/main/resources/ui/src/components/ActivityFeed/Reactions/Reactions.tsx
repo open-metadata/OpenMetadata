@@ -12,7 +12,11 @@
  */
 
 import '@github/g-emoji-element';
-import { Button, Popover } from 'antd';
+import {
+  ButtonUtility,
+  Popover,
+  PopoverTrigger,
+} from '@openmetadata/ui-core-components';
 import { groupBy } from 'lodash';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,10 +50,6 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
 
   const hide = () => {
     setVisible(false);
-  };
-
-  const handleVisibleChange = (newVisible: boolean) => {
-    setVisible(newVisible);
   };
 
   /**
@@ -100,29 +100,24 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   return (
     <div className="d-flex items-center" data-testid="feed-reaction-container">
       {emojis}
-      <Popover
-        arrowPointAtCenter
-        align={{ targetOffset: [0, -10] }}
-        content={reactionList}
-        open={visible}
-        overlayClassName="ant-popover-feed-reactions"
-        placement="topLeft"
-        trigger="click"
-        zIndex={9999}
-        onOpenChange={handleVisibleChange}>
-        <Button
-          className="flex-center p-0"
+      <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
+        <ButtonUtility
+          color="tertiary"
           data-testid="add-reactions"
-          icon={<AddReactionIcon height={16} />}
-          shape="circle"
-          size="small"
-          title={t('label.add-entity', {
+          icon={<AddReactionIcon height={16} width={16} />}
+          size="xs"
+          tooltip={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),
           })}
-          type="text"
-          onClick={(e) => e.stopPropagation()}
         />
-      </Popover>
+        <Popover arrow className="feed-reactions-popover" placement="top start">
+          <div
+            className="tw:flex tw:gap-2 tw:p-1"
+            data-testid="feed-reactions-popover">
+            {reactionList}
+          </div>
+        </Popover>
+      </PopoverTrigger>
     </div>
   );
 };

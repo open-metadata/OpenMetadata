@@ -245,7 +245,7 @@ test.describe('FeedWidget on landing page', () => {
 
     // Test dropdown options
     await sortDropdown.click();
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
+    await page.getByRole('menu').waitFor({ state: 'visible' });
 
     await expect(
       page.getByRole('menuitem', { name: 'All Activity' })
@@ -255,10 +255,9 @@ test.describe('FeedWidget on landing page', () => {
       page.getByRole('menuitem', { name: 'Following' })
     ).toBeVisible();
 
-    // Close dropdown by clicking outside
-    await widget.click();
+    await page.keyboard.press('Escape');
 
-    await expect(page.locator('.ant-dropdown')).not.toBeVisible();
+    await expect(page.getByRole('menu')).not.toBeVisible();
   });
 
   test('clicking title navigates to explore page', async ({ page }) => {
