@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-    TreeSelect,
-    TreeSelectDataResponse,
-    TreeSelectNode
+  TreeSelect,
+  TreeSelectDataResponse,
+  TreeSelectNode,
 } from '@openmetadata/ui-core-components';
 import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';

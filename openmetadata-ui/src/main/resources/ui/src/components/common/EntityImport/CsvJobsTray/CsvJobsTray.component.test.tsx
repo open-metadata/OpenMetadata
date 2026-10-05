@@ -11,25 +11,25 @@
  *  limitations under the License.
  */
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import {
-    cancelCsvAsyncJob,
-    CsvAsyncJob,
-    getCsvAsyncJobResult,
-    getCsvAsyncJobs
+  cancelCsvAsyncJob,
+  CsvAsyncJob,
+  getCsvAsyncJobResult,
+  getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
 import { CsvJobsTray } from './CsvJobsTray.component';
 import {
-    CSV_JOBS_POST_ACTION_REFRESH_MS,
-    CSV_JOBS_REFRESH_EVENT,
-    markCsvJobOwned
+  CSV_JOBS_POST_ACTION_REFRESH_MS,
+  CSV_JOBS_REFRESH_EVENT,
+  markCsvJobOwned,
 } from './CsvJobsTray.constants';
 
 jest.mock('@openmetadata/ui-core-components', () => ({

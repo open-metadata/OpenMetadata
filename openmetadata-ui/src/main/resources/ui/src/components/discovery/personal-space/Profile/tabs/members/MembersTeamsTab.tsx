@@ -12,15 +12,15 @@
  */
 
 import {
-    Box,
-    Button,
-    Dialog,
-    EmptyPlaceholder,
-    FeaturedIcon,
-    Modal,
-    ModalOverlay,
-    Toggle,
-    Typography
+  Box,
+  Button,
+  Dialog,
+  EmptyPlaceholder,
+  FeaturedIcon,
+  Modal,
+  ModalOverlay,
+  Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';

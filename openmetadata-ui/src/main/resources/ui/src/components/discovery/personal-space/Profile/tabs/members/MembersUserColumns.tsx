@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Button,
-    Popover,
-    PopoverTrigger,
-    Typography
+  Box,
+  Button,
+  Popover,
+  PopoverTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,9 +25,9 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import {
-    profileHash,
-    ProfileHashTarget,
-    toHashLocation
+  profileHash,
+  ProfileHashTarget,
+  toHashLocation,
 } from './profileHash.utils';
 import ProfileHashLink from './ProfileHashLink';
 

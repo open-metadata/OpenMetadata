@@ -13,25 +13,25 @@
 
 import { Box, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import {
-    ArrowRight,
-    ArrowUpRight,
-    Check,
-    ChevronRight,
-    Database01,
-    File06,
-    HelpCircle,
-    Settings01,
-    User01
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  ChevronRight,
+  Database01,
+  File06,
+  HelpCircle,
+  Settings01,
+  User01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import {
-    Button,
-    Menu,
-    MenuItem,
-    Popover,
-    SubmenuTrigger
+  Button,
+  Menu,
+  MenuItem,
+  Popover,
+  SubmenuTrigger,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -39,8 +39,8 @@ import { useAuthProvider } from '../../../../components/Auth/AuthProviders/AuthP
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
 import ThemeModeSwitcher from '../../../../components/ThemeModeSwitcher/ThemeModeSwitcher';
 import {
-    HELP_ITEMS_ENUM,
-    SupportItem
+  HELP_ITEMS_ENUM,
+  SupportItem,
 } from '../../../../constants/Navbar.constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -53,9 +53,9 @@ import i18n from '../../../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../../../utils/i18next/LocalUtilClassBase';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
-    AIUserMenuProps,
-    CurrentUserExtras,
-    MenuItemConfig
+  AIUserMenuProps,
+  CurrentUserExtras,
+  MenuItemConfig,
 } from './AIUserMenu.interface';
 
 // ─── Shared styles ────────────────────────────────────────────────────────────

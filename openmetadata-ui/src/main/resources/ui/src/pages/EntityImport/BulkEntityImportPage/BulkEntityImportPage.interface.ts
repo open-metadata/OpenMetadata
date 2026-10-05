@@ -91,7 +91,7 @@ export interface BulkEntityImportLocationState {
 // Canonical definitions live in the lower-layer csv.interface; re-exported here
 // for existing page-local importers.
 export type {
-    CSVImportAsyncJob,
-    CSVImportAsyncWebsocketResponse
+  CSVImportAsyncJob,
+  CSVImportAsyncWebsocketResponse,
 } from '../../../interface/entity/csv.interface';
 export type { CSVImportJobType };
