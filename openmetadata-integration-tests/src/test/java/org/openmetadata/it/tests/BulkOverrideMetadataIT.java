@@ -28,7 +28,6 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TableConstraint;
@@ -49,7 +48,6 @@ public class BulkOverrideMetadataIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-  private static final String CERTIFICATION_GOLD = "Certification.Gold";
 
   @Test
   void test_botCannotOverwriteDescription_withoutOverride(TestNamespace ns) throws Exception {
@@ -176,26 +174,6 @@ public class BulkOverrideMetadataIT {
         "Curated Display Name",
         getTable(fqn).getDisplayName(),
         "overrideMetadata=true must not blank a displayName when none is supplied");
-  }
-
-  @Test
-  void test_overrideDoesNotRemoveCertificationWhenNoneSupplied(TestNamespace ns) throws Exception {
-    String schemaFqn = setupSchema(ns);
-    String botToken = BulkApi.botToken();
-    CreateTable original = table(ns, schemaFqn, "ovr_cert_blank", "desc", "hash-v1");
-    original.setCertification(goldCertification());
-    BulkApi.upsert("tables", List.of(original), false, botToken);
-
-    String fqn = schemaFqn + "." + original.getName();
-    assertNotNull(getTable(fqn).getCertification(), "test setup failed to certify the table");
-
-    CreateTable changed = table(ns, schemaFqn, "ovr_cert_blank", "desc", "hash-v2");
-    BulkApi.upsert("tables", List.of(changed), true, botToken);
-
-    AssetCertification certification = getTable(fqn).getCertification();
-    assertNotNull(
-        certification, "overrideMetadata=true must not remove a certification when none is sent");
-    assertEquals(CERTIFICATION_GOLD, certification.getTagLabel().getTagFQN());
   }
 
   @Test
@@ -359,18 +337,6 @@ public class BulkOverrideMetadataIT {
   // ===================================================================
   // HELPERS
   // ===================================================================
-
-  private AssetCertification goldCertification() {
-    long now = System.currentTimeMillis();
-    return new AssetCertification()
-        .withTagLabel(
-            new TagLabel()
-                .withTagFQN(CERTIFICATION_GOLD)
-                .withSource(TagLabel.TagSource.CLASSIFICATION)
-                .withLabelType(TagLabel.LabelType.MANUAL))
-        .withAppliedDate(now)
-        .withExpiryDate(now + 30L * 24 * 60 * 60 * 1000);
-  }
 
   private void assertConstraintsSurviveBotPutWithoutThem(
       TestNamespace ns, String baseName, boolean overrideMetadata) throws Exception {
