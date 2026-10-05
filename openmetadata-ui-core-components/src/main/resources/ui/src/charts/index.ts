@@ -70,10 +70,7 @@ export {
 } from './palette';
 export { registerEChartsParts, registerGeoMap } from './register';
 export { buildChartTheme, DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
-export {
-  hideChartTooltips,
-  HIDE_CHART_TOOLTIPS_EVENT,
-} from './tooltip-events';
+export { hideChartTooltips, HIDE_CHART_TOOLTIPS_EVENT } from './tooltip-events';
 export { useChartPalette } from './use-chart-palette';
 export { useIsDarkMode } from './use-is-dark-mode';
 
