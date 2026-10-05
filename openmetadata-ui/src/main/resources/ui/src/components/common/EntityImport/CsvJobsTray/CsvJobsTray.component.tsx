@@ -329,11 +329,10 @@ export const CsvJobsTray = () => {
     };
   }, [fetchJobs]);
 
-  // Progress and completion arrive over the CSV_IMPORT/EXPORT channels; the
-  // WebSocketRelay delivers them to the pod holding this socket even when another pod
-  // ran the job, so the socket subscription above keeps the tray truthful on multi-pod
-  // without a fallback poll. (Multi-pod requires the relay enabled: Redis, or
-  // WEBSOCKET_RELAY_ENABLED on cache=none.)
+  // Progress and completion arrive over the CSV_IMPORT/EXPORT channels; the server-side
+  // WebSocketRelay (Redis pub/sub, or the DB-poll relay otherwise) delivers them to the pod
+  // holding this socket even when another pod ran the job, so the socket subscription above keeps
+  // the tray truthful on multi-pod without a fallback poll.
   const handleOpen = useCallback(() => {
     setOpen(true);
     fetchJobs();
