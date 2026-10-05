@@ -74,7 +74,7 @@ def test_common_lane_carries_its_own_shard_budget():
     planner = load_script("build_playwright_shards")
 
     assert planner.shard_budget_ms_for_lane("chromium") == 19 * 60 * 1000
-    assert planner.shard_budget_ms_for_lane("search") == 20 * 60 * 1000
+    assert planner.shard_budget_ms_for_lane("global-state") == 20 * 60 * 1000
 
 
 def test_predicted_execution_applies_runner_efficiency():
@@ -1188,6 +1188,22 @@ def test_search_rbac_does_not_depend_on_data_asset_rule_assertions():
     )
 
     assert expanded == [search]
+
+
+def test_domain_isolation_and_search_share_the_global_state_lane():
+    planner = load_script("build_playwright_shards")
+
+    for project in (
+        "DomainIsolation",
+        "search-nightly",
+        "GlobalSettings",
+        "SystemCertificationTags",
+        "IntakeForm",
+    ):
+        assert planner.PROJECT_LANES[project] == "global-state"
+    assert planner.LANE_WORKERS["global-state"] == 1
+    assert "domain-isolation" not in planner.LANE_WORKERS
+    assert "search" not in planner.LANE_WORKERS
 
 
 def test_search_rbac_uses_an_isolated_single_worker_lane():

@@ -402,8 +402,10 @@ test.describe(
       await browseQueryPromise;
       await waitForAllLoadersToDisappear(page);
       await expect(
-        page.locator('[data-testid^="table-data-card_"]').first()
-      ).toBeVisible();
+        page
+          .locator('[data-testid^="table-data-card_"]')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
 
       await openExportScopeModal(page);
 
@@ -528,8 +530,8 @@ test.describe(
         }).toPass({ timeout: 30_000 });
 
         await expect(
-          page.getByText(/Exporting|Exported/).first()
-        ).toBeVisible();
+          page.getByText(/Exporting|Exported/).filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Download from the tray serves the job result CSV', async () => {

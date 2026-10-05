@@ -89,7 +89,9 @@ test.describe('App Runs History logs viewer (mocked external app)', () => {
       await expect(recentRunsTab).toBeVisible({ timeout: 30000 });
       await recentRunsTab.click();
 
-      await expect(page.getByTestId('logs').first()).toBeVisible();
+      await expect(
+        page.getByTestId('logs').filter({ visible: true })
+      ).not.toHaveCount(0);
       await page.getByTestId('logs').first().click();
     });
 

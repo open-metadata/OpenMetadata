@@ -59,6 +59,7 @@ export { BookOpen01 } from './BookOpen01';
 export { BookOpen02 } from './BookOpen02';
 export { Brackets } from './Brackets';
 export { Browser } from './Browser';
+export { Building01 } from './Building01';
 export { Building02 } from './Building02';
 export { Building07 } from './Building07';
 export { Calendar02 } from './Calendar02';

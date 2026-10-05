@@ -609,10 +609,10 @@ test.describe('Glossary Advanced Operations', () => {
       const removeButtons = page.locator(
         '.ant-select-selection-item .ant-select-selection-item-remove'
       );
-      const count = await removeButtons.count();
-
-      for (let i = count - 1; i >= 0; i--) {
-        await removeButtons.nth(i).click();
+      // Removing an item re-indexes the list, so walk it back-to-front: the
+      // elements before the one being removed keep their position.
+      for (const removeButton of (await removeButtons.all()).reverse()) {
+        await removeButton.click();
       }
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');

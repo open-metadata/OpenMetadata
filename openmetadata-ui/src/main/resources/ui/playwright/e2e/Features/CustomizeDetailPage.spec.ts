@@ -548,7 +548,9 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const visibleDescriptionWidget = userPage.locator(
           '[data-testid^="KnowledgePanel.Description-"]:visible'
         );
-        await expect(visibleDescriptionWidget.first()).toBeVisible();
+        await expect(
+          visibleDescriptionWidget.filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   });
@@ -681,7 +683,9 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const visibleDescriptionWidget = userPage.locator(
           '[data-testid^="KnowledgePanel.Description-"]:visible'
         );
-        await expect(visibleDescriptionWidget.first()).toBeVisible();
+        await expect(
+          visibleDescriptionWidget.filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   });

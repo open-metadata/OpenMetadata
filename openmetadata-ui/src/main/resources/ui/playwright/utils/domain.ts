@@ -68,8 +68,7 @@ const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
   try {
-    await page.getByTestId('loader').first().waitFor({
-      state: 'attached',
+    await expect(page.getByTestId('loader')).not.toHaveCount(0, {
       timeout: 999,
     });
     await waitForAllLoadersToDisappear(page);

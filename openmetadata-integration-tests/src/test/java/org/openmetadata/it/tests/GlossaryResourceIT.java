@@ -30,6 +30,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -49,6 +50,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 
 /**
@@ -1311,8 +1313,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     CreateGlossary createGlossary = createMinimalRequest(ns);
     Glossary glossary = createEntity(createGlossary);
 
-    // Create an IN_REVIEW glossary term by creating it first, then patching the status
-    // (You cannot create a term with IN_REVIEW status directly)
+    // Create a glossary term with a reviewer
     EntityReference reviewerRef = testUser1().getEntityReference();
     org.openmetadata.schema.api.data.CreateGlossaryTerm createInReviewTerm =
         new org.openmetadata.schema.api.data.CreateGlossaryTerm()
@@ -1323,21 +1324,12 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     org.openmetadata.schema.entity.data.GlossaryTerm inReviewTerm =
         client.glossaryTerms().create(createInReviewTerm);
 
-    // Now update the term to set it to IN_REVIEW status
-    inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
-    inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
-
-    // Wait for the term to be updated to IN_REVIEW status
-    final UUID termId = inReviewTerm.getId();
-    org.awaitility.Awaitility.await()
-        .atMost(10, java.util.concurrent.TimeUnit.SECONDS)
-        .pollInterval(500, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .until(
-            () -> {
-              org.openmetadata.schema.entity.data.GlossaryTerm term =
-                  client.glossaryTerms().get(termId.toString());
-              return term.getEntityStatus() == org.openmetadata.schema.type.EntityStatus.IN_REVIEW;
-            });
+    // The approval workflow puts a new term with reviewers in review and owns its stage, so move
+    // the term there the way the workflow does
+    GovernanceWorkflowActions.moveToStage(
+        Entity.GLOSSARY_TERM,
+        inReviewTerm.getId(),
+        org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
 
     // Create a CSV trying to import a new term with the IN_REVIEW term as a related term
     String csv =

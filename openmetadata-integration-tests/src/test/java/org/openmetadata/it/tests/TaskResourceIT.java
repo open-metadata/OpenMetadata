@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -129,6 +130,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   public TaskResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = true;
     supportsDomains = false;
@@ -2314,6 +2316,52 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testVisibleEndpointSearchMatchesTextAsTyped(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Table table =
+        createTableWithDomainAndOwners(
+            ns, createDomain(ns, "visible-search-domain").getEntityReference(), List.of());
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "visible-search", table)
+                    .withDisplayName("Review the customer's order " + ns.prefix("search"))
+                    .withAssignees(List.of(shared.USER1.getFullyQualifiedName())));
+
+    // `q` is a bound LIKE value: an apostrophe must match as typed, not doubled.
+    assertTrue(
+        searchVisibleTaskIds("customer's order " + ns.prefix("search")).contains(task.getId()),
+        "An apostrophe in the search text should match as typed");
+    // `%` and `_` are escaped, so they cannot act as wildcards.
+    assertFalse(
+        searchVisibleTaskIds("%").contains(task.getId()), "A bare % should not match every task");
+    assertFalse(
+        searchVisibleTaskIds("no-such-task-" + ns.prefix("search")).contains(task.getId()),
+        "Unrelated text should not match");
+  }
+
+  private List<UUID> searchVisibleTaskIds(String query) throws Exception {
+    String response =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tasks/visible",
+                null,
+                RequestOptions.builder()
+                    .queryParam("q", query)
+                    .queryParam("statusGroup", "open")
+                    .queryParam("limit", "100")
+                    .build());
+    List<UUID> ids = new ArrayList<>();
+    JsonUtils.readTree(response)
+        .path("data")
+        .forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
+  @Test
   void testScopedTaskEndpointsHonorTimeRange(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
     Domain domain = createDomain(ns, "time-range-domain");
@@ -3431,6 +3479,382 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .orElse(null);
 
     assertEquals(newDescription, updatedChildDesc);
+  }
+
+  // ==================== Ambiguous Bare Leaf Nested Field Tests ====================
+
+  @Test
+  void testResolveAmbiguousBareLeafDescriptionUpdateTask_doesNotGuess(TestNamespace ns) {
+    // Two sibling columns [profile, address], each with a child named "street". A bare-leaf
+    // fieldPath "columns::street::description" is ambiguous across the two subtrees. Resolving
+    // the task must NOT write either sibling's child (guessing the target is worse than
+    // declining); the entity stays unchanged even though the task resolves to Approved.
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column profileStreet =
+        new Column()
+            .withName("street")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withDescription(null);
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet =
+        new Column()
+            .withName("street")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withDescription(null);
+    Column address =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(addressStreet)));
+
+    Table table =
+        org.openmetadata.sdk.fluent.Tables.create()
+            .name(ns.prefix("ambiguous_bare_leaf_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(new ArrayList<>(List.of(profile, address)))
+            .execute();
+
+    String newDescription = "Road name - " + ns.shortPrefix();
+
+    org.openmetadata.schema.type.DescriptionUpdatePayload payload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("columns::street::description")
+            .withNewDescription(newDescription);
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("ambig-bare-leaf-desc"))
+            .withDescription("Ambiguous bare leaf description update")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(payload);
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withNewValue(newDescription)
+            .withComment("Approved ambiguous bare leaf update");
+
+    Task resolvedTask =
+        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+
+    assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns");
+
+    // Neither sibling's "street" child was written — the ambiguous name was refused, not guessed.
+    for (Column col : updatedTable.getColumns()) {
+      assertNotNull(col.getChildren(), col.getName() + " should have children");
+      for (Column child : col.getChildren()) {
+        if ("street".equals(child.getName())) {
+          assertNull(
+              child.getDescription(),
+              "street under " + col.getName() + " must not be written for an ambiguous bare leaf");
+        }
+      }
+    }
+  }
+
+  @Test
+  void testResolveAmbiguousBareLeafTagUpdateTask_doesNotGuess(TestNamespace ns) {
+    // The tag path resolves through FieldPathUtils.findField; with two siblings each having a
+    // child "street", a bare-leaf "columns::street::tags" fieldPath is ambiguous and must not
+    // tag the first sibling's child POJO. Neither "street" column receives the tag.
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column profileStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column address =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(addressStreet)));
+
+    Table table =
+        org.openmetadata.sdk.fluent.Tables.create()
+            .name(ns.prefix("ambig_bare_leaf_tag_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(new ArrayList<>(List.of(profile, address)))
+            .execute();
+
+    List<TagLabel> tagsToAdd =
+        List.of(
+            new TagLabel()
+                .withTagFQN("PersonalData.Personal")
+                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                .withLabelType(TagLabel.LabelType.MANUAL)
+                .withState(TagLabel.State.CONFIRMED)
+                .withName("Personal"));
+
+    Map<String, Object> payloadMap =
+        Map.of(
+            "fieldPath",
+            "columns::street::tags",
+            "tagsToAdd",
+            tagsToAdd,
+            "tagsToRemove",
+            List.of(),
+            "currentTags",
+            List.of(),
+            "operation",
+            "Add");
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("ambig-bare-leaf-tag"))
+            .withDescription("Ambiguous bare leaf tag update")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.TagUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(payloadMap);
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withNewValue(JsonUtils.pojoToJson(tagsToAdd))
+            .withComment("Approved ambiguous bare leaf tag update");
+
+    Task resolvedTask =
+        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+
+    assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+
+    // Neither sibling's "street" child was tagged — the ambiguous name was refused, not guessed.
+    for (Column col : updatedTable.getColumns()) {
+      if (col.getChildren() != null) {
+        for (Column child : col.getChildren()) {
+          if ("street".equals(child.getName())) {
+            assertTrue(
+                child.getTags() == null || child.getTags().isEmpty(),
+                "street under " + col.getName() + " must not be tagged for an ambiguous bare leaf");
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  void testApplyAmbiguousBareLeafSuggestion_doesNotGuess(TestNamespace ns) {
+    // The Suggestion path reads the field via getFieldDescription and writes via
+    // updateFieldDescription; both must refuse a bare-leaf name shared by two sibling subtrees.
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column profileStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column address =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(addressStreet)));
+
+    Table table =
+        org.openmetadata.sdk.fluent.Tables.create()
+            .name(ns.prefix("ambig_bare_leaf_suggestion_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(new ArrayList<>(List.of(profile, address)))
+            .execute();
+
+    String suggestedDescription = "Road name - " + ns.shortPrefix();
+    Map<String, Object> rawSuggestionPayload =
+        Map.of(
+            "suggestionType", "Description",
+            "fieldPath", "columns::street::description",
+            "suggestedValue", suggestedDescription,
+            "source", "Agent",
+            "confidence", 85.0);
+
+    Task task =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks",
+                Map.of(
+                    "name", ns.prefix("ambig-bare-leaf-suggestion"),
+                    "description", "Ambiguous bare leaf suggestion",
+                    "category", TaskCategory.MetadataUpdate.value(),
+                    "type", TaskEntityType.Suggestion.value(),
+                    "about", entityLink("table", table.getFullyQualifiedName()),
+                    "payload", rawSuggestionPayload),
+                Task.class);
+
+    Task appliedTask =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/tasks/" + task.getId() + "/suggestion/apply",
+                null,
+                Task.class);
+
+    assertEquals(TaskEntityStatus.Approved, appliedTask.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns");
+
+    // Neither sibling's "street" child was written — the ambiguous suggestion was refused.
+    for (Column col : updatedTable.getColumns()) {
+      assertNotNull(col.getChildren(), col.getName() + " should have children");
+      for (Column child : col.getChildren()) {
+        if ("street".equals(child.getName())) {
+          assertNull(
+              child.getDescription(),
+              "street under "
+                  + col.getName()
+                  + " must not be written for an ambiguous bare leaf suggestion");
+        }
+      }
+    }
+  }
+
+  @Test
+  void testBulkResolveOneAmbiguousOneWellFormed_ambigDeclinedWellFormedWrites(TestNamespace ns) {
+    // Bulk approve: the ambiguous bare-leaf task is declined (entity untouched) while the
+    // well-formed task on the same table writes its target. The bulk result reports both
+    // as resolved (Approved), but only the well-formed column is modified — no wrong-target
+    // write from the ambiguous one.
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    Column id =
+        new Column().withName("id").withDataType(ColumnDataType.BIGINT).withDescription(null);
+    Column profileStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column profile =
+        new Column()
+            .withName("profile")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet =
+        new Column().withName("street").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column address =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(new ArrayList<>(List.of(addressStreet)));
+
+    Table table =
+        org.openmetadata.sdk.fluent.Tables.create()
+            .name(ns.prefix("bulk_ambig_wf_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(new ArrayList<>(List.of(id, profile, address)))
+            .execute();
+
+    // Task 1: ambiguous bare-leaf — "columns::street::description" shared by two subtrees.
+    org.openmetadata.schema.type.DescriptionUpdatePayload ambigPayload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("columns::street::description")
+            .withNewDescription("Ambiguous road name - " + ns.shortPrefix());
+    CreateTask ambigRequest =
+        new CreateTask()
+            .withName(ns.prefix("bulk-ambig-desc"))
+            .withDescription("Ambiguous bare leaf description update")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(ambigPayload);
+
+    // Task 2: well-formed — "columns::id::description" targets a unique top-level column.
+    String wellFormedDesc = "Primary key - " + ns.shortPrefix();
+    org.openmetadata.schema.type.DescriptionUpdatePayload wfPayload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("columns::id::description")
+            .withNewDescription(wellFormedDesc);
+    CreateTask wfRequest =
+        new CreateTask()
+            .withName(ns.prefix("bulk-wf-desc"))
+            .withDescription("Well-formed column description update")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(wfPayload);
+
+    Task ambigTask = SdkClients.adminClient().tasks().create(ambigRequest);
+    Task wfTask = SdkClients.adminClient().tasks().create(wfRequest);
+    awaitTaskReadyForWorkflowResolution(ambigTask.getId());
+    awaitTaskReadyForWorkflowResolution(wfTask.getId());
+
+    BulkTaskOperationResult result =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks/bulk",
+                new BulkTaskOperation()
+                    .withTaskIds(List.of(ambigTask.getId().toString(), wfTask.getId().toString()))
+                    .withOperation(BulkTaskOperationType.Approve)
+                    .withParams(
+                        new BulkTaskOperationParams().withComment("Bulk approve mixed tasks")),
+                BulkTaskOperationResult.class);
+
+    assertEquals(2, result.getSuccessful(), "both tasks should resolve as Approved");
+    assertEquals(0, result.getFailed());
+    assertEquals(
+        TaskEntityStatus.Approved,
+        SdkClients.adminClient().tasks().get(ambigTask.getId().toString()).getStatus());
+    assertEquals(
+        TaskEntityStatus.Approved,
+        SdkClients.adminClient().tasks().get(wfTask.getId().toString()).getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns");
+
+    // Well-formed target was written.
+    Column updatedId =
+        updatedTable.getColumns().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(updatedId);
+    assertEquals(wellFormedDesc, updatedId.getDescription(), "the well-formed target was written");
+
+    // Neither ambiguous "street" child was written.
+    for (Column col : updatedTable.getColumns()) {
+      if (col.getChildren() != null) {
+        for (Column child : col.getChildren()) {
+          if ("street".equals(child.getName())) {
+            assertNull(
+                child.getDescription(),
+                "street under " + col.getName() + " must not be written for the ambiguous task");
+          }
+        }
+      }
+    }
   }
 
   // ==================== Multiple Columns Same Task ====================

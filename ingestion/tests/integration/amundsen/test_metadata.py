@@ -30,6 +30,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.basic import Href
+from metadata.generated.schema.type.status import EntityStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata.amundsen.metadata import AmundsenSource
 
@@ -71,6 +72,7 @@ EXPECTED_SERVICE = [
         fullyQualifiedName="hive",
         displayName="hive",
         serviceType="Hive",
+        entityStatus=EntityStatus.Unprocessed,
         description=None,
         connection=DatabaseConnection(
             config=HiveConnection(
@@ -108,6 +110,7 @@ EXPECTED_SERVICE = [
         fullyQualifiedName="delta",
         displayName="delta",
         serviceType="DeltaLake",
+        entityStatus=EntityStatus.Unprocessed,
         description=None,
         connection=DatabaseConnection(
             config=DeltaLakeConnection(
@@ -139,6 +142,7 @@ EXPECTED_SERVICE = [
         fullyQualifiedName="dynamo",
         displayName="dynamo",
         serviceType="DynamoDB",
+        entityStatus=EntityStatus.Unprocessed,
         description=None,
         connection=DatabaseConnection(
             config=DynamoDBConnection(
