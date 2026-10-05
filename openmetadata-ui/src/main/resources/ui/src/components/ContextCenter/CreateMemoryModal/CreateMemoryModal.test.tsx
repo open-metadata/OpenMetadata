@@ -395,7 +395,7 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'churn-risk-score',
-      status: 'Active',
+      entityStatus: 'Approved',
       shareConfig: { visibility: 'Entity' },
       derivedEntities: [
         {
@@ -529,7 +529,7 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'metrics.md-f02e2a5c',
-      status: 'Active',
+      entityStatus: 'Approved',
       shareConfig: { visibility: 'Entity' },
       derivedEntities: [],
     } as ContextMemory;
