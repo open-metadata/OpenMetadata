@@ -488,8 +488,11 @@ export const CsvJobsTray = () => {
   // Portal to body so the fixed tray shares the root stacking context with the
   // modals (which also portal to body); otherwise an ancestor stacking context
   // traps it below any open overlay regardless of its z-index.
+  // data-react-aria-top-layer exempts the tray from react-aria's ariaHideOutside,
+  // which otherwise marks every body sibling `inert` while a Modal is open — the
+  // tray is a toast-level surface (--om-z-toast) that must stay interactive above it.
   return createPortal(
-    <div className="csv-jobs-tray">
+    <div className="csv-jobs-tray" data-react-aria-top-layer="true">
       {open && (
         <div className="csv-jobs-tray-popover tw:w-100!">
           <div className="csv-jobs-tray-header">

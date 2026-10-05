@@ -186,6 +186,10 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     ]
   );
 
+  const handleTimeWindowChange = useCallback((key: string | number | null) => {
+    setTimeWindow(Number(key));
+  }, []);
+
   useEffect(() => {
     if (!searchText) {
       void fetchOnlineUsers();
@@ -356,9 +360,10 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
             <Typography size="text-sm">{t('label.time-window')}:</Typography>
             <Select
               data-testid="time-window-select"
-              selectedKey={String(timeWindow)}
+              selectedKey={String(timeWindow)} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
               size="sm"
-              onSelectionChange={(key) => setTimeWindow(Number(key))}>
+              onSelectionChange={handleTimeWindowChange} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
+            >
               {TIME_WINDOW_OPTIONS.map((opt) => (
                 <Select.Item
                   id={String(opt.value)}

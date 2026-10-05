@@ -385,6 +385,11 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     setIsEditing(false);
   }, [team, webhook, endpoint, onPatch, t]);
 
+  const handleWebhookChange = useCallback((key: string | number | null) => {
+    setWebhook(key && key !== NONE_KEY ? String(key) : '');
+    setError(undefined);
+  }, []);
+
   return (
     <InfoWidget
       action={
@@ -416,11 +421,9 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
                       placeholder={t('label.select-field', {
                         field: t('label.webhook'),
                       })}
-                      selectedKey={webhook || NONE_KEY}
-                      onSelectionChange={(key) => {
-                        setWebhook(key && key !== NONE_KEY ? String(key) : '');
-                        setError(undefined);
-                      }}>
+                      selectedKey={webhook || NONE_KEY} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
+                      onSelectionChange={handleWebhookChange} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
+                    >
                       {(item) => <Select.Item key={item.id} {...item} />}
                     </Select>
                   </Box>
