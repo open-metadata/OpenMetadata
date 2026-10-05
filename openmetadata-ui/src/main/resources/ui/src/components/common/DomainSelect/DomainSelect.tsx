@@ -13,6 +13,7 @@
 import {
   DomainTag,
   TreeSelect,
+  TreeSelectDataFetcherParams,
   TreeSelectDataResponse,
   TreeSelectNode,
 } from '@openmetadata/ui-core-components';
@@ -25,6 +26,7 @@ import {
   DEFAULT_DOMAIN_VALUE,
   PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import {
@@ -42,7 +44,9 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainSelectProps } from './DomainSelect.types';
 import {
   buildDomainSearchQuery,
+  decodeDomainCursor,
   domainsToTreeNodes,
+  encodeDomainCursor,
   entityReferencesToTreeNodes,
   fetchAllDomainChildren,
   getSelectedAncestorKeys,
@@ -50,6 +54,10 @@ import {
   treeNodesToEntityReferences,
   withDomainIcon,
 } from './DomainSelect.utils';
+
+// Only what a row needs: the label and the chevron. The parent join the
+// listing page asks for is dead weight here.
+const PICKER_DOMAIN_FIELDS = [TabSpecificField.CHILDREN_COUNT];
 
 const DomainSelect: FC<DomainSelectProps> = ({
   selectedDomain,
@@ -103,65 +111,139 @@ const DomainSelect: FC<DomainSelectProps> = ({
   // Nested nodes are subdomains of the node above them, so they get the
   // subdomain glyph; `isSubDomain` is threaded through the recursion (and set
   // by the lazy-load path when fetching a parent's children).
+  const toNodes = useCallback(
+    (domains: Domain[], isSubDomain = false) =>
+      withDomainIcon(
+        filterAllowedNodes(domainsToTreeNodes(domains ?? [])),
+        isSubDomain
+      ),
+    [filterAllowedNodes]
+  );
+
+  const fetchSearchHits = useCallback(
+    async (searchTerm: string, signal?: AbortSignal) => {
+      const results = (await searchDomains(
+        buildDomainSearchQuery(searchTerm),
+        1,
+        undefined,
+        signal
+      )) as unknown as Domain[];
+
+      return { nodes: toNodes(results) };
+    },
+    [toNodes]
+  );
+
+  // One level, one page. `parentId` is the parent's FQN, except for the
+  // synthetic "All Domains" row, whose children are the root listing.
+  const fetchChildPage = useCallback(
+    async (
+      parentId: string,
+      pageSize?: number,
+      after?: string,
+      signal?: AbortSignal
+    ) => {
+      const offset = decodeDomainCursor(after);
+      const parentFqn =
+        parentId === DEFAULT_DOMAIN_VALUE ? undefined : parentId;
+
+      const { data, paging } = await getDomainChildrenPaginated(
+        parentFqn,
+        pageSize ?? PAGE_SIZE_LARGE,
+        offset,
+        signal,
+        PICKER_DOMAIN_FIELDS
+      );
+
+      // The server's offset, so it counts what the server returned — not what
+      // the allow-list left behind, or the next page would skip rows.
+      const nextOffset = offset + (data?.length ?? 0);
+      const hasMore = nextOffset < (paging?.total ?? 0);
+
+      return {
+        nodes: toNodes(data, parentFqn !== undefined),
+        hasMore,
+        // Withheld under a restriction: `total` counts the server's rows while
+        // `nodes` counts what survived the allow-list, so reporting it would
+        // promise rows the user cannot see. The row then reads "Show N more"
+        // without the "· N remaining" suffix.
+        total: allowedFqns.length === 0 ? paging?.total : undefined,
+        nextCursor: hasMore ? encodeDomainCursor(nextOffset) : undefined,
+      };
+    },
+    [allowedFqns, toNodes]
+  );
+
+  // Scope-switcher: a single "All Domains" row that owns every root domain as a
+  // real branch, so those roots page like any other level. It carries no `data`,
+  // so selecting it maps to an empty selection → onUpdate(undefined) → scope
+  // cleared, while its children set a specific scope.
+  const allDomainsRoot = useCallback(
+    (): TreeSelectNode<EntityReference> => ({
+      id: DEFAULT_DOMAIN_VALUE,
+      value: DEFAULT_DOMAIN_VALUE,
+      label: t('label.all-domain-plural'),
+      isLeaf: false,
+      lazyLoad: true,
+      icon: <DomainIcon height={16} width={16} />,
+    }),
+    [t]
+  );
+
+  // The root listing of a plain picker is the one level that cannot offer a
+  // "Show N more" row, so it still drains — see MAX_DOMAIN_NODES.
+  const fetchRoots = useCallback(
+    async (signal?: AbortSignal) => {
+      const data = await fetchAllDomainChildren(
+        (offset, limit) =>
+          getDomainChildrenPaginated(
+            undefined,
+            limit,
+            offset,
+            signal,
+            PICKER_DOMAIN_FIELDS
+          ),
+        PAGE_SIZE_LARGE
+      );
+
+      return { nodes: toNodes(data) };
+    },
+    [toNodes]
+  );
+
+  // Not wrapped in a try/catch: an empty page reads as the end of a branch, so a
+  // swallowed failure would clear its cursor and strand every domain after it.
+  // Rejecting leaves the branch untouched and still resumable, and `onFetchError`
+  // below keeps the toast on the API's message.
   const fetchData = useCallback(
     async ({
       searchTerm,
       parentId,
+      pageSize,
+      after,
       signal,
-    }: {
-      searchTerm?: string;
-      parentId?: string;
-      signal?: AbortSignal;
-    }): Promise<TreeSelectDataResponse<EntityReference>> => {
+    }: TreeSelectDataFetcherParams): Promise<
+      TreeSelectDataResponse<EntityReference>
+    > => {
       if (searchTerm) {
-        const results = (await searchDomains(
-          buildDomainSearchQuery(searchTerm),
-          1,
-          undefined,
-          signal
-        )) as unknown as Domain[];
-
-        return {
-          nodes: withDomainIcon(
-            filterAllowedNodes(domainsToTreeNodes(results ?? []))
-          ),
-        };
+        return fetchSearchHits(searchTerm, signal);
       }
 
-      const data = await fetchAllDomainChildren(
-        (offset, pageSize) =>
-          getDomainChildrenPaginated(parentId, pageSize, offset, signal),
-        PAGE_SIZE_LARGE
-      );
-
-      const nodes = withDomainIcon(
-        filterAllowedNodes(domainsToTreeNodes(data)),
-        Boolean(parentId)
-      );
-
-      // Scope-switcher: a single "All Domains" root with every domain nested
-      // beneath it (expanded by default via defaultExpandedKeys). It carries no
-      // `data`, so selecting it maps to an empty selection → onUpdate(undefined)
-      // → scope cleared, while its children set a specific scope.
-      if (showAllDomains && !parentId) {
-        return {
-          nodes: [
-            {
-              id: DEFAULT_DOMAIN_VALUE,
-              value: DEFAULT_DOMAIN_VALUE,
-              label: t('label.all-domain-plural'),
-              isLeaf: false,
-              lazyLoad: false,
-              icon: <DomainIcon height={16} width={16} />,
-              children: nodes,
-            },
-          ],
-        };
+      if (parentId) {
+        return fetchChildPage(parentId, pageSize, after, signal);
       }
 
-      return { nodes };
+      return showAllDomains
+        ? { nodes: [allDomainsRoot()] }
+        : fetchRoots(signal);
     },
-    [filterAllowedNodes, showAllDomains, t]
+    [
+      allDomainsRoot,
+      fetchChildPage,
+      fetchRoots,
+      fetchSearchHits,
+      showAllDomains,
+    ]
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -317,6 +399,8 @@ const DomainSelect: FC<DomainSelectProps> = ({
       label={label}
       maxIndentLevel={showAllDomains ? 3 : undefined}
       multiple={multiple}
+      // One page per branch; the rest arrives behind "Show N more".
+      pageSize={PAGE_SIZE_LARGE}
       placeholder={
         placeholder ??
         t('label.select-field', { field: t('label.domain-plural') })

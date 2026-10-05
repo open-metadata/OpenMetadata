@@ -12,6 +12,7 @@
  */
 import { render } from '@testing-library/react';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getDomainChildrenPaginated,
@@ -64,6 +65,14 @@ const financeRef: EntityReference = {
   displayName: 'Finance',
   fullyQualifiedName: 'Finance',
 };
+
+const pageOf = (size: number) =>
+  Array.from({ length: size }, (_, index) => ({
+    id: `s${index}`,
+    name: `sub-${index}`,
+    fullyQualifiedName: `Finance.sub-${index}`,
+    childrenCount: 0,
+  }));
 
 const lastProps = () =>
   treeSelectMock.mock.calls[treeSelectMock.mock.calls.length - 1][0];
@@ -138,7 +147,8 @@ describe('DomainSelect', () => {
       undefined,
       PAGE_SIZE_LARGE,
       0,
-      undefined
+      undefined,
+      [TabSpecificField.CHILDREN_COUNT]
     );
     expect(nodes).toHaveLength(1);
     expect(nodes[0].id).toBe('Finance');
@@ -154,8 +164,121 @@ describe('DomainSelect', () => {
       'Finance',
       PAGE_SIZE_LARGE,
       0,
-      undefined
+      undefined,
+      [TabSpecificField.CHILDREN_COUNT]
     );
+  });
+
+  it('should fetch a branch exactly once instead of draining the level', async () => {
+    mockGetChildren.mockResolvedValue({
+      data: pageOf(PAGE_SIZE_LARGE),
+      paging: { total: 120 },
+    });
+    renderSelect();
+
+    await lastProps().fetchData({
+      parentId: 'Finance',
+      pageSize: PAGE_SIZE_LARGE,
+    });
+
+    expect(mockGetChildren).toHaveBeenCalledTimes(1);
+  });
+
+  it('should report the cursor and total of a truncated branch', async () => {
+    mockGetChildren.mockResolvedValue({
+      data: pageOf(PAGE_SIZE_LARGE),
+      paging: { total: 120 },
+    });
+    renderSelect();
+
+    const response = await lastProps().fetchData({
+      parentId: 'Finance',
+      pageSize: PAGE_SIZE_LARGE,
+    });
+
+    expect(response).toMatchObject({
+      hasMore: true,
+      total: 120,
+      nextCursor: '50',
+    });
+  });
+
+  it('should close a branch out once the last page lands', async () => {
+    mockGetChildren.mockResolvedValue({
+      data: pageOf(20),
+      paging: { total: 70 },
+    });
+    renderSelect();
+
+    const response = await lastProps().fetchData({
+      parentId: 'Finance',
+      pageSize: PAGE_SIZE_LARGE,
+      after: '50',
+    });
+
+    expect(response.hasMore).toBe(false);
+    expect(response.nextCursor).toBeUndefined();
+  });
+
+  it('should resume from the server offset even when the allow-list pruned a page', async () => {
+    // Only `sub-0` survives the allow-list, but the server still returned 50
+    // rows — resuming from the surviving count would skip the other 49.
+    mockGetChildren.mockResolvedValue({
+      data: pageOf(PAGE_SIZE_LARGE),
+      paging: { total: 120 },
+    });
+    renderSelect({
+      restrictedDomains: [
+        { id: 's0', type: 'domain', fullyQualifiedName: 'Finance.sub-0' },
+      ],
+    });
+
+    const response = await lastProps().fetchData({
+      parentId: 'Finance',
+      pageSize: PAGE_SIZE_LARGE,
+    });
+
+    expect(response.nodes).toHaveLength(1);
+    expect(response.nextCursor).toBe('50');
+
+    await lastProps().fetchData({
+      parentId: 'Finance',
+      pageSize: PAGE_SIZE_LARGE,
+      after: response.nextCursor,
+    });
+
+    expect(mockGetChildren).toHaveBeenLastCalledWith(
+      'Finance',
+      PAGE_SIZE_LARGE,
+      50,
+      undefined,
+      [TabSpecificField.CHILDREN_COUNT]
+    );
+  });
+
+  it('should withhold the total when a restriction prunes the page', async () => {
+    mockGetChildren.mockResolvedValue({
+      data: pageOf(PAGE_SIZE_LARGE),
+      paging: { total: 120 },
+    });
+    renderSelect({ restrictedDomains: [financeRef] });
+
+    const response = await lastProps().fetchData({
+      parentId: 'Finance',
+      pageSize: PAGE_SIZE_LARGE,
+    });
+
+    expect(response.hasMore).toBe(true);
+    expect(response.total).toBeUndefined();
+  });
+
+  it('should let a failed page reject so the branch stays resumable', async () => {
+    mockGetChildren.mockRejectedValue(new Error('boom'));
+    renderSelect();
+
+    await expect(
+      lastProps().fetchData({ parentId: 'Finance' })
+    ).rejects.toThrow('boom');
   });
 
   it('should search domains when a search term is given', async () => {
@@ -191,14 +314,35 @@ describe('DomainSelect', () => {
     expect(nodes).toHaveLength(0);
   });
 
-  it('should nest domains under a single "All Domains" root when showAllDomains is set', async () => {
+  it('should offer a single lazy "All Domains" root when showAllDomains is set', async () => {
     renderSelect({ showAllDomains: true });
 
     const { nodes } = await lastProps().fetchData({});
 
     expect(nodes).toHaveLength(1);
     expect(nodes[0].value).toBe('All Domains');
-    expect(nodes[0].children?.[0].id).toBe('Finance');
+    // A real branch, so the roots under it page like any other level.
+    expect(nodes[0]).toMatchObject({ lazyLoad: true, isLeaf: false });
+    expect(nodes[0].children).toBeUndefined();
+    expect(mockGetChildren).not.toHaveBeenCalled();
+  });
+
+  it('should page the root listing when "All Domains" is expanded', async () => {
+    renderSelect({ showAllDomains: true });
+
+    const response = await lastProps().fetchData({
+      parentId: 'All Domains',
+      pageSize: PAGE_SIZE_LARGE,
+    });
+
+    expect(mockGetChildren).toHaveBeenCalledWith(
+      undefined,
+      PAGE_SIZE_LARGE,
+      0,
+      undefined,
+      [TabSpecificField.CHILDREN_COUNT]
+    );
+    expect(response.nodes[0].id).toBe('Finance');
   });
 
   it('should not prepend "All Domains" when loading a parent\'s subdomains', async () => {

@@ -130,32 +130,22 @@ export const removeAssetsFromDomain = async (
   return response.data;
 };
 
-export const listDomainHierarchy = async (
-  params?: ListParams,
-  signal?: AbortSignal
-) => {
-  const response = await APIClient.get<PagingResponse<Domain[]>>(
-    `${BASE_URL}/hierarchy`,
-    {
-      params,
-      signal,
-    }
-  );
-
-  return response.data;
-};
-
 export const getDomainChildrenPaginated = async (
   parentFQN?: string,
   pageSize = 15,
   offset = 0,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  // A picker needs the name and the chevron, not the parent join.
+  fields: TabSpecificField[] = [
+    TabSpecificField.PARENT,
+    TabSpecificField.CHILDREN_COUNT,
+  ]
 ) => {
   const apiUrl = `${BASE_URL}/hierarchy`;
   const requestParams: Record<string, string | number | string[]> = {
     limit: pageSize,
     offset,
-    fields: [TabSpecificField.PARENT, TabSpecificField.CHILDREN_COUNT],
+    fields,
   };
 
   if (parentFQN) {
