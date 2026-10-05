@@ -86,6 +86,10 @@ class ColumnIndexingToggleIT {
       assertThat(countedEntityTypes(marker))
           .contains(Entity.TABLE)
           .doesNotContain(Entity.TABLE_COLUMN);
+      assertThat(reindexStatusMessage())
+          .as("the Health page must not ask for a reindex to restore a turned-off index")
+          .isNotBlank()
+          .doesNotContain(Entity.TABLE_COLUMN);
 
       setColumnIndexing(true);
       assertThat(search.indexExists(columnIndex)).isTrue();
@@ -124,6 +128,17 @@ class ColumnIndexingToggleIT {
   private static long columnDocCount(final String columnIndex, final Table table) {
     final String query = "{\"query\":{\"term\":{\"table.id\":\"" + table.getId() + "\"}}}";
     return engine.count(columnIndex, query).path("count").asLong();
+  }
+
+  /** The message of the "Search Reindex Status" step that the Health page shows. */
+  private static String reindexStatusMessage() {
+    final JsonNode status =
+        JsonUtils.readTree(
+            server
+                .sdk()
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/system/status", null));
+    return status.path("Search Reindex Status").path("message").asText();
   }
 
   /** The entity types the Explore tab counts report for {@code query}, across both indexes. */

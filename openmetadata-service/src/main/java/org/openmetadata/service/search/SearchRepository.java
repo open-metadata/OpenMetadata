@@ -1415,6 +1415,14 @@ public class SearchRepository {
     return SettingsCache.isColumnIndexingEnabled();
   }
 
+  /**
+   * Whether {@code entityType}'s index is turned off in Search Settings, so its absence is intended.
+   * Checks that walk every index mapping use it so they don't report that index as missing.
+   */
+  public boolean isIndexDisabled(String entityType) {
+    return Entity.TABLE_COLUMN.equals(entityType) && !isColumnIndexingEnabled();
+  }
+
   private IndexMapping columnIndexMappingIfEnabled() {
     return isColumnIndexingEnabled() ? entityIndexMap.get(Entity.TABLE_COLUMN) : null;
   }

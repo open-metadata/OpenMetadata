@@ -1603,6 +1603,17 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void onlyTheColumnIndexIsDisabledAndOnlyWhileColumnIndexingIsOff() {
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      assertTrue(repository.isIndexDisabled(Entity.TABLE_COLUMN));
+      assertFalse(repository.isIndexDisabled(Entity.TABLE));
+    }
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      assertFalse(repository.isIndexDisabled(Entity.TABLE_COLUMN));
+    }
+  }
+
+  @Test
   void indexListsLeaveOutTheColumnIndexWhileColumnIndexingIsOff() {
     SearchRepository repo =
         newRepository(

@@ -1307,7 +1307,8 @@ public class SystemRepository {
     try {
       Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
       for (Map.Entry<String, IndexMapping> entry : indexMap.entrySet()) {
-        if (!semanticSearchEnabled && VECTOR_EMBEDDING_INDEX_KEY.equals(entry.getKey())) {
+        if ((!semanticSearchEnabled && VECTOR_EMBEDDING_INDEX_KEY.equals(entry.getKey()))
+            || searchRepository.isIndexDisabled(entry.getKey())) {
           continue;
         }
         if (!searchRepository.indexExists(entry.getValue())) {
@@ -1382,6 +1383,8 @@ public class SystemRepository {
     if (!searchRepository.isVectorEmbeddingEnabled()) {
       existingIndexes.remove(VECTOR_EMBEDDING_INDEX_KEY);
     }
+    // A turned-off index is absent, so comparing its stored mapping hash would report false drift.
+    existingIndexes.removeIf(searchRepository::isIndexDisabled);
     return existingIndexes;
   }
 
