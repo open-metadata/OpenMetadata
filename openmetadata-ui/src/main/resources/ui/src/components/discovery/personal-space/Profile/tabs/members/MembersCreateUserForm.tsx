@@ -95,6 +95,11 @@ const flattenTeamHierarchy = (teams: TeamNode[]): SelectItemType[] =>
     ...flattenTeamHierarchy(team.children ?? []),
   ]);
 
+// Hoisted so the multi-select item handlers don't nest a filter callback five
+// levels deep (sonarjs/no-nested-functions).
+const withoutId = (ids: string[], key: string | number): string[] =>
+  ids.filter((id) => id !== String(key));
+
 const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   isAdmin,
   onNavigate,
@@ -402,9 +407,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
             placeholder={t('label.please-select-entity', { entity: label })}
             selectedItems={selectedItems(field.value as string[], items)}
             onItemCleared={(key) =>
-              field.onChange(
-                (field.value as string[]).filter((id) => id !== String(key))
-              )
+              field.onChange(withoutId(field.value as string[], key))
             }
             onItemInserted={(key) =>
               field.onChange([...(field.value as string[]), String(key)])

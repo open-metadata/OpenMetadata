@@ -380,7 +380,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
 
     if (view.type === 'users') {
       return (
+        // Keyed so switching Users <-> Admins remounts the panel: both render the
+        // same component type, and its fetch effects don't depend on isAdmin, so
+        // without a key React would keep the instance and show the stale list.
         <MembersUsersPanel
+          key="users"
           onNavigate={onNavigate}
           onSetHeader={setPanelHeader}
         />
@@ -391,6 +395,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       return (
         <MembersUsersPanel
           isAdmin
+          key="admins"
           onNavigate={onNavigate}
           onSetHeader={setPanelHeader}
         />

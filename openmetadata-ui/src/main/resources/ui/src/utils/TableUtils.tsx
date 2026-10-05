@@ -65,9 +65,9 @@ import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ExpandableConfig } from '../components/common/Table/Table.interface';
 import { ConstraintTypes } from '../enums/table.enum';
 import {
-  ConstraintType,
-  DataType,
-  TableConstraint,
+    ConstraintType,
+    DataType,
+    TableConstraint
 } from '../generated/entity/data/table';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { t } from './i18next/LocalUtil';
@@ -76,10 +76,10 @@ import { t } from './i18next/LocalUtil';
 // drags the entity-icon graph into every consumer. Re-exported because downstream repos (Collate)
 // still import them from here; they tree-shake away for callers that do not use them.
 export {
-  EntityIconSize,
-  ENTITY_ICON_SIZE_CLASS_MAP,
-  getEntityIcon,
-  getEntityTypeIcon,
+    EntityIconSize,
+    ENTITY_ICON_SIZE_CLASS_MAP,
+    getEntityIcon,
+    getEntityTypeIcon
 } from './EntityIconUtils';
 export { getServiceIcon } from './EntityServiceIconUtils';
 

@@ -12,11 +12,11 @@
  */
 
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useSyncExternalStore
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';

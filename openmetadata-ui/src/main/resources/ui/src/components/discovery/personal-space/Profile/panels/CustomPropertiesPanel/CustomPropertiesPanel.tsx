@@ -12,20 +12,20 @@
  */
 
 import {
-  Box,
-  FeaturedIcon,
-  Toggle,
-  Typography,
+    Box,
+    FeaturedIcon,
+    Toggle,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Hint, Settings02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import type { Key } from 'react';
 import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
@@ -49,10 +49,10 @@ import CustomPropertiesLandingPage from './CustomPropertiesLandingPage';
 import { CRUMB } from './CustomPropertiesPanel.constants';
 import { CustomPropertiesSubView } from './CustomPropertiesPanel.types';
 import {
-  getBreadcrumbItems,
-  getPageTitle,
-  parseCustomPropertiesHash,
-  viewToSubPath,
+    getBreadcrumbItems,
+    getPageTitle,
+    parseCustomPropertiesHash,
+    viewToSubPath
 } from './CustomPropertiesPanel.utils';
 
 interface CustomPropertiesPanelProps {

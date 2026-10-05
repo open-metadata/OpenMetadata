@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
-  TreeSelect,
-  TreeSelectDataResponse,
-  TreeSelectNode,
+    TreeSelect,
+    TreeSelectDataResponse,
+    TreeSelectNode
 } from '@openmetadata/ui-core-components';
 import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../generated/entity/type';
 import { getAllPersonas, searchPersonas } from '../../../rest/PersonaAPI';

@@ -12,9 +12,9 @@
  */
 
 import {
-  Button,
-  ButtonUtility,
-  Typography,
+    Button,
+    ButtonUtility,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';

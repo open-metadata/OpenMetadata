@@ -12,11 +12,11 @@
  */
 
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  Typography,
+    Box,
+    Button,
+    ButtonUtility,
+    Card,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';

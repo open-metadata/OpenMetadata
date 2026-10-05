@@ -12,11 +12,11 @@
  */
 
 import {
-  Autocomplete,
-  Box,
-  Button,
-  EmptyPlaceholder,
-  Typography,
+    Autocomplete,
+    Box,
+    Button,
+    EmptyPlaceholder,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import type { Key } from 'react-aria-components';

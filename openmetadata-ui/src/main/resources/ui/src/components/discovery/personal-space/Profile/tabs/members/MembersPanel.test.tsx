@@ -53,14 +53,15 @@ jest.mock(
       onRename?: (name: string) => void;
     }) => {
       const React = require('react');
+      const { onRename } = props;
       // Defer like the real component, which reports the name only after its
       // async getTeamByName resolves — so the panel's sync clear-on-nav effect
       // runs first and doesn't wipe it.
       React.useEffect(() => {
-        const id = setTimeout(() => props.onRename?.('Engineering Team'), 0);
+        const id = setTimeout(() => onRename?.('Engineering Team'), 0);
 
         return () => clearTimeout(id);
-      }, [props.onRename]);
+      }, [onRename]);
 
       return (
         <div data-fqn={props.fqn} data-testid="members-team-detail">
