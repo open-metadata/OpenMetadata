@@ -51,11 +51,28 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 // Shape a listed team for the tree table: key by FQN, and seed an empty children array only when
 // the team has children (so the row shows an expander and lazy-loads on expand).
-const toListTeam = (team: Team): Team => ({
+const toListTeam = (team: Team) => ({
   ...team,
   key: team.fullyQualifiedName,
   children: team.childrenCount && team.childrenCount > 0 ? [] : undefined,
 });
+
+// Graft a freshly-fetched subtree onto the matching parent in the existing tree (expand path).
+const updateTeamsHierarchy = (
+  teams: Team[],
+  parentTeam: string,
+  data: Team[]
+) => {
+  for (const team of teams) {
+    if (team.fullyQualifiedName === parentTeam) {
+      team.children = data as EntityReference[];
+
+      break;
+    } else if (team.children && team.children.length > 0) {
+      updateTeamsHierarchy(team.children as Team[], parentTeam, data);
+    }
+  }
+};
 
 const TeamsPage = () => {
   const navigate = useNavigate();
@@ -93,19 +110,12 @@ const TeamsPage = () => {
 
   const [isFetchingAdvancedDetails, setFetchingAdvancedDetails] =
     useState<boolean>(true);
-  // Monotonic nonce, not a boolean trigger: a boolean coalesced when a refresh was requested while
-  // an advanced fetch was still in flight (slow under load), silently dropping the post-create
-  // refresh. Each bump is a distinct value so the effect always re-fires.
-  const [advancedFetchNonce, setAdvancedFetchNonce] = useState<number>(0);
   const [isFetchAllTeamAdvancedDetails, setIsFetchAllTeamAdvancedDetails] =
     useState<boolean>(false);
-  // Request id for the all-teams advanced fetch: the nonce lets a newer fetch start before an older
-  // one resolves, so only the latest request may apply results or clear the loading flag — an older
-  // response must not overwrite the list with stale (pre-create) data.
+  // Request id for the all-teams advanced fetch. A basic fetch chains an advanced one, so a newer
+  // refresh can start before an older one resolves; only the latest request may apply results or
+  // clear the loading flag, so an older response can't overwrite the list with stale data.
   const advancedFetchIdRef = useRef<number>(0);
-  // Latest fqn, read by the nonce effect so fqn is not an effect dependency (that fired a duplicate
-  // advanced fetch on navigation — once from the fqn change, once from the following nonce bump).
-  const fqnRef = useRef<string>(fqn);
   const [teamAssetCounts, setTeamAssetCounts] = useState<
     Record<string, number>
   >({});
@@ -114,21 +124,88 @@ const TeamsPage = () => {
     setIsAddingTeam(value);
   };
 
-  const updateTeamsHierarchy = (
-    teams: Team[],
-    parentTeam: string,
-    data: Team[]
-  ) => {
-    for (const team of teams) {
-      if (team.fullyQualifiedName === parentTeam) {
-        team.children = data as EntityReference[];
-
-        break;
-      } else if (team.children && team.children.length > 0) {
-        updateTeamsHierarchy(team.children as Team[], parentTeam, data);
-      }
+  const fetchTeamAssetCounts = useCallback(async () => {
+    try {
+      const counts = await getTeamsAssetCounts();
+      setTeamAssetCounts(counts);
+    } catch {
+      // Silently fail - asset counts will show 0
     }
-  };
+  }, []);
+
+  const applyAllTeamsData = useCallback(
+    (teams: Team[], parentTeam: string | undefined, updateChildNode: boolean) => {
+      if (!updateChildNode) {
+        setChildTeams(teams);
+
+        return;
+      }
+      // Functional update so this does not close over childTeams — keeps the callback stable and
+      // merges into the freshest tree rather than a stale snapshot.
+      setChildTeams((prev) => {
+        const allTeamsData = cloneDeep(prev);
+        updateTeamsHierarchy(allTeamsData, parentTeam ?? '', teams);
+
+        return allTeamsData;
+      });
+    },
+    []
+  );
+
+  const fetchAllTeamsAdvancedDetails = useCallback(
+    async (loading = true, parentTeam?: string, updateChildNode = false) => {
+      // Staleness tracking applies only to full-list refreshes: those replace the whole list, so an
+      // older one resolving last would overwrite it with pre-create data. Expand calls
+      // (updateChildNode) merge a specific subtree and target different parents, so they must not
+      // invalidate each other — they skip the request-id bump entirely.
+      const isFullRefresh = !updateChildNode;
+      const fetchId = isFullRefresh
+        ? ++advancedFetchIdRef.current
+        : advancedFetchIdRef.current;
+      const isLatestFullRefresh = () =>
+        !isFullRefresh || fetchId === advancedFetchIdRef.current;
+      // The whole-table skeleton flag belongs to full refreshes only. Guard both the set and the
+      // clear on this, so an expand never toggles it — not even to false mid full refresh.
+      const isActiveFullRefresh = () =>
+        isFullRefresh && fetchId === advancedFetchIdRef.current;
+      loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
+      if (isFullRefresh) {
+        setIsFetchAllTeamAdvancedDetails(true);
+      }
+
+      try {
+        const { data } = await getTeams({
+          parentTeam: parentTeam ?? 'organization',
+          include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
+          fields: [
+            TabSpecificField.USER_COUNT,
+            TabSpecificField.CHILDREN_COUNT,
+            TabSpecificField.OWNS,
+            TabSpecificField.PARENTS,
+            TabSpecificField.DEFAULT_PERSONA,
+          ],
+        });
+
+        // A newer full refresh started while this one was in flight — drop this stale response.
+        if (!isLatestFullRefresh()) {
+          return;
+        }
+
+        applyAllTeamsData(data.map(toListTeam), parentTeam, updateChildNode);
+      } catch (error) {
+        if (isLatestFullRefresh()) {
+          showErrorToast(error as AxiosError, t('server.unexpected-response'));
+        }
+      } finally {
+        // Clear only the latest full refresh's flag; an expand or superseded refresh leaves it be.
+        if (isActiveFullRefresh()) {
+          setIsFetchAllTeamAdvancedDetails(false);
+        }
+        loading && setIsDataLoading((isDataLoading) => --isDataLoading);
+      }
+    },
+    [showDeletedTeam, t, applyAllTeamsData]
+  );
 
   const fetchAllTeamsBasicDetails = useCallback(
     async (parentTeam?: string) => {
@@ -140,119 +217,39 @@ const TeamsPage = () => {
         });
 
         setChildTeams(data.map(toListTeam));
-        setAdvancedFetchNonce((n) => n + 1);
+        // Basic details render the rows fast; chain the advanced fetch directly for the counts.
+        void fetchAllTeamsAdvancedDetails(false, parentTeam);
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.unexpected-response'));
       } finally {
         setIsTeamBasicDataLoading(false);
       }
     },
-    [showDeletedTeam, t]
+    [showDeletedTeam, t, fetchAllTeamsAdvancedDetails]
   );
 
-  const fetchTeamAssetCounts = useCallback(async () => {
-    try {
-      const counts = await getTeamsAssetCounts();
-      setTeamAssetCounts(counts);
-    } catch {
-      // Silently fail - asset counts will show 0
-    }
-  }, []);
-
-  const applyAllTeamsData = (
-    teams: Team[],
-    parentTeam: string | undefined,
-    updateChildNode: boolean
-  ) => {
-    if (!updateChildNode) {
-      setChildTeams(teams);
-
-      return;
-    }
-    const allTeamsData = cloneDeep(childTeams);
-    updateTeamsHierarchy(allTeamsData, parentTeam ?? '', teams);
-    setChildTeams(allTeamsData);
-  };
-
-  const fetchAllTeamsAdvancedDetails = async (
-    loading = true,
-    parentTeam?: string,
-    updateChildNode = false
-  ) => {
-    // Staleness tracking applies only to full-list refreshes: those replace the whole list, so an
-    // older one resolving last would overwrite it with pre-create data. Expand calls
-    // (updateChildNode) merge into a specific subtree and target different parents, so they must not
-    // invalidate each other — they skip the request-id bump entirely.
-    const isFullRefresh = !updateChildNode;
-    const fetchId = isFullRefresh
-      ? ++advancedFetchIdRef.current
-      : advancedFetchIdRef.current;
-    const isLatestFullRefresh = () =>
-      !isFullRefresh || fetchId === advancedFetchIdRef.current;
-    // The whole-table skeleton flag belongs to full refreshes only. Guard both the set and the clear
-    // on this, so an expand never toggles it — not even to false while a full refresh is mid-flight.
-    const isActiveFullRefresh = () =>
-      isFullRefresh && fetchId === advancedFetchIdRef.current;
-    loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
-    if (isFullRefresh) {
-      setIsFetchAllTeamAdvancedDetails(true);
-    }
-
-    try {
-      const { data } = await getTeams({
-        parentTeam: parentTeam ?? 'organization',
-        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
-        fields: [
-          TabSpecificField.USER_COUNT,
-          TabSpecificField.CHILDREN_COUNT,
-          TabSpecificField.OWNS,
-          TabSpecificField.PARENTS,
-          TabSpecificField.DEFAULT_PERSONA,
-        ],
-      });
-
-      // A newer full refresh started while this one was in flight — drop this stale response.
-      if (!isLatestFullRefresh()) {
-        return;
-      }
-
-      applyAllTeamsData(data.map(toListTeam), parentTeam, updateChildNode);
-    } catch (error) {
-      if (isLatestFullRefresh()) {
+  const getParentTeam = useCallback(
+    async (name: string, newTeam = false, loadPage = true) => {
+      setIsPageLoading(loadPage);
+      try {
+        const data = await getTeamByName(name, {
+          fields: TabSpecificField.PARENTS,
+          include: Include.All,
+        });
+        if (data) {
+          setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
+          if (!isEmpty(data.parents) && data.parents?.[0].name) {
+            await getParentTeam(data.parents[0].name, false, loadPage);
+          }
+        } else {
+          throw t('server.unexpected-response');
+        }
+      } catch (error) {
         showErrorToast(error as AxiosError, t('server.unexpected-response'));
       }
-    } finally {
-      // Clear only the latest full refresh's flag; an expand or a superseded refresh leaves it alone.
-      if (isActiveFullRefresh()) {
-        setIsFetchAllTeamAdvancedDetails(false);
-      }
-      loading && setIsDataLoading((isDataLoading) => --isDataLoading);
-    }
-  };
-
-  const getParentTeam = async (
-    name: string,
-    newTeam = false,
-    loadPage = true
-  ) => {
-    setIsPageLoading(loadPage);
-    try {
-      const data = await getTeamByName(name, {
-        fields: TabSpecificField.PARENTS,
-        include: Include.All,
-      });
-      if (data) {
-        setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
-        if (!isEmpty(data.parents) && data.parents?.[0].name) {
-          await getParentTeam(data.parents[0].name, false, loadPage);
-        }
-      } else {
-        throw t('server.unexpected-response');
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    }
-  };
+    },
+    [t]
+  );
 
   const fetchAssets = useCallback(async (selectedTeam: Team) => {
     if (selectedTeam.id && selectedTeam.teamType === TeamType.Group) {
@@ -281,31 +278,34 @@ const TeamsPage = () => {
     }
   }, []);
 
-  const fetchTeamBasicDetails = async (name: string, loadPage = false) => {
-    setIsPageLoading(loadPage);
-    try {
-      const data = await getTeamByName(name, {
-        fields: [
-          TabSpecificField.USER_COUNT,
-          TabSpecificField.PARENTS,
-          TabSpecificField.PROFILE,
-          TabSpecificField.OWNERS,
-        ],
-        include: Include.All,
-      });
+  const fetchTeamBasicDetails = useCallback(
+    async (name: string, loadPage = false) => {
+      setIsPageLoading(loadPage);
+      try {
+        const data = await getTeamByName(name, {
+          fields: [
+            TabSpecificField.USER_COUNT,
+            TabSpecificField.PARENTS,
+            TabSpecificField.PROFILE,
+            TabSpecificField.OWNERS,
+          ],
+          include: Include.All,
+        });
 
-      setSelectedTeam((previous) =>
-        previous.id === data.id ? { ...previous, ...data } : data
-      );
-      if (!isEmpty(data.parents) && data.parents?.[0].name) {
-        await getParentTeam(data.parents[0].name, true, loadPage);
+        setSelectedTeam((previous) =>
+          previous.id === data.id ? { ...previous, ...data } : data
+        );
+        if (!isEmpty(data.parents) && data.parents?.[0].name) {
+          await getParentTeam(data.parents[0].name, true, loadPage);
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      } finally {
+        setIsPageLoading(false);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    } finally {
-      setIsPageLoading(false);
-    }
-  };
+    },
+    [getParentTeam, t]
+  );
 
   const fetchTeamAdvancedDetails = useCallback(
     async (name: string) => {
@@ -340,14 +340,8 @@ const TeamsPage = () => {
 
   const loadAdvancedDetails = useCallback(() => {
     fetchTeamAdvancedDetails(fqn);
-    fetchAllTeamsBasicDetails(fqn);
     fetchTeamAssetCounts();
-  }, [
-    fqn,
-    fetchTeamAdvancedDetails,
-    fetchAllTeamsBasicDetails,
-    fetchTeamAssetCounts,
-  ]);
+  }, [fqn, fetchTeamAdvancedDetails, fetchTeamAssetCounts]);
 
   /**
    * Take Team data as input and create the team
@@ -374,6 +368,9 @@ const TeamsPage = () => {
         handleAddTeam(false);
         await fetchTeamBasicDetails(selectedTeam.name, true);
         loadAdvancedDetails();
+        // Navigation/toggle refresh the list via its own effect; a create changes neither, so
+        // refresh it explicitly here.
+        void fetchAllTeamsBasicDetails(fqn);
       }
     } catch (error) {
       if (
@@ -576,8 +573,7 @@ const TeamsPage = () => {
     if (hasViewPermission) {
       fetchTeamBasicDetails(fqn, true).then(loadAdvancedDetails);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable fetchers, not reactive inputs
-  }, [hasViewPermission, fqn]);
+  }, [hasViewPermission, fqn, fetchTeamBasicDetails, loadAdvancedDetails]);
 
   useEffect(() => {
     if (!permissionsLoading && !hasViewPermission) {
@@ -585,23 +581,14 @@ const TeamsPage = () => {
     }
   }, [permissionsLoading, hasViewPermission]);
 
+  // The team list for the current parent. fetchAllTeamsBasicDetails closes over showDeletedTeam, so
+  // its identity changes when the deleted toggle flips — which, with fqn, re-runs this effect for
+  // both navigation and the toggle. It also chains the advanced (counts) fetch itself.
   useEffect(() => {
     if (hasViewPermission && fqn) {
-      fetchAllTeamsBasicDetails(fqn);
+      void fetchAllTeamsBasicDetails(fqn);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on deleted-toggle only; nav handled above
-  }, [showDeletedTeam]);
-
-  useEffect(() => {
-    fqnRef.current = fqn;
-  }, [fqn]);
-
-  useEffect(() => {
-    if (advancedFetchNonce > 0 && fqnRef.current) {
-      void fetchAllTeamsAdvancedDetails(false, fqnRef.current);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire on nonce only; latest fqn read via fqnRef
-  }, [advancedFetchNonce]);
+  }, [fqn, hasViewPermission, fetchAllTeamsBasicDetails]);
 
   if (isPageLoading) {
     return <Loader />;
