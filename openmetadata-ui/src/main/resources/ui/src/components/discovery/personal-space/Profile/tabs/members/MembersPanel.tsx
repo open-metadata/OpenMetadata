@@ -244,6 +244,28 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   // show it (and update live on rename) instead of the raw FQN.
   const [resolvedTeamName, setResolvedTeamName] = useState('');
 
+  // One header setter for the children: a partial patch merged into the three
+  // slots (only the keys present are touched, so a panel that owns just `actions`
+  // can't clobber the title slots).
+  const setPanelHeader = useCallback(
+    (patch: {
+      actions?: React.ReactNode;
+      titleInput?: React.ReactNode;
+      titleSuffix?: React.ReactNode;
+    }) => {
+      if ('actions' in patch) {
+        setPanelHeaderActions(patch.actions);
+      }
+      if ('titleInput' in patch) {
+        setDetailHeaderTitleInput(patch.titleInput);
+      }
+      if ('titleSuffix' in patch) {
+        setDetailHeaderTitleSuffix(patch.titleSuffix);
+      }
+    },
+    []
+  );
+
   const viewFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
 
   useEffect(() => {
@@ -311,9 +333,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
           key="Organization"
           onNavigate={onNavigate}
           onRename={noopRename}
-          onSetHeaderActions={setPanelHeaderActions}
-          onSetHeaderTitleInput={setDetailHeaderTitleInput}
-          onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}
+          onSetHeader={setPanelHeader}
         />
       );
     }
@@ -325,9 +345,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
           key={view.fqn}
           onNavigate={onNavigate}
           onRename={setResolvedTeamName}
-          onSetHeaderActions={setPanelHeaderActions}
-          onSetHeaderTitleInput={setDetailHeaderTitleInput}
-          onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}
+          onSetHeader={setPanelHeader}
         />
       );
     }
@@ -364,7 +382,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       return (
         <MembersUsersPanel
           onNavigate={onNavigate}
-          onSetHeaderActions={setPanelHeaderActions}
+          onSetHeader={setPanelHeader}
         />
       );
     }
@@ -374,7 +392,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
         <MembersUsersPanel
           isAdmin
           onNavigate={onNavigate}
-          onSetHeaderActions={setPanelHeaderActions}
+          onSetHeader={setPanelHeader}
         />
       );
     }

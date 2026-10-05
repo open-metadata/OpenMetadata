@@ -47,17 +47,23 @@ export interface MembersSubPanelProps {
   onNavigate: (view: MembersView) => void;
 }
 
+// A partial header update: only the keys present are applied, so a panel can own
+// just the slots it sets (e.g. actions) without clobbering the title slots.
+export interface MembersHeaderPatch {
+  actions?: React.ReactNode;
+  titleInput?: React.ReactNode;
+  titleSuffix?: React.ReactNode;
+}
+
 export interface MembersUsersPanelProps extends MembersSubPanelProps {
   isAdmin?: boolean;
-  onSetHeaderActions?: (actions: React.ReactNode) => void;
+  onSetHeader?: (patch: MembersHeaderPatch) => void;
 }
 
 export interface MembersTeamDetailProps extends MembersSubPanelProps {
   fqn: string;
   onRename?: (newName: string) => void;
-  onSetHeaderActions?: (actions: React.ReactNode) => void;
-  onSetHeaderTitleInput?: (input: React.ReactNode) => void;
-  onSetHeaderTitleSuffix?: (suffix: React.ReactNode) => void;
+  onSetHeader?: (patch: MembersHeaderPatch) => void;
 }
 
 export interface OnlineStatusInfo {

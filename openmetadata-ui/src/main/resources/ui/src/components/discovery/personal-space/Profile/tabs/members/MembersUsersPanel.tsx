@@ -80,7 +80,7 @@ const USER_FIELDS = [
 const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   isAdmin,
   onNavigate,
-  onSetHeaderActions,
+  onSetHeader,
 }) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -258,27 +258,29 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!onSetHeaderActions || !canCreateUser) {
-      onSetHeaderActions?.(undefined);
+    if (!onSetHeader || !canCreateUser) {
+      onSetHeader?.({ actions: undefined });
 
       return;
     }
-    onSetHeaderActions(
-      <Button
-        color="primary"
-        data-testid="add-user"
-        size="sm"
-        onPress={() =>
-          onNavigate({ type: 'user-create', isAdmin: Boolean(isAdmin) })
-        }>
-        {t('label.add-entity', {
-          entity: t(isAdmin ? 'label.admin' : 'label.user'),
-        })}
-      </Button>
-    );
+    onSetHeader({
+      actions: (
+        <Button
+          color="primary"
+          data-testid="add-user"
+          size="sm"
+          onPress={() =>
+            onNavigate({ type: 'user-create', isAdmin: Boolean(isAdmin) })
+          }>
+          {t('label.add-entity', {
+            entity: t(isAdmin ? 'label.admin' : 'label.user'),
+          })}
+        </Button>
+      ),
+    });
 
-    return () => onSetHeaderActions(undefined);
-  }, [canCreateUser, isAdmin, onNavigate, onSetHeaderActions, t]);
+    return () => onSetHeader({ actions: undefined });
+  }, [canCreateUser, isAdmin, onNavigate, onSetHeader, t]);
 
   const columns: ColumnsType<User> = useMemo(() => {
     const usernameColumn = {

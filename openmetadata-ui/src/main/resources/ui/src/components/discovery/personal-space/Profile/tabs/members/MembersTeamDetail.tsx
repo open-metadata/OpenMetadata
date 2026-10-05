@@ -122,9 +122,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   fqn,
   onNavigate,
   onRename,
-  onSetHeaderActions,
-  onSetHeaderTitleInput,
-  onSetHeaderTitleSuffix,
+  onSetHeader,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -927,9 +925,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     onJoinTeam: handleJoinTeam,
     onLeaveTeam: handleLeaveTeam,
     onDelete: () => setIsDeleting(true),
-    onSetHeaderActions,
-    onSetHeaderTitleInput,
-    onSetHeaderTitleSuffix,
+    onSetHeader,
   });
 
   if (isLoading) {

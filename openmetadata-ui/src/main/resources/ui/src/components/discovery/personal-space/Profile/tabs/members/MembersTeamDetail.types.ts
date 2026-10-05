@@ -12,7 +12,6 @@
  */
 
 import type { SelectItemType } from '@openmetadata/ui-core-components';
-import type { ReactNode } from 'react';
 import type { DragAndDropHooks } from 'react-aria-components';
 import type { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import type { Team } from '../../../../../../generated/entity/teams/team';
@@ -24,7 +23,7 @@ import type {
   ExpandableConfig,
 } from '../../../../../common/Table/Table.interface';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
-import type { MembersView } from './Members.types';
+import type { MembersHeaderPatch, MembersView } from './Members.types';
 
 export type TeamTab = 'teams' | 'users' | 'assets' | 'roles' | 'policies';
 
@@ -160,7 +159,5 @@ export interface UseMembersTeamHeaderParams {
   onJoinTeam: () => void;
   onLeaveTeam: () => void;
   onDelete: () => void;
-  onSetHeaderActions?: (actions: ReactNode) => void;
-  onSetHeaderTitleInput?: (input: ReactNode) => void;
-  onSetHeaderTitleSuffix?: (suffix: ReactNode) => void;
+  onSetHeader?: (patch: MembersHeaderPatch) => void;
 }

@@ -96,23 +96,58 @@ const buildTitleInput = (
 const getJoinableLabel = (t: TranslateFn, team: Team): string =>
   team.isJoinable ? t('label.make-private') : t('label.make-public');
 
-const buildTeamActionsMenu = (
+// The manage items (make public/private, restore, delete) split out to keep
+// buildTeamActionsMenu's branching under the complexity budget.
+const buildManageMenuItems = (
   t: TranslateFn,
   team: Team,
   params: UseMembersTeamHeaderParams
 ): ReactNode => {
   const {
-    canCreateTeam,
     canDelete,
     canEditAll,
-    isGroupType,
     isOrgType,
-    onTeamExport,
-    onTeamImport,
     onToggleJoinable,
     onRestoreTeam,
     onDelete,
   } = params;
+  const notDeleted = !team.deleted;
+
+  return (
+    <>
+      {!isOrgType && notDeleted && canEditAll && (
+        <Dropdown.Item
+          data-testid="toggle-joinable"
+          icon={Lock01}
+          onAction={onToggleJoinable}>
+          {getJoinableLabel(t, team)}
+        </Dropdown.Item>
+      )}
+      {team.deleted && canEditAll && (
+        <Dropdown.Item data-testid="restore-team" onAction={onRestoreTeam}>
+          {t('label.restore-entity', {
+            entity: t('label.team'),
+          })}
+        </Dropdown.Item>
+      )}
+      {canDelete && notDeleted && !isOrgType && (
+        <Dropdown.Item
+          data-testid="delete-team"
+          icon={Trash01}
+          onAction={onDelete}>
+          {t('label.delete')}
+        </Dropdown.Item>
+      )}
+    </>
+  );
+};
+
+const buildTeamActionsMenu = (
+  t: TranslateFn,
+  team: Team,
+  params: UseMembersTeamHeaderParams
+): ReactNode => {
+  const { canCreateTeam, isGroupType, onTeamExport, onTeamImport } = params;
 
   return (
     <Dropdown.Menu>
@@ -138,29 +173,7 @@ const buildTeamActionsMenu = (
           )}
         </>
       )}
-      {!isOrgType && !team.deleted && canEditAll && (
-        <Dropdown.Item
-          data-testid="toggle-joinable"
-          icon={Lock01}
-          onAction={onToggleJoinable}>
-          {getJoinableLabel(t, team)}
-        </Dropdown.Item>
-      )}
-      {team.deleted && canEditAll && (
-        <Dropdown.Item data-testid="restore-team" onAction={onRestoreTeam}>
-          {t('label.restore-entity', {
-            entity: t('label.team'),
-          })}
-        </Dropdown.Item>
-      )}
-      {canDelete && !team.deleted && !isOrgType && (
-        <Dropdown.Item
-          data-testid="delete-team"
-          icon={Trash01}
-          onAction={onDelete}>
-          {t('label.delete')}
-        </Dropdown.Item>
-      )}
+      {buildManageMenuItems(t, team, params)}
     </Dropdown.Menu>
   );
 };
@@ -178,23 +191,24 @@ const buildHeaderActions = (
     onLeaveTeam,
   } = params;
 
+  // A member can always leave; joining is only offered on joinable teams (admins
+  // hold canEditAll, so they can still join a private team).
+  const canJoinable = isCurrentUserMember || team.isJoinable || canEditAll;
+  const showJoinLeave = isGroupType && !team.deleted && canJoinable;
+
   return (
     <Box align="center" direction="row" gap={2}>
-      {/* A member can always leave; joining is only offered on joinable teams
-          (admins hold canEditAll, so they can still join a private team). */}
-      {isGroupType &&
-        !team.deleted &&
-        (isCurrentUserMember || team.isJoinable || canEditAll) && (
-          <Button
-            color={isCurrentUserMember ? 'secondary' : 'primary'}
-            data-testid={
-              isCurrentUserMember ? 'leave-team-button' : 'join-team-button'
-            }
-            size="sm"
-            onPress={isCurrentUserMember ? onLeaveTeam : onJoinTeam}>
-            {isCurrentUserMember ? t('label.leave-team') : t('label.join-team')}
-          </Button>
-        )}
+      {showJoinLeave && (
+        <Button
+          color={isCurrentUserMember ? 'secondary' : 'primary'}
+          data-testid={
+            isCurrentUserMember ? 'leave-team-button' : 'join-team-button'
+          }
+          size="sm"
+          onPress={isCurrentUserMember ? onLeaveTeam : onJoinTeam}>
+          {isCurrentUserMember ? t('label.leave-team') : t('label.join-team')}
+        </Button>
+      )}
       <Dropdown.Root>
         <Dropdown.DotsButton />
         <Dropdown.Popover className="tw:w-min">
@@ -220,9 +234,7 @@ export const useMembersTeamHeader = (
     onStartEditName,
     onCancelEditName,
     onSaveDisplayName,
-    onSetHeaderActions,
-    onSetHeaderTitleInput,
-    onSetHeaderTitleSuffix,
+    onSetHeader,
   } = params;
 
   useEffect(() => {
@@ -232,30 +244,33 @@ export const useMembersTeamHeader = (
 
     const canEdit = canEditAll || canEditDisplayName;
 
-    onSetHeaderTitleSuffix?.(
-      buildTitleSuffix(t, team, canEdit, isEditingName, onStartEditName)
-    );
-
-    onSetHeaderTitleInput?.(
-      buildTitleInput(
+    onSetHeader?.({
+      actions: buildHeaderActions(t, team, params),
+      titleInput: buildTitleInput(
         t,
         isEditingName,
         editNameValue,
         onEditNameValueChange,
         onSaveDisplayName,
         onCancelEditName
-      )
-    );
-
-    onSetHeaderActions?.(buildHeaderActions(t, team, params));
+      ),
+      titleSuffix: buildTitleSuffix(
+        t,
+        team,
+        canEdit,
+        isEditingName,
+        onStartEditName
+      ),
+    });
 
     // The parent no longer clears header slots on view change (that raced the
     // child set), so clear what this hook owns when the team view unmounts.
-    return () => {
-      onSetHeaderActions?.(undefined);
-      onSetHeaderTitleInput?.(undefined);
-      onSetHeaderTitleSuffix?.(undefined);
-    };
+    return () =>
+      onSetHeader?.({
+        actions: undefined,
+        titleInput: undefined,
+        titleSuffix: undefined,
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     team,
@@ -276,9 +291,7 @@ export const useMembersTeamHeader = (
     params.onRestoreTeam,
     params.onJoinTeam,
     params.onLeaveTeam,
-    onSetHeaderActions,
-    onSetHeaderTitleInput,
-    onSetHeaderTitleSuffix,
+    onSetHeader,
     t,
   ]);
 };

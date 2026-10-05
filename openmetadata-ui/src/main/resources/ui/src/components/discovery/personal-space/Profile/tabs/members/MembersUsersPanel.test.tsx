@@ -96,25 +96,25 @@ describe('MembersUsersPanel', () => {
   // parent no longer clears it, so the panel must set it for an admin and clear
   // it itself on unmount.
   it('publishes the add-user header action for an admin and clears it on unmount', async () => {
-    const onSetHeaderActions = jest.fn();
+    const onSetHeader = jest.fn();
     const { unmount } = render(
       <MemoryRouter>
         <MembersUsersPanel
           isAdmin
           onNavigate={jest.fn()}
-          onSetHeaderActions={onSetHeaderActions}
+          onSetHeader={onSetHeader}
         />
       </MemoryRouter>
     );
 
     await waitFor(() =>
       expect(
-        onSetHeaderActions.mock.calls.some(([node]) => Boolean(node))
+        onSetHeader.mock.calls.some(([patch]) => Boolean(patch?.actions))
       ).toBe(true)
     );
 
     unmount();
 
-    expect(onSetHeaderActions).toHaveBeenLastCalledWith(undefined);
+    expect(onSetHeader).toHaveBeenLastCalledWith({ actions: undefined });
   });
 });

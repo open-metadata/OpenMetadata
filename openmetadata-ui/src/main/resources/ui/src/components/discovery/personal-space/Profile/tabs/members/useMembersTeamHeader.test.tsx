@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
+import { MembersHeaderPatch } from './Members.types';
 import { UseMembersTeamHeaderParams } from './MembersTeamDetail.types';
 import { useMembersTeamHeader } from './useMembersTeamHeader';
 
@@ -59,29 +59,27 @@ const buildParams = (
   onJoinTeam: jest.fn(),
   onLeaveTeam: jest.fn(),
   onDelete: jest.fn(),
-  onSetHeaderActions: jest.fn(),
-  onSetHeaderTitleInput: jest.fn(),
-  onSetHeaderTitleSuffix: jest.fn(),
+  onSetHeader: jest.fn(),
   ...overrides,
 });
 
-const lastArg = (fn: unknown): ReactNode =>
-  (fn as jest.Mock).mock.calls.at(-1)?.[0];
+// The hook makes a single onSetHeader({ actions, titleInput, titleSuffix }) call.
+const lastPatch = (fn: unknown): MembersHeaderPatch =>
+  (fn as jest.Mock).mock.calls.at(-1)?.[0] ?? {};
 
 describe('useMembersTeamHeader', () => {
   it('does nothing until the team is loaded', () => {
     const params = buildParams({ team: undefined });
     render(<Harness {...params} />);
 
-    expect(params.onSetHeaderActions).not.toHaveBeenCalled();
-    expect(params.onSetHeaderTitleSuffix).not.toHaveBeenCalled();
+    expect(params.onSetHeader).not.toHaveBeenCalled();
   });
 
   it('provides an edit-display-name suffix that starts the rename', () => {
     const params = buildParams();
     render(<Harness {...params} />);
 
-    render(<>{lastArg(params.onSetHeaderTitleSuffix)}</>);
+    render(<>{lastPatch(params.onSetHeader).titleSuffix}</>);
     fireEvent.click(screen.getByTestId('edit-display-name'));
 
     expect(params.onStartEditName).toHaveBeenCalledWith('Team One');
@@ -91,14 +89,14 @@ describe('useMembersTeamHeader', () => {
     const params = buildParams({ isEditingName: true });
     render(<Harness {...params} />);
 
-    expect(lastArg(params.onSetHeaderTitleSuffix)).toBeUndefined();
+    expect(lastPatch(params.onSetHeader).titleSuffix).toBeUndefined();
   });
 
   it('provides a title input with wired save/cancel while editing', () => {
     const params = buildParams({ isEditingName: true, editNameValue: 'New' });
     render(<Harness {...params} />);
 
-    render(<>{lastArg(params.onSetHeaderTitleInput)}</>);
+    render(<>{lastPatch(params.onSetHeader).titleInput}</>);
 
     expect(screen.getByTestId('display-name-input')).toBeInTheDocument();
 
@@ -113,7 +111,7 @@ describe('useMembersTeamHeader', () => {
     const params = buildParams({ isCurrentUserMember: false });
     render(<Harness {...params} />);
 
-    render(<>{lastArg(params.onSetHeaderActions)}</>);
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
 
     expect(screen.getByTestId('join-team-button')).toBeInTheDocument();
     expect(screen.queryByTestId('leave-team-button')).not.toBeInTheDocument();
@@ -123,7 +121,7 @@ describe('useMembersTeamHeader', () => {
     const params = buildParams({ isCurrentUserMember: true });
     render(<Harness {...params} />);
 
-    render(<>{lastArg(params.onSetHeaderActions)}</>);
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
 
     expect(screen.getByTestId('leave-team-button')).toBeInTheDocument();
   });
