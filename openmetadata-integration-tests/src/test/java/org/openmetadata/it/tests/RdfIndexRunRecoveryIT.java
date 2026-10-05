@@ -40,8 +40,11 @@ import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
  * still executing elsewhere, on MySQL and Postgres. Each test uses its own app name and lock key,
  * so real runs and the concurrent tests sharing this database are unaffected. The recheck a live
  * run schedules is run by hand, so no test waits for a lock to expire.
+ *
+ * <p>The tests run one at a time: they share the same small run timestamps, and on MySQL the
+ * interrupt UPDATE scans by timestamp, so a sibling test's cleanup DELETE can deadlock it.
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
 public class RdfIndexRunRecoveryIT {
   private static final String STATUS = AppExtension.ExtensionType.STATUS.toString();
   private static final long STARTUP = 2_000L;

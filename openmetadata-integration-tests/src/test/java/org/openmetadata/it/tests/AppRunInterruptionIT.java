@@ -25,8 +25,11 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  * A run that ends without reporting its own status must still say why, on MySQL and Postgres. Every
  * record here belongs to an app name no real app uses, so the concurrent tests sharing this
  * database never see them.
+ *
+ * <p>The tests run one at a time: they share the same small run timestamps, and on MySQL the
+ * interrupt UPDATE scans by timestamp, so a sibling test's cleanup DELETE can deadlock it.
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
 public class AppRunInterruptionIT {
   private static final String STATUS = AppExtension.ExtensionType.STATUS.toString();
 
