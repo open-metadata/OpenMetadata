@@ -23,8 +23,13 @@ export const getVersionedStorageKey = (key: string, appVersion?: string) => {
  * Drops the build segment from a version string for display.
  * "1.13.202609250000" -> "1.13"
  */
-export const getSimplifiedVersion = (version?: string): string =>
-  (version ?? '').split('.').slice(0, 2).join('.');
+export const getSimplifiedVersion = (version?: string): string => {
+  const parts = (version ?? '').split('.');
+
+  return /^\d{12}$/.test(parts.at(-1) ?? '')
+    ? parts.slice(0, -1).join('.')
+    : parts.join('.');
+};
 
 /**
  * Derives the release date from the build segment (YYYYMMDDHHMM) of a version

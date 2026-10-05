@@ -24,9 +24,9 @@ import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import { isLandingPagePath } from '../../../../utils/RouterUtils';
 import {
-    getSimplifiedVersion,
-    getVersionedStorageKey,
-    getVersionReleaseTimestamp
+  getSimplifiedVersion,
+  getVersionedStorageKey,
+  getVersionReleaseTimestamp,
 } from '../../../../utils/Version/Version';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
 import './WhatsNewAlert.less';
@@ -107,7 +107,9 @@ const WhatsNewAlert = () => {
             data-testid="whats-new-alert-card">
             <Row gutter={0} wrap={false}>
               <Col
-                className={`whats-new-alert-left${releaseDate ? '' : ' whats-new-alert-left--centered'}`}
+                className={`whats-new-alert-left${
+                  releaseDate ? '' : ' whats-new-alert-left--centered'
+                }`}
                 flex="220px">
                 <div className="whats-new-alert-version-block">
                   <div className="whats-new-alert-meta">
