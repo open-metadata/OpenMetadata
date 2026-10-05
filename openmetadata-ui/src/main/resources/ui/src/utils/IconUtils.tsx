@@ -149,15 +149,10 @@ export const createIconWithStroke = (
 /**
  * The Ontology Studio glyph, as every nav entry leading there renders it —
  * classic sidebar and app-mode sub-nav — so the two surfaces cannot drift
- * apart. Restroked to 1.2, the weight the hand-drawn nav SVGs beside it use:
- * core-ui icons ship at stroke 2, which at nav size reads noticeably
- * heavier than the items around it. The page header draws the same glyph
- * unrestroked, because there it sits reversed-out on a brand-solid badge.
+ * apart. Drawn at the core-ui stock weight so it reads identically to the
+ * other `LayersThree01` nav entries (AI Assets → Frameworks) beside it.
  */
-export const OntologyStudioIcon = createIconWithStroke(
-  LayersThree01 as StrokableIcon,
-  1.2
-);
+export const OntologyStudioIcon = LayersThree01;
 
 /**
  * Get the default icon for an entity type
