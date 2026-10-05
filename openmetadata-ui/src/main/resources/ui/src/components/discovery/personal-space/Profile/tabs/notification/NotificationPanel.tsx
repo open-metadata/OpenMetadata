@@ -32,11 +32,22 @@ import { usePermissionProvider } from '../../../../../../context/PermissionProvi
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import {
+  EXTENSION_POINTS,
+  NotificationSectionContribution,
+} from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import Loader from '../../../../../common/Loader/Loader';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
-import type { NotificationView } from './Notification.types';
-import { hashSubPathToView, viewToSubPath } from './Notification.utils';
+import type { NotificationIcon, NotificationView } from './Notification.types';
+import {
+  findNotificationMenuItem,
+  getNotificationMenuItems,
+  hashSubPathToView,
+  splitSectionPath,
+  viewToSubPath,
+} from './Notification.utils';
 import NotificationAlertDetail from './NotificationAlertDetail';
 import NotificationAlertForm from './NotificationAlertForm';
 import NotificationAlertsPanel from './NotificationAlertsPanel';
@@ -51,6 +62,7 @@ interface NotificationPanelProps {
 const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { extensionRegistry, contributionsVersion } = useApplicationsProvider();
   const { state: hashState, setHash } = useSettingsHash();
 
   const view = useMemo<NotificationView>(
@@ -68,10 +80,143 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   // Actions injected by detail panels (e.g. edit/delete buttons).
   const [detailHeaderActions, setDetailHeaderActions] =
     useState<React.ReactNode>(undefined);
+  // Header state injected by a contributed section (Create button, sub-page
+  // title). Tagged with the owning section key instead of being cleared on
+  // navigation: child effects run before parent effects, so a parent-side
+  // reset would wipe what the section just pushed on mount.
+  const [sectionHeader, setSectionHeader] = useState<{
+    key?: string;
+    actions?: React.ReactNode;
+    subTitle?: string;
+  }>({});
   const [resolvedDetailName, setResolvedDetailName] = useState<string>('');
   const [showHint, setShowHint] = useState(false);
 
   const viewFqn = 'fqn' in view ? view.fqn : undefined;
+
+  // Keyed on `contributionsVersion` too: the registry is mutated in place when
+  // plugins contribute, so its identity alone would never trigger a recompute.
+  // contributionsVersion is the only signal that plugins have registered their
+  // sections (the registry is mutated in place); removing it as "unnecessary"
+  // leaves a deep-linked section with nothing to render.
+  const sectionContributions = useMemo(
+    () =>
+      extensionRegistry.getContributions<NotificationSectionContribution>(
+        EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+    [extensionRegistry, contributionsVersion]
+  );
+
+  const sectionPath = useMemo(
+    () =>
+      view.type === 'section'
+        ? splitSectionPath(
+            view.key,
+            sectionContributions.map((contribution) => contribution.key)
+          )
+        : undefined,
+    [view, sectionContributions]
+  );
+  const viewSectionKey = sectionPath?.key;
+  const sectionSubPath = sectionPath?.subPath;
+
+  const isOwnSectionHeader = Boolean(
+    viewSectionKey && sectionHeader.key === viewSectionKey
+  );
+  const sectionHeaderActions = isOwnSectionHeader
+    ? sectionHeader.actions
+    : undefined;
+  const sectionSubTitle = isOwnSectionHeader
+    ? sectionHeader.subTitle
+    : undefined;
+
+  const setSectionHeaderActions = useCallback(
+    (actions: React.ReactNode | null) =>
+      setSectionHeader((prev) => ({
+        ...(prev.key === viewSectionKey ? prev : {}),
+        key: viewSectionKey,
+        actions: actions ?? undefined,
+      })),
+    [viewSectionKey]
+  );
+
+  const setSectionSubTitle = useCallback(
+    (subTitle: string | null) =>
+      setSectionHeader((prev) => ({
+        ...(prev.key === viewSectionKey ? prev : {}),
+        key: viewSectionKey,
+        subTitle: subTitle ?? undefined,
+      })),
+    [viewSectionKey]
+  );
+
+  const onSectionNavigate = useCallback(
+    (subPath?: string) => {
+      if (viewSectionKey) {
+        onNavigate({ type: 'section', key: viewSectionKey, subPath });
+      }
+    },
+    [viewSectionKey, onNavigate]
+  );
+
+  // Resolve the contributed section component + its menu label for the active
+  // `section` view. Both come from the same sources NotificationLanding uses:
+  // the component from the extension registry, the label from the global
+  // settings Notifications menu (keyed by option suffix).
+  const section = useMemo(() => {
+    if (!viewSectionKey) {
+      return undefined;
+    }
+
+    const contribution = sectionContributions.find(
+      (item: NotificationSectionContribution) => item.key === viewSectionKey
+    );
+    const menuItem = findNotificationMenuItem(
+      getNotificationMenuItems(permissions),
+      viewSectionKey
+    );
+
+    return {
+      Component: contribution?.component,
+      label: menuItem?.category ?? menuItem?.label ?? viewSectionKey,
+      description: menuItem?.description,
+      // Same resolution as the landing card, so header and card match.
+      icon: (contribution?.icon ?? menuItem?.icon) as
+        | NotificationIcon
+        | undefined,
+    };
+  }, [viewSectionKey, sectionContributions, permissions]);
+
+  const sectionContent = useMemo(() => {
+    const SectionComponent = section?.Component;
+
+    if (!SectionComponent) {
+      return (
+        <Box className="tw:relative tw:min-h-60">
+          <EmptyPlaceholder title={t('label.no-data')} variant="blank" />
+        </Box>
+      );
+    }
+
+    return (
+      <SectionComponent
+        subPath={sectionSubPath}
+        onClose={() => onNavigate({ type: 'landing' })}
+        onNavigate={onSectionNavigate}
+        onSetHeaderActions={setSectionHeaderActions}
+        onSetSubTitle={setSectionSubTitle}
+      />
+    );
+  }, [
+    section,
+    t,
+    onNavigate,
+    sectionSubPath,
+    onSectionNavigate,
+    setSectionHeaderActions,
+    setSectionSubTitle,
+  ]);
 
   // Clear detail header state when navigating away.
   useEffect(() => {
@@ -132,10 +277,22 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       label: notificationLabel,
     };
     const alertsItem: BreadcrumbItemType = { id: 'alerts', label: alertsLabel };
+    const sectionLabel = section?.label ?? notificationLabel;
+    // A named sub-page turns the section crumb into a link back to its root.
+    const sectionCrumbs: BreadcrumbItemType[] = sectionSubTitle
+      ? [
+          { id: 'section', label: sectionLabel },
+          { id: 'current', label: sectionSubTitle },
+        ]
+      : [{ id: 'current', label: sectionLabel }];
 
     const breadcrumbs: BreadcrumbItemType[] = (() => {
       if (view.type === 'landing') {
         return [settingsItem, { id: 'current', label: notificationLabel }];
+      }
+
+      if (view.type === 'section') {
+        return [settingsItem, notificationItem, ...sectionCrumbs];
       }
 
       if (view.type === 'list') {
@@ -181,6 +338,10 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
         return notificationLabel;
       }
 
+      if (view.type === 'section') {
+        return sectionSubTitle ?? sectionLabel;
+      }
+
       if (view.type === 'list') {
         return alertsLabel;
       }
@@ -200,13 +361,18 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       return notificationLabel;
     })();
 
-    const description = t('message.alerts-description');
+    const description =
+      view.type === 'section' && section?.description
+        ? section.description
+        : t('message.alerts-description');
 
     const onBreadcrumbAction = (id: Key) => {
       if (id === 'notification') {
         onNavigate({ type: 'landing' });
       } else if (id === 'alerts') {
         onNavigate({ type: 'list' });
+      } else if (id === 'section') {
+        onSectionNavigate();
       }
     };
 
@@ -242,6 +408,10 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
         return detailHeaderActions;
       }
 
+      if (view.type === 'section') {
+        return sectionHeaderActions;
+      }
+
       return undefined;
     })();
 
@@ -249,7 +419,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       actions,
       breadcrumbs,
       description,
-      icon: Bell01,
+      icon: (view.type === 'section' && section?.icon) || Bell01,
       onBreadcrumbAction,
       title,
     });
@@ -262,9 +432,15 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     onNavigate,
     showHint,
     resolvedDetailName,
+    section,
+    sectionHeaderActions,
+    sectionSubTitle,
+    onSectionNavigate,
   ]);
 
   const content = (() => {
+    // `section` is resolved in `sectionContent` above and handled in the
+    // return below, so it is intentionally not a branch here.
     if (view.type === 'landing') {
       return <NotificationLanding onNavigate={onNavigate} />;
     }
@@ -325,7 +501,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
 
   return (
     <Box className="tw:flex-1 tw:overflow-hidden" direction="col">
-      {content}
+      {view.type === 'section' ? sectionContent : content}
     </Box>
   );
 };

@@ -12,6 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import React from 'react';
 import { NotificationView } from './Notification.types';
 import NotificationPanel from './NotificationPanel';
 
@@ -71,6 +72,26 @@ jest.mock(
   })
 );
 
+const mockGetContributions = jest.fn().mockReturnValue([]);
+
+jest.mock(
+  '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      extensionRegistry: { getContributions: mockGetContributions },
+    }),
+  })
+);
+
+const mockGetGlobalSettingsMenu = jest.fn().mockReturnValue([]);
+
+jest.mock('../../../../../../utils/GlobalSettingsClassBase', () => ({
+  __esModule: true,
+  default: {
+    getGlobalSettingsMenuWithPermission: () => mockGetGlobalSettingsMenu(),
+  },
+}));
+
 let capturedLandingProps: { onNavigate: (v: NotificationView) => void };
 
 jest.mock('./NotificationLanding', () =>
@@ -99,6 +120,8 @@ describe('NotificationPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSubPath = '';
+    mockGetContributions.mockReturnValue([]);
+    mockGetGlobalSettingsMenu.mockReturnValue([]);
   });
 
   it('should render NotificationLanding by default', () => {
@@ -155,5 +178,140 @@ describe('NotificationPanel', () => {
       ][0];
 
     expect(lastCall.actions).toBeUndefined();
+  });
+
+  it('should render the contributed section component for a section view', () => {
+    mockSubPath = 'section/weekly-emails';
+    mockGetContributions.mockReturnValue([
+      {
+        key: 'weekly-emails',
+        component: () => <div data-testid="weekly-emails-section" />,
+      },
+    ]);
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    expect(screen.getByTestId('weekly-emails-section')).toBeInTheDocument();
+  });
+
+  it('should show the section icon in the header instead of the bell', () => {
+    const SectionIcon = () => <span />;
+    mockSubPath = 'section/weekly-emails';
+    mockGetContributions.mockReturnValue([
+      {
+        key: 'weekly-emails',
+        component: () => <div />,
+        icon: SectionIcon,
+      },
+    ]);
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    const lastCall =
+      mockOnHeaderChange.mock.calls[
+        mockOnHeaderChange.mock.calls.length - 1
+      ][0];
+
+    expect(lastCall.icon).toBe(SectionIcon);
+  });
+
+  it('should keep header actions a section pushes from its mount effect', () => {
+    // Child effects run before the panel's own effects, so this guards against
+    // the panel wiping what the section just pushed on mount.
+    mockSubPath = 'section/templates';
+    const TemplatesSection = ({
+      onSetHeaderActions,
+    }: {
+      onSetHeaderActions?: (node: React.ReactNode) => void;
+    }) => {
+      React.useEffect(() => {
+        onSetHeaderActions?.(
+          <button data-testid="section-create" type="button">
+            Create
+          </button>
+        );
+      }, [onSetHeaderActions]);
+
+      return <div data-testid="templates-section" />;
+    };
+    mockGetContributions.mockReturnValue([
+      { key: 'templates', component: TemplatesSection },
+    ]);
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    const lastCall =
+      mockOnHeaderChange.mock.calls[
+        mockOnHeaderChange.mock.calls.length - 1
+      ][0];
+
+    expect(lastCall.actions).toBeDefined();
+  });
+
+  it('should pass the sub-path and show a section sub-title in the header', () => {
+    mockSubPath = 'section/templates/add';
+    let receivedSubPath: string | undefined;
+    const TemplatesSection = ({
+      subPath,
+      onSetSubTitle,
+    }: {
+      subPath?: string;
+      onSetSubTitle?: (title: string | null) => void;
+    }) => {
+      receivedSubPath = subPath;
+      React.useEffect(() => {
+        onSetSubTitle?.('Add Template');
+      }, [onSetSubTitle]);
+
+      return <div data-testid="templates-section" />;
+    };
+    mockGetContributions.mockReturnValue([
+      { key: 'templates', component: TemplatesSection },
+    ]);
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    const lastCall =
+      mockOnHeaderChange.mock.calls[
+        mockOnHeaderChange.mock.calls.length - 1
+      ][0];
+
+    expect(receivedSubPath).toBe('add');
+    expect(lastCall.title).toBe('Add Template');
+    expect(
+      lastCall.breadcrumbs.map((crumb: { id: string }) => crumb.id)
+    ).toEqual(['settings', 'notification', 'section', 'current']);
+
+    act(() => {
+      lastCall.onBreadcrumbAction('section');
+    });
+
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'notification',
+      'section/templates'
+    );
+  });
+
+  it('should render a placeholder when the section has no contribution', () => {
+    mockSubPath = 'section/weekly-emails';
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    expect(
+      screen.queryByTestId('weekly-emails-section')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should navigate to a section view from the landing', () => {
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    act(() => {
+      capturedLandingProps.onNavigate({ type: 'section', key: 'templates' });
+    });
+
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'notification',
+      'section/templates'
+    );
   });
 });

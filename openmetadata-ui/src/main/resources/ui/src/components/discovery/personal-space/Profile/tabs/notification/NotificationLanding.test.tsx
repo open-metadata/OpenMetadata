@@ -12,12 +12,44 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import NotificationLanding from './NotificationLanding';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
+}));
+
+const mockGetContributions = jest.fn().mockReturnValue([]);
+// One stable registry object, as in the app; only the version changes.
+const mockRegistry = { getContributions: mockGetContributions };
+let mockContributionsVersion = 0;
+
+jest.mock(
+  '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      extensionRegistry: mockRegistry,
+      contributionsVersion: mockContributionsVersion,
+    }),
+  })
+);
+
+jest.mock(
+  '../../../../../../context/PermissionProvider/PermissionProvider',
+  () => ({
+    usePermissionProvider: () => ({ permissions: {} }),
+  })
+);
+
+const mockGetGlobalSettingsMenu = jest.fn().mockReturnValue([]);
+
+jest.mock('../../../../../../utils/GlobalSettingsClassBase', () => ({
+  __esModule: true,
+  default: {
+    getGlobalSettingsMenuWithPermission: () => mockGetGlobalSettingsMenu(),
+  },
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -63,6 +95,8 @@ describe('NotificationLanding', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetContributions.mockReturnValue([]);
+    mockGetGlobalSettingsMenu.mockReturnValue([]);
   });
 
   it('should render the notification landing card', () => {
@@ -85,5 +119,159 @@ describe('NotificationLanding', () => {
     fireEvent.click(screen.getByTestId('notification-card-alerts'));
 
     expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('should render only built-in card when no sections are contributed', () => {
+    mockGetGlobalSettingsMenu.mockReturnValue([
+      {
+        key: GlobalSettingsMenuCategory.NOTIFICATIONS,
+        items: [
+          {
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.weekly-emails`,
+            category: 'Weekly emails',
+            description: 'desc',
+            icon: () => <span />,
+          },
+        ],
+      },
+    ]);
+
+    render(<NotificationLanding onNavigate={mockOnNavigate} />);
+
+    expect(screen.getByTestId('notification-card-alerts')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('notification-card-weekly-emails')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should render contributed section cards from the settings menu', () => {
+    mockGetContributions.mockReturnValue([
+      { key: 'weekly-emails', component: () => <span /> },
+    ]);
+    mockGetGlobalSettingsMenu.mockReturnValue([
+      {
+        key: GlobalSettingsMenuCategory.NOTIFICATIONS,
+        items: [
+          {
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.weekly-emails`,
+            category: 'Weekly emails',
+            description: 'Weekly email desc',
+            icon: () => <span />,
+          },
+          {
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.templates`,
+            category: 'Templates',
+            description: 'Templates desc',
+            icon: () => <span />,
+          },
+        ],
+      },
+    ]);
+
+    render(<NotificationLanding onNavigate={mockOnNavigate} />);
+
+    // Contributed + matching menu item shows; the unmatched menu item does not.
+    expect(
+      screen.getByTestId('notification-card-weekly-emails')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('notification-card-templates')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('notification-card-weekly-emails'));
+
+    expect(mockOnNavigate).toHaveBeenCalledWith({
+      type: 'section',
+      key: 'weekly-emails',
+    });
+  });
+
+  it('should show sections contributed after the landing first rendered', () => {
+    mockContributionsVersion = 0;
+    mockGetGlobalSettingsMenu.mockReturnValue([
+      {
+        key: GlobalSettingsMenuCategory.NOTIFICATIONS,
+        items: [
+          {
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.weekly-emails`,
+            category: 'Weekly emails',
+            description: 'desc',
+            icon: () => <span />,
+          },
+        ],
+      },
+    ]);
+    const { rerender } = render(
+      <NotificationLanding onNavigate={mockOnNavigate} />
+    );
+
+    expect(
+      screen.queryByTestId('notification-card-weekly-emails')
+    ).not.toBeInTheDocument();
+
+    // The plugin contributes into the same registry and bumps the version.
+    mockGetContributions.mockReturnValue([
+      { key: 'weekly-emails', component: () => <span /> },
+    ]);
+    mockContributionsVersion = 1;
+    rerender(<NotificationLanding onNavigate={mockOnNavigate} />);
+
+    expect(
+      screen.getByTestId('notification-card-weekly-emails')
+    ).toBeInTheDocument();
+  });
+
+  it('should prefer the contribution icon over the settings menu icon', () => {
+    mockGetContributions.mockReturnValue([
+      {
+        key: 'weekly-emails',
+        component: () => <span />,
+        icon: () => <span data-testid="contribution-icon" />,
+      },
+    ]);
+    mockGetGlobalSettingsMenu.mockReturnValue([
+      {
+        key: GlobalSettingsMenuCategory.NOTIFICATIONS,
+        items: [
+          {
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.weekly-emails`,
+            category: 'Weekly emails',
+            description: 'desc',
+            icon: () => <span data-testid="menu-icon" />,
+          },
+        ],
+      },
+    ]);
+
+    render(<NotificationLanding onNavigate={mockOnNavigate} />);
+
+    expect(screen.getByTestId('contribution-icon')).toBeInTheDocument();
+    expect(screen.queryByTestId('menu-icon')).not.toBeInTheDocument();
+  });
+
+  it('should drop a section whose isProtected is false', () => {
+    mockGetContributions.mockReturnValue([
+      { key: 'weekly-emails', component: () => <span /> },
+    ]);
+    mockGetGlobalSettingsMenu.mockReturnValue([
+      {
+        key: GlobalSettingsMenuCategory.NOTIFICATIONS,
+        items: [
+          {
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.weekly-emails`,
+            category: 'Weekly emails',
+            description: 'desc',
+            icon: () => <span />,
+            isProtected: false,
+          },
+        ],
+      },
+    ]);
+
+    render(<NotificationLanding onNavigate={mockOnNavigate} />);
+
+    expect(
+      screen.queryByTestId('notification-card-weekly-emails')
+    ).not.toBeInTheDocument();
   });
 });
