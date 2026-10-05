@@ -146,8 +146,8 @@ class ContextMemoryReconcilerTest {
   @ParameterizedTest
   @EnumSource(
       value = EntityStatus.class,
-      names = {"DEPRECATED", "REJECTED"})
-  void reExtractionNeverApprovesARetiredPillAgain(EntityStatus retired) {
+      names = {"DRAFT", "ARCHIVED", "DEPRECATED", "REJECTED"})
+  void reExtractionLeavesAPillOutsideApprovedAsIs(EntityStatus retired) {
     existing(
         pill("Q1", "A1", ContextMemorySourceType.PAGE_EXTRACTION, retired),
         pill("Q2", "A2", ContextMemorySourceType.PAGE_EXTRACTION, retired));
