@@ -9209,6 +9209,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // which would cause original.getFullyQualifiedName() to return an outdated value.
     @Getter private final String originalFqn;
 
+    // The status persisted before this request, captured for the same reason as originalFqn: a
+    // status a workflow step set in an earlier, now consolidated version is not this request's
+    // change.
+    private final EntityStatus storedEntityStatus;
+
     protected boolean shouldCompare(String fieldName) {
       if (patchedFields == null || fieldName == null) {
         return true;
@@ -9291,6 +9296,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.updated = updated;
       this.operation = operation;
       this.originalFqn = original.getFullyQualifiedName();
+      this.storedEntityStatus = original.getEntityStatus();
       User updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
@@ -9890,9 +9896,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status. A workflow
         // step (impersonated by governance-bot) applies the decision of its own approval task,
         // whose assignees already decided who may approve; checking the entity's reviewers again
-        // would read the list as changed by the edit being approved.
+        // would read the list as changed by the edit being approved. A consolidated update
+        // replays from an earlier version, so a status a workflow step already set there is
+        // checked only when this request changes it.
         if (!consolidatingChanges
             && !GOVERNANCE_BOT.equals(updated.getImpersonatedBy())
+            && storedEntityStatus != updated.getEntityStatus()
             && original.getEntityStatus() == EntityStatus.IN_REVIEW
             && (updated.getEntityStatus() == EntityStatus.APPROVED
                 || updated.getEntityStatus() == EntityStatus.REJECTED)) {

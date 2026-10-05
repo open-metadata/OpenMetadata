@@ -263,6 +263,7 @@ class GovernanceApprovalRegistryTest {
           .withFullyQualifiedName("g")
           .withDisplayName("published name")
           .withDescription("published")
+          .withEntityStatus(EntityStatus.APPROVED)
           .withVersion(0.1);
     }
 
@@ -314,7 +315,7 @@ class GovernanceApprovalRegistryTest {
     }
 
     private GatingRule shadowRule(UUID workflowId, List<String> include) {
-      return new GatingRule(workflowId, "wf-" + workflowId, include, List.of(), null, true);
+      return new GatingRule(workflowId, "wf-" + workflowId, include, List.of(), null, true, false);
     }
 
     private Optional<StagedChange> admitAsHuman(
@@ -517,6 +518,52 @@ class GovernanceApprovalRegistryTest {
               .orElseThrow();
       assertEquals("alice", change.requestedBy());
       assertEquals("mcp-bot", change.impersonatedBy());
+    }
+
+    private GatingRule reviewsFromCreation(UUID workflowId, List<String> include) {
+      return new GatingRule(workflowId, "wf-" + workflowId, include, List.of(), null, false, true);
+    }
+
+    @Test
+    void creationReviewingWorkflowPublishesEditsBeforeTheFirstApproval() {
+      for (EntityStatus status :
+          List.of(
+              EntityStatus.UNPROCESSED,
+              EntityStatus.DRAFT,
+              EntityStatus.IN_REVIEW,
+              EntityStatus.REJECTED)) {
+        Glossary original = published().withEntityStatus(status);
+        Glossary updated = edited(original).withDescription("proposed");
+        assertTrue(
+            admitAsHuman(
+                    List.of(reviewsFromCreation(WORKFLOW_A, List.of("description"))),
+                    original,
+                    updated)
+                .isEmpty(),
+            "an edit of a %s glossary publishes".formatted(status));
+      }
+    }
+
+    @Test
+    void creationReviewingWorkflowHoldsEditsOfAnApprovedAsset() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("proposed");
+      assertTrue(
+          admitAsHuman(
+                  List.of(reviewsFromCreation(WORKFLOW_A, List.of("description"))),
+                  original,
+                  updated)
+              .isPresent());
+    }
+
+    @Test
+    void editOnlyWorkflowHoldsEditsWhateverTheStatus() {
+      Glossary original = published().withEntityStatus(EntityStatus.UNPROCESSED);
+      Glossary updated = edited(original).withDescription("proposed");
+      assertTrue(
+          admitAsHuman(
+                  List.of(rule(WORKFLOW_A, List.of("description"), List.of())), original, updated)
+              .isPresent());
     }
 
     @Test

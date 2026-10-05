@@ -36,7 +36,8 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 /**
  * Workflow hook node that resolves the change request the run reviews. {@code commit} asks the
  * catalog to apply the revision, which it does only when an eligible approval of that exact revision
- * is recorded; {@code discard} rejects it. Place it where the workflow decides the outcome.
+ * is recorded; {@code discard} rejects it. Place it where the workflow decides the outcome. A run
+ * that reviews an asset before its first approval has no change request, and the node continues.
  */
 @Slf4j
 public class ResolvePendingChangeImpl implements JavaDelegate {
@@ -53,8 +54,13 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
     try {
       ResolvePendingChangeAction action =
           ResolvePendingChangeAction.fromValue((String) actionExpr.getValue(execution));
-      varHandler.setNodeVariable(
-          RESULT_VARIABLE, resolve(action, ChangeRequestRun.required(varHandler)));
+      // A review run started by a change event, before the asset's first approval, holds
+      // nothing: its edits are already published, so commit and discard simply continue.
+      String result =
+          ChangeRequestRun.from(varHandler)
+              .map(run -> resolve(action, run))
+              .orElse(action == ResolvePendingChangeAction.COMMIT ? APPLIED : DISCARDED);
+      varHandler.setNodeVariable(RESULT_VARIABLE, result);
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);

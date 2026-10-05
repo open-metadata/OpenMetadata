@@ -22,6 +22,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.approval.ReviewPhase;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -87,9 +89,10 @@ public class FilterEntityImpl implements JavaDelegate {
       // entity type ignores it.
       passesFilter = mainWorkflowName(execution).equals(changeRequest.workflowName());
     } else {
+      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
       passesFilter =
-          passesExcludedFilter(
-              entityLinkStr, entityType, excludedFilter, includeFields, filterLogic);
+          passesExcludedFilter(entity, entityType, excludedFilter, includeFields, filterLogic)
+              && startsReviewRun(execution, entity);
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -146,15 +149,20 @@ public class FilterEntityImpl implements JavaDelegate {
         : String.valueOf(key);
   }
 
+  // A hold workflow reviews an asset from its change events only until the asset's first approval,
+  // and keeps one review open for it meanwhile (see ReviewPhase).
+  private boolean startsReviewRun(DelegateExecution execution, EntityInterface entity) {
+    String workflowName = mainWorkflowName(execution);
+    return !GovernanceApprovalRegistry.isPendingChangeWorkflow(workflowName)
+        || ReviewPhase.startsReview(workflowName, entity);
+  }
+
   private boolean passesExcludedFilter(
-      String entityLinkStr,
+      EntityInterface entity,
       String entityType,
       List<String> excludedFilter,
       List<String> includeFields,
       String filterLogic) {
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
-
     // A null change description means a Create event.
     ChangeDescription change = entity.getChangeDescription();
 

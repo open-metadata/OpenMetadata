@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -49,6 +50,7 @@ public final class GovernanceApprovalRegistry {
   private static final String EVENT_BASED_ENTITY = "eventBasedEntity";
   private static final String RESOLVE_PENDING_CHANGE_SUBTYPE = "resolvePendingChangeTask";
   private static final String SHADOW_MODE = "Shadow";
+  private static final String CREATED_EVENT = "Created";
 
   private record Snapshot(String epoch, Map<String, List<GatingRule>> rulesByEntityType) {}
 
@@ -60,6 +62,9 @@ public final class GovernanceApprovalRegistry {
    * A workflow's field-gating rule for one entity type, mirroring the {@code eventBasedEntity}
    * trigger's own field logic (see {@link WorkflowTriggerFilters}). {@code filterLogic} is the
    * entity-specific JsonLogic resolved for this entity type; when it matches, the entity is excluded.
+   * {@code reviewsFromCreation} is set when the trigger also fires on Created: the workflow then
+   * reviews an asset from its creation and holds its edits only once it is Approved (see {@link
+   * ReviewPhase}); otherwise it holds every gated edit.
    */
   public record GatingRule(
       UUID workflowDefinitionId,
@@ -67,7 +72,8 @@ public final class GovernanceApprovalRegistry {
       List<String> includedFields,
       List<String> excludedFields,
       String filterLogic,
-      boolean shadow) {
+      boolean shadow,
+      boolean reviewsFromCreation) {
     /** An enforcing rule: gated edits are held for review. */
     public GatingRule(
         UUID workflowDefinitionId,
@@ -75,7 +81,19 @@ public final class GovernanceApprovalRegistry {
         List<String> includedFields,
         List<String> excludedFields,
         String filterLogic) {
-      this(workflowDefinitionId, workflowName, includedFields, excludedFields, filterLogic, false);
+      this(
+          workflowDefinitionId,
+          workflowName,
+          includedFields,
+          excludedFields,
+          filterLogic,
+          false,
+          false);
+    }
+
+    /** Whether this rule holds an edit of {@code original}, given where the asset's review is. */
+    public boolean holdsEditOf(EntityInterface original) {
+      return !reviewsFromCreation || ReviewPhase.holdsEdits(original);
     }
   }
 
@@ -205,9 +223,15 @@ public final class GovernanceApprovalRegistry {
                     stringList(config.path("include")),
                     stringList(config.path("exclude")),
                     resolveFilter(config, entityType),
-                    SHADOW_MODE.equals(config.path("approvalMode").asText(null))));
+                    SHADOW_MODE.equals(config.path("approvalMode").asText(null)),
+                    reviewsFromCreation(config)));
       }
     }
+  }
+
+  /** A hold workflow whose trigger fires on Created reviews assets from their creation. */
+  public static boolean reviewsFromCreation(JsonNode triggerConfig) {
+    return stringList(triggerConfig.path("events")).contains(CREATED_EVENT);
   }
 
   private static List<String> stringList(JsonNode array) {

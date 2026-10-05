@@ -53,6 +53,8 @@ import org.openmetadata.service.util.RestUtil;
  * Admission for approval-gated edits. A human request that changes a gated field is diverted, whole,
  * into a change request and nothing is published; a request touching only ungated fields, or made by
  * a bot on its own behalf, proceeds as a normal write. Impersonated requests are gated as the human.
+ * A workflow that reviews assets from their creation holds an asset's edits only once it is
+ * Approved.
  */
 @Slf4j
 public final class ApprovalGate {
@@ -307,8 +309,9 @@ public final class ApprovalGate {
               if (rules.stream()
                   .anyMatch(
                       rule ->
-                          !WorkflowTriggerFilters.matchesExclusionFilter(
-                              rule.filterLogic(), entity))) {
+                          rule.holdsEditOf(entity)
+                              && !WorkflowTriggerFilters.matchesExclusionFilter(
+                                  rule.filterLogic(), entity))) {
                 gated.add(entity.getId());
               }
             }
@@ -354,7 +357,8 @@ public final class ApprovalGate {
     JsonNode proposed = JsonUtils.valueToTree(updated);
     Set<String> changed = changedFields(entityType, base, proposed);
     List<GatedBy> matched =
-        gatingWorkflows(rules, entityType, updated, triggerNames(base, proposed, changed));
+        gatingWorkflows(
+            rules, entityType, original, updated, triggerNames(base, proposed, changed));
     // Shadow-mode workflows only record that they would have held the edit; the write publishes.
     List<GatedBy> gating = matched.stream().filter(g -> !g.rule().shadow()).toList();
     if (record) {
@@ -394,15 +398,19 @@ public final class ApprovalGate {
         user);
   }
 
+  // A workflow that reviews assets from their creation lets edits of an asset not yet approved
+  // publish; its review task follows them instead (see ReviewPhase).
   private static List<GatedBy> gatingWorkflows(
       List<GatingRule> rules,
       String entityType,
+      EntityInterface original,
       EntityInterface updated,
       Map<String, List<String>> changed) {
     List<GatedBy> gating = new ArrayList<>();
     for (GatingRule rule : rules) {
       Set<String> fields =
-          WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
+          !rule.holdsEditOf(original)
+                  || WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
               ? Set.of()
               : gatedFields(rule, entityType, changed);
       if (!fields.isEmpty()) {

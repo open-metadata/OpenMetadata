@@ -43,13 +43,4 @@ public record ChangeRequestRun(UUID changeRequestId, int revisionNumber, String 
     }
     return run;
   }
-
-  /** Same as {@link #from} for nodes that only ever run on behalf of a change request. */
-  public static ChangeRequestRun required(WorkflowVariableHandler varHandler) {
-    return from(varHandler)
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "This node ran without a change request; hook workflows start only from change requests"));
-  }
 }

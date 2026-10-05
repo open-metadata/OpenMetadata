@@ -72,6 +72,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.approval.ReviewPhase;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
@@ -512,7 +513,7 @@ public class CreateTask implements TaskListener {
                 taskCategory,
                 resolvedWorkflowDefinitionId,
                 workflowInstanceId,
-                updatedBy)
+                reviewsChangeRequest(delegateTask) ? updatedBy : null)
             : null;
     if (existingTask != null) {
       LOG.info(
@@ -747,16 +748,16 @@ public class CreateTask implements TaskListener {
     // approval task, so all exceptions are contained here instead of bubbling up as a BpmnError.
     if (taskCategory == TaskCategory.Approval) {
       try {
-        // Hook (pending-change) workflows keep one live approval per (entity, workflow, requester):
-        // a new edit supersedes only the same requester's prior task, so other requesters' tasks
-        // survive. Non-hook workflows keep the entity-level supersede (requesterToMatch = null).
-        String requesterToMatch =
-            GovernanceApprovalRegistry.isPendingChangeWorkflow(currentWorkflowDefinitionId)
-                ? updatedBy
-                : null;
+        // A change request's review keeps one live approval per (entity, workflow, requester): a
+        // new held edit supersedes only the same requester's prior review, so other requesters'
+        // reviews survive. Every other run keeps the entity-level supersede (requesterToMatch =
+        // null), and the two kinds of review never supersede each other.
+        boolean reviewsChangeRequest = reviewsChangeRequest(delegateTask);
+        String requesterToMatch = reviewsChangeRequest ? updatedBy : null;
         taskRepository
             .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
             .stream()
+            .filter(prior -> ReviewPhase.reviewsChangeRequest(prior) == reviewsChangeRequest)
             .filter(
                 prior ->
                     isSupersedablePriorApprovalTask(
@@ -790,14 +791,10 @@ public class CreateTask implements TaskListener {
       TaskCategory taskCategory,
       UUID currentWorkflowDefinitionId,
       UUID currentWorkflowInstanceId,
-      String updatedBy) {
+      String requesterToMatch) {
     Object priorPayload = null;
     if (taskCategory == TaskCategory.Approval && entity != null) {
       try {
-        String requesterToMatch =
-            GovernanceApprovalRegistry.isPendingChangeWorkflow(currentWorkflowDefinitionId)
-                ? updatedBy
-                : null;
         priorPayload =
             taskRepository
                 .listNonTerminalTasksByEntityAndCategory(
@@ -1117,6 +1114,10 @@ public class CreateTask implements TaskListener {
                 ChangePreviewUtils.withChangeRequestLink(
                     payload, run.changeRequestId(), run.revisionNumber()))
         .orElse(payload);
+  }
+
+  private static boolean reviewsChangeRequest(DelegateTask delegateTask) {
+    return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask)).isPresent();
   }
 
   /** The pending revision a change-request run reviews, or null for any other run. */
