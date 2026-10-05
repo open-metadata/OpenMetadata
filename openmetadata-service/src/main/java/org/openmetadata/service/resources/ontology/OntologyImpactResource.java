@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.ontology;
 
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,19 +27,24 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.openmetadata.schema.api.data.DeleteOntologyResource;
 import org.openmetadata.schema.api.data.OntologyDeleteResult;
 import org.openmetadata.schema.api.data.OntologyImpactReport;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.ontology.OntologyImpactService;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
@@ -91,16 +98,38 @@ public final class OntologyImpactResource {
       @Valid final DeleteOntologyResource request) {
     authorizeTerm(securityContext, id, MetadataOperation.DELETE);
     authorizeReassignment(securityContext, request.getReassignChildrenTo());
-    return impactService.delete(id, request, principal(securityContext));
+    return impactService.delete(
+        id,
+        request,
+        principal(securityContext),
+        (termIds, operation) -> authorizeAffectedTerms(securityContext, termIds, operation));
   }
 
   private void authorizeTerm(
       final SecurityContext securityContext, final UUID id, final MetadataOperation operation) {
-    final GlossaryTerm term = repository.get(null, id, repository.getFields(""));
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.GLOSSARY_TERM, operation),
-        new ResourceContext<>(Entity.GLOSSARY_TERM, term, repository));
+        new ResourceContext<>(Entity.GLOSSARY_TERM, id, null, Include.ALL));
+  }
+
+  private void authorizeAffectedTerms(
+      final SecurityContext securityContext,
+      final Supplier<List<UUID>> termIds,
+      final MetadataOperation operation) {
+    if (!getSubjectContext(securityContext).isAdmin()) {
+      final List<GlossaryTerm> terms =
+          repository.get(
+              null, termIds.get(), ResourceContext.authorizationFields(repository), Include.ALL);
+      final BulkFieldHydrator hydrator =
+          new BulkFieldHydrator(Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(terms)));
+      for (final GlossaryTerm term : terms) {
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(Entity.GLOSSARY_TERM, operation),
+            new ResourceContext<>(Entity.GLOSSARY_TERM, term, repository, hydrator));
+      }
+    }
   }
 
   private void authorizeReassignment(

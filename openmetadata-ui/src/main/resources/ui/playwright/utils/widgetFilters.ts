@@ -277,7 +277,9 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
 
   const widget = await getWidgetForFilters(page, widgetKey);
 
-  await expect(widget.getByTestId('task-feed-card').first()).toBeVisible();
+  await expect(
+    widget.getByTestId('task-feed-card').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await selectWidgetSortOption(
     page,

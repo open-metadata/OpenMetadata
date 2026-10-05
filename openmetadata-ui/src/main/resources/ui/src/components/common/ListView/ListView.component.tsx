@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Switch, Typography } from 'antd';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,12 +93,12 @@ export const ListView = <T extends object = Record<string, unknown>>({
         <Space align="center">
           {!isUndefined(handleDeletedSwitchChange) && (
             <span className="flex-center gap-2">
-              <Switch
-                checked={deleted}
+              <Toggle
                 data-testid="show-deleted-switch"
+                isSelected={deleted}
                 onChange={handleDeletedSwitchChange}
               />
-              <Typography.Text>{t('label.deleted')}</Typography.Text>
+              <Typography>{t('label.deleted')}</Typography>
             </span>
           )}
 

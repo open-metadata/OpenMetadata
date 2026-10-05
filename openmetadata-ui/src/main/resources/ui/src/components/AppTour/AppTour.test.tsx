@@ -71,13 +71,19 @@ describe('AppTour component', () => {
     // findBy* awaits that settle; the rest of the assertions follow.
     expect(await screen.findByText('ReactTour')).toBeInTheDocument();
     expect(screen.getByText('TourEndModal is close')).toBeInTheDocument();
+    expect(mockUpdateIsTourOpen).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Request' }));
 
-    expect(mockUpdateIsTourOpen).toHaveBeenCalledWith(false);
+    expect(mockUpdateIsTourOpen).toHaveBeenCalledTimes(1);
+    expect(mockUpdateIsTourOpen).toHaveBeenLastCalledWith(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Skip Request' }));
 
+    // Skip must close the tour before leaving the route so isTourOpen does not
+    // stay stuck true after navigation away from /tour.
+    expect(mockUpdateIsTourOpen).toHaveBeenCalledTimes(2);
+    expect(mockUpdateIsTourOpen).toHaveBeenLastCalledWith(false);
     expect(mockUpdateTourPage).toHaveBeenCalledWith(
       CurrentTourPageType.MY_DATA_PAGE
     );
@@ -86,6 +92,16 @@ describe('AppTour component', () => {
     fireEvent.click(screen.getByTestId('last-step-button'));
 
     expect(screen.getByText('TourEndModal is open')).toBeInTheDocument();
+
+    // Finish path (end-of-tour modal submit) must also close the tour.
+    fireEvent.click(screen.getByText('OnSave_TourEndModal'));
+
+    expect(mockUpdateIsTourOpen).toHaveBeenCalledTimes(3);
+    expect(mockUpdateIsTourOpen).toHaveBeenLastCalledWith(false);
+    expect(mockUpdateTourPage).toHaveBeenLastCalledWith(
+      CurrentTourPageType.MY_DATA_PAGE
+    );
+    expect(mockNavigate).toHaveBeenLastCalledWith('/');
   });
 
   it('should not render ReactTour if isTourOpen false', () => {

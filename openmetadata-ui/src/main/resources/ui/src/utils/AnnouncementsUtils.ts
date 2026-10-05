@@ -103,6 +103,29 @@ export const ANNOUNCEMENT_COLORS: Record<AnnouncementColor, BadgeColors> = {
   [AnnouncementColor.Orange]: 'orange',
 };
 
+/**
+ * The accessible name of each colour swatch. The palette families are named for
+ * where they are used (`error`, `success`, `brand`), which is not what someone
+ * picking a colour hears — the swatch is red, green, blue. These are the names
+ * the rest of the app already uses for the same hues.
+ */
+export const ANNOUNCEMENT_COLOR_LABEL_KEYS: Record<AnnouncementColor, string> =
+  {
+    [AnnouncementColor.Gray]: 'label.color-gray',
+    [AnnouncementColor.Brand]: 'label.color-brand',
+    [AnnouncementColor.Error]: 'label.color-red',
+    [AnnouncementColor.Warning]: 'label.color-yellow',
+    [AnnouncementColor.Success]: 'label.color-green',
+    [AnnouncementColor.GrayBlue]: 'label.color-blue-gray',
+    [AnnouncementColor.BlueLight]: 'label.color-blue-light',
+    [AnnouncementColor.Blue]: 'label.color-blue',
+    [AnnouncementColor.BlueDark]: 'label.color-dark-blue',
+    [AnnouncementColor.Indigo]: 'label.color-indigo',
+    [AnnouncementColor.Purple]: 'label.color-purple',
+    [AnnouncementColor.Pink]: 'label.color-pink',
+    [AnnouncementColor.Orange]: 'label.color-orange',
+  };
+
 export interface AnnouncementTypeConfig {
   color: BadgeColors;
   /** A Custom announcement's own name, shown in place of `labelKey`. */
@@ -208,90 +231,84 @@ export const getAnnouncementTypeLabel = (
 /**
  * Banner surface classes per palette family. Written out in full because Tailwind
  * only emits classes it can see as literals — `tw:bg-utility-${color}-50` would
- * compile to nothing. `Badge` keeps its own table for the pill itself; this one is
- * the banner behind it, where background, border and title colour are needed apart.
+ * compile to nothing.
+ *
+ * These are the same values core's `filledColors` holds for `Badge`, split apart:
+ * a badge paints fill, text and edge on one element, while the banner needs the
+ * fill and edge on its surface, the text colour on its title and the `500` step
+ * on its icon. `filledColors` only exposes them pre-joined into one string, so
+ * there is nothing to derive this from; keep it in step with core by hand, and
+ * note the one place it deliberately differs — core's `blue-dark` row borrows
+ * gray text and a gray-blue edge, which would read as a mistake on a surface.
  */
 export const ANNOUNCEMENT_SURFACE_CLASSES: Record<
   BadgeColors,
-  { surface: string; icon: string; title: string; border: string }
+  { surface: string; icon: string; title: string }
 > = {
   gray: {
     surface: 'tw:bg-utility-gray-50 tw:outline-utility-gray-200',
     icon: 'tw:text-utility-gray-500',
     title: 'tw:text-utility-gray-700',
-    border: 'tw:border-utility-gray-200',
   },
   brand: {
     surface: 'tw:bg-utility-brand-50 tw:outline-utility-brand-200',
     icon: 'tw:text-utility-brand-500',
     title: 'tw:text-utility-brand-700',
-    border: 'tw:border-utility-brand-200',
   },
   error: {
     surface: 'tw:bg-utility-error-50 tw:outline-utility-error-200',
     icon: 'tw:text-utility-error-500',
     title: 'tw:text-utility-error-700',
-    border: 'tw:border-utility-error-200',
   },
   warning: {
     surface: 'tw:bg-utility-warning-50 tw:outline-utility-warning-200',
     icon: 'tw:text-utility-warning-500',
     title: 'tw:text-utility-warning-700',
-    border: 'tw:border-utility-warning-200',
   },
   success: {
     surface: 'tw:bg-utility-success-50 tw:outline-utility-success-200',
     icon: 'tw:text-utility-success-500',
     title: 'tw:text-utility-success-700',
-    border: 'tw:border-utility-success-200',
   },
   'gray-blue': {
     surface: 'tw:bg-utility-gray-blue-50 tw:outline-utility-gray-blue-200',
     icon: 'tw:text-utility-gray-blue-500',
     title: 'tw:text-utility-gray-blue-700',
-    border: 'tw:border-utility-gray-blue-200',
   },
   'blue-light': {
     surface: 'tw:bg-utility-blue-light-50 tw:outline-utility-blue-light-200',
     icon: 'tw:text-utility-blue-light-500',
     title: 'tw:text-utility-blue-light-700',
-    border: 'tw:border-utility-blue-light-200',
   },
   blue: {
     surface: 'tw:bg-utility-blue-50 tw:outline-utility-blue-200',
     icon: 'tw:text-utility-blue-500',
     title: 'tw:text-utility-blue-700',
-    border: 'tw:border-utility-blue-200',
   },
   'blue-dark': {
     surface: 'tw:bg-utility-blue-dark-50 tw:outline-utility-blue-dark-200',
     icon: 'tw:text-utility-blue-dark-500',
     title: 'tw:text-utility-blue-dark-700',
-    border: 'tw:border-utility-blue-dark-200',
   },
   indigo: {
     surface: 'tw:bg-utility-indigo-50 tw:outline-utility-indigo-200',
     icon: 'tw:text-utility-indigo-500',
     title: 'tw:text-utility-indigo-700',
-    border: 'tw:border-utility-indigo-200',
   },
   purple: {
     surface: 'tw:bg-utility-purple-50 tw:outline-utility-purple-200',
     icon: 'tw:text-utility-purple-500',
     title: 'tw:text-utility-purple-700',
-    border: 'tw:border-utility-purple-200',
   },
   pink: {
     surface: 'tw:bg-utility-pink-50 tw:outline-utility-pink-200',
     icon: 'tw:text-utility-pink-500',
     title: 'tw:text-utility-pink-700',
-    border: 'tw:border-utility-pink-200',
   },
   orange: {
     surface: 'tw:bg-utility-orange-50 tw:outline-utility-orange-200',
     icon: 'tw:text-utility-orange-500',
     title: 'tw:text-utility-orange-700',
-    border: 'tw:border-utility-orange-200',
   },
 };
 
@@ -313,18 +330,20 @@ export const getAnnouncementStatus = (
 };
 
 /**
- * The status pill on a drawer card. The frame anchors it to the card's top-right
- * corner, straddling the border, so it carries its own fill rather than relying
- * on the card's — the two tints differ (a Scheduled announcement can be any type)
- * and the pill has to stay legible over whichever surface it lands on.
+ * The palette family the status pill on a drawer card renders in. The frame
+ * anchors that pill to the card's top-right corner, straddling the border, so it
+ * carries its own fill rather than relying on the card's — the two tints differ
+ * (a Scheduled announcement can be any type) and the pill has to stay legible
+ * over whichever surface it lands on. `Badge` already paints exactly that, so
+ * this is the colour only.
  */
-export const ANNOUNCEMENT_STATUS_CLASSES: Record<AnnouncementStatus, string> = {
-  [AnnouncementStatus.Active]:
-    'tw:bg-utility-success-50 tw:text-utility-success-700 tw:outline-utility-success-200',
-  [AnnouncementStatus.Scheduled]:
-    'tw:bg-utility-blue-50 tw:text-utility-blue-700 tw:outline-utility-blue-200',
-  [AnnouncementStatus.Expired]:
-    'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:outline-utility-gray-200',
+export const ANNOUNCEMENT_STATUS_COLORS: Record<
+  AnnouncementStatus,
+  BadgeColors
+> = {
+  [AnnouncementStatus.Active]: 'success',
+  [AnnouncementStatus.Scheduled]: 'blue',
+  [AnnouncementStatus.Expired]: 'gray',
 };
 
 export const ANNOUNCEMENT_STATUS_LABEL_KEYS: Record<

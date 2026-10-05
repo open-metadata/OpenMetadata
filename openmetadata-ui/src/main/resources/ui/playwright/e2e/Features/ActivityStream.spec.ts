@@ -64,7 +64,7 @@ test.describe('Activity Stream on Entity Pages', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('activity feed tab shows activity events for entity', async ({
@@ -94,8 +94,8 @@ test.describe('Activity Stream on Entity Pages', () => {
       page
         .locator('#feedData [data-testid="message-container"]')
         .filter({ hasText: seededActivitySummary })
-        .first()
-    ).toBeVisible({ timeout: 30_000 });
+        .filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: 30_000 });
   });
 
   test('activity events are created when entity description is updated', async ({

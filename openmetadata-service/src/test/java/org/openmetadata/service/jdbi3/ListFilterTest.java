@@ -21,6 +21,15 @@ class ListFilterTest {
     assertEquals("a\\_b\\_c\\_d", ListFilter.escape("a_b_c_d"));
   }
 
+  // A bound LIKE value keeps apostrophes as typed and escapes only the LIKE metacharacters.
+  @Test
+  void test_escapeLikeBindValue() {
+    assertEquals("customer's", ListFilter.escapeLikeBindValue("customer's"));
+    assertEquals("100\\%", ListFilter.escapeLikeBindValue("100%"));
+    assertEquals("a\\_b", ListFilter.escapeLikeBindValue("a_b"));
+    assertEquals("c:\\\\dir", ListFilter.escapeLikeBindValue("c:\\dir"));
+  }
+
   @Test
   void test_escapeBackslashAndApostrophe_passesThroughPlainStrings() {
     assertEquals("abcd", ListFilter.escapeBackslashAndApostrophe("abcd"));
@@ -602,6 +611,30 @@ class ListFilterTest {
     assertFalse(condition.contains("status LIKE"), condition);
     assertTrue(condition.contains("startTime <="), condition);
     assertTrue(condition.contains("endTime >="), condition);
+  }
+
+  @Test
+  void test_isTimeDependent_coversTheWindowDerivedFilters() {
+    // These two compare the announcement window against the wall clock, so their row set changes
+    // with nothing written — ListCountCache has to skip them rather than cache a total that
+    // invalidation hooks will never clear.
+    ListFilter byStatus = new ListFilter(Include.NON_DELETED);
+    byStatus.addQueryParam("announcementStatus", "Active");
+
+    ListFilter byActive = new ListFilter(Include.NON_DELETED);
+    byActive.addQueryParam("active", "true");
+
+    assertTrue(byStatus.isTimeDependent());
+    assertTrue(byActive.isTimeDependent());
+  }
+
+  @Test
+  void test_isTimeDependent_isFalseForFiltersDerivedFromStoredState() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementType", "Notice");
+
+    assertFalse(filter.isTimeDependent());
+    assertFalse(new ListFilter(Include.NON_DELETED).isTimeDependent());
   }
 
   @Test

@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  Card,
-  Grid,
-  GridItem,
-  SkeletonParagraph,
-} from '@openmetadata/ui-core-components';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
 import { GridDotsOuter } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import { lazy, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -36,7 +31,6 @@ import {
 import { getUpdatedExtensionDiffFields } from '../../../utils/EntityDiffUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.utils';
 import CreatePlaceholder from '../EmptyPlaceholder/CreatePlaceholder';
@@ -47,18 +41,13 @@ import {
   selectWidgetProperties,
 } from './CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import { CustomPropertyCardList } from './CustomPropertyCard/CustomPropertyCardList';
+import { CustomPropertyVersionList } from './CustomPropertyCard/CustomPropertyVersionList';
 import {
   CustomPropertyProps,
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from './CustomPropertyTable.interface';
 import { useCustomPropertyValueSave } from './useCustomPropertyValueSave';
-
-const PropertyValue = withSuspenseFallback(
-  lazy(() =>
-    import('./PropertyValue').then((m) => ({ default: m.PropertyValue }))
-  )
-);
 
 export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   entityType,
@@ -90,7 +79,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     isLoading: entityTypeDetailLoading,
     error: entityTypeDetailError,
   } = useEntityTypeCustomProperties(entityType);
-  const { onExtensionUpdate, onPropertyValueSave } =
+  const { onPropertyValueSave } =
     useCustomPropertyValueSave<ExtentionEntities[T]>();
 
   useEffect(() => {
@@ -130,20 +119,13 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return { extensionObject: entityDetails?.extension };
   }, [isVersionView, entityDetails?.extension]);
 
-  const { dataSource, dataSourceColumns } = useMemo(() => {
-    const dataSource =
+  const dataSource = useMemo(
+    () =>
       isRenderedInRightPanel && widgetSettings
         ? selectWidgetProperties(customProperties, widgetSettings)
-        : customProperties.slice(0, maxDataCap);
-
-    // Split dataSource into three equal parts
-    const columnCount = 3;
-    const columns = Array.from({ length: columnCount }, (_, i) =>
-      dataSource.filter((_, index) => index % columnCount === i)
-    );
-
-    return { dataSource, dataSourceColumns: columns };
-  }, [maxDataCap, customProperties, isRenderedInRightPanel, widgetSettings]);
+        : customProperties.slice(0, maxDataCap),
+    [maxDataCap, customProperties, isRenderedInRightPanel, widgetSettings]
+  );
 
   const viewAllPath = useMemo(() => {
     const hasHiddenProperties = widgetSettings
@@ -249,12 +231,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       <CustomPropertiesRightPanel
         extension={extensionObject.extensionObject}
         hasEditPermissions={hasEditAccess}
-        isVersionView={isVersionView}
         properties={dataSource}
-        versionDataKeys={extensionObject.addedKeysList}
         viewAllPath={viewAllPath}
         widgetSettings={widgetSettings}
-        onExtensionUpdate={onExtensionUpdate}
         onValueSave={onPropertyValueSave}
       />
     );
@@ -264,40 +243,23 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return null;
   }
 
-  if (!isVersionView) {
+  if (isVersionView) {
     return (
-      <CustomPropertyCardList
+      <CustomPropertyVersionList
+        addedKeys={extensionObject.addedKeysList}
         extension={extensionObject.extensionObject}
-        hasEditPermissions={hasEditAccess}
         properties={dataSource}
-        propertyLayout={tabPropertyLayout}
-        onValueSave={onPropertyValueSave}
       />
     );
   }
 
   return (
-    <Card className="custom-properties-card tw:p-5">
-      <Grid data-testid="custom-properties-card" gap="4">
-        {dataSourceColumns.map((columns, colIndex) => (
-          // eslint-disable-next-line react/no-array-index-key -- static grid-layout column partition, fixed order
-          <GridItem key={colIndex} span={8}>
-            {columns.map((record) => (
-              <div className="tw:mb-4" key={record.name}>
-                <PropertyValue
-                  extension={extensionObject.extensionObject}
-                  hasEditPermissions={hasEditAccess}
-                  isRenderedInRightPanel={isRenderedInRightPanel}
-                  isVersionView={isVersionView}
-                  property={record}
-                  versionDataKeys={extensionObject.addedKeysList}
-                  onExtensionUpdate={onExtensionUpdate}
-                />
-              </div>
-            ))}
-          </GridItem>
-        ))}
-      </Grid>
-    </Card>
+    <CustomPropertyCardList
+      extension={extensionObject.extensionObject}
+      hasEditPermissions={hasEditAccess}
+      properties={dataSource}
+      propertyLayout={tabPropertyLayout}
+      onValueSave={onPropertyValueSave}
+    />
   );
 };

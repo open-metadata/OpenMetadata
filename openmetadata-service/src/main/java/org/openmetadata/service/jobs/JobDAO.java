@@ -141,6 +141,134 @@ public interface JobDAO {
   int countInFlightMemoryJobs(
       @Bind("jobKey") String jobKey, @Bind("includeRunning") boolean includeRunning);
 
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT COUNT(*) FROM background_jobs "
+              + "WHERE jobType = 'ONTOLOGY_MEMORY_DERIVATION' "
+              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND JSON_SEARCH(jobArgs, 'one', :memoryId, NULL, '$.memoryIds[*]') IS NOT NULL",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT COUNT(*) FROM background_jobs "
+              + "WHERE jobType = 'ONTOLOGY_MEMORY_DERIVATION' "
+              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(jobArgs->'memoryIds') "
+              + "AS source(memoryId) WHERE source.memoryId = :memoryId)",
+      connectionType = POSTGRES)
+  int countInFlightOntologyMemoryJobs(@Bind("memoryId") String memoryId);
+
+  String ONTOLOGY_MEMORY_DERIVATION_HANDLER = "OntologyMemoryDerivationJobHandler";
+  String ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE = "ONTOLOGY_MEMORY_DERIVATION";
+  int ONTOLOGY_MEMORY_BATCH_LIMIT = 20;
+  // A batch only grows while its start is still this far away, so no worker can have read it yet.
+  long ONTOLOGY_MEMORY_BATCH_APPEND_MARGIN_MS = 5_000L;
+
+  @Transaction
+  default Optional<Long> enqueueOntologyMemoryDerivationJob(
+      List<String> memoryIds, String jobArgs, String createdBy) {
+    for (String memoryId : memoryIds.stream().distinct().sorted().toList()) {
+      if (lockMemoryForOntologyQueue(memoryId) == null
+          || countInFlightOntologyMemoryJobs(memoryId) > 0) {
+        return Optional.empty();
+      }
+    }
+    return Optional.of(
+        insertJobInternal(
+            ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE,
+            ONTOLOGY_MEMORY_DERIVATION_HANDLER,
+            jobArgs,
+            createdBy,
+            null));
+  }
+
+  // Coalesces memories extracted from one source into a single delayed job, so a document that
+  // yields many memories costs one derivation instead of one per memory.
+  @Transaction
+  default Optional<Long> enqueueOntologyMemoryDerivationBatch(
+      String memoryId, String batchKey, String jobArgs, String createdBy, long runAt) {
+    if (lockMemoryForOntologyQueue(memoryId) == null
+        || countInFlightOntologyMemoryJobs(memoryId) > 0) {
+      return Optional.empty();
+    }
+    Long pendingId =
+        lockOpenOntologyMemoryBatch(
+            batchKey, ONTOLOGY_MEMORY_BATCH_LIMIT, ONTOLOGY_MEMORY_BATCH_APPEND_MARGIN_MS);
+    if (pendingId != null && appendToOntologyMemoryBatch(pendingId, memoryId) > 0) {
+      return Optional.of(pendingId);
+    }
+    return Optional.of(
+        insertJobInternal(
+            ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE,
+            ONTOLOGY_MEMORY_DERIVATION_HANDLER,
+            jobArgs,
+            createdBy,
+            runAt));
+  }
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'ONTOLOGY_MEMORY_DERIVATION' "
+              + "AND status = 'PENDING' "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.batchKey')) = :batchKey "
+              + "AND JSON_LENGTH(jobArgs, '$.memoryIds') < :limit "
+              + "AND runAt > (UNIX_TIMESTAMP(NOW(3)) * 1000) + :marginMs "
+              + "ORDER BY id DESC LIMIT 1 FOR UPDATE",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'ONTOLOGY_MEMORY_DERIVATION' "
+              + "AND status = 'PENDING' "
+              + "AND jobArgs->>'batchKey' = :batchKey "
+              + "AND jsonb_array_length(jobArgs->'memoryIds') < :limit "
+              + "AND runAt > (EXTRACT(EPOCH FROM NOW()) * 1000) + :marginMs "
+              + "ORDER BY id DESC LIMIT 1 FOR UPDATE",
+      connectionType = POSTGRES)
+  Long lockOpenOntologyMemoryBatch(
+      @Bind("batchKey") String batchKey, @Bind("limit") int limit, @Bind("marginMs") long marginMs);
+
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE background_jobs SET jobArgs = JSON_ARRAY_APPEND(jobArgs, '$.memoryIds', :memoryId), "
+              + "updatedAt = (UNIX_TIMESTAMP(NOW(3)) * 1000) WHERE id = :id AND status = 'PENDING'",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE background_jobs SET jobArgs = jsonb_set(jobArgs, '{memoryIds}', "
+              + "(jobArgs->'memoryIds') || to_jsonb(CAST(:memoryId AS text))), "
+              + "updatedAt = (EXTRACT(EPOCH FROM NOW()) * 1000) WHERE id = :id AND status = 'PENDING'",
+      connectionType = POSTGRES)
+  int appendToOntologyMemoryBatch(@Bind("id") long id, @Bind("memoryId") String memoryId);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+              + "progress, total, result, error, message, cancelRequested, completedAt "
+              + "FROM background_jobs WHERE jobType = 'ONTOLOGY_MEMORY_DERIVATION' "
+              + "AND status IN ('COMPLETED', 'FAILED') "
+              + "AND JSON_SEARCH(jobArgs, 'one', :memoryId, NULL, '$.memoryIds[*]') IS NOT NULL "
+              + "ORDER BY id DESC LIMIT 1",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+              + "progress, total, result, error, message, cancelRequested, completedAt "
+              + "FROM background_jobs WHERE jobType = 'ONTOLOGY_MEMORY_DERIVATION' "
+              + "AND status IN ('COMPLETED', 'FAILED') "
+              + "AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(jobArgs->'memoryIds') "
+              + "AS source(memoryId) WHERE source.memoryId = :memoryId) "
+              + "ORDER BY id DESC LIMIT 1",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  BackgroundJob findLatestFinishedOntologyMemoryJobInternal(@Bind("memoryId") String memoryId);
+
+  default Optional<BackgroundJob> findLatestFinishedOntologyMemoryJob(String memoryId) {
+    return Optional.ofNullable(findLatestFinishedOntologyMemoryJobInternal(memoryId));
+  }
+
+  @SqlQuery("SELECT id FROM context_memory WHERE id = :memoryId FOR UPDATE")
+  String lockMemoryForOntologyQueue(@Bind("memoryId") String memoryId);
+
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE background_jobs SET runAt = :runAt, updatedAt = GREATEST(updatedAt + 1, :updatedAt) "
@@ -205,7 +333,8 @@ public interface JobDAO {
           "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
               + "progress, total, result, error, message, cancelRequested, completedAt FROM background_jobs"
               + " WHERE status = 'PENDING'"
-              + " AND (:includeMemoryJobs = true OR jobType <> 'CONTEXT_MEMORY_EXTRACTION')"
+              + " AND (:includeMemoryJobs = true OR jobType NOT IN "
+              + "('CONTEXT_MEMORY_EXTRACTION', 'ONTOLOGY_MEMORY_DERIVATION'))"
               + " AND COALESCE(runAt, 0) <= UNIX_TIMESTAMP(NOW(3)) * 1000"
               + " ORDER BY createdAt LIMIT 1",
       connectionType = MYSQL)
@@ -214,7 +343,8 @@ public interface JobDAO {
           "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
               + "progress, total, result, error, message, cancelRequested, completedAt FROM background_jobs"
               + " WHERE status = 'PENDING'"
-              + " AND (:includeMemoryJobs = true OR jobType <> 'CONTEXT_MEMORY_EXTRACTION')"
+              + " AND (:includeMemoryJobs = true OR jobType NOT IN "
+              + "('CONTEXT_MEMORY_EXTRACTION', 'ONTOLOGY_MEMORY_DERIVATION'))"
               + " AND COALESCE(runAt, 0) <= EXTRACT(EPOCH FROM NOW()) * 1000"
               + " ORDER BY createdAt LIMIT 1",
       connectionType = POSTGRES)
@@ -376,7 +506,8 @@ public interface JobDAO {
   @SqlUpdate(
       "UPDATE background_jobs SET status = 'FAILED', error = 'Job stopped responding and was marked failed.', "
           + "message = 'Job stopped responding and was marked failed.', updatedAt = :updatedAt, completedAt = :updatedAt "
-          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT', 'ONTOLOGY_BULK') "
+          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT', 'ONTOLOGY_BULK', "
+          + "'ONTOLOGY_MEMORY_DERIVATION') "
           + "AND status = 'RUNNING' AND updatedAt < :staleBefore")
   int markStaleRunningJobsFailed(
       @Bind("updatedAt") long updatedAt, @Bind("staleBefore") long staleBefore);

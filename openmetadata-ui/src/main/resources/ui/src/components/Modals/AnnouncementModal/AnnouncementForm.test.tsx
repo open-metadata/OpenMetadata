@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { DateTime } from 'luxon';
 import { useForm } from 'react-hook-form';
@@ -225,6 +226,46 @@ describe('AnnouncementForm', () => {
     );
   });
 
+  it('should expose the types as one radio group, not five toggles', () => {
+    render(
+      <Harness
+        defaultValues={{ type: AnnouncementType.Warning }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    const group = screen.getByRole('radiogroup', {
+      name: 'label.announcement-type',
+    });
+
+    // One tab stop with arrow keys between the options, and the selected type
+    // announced as "n of 5" — none of which `aria-pressed` buttons provide.
+    expect(within(group).getAllByRole('radio')).toHaveLength(5);
+    expect(
+      within(group).getByRole('radio', { name: 'label.warning' })
+    ).toBeChecked();
+  });
+
+  it('should show a focus ring on the chip, not on the hidden radio dot', () => {
+    render(<Harness onSubmit={jest.fn()} />);
+
+    const chip = screen.getByTestId(
+      `announcement-type-${AnnouncementType.Critical}`
+    );
+
+    // react-aria only treats focus as "visible" once it has seen a keyboard
+    // interaction, so the modality has to be established before focusing.
+    act(() => {
+      fireEvent.keyDown(document.body, { key: 'Tab' });
+      within(chip).getByRole('radio').focus();
+    });
+
+    // Core draws the ring on the circular indicator, which this chip hides —
+    // so it has to move to the chip itself or keyboard focus is invisible.
+    expect(chip).toHaveAttribute('data-focus-visible', 'true');
+    expect(chip).toHaveClass('tw:outline-focus-ring');
+  });
+
   it('should reject a Custom name made only of spaces', async () => {
     const onSubmit = jest.fn();
     render(<Harness onSubmit={onSubmit} />);
@@ -300,14 +341,20 @@ describe('AnnouncementForm', () => {
       />
     );
 
-    const swatches = screen
-      .getByTestId('announcement-color-select')
-      .querySelectorAll('button');
+    const swatches = within(
+      screen.getByTestId('announcement-color-select')
+    ).getAllByRole('radio');
 
     // The five the frame offers, then the stored colour kept selectable on edit.
     expect(swatches).toHaveLength(6);
     expect(
       screen.getByTestId(`announcement-color-${AnnouncementColor.Purple}`)
-    ).toHaveAttribute('aria-pressed', 'true');
+    ).toBeInTheDocument();
+    // A radio group, so the stored colour reads as the checked option rather
+    // than as one pressed toggle among five unrelated ones. The swatch has no
+    // visible text, so its name comes from the colour's own label key.
+    expect(
+      screen.getByRole('radio', { name: 'label.color-purple' })
+    ).toBeChecked();
   });
 });

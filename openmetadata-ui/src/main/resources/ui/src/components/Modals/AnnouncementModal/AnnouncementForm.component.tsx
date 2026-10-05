@@ -12,10 +12,12 @@
  */
 
 import {
+  Box,
   Button,
   Dialog,
   FeaturedIcon,
   FormField,
+  HintText,
   HookForm,
   Input,
   Label,
@@ -91,7 +93,7 @@ const DateField = ({
   value?: number | null;
   onChange: (value: number | null) => void;
 }) => (
-  <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
+  <Box className="tw:min-w-0 tw:flex-1 tw:gap-1.5" direction="col">
     <Label isRequired htmlFor={id}>
       {label}
     </Label>
@@ -115,9 +117,14 @@ const DateField = ({
         onChange={(e) => onChange(fromDateInputValue(e.target.value, boundary))}
       />
     </div>
-  </div>
+  </Box>
 );
 
+/**
+ * The error line under a field that is not an `Input` — an `Input` takes the
+ * message as its own `hint`, which also wires `aria-describedby` to it. Core's
+ * `HintText` is the same element either way, so the two read alike.
+ */
 const FieldError = ({
   message,
   testId,
@@ -126,9 +133,9 @@ const FieldError = ({
   testId: string;
 }) =>
   message ? (
-    <span className="tw:text-sm tw:text-error-primary" data-testid={testId}>
+    <HintText isInvalid data-testid={testId}>
       {message}
-    </span>
+    </HintText>
   ) : null;
 
 const TITLE_MIN_LENGTH = 5;
@@ -188,7 +195,7 @@ const AnnouncementForm = ({
               size="md"
               theme="modern"
             />
-            <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
+            <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
               <Typography
                 as="h2"
                 className="tw:text-primary"
@@ -200,7 +207,7 @@ const AnnouncementForm = ({
               <Typography as="p" className="tw:text-tertiary" size="text-sm">
                 {description}
               </Typography>
-            </div>
+            </Box>
           </Dialog.Header>
 
           <Dialog.Content>
@@ -212,7 +219,7 @@ const AnnouncementForm = ({
               onSubmit={form.handleSubmit(onSubmit)}>
               <FormField control={form.control} name="type">
                 {({ field }) => (
-                  <div className="tw:flex tw:flex-col tw:gap-1.5">
+                  <Box className="tw:gap-1.5" direction="col">
                     <Label isRequired>{t('label.announcement-type')}</Label>
                     <AnnouncementTypeSelect
                       value={field.value}
@@ -220,12 +227,12 @@ const AnnouncementForm = ({
                         handleTypeChange(value, field.onChange)
                       }
                     />
-                  </div>
+                  </Box>
                 )}
               </FormField>
 
               {isCustom && (
-                <div className="tw:flex tw:gap-4">
+                <Box className="tw:gap-4">
                   <FormField
                     control={form.control}
                     name="customTypeName"
@@ -239,25 +246,21 @@ const AnnouncementForm = ({
                         requiredMessage(t('label.custom-name')),
                     }}>
                     {({ field, fieldState }) => (
-                      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
-                        <Input
-                          isRequired
-                          data-testid="custom-type-name"
-                          id="customTypeName"
-                          isInvalid={Boolean(fieldState.error)}
-                          label={t('label.custom-name')}
-                          maxLength={CUSTOM_TYPE_NAME_MAX_LENGTH}
-                          placeholder={t('label.enter-entity-name', {
-                            entity: t('label.announcement'),
-                          })}
-                          value={field.value ?? ''}
-                          onChange={field.onChange}
-                        />
-                        <FieldError
-                          message={fieldState.error?.message}
-                          testId="custom-type-name-error"
-                        />
-                      </div>
+                      <Input
+                        isRequired
+                        className="tw:min-w-0 tw:flex-1"
+                        data-testid="custom-type-name"
+                        hint={fieldState.error?.message}
+                        id="customTypeName"
+                        isInvalid={Boolean(fieldState.error)}
+                        label={t('label.custom-name')}
+                        maxLength={CUSTOM_TYPE_NAME_MAX_LENGTH}
+                        placeholder={t('label.enter-entity-name', {
+                          entity: t('label.announcement'),
+                        })}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                      />
                     )}
                   </FormField>
 
@@ -266,7 +269,9 @@ const AnnouncementForm = ({
                     name="color"
                     rules={{ required: requiredMessage(t('label.color')) }}>
                     {({ field, fieldState }) => (
-                      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
+                      <Box
+                        className="tw:min-w-0 tw:flex-1 tw:gap-1.5"
+                        direction="col">
                         <Label isRequired>{t('label.color')}</Label>
                         <AnnouncementColorSelect
                           value={field.value}
@@ -276,10 +281,10 @@ const AnnouncementForm = ({
                           message={fieldState.error?.message}
                           testId="color-error"
                         />
-                      </div>
+                      </Box>
                     )}
                   </FormField>
-                </div>
+                </Box>
               )}
 
               <FormField
@@ -294,6 +299,7 @@ const AnnouncementForm = ({
                   <Input
                     isRequired
                     data-testid="title"
+                    hint={fieldState.error?.message}
                     id="title"
                     isInvalid={Boolean(fieldState.error)}
                     label={t('label.title')}
@@ -306,7 +312,7 @@ const AnnouncementForm = ({
                 )}
               </FormField>
 
-              <div className="tw:flex tw:gap-4">
+              <Box className="tw:gap-4">
                 <FormField
                   control={form.control}
                   name="startTime"
@@ -341,7 +347,7 @@ const AnnouncementForm = ({
                     />
                   )}
                 </FormField>
-              </div>
+              </Box>
 
               <FormField
                 control={form.control}
@@ -354,7 +360,7 @@ const AnnouncementForm = ({
                     requiredMessage(t('label.description')),
                 }}>
                 {({ field, fieldState }) => (
-                  <div className="tw:flex tw:flex-col tw:gap-1.5">
+                  <Box className="tw:gap-1.5" direction="col">
                     <Label isRequired>{t('label.description')}</Label>
                     {/* The block editor, not core's DESCRIPTION field: that one
                         renders a plain TextArea, and an announcement's
@@ -372,7 +378,7 @@ const AnnouncementForm = ({
                       message={fieldState.error?.message}
                       testId="description-error"
                     />
-                  </div>
+                  </Box>
                 )}
               </FormField>
             </HookForm>

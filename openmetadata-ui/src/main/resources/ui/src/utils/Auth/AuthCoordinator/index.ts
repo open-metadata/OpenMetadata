@@ -12,9 +12,14 @@
  */
 
 export { authCoordinator, AuthCoordinator } from './AuthCoordinator';
+export {
+  isReauthRequiredError,
+  ReauthRequiredError,
+} from './ReauthRequiredError';
 export type {
   RefreshedPayload,
   RefreshFailedPayload,
+  RefreshFailureSource,
   Renewer,
   RenewResult,
 } from './types';

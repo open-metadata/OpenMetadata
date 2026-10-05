@@ -33,7 +33,13 @@ jest.mock('../ProfilePicture/ProfilePicture', () =>
 );
 
 jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+  jest
+    .fn()
+    .mockImplementation(
+      ({ markdown, ...rest }: { markdown: string; 'data-testid'?: string }) => (
+        <div data-testid={rest['data-testid']}>{markdown}</div>
+      )
+    )
 );
 
 const announcement: AnnouncementEntity = {
@@ -141,11 +147,11 @@ describe('AnnouncementBanner', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it('should render a plain title when the banner is not clickable', () => {
+  it('should not render the click overlay when the banner is not clickable', () => {
     renderBanner();
 
     expect(
-      screen.queryByTestId('announcement-title-btn')
+      screen.queryByTestId('announcement-open-btn')
     ).not.toBeInTheDocument();
     expect(screen.getByText('Pipeline maintenance')).toBeInTheDocument();
   });
@@ -175,26 +181,154 @@ describe('AnnouncementBanner', () => {
   it('should not indent the expanded title past the type chip', () => {
     renderBanner({ expanded: true });
 
-    const chip = within(screen.getByTestId('announcement-banner')).getByTestId(
-      'announcement-type-icon'
+    const badge = within(screen.getByTestId('announcement-banner')).getByTestId(
+      'announcement-type-badge'
     );
     const title = screen.getByText('Pipeline maintenance');
 
-    // The chip sits in the header row; the title is its sibling's sibling, not a
-    // descendant of the column the chip opens — that nesting is what indented it.
-    expect(chip.parentElement?.contains(title)).toBe(false);
+    // The badge shares the header row with the type icon; the title is that
+    // row's sibling, not a descendant — that nesting is what indented it.
+    expect(badge.parentElement?.contains(title)).toBe(false);
   });
 
-  it('should not nest the title button inside the tooltip trigger button', () => {
+  it('should give the clickable title exactly one button', () => {
     renderBanner({ onClick: jest.fn() });
 
-    const titleButton = screen.getByTestId('announcement-title-btn');
+    const trigger = screen
+      .getByTestId('announcement-title-btn')
+      .closest('button');
 
-    // Typography's own ellipsis tooltip wraps a non-focusable node in an
-    // AriaButton; applied inside this button it produced button-in-button,
-    // which is invalid and threw the row's vertical alignment out.
-    expect(titleButton.querySelector('button')).toBeNull();
-    expect(titleButton.closest('button')).toBe(titleButton);
+    // Tooltip generates the focusable trigger itself — it wraps even a native
+    // `<button>` child in an AriaButton, so rendering our own around the text
+    // produced button-in-button, which is invalid and threw the row's vertical
+    // alignment out.
+    expect(trigger).not.toBeNull();
+    expect(trigger?.querySelector('button')).toBeNull();
+    expect(trigger?.parentElement?.closest('button')).toBeNull();
+  });
+
+  it('should let the clickable title truncate rather than size to its text', () => {
+    renderBanner({ onClick: jest.fn() });
+
+    // `Tooltip` gives its generated trigger `w-max`, which on its own would size
+    // it to the untruncated title and leave the ellipsis nothing to clip. Core's
+    // ellipsis trigger caps that with `max-w-full`, and the host supplies the
+    // `min-w-0` that lets it shrink below its content.
+    const trigger = screen
+      .getByTestId('announcement-title-btn')
+      .closest('button');
+
+    expect(trigger).toHaveClass('tw:max-w-full', 'tw:min-w-0');
+  });
+
+  it('should keep the ellipsis tooltip trigger left-aligned', () => {
+    renderBanner({ onClick: jest.fn() });
+
+    // The trigger is a `<button>`, whose UA `text-align: center` preflight does
+    // not reset. Core gives it `[text-align:inherit]`, which cures that but then
+    // follows the ancestors — so the host has to state the alignment, or the
+    // title drifts to the middle wherever the host stretches.
+    const trigger = screen
+      .getByTestId('announcement-description')
+      .closest('button');
+
+    expect(trigger).toHaveClass('tw:[text-align:inherit]');
+    expect(trigger?.parentElement).toHaveClass('tw:text-start');
+  });
+
+  it('should show the expanded title in full, with no tooltip trigger', () => {
+    renderBanner({ expanded: true, onClick: jest.fn() });
+
+    const title = screen.getByTestId('announcement-title-btn');
+
+    // Expanded there is room to wrap, so the title is not truncated and needs no
+    // tooltip repeating text already on screen. No tooltip means Typography
+    // builds no trigger `<button>` — which is also what kept centring it, since
+    // a button's UA `text-align: center` beats an inherited value.
+    expect(title.closest('button')).toBeNull();
+    expect(title).not.toHaveClass('tw:truncate');
+    // Nothing clips it now, so it has to fit by wrapping — a title with no break
+    // points would otherwise push itself and the badge past the banner's edge.
+    expect(title).toHaveClass('tw:min-w-0', 'tw:break-words');
+  });
+
+  it('should still truncate the collapsed title and keep its tooltip', () => {
+    renderBanner({ onClick: jest.fn() });
+
+    const title = screen.getByTestId('announcement-title-btn');
+
+    expect(title).toHaveClass('tw:truncate');
+    expect(title.closest('button')).not.toBeNull();
+  });
+
+  it('should make the whole banner clickable through a separate overlay', () => {
+    const onClick = jest.fn();
+    renderBanner({ onClick, onDismiss: jest.fn() });
+
+    // The banner cannot be the button — it holds the dismiss control, and ARIA
+    // makes a button's descendants presentational. A transparent overlay is the
+    // click target instead, and the controls are lifted back above it.
+    const overlay = screen.getByTestId('announcement-open-btn');
+
+    // `isolate` keeps those z-indexes inside the banner. Without it they land
+    // in the root stacking context and paint over the announcement drawer,
+    // whose overlay is `fixed` with no z-index of its own.
+    expect(screen.getByTestId('announcement-banner')).toHaveClass(
+      'tw:relative',
+      'tw:isolate'
+    );
+    expect(overlay).toHaveClass('tw:absolute', 'tw:inset-0', 'tw:z-10');
+    expect(
+      screen.getByTestId('announcement-dismiss-btn').closest('div')
+    ).toHaveClass('tw:relative', 'tw:z-20');
+
+    fireEvent.click(overlay);
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('should keep the rendered description above the overlay when expanded', () => {
+    const { rerender } = renderBanner({ expanded: true, onClick: jest.fn() });
+
+    // Rendered markdown carries links and mentions and people select it, so it
+    // cannot sit under the overlay — every click there would open the drawer.
+    expect(
+      screen.getByTestId('announcement-description').parentElement
+    ).toHaveClass('tw:relative', 'tw:z-20');
+
+    rerender(
+      <AnnouncementBanner
+        announcement={announcement}
+        variant="full"
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('announcement-description').parentElement
+    ).toHaveClass('tw:relative', 'tw:z-20');
+  });
+
+  it('should give the title and the description each their own tooltip', () => {
+    const onClick = jest.fn();
+    renderBanner({ onClick });
+
+    // Hanging the overlay off the title's trigger made every hover on the
+    // banner pop the title's tooltip, and the description never showed its own.
+    // Each label owns its trigger now, and both sit above the overlay.
+    for (const testId of [
+      'announcement-title-btn',
+      'announcement-description',
+    ]) {
+      const trigger = screen.getByTestId(testId).closest('button');
+
+      expect(trigger).not.toBeNull();
+      expect(trigger?.parentElement).toHaveClass('tw:relative', 'tw:z-20');
+    }
+
+    fireEvent.click(screen.getByTestId('announcement-description'));
+
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 
   it('should put the badge beside the title on the landing banner', () => {

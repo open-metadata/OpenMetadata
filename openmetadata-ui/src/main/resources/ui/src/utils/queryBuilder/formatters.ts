@@ -17,6 +17,7 @@ import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
 import {
   elasticSearchFormat,
+  hasBlankRule,
   hasUnfinishedRule,
 } from '../QueryBuilderElasticsearchFormatUtils';
 
@@ -106,6 +107,11 @@ export const isQueryTreeComplete = (
   tree: ImmutableTree,
   config: Config
 ): boolean => {
+  // A field-nulled rule is lost data, not a half-entered row, so it blocks the save outright.
+  if (hasBlankRule(tree)) {
+    return false;
+  }
+
   if (!(hasUnfinishedRule(tree, config) as unknown as boolean)) {
     return true;
   }

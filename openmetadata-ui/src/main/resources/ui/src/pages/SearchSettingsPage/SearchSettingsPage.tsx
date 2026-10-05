@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Collapse, Row, Slider, Switch, Typography } from 'antd';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Collapse, Row, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -98,9 +99,9 @@ const SearchBoostsSection = ({
           header={
             <Row className="d-flex items-center justify-between w-full">
               <Col className="d-flex items-center gap-4">
-                <Typography.Text className="text-sm font-semibold m-0">
+                <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.term-boost')}
-                </Typography.Text>
+                </Typography>
                 <span className="count-label">
                   {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
                 </span>
@@ -141,9 +142,9 @@ const SearchBoostsSection = ({
           header={
             <Row className="d-flex items-center justify-between w-full">
               <Col className="d-flex items-center gap-4">
-                <Typography.Text className="text-sm font-semibold m-0">
+                <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.field-value-boost')}
-                </Typography.Text>
+                </Typography>
                 <span className="count-label">
                   {searchConfig?.globalSettings?.fieldValueBoosts?.length ?? 0}
                 </span>
@@ -510,9 +511,13 @@ const SearchSettingsPage = () => {
       <Row className="p-md settings-row m-x-0" gutter={[0, 16]}>
         <Col span={24}>
           <Row align="middle" justify="space-between">
-            <Typography.Title className="text-sm font-semibold m-b-0" level={5}>
+            <Typography
+              as="h5"
+              className="text-sm font-semibold m-b-0"
+              size="text-md"
+              weight="semibold">
               {t('label.global-setting-plural')}
-            </Typography.Title>
+            </Typography>
             {isAdminUser && (
               <Button
                 data-testid="reset-search-settings-btn"
@@ -526,14 +531,16 @@ const SearchSettingsPage = () => {
         <Col span={24}>
           <Row className="p-x-xs global-settings-cards-container" gutter={0}>
             <Col className="global-setting-card">
-              <Typography.Text className="global-setting-card__content">
+              <Typography className="global-setting-card__content">
                 {t('label.enable-roles-polices-in-search')}
-              </Typography.Text>
-              <Switch
-                checked={searchConfig?.globalSettings?.enableAccessControl}
+              </Typography>
+              <Toggle
                 className="m-l-xlg global-setting-card__action"
                 data-testid="enable-roles-polices-in-search-switch"
-                disabled={isUpdating}
+                isDisabled={isUpdating}
+                isSelected={Boolean(
+                  searchConfig?.globalSettings?.enableAccessControl
+                )}
                 onChange={() =>
                   handleUpdateSearchConfig({
                     enabled: !searchConfig?.globalSettings?.enableAccessControl,
@@ -563,11 +570,13 @@ const SearchSettingsPage = () => {
             <Row className="p-x-xs m-t-lg" gutter={0}>
               <Col span={24}>
                 <Row align="middle" justify="space-between">
-                  <Typography.Title
+                  <Typography
+                    as="h5"
                     className="text-sm font-semibold m-b-0"
-                    level={5}>
+                    size="text-md"
+                    weight="semibold">
                     {t('label.hybrid-search-weight-plural')}
-                  </Typography.Title>
+                  </Typography>
                   <Button
                     data-testid="hybrid-weights-save-btn"
                     disabled={!hybridWeightsChanged || isUpdating}
@@ -581,13 +590,13 @@ const SearchSettingsPage = () => {
               <Col span={24}>
                 <Row align="middle" className="p-y-xs" gutter={16}>
                   <Col flex="100px">
-                    <Typography.Text>
+                    <Typography>
                       {t('label.keyword')}:{' '}
                       {(
                         1 -
                         (searchConfig?.globalSettings?.semanticWeight ?? 0.4)
                       ).toFixed(1)}
-                    </Typography.Text>
+                    </Typography>
                   </Col>
                   <Col flex="auto">
                     <Slider
@@ -618,12 +627,12 @@ const SearchSettingsPage = () => {
                     />
                   </Col>
                   <Col flex="100px">
-                    <Typography.Text>
+                    <Typography>
                       {t('label.semantic')}:{' '}
                       {(
                         searchConfig?.globalSettings?.semanticWeight ?? 0.4
                       ).toFixed(1)}
-                    </Typography.Text>
+                    </Typography>
                   </Col>
                 </Row>
               </Col>

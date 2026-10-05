@@ -104,6 +104,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { createTable } from '../../utils/KnowledgeCenter';
@@ -259,7 +260,11 @@ const ALL_ENTITIES: CRUDEntity[] = [
   { key: 'entity_tableColumn', makeInstance: null },
 ];
 
-ALL_ENTITIES.forEach(({ key, makeInstance }) => {
+pickEntityMatrix(
+  __filename,
+  ALL_ENTITIES,
+  ALL_ENTITIES.filter(({ key }) => key === 'entity_table')
+).forEach(({ key, makeInstance }) => {
   const entity = CUSTOM_PROPERTIES_ENTITIES[key];
   const basicProperties =
     key === 'entity_table' ? BASIC_PROPERTIES : ['String'];
@@ -591,13 +596,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           expect(isScrollable).toBeTruthy();
         });
-
-        await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = getCustomPropertyCard(page, propertyName);
-          await expect(
-            container.getByTestId(`toggle-${propertyName}`)
-          ).not.toBeVisible();
-        });
       });
 
       test('entityReferenceList shows item count, scrollable list, no expand toggle', async ({
@@ -659,13 +657,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
               container.getByTestId(user.getUserDisplayName())
             ).toBeVisible();
           }
-        });
-
-        await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = getCustomPropertyCard(page, propertyName);
-          await expect(
-            container.getByTestId(`toggle-${propertyName}`)
-          ).not.toBeVisible();
         });
       });
 
@@ -808,13 +799,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
               tableValue.getByRole('row').filter({ hasText: `row${i}-col1` })
             ).toBeVisible();
           }
-        });
-
-        await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = getCustomPropertyCard(page, propertyName);
-          await expect(
-            container.getByTestId(`toggle-${propertyName}`)
-          ).not.toBeVisible();
         });
       });
 

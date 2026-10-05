@@ -451,6 +451,36 @@ export default [
   },
 
   {
+    // Charts go through @openmetadata/ui-core-components/charts; recharts and
+    // raw echarts imports are banned. Placed before the Metric block, which
+    // replaces this rule for Metric files (no charts there).
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['recharts', 'recharts/*'],
+              message:
+                'Use @openmetadata/ui-core-components/charts; recharts was removed.',
+            },
+            {
+              group: [
+                'echarts',
+                'echarts/*',
+                'echarts-for-react',
+                'echarts-for-react/*',
+              ],
+              message:
+                'Import charts and chart types from @openmetadata/ui-core-components/charts.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: [
       'src/components/Metric/**/*.{js,jsx,ts,tsx}',
       'src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx',
@@ -695,6 +725,7 @@ export default [
       // rather than error while the remaining 27 call sites are migrated to
       // playwright/utils/searchAggregation.ts.
       'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
+      'openmetadata-playwright/no-form-sign-in': 'error',
 
       // Playwright rules — promoted to error behind the suppressions ratchet
       // (see eslint-suppressions.json): existing violations are snapshotted,

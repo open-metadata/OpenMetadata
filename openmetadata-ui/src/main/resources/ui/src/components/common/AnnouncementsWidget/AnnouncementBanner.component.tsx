@@ -17,7 +17,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
@@ -41,7 +40,6 @@ import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { AnnouncementBannerProps } from './AnnouncementBanner.interface';
-import AnnouncementTypeChip from './AnnouncementTypeChip.component';
 
 const stopAnd = (handler?: () => void) => (e: MouseEvent) => {
   e.stopPropagation();
@@ -49,58 +47,120 @@ const stopAnd = (handler?: () => void) => (e: MouseEvent) => {
 };
 
 /**
- * The title doubles as the banner's click target — a real `<button>` so the
- * whole surface doesn't have to fake one with `role` + `tabIndex`.
+ * The banner cannot *be* the button: it holds the dismiss and expand controls,
+ * and ARIA makes a button's descendants presentational, which would hide those
+ * from a screen reader. A bare `onClick` on the container is no better — a
+ * static element with a click handler and no keyboard path, which three lint
+ * rules reject.
  *
- * The tooltip is applied here rather than through Typography's own
- * `ellipsis.tooltip`: Typography renders that tooltip *inside* this button, and
- * because its trigger is not natively focusable, Tooltip wraps it in an
- * AriaButton — a button inside a button, which is invalid and rendered the
- * title off-centre from the rest of the row. Wrapping from outside gives
- * Tooltip a focusable child, so it uses this button as the trigger directly.
+ * So the click target is its own transparent control stretched across the
+ * banner. It carries no tooltip, which is the point: an earlier version hung
+ * the overlay off the title's tooltip trigger, and then hovering anywhere on
+ * the banner popped the title's tooltip and the description never got to show
+ * its own. Everything that needs its own hover or click sits above it on
+ * `OVER_OVERLAY_CLASS`; the chip, the badge and the padding stay beneath it, so
+ * a pointer there still opens the announcement.
+ *
+ * A raw `<button>` rather than core's `Button`: this one draws nothing at all,
+ * and `Button`'s padding, fill and `::before` gradient would all have to be
+ * overridden away.
+ */
+// Kept as whole literals so Tailwind still sees each class.
+const OVERLAY_CLASS = [
+  'tw:absolute tw:inset-0 tw:z-10 tw:cursor-pointer',
+  'tw:rounded-[10px] tw:border-none tw:bg-transparent tw:p-0',
+  'tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-brand',
+].join(' ');
+
+/** Sits above the overlay, so it keeps its own hover and clicks. */
+const OVER_OVERLAY_CLASS = 'tw:relative tw:z-20';
+
+/**
+ * The trigger `Typography` generates for `ellipsis.tooltip` is a `<button>`, and
+ * the host is the only handle on it — `className` reaches the innermost span.
+ *
+ * `min-w-0` lets the trigger shrink below its content and actually ellipsize.
+ * `text-start` is what positions it: core gives the trigger
+ * `[text-align:inherit]`, which cures the UA `text-align: center` a button is
+ * born with but then follows whatever the ancestors say. The trigger is
+ * `inline-flex`, so once it is narrower than this host — which happens the
+ * moment the host stretches, as it does in the expanded and landing layouts —
+ * that inherited value decides where it sits, and the expanded title drifted to
+ * the middle. Stating it here keeps the label left wherever the banner is
+ * dropped, rather than depending on the page around it.
+ */
+const ELLIPSIS_HOST_CLASS = 'tw:block tw:min-w-0 tw:text-start';
+
+/**
+ * Collapsed, the title shares one line with the description, so it truncates and
+ * carries the overflow tooltip. Expanded there is room to wrap, so it shows in
+ * full — no ellipsis, and no tooltip repeating text that is already on screen.
+ *
+ * That also means no generated trigger in the expanded layouts: `Typography`
+ * only builds the `<button>` when it has a tooltip to anchor, so the untruncated
+ * title is a plain span and needs none of the trigger plumbing below.
+ *
+ * The `onClick` is a pointer convenience for the text itself — it sits above the
+ * overlay, so it would otherwise be the one place on the banner that did not
+ * open it. Keyboard users reach the action through the overlay button.
  */
 const AnnouncementTitle = ({
   className,
   size = 'text-sm',
+  truncate = true,
   onClick,
   title,
 }: {
   className: string;
   size?: 'text-sm' | 'text-xl';
+  truncate?: boolean;
   onClick?: () => void;
   title: string;
 }) => {
-  const text = (
-    <Typography
-      ellipsis
-      as="span"
-      className={className}
-      size={size}
-      weight="semibold">
-      {title}
-    </Typography>
-  );
+  const clickable = onClick && 'tw:cursor-pointer';
 
-  if (!onClick) {
+  if (!truncate) {
     return (
-      <Tooltip
-        title={title}
-        triggerClassName="tw:block tw:min-w-0 tw:cursor-[inherit] tw:text-left">
-        {text}
-      </Tooltip>
+      <Typography
+        as="span"
+        // Nothing clips this one, so it has to fit by wrapping. A flex item's
+        // minimum is its min-content width, so without `min-w-0` a title with no
+        // break points — an FQN, a URL, a bare identifier — cannot shrink, and
+        // without `break-words` it has nowhere to break: on the landing banner it
+        // pushed itself and the badge beside it past the banner's edge.
+        className={classNames(
+          className,
+          OVER_OVERLAY_CLASS,
+          'tw:min-w-0 tw:break-words',
+          clickable
+        )}
+        data-testid="announcement-title-btn"
+        size={size}
+        weight="semibold"
+        onClick={onClick}>
+        {title}
+      </Typography>
     );
   }
 
   return (
-    <Tooltip title={title}>
-      <button
-        className="tw:flex tw:min-w-0 tw:cursor-pointer tw:items-center tw:border-none tw:bg-transparent tw:p-0 tw:text-left"
+    <span
+      className={classNames(
+        ELLIPSIS_HOST_CLASS,
+        OVER_OVERLAY_CLASS,
+        clickable
+      )}>
+      <Typography
+        as="span"
+        className={className}
         data-testid="announcement-title-btn"
-        type="button"
+        ellipsis={{ tooltip: title }}
+        size={size}
+        weight="semibold"
         onClick={onClick}>
-        {text}
-      </button>
-    </Tooltip>
+        {title}
+      </Typography>
+    </span>
   );
 };
 
@@ -125,7 +185,9 @@ const AnnouncementFooter = ({
   const postedBy = getEntityName(user) || createdBy;
 
   return (
-    <Box align="center" className="tw:gap-1.5">
+    <Box
+      align="center"
+      className={classNames('tw:gap-1.5', OVER_OVERLAY_CLASS)}>
       {/* The hover profile card comes from UserPopOverCard; ProfilePicture on
           its own is just an avatar image and has no popover of its own. */}
       <UserPopOverCard userName={createdBy}>
@@ -144,17 +206,15 @@ const AnnouncementFooter = ({
       {showEntity && entityFQN && (
         <>
           <span className="tw:text-placeholder_subtle">&middot;</span>
-          <Tooltip
-            title={entityFQN}
-            triggerClassName="tw:block tw:min-w-0 tw:cursor-[inherit] tw:text-left">
+          <span className={ELLIPSIS_HOST_CLASS}>
             <Typography
-              ellipsis
               as="span"
               className="tw:text-secondary"
+              ellipsis={{ tooltip: entityFQN }}
               size="text-xs">
               {entityFQN}
             </Typography>
-          </Tooltip>
+          </span>
         </>
       )}
     </Box>
@@ -177,7 +237,12 @@ const AnnouncementActions = ({
   const { t } = useTranslation();
 
   return (
-    <Box align="center" className="tw:ml-auto tw:shrink-0 tw:gap-1">
+    <Box
+      align="center"
+      className={classNames(
+        'tw:ml-auto tw:shrink-0 tw:gap-1',
+        OVER_OVERLAY_CLASS
+      )}>
       {showToggle && (
         <Button
           className={actionClassName}
@@ -216,6 +281,11 @@ interface AnnouncementBodyProps {
   onClick?: () => void;
 }
 
+/**
+ * `bg-primary` overrides the badge's own `50` fill: the banner behind it is
+ * already tinted in the same family, so the badge would otherwise dissolve into
+ * it. Only the fill is replaced — the label and edge stay the type's colour.
+ */
 const TypeBadge = ({
   badgeColor,
   label,
@@ -247,11 +317,12 @@ const CollapsedBody = ({
   <>
     {typeChip}
     <TypeBadge badgeColor={badgeColor} label={label} />
-    {/* Typography's ellipsis tooltip wraps the title in a `w-full min-w-0`
-        trigger, which would make it a second flexible item and split the row
-        with the description. Bounding it here keeps the title at its natural
-        width — capped, so a very long one still truncates rather than pushing
-        the description out. */}
+    {/* An ellipsis tooltip puts a `w-full min-w-0` trigger around its text, so
+        the title would otherwise become a second flexible item and split the
+        row evenly with the description. These two spans size the row instead:
+        the title to its natural width, capped so a very long one truncates
+        rather than pushing the description out, and the description to
+        whatever is left. */}
     <span className="tw:min-w-0 tw:max-w-[50%] tw:shrink-0">
       <AnnouncementTitle
         className={titleClassName}
@@ -260,18 +331,23 @@ const CollapsedBody = ({
       />
     </span>
     {hasDescription && (
-      <Tooltip
-        title={plainDescription}
-        triggerClassName="tw:block tw:w-auto tw:min-w-0 tw:flex-1 tw:cursor-[inherit] tw:text-left">
+      <span
+        className={classNames(
+          'tw:flex-1',
+          ELLIPSIS_HOST_CLASS,
+          OVER_OVERLAY_CLASS,
+          onClick && 'tw:cursor-pointer'
+        )}>
         <Typography
-          ellipsis
           as="span"
           className="tw:text-secondary"
           data-testid="announcement-description"
-          size="text-sm">
+          ellipsis={{ tooltip: plainDescription }}
+          size="text-sm"
+          onClick={onClick}>
           {plainDescription}
         </Typography>
-      </Tooltip>
+      </span>
     )}
   </>
 );
@@ -305,17 +381,25 @@ const ExpandedBody = ({
     <AnnouncementTitle
       className={titleClassName}
       title={title}
+      truncate={false}
       onClick={onClick}
     />
 
+    {/* Raised like the rest: rendered markdown is real content — it carries
+          links and mentions, and people select and copy it — so it must not
+          sit under the overlay, which would turn every click into "open the
+          announcement". Unlike the collapsed strip it gets no `onClick` of its
+          own; a handler here would fire on those links too. */}
     {hasDescription && (
-      <RichTextEditorPreviewerV1
-        className="tw:[&_p]:text-secondary tw:[&_p]:text-sm"
-        data-testid="announcement-description"
-        enableSeeMoreVariant={false}
-        markdown={announcement.description}
-        showReadMoreBtn={false}
-      />
+      <div className={OVER_OVERLAY_CLASS}>
+        <RichTextEditorPreviewerV1
+          className="tw:[&_p]:text-secondary tw:[&_p]:text-sm"
+          data-testid="announcement-description"
+          enableSeeMoreVariant={false}
+          markdown={announcement.description}
+          showReadMoreBtn={false}
+        />
+      </div>
     )}
 
     <AnnouncementFooter announcement={announcement} showEntity={showEntity} />
@@ -350,19 +434,22 @@ const FullBody = ({
           className={titleClassName}
           size="text-xl"
           title={title}
+          truncate={false}
           onClick={onClick}
         />
         <TypeBadge badgeColor={badgeColor} label={label} />
       </Box>
 
       {hasDescription && (
-        <RichTextEditorPreviewerV1
-          className="tw:[&_p]:text-primary tw:[&_p]:text-sm"
-          data-testid="announcement-description"
-          enableSeeMoreVariant={false}
-          markdown={announcement.description}
-          showReadMoreBtn={false}
-        />
+        <div className={OVER_OVERLAY_CLASS}>
+          <RichTextEditorPreviewerV1
+            className="tw:[&_p]:text-primary tw:[&_p]:text-sm"
+            data-testid="announcement-description"
+            enableSeeMoreVariant={false}
+            markdown={announcement.description}
+            showReadMoreBtn={false}
+          />
+        </div>
       )}
 
       <AnnouncementFooter showEntity announcement={announcement} />
@@ -460,11 +547,15 @@ const AnnouncementBanner = ({
   const isFull = variant === 'full';
   const layout = getBannerLayout(isFull, expanded);
 
+  // 16px beside the badge, 20px on the landing banner: it sits next to 12px
+  // label text, and anything larger outweighs the title it annotates.
   const typeChip = (
-    <AnnouncementTypeChip
-      icon={TypeIcon}
-      size={isFull ? 'lg' : 'sm'}
-      surface={surface}
+    <TypeIcon
+      className={classNames(
+        'tw:shrink-0',
+        isFull ? 'tw:size-5' : 'tw:size-4',
+        surface.icon
+      )}
     />
   );
 
@@ -489,15 +580,37 @@ const AnnouncementBanner = ({
   };
 
   return (
-    <div
+    // A labelled region, not `role="status"`: a live region re-announces its
+    // whole contents on every change, and this one holds buttons and steps
+    // through a carousel — so a screen reader would read the entire banner
+    // again on each arrow press and each expand. The announcement is already on
+    // the page when it loads; there is nothing to interrupt the user about.
+    <section
+      aria-label={`${t('label.announcement')}: ${shared.title}`}
       className={classNames(
-        'tw:rounded-[10px] tw:outline-1 tw:-outline-offset-1',
+        // `relative` so the overlay's `inset-0` resolves against the banner,
+        // and `isolate` so the z-indexes it and the raised content carry stay
+        // inside it. Without the stacking context they land in the root one,
+        // where they beat the announcement drawer — its overlay is `fixed`
+        // with no z-index, so it wins on DOM order alone and anything at
+        // `z-index >= 1` paints straight through it.
+        'tw:relative tw:isolate tw:rounded-[10px] tw:outline-1 tw:-outline-offset-1',
         surface.surface,
         BANNER_PADDING[layout],
         className
       )}
-      data-testid={testId}
-      role="status">
+      data-testid={testId}>
+      {onClick && (
+        <button
+          aria-label={t('label.view-entity', {
+            entity: t('label.announcement'),
+          })}
+          className={OVERLAY_CLASS}
+          data-testid="announcement-open-btn"
+          type="button"
+          onClick={onClick}
+        />
+      )}
       <BannerBody
         actions={actions}
         announcement={announcement}
@@ -505,7 +618,7 @@ const AnnouncementBanner = ({
         plainDescription={plainDescription}
         shared={shared}
       />
-    </div>
+    </section>
   );
 };
 

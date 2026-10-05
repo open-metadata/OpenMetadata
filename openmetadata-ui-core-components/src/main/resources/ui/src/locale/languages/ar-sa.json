@@ -7,6 +7,7 @@
     "close": "إغلاق",
     "close-navigation-menu": "إغلاق قائمة التنقل",
     "copy-link": "نسخ الرابط",
+    "count-remaining": "متبقٍ {{count}}",
     "count-selected": "تم تحديد {{count}}",
     "current-page": "الصفحة الحالية",
     "date-range-picker": "منتقي نطاق التاريخ",
@@ -36,6 +37,7 @@
     "select-date": "اختر التاريخ",
     "select-dates": "اختر التواريخ",
     "select-only-one-row": "حدد صفًا واحدًا",
+    "show-count-more": "عرض {{count}} إضافية",
     "show-hidden-breadcrumbs": "إظهار مسارات التنقل المخفية",
     "today": "اليوم",
     "tree-select": "تحديد شجري"
