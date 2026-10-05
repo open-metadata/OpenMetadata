@@ -180,9 +180,7 @@ test.describe(
 
         await openAddCustomizeWidgetModal(adminPage);
 
-        await adminPage.locator('[data-testid="loader"]').first().waitFor({
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(adminPage);
 
         // Check if 'check' icon is present for existing widgets
         await expect(

@@ -12,6 +12,7 @@
  */
 import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
+import { sizes } from '@/components/base/select/select';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Typography } from '@/components/foundations/typography';
@@ -59,6 +60,7 @@ export const TriggerButton = ({
   className,
   icon,
   bordered,
+  size = 'sm',
 }: {
   hasSelection: boolean;
   isOpen?: boolean;
@@ -71,6 +73,7 @@ export const TriggerButton = ({
   className?: string;
   icon?: FC<{ className?: string }>;
   bordered?: boolean;
+  size?: 'sm' | 'md';
 }) => {
   const countBadge =
     count !== undefined && count > 0 ? (
@@ -103,9 +106,13 @@ export const TriggerButton = ({
     return (
       <AriaButton
         className={cx(
-          // Sized like the toolbar selects this trigger replaces: 32px tall,
-          // filling the width its container gives it (constrain via className).
-          'tw:flex tw:h-8 tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:px-3 tw:shadow-xs tw:outline-brand',
+          // Sized and outlined like the core Select, so it stands as tall as a
+          // Select, Input or Button of the same size: an outline, unlike a
+          // border, adds no height. Fills the width its container gives it
+          // (constrain via className).
+          'tw:flex tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:bg-surface tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-brand',
+          sizes[size].root,
+          isOpen && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           className
         )}
         data-testid={testId}>
@@ -345,6 +352,7 @@ const FilterSelect = ({
   searchable,
   selectionMode = 'multiple',
   showSelectAll,
+  size = 'sm',
   triggerDisplay = 'count',
   triggerIcon,
   triggerVariant = 'chip',
@@ -686,6 +694,7 @@ const FilterSelect = ({
             isOpen={isOpen}
             label={label}
             placeholder={placeholder}
+            size={size}
             testId={testId}
             text={triggerText}
             variant={triggerVariant}

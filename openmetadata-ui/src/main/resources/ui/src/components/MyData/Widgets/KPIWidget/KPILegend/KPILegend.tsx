@@ -12,13 +12,16 @@
  */
 import { InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  chartColor,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { Progress, Tooltip } from 'antd';
 import { toNumber } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
 import { KpiTargetType } from '../../../../../generated/api/dataInsight/kpi/createKpiRequest';
-import { useDataInsightChartColors } from '../../../../../hooks/insights/useDataInsightChartColors';
 import { UIKpiResult } from '../../../../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../../../../utils/DataInsightUtils';
 import { getDaysRemaining } from '../../../../../utils/date-time/DateTimeUtils';
@@ -60,13 +63,13 @@ const KPILegend: React.FC<KPILegendProps> = ({
   isFullSize,
 }) => {
   const { t } = useTranslation();
-  const { kpiSeries } = useDataInsightChartColors();
+  const palette = useChartPalette();
   const entries = Object.entries(kpiLatestResultsRecord);
 
   return (
     <div className="w-full h-full kpi-legend d-flex flex-column p-sm">
       {entries.map(([key, resultData], index) => {
-        const color = kpiSeries[index % kpiSeries.length];
+        const color = chartColor(palette, index);
         const daysLeft = getDaysRemaining(resultData.endDate);
         const targetResult = resultData.targetResult[0];
 

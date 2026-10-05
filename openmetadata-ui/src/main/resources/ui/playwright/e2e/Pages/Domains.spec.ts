@@ -3784,10 +3784,11 @@ test.describe('Domain description editor popups', () => {
 
     await test.step('Mention popup inserts a user mention', async () => {
       await description.pressSequentially(' @admin');
+      // hasText is a case-insensitive substring match, so plain 'admin' also
+      // picks up team entries like "Legal Admin"; require an exact name node.
       await page
         .locator('.mention-item')
-        .filter({ hasText: 'admin' })
-        .first()
+        .filter({ has: page.getByText('admin', { exact: true }) })
         .click();
 
       await expect(description.locator('a[data-type="mention"]')).toBeVisible();

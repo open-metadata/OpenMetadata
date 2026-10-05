@@ -989,7 +989,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         ).toHaveCount(colCount);
         // Confirm data has loaded (not just skeleton rows)
         await expect(
-          page.locator('.rdg-row').first().locator('.rdg-cell').first()
+          page.getByTestId('rdg-row-0').locator('.rdg-cell').first()
         ).not.toBeEmpty();
 
         // Principle 6 & 10: shared helpers — every action waits for observable
@@ -1018,7 +1018,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
           // The CSV jobs tray can steal keyboard focus when it appears; an explicit
           // click + toBeFocused() guarantees the grid owns the keyboard.
           await focusCell(
-            page.locator('.rdg-row').first().locator('.rdg-cell').first()
+            page.getByTestId('rdg-row-0').locator('.rdg-cell').first()
           );
           await page.keyboard.press('Control+A');
           await expect(selection).toHaveCount(rowCount * colCount);
@@ -1205,7 +1205,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
             (await firstCell.textContent()) || ''
           );
           await expect(
-            page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
+            page.getByTestId('rdg-row-0').locator('.rdg-cell').nth(3)
           ).toContainText(
             (await page
               .locator('.rdg-row')
@@ -1221,7 +1221,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
           // check if the range is pasted correctly
           await expect(fourthCellFirstRow).toHaveText('—');
           await expect(
-            page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
+            page.getByTestId('rdg-row-0').locator('.rdg-cell').nth(3)
           ).toHaveText('—');
 
           // redo the action

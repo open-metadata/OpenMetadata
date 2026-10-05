@@ -31,7 +31,6 @@ import {
   RouteActivationProvider,
   RouteActivationStore,
 } from '../context/RouteActivationContext';
-import './keep-alive-routes.less';
 
 interface KeepAliveRoute {
   element: React.ReactNode;

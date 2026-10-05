@@ -21,6 +21,15 @@ class ListFilterTest {
     assertEquals("a\\_b\\_c\\_d", ListFilter.escape("a_b_c_d"));
   }
 
+  // A bound LIKE value keeps apostrophes as typed and escapes only the LIKE metacharacters.
+  @Test
+  void test_escapeLikeBindValue() {
+    assertEquals("customer's", ListFilter.escapeLikeBindValue("customer's"));
+    assertEquals("100\\%", ListFilter.escapeLikeBindValue("100%"));
+    assertEquals("a\\_b", ListFilter.escapeLikeBindValue("a_b"));
+    assertEquals("c:\\\\dir", ListFilter.escapeLikeBindValue("c:\\dir"));
+  }
+
   @Test
   void test_escapeBackslashAndApostrophe_passesThroughPlainStrings() {
     assertEquals("abcd", ListFilter.escapeBackslashAndApostrophe("abcd"));

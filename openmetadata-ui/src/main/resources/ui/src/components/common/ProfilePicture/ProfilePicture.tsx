@@ -78,11 +78,13 @@ function getLoaderPlaceholder(
 function getAvatarStyle(
   isSolid: boolean,
   color: string,
-  backgroundColor: string
+  backgroundColor: string,
+  ringColor?: string
 ) {
   return {
     backgroundColor: isSolid ? color : backgroundColor,
     color: isSolid ? '#fff' : color,
+    ...(ringColor && { borderColor: ringColor }),
   };
 }
 
@@ -101,6 +103,11 @@ interface Props extends UserData {
   height?: string;
   isTeam?: boolean;
   avatarType?: 'solid' | 'outlined';
+  /**
+   * Draw the ring in the fill's hue. The core Avatar otherwise tints the ring
+   * from the initial alone, so e.g. a blue fill can get a pink ring.
+   */
+  matchRingToFill?: boolean;
 }
 
 const ProfilePicture = ({
@@ -111,11 +118,13 @@ const ProfilePicture = ({
   width,
   isTeam = false,
   avatarType = 'outlined',
+  matchRingToFill = false,
 }: Props) => {
   const { permissions } = usePermissionProvider();
   const avatarName = displayName ?? name ?? '';
   const avatarSize = resolveAvatarSize(size, width);
-  const { color, character, backgroundColor } = getRandomColor(avatarName);
+  const { color, character, backgroundColor, borderColor } =
+    getRandomColor(avatarName);
   const isSolid = avatarType === 'solid';
 
   const viewUserPermission = useMemo(() => {
@@ -157,7 +166,12 @@ const ProfilePicture = ({
       )}
       size={avatarSize}
       src={profileURL || undefined}
-      style={getAvatarStyle(isSolid, color, backgroundColor)}
+      style={getAvatarStyle(
+        isSolid,
+        color,
+        backgroundColor,
+        matchRingToFill ? borderColor : undefined
+      )}
     />
   );
 };
