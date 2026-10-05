@@ -60,7 +60,8 @@ SNOWFLAKE_TYPE_MAP: TypeMap = {
     String: DataType.VARCHAR,
     Text: DataType.VARCHAR,
     CHAR: DataType.VARCHAR,
-    # DATETIME is TIMESTAMP_NTZ. Every TIMESTAMP variant is TIMESTAMP, as the type parser declares for Snowflake.
+    # DATETIME is TIMESTAMP_NTZ. Ingestion keeps the time zone out of the data type for every source (Postgres
+    # TIMESTAMP WITH TIME ZONE is TIMESTAMP too), so each Snowflake TIMESTAMP variant is TIMESTAMP.
     DateTime: DataType.TIMESTAMP,
     sf.TIMESTAMP_NTZ: DataType.TIMESTAMP,
     sf.TIMESTAMP_LTZ: DataType.TIMESTAMP,

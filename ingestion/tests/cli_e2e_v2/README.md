@@ -290,7 +290,7 @@ filter) and the latency-bound scenarios point the real `accountUsageSchema` conn
 | View | Source |
 |---|---|
 | `PROCEDURES`, `FUNCTIONS` | the database's `INFORMATION_SCHEMA` views, plus a NULL `DELETED` |
-| `TAG_REFERENCES` | `TAG_REFERENCES` and `TAG_REFERENCES_ALL_COLUMNS` for the database, the schema and each of its tables, without the `INHERITED` rows that ACCOUNT_USAGE omits |
+| `TAG_REFERENCES` | `TAG_REFERENCES` and `TAG_REFERENCES_ALL_COLUMNS` for the owned schema and each of its tables, without the `INHERITED` rows that ACCOUNT_USAGE omits. The shared database's own tags are left out, so they cannot reach the exact tag assertions |
 | `QUERY_HISTORY` | `INFORMATION_SCHEMA.QUERY_HISTORY()`, whose real `ROWS_INSERTED` is kept. It reports no update or delete counts (and `ROWS_PRODUCED` counts rewritten rows), so the test records each DML statement's own result row and the view joins it by `QUERY_ID` |
 | `TABLES`, `ACCESS_HISTORY`, `DYNAMIC_TABLE_REFRESH_HISTORY`, `COPY_HISTORY` | pass-through to `SNOWFLAKE.ACCOUNT_USAGE` |
 
@@ -322,8 +322,9 @@ query samples the same native values). v1's usage config builder was never calle
 so usage, query-log lineage and stored-procedure lineage stay out of scope.
 
 Snowflake reports every integer and fixed-point column as `NUMBER(p, s)`, a synonym of `DECIMAL`, and
-ingestion has always stored it as `DECIMAL`. `VARIANT` and `OBJECT` are `JSON` and every `TIMESTAMP` variant is
-`TIMESTAMP`, as the type parser declares for Snowflake. Table-level profile metrics come from
+ingestion has always stored it as `DECIMAL`. `VARIANT` and `OBJECT` hold JSON documents, so they are `JSON`.
+Ingestion keeps the time zone out of the data type for every source (Postgres `TIMESTAMP WITH TIME ZONE` is
+`TIMESTAMP` too), so every Snowflake `TIMESTAMP` variant is `TIMESTAMP`. Table-level profile metrics come from
 `INFORMATION_SCHEMA.TABLES` and describe the whole table, so a partitioned profile shows its window in
 column metrics only.
 

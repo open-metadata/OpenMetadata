@@ -146,6 +146,10 @@ def snowflake_account() -> Iterator[SnowflakeInstance]:
             database, warehouse = connection.execute(text("SELECT CURRENT_DATABASE(), CURRENT_WAREHOUSE()")).one()
         if not database or not warehouse:
             raise ValueError(f"{DATABASE_ENV} and {WAREHOUSE_ENV} must name a database and warehouse the role can use")
+        # The CLI names the ingested database exactly as configured, while every expectation uses Snowflake's
+        # stored name, so a differently cased value would fail every scenario with unrelated diffs.
+        if url_args["database"] != database:
+            raise ValueError(f"{DATABASE_ENV} must be the database's stored name, {database}")
         logger.info("Snowflake E2E account authenticated, auth=%s database=%s", auth, database)
         yield SnowflakeInstance(database, warehouse, auth, engine)
 
@@ -226,10 +230,9 @@ def _shim_statements(shim: AccountUsageShim, schema: str, tables: list[str]) -> 
     db = quote_identifier(database)
     owned = _string_literal(schema)
     qualified = shim.qualified
-    references = [
-        _tag_references_select(database, "TAG_REFERENCES", db, "database"),
-        _tag_references_select(database, "TAG_REFERENCES", f"{db}.{quote_identifier(schema)}", "schema"),
-    ]
+    # Owned objects only: a tag someone sets on the shared database would otherwise be ingested and inherited
+    # by every owned schema and table the scenarios assert exactly.
+    references = [_tag_references_select(database, "TAG_REFERENCES", f"{db}.{quote_identifier(schema)}", "schema")]
     for table in tables:
         name = f"{db}.{quote_identifier(schema)}.{quote_identifier(table)}"
         references.append(_tag_references_select(database, "TAG_REFERENCES", name, "table"))
@@ -243,7 +246,7 @@ def _shim_statements(shim: AccountUsageShim, schema: str, tables: list[str]) -> 
         f"FROM {db}.INFORMATION_SCHEMA.FUNCTIONS WHERE FUNCTION_SCHEMA = {owned}",
         # The table functions also return inherited references, which ACCOUNT_USAGE does not list.
         f"CREATE OR REPLACE VIEW {qualified}.TAG_REFERENCES AS SELECT *, NULL::TIMESTAMP_LTZ AS OBJECT_DELETED "
-        f"FROM ({' UNION ALL '.join(references)}) WHERE APPLY_METHOD <> 'INHERITED'",
+        f"FROM ({' UNION ALL '.join(references)}) WHERE APPLY_METHOD IS DISTINCT FROM 'INHERITED'",
         # QUERY_HISTORY() has ROWS_INSERTED but no UPDATE or DELETE counts, and its ROWS_PRODUCED counts
         # rewritten rows, so those two come from each statement's own result, recorded by the test.
         f"""

@@ -75,9 +75,11 @@ def snowflake_transient_table(snowflake_source):
 
 @pytest.fixture
 def snowflake_dynamic_table(snowflake_source, snowflake_instance):
+    # DOWNSTREAM schedules no refreshes, so a schema a cancelled run leaves behind does not keep the warehouse busy.
+    # The refresh at creation still populates the table.
     snowflake_source.run(
         f"CREATE DYNAMIC TABLE {snowflake_source.qualified}.active_customers "
-        f"TARGET_LAG = '1 hour' WAREHOUSE = {quote_identifier(snowflake_instance.warehouse)} AS "
+        f"TARGET_LAG = DOWNSTREAM WAREHOUSE = {quote_identifier(snowflake_instance.warehouse)} AS "
         f"SELECT id, full_name FROM {snowflake_source.qualified}.customers WHERE status = 'active'"
     )
     return "ACTIVE_CUSTOMERS"

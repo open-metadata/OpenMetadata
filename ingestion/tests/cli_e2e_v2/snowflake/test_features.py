@@ -28,6 +28,7 @@ from .checks import (
     table_is_clustered_by,
 )
 from .expected import snowflake_expected, snowflake_schema
+from .source import _string_literal
 
 
 def _expected(snowflake, *, procedures=False, extra=()):
@@ -103,8 +104,9 @@ def test_transient_tables_included(cli, snowflake, snowflake_transient_table):
 def test_transient_tables_excluded(cli, snowflake, snowflake_transient_table):
     """The complete inventory proves the transient table, and only it, was skipped."""
     rows = snowflake.source.run(
-        f"SELECT IS_TRANSIENT FROM INFORMATION_SCHEMA.TABLES "
-        f"WHERE TABLE_SCHEMA = '{snowflake.source.schema}' AND TABLE_NAME = '{snowflake_transient_table}'"
+        "SELECT IS_TRANSIENT FROM INFORMATION_SCHEMA.TABLES "
+        f"WHERE TABLE_SCHEMA = {_string_literal(snowflake.source.schema)} "
+        f"AND TABLE_NAME = {_string_literal(snowflake_transient_table)}"
     )
     assert rows == [("YES",)]
     cli.run(snowflake.invocation(_metadata(), connection={"includeTransientTables": False}))

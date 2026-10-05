@@ -192,8 +192,8 @@ def sample_row_count(expected: int):
     return check
 
 
-def native_sample_rows(table):
-    sample_row_count(3)(table)
+def native_sample_rows(table, ids=frozenset({1, 2, 3})):
+    sample_row_count(len(ids))(table)
     fqn = model_str(table.fullyQualifiedName)
     names = [name.root for name in table.sampleData.columns]
     expected_names = {"ID", *NATIVE_SAMPLE_VALUES}
@@ -207,7 +207,7 @@ def native_sample_rows(table):
         f"{fqn}: sample row widths: expected {len(names)} each, got {lengths!r}"
     )
     keyed = {row[names.index("ID")]: dict(zip(names, row, strict=True)) for row in rows}
-    assert set(keyed) == {1, 2, 3}, f"{fqn}: sample row IDs: expected {{1, 2, 3}}, got {set(keyed)!r}"
+    assert set(keyed) == set(ids), f"{fqn}: sample row IDs: expected {sorted(ids)!r}, got {sorted(keyed)!r}"
     return keyed
 
 
@@ -218,19 +218,22 @@ def _comparable(name, value):
     GeoJSON text, which the suite's connection pins, with the driver's whitespace.
     """
     if name == "TS_LTZ_COL" and isinstance(value, str):
-        return datetime.fromisoformat(value).astimezone(timezone.utc).isoformat()
+        instant = datetime.fromisoformat(value)
+        # Without an offset the value is not an instant, and converting it would assume the runner's zone.
+        return value if instant.tzinfo is None else instant.astimezone(timezone.utc).isoformat()
     if name == "GEOGRAPHY_COL" and isinstance(value, str):
         return json.loads(value)
     return value
 
 
-def native_samples_match(table, *, int_value=123456):
-    keyed = native_sample_rows(table)
+def native_samples_match(table, *, int_value=123456, ids=frozenset({1, 2, 3})):
+    keyed = native_sample_rows(table, ids)
     expected_rows = {
         1: {"ID": 1, **NATIVE_SAMPLE_VALUES, "INT_COL": int_value},
         2: {"ID": 2, **_NULL_SAMPLE_VALUES},
         3: {"ID": 3, **_NULL_SAMPLE_VALUES},
     }
+    expected_rows = {key: row for key, row in expected_rows.items() if key in ids}
     differences = {
         (key, name): (wanted, keyed[key][name])
         for key, expected in expected_rows.items()

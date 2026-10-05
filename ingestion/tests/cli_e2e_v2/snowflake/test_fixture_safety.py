@@ -26,7 +26,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
 )
 
 from . import source as source_module
-from .source import SCHEMA_COMMENT, fresh_snowflake_source
+from .source import SCHEMA_COMMENT, _string_literal, fresh_snowflake_source
 
 
 def _count(source, table):
@@ -47,7 +47,7 @@ def test_sources_isolate_mutations_and_cleanup(snowflake_instance):
             assert source_a.schema != source_b.schema
             assert source_a.run(
                 "SELECT COMMENT, RETENTION_TIME FROM INFORMATION_SCHEMA.SCHEMATA "
-                f"WHERE SCHEMA_NAME = '{source_a.schema}'"
+                f"WHERE SCHEMA_NAME = {_string_literal(source_a.schema)}"
             ) == [(SCHEMA_COMMENT, 0)]
             source_a.set_value("CUSTOMERS", 1, "CREDIT_SCORE", 999)
             source_a.drop_table("ALL_TYPES")
@@ -113,7 +113,7 @@ def test_declared_constraints_are_visible_to_snowflake(snowflake_source):
     """The FK scenario is meaningless unless Snowflake itself reports the informational keys."""
     rows = snowflake_source.run(
         "SELECT TABLE_NAME, CONSTRAINT_TYPE FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS "
-        f"WHERE TABLE_SCHEMA = '{snowflake_source.schema}'"
+        f"WHERE TABLE_SCHEMA = {_string_literal(snowflake_source.schema)}"
     )
     assert set(rows) == {
         ("ALL_TYPES", "PRIMARY KEY"),
@@ -200,6 +200,6 @@ def test_account_usage_shim_serves_the_connector_queries_in_real_time(snowflake_
         counts = {row["query_id"]: (row["rows_inserted"], row["rows_updated"], row["rows_deleted"]) for row in history}
         assert counts[update.query_id] == (0, 1, 0)
         assert source.run(
-            f"SELECT COMMENT, RETENTION_TIME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{shim.schema}'"
+            f"SELECT COMMENT, RETENTION_TIME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = {_string_literal(shim.schema)}"
         ) == [(SCHEMA_COMMENT, 0)]
     assert not _schema_exists(snowflake_instance, shim.schema)

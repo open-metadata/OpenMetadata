@@ -28,7 +28,7 @@ from ..features.database.pipelines import MetadataPipeline, ProfilerPipeline
 from ..features.database.pipelines import TestPipeline as SuitePipeline
 from ..server import ServerConfig
 from ..snowflake.baseline import build_snowflake_baseline
-from ..snowflake.checks import system_profile_matches, table_is_clustered_by
+from ..snowflake.checks import NATIVE_SAMPLE_VALUES, _comparable, system_profile_matches, table_is_clustered_by
 from ..snowflake.connector import snowflake_invocation, table_diff_invocation
 from ..snowflake.expected import snowflake_expected, snowflake_schema
 from ..snowflake.source import (
@@ -309,3 +309,10 @@ def test_cluster_key_check_requires_every_key_column_in_order():
     ):
         with pytest.raises(AssertionError, match="partition"):
             check(table(columns))
+
+
+def test_ltz_sample_check_compares_instants_and_rejects_values_without_an_offset():
+    """A value without an offset is no instant, so it must not match whatever zone the runner is in."""
+    expected = NATIVE_SAMPLE_VALUES["TS_LTZ_COL"]
+    assert _comparable("TS_LTZ_COL", "2026-01-02T04:34:56-08:00") == expected
+    assert _comparable("TS_LTZ_COL", "2026-01-02T12:34:56") != expected
