@@ -19,7 +19,6 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
   test('redirects /service/<cat>/<fqn> to /connections/<cat>/<fqn> in AI mode', async ({
     page,
   }) => {
-    test.slow();
     await enableAiAppMode(page);
 
     await test.step('Boot the AI tree first (ensures the redirect route is registered)', async () => {
@@ -36,8 +35,7 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
 
     await test.step('URL is rewritten to the /connections namespace', async () => {
       await expect(page).toHaveURL(
-        /\/connections\/databaseServices\/sampleService\.foo/,
-        { timeout: 15000 }
+        /\/connections\/databaseServices\/sampleService\.foo/
       );
       await expect(page.getByTestId('ask-sidebar')).toBeVisible();
     });
