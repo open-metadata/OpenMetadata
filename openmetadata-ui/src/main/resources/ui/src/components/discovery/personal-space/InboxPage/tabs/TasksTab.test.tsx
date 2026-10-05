@@ -695,15 +695,25 @@ describe('TasksTab', () => {
       }
     });
 
-    // The composed title's type words narrow by type here; the server only
-    // gets the rest, since it never stores the title.
-    it('reads a search that opens with a type title as that type', () => {
+    // The composed title's type words are matched against the shown title;
+    // the server only gets the rest, since it never stores the title.
+    it('matches a search that opens with a type title against the shown title', () => {
       jest.useFakeTimers();
       try {
         hookState = {
           items: [
-            { id: 'inc', type: 'TestCaseResolution' },
-            { id: 'tag', type: 'TagUpdate' },
+            {
+              id: 'inc',
+              type: 'TestCaseResolution',
+              about: { id: 'tc', type: 'testCase', name: 'orders_rows' },
+            },
+            { id: 'tag', type: 'TagUpdate', displayName: 'Tag the table' },
+            // An authored title sharing the words matches whatever its type.
+            {
+              id: 'doc',
+              type: 'DescriptionUpdate',
+              displayName: 'Request TestCase docs',
+            },
           ] as unknown as Task[],
           isLoading: false,
           total: 2,
@@ -722,6 +732,7 @@ describe('TasksTab', () => {
           expect.objectContaining({ q: 'orders' })
         );
         expect(screen.getByTestId('task-inc')).toBeInTheDocument();
+        expect(screen.getByTestId('task-doc')).toBeInTheDocument();
         expect(screen.queryByTestId('task-tag')).not.toBeInTheDocument();
       } finally {
         jest.useRealTimers();

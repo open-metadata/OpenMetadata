@@ -12,8 +12,13 @@
  */
 
 import { TFunction } from 'i18next';
-import { Task } from '../../../../generated/entity/tasks/task';
 import {
+  Task,
+  TaskCategory,
+  TaskType,
+} from '../../../../generated/entity/tasks/task';
+import {
+  filterTasksByTitleSearch,
   getTaskTitle,
   getTaskTitleParts,
   splitTaskTitleSearch,
@@ -185,10 +190,11 @@ describe('getTaskTitle', () => {
 
 describe('splitTaskTitleSearch', () => {
   // The composed title's type words are not stored anywhere the server sees.
-  it('reads a search that opens with a type title as that type', () => {
+  it('reads a search that opens with a type title as title words', () => {
     expect(splitTaskTitleSearch('Request TestCase', t)).toEqual({
-      types: ['TestCaseResolution'],
+      titleWords: 'Request TestCase',
       text: '',
+      query: 'Request TestCase',
     });
   });
 
@@ -198,43 +204,99 @@ describe('splitTaskTitleSearch', () => {
         'request testcase failure resolution for orders_row_count',
         t
       )
-    ).toEqual({ types: ['TestCaseResolution'], text: 'orders_row_count' });
-  });
-
-  it('takes a half-typed last word as the start of the title word', () => {
-    expect(splitTaskTitleSearch('Data access req', t)).toEqual({
-      types: ['DataAccessRequest'],
-      text: '',
+    ).toMatchObject({
+      titleWords: 'request testcase failure resolution for',
+      text: 'orders_row_count',
     });
   });
 
-  // Two types share the approval title, so both are meant.
-  it('names every type that shares the title', () => {
-    expect(splitTaskTitleSearch('approval request', t).types).toEqual([
-      'GlossaryApproval',
-      'RequestApproval',
-    ]);
+  it('takes a half-typed last word as the start of the title word', () => {
+    expect(splitTaskTitleSearch('Data access req', t)).toMatchObject({
+      titleWords: 'Data access req',
+      text: '',
+    });
   });
 
   // One word ("Request") is too common to read as a type.
   it('leaves a single matching word as plain text', () => {
     expect(splitTaskTitleSearch('Request', t)).toEqual({
-      types: [],
+      titleWords: '',
       text: 'Request',
+      query: 'Request',
     });
   });
 
-  it('leaves a search that names no type as plain text', () => {
+  it('leaves a search that names no type as plain text, trimmed', () => {
     expect(splitTaskTitleSearch('  orders_row_count  ', t)).toEqual({
-      types: [],
+      titleWords: '',
       text: 'orders_row_count',
+      query: 'orders_row_count',
     });
   });
 
   // A missing translation echoes its key, which is no title to match.
   it('never matches an untranslated type title', () => {
-    expect(splitTaskTitleSearch('message.update-tag-message', t).types).toEqual(
-      []
-    );
+    expect(
+      splitTaskTitleSearch('message.update-tag-message', t).titleWords
+    ).toBe('');
+  });
+});
+
+describe('filterTasksByTitleSearch', () => {
+  const incident = task({
+    taskId: 'TASK-1',
+    type: TaskType.TestCaseResolution,
+    category: TaskCategory.Incident,
+    about: { id: 'a', type: 'testCase', name: 'orders_rows' },
+  } as Partial<Task>);
+  const authored = task({
+    taskId: 'TASK-2',
+    type: TaskType.DescriptionUpdate,
+    displayName: 'Request TestCase docs for the team',
+  } as Partial<Task>);
+  const byReason = task({
+    taskId: 'TASK-3',
+    type: TaskType.DataAccessRequest,
+    displayName: 'Grant access',
+    payload: { reason: 'needed for request testcase triage' },
+  } as unknown as Partial<Task>);
+  const unrelated = task({
+    taskId: 'TASK-4',
+    type: TaskType.TagUpdate,
+    displayName: 'Tag the table',
+  } as Partial<Task>);
+  const all = [incident, authored, byReason, unrelated];
+  const ids = (tasks: Task[]) => tasks.map(({ taskId }) => taskId);
+
+  // A plain search was already narrowed by the server.
+  it('keeps every task for a plain search', () => {
+    expect(
+      ids(filterTasksByTitleSearch(all, splitTaskTitleSearch('orders', t), t))
+    ).toEqual(['TASK-1', 'TASK-2', 'TASK-3', 'TASK-4']);
+  });
+
+  it('keeps tasks whose shown title holds the title words, whatever their type', () => {
+    expect(
+      ids(
+        filterTasksByTitleSearch(
+          all,
+          splitTaskTitleSearch('request testcase', t),
+          t
+        )
+      )
+    ).toEqual(['TASK-1', 'TASK-2', 'TASK-3']);
+  });
+
+  // Whatever the server matched on the whole search still matches here.
+  it('keeps a task whose stored fields hold the whole search', () => {
+    expect(
+      ids(
+        filterTasksByTitleSearch(
+          [byReason, unrelated],
+          splitTaskTitleSearch('Request TestCase triage', t),
+          t
+        )
+      )
+    ).toEqual(['TASK-3']);
   });
 });

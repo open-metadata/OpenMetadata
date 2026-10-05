@@ -133,10 +133,13 @@ export const getTaskTitle = (task: Task, t?: TFunction): string =>
 const MIN_TYPE_WORDS = 2;
 
 export interface TaskTitleSearch {
-  // Task types whose composed title the search opens with; empty for plain text.
-  types: string[];
+  // The leading words, as typed, that read as a composed title's task type;
+  // empty for a plain search.
+  titleWords: string;
   // What is left for the server to match against the task's stored fields.
   text: string;
+  // The whole search.
+  query: string;
 }
 
 const toWords = (value: string) => value.trim().split(/\s+/).filter(Boolean);
@@ -164,8 +167,9 @@ const countPrefixWords = (search: string[], prefix: string[]) => {
  * Read a search the way a composed task title reads. A composed title opens
  * with its task type ("Request TestCase Failure Resolution for orders"), which
  * the server never stores. A search that opens with at least two words of a
- * type's prefix names that type, and the words after it go to the server; any
- * other search is plain text. The prefix is compared in the viewer's language.
+ * type's prefix has those words matched against the title shown here, and only
+ * the words after them go to the server; any other search is plain text. The
+ * prefix is compared in the viewer's language.
  */
 export const splitTaskTitleSearch = (
   query: string,
@@ -173,24 +177,60 @@ export const splitTaskTitleSearch = (
 ): TaskTitleSearch => {
   const words = toWords(query);
   const lowered = words.map((word) => word.toLowerCase());
-  let best = 0;
-  let types: string[] = [];
+  const best = Math.max(
+    0,
+    ...Object.values(TASK_TYPE_MESSAGE_KEYS).map((key) => {
+      const label = t(key);
 
-  Object.entries(TASK_TYPE_MESSAGE_KEYS).forEach(([type, key]) => {
-    const label = t(key);
-    if (!label || label === key) {
-      return;
-    }
-    const count = countPrefixWords(lowered, toWords(label.toLowerCase()));
-    if (count > best) {
-      best = count;
-      types = [type];
-    } else if (count === best && count > 0) {
-      types.push(type);
-    }
-  });
+      return label && label !== key
+        ? countPrefixWords(lowered, toWords(label.toLowerCase()))
+        : 0;
+    })
+  );
+  const isTitleSearch = best >= MIN_TYPE_WORDS;
 
-  return best >= MIN_TYPE_WORDS
-    ? { types, text: words.slice(best).join(' ') }
-    : { types: [], text: words.join(' ') };
+  return {
+    titleWords: isTitleSearch ? words.slice(0, best).join(' ') : '',
+    text: words.slice(isTitleSearch ? best : 0).join(' '),
+    // Trimmed only, as the server reads it.
+    query: query.trim(),
+  };
+};
+
+// The stored fields the server's task search reads (ListFilter), so a task it
+// would have matched on the whole search still matches here.
+const getSearchableText = (task: Task) =>
+  [
+    task.name,
+    task.displayName,
+    (task.payload as { reason?: string } | undefined)?.reason,
+    task.about?.displayName,
+    task.about?.fullyQualifiedName,
+  ]
+    .filter(Boolean)
+    .join('\n')
+    .toLowerCase();
+
+/**
+ * The loaded tasks a title search keeps: those whose shown title holds the
+ * typed title words, whatever their type (an authored title can share them),
+ * and those whose stored fields hold the whole search, as the server would
+ * have matched them. A plain search keeps every task; the server narrowed it.
+ */
+export const filterTasksByTitleSearch = (
+  tasks: Task[],
+  search: TaskTitleSearch,
+  t: TFunction
+): Task[] => {
+  if (!search.titleWords) {
+    return tasks;
+  }
+  const titleWords = search.titleWords.toLowerCase();
+  const query = search.query.toLowerCase();
+
+  return tasks.filter(
+    (task) =>
+      getTaskTitle(task, t).toLowerCase().includes(titleWords) ||
+      getSearchableText(task).includes(query)
+  );
 };

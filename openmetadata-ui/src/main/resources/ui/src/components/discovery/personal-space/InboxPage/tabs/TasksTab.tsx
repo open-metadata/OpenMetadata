@@ -54,13 +54,15 @@ import { isTaskOpen } from '../inbox.utils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
 import {
   filterTasksByStatus,
-  filterTasksByTaskType,
   filterTasksByTypes,
   groupTasksByType,
   TaskStatusBucket,
   TaskTypeGroup,
 } from '../taskList.utils';
-import { splitTaskTitleSearch } from '../taskTitle.utils';
+import {
+  filterTasksByTitleSearch,
+  splitTaskTitleSearch,
+} from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { INBOX_COUNTS_QUERY_KEY } from '../useInboxCounts';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
@@ -455,9 +457,9 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [commitSearch]
   );
 
-  // A search that opens with a task type's title words ("Request TestCase")
-  // narrows by that type here; only the rest goes to the server, which never
-  // stores the composed title.
+  // A search that opens with a task type's title words ("Request TestCase") is
+  // matched against the title shown here; only the rest goes to the server,
+  // which never stores the composed title.
   const titleSearch = useMemo(
     () => splitTaskTitleSearch(searchQuery, t),
     [searchQuery, t]
@@ -487,7 +489,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const isClientNarrowed =
     typeFilter.length > 0 ||
     statusFilter.length > 0 ||
-    titleSearch.types.length > 0;
+    Boolean(titleSearch.titleWords);
   // "Load more" on a capped no-match raises the cap by another scan, for that
   // narrowing only: the raise is keyed to the inputs it was made under, so any
   // change of tab, search or filter falls back to the base cap.
@@ -560,14 +562,15 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const visibleTasks = useMemo(
     () =>
       filterTasksByStatus(
-        filterTasksByTaskType(
+        filterTasksByTitleSearch(
           filterTasksByTypes(tasks, typeFilter),
-          titleSearch.types
+          titleSearch,
+          t
         ),
         statusFilter,
         currentUserIds
       ),
-    [tasks, typeFilter, titleSearch.types, statusFilter, currentUserIds]
+    [tasks, typeFilter, titleSearch, t, statusFilter, currentUserIds]
   );
 
   // Grouped once here so the list and the default selection agree on order.
