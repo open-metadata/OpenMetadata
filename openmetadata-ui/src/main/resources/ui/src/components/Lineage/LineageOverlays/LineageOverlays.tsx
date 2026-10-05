@@ -175,7 +175,6 @@ const LineageDeleteModal = ({
     <ModalOverlay
       isDismissable={!deletionState.loading}
       isOpen={showDeleteModal}
-      style={{ zIndex: 999 }}
       onOpenChange={(open) => {
         if (!open && !deletionState.loading) {
           onClose();

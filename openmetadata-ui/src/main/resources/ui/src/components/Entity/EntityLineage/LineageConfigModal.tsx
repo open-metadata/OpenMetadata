@@ -58,7 +58,6 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
     <ModalOverlay
       isDismissable={false}
       isOpen={visible}
-      style={{ zIndex: 'var(--om-z-modal)' }}
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>
         <Dialog

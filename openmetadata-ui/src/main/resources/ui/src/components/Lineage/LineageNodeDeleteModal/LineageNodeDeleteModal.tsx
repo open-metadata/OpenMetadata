@@ -43,7 +43,6 @@ const LineageNodeDeleteModal = ({
     <ModalOverlay
       isDismissable={!isDeleting}
       isOpen={isOpen}
-      style={{ zIndex: 999 }}
       onOpenChange={(open) => {
         if (!open) {
           onCancel();

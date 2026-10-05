@@ -130,7 +130,6 @@ const AddPipeLineModal = ({
     <ModalOverlay
       isDismissable={false}
       isOpen={showAddEdgeModal}
-      style={{ zIndex: 'var(--om-z-modal)' }}
       onOpenChange={(isOpen) => !isOpen && onModalCancel()}>
       <Modal>
         <Dialog
