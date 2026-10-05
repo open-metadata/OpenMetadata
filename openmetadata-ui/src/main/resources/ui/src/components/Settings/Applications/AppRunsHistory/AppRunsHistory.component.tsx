@@ -490,6 +490,7 @@ const AppRunsHistory = forwardRef(
       <>
         <Table
           columns={tableColumn}
+          containerClassName="tw:rounded-xl tw:border-subtle"
           customPaginationProps={{
             isNumberBased: true,
             showPagination: showPagination && paginationVisible,

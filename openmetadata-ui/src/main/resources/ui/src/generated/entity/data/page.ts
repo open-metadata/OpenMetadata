@@ -51,7 +51,7 @@ export interface Page {
      */
     editors?: EntityReference[];
     /**
-     * Status of the tag.
+     * Lifecycle stage of the page.
      */
     entityStatus?: EntityStatus;
     /**
@@ -74,6 +74,10 @@ export interface Page {
      * Unique identifier of the Knowledge Page.
      */
     id?: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -611,10 +615,11 @@ export interface EntityReference {
 }
 
 /**
- * Status of the tag.
+ * Lifecycle stage of the page.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",

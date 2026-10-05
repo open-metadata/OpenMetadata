@@ -110,7 +110,7 @@ export const COMMON_UI_FIELDS = {
   },
   oidcCallbackUrl: {
     'ui:title': OIDC_CALLBACK_URL_TITLE,
-    'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+    'ui:placeholder': 'e.g. https://myapp.com/callback',
   },
   oidcServerUrl: {
     'ui:title': 'OIDC Server URL',
@@ -146,7 +146,7 @@ export const COMMON_UI_FIELDS = {
   },
   callbackUrl: {
     'ui:title': 'Callback URL',
-    'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
+    'ui:placeholder': 'e.g. https://myapp.com/callback',
   },
   publicKeyUrls: {
     'ui:title': 'Public Key URLs',
@@ -875,6 +875,7 @@ export interface AuthenticationConfiguration {
   enableSelfSignup: boolean;
   enableAutoRedirect?: boolean;
   clientType?: ClientType;
+  responseType?: string;
   secret?: string;
   ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: Record<string, unknown>;

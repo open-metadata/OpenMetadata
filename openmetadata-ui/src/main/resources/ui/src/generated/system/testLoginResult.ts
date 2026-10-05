@@ -29,6 +29,7 @@ export interface TestLoginResult {
      * Teams that would be derived from the team claim mapping.
      */
     mappedTeams?: string[];
+    protocol?:    Protocol;
     /**
      * Email that would be associated with the login.
      */
@@ -38,11 +39,13 @@ export interface TestLoginResult {
      */
     resolvedPrincipal?: string;
     /**
-     * Furthest stage reached: TOKEN_VALIDATED (token failed validation), CLAIMS_EXTRACTED
-     * (identity could not be resolved from claims), or DOMAIN_CHECKED (identity resolved and
-     * domain rules applied).
+     * Furthest stage reached.
      */
-    stage?: string;
+    stage?: Stage;
+    /**
+     * Ordered timeline of every stage of the round-trip, for a staged progress view.
+     */
+    stages?: StageResult[];
     /**
      * Overall outcome of the test login.
      */
@@ -66,9 +69,62 @@ export interface DomainCheck {
      */
     principalDomain?: string;
     /**
-     * Domain extracted from the resolved email/principal.
+     * Domain extracted from the resolved email/principal. Absent when the resolved identity
+     * carries no domain.
      */
     resolvedDomain?: string;
+}
+
+/**
+ * Authentication protocol exercised by the test login.
+ */
+export enum Protocol {
+    Basic = "basic",
+    LDAP = "ldap",
+    Oidc = "oidc",
+    Saml = "saml",
+}
+
+/**
+ * Furthest stage reached.
+ *
+ * A step of the login round-trip. Not every protocol emits every stage: the
+ * browser-redirect stages apply to OIDC and SAML, CREDENTIALS_VERIFIED applies to LDAP and
+ * Basic, and the stages that do not apply are reported with status 'skipped'.
+ */
+export enum Stage {
+    ClaimsExtracted = "CLAIMS_EXTRACTED",
+    CredentialsVerified = "CREDENTIALS_VERIFIED",
+    DomainChecked = "DOMAIN_CHECKED",
+    IdentityResolved = "IDENTITY_RESOLVED",
+    Redirected = "REDIRECTED",
+    RolesMapped = "ROLES_MAPPED",
+    Started = "STARTED",
+    TokenReceived = "TOKEN_RECEIVED",
+    TokenValidated = "TOKEN_VALIDATED",
+}
+
+/**
+ * Outcome of one stage of the login round-trip.
+ */
+export interface StageResult {
+    /**
+     * Human-readable detail for this stage.
+     */
+    message?: string;
+    stage:    Stage;
+    status:   StageStatus;
+}
+
+/**
+ * Outcome of an individual stage. SKIPPED means the stage does not apply to this protocol.
+ */
+export enum StageStatus {
+    Failed = "failed",
+    Passed = "passed",
+    Pending = "pending",
+    Running = "running",
+    Skipped = "skipped",
 }
 
 /**
@@ -76,5 +132,6 @@ export interface DomainCheck {
  */
 export enum Status {
     Failed = "failed",
+    Pending = "pending",
     Success = "success",
 }

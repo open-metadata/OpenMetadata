@@ -43,21 +43,25 @@ export default class EntityLink {
   }
 
   /**
-   *
    * @param string entityLink
-   * @returns entity type
+   * @returns entity type, or '' when the link is empty or unparseable
    */
   static getEntityType(entityLink: string) {
-    return this.split(entityLink)[0];
+    return this.split(entityLink)[0] ?? '';
   }
 
   /**
+   * `split` returns [] for an empty or unparseable link, so indexing it yields
+   * `undefined` while the signature promises a string. Callers are entitled to
+   * treat the result as one — `fqn.split('::')` in the announcement widgets
+   * threw and took the whole page down for an announcement with no entityLink,
+   * which the schema allows. Returning '' makes the declared type honest.
    *
    * @param string entityLink
-   * @returns entity fqn
+   * @returns entity fqn, or '' when the link is empty or unparseable
    */
   static getEntityFqn(entityLink: string) {
-    return this.split(entityLink)[1];
+    return this.split(entityLink)[1] ?? '';
   }
 
   /**
@@ -67,6 +71,13 @@ export default class EntityLink {
    */
   static getEntityColumnFqn(entityLink: string) {
     const parts = this.split(entityLink);
+
+    // Without the guard an empty link interpolates to the literal string
+    // "undefined" — a non-empty value that looks like a real FQN and would be
+    // rendered and compared as one. Returning '' keeps a missing link falsy.
+    if (!parts[1]) {
+      return '';
+    }
 
     return `${parts[1]}${parts[3] ? '.' + parts[3] : ''}`;
   }

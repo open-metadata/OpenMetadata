@@ -75,6 +75,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
       "Failed to update entity: " + DIRECT_USER_ASSIGNMENT_ERROR;
 
   {
+    supportsEntityStatus = false;
     supportsImportExport = true;
     supportsBatchImport = true;
     supportsRecursiveImport =

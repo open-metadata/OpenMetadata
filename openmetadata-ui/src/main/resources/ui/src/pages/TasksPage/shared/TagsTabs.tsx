@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Tag } from 'antd';
+import { Badge, Tabs } from '@openmetadata/ui-core-components';
 import { ArrayChange, diffArrays } from 'diff';
 import { uniqueId } from 'lodash';
 import { useState } from 'react';
@@ -61,7 +60,14 @@ export const TagsTabs = ({
       <Tabs.Panel id={TaskTabs.CURRENT}>
         <div className="d-flex flex-wrap m-y-xs" data-testid="tags">
           {tags.map((tag) => (
-            <Tag key={uniqueId()}>{tag.tagFQN}</Tag>
+            <Badge
+              className="tw:mr-2"
+              color="gray"
+              key={uniqueId()}
+              size="sm"
+              type="color">
+              {tag.tagFQN}
+            </Badge>
           ))}
         </div>
       </Tabs.Panel>

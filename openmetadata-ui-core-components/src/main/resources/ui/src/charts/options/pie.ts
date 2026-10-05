@@ -12,7 +12,7 @@
  */
 
 import type { PieSeriesOption } from 'echarts';
-import { getSeriesColor } from '../palette';
+import { chartColor } from '../palette';
 import type {
   ChartOption,
   ChartTheme,
@@ -24,9 +24,18 @@ import { mergeOption } from './merge';
 
 const OUTER_RADIUS = '72%';
 
+/** Id of the grey ring `track` draws behind the slices. */
+export const PIE_TRACK_SERIES_ID = 'pie-track';
+
+type PieRadius = [number | string, number | string];
+
 /** Nothing to draw: no slices, or every slice is zero or negative. */
 export const isPieEmpty = (data: PieDatum[]): boolean =>
   data.every((datum) => !(datum.value > 0));
+
+// ECharts gives even a zero slice `minAngle`; '-' marks it missing, so it draws
+// no arc while keeping its data index for click mapping.
+const sliceValue = (value: number): number | '-' => (value > 0 ? value : '-');
 
 const sliceLabel = (show: boolean): PieSeriesOption['label'] =>
   show
@@ -37,12 +46,53 @@ const sliceLabel = (show: boolean): PieSeriesOption['label'] =>
       }
     : { show: false };
 
+const trackSeries = (
+  radius: PieRadius,
+  theme: ChartTheme
+): PieSeriesOption => ({
+  id: PIE_TRACK_SERIES_ID,
+  type: 'pie',
+  silent: true,
+  z: 1,
+  radius,
+  center: ['50%', '50%'],
+  label: { show: false },
+  labelLine: { show: false },
+  tooltip: { show: false },
+  emphasis: { disabled: true },
+  data: [{ name: '', value: 1, itemStyle: { color: theme.emptyFill } }],
+});
+
 export const buildPieOption = (
   input: PieBuildInput,
   theme: ChartTheme
 ): ChartOption => {
   const names = input.data.map((datum) => datum.name);
   const showLabels = Boolean(input.showLabels);
+  const radius: PieRadius = [
+    input.innerRadius ?? 0,
+    input.outerRadius ?? OUTER_RADIUS,
+  ];
+
+  const slices: PieSeriesOption = {
+    type: 'pie',
+    radius,
+    center: ['50%', '50%'],
+    minAngle: input.minAngle ?? 0,
+    padAngle: input.padAngle ?? 0,
+    stillShowZeroSum: false,
+    cursor: input.clickable ? 'pointer' : 'default',
+    itemStyle: { borderColor: theme.segmentBorder, borderWidth: 1 },
+    label: sliceLabel(showLabels),
+    labelLine: { show: showLabels },
+    data: input.data.map((datum, index) => ({
+      name: datum.name,
+      value: sliceValue(datum.value),
+      itemStyle: {
+        color: datum.color ?? chartColor(theme.palette, index, datum.status),
+      },
+    })),
+  };
 
   const option: ChartOption = {
     aria: {
@@ -51,21 +101,7 @@ export const buildPieOption = (
     },
     tooltip: tooltipConfig('item', theme, input.tooltip),
     legend: legendConfig(names, theme, { show: true, ...input.legend }),
-    series: [
-      {
-        type: 'pie',
-        radius: [input.innerRadius ?? 0, OUTER_RADIUS],
-        center: ['50%', '50%'],
-        itemStyle: { borderColor: theme.segmentBorder, borderWidth: 1 },
-        label: sliceLabel(showLabels),
-        labelLine: { show: showLabels },
-        data: input.data.map((datum, index) => ({
-          name: datum.name,
-          value: datum.value,
-          itemStyle: { color: datum.color ?? getSeriesColor(index) },
-        })),
-      },
-    ],
+    series: input.track ? [slices, trackSeries(radius, theme)] : [slices],
   };
 
   return mergeOption(option, input.option);

@@ -519,9 +519,9 @@ export default defineConfig({
       fullyParallel: false,
       workers: 1,
     },
-    // Domain isolation E2E suite (issue #24180). Runs in its own shard because several specs
-    // toggle the global `enableAccessControl` search setting; serial execution (workers: 1)
-    // prevents cross-file races on that shared setting.
+    // Domain isolation E2E suite (issue #24180). Runs in the single-worker global-state lane
+    // because several specs toggle the global `enableAccessControl` search setting; each file
+    // restores it in afterAll, and serial execution (workers: 1) prevents cross-file races.
     {
       name: 'DomainIsolation',
       testMatch: '**/DomainIsolation/**',

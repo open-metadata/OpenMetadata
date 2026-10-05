@@ -31,6 +31,7 @@ import PostgresIngestionClass from '../../support/entity/ingestion/PostgresInges
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   getAgentCard,
@@ -358,10 +359,7 @@ test.describe.serial(
         await metadataTab.click();
       }
 
-      await page
-        .getByLabel('agents')
-        .getByTestId('loader')
-        .waitFor({ state: 'detached' });
+      await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
       const agentCard = getAgentCard(page, metadataPipeline.name);
 
@@ -379,7 +377,9 @@ test.describe.serial(
       await runDots.first().click();
 
       await expect(page.getByTestId('run-history-drawer')).toBeVisible();
-      await expect(page.getByTestId('run-history-item').first()).toBeVisible();
+      await expect(
+        page.getByTestId('run-history-item').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       expect(
         await page.getByTestId('run-history-item').count()
@@ -663,10 +663,7 @@ test.describe.serial(
         await metadataTab.click();
       }
 
-      await page
-        .getByLabel('agents')
-        .getByTestId('loader')
-        .waitFor({ state: 'detached' });
+      await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
       await page.getByTestId('more-actions').first().click();
       await page.getByTestId('edit-button').click();
