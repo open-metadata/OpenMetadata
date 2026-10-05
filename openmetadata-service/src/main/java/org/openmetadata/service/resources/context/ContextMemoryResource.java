@@ -45,7 +45,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -54,6 +56,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -166,6 +169,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Sort order: asc or desc") @QueryParam("sortOrder") String sortOrder,
       @Parameter(description = "Offset for search-backed pagination") @Min(0) @QueryParam("offset")
           Integer offset,
+      @Parameter(description = "Comma-separated lifecycle statuses for the Context Center list")
+          @QueryParam("statuses")
+          String statuses,
       @Parameter(
               description =
                   "Only return knowledge pills extracted from the context file with this id",
@@ -185,7 +191,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("primaryEntityId")
           UUID primaryEntityId)
       throws IOException {
-    if (hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
+    if (statuses != null || hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
       return listMemoriesFromSearch(
           uriInfo,
           securityContext,
@@ -203,7 +209,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           include,
           sourceFileId,
           sourceEntityId,
-          primaryEntityId);
+          primaryEntityId,
+          statuses == null ? null : parseStatuses(statuses));
     }
 
     ListFilter filter = new ListFilter(include);
@@ -219,13 +226,20 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     ResultList<ContextMemory> memories =
         addHref(
             uriInfo,
-            listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+            listInternal(
+                uriInfo,
+                securityContext,
+                ContextMemoryVisibility.guardFields(entityType, fieldsParam),
+                filter,
+                limitParam,
+                before,
+                after));
     List<ContextMemory> visible =
         ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
-    if (visible.size() == memories.getData().size()) {
-      return memories;
-    }
-    return new ResultList<>(visible);
+    // Keep the cursor so clients can page past hidden rows.
+    return visible.size() == memories.getData().size()
+        ? memories
+        : new ResultList<>(visible).setPaging(memories.getPaging());
   }
 
   private ResultList<ContextMemory> listMemoriesFromSearch(
@@ -245,15 +259,20 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       Include include,
       UUID sourceFileId,
       UUID sourceEntityId,
-      UUID primaryEntityId)
+      UUID primaryEntityId,
+      List<EntityStatus> statuses)
       throws IOException {
     validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId, primaryEntityId);
     SearchListFilter searchListFilter =
         buildContextMemorySearchFilter(include, assets, author, pinned, null);
+    if (statuses != null) {
+      searchListFilter.withMemoryStatuses(statuses);
+    }
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
     EntityUtil.Fields fields = getFields(fieldsParam);
-    // shareConfig visibility is enforced at query time by ContextMemorySearchVisibility (see
+    // shareConfig visibility, the conservative anchor rule and the selected statuses are enforced
+    // at query time by ContextMemorySearchVisibility (see
     // OpenSearch/ElasticSearchSearchManager#applyContextMemoryVisibility, #29384), so the search
     // already excludes memories the caller may not see. Post-filtering here would be redundant and
     // would break offset pagination — it truncates a page below the requested limit and drops the
@@ -270,6 +289,27 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         q,
         null,
         getAuthRequestsForListOps());
+  }
+
+  private static List<EntityStatus> parseStatuses(String statuses) {
+    Set<EntityStatus> parsed = new LinkedHashSet<>();
+    for (String value : statuses.split(",", -1)) {
+      parsed.add(parseMemoryStatus(value.trim()));
+    }
+    return List.copyOf(parsed);
+  }
+
+  private static EntityStatus parseMemoryStatus(String value) {
+    EntityStatus status = null;
+    try {
+      status = EntityStatus.fromValue(value);
+    } catch (IllegalArgumentException ex) {
+      LOG.debug("Unknown memory status '{}'", value, ex);
+    }
+    if (status == null || !ContextMemoryRepository.LIFECYCLE.includes(status)) {
+      throw new BadRequestException("Invalid memory status: " + value);
+    }
+    return status;
   }
 
   private static boolean hasSearchBackedListParams(
@@ -478,6 +518,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    enforceCurrentVisibility(securityContext, id);
     return listVersionsInternal(securityContext, id);
   }
 
@@ -504,7 +545,20 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Context memory version", schema = @Schema(type = "string"))
           @PathParam("version")
           String version) {
+    enforceCurrentVisibility(securityContext, id);
     return getVersionInternal(securityContext, id, version);
+  }
+
+  /** Current visibility governs every historical version. */
+  private void enforceCurrentVisibility(SecurityContext securityContext, UUID id) {
+    ContextMemory current =
+        repository.get(
+            null,
+            id,
+            getFields(ContextMemoryVisibility.guardFields(entityType, "")),
+            Include.ALL,
+            false);
+    ContextMemoryVisibility.enforceVisibility(current, securityContext);
   }
 
   @POST
