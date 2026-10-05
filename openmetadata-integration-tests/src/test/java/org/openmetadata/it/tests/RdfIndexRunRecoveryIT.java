@@ -26,6 +26,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -40,8 +42,13 @@ import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
  * still executing elsewhere, on MySQL and Postgres. Each test uses its own app name and lock key,
  * so real runs and the concurrent tests sharing this database are unaffected. The recheck a live
  * run schedules is run by hand, so no test waits for a lock to expire.
+ *
+ * <p>These tests, and those of the other class sharing {@link SharedResourceLocks#APP_RUN_RECORDS},
+ * run one at a time: they share the same small run timestamps, and on MySQL the interrupt UPDATE
+ * scans by timestamp, so a concurrent test's cleanup DELETE can deadlock it.
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
+@ResourceLock(SharedResourceLocks.APP_RUN_RECORDS)
 public class RdfIndexRunRecoveryIT {
   private static final String STATUS = AppExtension.ExtensionType.STATUS.toString();
   private static final long STARTUP = 2_000L;
