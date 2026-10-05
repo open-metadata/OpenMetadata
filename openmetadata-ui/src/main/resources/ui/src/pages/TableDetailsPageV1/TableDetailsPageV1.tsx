@@ -346,7 +346,7 @@ const TableDetailsPageV1: React.FC = () => {
     [tablePermissions, tableFqn, tableDetails, navigate]
   );
 
-  const fetchDqIndicatorCounts = async () => {
+  const fetchDqIndicatorCounts = useCallback(async () => {
     if (!tableClassBase.getAlertEnableStatus()) {
       setDqIndicatorCounts(EMPTY_DQ_INDICATOR_COUNTS);
 
@@ -408,7 +408,7 @@ const TableDetailsPageV1: React.FC = () => {
             ).length ?? 0
           : 0,
     });
-  };
+  }, [tableFqn, setDqLineageData]);
 
   const {
     tableTags,
@@ -900,14 +900,16 @@ const TableDetailsPageV1: React.FC = () => {
     tourMockDatasetData,
   ]);
 
+  const loadedTableFqn = tableDetails?.fullyQualifiedName;
+
   // P1.2: fetchDqIndicatorCounts drives the global DQ indicator in the page chrome,
   // so it must run as soon as tableDetails resolves — deferring would mean the user could
   // miss a critical "this dataset has failing tests" indicator on first paint.
   useEffect(() => {
-    if (tableDetails) {
-      fetchDqIndicatorCounts();
+    if (loadedTableFqn) {
+      void fetchDqIndicatorCounts();
     }
-  }, [tableDetails?.fullyQualifiedName]);
+  }, [loadedTableFqn, fetchDqIndicatorCounts]);
 
   useSub(
     'updateDetails',
