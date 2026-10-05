@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -75,11 +76,22 @@ public class SampleDataStorageMigrationIT {
           "database_schema_entity",
           "entity_extension");
 
+  /**
+   * One per table, plus a second {@code entity_extension} statement. A version snapshot is a copy
+   * of the entity, so the property is nested inside it; live profiler settings are stored as the
+   * bare config under a {@code database.databaseProfilerConfig} extension, so there it sits at the
+   * root. One statement cannot reach both.
+   */
+  private static final int BACKFILL_STATEMENTS = BACKFILLED_TABLES.size() + 1;
+
   private static final String CONNECTION = "connection";
   private static final String CONFIG = "config";
   private static final String STORAGE_CONFIG = "sampleDataStorageConfig";
   private static final String SERVICE_ENTITY_TYPE = "databaseService";
   private static final String VERSION_EXTENSION = "databaseService.version.0.1";
+  private static final String PROFILER_EXTENSION = "database.databaseProfilerConfig";
+  private static final String PROFILER_SCHEMA = "databaseProfilerConfig";
+  private static final String SAMPLE_DATA_COUNT = "sampleDataCount";
   private static final String USERNAME = "username";
   private static final String CONNECTION_USERNAME = "migration-user";
 
@@ -144,6 +156,78 @@ public class SampleDataStorageMigrationIT {
     assertDoesNotThrow(
         () -> readConnectionConfig(snapshotJson(service.getId())),
         "and the repaired snapshot deserializes against the tightened schema");
+  }
+
+  /**
+   * Profiler settings never reach the entity row or a version snapshot: {@code
+   * addDatabaseProfilerConfig} writes the config straight to {@code entity_extension}, and the
+   * stored JSON is the config itself. The nested paths the other statements strip cannot reach it.
+   */
+  @Test
+  void migrationStripsTheLiveProfilerSettingsRow() {
+    UUID databaseId = UUID.randomUUID();
+    insertLegacyProfilerConfig(databaseId);
+
+    assertNotNull(
+        profilerConfigJson(databaseId).get(STORAGE_CONFIG),
+        "precondition: the live profiler row carries the removed property at its root");
+
+    runSampleDataStorageStatements();
+
+    assertNull(
+        profilerConfigJson(databaseId).get(STORAGE_CONFIG),
+        "the live profiler row is repaired, not only the service rows the other statements reach");
+    assertEquals(
+        12,
+        profilerConfigJson(databaseId).get(SAMPLE_DATA_COUNT).asInt(),
+        "only the holder is removed, not the profiler settings around it");
+
+    runSampleDataStorageStatements();
+
+    assertNull(
+        profilerConfigJson(databaseId).get(STORAGE_CONFIG),
+        "re-running the migration changes nothing");
+  }
+
+  /**
+   * Written as a row rather than through the API for the same reason as the snapshot above: the
+   * shape predates the schema that would now reject it.
+   */
+  private void insertLegacyProfilerConfig(UUID databaseId) {
+    String json =
+        "{\"sampleDataCount\":12,\"randomizedSample\":true,\"sampleDataStorageConfig\":{\"config\":"
+            + LEGACY_CONFIG
+            + "}}";
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate(
+                        "INSERT INTO entity_extension (id, extension, jsonSchema, json) "
+                            + "VALUES (:id, :extension, :jsonSchema, "
+                            + jsonBindExpression()
+                            + ")")
+                    .bind("id", databaseId.toString())
+                    .bind("extension", PROFILER_EXTENSION)
+                    .bind("jsonSchema", PROFILER_SCHEMA)
+                    .bind("json", json)
+                    .execute());
+  }
+
+  private JsonNode profilerConfigJson(UUID databaseId) {
+    String json =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery(
+                            "SELECT json FROM entity_extension "
+                                + "WHERE id = :id AND extension = :extension")
+                        .bind("id", databaseId.toString())
+                        .bind("extension", PROFILER_EXTENSION)
+                        .mapTo(String.class)
+                        .one());
+    return JsonUtils.readTree(json);
   }
 
   private DatabaseService createSnowflakeService(TestNamespace ns, String suffix) {
@@ -264,9 +348,9 @@ public class SampleDataStorageMigrationIT {
             .filter(sql -> sql.contains(STORAGE_CONFIG))
             .toList();
     assertEquals(
-        BACKFILLED_TABLES.size(),
+        BACKFILL_STATEMENTS,
         statements.size(),
-        "one statement per table the removed property can reach");
+        "one statement per table the removed property can reach, plus the live profiler row");
     TestSuiteBootstrap.getJdbi().useHandle(handle -> statements.forEach(handle::execute));
   }
 
