@@ -12,6 +12,7 @@
  */
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -91,23 +92,20 @@ const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
 
         return (
           <Fragment key={step.step}>
-            <Box
-              align="center"
-              className={`tw:gap-1.5 tw:rounded-full tw:border tw:px-2.5 tw:py-1 tw:text-xs tw:font-medium tw:whitespace-nowrap ${
-                isActive
-                  ? 'tw:bg-brand-secondary tw:border-brand tw:text-brand-secondary'
-                  : 'tw:border-transparent tw:text-tertiary'
-              }`}
+            <Badge
+              className="tw:gap-1.5"
+              color={isActive ? 'brand' : 'gray'}
               data-active={isActive}
-              data-testid={`csv-workflow-step-${step.step}`}>
+              data-testid={`csv-workflow-step-${step.step}`}
+              size="sm">
               <Box
                 align="center"
                 className={`tw:size-4 tw:rounded-full tw:text-[10px] tw:font-semibold ${circleClass}`}
                 justify="center">
                 {isDone ? <Check size={10} strokeWidth={2.5} /> : index + 1}
               </Box>
-              <Typography as="span">{t(step.name)}</Typography>
-            </Box>
+              {t(step.name)}
+            </Badge>
             {index < ENTITY_IMPORT_STEPS.length - 1 && (
               <Box
                 aria-hidden
