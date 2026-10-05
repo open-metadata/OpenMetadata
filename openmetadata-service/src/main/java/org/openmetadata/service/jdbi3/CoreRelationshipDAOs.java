@@ -402,10 +402,11 @@ public interface CoreRelationshipDAOs {
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT IGNORE INTO custom_property_reference("
+            "INSERT INTO custom_property_reference("
                 + COLUMNS
                 + ") VALUES (:id, "
-                + ":columnKey, :propertyName, :targetId, :holderType, :targetType, :position, :json)",
+                + ":columnKey, :propertyName, :targetId, :holderType, :targetType, :position, :json) "
+                + "ON DUPLICATE KEY UPDATE id = id",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =

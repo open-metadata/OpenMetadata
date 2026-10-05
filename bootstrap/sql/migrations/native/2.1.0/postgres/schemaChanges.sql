@@ -383,7 +383,7 @@ CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 -- delete removes the rows pointing at the deleted entity through the targetId index.
 CREATE TABLE IF NOT EXISTS custom_property_reference (
     id VARCHAR(36) NOT NULL,
-    columnKey VARCHAR(256) NOT NULL DEFAULT '',
+    columnKey VARCHAR(512) NOT NULL DEFAULT '',
     propertyName VARCHAR(256) NOT NULL,
     targetId VARCHAR(36) NOT NULL,
     holderType VARCHAR(256) NOT NULL,

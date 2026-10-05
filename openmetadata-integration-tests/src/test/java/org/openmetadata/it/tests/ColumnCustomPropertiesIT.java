@@ -2038,8 +2038,17 @@ public class ColumnCustomPropertiesIT {
           Tables.create()
               .name(ns.prefix("nestedRefTable"))
               .inSchema(schema.getFullyQualifiedName())
-              .withColumns(List.of(structColumn("outer", leaf)))
+              .withColumns(
+                  List.of(
+                      structColumn("outer", structColumn("middle", structColumn("inner", leaf)))))
               .execute();
+      Column createdLeaf = getDeepestColumn(columnNamed(table.getColumns(), "outer"));
+      assertTrue(
+          FullyQualifiedName.buildHash(createdLeaf.getFullyQualifiedName()).length() > 256,
+          "a fourth-level column key must exceed 256 characters");
+      assertEquals(
+          List.of(first.getId().toString(), second.getId().toString()),
+          storedReferenceIds(table.getId(), createdLeaf.getFullyQualifiedName(), propName));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
       assertNoReferencesTo(first.getId());

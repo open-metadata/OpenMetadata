@@ -502,7 +502,7 @@ DEALLOCATE PREPARE announcement_type_index_stmt;
 -- delete removes the rows pointing at the deleted entity through the targetId index.
 CREATE TABLE IF NOT EXISTS custom_property_reference (
     id VARCHAR(36) NOT NULL,
-    columnKey VARCHAR(256) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+    columnKey VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
     propertyName VARCHAR(256) NOT NULL,
     targetId VARCHAR(36) NOT NULL,
     holderType VARCHAR(256) NOT NULL,
