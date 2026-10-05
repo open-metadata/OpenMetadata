@@ -268,23 +268,6 @@ export default [
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
 
-      // Design-system import discipline — editor-time nudge (warn). Enforcement
-      // of "no NEW raw-SVG debt" is done by tw-deprecation-guard.js (the same
-      // git-diff guard, pre-commit + ui-checkstyle, that blocks new antd/less
-      // debt), so existing violations don't fail CI on unrelated edits.
-      'no-restricted-imports': [
-        'warn',
-        {
-          patterns: [
-            {
-              group: ['**/assets/**/*.svg'],
-              message:
-                'Do not import SVG icons directly from assets/ paths; use the designated abstraction instead.',
-            },
-          ],
-        },
-      ],
-
       // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
       // had never been registered, so none of it ran.
       //
