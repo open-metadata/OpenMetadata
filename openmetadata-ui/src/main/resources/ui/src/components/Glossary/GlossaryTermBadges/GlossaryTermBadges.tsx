@@ -37,23 +37,31 @@ const getVersionBadgeProps = (versionStatus?: VersionStatus) => {
 export const SynonymBadge = ({
   synonym,
   versionStatus,
+  className,
 }: {
   synonym: string;
   versionStatus?: VersionStatus;
+  className?: string;
 }) => {
-  const { color, className, diff } = getVersionBadgeProps(versionStatus);
+  const versionProps = getVersionBadgeProps(versionStatus);
 
   return (
-    <Badge
-      className={classNames('tw:max-w-50', className)}
-      color={color}
-      data-diff={diff}
-      data-testid={synonym}
-      size="sm"
+    // Badge is a plain span, so the Tooltip wraps it in a hover-only trigger
+    // rather than adding a tab stop per synonym.
+    <Tooltip
+      excludeTriggerFromTabOrder
       title={synonym}
-      type="color">
-      <span className="tw:truncate">{synonym}</span>
-    </Badge>
+      triggerClassName="tw:flex">
+      <Badge
+        className={classNames('tw:max-w-50', versionProps.className, className)}
+        color={versionProps.color}
+        data-diff={versionProps.diff}
+        data-testid={synonym}
+        size="sm"
+        type="color">
+        <span className="tw:truncate">{synonym}</span>
+      </Badge>
+    </Tooltip>
   );
 };
 

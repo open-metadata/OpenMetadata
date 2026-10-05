@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -131,9 +131,7 @@ describe('GlossaryTermSynonyms', () => {
       expect(
         screen.getByText('message.entity-is-already-a-synonym')
       ).toBeInTheDocument();
-      expect(
-        within(screen.getByTestId('synonyms-select')).getAllByRole('row')
-      ).toHaveLength(1);
+      expect(screen.getAllByTestId(/^remove-synonym-/)).toHaveLength(1);
     });
 
     it('removes the last synonym on Backspace in an empty input', async () => {

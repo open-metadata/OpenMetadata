@@ -605,18 +605,13 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      const selectedSynonyms = page
-        .getByTestId('synonyms-select')
-        .getByRole('row');
-
       for (const synonym of ['Synonym1', 'Synonym2', 'Synonym3']) {
-        await selectedSynonyms
-          .filter({ hasText: synonym })
-          .getByRole('button')
-          .click();
+        await page.getByTestId(`remove-synonym-${synonym}`).click();
       }
 
-      await expect(selectedSynonyms).toHaveCount(0);
+      await expect(
+        page.getByTestId('synonyms-select').getByRole('button')
+      ).toHaveCount(0);
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-synonym-btn').click();

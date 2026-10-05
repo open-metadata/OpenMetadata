@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import { ReferenceBadge } from './GlossaryTermBadges';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ReferenceBadge, SynonymBadge } from './GlossaryTermBadges';
 
 describe('ReferenceBadge', () => {
   it.each(['https://example.com/docs', 'http://example.com'])(
@@ -38,5 +39,23 @@ describe('ReferenceBadge', () => {
 
     expect(link).not.toHaveAttribute('href');
     expect(screen.getByText('docs')).toBeInTheDocument();
+  });
+});
+
+describe('SynonymBadge', () => {
+  it('shows the full synonym in a tooltip on hover', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    // react-aria ignores hover until a pointer modality is established.
+    fireEvent.mouseMove(document);
+    render(<SynonymBadge synonym="gross sales" />);
+
+    expect(screen.getByTestId('gross sales')).not.toHaveAttribute('title');
+
+    await user.hover(screen.getByText('gross sales'));
+    jest.advanceTimersByTime(500);
+
+    await waitFor(() =>
+      expect(screen.getByRole('tooltip')).toHaveTextContent('gross sales')
+    );
   });
 });

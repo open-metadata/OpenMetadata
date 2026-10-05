@@ -12,13 +12,11 @@
  */
 
 import {
+  BadgeWithButton,
   Box,
   Button,
   Card,
   HintText,
-  Tag,
-  TagGroup,
-  TagList,
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
@@ -76,28 +74,21 @@ const GlossaryTermSynonymsEditor = ({
               : 'tw:outline-primary tw:focus-within:outline-brand'
           )}
           data-testid="synonyms-select">
-          {synonyms.length > 0 && (
-            <TagGroup
-              label={t('label.synonym-plural')}
+          {synonyms.map((synonym) => (
+            <BadgeWithButton
+              buttonLabel={t('label.remove-entity', { entity: synonym })}
+              buttonTestId={`remove-synonym-${synonym}`}
+              color={synonym === duplicateSynonym ? 'error' : 'gray'}
+              key={synonym}
               size="sm"
-              onRemove={(keys) =>
-                onChange(synonyms.filter((synonym) => !keys.has(synonym)))
+              type="color"
+              onButtonClick={() =>
+                onChange(synonyms.filter((item) => item !== synonym))
               }>
-              <TagList className="tw:flex tw:flex-wrap tw:gap-1.5">
-                {synonyms.map((synonym) => (
-                  <Tag
-                    className={classNames({
-                      'tw:text-error-primary tw:after:outline-error':
-                        synonym === duplicateSynonym,
-                    })}
-                    id={synonym}
-                    key={synonym}>
-                    {synonym}
-                  </Tag>
-                ))}
-              </TagList>
-            </TagGroup>
-          )}
+              {/* Narrow enough that two long synonyms fit per row. */}
+              <span className="tw:max-w-24 tw:truncate">{synonym}</span>
+            </BadgeWithButton>
+          ))}
           <input
             aria-describedby={hintId}
             aria-invalid={isInvalid}

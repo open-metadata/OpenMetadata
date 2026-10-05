@@ -37,6 +37,9 @@ import GlossaryTermSynonymsEditor from './GlossaryTermSynonymsEditor';
 
 const MAX_VISIBLE_SYNONYMS = 6;
 
+// Narrower than SynonymBadge's default so two long synonyms fit per row.
+const SYNONYM_BADGE_CLASS = 'tw:max-w-24';
+
 const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
@@ -71,7 +74,11 @@ const GlossaryTermSynonyms = () => {
           ? synonyms
           : synonyms.slice(0, MAX_VISIBLE_SYNONYMS)
         ).map((synonym) => (
-          <SynonymBadge key={synonym} synonym={synonym} />
+          <SynonymBadge
+            className={SYNONYM_BADGE_CLASS}
+            key={synonym}
+            synonym={synonym}
+          />
         ))}
 
         {hiddenSynonymCount > 0 && (
@@ -135,12 +142,17 @@ const GlossaryTermSynonyms = () => {
         {unchangedSynonyms
           .filter((synonym) => !isEmpty(synonym))
           .map((synonym) => (
-            <SynonymBadge key={synonym} synonym={synonym} />
+            <SynonymBadge
+              className={SYNONYM_BADGE_CLASS}
+              key={synonym}
+              synonym={synonym}
+            />
           ))}
         {addedSynonyms
           .filter((synonym) => !isEmpty(synonym))
           .map((synonym) => (
             <SynonymBadge
+              className={SYNONYM_BADGE_CLASS}
               key={synonym}
               synonym={synonym}
               versionStatus={{ added: true }}
@@ -150,6 +162,7 @@ const GlossaryTermSynonyms = () => {
           .filter((synonym) => !isEmpty(synonym))
           .map((synonym) => (
             <SynonymBadge
+              className={SYNONYM_BADGE_CLASS}
               key={synonym}
               synonym={synonym}
               versionStatus={{ removed: true }}

@@ -74,12 +74,7 @@ test.describe('Glossary Term Details Operations', () => {
         .click();
 
       // Find and remove the first synonym
-      await page
-        .getByTestId('synonyms-select')
-        .getByRole('row')
-        .filter({ hasText: synonym1 })
-        .getByRole('button')
-        .click();
+      await page.getByTestId(`remove-synonym-${synonym1}`).click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-synonym-btn').click();
