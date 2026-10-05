@@ -123,17 +123,23 @@ describe('PersonaSelect', () => {
     expect(nodes).toHaveLength(1);
   });
 
-  it('should call onUpdate with only the schema-required ref fields', () => {
+  it('keeps the display-identity ref fields but drops server read-only ones', () => {
     const { onUpdate } = renderSelect();
 
     lastProps().onChange({
       id: 'DataEngineer',
       value: 'DataEngineer',
       label: 'Data Engineer',
-      data: personaRef,
+      data: { ...personaRef, href: 'x', deleted: false, description: 'd' },
     });
 
-    expect(onUpdate).toHaveBeenCalledWith({ id: 'p1', type: 'persona' });
+    expect(onUpdate).toHaveBeenCalledWith({
+      id: 'p1',
+      type: 'persona',
+      name: 'DataEngineer',
+      displayName: 'Data Engineer',
+      fullyQualifiedName: 'DataEngineer',
+    });
   });
 
   it('should call onUpdate with undefined when the selection is cleared', () => {

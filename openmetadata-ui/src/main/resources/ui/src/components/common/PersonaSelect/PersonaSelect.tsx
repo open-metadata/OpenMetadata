@@ -119,10 +119,22 @@ const PersonaSelect: FC<PersonaSelectProps> = ({
         | TreeSelectNode<EntityReference>[]
         | null
     ) => {
-      // Send only the schema-required ref fields: server read-only fields
-      // (href, deleted, description) in a PATCH body are rejected.
+      // Keep the display-identity fields (name/fqn/displayName) so the caller's
+      // optimistic state renders the persona name immediately; drop only the
+      // server read-only fields (href, deleted, description), which a PATCH body
+      // rejects.
       const data = Array.isArray(selected) ? selected[0]?.data : selected?.data;
-      void onUpdate(data ? { id: data.id, type: data.type } : undefined);
+      void onUpdate(
+        data
+          ? {
+              id: data.id,
+              type: data.type,
+              name: data.name,
+              fullyQualifiedName: data.fullyQualifiedName,
+              displayName: data.displayName,
+            }
+          : undefined
+      );
     },
     [onUpdate]
   );
