@@ -121,6 +121,17 @@ describe('GlossaryTermSynonyms', () => {
       );
     });
 
+    it('saves text typed without pressing Enter', async () => {
+      const input = await startEditing();
+
+      await user.type(input, 'turnover');
+      await user.click(screen.getByTestId('save-synonym-btn'));
+
+      expect(mockContext.onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ synonyms: ['accessory', 'turnover'] })
+      );
+    });
+
     it('rejects a case-insensitive duplicate and keeps the typed text', async () => {
       const input = await startEditing();
 

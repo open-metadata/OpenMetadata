@@ -49,14 +49,18 @@ const GlossaryTermSynonymsEditor = ({
   const duplicateSynonym = findDuplicateSynonym(synonyms, inputValue);
   const isInvalid = Boolean(duplicateSynonym);
 
+  const commitInput = () => {
+    const synonym = inputValue.trim();
+    if (synonym && !duplicateSynonym) {
+      onChange([...synonyms, synonym]);
+      setInputValue('');
+    }
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault();
-      const synonym = inputValue.trim();
-      if (synonym && !duplicateSynonym) {
-        onChange([...synonyms, synonym]);
-        setInputValue('');
-      }
+      commitInput();
     } else if (event.key === 'Backspace' && inputValue === '') {
       onChange(synonyms.slice(0, -1));
     }
@@ -101,6 +105,8 @@ const GlossaryTermSynonymsEditor = ({
                 : t('label.add-entity', { entity: t('label.synonym-plural') })
             }
             value={inputValue}
+            // Blur commits typed text, so Save (which blurs first) keeps it.
+            onBlur={commitInput}
             onChange={(event) => setInputValue(event.target.value)}
             onKeyDown={handleKeyDown}
           />
