@@ -319,8 +319,11 @@ export const redirectToHomePage = async (
 };
 
 export const redirectToExplorePage = async (page: Page) => {
-  await page.goto('/explore');
-  await page.waitForURL('**/explore');
+  // `load` (the default) also waits for every image, font and stylesheet; on a
+  // slow runner that alone can exceed the navigation timeout. Callers depend
+  // only on the DOM and the loader wait below.
+  await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL('**/explore', { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -510,11 +513,13 @@ export const toastNotification = async (
   const toast = page
     .getByTestId('alert-bar')
     .filter({ hasText: message })
-    .first();
+    .filter({ visible: true });
 
-  await toast.waitFor({ state: 'visible', timeout });
-
-  await expect(toast.getByTestId('alert-icon')).toBeVisible();
+  // Two saves in quick succession legitimately stack two identical toasts, so
+  // "the toast appeared" is a count assertion, not a single-element one.
+  // Toasts auto-dismiss, so match on the filtered text only — asserting an
+  // internal icon races the toast detaching between resolve and check.
+  await expect(toast).not.toHaveCount(0, { timeout });
 };
 
 /**
@@ -531,11 +536,11 @@ export const waitForToastToDisappear = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page
-    .getByTestId('alert-bar')
-    .filter({ hasText: message })
-    .first()
-    .waitFor({ state: 'detached', timeout });
+  // Identical toasts can stack, so waitFor() would be a strict-mode error here;
+  // "the toast is gone" is a count-0 condition anyway.
+  await expect(
+    page.getByTestId('alert-bar').filter({ hasText: message })
+  ).toHaveCount(0, { timeout });
 };
 
 /**
@@ -1006,7 +1011,10 @@ export const verifyDomainPropagation = async (
   await waitForAllLoadersToDisappear(page);
 
   if (exploreTabName) {
-    await page.getByRole('menuitem', { name: exploreTabName }).click();
+    await page
+      .getByTestId('explore-left-panel')
+      .getByRole('tab', { name: exploreTabName })
+      .click();
     await waitForAllLoadersToDisappear(page);
   }
 
@@ -1706,12 +1714,14 @@ export const testTableSearch = async (
     await waitForSearchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByText(searchTerm).first()).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByText(notVisibleText).first()).not.toBeVisible({
-      timeout: 5_000,
-    });
+    // The term also appears in the search box, so assert on presence/absence
+    // of *visible* matches rather than on a single element.
+    await expect(
+      page.getByText(searchTerm).filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: 5_000 });
+    await expect(
+      page.getByText(notVisibleText).filter({ visible: true })
+    ).toHaveCount(0, { timeout: 5_000 });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 };
 

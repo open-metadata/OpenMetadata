@@ -351,8 +351,8 @@ JOIN sys.procedures p ON p.name = r.ROUTINE_NAME
 JOIN sys.schemas sch ON p.schema_id = sch.schema_id AND sch.name = r.ROUTINE_SCHEMA
 JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
-   AND ROUTINE_CATALOG = '{database_name}'
-   AND ROUTINE_SCHEMA = '{schema_name}'
+   AND ROUTINE_CATALOG = :database_name
+   AND ROUTINE_SCHEMA = :schema_name
     """  # noqa: W291
 )
 

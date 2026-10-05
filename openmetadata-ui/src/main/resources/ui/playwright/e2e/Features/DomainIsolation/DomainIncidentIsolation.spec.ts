@@ -54,7 +54,7 @@ const test = base.extend<{ adminPage: Page; noDomainPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -63,7 +63,7 @@ const test = base.extend<{ adminPage: Page; noDomainPage: Page }>({
   noDomainPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await noDomainUser.login(page);
+      await noDomainUser.signIn(page);
       await use(page);
     } finally {
       await page.close();

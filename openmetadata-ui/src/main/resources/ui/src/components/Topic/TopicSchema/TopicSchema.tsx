@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { Col, Row, Tag, Tooltip, Typography } from 'antd';
+import {
+  Badge,
+  ButtonGroup,
+  ButtonGroupItem,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -317,7 +322,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataTypeTopic, record: Field) => (
-      <Typography.Text>
+      <Typography className="tw:text-primary">
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
@@ -325,7 +330,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         ) : (
           record.dataTypeDisplay ?? dataType
         )}
-      </Typography.Text>
+      </Typography>
     ),
     [isVersionView]
   );
@@ -484,9 +489,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
     return (
       <Col>
-        <Typography.Text type="secondary">{t('label.schema')}</Typography.Text>
+        <Typography color="secondary">{t('label.schema')}</Typography>
         {schemaTypePlaceholder ?? (
-          <Tag className="ml-4">{messageSchema.schemaType}</Tag>
+          <Badge
+            className="tw:inline-flex tw:mr-2 ml-4"
+            color="gray"
+            size="sm"
+            type="color">
+            {messageSchema.schemaType}
+          </Badge>
         )}
       </Col>
     );

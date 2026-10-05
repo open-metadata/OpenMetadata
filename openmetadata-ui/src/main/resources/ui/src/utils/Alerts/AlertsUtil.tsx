@@ -16,16 +16,11 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import {
-  AlertProps,
-  Checkbox,
-  Col,
   Divider,
-  MenuProps,
-  Select,
   Skeleton,
-  Tooltip,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { AlertProps, Checkbox, Col, MenuProps, Select, Tooltip } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqBy } from 'lodash';
@@ -645,7 +640,7 @@ export const getAlertRecentEventsFilterOptions = () => {
     const label = getAlertEventsFilterLabels(status);
 
     return {
-      label: <Typography.Text>{label}</Typography.Text>,
+      label: <Typography>{label}</Typography>,
       key: status,
     };
   });
@@ -676,8 +671,11 @@ export const getAlertExtraInfo = (
         {Array.from({ length: 3 }, (_, id) => `alert-skeleton-${id}`).map(
           (skeletonKey) => (
             <Fragment key={skeletonKey}>
-              <Divider className="self-center" type="vertical" />
-              <Skeleton.Button active className="extra-info-skeleton" />
+              <Divider
+                className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                orientation="vertical"
+              />
+              <Skeleton height={40} variant="rounded" width={80} />
             </Fragment>
           )
         )}

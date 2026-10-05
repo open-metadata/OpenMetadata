@@ -715,11 +715,15 @@ export const verifyTextFormatting = async (
     code: 'code',
   }[format];
 
-  await expect(editor.locator(formatTag).filter({ hasText: text })).toBeVisible(
-    {
-      timeout: 15_000,
-    }
-  );
+  // Assert the WHOLE text carries the format — a last-word fallback would let a half-applied
+  // format (e.g. only "text" of "Italic text" italic) pass. Escape regex metacharacters in `text`.
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  await expect(
+    editor.locator(formatTag).filter({ hasText: new RegExp(`^${escaped}$`) })
+  ).toBeVisible({
+    timeout: 15_000,
+  });
 };
 
 export const undo = async (page: Page): Promise<void> => {

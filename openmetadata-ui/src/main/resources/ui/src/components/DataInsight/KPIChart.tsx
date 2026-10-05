@@ -12,30 +12,20 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import {
+  chartColor,
+  ChartSeries,
+  LineChart,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
 import {
-  CartesianGrid,
-  Legend,
-  LegendProps,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
-  DEFAULT_CHART_OPACITY,
-  HOVER_CHART_OPACITY,
-  ROUTES,
-} from '../../constants/constants';
-import {
-  BAR_CHART_MARGIN,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
@@ -45,16 +35,15 @@ import {
   KpiResult,
   KpiTargetType,
 } from '../../generated/dataInsight/kpi/kpi';
-import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import {
   ChartFilter,
   UIKpiResult,
 } from '../../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
 import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
-import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import { CustomTooltip, renderLegend } from '../../utils/DataInsightChartUtils';
+import { getDataInsightTooltip } from '../../utils/DataInsightChartUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
+import { buildKpiChartRows, KpiChartRow } from '../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../PageHeader/PageHeader.component';
@@ -79,8 +68,7 @@ const KPIChart: FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { axis, dataInsightSeries, grid, inactive } =
-    useDataInsightChartColors();
+  const palette = useChartPalette();
 
   const [kpiResults, setKpiResults] = useState<
     Record<string, DataInsightCustomChartResult['results']>
@@ -88,8 +76,6 @@ const KPIChart: FC<Props> = ({
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [activeKeys, setActiveKeys] = useState<string[]>([]);
-  const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
   const handleAddKpi = () => navigate(ROUTES.ADD_KPI);
 
@@ -171,18 +157,6 @@ const KPIChart: FC<Props> = ({
     }
   };
 
-  const handleLegendClick: LegendProps['onClick'] = (event) => {
-    setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(event.value, prevActiveKeys)
-    );
-  };
-  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
-    setActiveMouseHoverKey(event.value);
-  };
-  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
-    setActiveMouseHoverKey('');
-  };
-
   const mapKPIMetricType = useMemo(() => {
     return kpiList.reduce(
       (acc, kpi) => {
@@ -197,16 +171,37 @@ const KPIChart: FC<Props> = ({
 
   const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
 
-  const kpiTooltipValueFormatter = (
-    value: string | number,
-    key?: string
-  ): string => {
-    const isPercentage = key
-      ? mapKPIMetricType[key] === KpiTargetType.Percentage
-      : KpiTargetType.Number;
+  const rows = useMemo(() => buildKpiChartRows(kpiResults), [kpiResults]);
 
-    return isPercentage ? round(Number(value), 2) + '%' : value + '';
-  };
+  const series = useMemo<ChartSeries[]>(
+    () =>
+      kpiNames.map((key, index) => ({
+        key,
+        name: key,
+        color: chartColor(palette, index),
+        seriesOption: { connectNulls: true, emphasis: { focus: 'series' } },
+      })),
+    [kpiNames, palette]
+  );
+
+  const tooltip = useMemo(
+    () =>
+      getDataInsightTooltip<KpiChartRow>({
+        timeKey: 'day',
+        valueFormatter: (value, key) =>
+          key && mapKPIMetricType[key] === KpiTargetType.Percentage
+            ? round(Number(value), 2) + '%'
+            : value + '',
+      }),
+    [mapKPIMetricType]
+  );
+
+  const xAxis = useMemo(
+    () => ({
+      formatter: (value: string | number) => formatDate(Number(value)),
+    }),
+    []
+  );
 
   useEffect(() => {
     setKpiResults({});
@@ -245,70 +240,17 @@ const KPIChart: FC<Props> = ({
           {hasAtLeastOneData ? (
             <>
               <Col span={DI_STRUCTURE.leftContainerSpan}>
-                <ResponsiveContainer
-                  debounce={1}
-                  height={GRAPH_HEIGHT}
-                  id="kpi-chart">
-                  <LineChart margin={BAR_CHART_MARGIN}>
-                    <CartesianGrid stroke={grid} vertical={false} />
-                    <Tooltip
-                      content={
-                        <CustomTooltip
-                          timeStampKey="day"
-                          valueFormatter={kpiTooltipValueFormatter}
-                        />
-                      }
-                    />
-                    <XAxis
-                      allowDuplicatedCategory={false}
-                      dataKey="day"
-                      tick={{ fill: axis }}
-                      tickFormatter={(value) => formatDate(value)}
-                      type="category"
-                    />
-                    <YAxis dataKey="count" tick={{ fill: axis }} />
-                    <Legend
-                      align="left"
-                      content={(props) =>
-                        renderLegend(
-                          props as LegendProps,
-                          activeKeys,
-                          undefined,
-                          inactive
-                        )
-                      }
-                      key="name"
-                      layout="horizontal"
-                      verticalAlign="top"
-                      wrapperStyle={{ left: '0px', top: '0px' }}
-                      onClick={handleLegendClick}
-                      onMouseEnter={handleLegendMouseEnter}
-                      onMouseLeave={handleLegendMouseLeave}
-                    />
-
-                    {kpiNames.map((key, i) => (
-                      <Line
-                        data={kpiResults[key]}
-                        dataKey="count"
-                        hide={
-                          activeKeys.length && key !== activeMouseHoverKey
-                            ? !activeKeys.includes(key)
-                            : false
-                        }
-                        key={key}
-                        name={key}
-                        stroke={dataInsightSeries[i % dataInsightSeries.length]}
-                        strokeOpacity={
-                          isEmpty(activeMouseHoverKey) ||
-                          key === activeMouseHoverKey
-                            ? DEFAULT_CHART_OPACITY
-                            : HOVER_CHART_OPACITY
-                        }
-                        type="monotone"
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
+                <div id="kpi-chart">
+                  <LineChart<KpiChartRow>
+                    ariaLabel={t('label.kpi-title')}
+                    data={rows}
+                    height={GRAPH_HEIGHT}
+                    series={series}
+                    tooltip={tooltip}
+                    xAxis={xAxis}
+                    xKey="day"
+                  />
+                </div>
               </Col>
               {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
                 <Col span={DI_STRUCTURE.rightContainerSpan}>

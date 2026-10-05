@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { TooltipProps } from 'recharts';
 import { DataInsightIndex, SystemChartType } from '../enums/DataInsight.enum';
 import { ReportData } from '../generated/analytics/reportData';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
@@ -38,25 +37,11 @@ export interface ChartFilter {
   endTs: number;
 }
 
-export interface DataInsightChartTooltipProps
-  extends TooltipProps<
-    number | string | Array<number | string>,
-    number | string
-  > {
-  cardStyles?: React.CSSProperties;
-  customValueKey?: string;
-  displayDateInHeader?: boolean;
-  dateTimeFormatter?: (date?: number, format?: string) => string;
-  isPercentage?: boolean;
-  isTier?: boolean;
-  listContainerStyles?: React.CSSProperties;
-  timeStampKey?: string;
-  titleStyles?: React.CSSProperties;
-  labelStyles?: React.CSSProperties;
-  valueStyles?: React.CSSProperties;
-  transformLabel?: boolean;
-  valueFormatter?: (value: number | string, key?: string) => string | number;
-}
+/** Formats one tooltip value; `key` is the series it belongs to. */
+export type DataInsightValueFormatter = (
+  value: number | string,
+  key?: string
+) => string | number;
 
 export interface UIKpiResult extends KpiResult {
   target: number;

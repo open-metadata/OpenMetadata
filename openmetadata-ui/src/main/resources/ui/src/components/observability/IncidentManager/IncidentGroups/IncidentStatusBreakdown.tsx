@@ -12,7 +12,6 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
@@ -45,16 +44,15 @@ const IncidentStatusBreakdown = ({
 
   return (
     <Box
-      className="tw:w-32 tw:gap-1.5"
+      className="tw:min-w-32 tw:gap-1.5"
       data-testid="group-status"
       direction="col">
-      <Box aria-hidden className="tw:h-1.5 tw:gap-0.5">
+      <Box
+        aria-hidden
+        className="tw:h-1.5 tw:overflow-hidden tw:rounded-full tw:bg-quaternary">
         {segments.map(({ status, share }) => (
           <span
-            className={classNames(
-              'tw:rounded-full',
-              INCIDENT_GROUP_STATUS_BAR_CLASS[status]
-            )}
+            className={INCIDENT_GROUP_STATUS_BAR_CLASS[status]}
             data-testid={`group-status-segment-${status}`}
             key={status}
             style={{ width: `${share}%` }}
@@ -63,7 +61,7 @@ const IncidentStatusBreakdown = ({
       </Box>
       <Typography
         as="span"
-        className="tw:text-tertiary"
+        className="tw:whitespace-nowrap tw:text-tertiary"
         data-testid="group-status-counts"
         size="text-xs">
         {segments

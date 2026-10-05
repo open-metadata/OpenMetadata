@@ -201,8 +201,12 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify lineage section shows zero counts', async () => {
-        await expect(page.locator('text=0 input').first()).toBeVisible();
-        await expect(page.locator('text=0 output').first()).toBeVisible();
+        await expect(
+          page.locator('text=0 input').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=0 output').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -255,11 +259,19 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port counts', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
-        await expect(page.locator('text=(3)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(2)').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=(3)').filter({ visible: true })
+        ).not.toHaveCount(0);
 
-        await expect(page.locator('text=2 input').first()).toBeVisible();
-        await expect(page.locator('text=3 output').first()).toBeVisible();
+        await expect(
+          page.locator('text=2 input').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=3 output').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -308,7 +320,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -392,7 +406,8 @@ test.describe('Input Output Ports', () => {
         await searchRes1;
 
         await page
-          .locator(`[data-testid="table-data-card_${table1Fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${table1Fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         const searchRes2 = page.waitForResponse(
@@ -404,7 +419,8 @@ test.describe('Input Output Ports', () => {
         await searchRes2;
 
         await page
-          .locator(`[data-testid="table-data-card_${table2Fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${table2Fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         const addRes = page.waitForResponse(
@@ -417,7 +433,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify both ports were added', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(2)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -566,7 +584,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -920,7 +940,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was removed', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -1010,7 +1032,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port still exists', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -1052,7 +1076,9 @@ test.describe('Input Output Ports', () => {
         await expect(
           page.getByTestId('no-input-ports-placeholder')
         ).toBeVisible();
-        await expect(page.locator('text=(0)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(0)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   });
@@ -1675,6 +1701,10 @@ test.describe('Input Output Ports', () => {
           tables[0],
           'entityResponseData.fullyQualifiedName'
         );
+        // The asset card body streams tags/owners/counts async — wait
+        // for loaders so the manage-button click doesn't retry
+        // "element is not stable" through the reflow.
+        await waitForAllLoadersToDisappear(page);
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
@@ -1821,7 +1851,8 @@ test.describe('Input Output Ports', () => {
           'entityResponseData.fullyQualifiedName'
         );
         await page
-          .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+          .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         await page.getByTestId('delete-all-button').click();

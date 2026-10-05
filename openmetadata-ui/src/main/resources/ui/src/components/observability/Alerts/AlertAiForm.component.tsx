@@ -46,16 +46,30 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
   const [validationErrors, setValidationErrors] =
     useState<AlertAiFormValidationErrors>({});
 
-  const handleChange = (nextValue: ModifiedCreateEventSubscription) => {
+  const handleChange = (
+    valueOrUpdater:
+      | ModifiedCreateEventSubscription
+      | ((
+          prev: ModifiedCreateEventSubscription
+        ) => ModifiedCreateEventSubscription)
+  ) => {
     if (mode === 'view') {
       return;
     }
 
+    // Collate's template section sends a plain value; the rest send a functional updater. Normalise
+    // to an updater so a value caller can't crash the `updater(prev)` call below, and the write
+    // always composes against the latest state.
+    const updater =
+      typeof valueOrUpdater === 'function'
+        ? valueOrUpdater
+        : () => valueOrUpdater;
+
     if (Object.keys(validationErrors).length > 0) {
-      setValidationErrors(validateAlertAiForm(nextValue, t));
+      setValidationErrors(validateAlertAiForm(updater(props.value), t));
     }
 
-    props.onChange(nextValue);
+    props.onChange(updater);
   };
 
   /** Prevents browser form submission and delegates valid add/edit submits to the OSS hook. */

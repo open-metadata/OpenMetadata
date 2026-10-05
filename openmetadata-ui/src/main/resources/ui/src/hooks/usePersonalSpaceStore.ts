@@ -16,11 +16,12 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { InboxDateRange } from '../interface/inbox.interface';
 
 /**
- * The Profile modal overlays the current AI page. This store tracks whether it's
- * open (opened from the user-name entry in the menu). No route change. (Triage /
- * My Data live on the routed /inbox page, not here.)
+ * The personal-space modal overlays the current AI page. This store tracks which
+ * panel it shows — Profile (the user-name entry in the menu) or My Data (its own
+ * menu item) — or none. No route change. (Activity and Triage live on the
+ * routed /inbox page, not here.)
  */
-export type PersonalSpacePanel = 'profile';
+export type PersonalSpacePanel = 'profile' | 'my-data';
 
 interface PersonalSpaceState {
   activePanel: PersonalSpacePanel | null;

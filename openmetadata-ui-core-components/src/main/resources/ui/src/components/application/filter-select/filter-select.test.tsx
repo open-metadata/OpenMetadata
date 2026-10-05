@@ -440,6 +440,34 @@ describe('FilterSelect', () => {
     expect(className).not.toContain('text-fg-brand');
   });
 
+  it('sizes the input trigger on the Select scale', () => {
+    const renderInput = (size?: 'sm' | 'md') => (
+      <FilterSelect
+        data-testid="input-trigger"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={[]}
+        size={size}
+        triggerVariant="input"
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(renderInput());
+
+    expect(screen.getByTestId('input-trigger')).toHaveClass(
+      'tw:px-3',
+      'tw:py-2'
+    );
+
+    rerender(renderInput('md'));
+
+    expect(screen.getByTestId('input-trigger')).toHaveClass(
+      'tw:px-3.5',
+      'tw:py-2.5'
+    );
+    expect(screen.getByTestId('input-trigger')).not.toHaveClass('tw:h-8');
+  });
+
   it('exposes the label-keyed trigger test id as well as the key-keyed one', () => {
     // The component this replaces put a second test id on an element inside
     // the trigger, keyed by visible label rather than by filter key. A dozen

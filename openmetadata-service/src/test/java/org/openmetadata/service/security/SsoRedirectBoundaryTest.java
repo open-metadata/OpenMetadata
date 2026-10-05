@@ -28,6 +28,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -107,6 +108,50 @@ class SsoRedirectBoundaryTest {
     assertPendingSessionUnchanged(store, pendingSession);
   }
 
+  /**
+   * Issue #26311: {@code oidcConfiguration.serverUrl} left at its localhost default while the
+   * deployment is served elsewhere. The configured callback URL has to be right for login to work
+   * at all, so its host anchors the landing page.
+   */
+  @Test
+  void oidcLoginLandsOnTheCallbackHostWhenServerUrlIsStale() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store, "http://localhost:8585"));
+
+    HttpResponse<String> response = login(baseUri, SERVER_URL + "/auth/callback", Map.of());
+
+    assertEquals(302, response.statusCode());
+    assertEquals(SERVER_URL + "/auth/callback", store.onlySession().getRedirectUri());
+  }
+
+  /** The landing page is trusted only on the configured host; a forged host header adds nothing. */
+  @Test
+  void oidcLoginRejectsALandingOnAForgedHost() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store));
+
+    HttpResponse<String> response =
+        login(
+            baseUri,
+            "https://evil.example.com/auth/callback",
+            Map.of("X-Forwarded-Proto", "https", "X-Forwarded-Host", "evil.example.com"));
+
+    assertRejected(response);
+    assertTrue(store.isEmpty());
+  }
+
+  /** #26311: with serverUrl stale, the signin fallback stays on the callback host. */
+  @Test
+  void oidcCallbackWithoutPendingSessionSendsSigninToTheCallbackHostWhenServerUrlIsStale()
+      throws Exception {
+    URI baseUri = startServer(newOidcHandler(new InMemorySessionStore(), "http://localhost:8585"));
+
+    HttpResponse<String> response =
+        get(baseUri.resolve("/callback?code=authorization-code&state=state-abc"), null);
+
+    assertEquals(SERVER_URL + "/signin", response.headers().firstValue("Location").orElseThrow());
+  }
+
   @Test
   void samlLoginRejectsUntrustedRedirectWithoutPersistingSession() throws Exception {
     InMemorySessionStore store = new InMemorySessionStore();
@@ -144,7 +189,13 @@ class SsoRedirectBoundaryTest {
   }
 
   private AuthenticationCodeFlowHandler newOidcHandler(InMemorySessionStore store) {
+    return newOidcHandler(store, SERVER_URL);
+  }
+
+  private AuthenticationCodeFlowHandler newOidcHandler(
+      InMemorySessionStore store, String serverUrl) {
     AuthenticationConfiguration authConfig = oidcAuthConfig(startOidcProvider());
+    authConfig.getOidcConfiguration().setServerUrl(serverUrl);
     return new AuthenticationCodeFlowHandler(
         authConfig, new AuthorizerConfiguration(), new SessionService(authConfig, store));
   }
@@ -236,11 +287,27 @@ class SsoRedirectBoundaryTest {
   }
 
   private HttpResponse<String> get(URI uri, String cookie) throws Exception {
+    return get(uri, cookie, Map.of());
+  }
+
+  private HttpResponse<String> get(URI uri, String cookie, Map<String, String> headers)
+      throws Exception {
     HttpRequest.Builder request = HttpRequest.newBuilder(uri).GET();
     if (cookie != null) {
       request.header("Cookie", cookie);
     }
+    headers.forEach(request::header);
     return httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> login(URI baseUri, String redirectUri, Map<String, String> headers)
+      throws Exception {
+    return get(
+        baseUri.resolve(
+            "/api/v1/auth/login?redirectUri="
+                + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)),
+        null,
+        headers);
   }
 
   private UserSession storeTamperedPendingSession(InMemorySessionStore store, String provider) {
@@ -338,6 +405,11 @@ class SsoRedirectBoundaryTest {
         }
       }
       return deleted;
+    }
+
+    private UserSession onlySession() {
+      assertEquals(1, sessions.size());
+      return sessions.values().iterator().next();
     }
 
     private boolean isEmpty() {
