@@ -17,7 +17,7 @@ import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.in
 export const LANDING_PAGE_DEFAULT_WIDGET_HEIGHT = 3;
 export const LANDING_PAGE_WIDGET_MARGIN = 16;
 export const LANDING_PAGE_ROW_HEIGHT = 133.33;
-export const LANDING_PAGE_MAX_GRID_SIZE = 3;
+export const LANDING_PAGE_MAX_GRID_SIZE = 2;
 
 export const LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS: Record<string, number> = {
   activityFeed: LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
@@ -89,15 +89,15 @@ export const DEFAULT_LANDING_PAGE_LAYOUT: WidgetConfig[] = [
     h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.activityFeed,
     i: LandingPageWidgetKeys.ACTIVITY_FEED,
     w: 1,
-    x: 2,
-    y: 0,
+    x: 0,
+    y: 1,
     static: false,
   },
   {
     h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.yoursAndFollowed,
     i: LandingPageWidgetKeys.YOURS_AND_FOLLOWED,
     w: 1,
-    x: 0,
+    x: 1,
     y: 1,
     static: false,
   },
@@ -105,16 +105,16 @@ export const DEFAULT_LANDING_PAGE_LAYOUT: WidgetConfig[] = [
     h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.knowledgeCenter,
     i: LandingPageWidgetKeys.KNOWLEDGE_CENTER,
     w: 1,
-    x: 1,
-    y: 1,
+    x: 0,
+    y: 2,
     static: false,
   },
   {
     h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.curatedAssets,
     i: LandingPageWidgetKeys.CURATED_ASSETS,
     w: 1,
-    x: 2,
-    y: 1,
+    x: 1,
+    y: 2,
     static: false,
   },
   {
@@ -122,7 +122,7 @@ export const DEFAULT_LANDING_PAGE_LAYOUT: WidgetConfig[] = [
     i: LandingPageWidgetKeys.DATA_QUALITY,
     w: 1,
     x: 0,
-    y: 2,
+    y: 3,
     static: false,
   },
   {
@@ -130,23 +130,23 @@ export const DEFAULT_LANDING_PAGE_LAYOUT: WidgetConfig[] = [
     i: LandingPageWidgetKeys.DOMAINS,
     w: 1,
     x: 1,
-    y: 2,
+    y: 3,
     static: false,
   },
   {
     h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.DataProducts,
     i: LandingPageWidgetKeys.DATA_PRODUCTS,
     w: 1,
-    x: 2,
-    y: 2,
+    x: 0,
+    y: 4,
     static: false,
   },
   {
     h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.kpi,
     i: LandingPageWidgetKeys.KPI,
     w: 1,
-    x: 0,
-    y: 3,
+    x: 1,
+    y: 4,
     static: false,
   },
 ];

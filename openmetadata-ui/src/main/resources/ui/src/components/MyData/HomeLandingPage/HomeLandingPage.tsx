@@ -30,7 +30,10 @@ import {
   PERSONA_DOC_STALE_TIME,
   personaDocFqn,
 } from '../../../rest/queries/docStoreQuery';
-import { getConstrainedWidgetWidth } from '../../../utils/CustomizableLandingPagePureUtils';
+import {
+  getConstrainedWidgetWidth,
+  reflowLayoutToGrid,
+} from '../../../utils/CustomizableLandingPagePureUtils';
 import customizeMyDataPageClassBase from '../../../utils/CustomizeMyDataPageClassBase';
 import { isKnownMyDataWidgetKey } from '../../../utils/CustomizeMyDataPageWidgetUtils';
 import { getPersonaPage } from '../../../utils/CustomizePage/PersonaPage.utils';
@@ -110,7 +113,13 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
 
     return isEmpty(filtered)
       ? customizeMyDataPageClassBase.defaultLayout
-      : filtered;
+      : // A layout saved against a wider grid keeps its `x`, so widgets beyond
+        // the current last column would be pushed onto rows of their own and
+        // strand the space they vacated.
+        reflowLayoutToGrid(
+          filtered,
+          customizeMyDataPageClassBase.landingPageMaxGridSize
+        );
   }, [docData]);
 
   const widgets = useMemo(

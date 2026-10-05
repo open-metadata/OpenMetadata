@@ -45,7 +45,6 @@ import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationB
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
-import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
@@ -241,14 +240,6 @@ function CustomizeMyData({
             without affecting the overall RTL layout of the page
           */}
           <div className="grid-wrapper" dir="ltr">
-            <CustomiseLandingPageHeader
-              overlappedContainer
-              addedWidgetsList={addedWidgetsList}
-              backgroundColor={backgroundColor}
-              dataTestId="customise-landing-page-header"
-              handleAddWidget={handleMainPanelAddWidget}
-              onBackgroundColorUpdate={handleBackgroundColorUpdate}
-            />
             {/* 
             ReactGridLayout with optimized drag and drop behavior
             - verticalCompact: Packs widgets tightly without gaps
