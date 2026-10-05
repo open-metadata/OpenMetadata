@@ -14,6 +14,7 @@ import {
   Alert,
   Box,
   Button,
+  Card,
   FeaturedIcon,
   FileUploadDropZone,
   ProgressBar,
@@ -99,14 +100,16 @@ const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
               }`}
               data-active={isActive}
               data-testid={`csv-workflow-step-${step.step}`}>
-              <span
-                className={`tw:inline-flex tw:size-4 tw:items-center tw:justify-center tw:rounded-full tw:text-[10px] tw:font-semibold ${circleClass}`}>
+              <Box
+                align="center"
+                className={`tw:size-4 tw:rounded-full tw:text-[10px] tw:font-semibold ${circleClass}`}
+                justify="center">
                 {isDone ? <Check size={10} strokeWidth={2.5} /> : index + 1}
-              </span>
+              </Box>
               <Typography as="span">{t(step.name)}</Typography>
             </Box>
             {index < ENTITY_IMPORT_STEPS.length - 1 && (
-              <span
+              <Box
                 aria-hidden
                 className={`tw:h-px tw:w-10 ${
                   isDone ? 'tw:bg-brand-solid' : 'tw:bg-border-secondary'
@@ -128,30 +131,29 @@ const SelectedFileCard: FC<{
   const { t } = useTranslation();
 
   return (
-    <Box
-      align="center"
-      className="tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-4 tw:text-left tw:shadow-xs"
+    <Card
+      className="tw:w-full tw:text-left"
       data-testid="selected-file-card"
-      gap={3}>
-      <FeaturedIcon color="brand" icon={File06} size="md" theme="light" />
-      <Box align="start" className="tw:min-w-0 tw:flex-1" direction="col">
-        <div>
+      variant="elevated">
+      <Box align="center" className="tw:p-4" gap={3}>
+        <FeaturedIcon color="brand" icon={File06} size="md" theme="light" />
+        <Box align="start" className="tw:min-w-0 tw:flex-1" direction="col">
           <Typography ellipsis={{ tooltip: file.name }} weight="semibold">
             {file.name}
           </Typography>
-        </div>
-        <Typography className="tw:text-tertiary tw:text-left" size="text-sm">
-          {`${file.sizeLabel} · ${rowCountLabel}`}
-        </Typography>
+          <Typography className="tw:text-tertiary tw:text-left" size="text-sm">
+            {`${file.sizeLabel} · ${rowCountLabel}`}
+          </Typography>
+        </Box>
+        <Button
+          aria-label={t('label.remove')}
+          color="tertiary"
+          data-testid="remove-file"
+          iconLeading={XClose}
+          onPress={onRemove}
+        />
       </Box>
-      <Button
-        aria-label={t('label.remove')}
-        color="tertiary"
-        data-testid="remove-file"
-        iconLeading={XClose}
-        onPress={onRemove}
-      />
-    </Box>
+    </Card>
   );
 };
 
@@ -163,7 +165,7 @@ const renderStageIcon = (state: StageState) => {
     return <RefreshCw01 className="tw:animate-spin" size={14} />;
   }
 
-  return <span className="tw:size-1.5 tw:rounded-full tw:bg-fg-quaternary" />;
+  return <Box className="tw:size-1.5 tw:rounded-full tw:bg-fg-quaternary" />;
 };
 
 const ProcessingStage: FC<{ label: string; state: StageState }> = ({
@@ -176,10 +178,12 @@ const ProcessingStage: FC<{ label: string; state: StageState }> = ({
       state === 'pending' ? 'tw:text-tertiary' : 'tw:text-secondary'
     }`}
     gap={3}>
-    <span
-      className={`tw:inline-flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full ${STAGE_ICON_CLASS[state]}`}>
+    <Box
+      align="center"
+      className={`tw:size-5 tw:shrink-0 tw:rounded-full ${STAGE_ICON_CLASS[state]}`}
+      justify="center">
       {renderStageIcon(state)}
-    </span>
+    </Box>
     <Typography as="span">{label}</Typography>
   </Box>
 );
@@ -191,48 +195,54 @@ const ProcessingBanner: FC<{
   progress: number;
   stages?: { key: string; label: string; state: StageState }[];
 }> = ({ title, fileName, rowCountLabel, progress, stages }) => (
-  <Box
-    align="center"
-    className="tw:mx-auto tw:w-full tw:max-w-[520px] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-10 tw:shadow-xs"
+  <Card
+    className="tw:mx-auto tw:w-full tw:max-w-[520px]"
     data-testid="import-processing"
-    direction="col"
-    gap={5}>
-    <span className="tw:inline-flex tw:size-16 tw:items-center tw:justify-center tw:rounded-full tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand">
-      <RefreshCw01 className="tw:animate-spin tw:size-7" />
-    </span>
-    <Box align="center" direction="col" gap={1}>
-      <Typography className="tw:text-primary" size="text-lg" weight="semibold">
-        {title}
-      </Typography>
+    variant="elevated">
+    <Box align="center" className="tw:p-10" direction="col" gap={5}>
       <Box
         align="center"
-        className="tw:text-tertiary tw:text-sm"
-        gap={2}
+        className="tw:size-16 tw:rounded-full tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand"
         justify="center">
-        <File06 className="tw:shrink-0" size={14} />
-        <Typography as="span" ellipsis={{ tooltip: fileName }}>
-          {fileName}
-        </Typography>
-        <Typography as="span" className="tw:shrink-0">
-          {rowCountLabel}
-        </Typography>
+        <RefreshCw01 className="tw:animate-spin tw:size-7" />
       </Box>
-    </Box>
-    <Box className="tw:w-full">
-      <ProgressBar value={progress} />
-    </Box>
-    {stages && (
-      <Box className="tw:w-full tw:gap-3.5" direction="col">
-        {stages.map((stage) => (
-          <ProcessingStage
-            key={stage.key}
-            label={stage.label}
-            state={stage.state}
-          />
-        ))}
+      <Box align="center" direction="col" gap={1}>
+        <Typography
+          className="tw:text-primary"
+          size="text-lg"
+          weight="semibold">
+          {title}
+        </Typography>
+        <Box
+          align="center"
+          className="tw:text-tertiary tw:text-sm"
+          gap={2}
+          justify="center">
+          <File06 className="tw:shrink-0" size={14} />
+          <Typography as="span" ellipsis={{ tooltip: fileName }}>
+            {fileName}
+          </Typography>
+          <Typography as="span" className="tw:shrink-0">
+            {rowCountLabel}
+          </Typography>
+        </Box>
       </Box>
-    )}
-  </Box>
+      <Box className="tw:w-full">
+        <ProgressBar value={progress} />
+      </Box>
+      {stages && (
+        <Box className="tw:w-full tw:gap-3.5" direction="col">
+          {stages.map((stage) => (
+            <ProcessingStage
+              key={stage.key}
+              label={stage.label}
+              state={stage.state}
+            />
+          ))}
+        </Box>
+      )}
+    </Box>
+  </Card>
 );
 
 const AbortCard: FC<{ reason?: string; onBack: () => void }> = ({
@@ -242,33 +252,33 @@ const AbortCard: FC<{ reason?: string; onBack: () => void }> = ({
   const { t } = useTranslation();
 
   return (
-    <Box
-      align="center"
-      className="tw:mx-auto tw:w-full tw:max-w-[520px] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-10 tw:shadow-xs"
+    <Card
+      className="tw:mx-auto tw:w-full tw:max-w-[520px]"
       data-testid="import-aborted"
-      direction="col"
-      gap={4}>
-      <FeaturedIcon
-        color="error"
-        icon={AlertTriangle}
-        size="lg"
-        theme="light"
-      />
-      <Box align="center" direction="col" gap={1}>
-        <Typography className="tw:text-primary" weight="semibold">
-          {t('label.aborted')}
-        </Typography>
-        <Typography
-          className="tw:w-full tw:text-tertiary tw:text-center tw:break-words"
-          data-testid="abort-reason"
-          size="text-sm">
-          {reason}
-        </Typography>
+      variant="elevated">
+      <Box align="center" className="tw:p-10" direction="col" gap={4}>
+        <FeaturedIcon
+          color="error"
+          icon={AlertTriangle}
+          size="lg"
+          theme="light"
+        />
+        <Box align="center" direction="col" gap={1}>
+          <Typography className="tw:text-primary" weight="semibold">
+            {t('label.aborted')}
+          </Typography>
+          <Typography
+            className="tw:w-full tw:text-tertiary tw:text-center tw:break-words"
+            data-testid="abort-reason"
+            size="text-sm">
+            {reason}
+          </Typography>
+        </Box>
+        <Button color="secondary" data-testid="abort-back" onPress={onBack}>
+          {t('label.back')}
+        </Button>
       </Box>
-      <Button color="secondary" data-testid="abort-back" onPress={onBack}>
-        {t('label.back')}
-      </Button>
-    </Box>
+    </Card>
   );
 };
 
