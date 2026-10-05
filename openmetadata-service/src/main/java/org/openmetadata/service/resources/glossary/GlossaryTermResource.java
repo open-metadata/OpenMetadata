@@ -93,6 +93,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -1017,7 +1018,11 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         permissionAssets(request.getAssets()),
         MetadataOperation.EDIT_GLOSSARY_TERMS);
-    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
+    return Response.ok()
+        .entity(
+            repository.bulkAddAndValidateGlossaryToAssets(
+                id, request, ChangeActor.fromRequest(securityContext)))
+        .build();
   }
 
   @PUT
@@ -1071,7 +1076,11 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         permissionAssets(request.getAssets()),
         MetadataOperation.EDIT_GLOSSARY_TERMS);
-    return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+    return Response.ok()
+        .entity(
+            repository.bulkRemoveGlossaryToAssets(
+                id, request, ChangeActor.fromRequest(securityContext)))
+        .build();
   }
 
   /**

@@ -97,6 +97,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PagePermissionsResolver;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
@@ -1123,6 +1124,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
     authorizeBulkAssetsPermission(
         securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
+    ChangeActor actor = ChangeActor.fromRequest(securityContext);
 
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
@@ -1133,7 +1135,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 () -> {
                   try {
                     BulkOperationResult result =
-                        repository.bulkAddAndValidateTagsToAssets(entityId, request);
+                        repository.bulkAddAndValidateTagsToAssets(entityId, request, actor);
                     WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
                         jobId, securityContext, result);
                   } catch (Exception e) {
@@ -1153,6 +1155,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
     authorizeBulkAssetsPermission(
         securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
+    ChangeActor actor = ChangeActor.fromRequest(securityContext);
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1162,7 +1165,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 () -> {
                   try {
                     BulkOperationResult result =
-                        repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
+                        repository.bulkRemoveAndValidateTagsToAssets(entityId, request, actor);
                     WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
                         jobId, securityContext, result);
                   } catch (Exception e) {
