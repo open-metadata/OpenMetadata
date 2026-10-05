@@ -118,7 +118,8 @@ downstream of the source column take 330 ms in memory, and 11 pages of 250 rows 
 (about 51 KB per page) through the MCP `sparql_query` tool against Fuseki.
 
 `om:hasChildColumn` is projected for nested table columns even though the ontology labels it
-`om:InferenceOnly`; the MCP description test lists it as a justified exception.
+`om:InferenceOnly`: a real `RdfIndexApp` run over a table with a struct column writes it, so queries
+need no inference. The MCP description test lists it as a justified exception.
 
 ## Custom extension values
 

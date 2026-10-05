@@ -55,6 +55,8 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
@@ -334,7 +336,7 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
     final DatabaseService service = DatabaseServiceTestFactory.createPostgres(namespace);
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
     final Table source = createTable(namespace, schema, "kgSource");
-    final Table target = createTable(namespace, schema, "kgTarget");
+    final Table target = createTable(namespace, schema, "kgTarget", nestedColumn());
     final String sourceColumn = source.getColumns().getFirst().getFullyQualifiedName();
     final String targetColumn = target.getColumns().getFirst().getFullyQualifiedName();
     addColumnLineage(client, source, target, sourceColumn, targetColumn);
@@ -345,6 +347,30 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
     final Paged paged = page(grantedToken, sourceColumn, DOWNSTREAM_PATH, "", PAGE_SIZE);
     assertThat(paged.columns()).containsExactly(targetColumn);
     assertThat(paged.assets()).containsExactly(BASE_URI + "entity/table/" + target.getId());
+    assertThat(childColumnsProjectedFor(target.getFullyQualifiedName() + ".payload"))
+        .containsExactly(target.getFullyQualifiedName() + ".payload.kind");
+  }
+
+  /** Reads the child columns the live projection holds for one parent column, through MCP. */
+  private static List<String> childColumnsProjectedFor(final String parentColumnFqn)
+      throws Exception {
+    final String query =
+        "PREFIX om: <"
+            + BASE_URI
+            + "ontology/> SELECT ?childFqn WHERE { "
+            + "?parent om:fullyQualifiedName \""
+            + parentColumnFqn
+            + "\" . "
+            + "?parent om:hasChildColumn ?child . ?child om:fullyQualifiedName ?childFqn } ORDER BY ?childFqn";
+    final ToolOutcome outcome = call(grantedToken, "sparql_query", Map.of("query", query));
+    assertThat(outcome.error()).as(outcome.payload().toString()).isFalse();
+    final List<String> children = new ArrayList<>();
+    OBJECT_MAPPER
+        .readTree(outcome.payload().path("body").asText())
+        .path("results")
+        .path("bindings")
+        .forEach(row -> children.add(row.path("childFqn").path("value").asText()));
+    return children;
   }
 
   private static void assertSparqlToolsAllowed(final String token) throws Exception {
@@ -500,12 +526,33 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
 
   private static Table createTable(
       final TestNamespace namespace, final DatabaseSchema schema, final String name) {
+    return createTable(namespace, schema, name, null);
+  }
+
+  private static Table createTable(
+      final TestNamespace namespace,
+      final DatabaseSchema schema,
+      final String name,
+      final Column extraColumn) {
+    final List<Column> columns = new ArrayList<>();
+    columns.add(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build());
+    if (extraColumn != null) {
+      columns.add(extraColumn);
+    }
     return Tables.create(
         new CreateTable()
             .withName(namespace.prefix(name))
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("RDF MCP knowledge graph integration fixture")
-            .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build())));
+            .withColumns(columns));
+  }
+
+  /** A struct column with one child, to see whether a real reindex projects {@code om:hasChildColumn}. */
+  private static Column nestedColumn() {
+    return new Column()
+        .withName("payload")
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(List.of(new Column().withName("kind").withDataType(ColumnDataType.STRING)));
   }
 
   private static void addColumnLineage(

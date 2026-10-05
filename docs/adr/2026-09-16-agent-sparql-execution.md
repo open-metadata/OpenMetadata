@@ -559,7 +559,9 @@ Local runs on 2026-10-01 against Postgres, Elasticsearch and the supported Fusek
   with no duplicates and no truncated page. Pages took 49 to 230 ms each and about 51 KB each. The
   asset-type filter drops the data model hop, and upstream paging matches its oracle.
 - **Real projection**: one lineage edge with `columnsLineage`, added through the API and projected by
-  a real `RdfIndexApp` run, is found by the same query and resolves to the target table.
+  a real `RdfIndexApp` run, is found by the same query and resolves to the target table. The target
+  table has a struct column, and the same run materializes its `om:hasChildColumn` link (readable
+  with no inference), although the ontology labels that predicate `InferenceOnly`.
 - **Existing endpoint**: `AgentSparqlResourceIT` passes 19 of 19 with the shared service factory.
 - **Without RDF** (`McpRdfNotEnabledIT`, default lane, 4 of 4): the withheld tools are not offered,
   a direct call is refused, and describing a resource answers "not enabled".

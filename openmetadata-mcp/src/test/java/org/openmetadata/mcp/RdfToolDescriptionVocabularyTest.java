@@ -66,8 +66,10 @@ class RdfToolDescriptionVocabularyTest {
       Map.of(
           "hasChildColumn",
           "Labeled InferenceOnly as 'not emitted', but RdfPropertyMapper.emitColumnChildren writes it"
-              + " for nested Table.columns (pinned by RdfColumnLineageTraversalTest). The label is"
-              + " stale; nested columns cannot be joined to their asset without it.");
+              + " for nested Table.columns: RdfColumnLineageTraversalTest pins it with the production"
+              + " writer and RdfMcpKnowledgeGraphIT finds it in the graph after a real RdfIndexApp run"
+              + " over a table with a struct column. The label is stale; nested columns cannot be"
+              + " joined to their asset without it.");
 
   private static Model ontology;
   private static Map<String, McpSchema.Tool> tools;
