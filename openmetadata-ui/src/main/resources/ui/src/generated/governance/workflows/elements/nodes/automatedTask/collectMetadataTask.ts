@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
  * Maintains an assigned metadata task while an entity field fails its check. Stage gates
  * decide whether a missing field blocks advancement.

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
  * Optional presentation metadata for guided lifecycle workflows. Executable nodes and edges
  * remain authoritative; editors must verify that the metadata compiles to the saved graph
