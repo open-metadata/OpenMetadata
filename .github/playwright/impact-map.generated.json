@@ -12174,26 +12174,10 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/shared/DiffView/DiffView.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/shared/DiffViewNew.tsx"
       ],
       "specs": [
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/shared/TagsDiffView.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
       ]
     },
     {
@@ -12289,14 +12273,6 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/EntityDiffUtils.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
       ]
     },
     {
