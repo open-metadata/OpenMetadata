@@ -60,7 +60,9 @@ class SampleDataStorageMigrationPathsTest {
    * Every path the removed property can occupy, per table. A connector reaches it either directly or
    * through one of three nesting properties — {@code metastoreConnection} (Hive), {@code connection}
    * (Superset, Airflow, Alation) or {@code databaseConnection} (SSIS, Wherescape) — and {@code
-   * entity_extension} holds a version snapshot of every one of them.
+   * entity_extension} holds a version snapshot of every one of them. It also holds the live profiler
+   * settings, which are written as the bare config under a {@code *.<field>} extension rather than
+   * nested in the entity, so there the property sits at the root — the {@link #HOLDER} entry.
    */
   private static final Map<String, Set<String>> PATHS_BY_TABLE =
       Map.of(
@@ -93,7 +95,8 @@ class SampleDataStorageMigrationPathsTest {
               path(REQUEST, "metastoreConnection"),
               path(REQUEST, "databaseConnection"),
               path("databaseProfilerConfig"),
-              path("databaseSchemaProfilerConfig")));
+              path("databaseSchemaProfilerConfig"),
+              HOLDER));
 
   private static final Path REPO_ROOT = repoRoot();
 

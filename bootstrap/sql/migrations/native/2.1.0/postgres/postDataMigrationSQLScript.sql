@@ -404,3 +404,14 @@ WHERE (extension LIKE 'databaseService.version.%'
     OR json::jsonb #> '{request,connection,config,databaseConnection,sampleDataStorageConfig}' IS NOT NULL
     OR json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig}' IS NOT NULL
     OR json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig}' IS NOT NULL);
+
+-- Profiler settings are not stored on the entity row. `addDatabaseProfilerConfig` writes
+-- the config straight to `entity_extension` under a fixed extension name, and the stored
+-- JSON is the config itself -- so the key sits at the root, not under
+-- `databaseProfilerConfig`, and the extension never matches a `*.version.%` prefix. The
+-- statement above reaches neither. These rows are the only copies that survive.
+UPDATE entity_extension
+SET json = json::jsonb #- '{sampleDataStorageConfig}'
+WHERE extension IN ('database.databaseProfilerConfig',
+                    'databaseSchema.databaseSchemaProfilerConfig')
+  AND json::jsonb #> '{sampleDataStorageConfig}' IS NOT NULL;
