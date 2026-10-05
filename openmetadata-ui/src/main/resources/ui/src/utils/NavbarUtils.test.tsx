@@ -213,7 +213,7 @@ describe('NavbarUtils test', () => {
     });
 
     it('should display the simplified version in version item label when provided', () => {
-      const helpDropdownItems = getHelpDropdownItems('1.5.2');
+      const helpDropdownItems = getHelpDropdownItems('1.5.202609250000');
 
       const versionItem = helpDropdownItems.find(
         (item) => item.key === HELP_ITEMS_ENUM.VERSION
@@ -224,7 +224,7 @@ describe('NavbarUtils test', () => {
       const versionLine = versionBlock.props.children[0];
 
       expect(versionLine.props.children).toContain('1.5');
-      expect(versionLine.props.children).not.toContain('1.5.2');
+      expect(versionLine.props.children).not.toContain('202609250000');
     });
 
     it('should render a released date line for a build-stamped version', () => {

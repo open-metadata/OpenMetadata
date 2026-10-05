@@ -158,7 +158,7 @@ describe('WhatsNewAlert', () => {
     const { getByText } = render(<WhatsNewAlert />);
 
     expect(getByText('Version')).toBeInTheDocument();
-    expect(getByText('1.2')).toBeInTheDocument();
+    expect(getByText('1.2.0')).toBeInTheDocument();
   });
 
   it('should display release notes link with correct href', () => {
