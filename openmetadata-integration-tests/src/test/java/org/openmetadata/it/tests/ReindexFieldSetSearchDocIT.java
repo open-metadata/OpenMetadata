@@ -39,7 +39,7 @@ import org.openmetadata.service.Entity;
 /**
  * Some indexed fields are loaded only when a read asks for them. A reindex, and the live paths that
  * re-read an entity with its index's field list, did not ask, so the search document lost usage
- * for pipelines, dashboards and ML models, and the users of a query.
+ * for pipelines, dashboards and ML models, and the users of a query (#34639).
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)

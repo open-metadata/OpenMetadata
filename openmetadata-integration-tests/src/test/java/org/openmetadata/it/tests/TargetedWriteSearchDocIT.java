@@ -46,8 +46,8 @@ import org.openmetadata.sdk.network.HttpMethod;
 /**
  * Votes, team membership changes and glossary term moves each change one aspect of an entity. They
  * used to re-index it from a partially loaded copy, blanking owners, domains, tags, tier and
- * certification in search until the next reindex. Each check waits for a marker of the write under
- * test, then asserts the relationship fields survived that same write.
+ * certification in search until the next reindex (#34639). Each check waits for a marker of the
+ * write under test, then asserts the relationship fields survived that same write.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)

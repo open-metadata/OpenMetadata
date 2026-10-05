@@ -37,8 +37,8 @@ import org.openmetadata.sdk.network.HttpMethod;
 /**
  * A PUT carries only what its sender owns, and a PATCH only what it changes. The entity those
  * updates indexed kept neither the tags a PUT merges in, nor followers and votes, nor what the
- * entity inherits, so search lost them on every such update. Each check waits for a marker of the
- * update, then asserts what survived that same write.
+ * entity inherits, so search lost them on every such update (#34639). Each check waits for a marker
+ * of the update, then asserts what survived that same write.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
