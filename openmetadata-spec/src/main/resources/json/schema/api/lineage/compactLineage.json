@@ -91,6 +91,11 @@
       "items": { "$ref": "#/definitions/edgeEndpoints" }
     },
     "oversizedEdgeCount": { "description": "How many edges were skipped because no response could hold them.", "type": "integer", "minimum": 0 },
+    "filteredEdges": {
+      "description": "Edges left out because the asset they lead to did not match the requested entity type or service filters.",
+      "type": "integer",
+      "minimum": 0
+    },
     "columnUnmappedEdges": {
       "description": "With a column requested: edges out of tables the column reaches that have no column mappings, left out because whether the column flows through them is unknown.",
       "type": "integer",

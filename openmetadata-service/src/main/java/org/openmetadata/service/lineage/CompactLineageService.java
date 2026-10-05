@@ -57,14 +57,18 @@ public class CompactLineageService {
         request.downstreamDepth(),
         column);
     VisibleGraph graph = visibleGraph(request, column, securityContext);
+    // Filter before paging, so offsets and totals count only the edges the caller asked for.
+    LineageEdgeFilter.Filtered wanted =
+        request
+            .edgeFilter()
+            .apply(
+                CompactLineageSlimmer.toSlim(
+                    graph.lineage(), request.edgeOptions(), graph.pipelineVisible()));
     CompactLineage page =
         LineageEdgePager.page(
-            CompactLineageSlimmer.toSlim(
-                graph.lineage(), request.edgeOptions(), graph.pipelineVisible()),
-            request.from(),
-            request.limit(),
-            request.maxResponseChars());
-    return page.withColumnUnmappedEdges(graph.columnUnmappedEdges())
+            wanted.slim(), request.from(), request.limit(), request.maxResponseChars());
+    return page.withFilteredEdges(request.edgeFilter().isActive() ? wanted.removedEdges() : null)
+        .withColumnUnmappedEdges(graph.columnUnmappedEdges())
         .withHiddenNodes(graph.filtered().hiddenNodes() + graph.domainHiddenNodes())
         .withHiddenNodesUnchecked(graph.filtered().hiddenUnchecked())
         .withUncheckedNodes(graph.filtered().uncheckedNodes());

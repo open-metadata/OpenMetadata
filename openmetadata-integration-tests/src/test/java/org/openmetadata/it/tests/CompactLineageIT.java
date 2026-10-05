@@ -14,19 +14,24 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.CompactLineage;
 import org.openmetadata.schema.api.lineage.CompactLineageEdge;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -146,6 +151,34 @@ public class CompactLineageIT {
     assertFalse(page.getEdgesTruncated());
   }
 
+  /** "Tables only" or "no dashboards": an edge is judged by the asset it leads to. */
+  @Test
+  void edgeFiltersKeepOnlyEdgesLeadingToTheWantedAssets() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("CompactLineageIT");
+    Table root = createTable(client, namespace, "compact_filter_root");
+    Table consumer = createTable(client, namespace, "compact_filter_table");
+    Dashboard dashboard = createDashboard(client, namespace, "compact_filter_dashboard");
+    addColumnLineage(client, root, "id", consumer, "id");
+    addLineage(client, root.getEntityReference(), dashboard.getEntityReference());
+
+    CompactLineage tablesOnly =
+        compactLineage(client, root, Map.of("upstreamDepth", "0", "entityTypes", "table"));
+    CompactLineage noDashboards =
+        compactLineage(
+            client, root, Map.of("upstreamDepth", "0", "excludeEntityTypes", "dashboard"));
+    CompactLineage dashboardService =
+        compactLineage(
+            client,
+            root,
+            Map.of("upstreamDepth", "0", "services", dashboard.getService().getName()));
+
+    assertEquals(List.of(consumer.getFullyQualifiedName()), toFqns(tablesOnly));
+    assertEquals(1, tablesOnly.getFilteredEdges(), "the dashboard edge is counted, not hidden");
+    assertEquals(List.of(consumer.getFullyQualifiedName()), toFqns(noDashboards));
+    assertEquals(List.of(dashboard.getFullyQualifiedName()), toFqns(dashboardService));
+  }
+
   private static CompactLineage compactLineage(
       OpenMetadataClient client, Table table, Map<String, String> query) {
     RequestOptions.Builder options = RequestOptions.builder();
@@ -200,6 +233,25 @@ public class CompactLineageIT {
                         .withFromEntity(from.getEntityReference())
                         .withToEntity(to.getEntityReference())
                         .withLineageDetails(details)));
+  }
+
+  private static Dashboard createDashboard(
+      OpenMetadataClient client, TestNamespace namespace, String name) {
+    DashboardService service = DashboardServiceTestFactory.createLooker(namespace);
+    return client
+        .dashboards()
+        .create(
+            new CreateDashboard()
+                .withName(namespace.prefix(name))
+                .withService(service.getFullyQualifiedName()));
+  }
+
+  private static void addLineage(
+      OpenMetadataClient client, EntityReference from, EntityReference to) {
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage().withEdge(new EntitiesEdge().withFromEntity(from).withToEntity(to)));
   }
 
   private static String columnFqn(Table table, String column) {

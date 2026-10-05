@@ -18,6 +18,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.CompactLineageRequest;
 import org.openmetadata.service.lineage.CompactLineageService;
+import org.openmetadata.service.lineage.LineageEdgeFilter;
 import org.openmetadata.service.lineage.LineageEdgePager;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -37,6 +38,9 @@ public class GetLineageTool implements McpTool {
   private static final String PARAM_INCLUDE_COLUMN_LINEAGE = "includeColumnLineage";
   private static final String PARAM_INCLUDE_SQL = "includeSql";
   private static final String PARAM_COLUMN = "column";
+  private static final String PARAM_ENTITY_TYPES = "entityTypes";
+  private static final String PARAM_EXCLUDE_ENTITY_TYPES = "excludeEntityTypes";
+  private static final String PARAM_SERVICES = "services";
   private static final String OVERSIZED_EDGES_KEY = "oversizedEdges";
   private static final String TRUNCATED_KEY = "truncated";
 
@@ -55,7 +59,8 @@ public class GetLineageTool implements McpTool {
     return toToolResponse(page);
   }
 
-  private static CompactLineageRequest toRequest(Map<String, Object> params) {
+  @VisibleForTesting
+  static CompactLineageRequest toRequest(Map<String, Object> params) {
     return new CompactLineageRequest(
         (String) params.get("entityType"),
         (String) params.get("fqn"),
@@ -66,7 +71,11 @@ public class GetLineageTool implements McpTool {
         McpParams.getBoolean(params, PARAM_INCLUDE_SQL, false),
         VectorPagingContract.cursorOffsetOrDefault(params, 0),
         Integer.MAX_VALUE,
-        McpResponseTrim.MAX_RESPONSE_CHARS);
+        McpResponseTrim.MAX_RESPONSE_CHARS,
+        LineageEdgeFilter.of(
+            McpParams.getStringList(params, PARAM_ENTITY_TYPES),
+            McpParams.getStringList(params, PARAM_EXCLUDE_ENTITY_TYPES),
+            McpParams.getStringList(params, PARAM_SERVICES)));
   }
 
   @VisibleForTesting
@@ -96,6 +105,14 @@ public class GetLineageTool implements McpTool {
     }
     if (page.getOversizedEdgeCount() != null) {
       annotateOversizedEdges(result, page);
+    }
+    if (page.getFilteredEdges() != null && page.getFilteredEdges() > 0) {
+      appendMessage(
+          result,
+          String.format(
+              "%d edge(s) lead to assets outside the requested entityTypes, excludeEntityTypes or"
+                  + " services and were left out.",
+              page.getFilteredEdges()));
     }
     if (page.getColumnUnmappedEdges() != null && page.getColumnUnmappedEdges() > 0) {
       appendMessage(result, unmappedEdgesNote(page.getColumnUnmappedEdges()));

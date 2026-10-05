@@ -646,6 +646,21 @@
             "type": "string",
             "description": "Opaque pagination token. When a response has 'hasMore', pass its 'nextCursor' here with the same other arguments to get the next page of edges. Omit for the first page."
           },
+          "entityTypes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Keep only edges leading to these entity types, judged by the asset each edge leads to (e.g. [\"table\"] for tables only)."
+          },
+          "excludeEntityTypes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Drop edges leading to these entity types (e.g. [\"dashboard\"])."
+          },
+          "services": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Keep only edges leading into assets of these services, by service name."
+          },
           "includeSql": {
             "type": "boolean",
             "default": false,

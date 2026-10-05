@@ -23,8 +23,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.lineage.CompactLineageRequest;
 import org.openmetadata.service.lineage.CompactLineageSlimmer;
 import org.openmetadata.service.lineage.CompactLineageSlimmer.EdgeOptions;
+import org.openmetadata.service.lineage.LineageEdgeFilter;
 
 /**
  * Unit tests for {@link GetLineageTool} slimming. These exercise the pure transform against
@@ -738,6 +740,32 @@ class GetLineageToolTest {
     assertTrue(
         ((String) response.get(McpResponseTrim.MESSAGE_KEY)).contains("edges 1-"),
         "a negative offset starts at edge 1, and the message must say so");
+  }
+
+  /** MCP clients send a one-element list either as a list or as a comma-separated string. */
+  @Test
+  void edgeFilterParamsReachTheServiceInEitherShape() {
+    CompactLineageRequest request =
+        GetLineageTool.toRequest(
+            Map.of(
+                "entityType", "table",
+                "fqn", "db.public.orders",
+                "entityTypes", List.of("table"),
+                "excludeEntityTypes", "dashboard, chart",
+                "services", List.of("snowflake_prod")));
+
+    assertEquals(
+        LineageEdgeFilter.of(
+            List.of("table"), List.of("dashboard", "chart"), List.of("snowflake_prod")),
+        request.edgeFilter());
+  }
+
+  @Test
+  void noFilterParamsMeanNoFilter() {
+    assertEquals(
+        LineageEdgeFilter.NONE,
+        GetLineageTool.toRequest(Map.of("entityType", "table", "fqn", "db.public.orders"))
+            .edgeFilter());
   }
 
   @Test

@@ -80,6 +80,7 @@ import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.lineage.CompactLineageRequest;
 import org.openmetadata.service.lineage.CompactLineageService;
+import org.openmetadata.service.lineage.LineageEdgeFilter;
 import org.openmetadata.service.lineage.LineageHydrator;
 import org.openmetadata.service.lineage.LineageSceneResolver;
 import org.openmetadata.service.resources.Collection;
@@ -340,7 +341,16 @@ public class LineageResource {
           @Min(1)
           @Max(1000)
           @QueryParam("limit")
-          int limit) {
+          int limit,
+      @Parameter(description = "Keep only edges leading to these entity types (e.g. table)")
+          @QueryParam("entityTypes")
+          List<String> entityTypes,
+      @Parameter(description = "Drop edges leading to these entity types (e.g. dashboard)")
+          @QueryParam("excludeEntityTypes")
+          List<String> excludeEntityTypes,
+      @Parameter(description = "Keep only edges leading into assets of these services")
+          @QueryParam("services")
+          List<String> services) {
     return compactLineageService.getLineage(
         new CompactLineageRequest(
             entity,
@@ -352,7 +362,8 @@ public class LineageResource {
             includeSql,
             from,
             limit,
-            COMPACT_LINEAGE_MAX_CHARS),
+            COMPACT_LINEAGE_MAX_CHARS,
+            LineageEdgeFilter.of(entityTypes, excludeEntityTypes, services)),
         securityContext);
   }
 
