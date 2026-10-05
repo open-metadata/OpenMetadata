@@ -80,6 +80,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -151,6 +152,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
+import org.openmetadata.service.jdbi3.CustomPropertyReferences;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -3701,13 +3703,14 @@ public class SearchRepository {
     List<String> ids = deletedIds.stream().map(UUID::toString).toList();
     List<String> holderIds = holders.stream().map(UUID::toString).toList();
     try {
+      List<String> targets = customPropertyReferenceTargets();
       List<List<String>> batches =
           holderIds.isEmpty()
               ? List.of(List.of())
               : Lists.partition(holderIds, MAX_HOLDER_IDS_PER_CLEANUP_REQUEST);
       for (int i = 0; i < batches.size(); i++) {
         // The reference match covers every holder at once, so only the first request carries it.
-        removeCustomPropertyReferences(ids, batches.get(i), i == 0);
+        removeCustomPropertyReferences(targets, ids, batches.get(i), i == 0);
       }
     } catch (IOException | RuntimeException e) {
       LOG.error("Failed to remove custom-property references to {} from search", ids, e);
@@ -3715,9 +3718,10 @@ public class SearchRepository {
   }
 
   private void removeCustomPropertyReferences(
-      List<String> ids, List<String> holderIds, boolean matchByReference) throws IOException {
+      List<String> targets, List<String> ids, List<String> holderIds, boolean matchByReference)
+      throws IOException {
     searchClient.updateChildrenByNestedField(
-        getWriteFanoutTargets(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+        targets,
         holderIds,
         matchByReference
             ? List.of("customPropertiesTyped", "columns.customPropertiesTyped")
@@ -3725,6 +3729,35 @@ public class SearchRepository {
         "refId",
         withUppercase(ids),
         new ImmutablePair<>(REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT, Map.of("ids", ids)));
+  }
+
+  /**
+   * The global alias, plus the indexes of entities that have custom properties but are not under
+   * it (e.g. user and team), each with its staged index.
+   */
+  private List<String> customPropertyReferenceTargets() {
+    Set<String> targets =
+        new LinkedHashSet<>(getWriteFanoutTargets(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)));
+    indexesOutsideGlobalAlias(entityIndexMap, SearchRepository::supportsCustomProperties)
+        .forEach(
+            mapping -> targets.addAll(getWriteFanoutTargets(mapping.getIndexName(clusterAlias))));
+    return List.copyOf(targets);
+  }
+
+  static List<IndexMapping> indexesOutsideGlobalAlias(
+      Map<String, IndexMapping> indexes, Predicate<String> entityTypeFilter) {
+    return indexes.entrySet().stream()
+        .filter(e -> !listOrEmpty(e.getValue().getParentAliases()).contains(GLOBAL_SEARCH_ALIAS))
+        .filter(e -> entityTypeFilter.test(e.getKey()))
+        .map(Map.Entry::getValue)
+        .toList();
+  }
+
+  private static boolean supportsCustomProperties(String entityType) {
+    return CustomPropertyReferences.hasEntityTable(entityType)
+        && Entity.getEntityRepository(entityType)
+            .getAllowedFieldsCopy()
+            .contains(Entity.FIELD_EXTENSION);
   }
 
   /** Documents written before 2.1 may hold a reference id as the client sent it. */
