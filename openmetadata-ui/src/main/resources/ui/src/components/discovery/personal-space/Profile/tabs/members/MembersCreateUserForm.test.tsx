@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createUser } from '../../../../../../rest/userAPI';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import MembersCreateUserForm from './MembersCreateUserForm';
 
 jest.mock('react-i18next', () => ({
@@ -44,7 +45,7 @@ jest.mock('../../../../../../rest/rolesAPIV1', () => ({
   searchRoles: jest.fn().mockResolvedValue([]),
 }));
 jest.mock('../../../../../../rest/teamsAPI', () => ({
-  getTeams: jest.fn().mockResolvedValue({ data: [] }),
+  getTeamsHierarchy: jest.fn().mockResolvedValue({ data: [] }),
 }));
 jest.mock('../../../../../../rest/userAPI', () => ({
   createUser: jest.fn().mockResolvedValue({}),
@@ -103,5 +104,60 @@ describe('MembersCreateUserForm', () => {
     await screen.findByTestId('create-user-container');
 
     await waitFor(() => expect(createUser).not.toHaveBeenCalled());
+  });
+
+  it('submits the create-user payload derived from the email', async () => {
+    (createUser as jest.Mock).mockResolvedValueOnce({ id: '1' });
+    const onNavigate = jest.fn();
+    render(<MembersCreateUserForm onNavigate={onNavigate} />);
+
+    const emailInput = (await screen.findByTestId('email')).querySelector(
+      'input'
+    ) as HTMLInputElement;
+    fireEvent.change(emailInput, { target: { value: 'john@example.com' } });
+    fireEvent.click(screen.getByTestId('save-user'));
+
+    await waitFor(() => expect(createUser).toHaveBeenCalled());
+
+    expect((createUser as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        email: 'john@example.com',
+        name: 'john',
+        isBot: false,
+        isAdmin: false,
+      })
+    );
+  });
+
+  it('sets isAdmin on the payload when creating an admin', async () => {
+    (createUser as jest.Mock).mockResolvedValueOnce({ id: '2' });
+    render(<MembersCreateUserForm isAdmin onNavigate={jest.fn()} />);
+
+    const emailInput = (await screen.findByTestId('email')).querySelector(
+      'input'
+    ) as HTMLInputElement;
+    fireEvent.change(emailInput, { target: { value: 'boss@example.com' } });
+    fireEvent.click(screen.getByTestId('save-user'));
+
+    await waitFor(() => expect(createUser).toHaveBeenCalled());
+
+    expect((createUser as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ email: 'boss@example.com', isAdmin: true })
+    );
+  });
+
+  it('surfaces an error toast when creation fails (duplicate email)', async () => {
+    (createUser as jest.Mock).mockRejectedValueOnce({
+      response: { status: 409 },
+    });
+    render(<MembersCreateUserForm onNavigate={jest.fn()} />);
+
+    const emailInput = (await screen.findByTestId('email')).querySelector(
+      'input'
+    ) as HTMLInputElement;
+    fireEvent.change(emailInput, { target: { value: 'dup@example.com' } });
+    fireEvent.click(screen.getByTestId('save-user'));
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
   });
 });

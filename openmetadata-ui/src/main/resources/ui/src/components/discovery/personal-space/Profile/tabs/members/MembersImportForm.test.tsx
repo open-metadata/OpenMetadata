@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { SOCKET_EVENTS } from '../../../../../../constants/constants';
+import { importTeam, importUserInTeam } from '../../../../../../rest/teamsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 
 jest.mock('react-i18next', () => ({
@@ -200,5 +201,115 @@ describe('MembersImportForm', () => {
 
     expect(screen.getByTestId('import-result-table')).toBeInTheDocument();
     expect(screen.queryByTestId('import-success')).not.toBeInTheDocument();
+  });
+
+  it('previews with dryRun=true and runs the real import with dryRun=false', async () => {
+    render(
+      <MembersImportForm
+        fqn="Organization"
+        importType="teams"
+        onClose={jest.fn()}
+      />
+    );
+
+    await selectFileAndStartPreview();
+
+    expect(importTeam).toHaveBeenLastCalledWith(
+      'Organization',
+      expect.any(String),
+      true
+    );
+
+    emitCsvImportChannel({
+      jobId: 'job-1',
+      status: 'COMPLETED',
+      result: {
+        status: 'success',
+        numberOfRowsPassed: 1,
+        numberOfRowsProcessed: 1,
+        numberOfRowsFailed: 0,
+      },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-import'));
+    });
+
+    expect(importTeam).toHaveBeenLastCalledWith(
+      'Organization',
+      expect.any(String),
+      false
+    );
+  });
+
+  it('uses importUserInTeam for the users import type', async () => {
+    render(
+      <MembersImportForm
+        fqn="Engineering"
+        importType="users"
+        onClose={jest.fn()}
+      />
+    );
+
+    await selectFileAndStartPreview();
+
+    expect(importUserInTeam).toHaveBeenCalledWith(
+      'Engineering',
+      expect.any(String),
+      true
+    );
+    expect(importTeam).not.toHaveBeenCalled();
+  });
+
+  it('ignores a websocket response for a different jobId', async () => {
+    render(
+      <MembersImportForm
+        fqn="Organization"
+        importType="teams"
+        onClose={jest.fn()}
+      />
+    );
+
+    await selectFileAndStartPreview();
+
+    emitCsvImportChannel({
+      jobId: 'some-other-job',
+      status: 'COMPLETED',
+      result: {
+        status: 'success',
+        numberOfRowsPassed: 1,
+        numberOfRowsProcessed: 1,
+        numberOfRowsFailed: 0,
+      },
+    });
+
+    // Stale event is dropped — still on the upload step, no result rendered.
+    expect(screen.getByTestId('active-step')).toHaveTextContent('0');
+    expect(screen.queryByTestId('import-result-table')).not.toBeInTheDocument();
+  });
+
+  it('keeps the upload step on an aborted dry-run so the user can retry', async () => {
+    render(
+      <MembersImportForm
+        fqn="Organization"
+        importType="teams"
+        onClose={jest.fn()}
+      />
+    );
+
+    await selectFileAndStartPreview();
+
+    emitCsvImportChannel({
+      jobId: 'job-1',
+      status: 'COMPLETED',
+      result: {
+        status: 'aborted',
+        numberOfRowsPassed: 0,
+        numberOfRowsProcessed: 0,
+        numberOfRowsFailed: 0,
+      },
+    });
+
+    expect(screen.getByTestId('active-step')).toHaveTextContent('0');
   });
 });
