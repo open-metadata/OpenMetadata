@@ -125,10 +125,10 @@ const chooseSelectOption = async (
   optionName: string
 ): Promise<void> => {
   // The wrapper div contains a react-aria <button aria-haspopup="listbox">.
-  await page.getByTestId(wrapperTestId).getByRole('button').click();
-  const option = page.getByRole('option', { exact: true, name: optionName });
-  await expect(option).toBeVisible();
-  await option.click();
+  await selectOptionWithRetry(
+    page.getByTestId(wrapperTestId).getByRole('button'),
+    page.getByRole('option', { exact: true, name: optionName })
+  );
 };
 
 /**

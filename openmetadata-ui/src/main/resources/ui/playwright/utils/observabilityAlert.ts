@@ -84,7 +84,13 @@ export const visitObservabilityAlertPage = async (page: Page) => {
       await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
     }
 
-    await page.waitForURL('**/observability/alerts', { timeout: 10_000 });
+    // `commit`, not the default `load`: the route change is client-side, and
+    // `load` also waits on third-party subresources (the scarf.sh pixel in
+    // index.html) that can hang in CI after the page has fully rendered.
+    await page.waitForURL('**/observability/alerts', {
+      timeout: 10_000,
+      waitUntil: 'commit',
+    });
   }).toPass({ timeout: 30_000, intervals: [1_000, 2_000] });
 
   await getAlerts;

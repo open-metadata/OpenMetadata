@@ -92,6 +92,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
+import { expectBreadcrumbToContainAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin } from '../../utils/user';
@@ -334,6 +335,40 @@ test.describe('Domains', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await addAssetsToDomain(page, domain, assets);
+    });
+
+    await test.step('Opening an asset from its card shows the full breadcrumb', async () => {
+      // Regression: navigating via the asset card used to pass a truncated
+      // breadcrumb in route state, so the asset page dropped the schema and
+      // the asset name (only service / database showed). The crumb must match
+      // a direct visit: service > database > schema > table.
+      const table = assets[0] as TableClass;
+      const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
+      // The breadcrumb current crumb renders the entity name, not displayName.
+      const tableName = table.entityResponseData.name ?? '';
+
+      const tableRes = page.waitForResponse(
+        `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
+      );
+      await page
+        .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+        .getByTestId('entity-link')
+        .click();
+      await tableRes;
+      await waitForAllLoadersToDisappear(page);
+
+      // The trail auto-collapses: the schema ancestor sits in the overflow
+      // menu while the current crumb (aria-current) stays inline. Both were
+      // dropped before the fix.
+      await expectBreadcrumbToContainAncestor(page, table.schema.name);
+      await expect(
+        page.getByTestId('breadcrumb').locator('[aria-current="page"]')
+      ).toContainText(tableName);
+
+      // Return to the domain page so the next step can create data products.
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
     });
 
     await test.step('Create DataProducts', async () => {
@@ -1559,8 +1594,7 @@ test.describe('Domains', () => {
           title: 'Domain Announcement Test',
           description: 'Domain Announcement Description',
         },
-        false,
-        'announcement-card'
+        false
       );
 
       await editAnnouncement(page, {
@@ -1598,8 +1632,7 @@ test.describe('Domains', () => {
           title: 'Data Product Announcement Test',
           description: 'Data Product Announcement Description',
         },
-        false,
-        'announcement-card'
+        false
       );
 
       await editAnnouncement(page, {
