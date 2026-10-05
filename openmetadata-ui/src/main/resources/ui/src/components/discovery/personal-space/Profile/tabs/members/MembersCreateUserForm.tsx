@@ -401,6 +401,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                   <Box direction="col" gap={3}>
                     <RadioGroup
                       aria-label={t('label.password')}
+                      className="tw:flex-row tw:items-center tw:gap-6"
                       orientation="horizontal"
                       value={field.value}
                       onChange={field.onChange}>
@@ -428,46 +429,53 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                             type: t('label.generate'),
                           })}
                         />
-                        <Box align="center" direction="row" gap={2}>
-                          <Input
-                            isReadOnly
-                            data-testid="generated-password"
-                            type={showGeneratedPassword ? 'text' : 'password'}
-                            value={generatedPassword}
-                            wrapperClassName="tw:flex-1"
-                          />
-                          <ButtonUtility
-                            color="tertiary"
-                            data-testid="toggle-password-visibility"
-                            icon={showGeneratedPassword ? EyeOff : Eye}
-                            size="sm"
-                            tooltip={String(
-                              showGeneratedPassword
-                                ? t('label.hide')
-                                : t('label.show')
-                            )}
-                            onClick={() =>
-                              setShowGeneratedPassword((prev) => !prev)
-                            }
-                          />
-                          <ButtonUtility
-                            color="tertiary"
-                            data-testid="password-generator"
-                            icon={RefreshCw01}
-                            isDisabled={isPasswordGenerating}
-                            size="sm"
-                            tooltip={String(t('label.regenerate'))}
-                            onClick={generateRandomPassword}
-                          />
-                          <ButtonUtility
-                            color="tertiary"
-                            data-testid="copy-password"
-                            icon={Copy01}
-                            size="sm"
-                            tooltip={String(t('label.copy'))}
-                            onClick={handleCopyPassword}
-                          />
-                        </Box>
+                        <Input
+                          isReadOnly
+                          data-testid="generated-password"
+                          trailingSlot={
+                            <Box
+                              align="stretch"
+                              className="tw:self-stretch tw:border-l tw:border-primary"
+                              direction="row">
+                              <ButtonUtility
+                                className="tw:h-full tw:rounded-none tw:hover:bg-transparent"
+                                color="tertiary"
+                                data-testid="toggle-password-visibility"
+                                icon={showGeneratedPassword ? EyeOff : Eye}
+                                size="sm"
+                                tooltip={String(
+                                  showGeneratedPassword
+                                    ? t('label.hide')
+                                    : t('label.show')
+                                )}
+                                onClick={() =>
+                                  setShowGeneratedPassword((prev) => !prev)
+                                }
+                              />
+                              <ButtonUtility
+                                className="tw:h-full tw:rounded-none tw:border-l tw:border-primary tw:hover:bg-transparent"
+                                color="tertiary"
+                                data-testid="password-generator"
+                                icon={RefreshCw01}
+                                isDisabled={isPasswordGenerating}
+                                size="sm"
+                                tooltip={String(t('label.regenerate'))}
+                                onClick={generateRandomPassword}
+                              />
+                              <ButtonUtility
+                                className="tw:h-full tw:rounded-none tw:border-l tw:border-primary tw:hover:bg-transparent"
+                                color="tertiary"
+                                data-testid="copy-password"
+                                icon={Copy01}
+                                size="sm"
+                                tooltip={String(t('label.copy'))}
+                                onClick={handleCopyPassword}
+                              />
+                            </Box>
+                          }
+                          type={showGeneratedPassword ? 'text' : 'password'}
+                          value={generatedPassword}
+                        />
                       </Box>
                     )}
                   </Box>

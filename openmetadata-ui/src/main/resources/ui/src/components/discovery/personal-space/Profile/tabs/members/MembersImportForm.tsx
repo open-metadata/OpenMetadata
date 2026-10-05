@@ -88,7 +88,7 @@ const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
         const circleClass =
           isActive || isDone
             ? 'tw:bg-brand-solid tw:text-primary_on-brand'
-            : 'tw:bg-tertiary tw:text-primary';
+            : 'tw:bg-tertiary tw:text-utility-gray-700';
 
         return (
           <Fragment key={step.step}>
