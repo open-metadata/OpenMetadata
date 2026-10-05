@@ -12,6 +12,7 @@
  */
 
 import { Box, SelectItemType, Tabs } from '@openmetadata/ui-core-components';
+import { Reorder } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -21,7 +22,6 @@ import type { Key } from 'react-aria-components';
 import { useDragAndDrop } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ReorderIcon } from '../../../../../../assets/svg/reorder.svg';
 import { ROUTES } from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -768,7 +768,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   const childTeamExpandable = useMemo<ExpandableConfig<Team>>(
     () => ({
-      ...getTableExpandableConfig<Team>(true, undefined, ReorderIcon),
+      ...getTableExpandableConfig<Team>(true, undefined, Reorder),
       onExpand: (isOpen, record) => {
         if (isOpen) {
           void handleTeamExpand(record);

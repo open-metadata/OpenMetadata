@@ -285,6 +285,7 @@ export { RefreshCcw01 } from './RefreshCcw01';
 export { RefreshCcw02 } from './RefreshCcw02';
 export { RefreshCw01 } from './RefreshCw01';
 export { RefreshCw04 } from './RefreshCw04';
+export { Reorder } from './Reorder';
 export { RequestUpdateDescription } from './RequestUpdateDescription';
 export { RequestedBy } from './RequestedBy';
 export { RequestedOn } from './RequestedOn';
