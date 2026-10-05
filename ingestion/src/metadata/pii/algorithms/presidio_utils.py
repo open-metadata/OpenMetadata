@@ -41,6 +41,7 @@ from presidio_analyzer.predefined_recognizers import (
     DateRecognizer,
     InAadhaarRecognizer,
     NhsRecognizer,
+    PhoneRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
 )
@@ -199,6 +200,7 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
         regex_flags: int | None = None,
     ) -> list[RecognizerResult]:
         results: list[RecognizerResult] = []
+        phone_recognizer: PhoneRecognizer | None = None
         for match in re.finditer(r"\d[\d -]*\d|\d", text):
             start, end = match.span()
             preceding = start - 1
@@ -233,13 +235,24 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
                 normalized = self.sanitize_value(original, self.replacement_pairs)
                 if not _has_card_shape(original) or not 12 <= len(normalized) <= 19:
                     continue
-                validated = False
-                for result in super().analyze(normalized, entities, nlp_artifacts, regex_flags):
-                    if result.start == 0 and result.end == len(normalized):
-                        result.start, result.end = candidate_start, candidate_end
-                        results.append(result)
-                        validated = True
-                if validated and candidate_start == start and candidate_end == end:
+                card_results = [
+                    result
+                    for result in super().analyze(normalized, entities, nlp_artifacts, regex_flags)
+                    if result.start == 0 and result.end == len(normalized)
+                ]
+                if not card_results:
+                    continue
+                if phone_recognizer is None:
+                    phone_recognizer = PhoneRecognizer(supported_language=self.supported_language)
+                if any(
+                    phone.start == 0 and phone.end == len(original)
+                    for phone in phone_recognizer.analyze(original, ["PHONE_NUMBER"])
+                ):
+                    continue
+                for result in card_results:
+                    result.start, result.end = candidate_start, candidate_end
+                    results.append(result)
+                if candidate_start == start and candidate_end == end:
                     break
         return results
 

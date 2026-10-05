@@ -275,6 +275,7 @@ def test_full_shipped_recognizer_interactions(value, expected_entities, expected
     [
         ("phone", "+49 1512 3456787", None, None, ["PII.NonSensitive"]),
         ("notes", "Call me on +49 1512 3456787 tomorrow", None, None, []),
+        ("phone", "4991123456788", None, None, ["PII.NonSensitive"]),
         ("notes", "Scores 41 12 34 56 78 90 12 38 final", None, None, []),
         ("description", "Batch 5 312 34567 8901233 done", None, None, []),
         ("description", "Card 4111111111111111 2025", "4111111111111111", None, ["PII.Sensitive"]),
