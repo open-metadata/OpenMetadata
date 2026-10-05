@@ -324,22 +324,6 @@ public class BulkOverrideMetadataIT {
     assertEquals(List.of(tag.getTagFQN()), tagFqns(getTable(fqn).getTags()));
   }
 
-  // ===================================================================
-  // HELPERS
-  // ===================================================================
-
-  private AssetCertification goldCertification() {
-    long now = System.currentTimeMillis();
-    return new AssetCertification()
-        .withTagLabel(
-            new TagLabel()
-                .withTagFQN(CERTIFICATION_GOLD)
-                .withSource(TagLabel.TagSource.CLASSIFICATION)
-                .withLabelType(TagLabel.LabelType.MANUAL))
-        .withAppliedDate(now)
-        .withExpiryDate(now + 30L * 24 * 60 * 60 * 1000);
-  }
-
   @Test
   void test_botPutWithoutConstraintsKeepsThem_withoutOverride(TestNamespace ns) throws Exception {
     assertConstraintsSurviveBotPutWithoutThem(ns, "ovr_cons_off", false);
@@ -370,6 +354,22 @@ public class BulkOverrideMetadataIT {
     assertTrue(
         constraints == null || constraints.isEmpty(),
         "a constraint on a column the source dropped must still be removed: " + constraints);
+  }
+
+  // ===================================================================
+  // HELPERS
+  // ===================================================================
+
+  private AssetCertification goldCertification() {
+    long now = System.currentTimeMillis();
+    return new AssetCertification()
+        .withTagLabel(
+            new TagLabel()
+                .withTagFQN(CERTIFICATION_GOLD)
+                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                .withLabelType(TagLabel.LabelType.MANUAL))
+        .withAppliedDate(now)
+        .withExpiryDate(now + 30L * 24 * 60 * 60 * 1000);
   }
 
   private void assertConstraintsSurviveBotPutWithoutThem(
