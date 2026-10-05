@@ -273,89 +273,72 @@ test.describe('AI Profile Team Detail', () => {
     await deletedFetch;
   });
 
-  test('Should add and remove a role on the team', async ({
-    browser,
-    page,
-  }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    const team = await makeTeam(apiContext);
-    await openCreatedTeam(page, team);
-    await openTeamTab(page, /Roles/);
+  // Role and policy add/remove differ only by tab, testids, list endpoint and the
+  // entity name — parameterize so the flow lives once.
+  const addRemoveCases = [
+    {
+      label: 'role',
+      tab: /Roles/,
+      listUrl: '/api/v1/roles',
+      addTestId: 'add-role',
+      selectTestId: 'add-role-select',
+      tableTestId: 'team-roles-table',
+      getName: () => role.responseData.displayName,
+    },
+    {
+      label: 'policy',
+      tab: /Policies/,
+      listUrl: '/api/v1/policies',
+      addTestId: 'add-policy',
+      selectTestId: 'add-policy-select',
+      tableTestId: 'team-policies-table',
+      getName: () => policy.responseData.displayName,
+    },
+  ];
 
-    const roleName = role.responseData.displayName;
-    const rolesList = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/roles')
-    );
-    await page.getByTestId('add-role').click();
-    await rolesList;
+  for (const entityCase of addRemoveCases) {
+    test(`Should add and remove a ${entityCase.label} on the team`, async ({
+      browser,
+      page,
+    }) => {
+      const { apiContext } = await performAdminLogin(browser);
+      const team = await makeTeam(apiContext);
+      await openCreatedTeam(page, team);
+      await openTeamTab(page, entityCase.tab);
 
-    await page
-      .getByTestId('add-role-select')
-      .getByRole('combobox')
-      .fill(roleName);
-    await page.getByRole('option', { name: roleName }).click();
-    // Close the autocomplete dropdown so it doesn't intercept the Save click.
-    await page.keyboard.press('Escape');
+      const name = entityCase.getName();
+      const optionsList = page.waitForResponse((response) =>
+        response.url().includes(entityCase.listUrl)
+      );
+      await page.getByTestId(entityCase.addTestId).click();
+      await optionsList;
 
-    const addPatch = waitForTeamPatch(page, team.responseData.id ?? '');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await addPatch;
+      await page
+        .getByTestId(entityCase.selectTestId)
+        .getByRole('combobox')
+        .fill(name);
+      await page.getByRole('option', { name }).click();
+      // Close the autocomplete dropdown so it doesn't intercept the Save click.
+      await page.keyboard.press('Escape');
 
-    const roleButton = page
-      .getByTestId('team-roles-table')
-      .getByRole('button', { name: roleName });
-    await expect(roleButton).toBeVisible();
+      const addPatch = waitForTeamPatch(page, team.responseData.id ?? '');
+      await page.getByRole('button', { name: 'Save' }).click();
+      await addPatch;
 
-    const removePatch = waitForTeamPatch(page, team.responseData.id ?? '');
-    await page.getByTestId(`remove-${roleName}`).click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('confirm-button').click();
-    await removePatch;
+      const entityButton = page
+        .getByTestId(entityCase.tableTestId)
+        .getByRole('button', { name });
+      await expect(entityButton).toBeVisible();
 
-    await expect(roleButton).toBeHidden();
-  });
+      const removePatch = waitForTeamPatch(page, team.responseData.id ?? '');
+      await page.getByTestId(`remove-${name}`).click();
+      await page.getByTestId('delete-modal').waitFor();
+      await page.getByTestId('confirm-button').click();
+      await removePatch;
 
-  test('Should add and remove a policy on the team', async ({
-    browser,
-    page,
-  }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    const team = await makeTeam(apiContext);
-    await openCreatedTeam(page, team);
-    await openTeamTab(page, /Policies/);
-
-    const policyName = policy.responseData.displayName;
-    const policiesList = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/policies')
-    );
-    await page.getByTestId('add-policy').click();
-    await policiesList;
-
-    await page
-      .getByTestId('add-policy-select')
-      .getByRole('combobox')
-      .fill(policyName);
-    await page.getByRole('option', { name: policyName }).click();
-    // Close the autocomplete dropdown so it doesn't intercept the Save click.
-    await page.keyboard.press('Escape');
-
-    const addPatch = waitForTeamPatch(page, team.responseData.id ?? '');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await addPatch;
-
-    const policyButton = page
-      .getByTestId('team-policies-table')
-      .getByRole('button', { name: policyName });
-    await expect(policyButton).toBeVisible();
-
-    const removePatch = waitForTeamPatch(page, team.responseData.id ?? '');
-    await page.getByTestId(`remove-${policyName}`).click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('confirm-button').click();
-    await removePatch;
-
-    await expect(policyButton).toBeHidden();
-  });
+      await expect(entityButton).toBeHidden();
+    });
+  }
 
   test('Should navigate to a child team and back via breadcrumb', async ({
     browser,

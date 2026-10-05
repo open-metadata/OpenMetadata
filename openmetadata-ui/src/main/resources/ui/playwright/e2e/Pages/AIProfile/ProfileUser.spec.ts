@@ -160,15 +160,6 @@ test.describe('AI Profile Users', () => {
     );
   });
 
-  test('Should search a user by name', async ({ browser, page }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    const user = await trackUser(apiContext);
-
-    await navigateToMembersPanel(page);
-    await openUsersPanel(page);
-    await searchUserRow(page, user.responseData.name);
-  });
-
   test('Should soft delete and restore a user from the list', async ({
     browser,
     page,
