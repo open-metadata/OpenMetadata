@@ -79,6 +79,8 @@ class DatasetQuery(BaseModel):
         """
         Breaking change in metabase 0.57.0
         https://www.metabase.com/docs/latest/developers-guide/api-changelog#metabase-0570
+        Also handles MBQL query-builder format (lib/type: "mbql/query") introduced in newer
+        Metabase versions, where `type` is absent and `lib/type` carries the query kind.
         """
         if not isinstance(data, dict):
             return data
@@ -95,6 +97,9 @@ class DatasetQuery(BaseModel):
                     data["native"] = {"query": stage["native"]}
                     data["type"] = "native"
                     break
+        # Normalize lib/type → type for visual query-builder questions when type is absent.
+        if data.get("type") is None and data.get("lib/type") == "mbql/query":
+            data["type"] = "query"
         return data
 
 

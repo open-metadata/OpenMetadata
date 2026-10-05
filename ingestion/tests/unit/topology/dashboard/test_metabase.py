@@ -568,6 +568,41 @@ class MetabaseUnitTest(TestCase):
         self.assertIsNotNone(chart_with_empty_stages.dataset_query)
         self.assertIsNone(chart_with_empty_stages.dataset_query.native)
 
+        # Test 9: MBQL query-builder format (Metabase ≥0.57) — lib/type carries kind,
+        # no `type` field present. Should be normalised to type="query" so that
+        # yield_dashboard_lineage_details can route it to _yield_lineage_from_api.
+        chart_mbql_qb = MetabaseChart(
+            name="test_chart_mbql_qb",
+            id="108",
+            table_id="111",
+            dataset_query={
+                "lib/type": "mbql/query",
+                "database": 2,
+                "stages": [
+                    {
+                        "lib/type": "mbql.stage/mbql",
+                        "source-table": 111,
+                    }
+                ],
+            },
+        )
+        self.assertIsNotNone(chart_mbql_qb.dataset_query)
+        self.assertEqual(chart_mbql_qb.dataset_query.type, "query")
+        self.assertIsNone(chart_mbql_qb.dataset_query.native)
+
+        # Test 10: MBQL format without stages — bare lib/type only.
+        chart_mbql_no_stages = MetabaseChart(
+            name="test_chart_mbql_no_stages",
+            id="109",
+            table_id="222",
+            dataset_query={
+                "lib/type": "mbql/query",
+                "database": 2,
+            },
+        )
+        self.assertIsNotNone(chart_mbql_no_stages.dataset_query)
+        self.assertEqual(chart_mbql_no_stages.dataset_query.type, "query")
+
     @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
     @patch.object(MetabaseSource, "_get_chart_entity", return_value=EXAMPLE_CHART)
     @patch.object(MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE)
