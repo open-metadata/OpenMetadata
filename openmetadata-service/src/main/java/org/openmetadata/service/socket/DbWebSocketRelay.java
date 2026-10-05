@@ -47,27 +47,21 @@ public class DbWebSocketRelay implements WebSocketRelay {
   // batching adds no visible latency on top of the consumer's 1s poll.
   static final long DEFAULT_FLUSH_INTERVAL_MS = 100L;
   private static final int FETCH_LIMIT = 1000;
-  // Caller offers are dropped (logged) once the queue is full, keeping publish bounded and
-  // non-blocking; frames are transient, so shedding under extreme backpressure is acceptable.
+  // Offers are dropped once the queue is full; frames are transient, so shedding is acceptable.
   private static final int QUEUE_CAPACITY = 10_000;
-  // Each poll re-reads this many ids below the cursor (kept under FETCH_LIMIT so new rows are never
-  // starved) to catch rows that committed after a higher id the cursor already passed. A batch
-  // commits atomically, so its whole id span can surface below the cursor at once — this stays
-  // >= MAX_BATCH, with headroom for several pods publishing concurrently.
+  // Re-scan window below the cursor, catching rows that committed after a higher id (under
+  // FETCH_LIMIT). Must be >= MAX_BATCH, since a batch commits atomically and its whole id span can
+  // surface below the cursor at once.
   private static final long LOOKBACK_IDS = 500;
-  // Max frames per batched insert; the drain loops until the queue is empty. Each batch is one
-  // atomic commit, so it is capped well under LOOKBACK_IDS so a late-committing batch is always
-  // inside the re-scan window.
+  // Frames per batched insert; the drain loops until the queue empties.
   private static final int MAX_BATCH = 100;
-  // Bounded seen-set that dedupes the re-read window. Must exceed LOOKBACK_IDS so a window id is
-  // never evicted while still being re-scanned; eldest (lowest) ids drop first.
+  // Dedupe set for the re-read window; must exceed LOOKBACK_IDS (eldest ids evicted first).
   private static final int DELIVERED_IDS_MAX = 2000;
 
   static {
-    // A batch commits atomically; if it could exceed the re-scan window, late batches would be
-    // lost.
     if (MAX_BATCH > LOOKBACK_IDS) {
-      throw new IllegalStateException("MAX_BATCH must be <= LOOKBACK_IDS");
+      throw new IllegalStateException(
+          "MAX_BATCH must be <= LOOKBACK_IDS: a batch commits atomically");
     }
   }
 
