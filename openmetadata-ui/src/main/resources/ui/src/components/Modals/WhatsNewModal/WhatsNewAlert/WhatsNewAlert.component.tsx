@@ -24,9 +24,9 @@ import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import { isLandingPagePath } from '../../../../utils/RouterUtils';
 import {
-  getSimplifiedVersion,
-  getVersionedStorageKey,
-  getVersionReleaseTimestamp,
+    getSimplifiedVersion,
+    getVersionedStorageKey,
+    getVersionReleaseTimestamp
 } from '../../../../utils/Version/Version';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
 import './WhatsNewAlert.less';
@@ -36,8 +36,7 @@ const cookieStorage = new CookieStorage();
 const WhatsNewAlert = () => {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const { appVersion: realAppVersion } = useApplicationStore();
-  const appVersion = realAppVersion ?? '';
+  const { appVersion } = useApplicationStore();
   const [showWhatsNew, setShowWhatsNew] = useState({
     alert: false,
     modal: false,
@@ -101,7 +100,7 @@ const WhatsNewAlert = () => {
 
   return (
     <>
-      {/* TEMP: revert — force-show to preview the alert */ true && (
+      {showWhatsNew.alert && isHomePage && (
         <Affix className="whats-new-alert-affix">
           <Card
             className="whats-new-alert-card"
