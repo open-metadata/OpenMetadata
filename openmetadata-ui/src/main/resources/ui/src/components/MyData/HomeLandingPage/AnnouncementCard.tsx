@@ -21,10 +21,9 @@ import {
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import UserChip from '../../common/UserChip/UserChip';
-import AnnouncementTypeChip from '../../../components/common/AnnouncementsWidget/AnnouncementTypeChip.component';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import {
-  ANNOUNCEMENT_STATUS_CLASSES,
+  ANNOUNCEMENT_STATUS_COLORS,
   ANNOUNCEMENT_STATUS_LABEL_KEYS,
   ANNOUNCEMENT_SURFACE_CLASSES,
   getAnnouncementTypeConfig,
@@ -111,10 +110,13 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         className
       )}
       data-testid={`announcement-card-${announcement.id}`}>
-      {/* Type chip + badge on the left, lifecycle on the right — the same
-        header the OpenMetadata drawer card and banner use. */}
+      {/* Type icon + badge on the left, lifecycle on the right — the same
+        header the drawer card and the banner use. 16px beside 12px label text,
+        as on the banner. */}
       <div className="tw:flex tw:items-center tw:gap-2">
-        <AnnouncementTypeChip icon={TypeIcon} surface={surface} />
+        <TypeIcon
+          className={classNames('tw:shrink-0 tw:size-4', surface.icon)}
+        />
         <Badge
           className="tw:bg-primary!"
           color={color}
@@ -128,18 +130,15 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
           {/* A live announcement is self-evidently live — only the ones the
             rail would not have shown need naming. */}
           {!isDismissible && (
-            // A plain span, not Typography: the shared status classes carry
-            // their own text colour, and Typography's `.prose` colour rule is
-            // unlayered, so it would silently win over them.
-            <span
-              className={classNames(
-                'tw:rounded-md tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium',
-                'tw:outline-1 tw:-outline-offset-1',
-                ANNOUNCEMENT_STATUS_CLASSES[status]
-              )}
-              data-testid="announcement-status">
+            // Same Badge the drawer card uses, so one status reads identically
+            // on both surfaces.
+            <Badge
+              color={ANNOUNCEMENT_STATUS_COLORS[status]}
+              data-testid="announcement-status"
+              size="sm"
+              type="color">
               {t(ANNOUNCEMENT_STATUS_LABEL_KEYS[status])}
-            </span>
+            </Badge>
           )}
 
           {isDismissible && (
