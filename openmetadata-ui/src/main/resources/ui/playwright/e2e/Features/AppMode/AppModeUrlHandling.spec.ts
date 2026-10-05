@@ -21,13 +21,7 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
   }) => {
     await enableAiAppMode(page);
 
-    await test.step('Boot the AI tree first (ensures the redirect route is registered)', async () => {
-      await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
-      await waitForAllLoadersToDisappear(page);
-      await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-    });
-
-    await test.step('Now visit /service/<cat>/<fqn>', async () => {
+    await test.step('Visit /service/<cat>/<fqn>', async () => {
       await page.goto('/service/databaseServices/sampleService.foo', {
         waitUntil: 'domcontentloaded',
       });
