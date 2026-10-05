@@ -88,7 +88,7 @@ const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
         const circleClass =
           isActive || isDone
             ? 'tw:bg-brand-solid tw:text-primary_on-brand'
-            : 'tw:bg-tertiary tw:text-fg-quaternary';
+            : 'tw:bg-tertiary tw:text-primary';
 
         return (
           <Fragment key={step.step}>
@@ -97,7 +97,7 @@ const ImportStepper: FC<{ activeStep: VALIDATION_STEP }> = ({ activeStep }) => {
               color={isActive ? 'brand' : 'gray'}
               data-active={isActive}
               data-testid={`csv-workflow-step-${step.step}`}
-              size="sm">
+              size="md">
               <Box
                 align="center"
                 className={`tw:size-4 tw:rounded-full tw:text-[10px] tw:font-semibold ${circleClass}`}

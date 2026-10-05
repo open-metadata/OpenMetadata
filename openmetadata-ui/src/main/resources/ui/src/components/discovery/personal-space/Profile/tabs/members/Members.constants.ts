@@ -69,8 +69,11 @@ export const DEFAULT_TIME_WINDOW = 1440;
 export const WIDGET_CLASS =
   'tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3';
 
+// Status-chip utility pairs (bg-utility-{c}-50 + text-utility-{c}-700) — these flip
+// together for dark mode; the plain bg-/fg- status tokens collapse to adjacent shades
+// in dark (e.g. bg-success-secondary vs fg-success-primary) and hide the icon.
 export const STAGE_ICON_CLASS: Record<StageState, string> = {
-  done: 'tw:bg-success-secondary tw:text-fg-success-primary',
-  active: 'tw:bg-brand-secondary tw:text-brand-secondary',
+  done: 'tw:bg-utility-success-50 tw:text-utility-success-700',
+  active: 'tw:bg-utility-brand-50 tw:text-utility-brand-700',
   pending: 'tw:bg-tertiary tw:text-fg-quaternary',
 };
