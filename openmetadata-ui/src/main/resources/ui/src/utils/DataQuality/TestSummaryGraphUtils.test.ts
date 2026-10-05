@@ -381,6 +381,58 @@ describe('prepareChartData', () => {
     });
   });
 
+  // The band is the allowed range, so it is read by parameter name, not by
+  // position, and keeps decimal bounds.
+  it.each<
+    [
+      string,
+      PrepareChartDataType['testCaseParameterValue'],
+      [number, number] | undefined
+    ]
+  >([
+    [
+      'decimal bounds',
+      [
+        { name: 'minValueForMeanInCol', value: '0.5' },
+        { name: 'maxValueForMeanInCol', value: '1.5' },
+      ],
+      [0.5, 1.5],
+    ],
+    [
+      'a range that also has a threshold',
+      [
+        { name: 'minValue', value: '12' },
+        { name: 'maxValue', value: '34' },
+        { name: 'threshold', value: '5' },
+      ],
+      [12, 34],
+    ],
+    [
+      'an expected value and a threshold, which state no range',
+      [
+        { name: 'value', value: '10000' },
+        { name: 'threshold', value: '5' },
+      ],
+      undefined,
+    ],
+  ])(
+    'should read the allowed band from %s',
+    (_, testCaseParameterValue, boundArea) => {
+      const { data } = prepareChartData({
+        testCaseParameterValue,
+        testCaseResults: [
+          {
+            timestamp: 1720525804736,
+            testCaseStatus: TestCaseStatus.Success,
+            testResultValue: [{ name: 'value', value: '1' }],
+          },
+        ],
+      });
+
+      expect(data[0].boundArea).toEqual(boundArea);
+    }
+  );
+
   it('should show calculate test case result params accurately', () => {
     const testObj = {
       testCaseParameterValue: [],
