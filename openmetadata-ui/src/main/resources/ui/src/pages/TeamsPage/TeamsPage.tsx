@@ -136,7 +136,11 @@ const TeamsPage = () => {
   }, []);
 
   const applyAllTeamsData = useCallback(
-    (teams: Team[], parentTeam: string | undefined, updateChildNode: boolean) => {
+    (
+      teams: Team[],
+      parentTeam: string | undefined,
+      updateChildNode: boolean
+    ) => {
       if (!updateChildNode) {
         setChildTeams(teams);
 
