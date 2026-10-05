@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { EntityField } from '../constants/Feeds.constants';
 import {
   Column as ContainerColumn,
@@ -534,6 +534,38 @@ describe('EntityVersionUtils', () => {
       expect(rows[0].label).toBe('value');
       expect(screen.getByTestId('diff-removed')).toHaveTextContent('10000');
       expect(screen.getByTestId('diff-added')).toHaveTextContent('12000');
+    });
+
+    it('should show an added parameter as new and a removed one as struck through', () => {
+      const { rows } = getParameterValueDiffRows(
+        parameterChange(
+          [{ name: 'minValue', value: '12' }],
+          [{ name: 'maxValue', value: '34' }]
+        )
+      );
+
+      render(
+        <>
+          {rows.map((row) => (
+            <div data-testid={row.label} key={row.label}>
+              {row.value}
+            </div>
+          ))}
+        </>
+      );
+
+      expect(
+        within(screen.getByTestId('minValue')).getByTestId('diff-removed')
+      ).toHaveTextContent('12');
+      expect(
+        within(screen.getByTestId('minValue')).queryByTestId('diff-added')
+      ).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('maxValue')).getByTestId('diff-added')
+      ).toHaveTextContent('34');
+      expect(
+        within(screen.getByTestId('maxValue')).queryByTestId('diff-removed')
+      ).not.toBeInTheDocument();
     });
 
     it('should keep the assertion SQL out of the rows, as its own diff', () => {

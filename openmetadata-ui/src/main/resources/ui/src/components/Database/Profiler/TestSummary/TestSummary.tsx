@@ -19,12 +19,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import {
-    TestCaseDimensionResult,
-    TestCaseResult
+  TestCaseDimensionResult,
+  TestCaseResult,
 } from '../../../../generated/tests/testCase';
 import {
-    getListTestCaseResults,
-    getTestCaseDimensionResultsByFqn
+  getListTestCaseResults,
+  getTestCaseDimensionResultsByFqn,
 } from '../../../../rest/testAPI';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
@@ -89,7 +89,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const fetchTestResults = useCallback(
     async (
       dateRangeObj: DateRangeObject,
-      { quietly = false, isStale = () => false } = {}
+      { quietly, isStale }: { quietly: boolean; isStale: () => boolean }
     ) => {
       if (!testCaseFqn) {
         return;
