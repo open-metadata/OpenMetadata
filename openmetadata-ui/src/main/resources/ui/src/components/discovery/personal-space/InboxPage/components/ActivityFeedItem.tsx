@@ -43,7 +43,6 @@ import {
   toggleActivityReaction,
   toggleConversationReaction,
 } from '../inbox.utils';
-import './activity-feed-item.less';
 
 export interface ActivityFeedItemSelection {
   activity?: ActivityEvent;
