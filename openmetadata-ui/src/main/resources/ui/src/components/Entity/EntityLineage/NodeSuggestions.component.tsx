@@ -75,7 +75,6 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     async (value: string) => {
       try {
         const data = await searchQuery({
-          skipDomainFilter: true,
           query: value,
           searchIndex: (entityType as ExploreSearchIndex) ?? SearchIndex.TABLE,
           queryFilter,

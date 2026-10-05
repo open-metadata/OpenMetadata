@@ -205,7 +205,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     try {
       const escaped = escapeESReservedCharacters(searchText);
       const response = await searchQuery({
-        skipDomainFilter: true,
         query: escaped ? `*${escaped}*` : '*',
         pageNumber: 1,
         pageSize: PAGE_SIZE,

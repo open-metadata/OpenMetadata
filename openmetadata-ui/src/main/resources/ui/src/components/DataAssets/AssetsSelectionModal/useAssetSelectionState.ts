@@ -142,7 +142,6 @@ export const useAssetSelectionState = ({
       try {
         setIsLoading(true);
         const res = await searchQuery({
-          skipDomainFilter: true,
           pageNumber: page,
           pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: index,

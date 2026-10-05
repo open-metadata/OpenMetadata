@@ -712,7 +712,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       setIsTableLoading(true);
       try {
         const response = await searchQuery({
-          skipDomainFilter: true,
           query: searchValue ? `*${searchValue}*` : '*',
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,

@@ -45,7 +45,6 @@ export const resolveWildcardFqns = async (
   if (!isEmpty(fqns) && !isEmpty(containerEntities)) {
     try {
       const response = await searchQuery({
-        skipDomainFilter: true,
         query: '*',
         pageNumber: 1,
         pageSize: fqns.length,

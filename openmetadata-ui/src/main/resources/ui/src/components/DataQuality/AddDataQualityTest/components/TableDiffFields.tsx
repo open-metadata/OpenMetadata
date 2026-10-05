@@ -248,7 +248,6 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
     setIsOptionsLoading(true);
     try {
       const response = await searchQuery({
-        skipDomainFilter: true,
         query: `*${search}*`,
         pageNumber: 1,
         pageSize: PAGE_SIZE_LARGE,
@@ -309,7 +308,6 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
 
     let active = true;
     searchQuery({
-      skipDomainFilter: true,
       query: `*${table2Fqn}*`,
       pageNumber: 1,
       pageSize: PAGE_SIZE_LARGE,

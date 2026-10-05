@@ -26,7 +26,6 @@ import HashList from './HashList';
 export const hashtagSuggestion = () => ({
   items: async ({ query }: { query: string }) => {
     const data = await searchQuery({
-      skipDomainFilter: true,
       query: query ?? '',
       pageNumber: 1,
       pageSize: 5,

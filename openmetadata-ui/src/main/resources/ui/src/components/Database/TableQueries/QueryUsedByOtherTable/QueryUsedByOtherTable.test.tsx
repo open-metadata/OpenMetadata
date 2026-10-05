@@ -89,7 +89,6 @@ describe('QueryUsedByOtherTable test', () => {
 
     expect(selectField).toBeInTheDocument();
     expect(mockSearchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: '',
       pageNumber: 1,
       pageSize: 25,

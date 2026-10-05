@@ -66,7 +66,6 @@ describe('Test NodeSuggestions Component', () => {
         query: '',
         queryFilter: undefined,
         searchIndex: value,
-        skipDomainFilter: true,
       });
 
       const suggestionNode = await screen.findByTestId('suggestion-node');

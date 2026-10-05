@@ -214,7 +214,6 @@ const AddMetricForm = ({
   const fetchDomainOptions = useCallback(async (searchText = '') => {
     try {
       const response = await searchQuery({
-        skipDomainFilter: true,
         pageNumber: 1,
         pageSize: PAGE_SIZE_MEDIUM,
         query: searchText,
@@ -234,7 +233,6 @@ const AddMetricForm = ({
   const fetchRelatedMetricOptions = useCallback(async (searchText = '') => {
     try {
       const response = await searchQuery({
-        skipDomainFilter: true,
         pageNumber: 1,
         pageSize: PAGE_SIZE_MEDIUM,
         query: searchText,
@@ -274,7 +272,6 @@ const AddMetricForm = ({
   const fetchParentMetricOptions = useCallback(async (searchText = '') => {
     try {
       const response = await searchQuery({
-        skipDomainFilter: true,
         pageNumber: 1,
         pageSize: PAGE_SIZE_MEDIUM,
         query: searchText,

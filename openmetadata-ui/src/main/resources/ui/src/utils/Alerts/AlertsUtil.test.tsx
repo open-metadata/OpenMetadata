@@ -344,7 +344,6 @@ describe('getFieldByArgumentType tests', () => {
     fireEvent.click(selectDiv);
 
     expect(searchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: undefined,
       pageNumber: 1,
       pageSize: 50,
@@ -396,7 +395,6 @@ describe('getFieldByArgumentType tests', () => {
     fireEvent.click(selectDiv);
 
     expect(searchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: undefined,
       pageNumber: 1,
       pageSize: 50,
@@ -420,7 +418,6 @@ describe('getFieldByArgumentType tests', () => {
     fireEvent.click(selectDiv);
 
     expect(searchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: undefined,
       pageNumber: 1,
       pageSize: 50,
@@ -444,7 +441,6 @@ describe('getFieldByArgumentType tests', () => {
     fireEvent.click(selectDiv);
 
     expect(searchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: undefined,
       pageNumber: 1,
       pageSize: 50,
@@ -468,7 +464,6 @@ describe('getFieldByArgumentType tests', () => {
     fireEvent.click(selectDiv);
 
     expect(searchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: undefined,
       pageNumber: 1,
       pageSize: 50,
@@ -487,7 +482,6 @@ describe('getFieldByArgumentType tests', () => {
     fireEvent.click(selectDiv);
 
     expect(searchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: undefined,
       pageNumber: 1,
       pageSize: 50,
@@ -579,7 +573,6 @@ describe('getFieldByArgumentType tests', () => {
     fireEvent.click(selectDiv);
 
     expect(searchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: '',
       pageNumber: 1,
       pageSize: 50,
@@ -606,7 +599,6 @@ describe('getFieldByArgumentType tests', () => {
     await apiFn(uuid);
 
     expect(searchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: uuid,
       pageNumber: 1,
       pageSize: 50,
@@ -752,7 +744,6 @@ describe('getFieldByArgumentType tests', () => {
     fireEvent.click(selectDiv);
 
     expect(searchQuery).toHaveBeenCalledWith({
-      skipDomainFilter: true,
       query: undefined,
       pageNumber: 1,
       pageSize: 50,
@@ -1260,7 +1251,6 @@ describe('handleAlertSave - downstream notification fields', () => {
       });
 
       expect(searchQuery).toHaveBeenCalledWith({
-        skipDomainFilter: true,
         query: 'test',
         pageNumber: 1,
         pageSize: 50,
@@ -1345,7 +1335,6 @@ describe('handleAlertSave - downstream notification fields', () => {
       });
 
       expect(searchQuery).toHaveBeenCalledWith({
-        skipDomainFilter: true,
         query: 'test',
         pageNumber: 1,
         pageSize: 50,
