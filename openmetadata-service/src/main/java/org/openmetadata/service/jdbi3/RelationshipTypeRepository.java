@@ -100,9 +100,6 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     entity.setCrossGlossaryAllowed(
         entity.getCrossGlossaryAllowed() == null ? true : entity.getCrossGlossaryAllowed());
     entity.setSystemDefined(entity.getSystemDefined() == null ? false : entity.getSystemDefined());
-    if (entity.getEntityStatus() == null && Boolean.TRUE.equals(entity.getSystemDefined())) {
-      entity.setEntityStatus(EntityStatus.APPROVED);
-    }
     if (entity.getCharacteristics().contains(RelationshipCharacteristic.SYMMETRIC)
         && entity.getInverse() == null) {
       entity.setInverse(entity.getEntityReference());
@@ -132,6 +129,14 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   private void publishOntologyEvent(final RelationshipType entity) {
     eventPublisher.publish(
         EventType.ONTOLOGY_RELATIONSHIP_TYPE_UPDATED, entity, entity.getUpdatedBy());
+  }
+
+  // System-defined relationship types ship with the ontology and are in use from the start.
+  @Override
+  protected EntityStatus initialEntityStatus(RelationshipType entity) {
+    return Boolean.TRUE.equals(entity.getSystemDefined()) && entity.getEntityStatus() == null
+        ? EntityStatus.APPROVED
+        : super.initialEntityStatus(entity);
   }
 
   @Override
