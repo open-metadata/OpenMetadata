@@ -265,13 +265,20 @@ export const getThresholdReference = (
  */
 export const PLACED_KEYS_FIELD = 'placedKeys';
 
+const PLACED_SERIES_SUFFIX = '__placed';
+
+/** The key a series' placed values are drawn under, apart from its line. */
+export const placedSeriesKey = (seriesKey: string) =>
+  `${seriesKey}${PLACED_SERIES_SUFFIX}`;
+
 /**
- * A run that produced no value carries no key for any series, so recharts drew
- * nothing at all for it and the run was missing from the chart. Aborted runs are
- * placed at the lowest value on the plot (or the expectation line, or zero, when
- * nothing was plotted) and queued runs on the expectation line, on the series
- * itself, so the line runs through them and the point is not left floating off
- * it. Which keys were placed is recorded on the point.
+ * A run that produced no value carries no key for any series, so it would be
+ * missing from the chart. Aborted runs are placed at the lowest value on the
+ * plot (or the expectation line, or zero, when nothing was plotted) and queued
+ * runs on the expectation line. The placed value goes under `placedSeriesKey`,
+ * not the series' own key, so the line joins measured runs only: drawn through
+ * a placed value, an aborted run read as a measured drop. Which keys were
+ * placed is recorded on the point.
  */
 export const applyStatusPlacements = (
   data: TestCaseChartDataType['data'],
@@ -302,10 +309,12 @@ export const applyStatusPlacements = (
       return point;
     }
 
+    const placedKeys = missing.map(placedSeriesKey);
+
     return {
       ...point,
-      ...Object.fromEntries(missing.map((label) => [label, placement])),
-      [PLACED_KEYS_FIELD]: missing,
+      ...Object.fromEntries(placedKeys.map((key) => [key, placement])),
+      [PLACED_KEYS_FIELD]: placedKeys,
     };
   });
 };

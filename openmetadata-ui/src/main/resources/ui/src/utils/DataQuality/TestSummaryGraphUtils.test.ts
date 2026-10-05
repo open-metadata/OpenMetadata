@@ -20,6 +20,7 @@ import {
   getThresholdReference,
   isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
+  placedSeriesKey,
   PLACED_KEYS_FIELD,
   prepareChartData,
   PrepareChartDataType,
@@ -788,12 +789,13 @@ describe('applyStatusPlacements', () => {
       series
     );
 
-    // Placed on the series itself, so the line runs through the run.
+    // Placed on a series of its own, so the line joins measured runs only
+    // and an aborted run does not read as a measured drop.
     expect(data[2]).toEqual({
       name: 3,
       status: TestCaseStatus.Aborted,
-      rowCount: 90,
-      placedKeys: ['rowCount'],
+      [placedSeriesKey('rowCount')]: 90,
+      placedKeys: [placedSeriesKey('rowCount')],
     });
   });
 
@@ -810,8 +812,8 @@ describe('applyStatusPlacements', () => {
     expect(data[1]).toEqual({
       name: 2,
       status: TestCaseStatus.Queued,
-      rowCount: 10000,
-      placedKeys: ['rowCount'],
+      [placedSeriesKey('rowCount')]: 10000,
+      placedKeys: [placedSeriesKey('rowCount')],
     });
   });
 
@@ -843,7 +845,9 @@ describe('applyStatusPlacements', () => {
       series
     );
 
-    expect(data.map((point) => point[series[0]])).toEqual([0, 0]);
-    expect(data[0][PLACED_KEYS_FIELD]).toEqual(series);
+    expect(data.map((point) => point[placedSeriesKey(series[0])])).toEqual([
+      0, 0,
+    ]);
+    expect(data[0][PLACED_KEYS_FIELD]).toEqual(series.map(placedSeriesKey));
   });
 });

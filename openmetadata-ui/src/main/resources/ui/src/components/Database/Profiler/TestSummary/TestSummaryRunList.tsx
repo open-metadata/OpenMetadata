@@ -13,6 +13,7 @@
 
 import { isNumber } from 'lodash';
 import { useMemo } from 'react';
+import { placedSeriesKey } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { TestCaseChartDataType } from '../ProfilerDashboard/profilerDashboard.interface';
 
 type PlottedPoint = TestCaseChartDataType['data'][number];
@@ -25,7 +26,8 @@ interface TestSummaryRunListProps {
 
 /**
  * The chart's text alternative: one entry per run and series the run has a
- * value on, in plot order. Visually hidden; the chart draws the same runs.
+ * value on, measured or placed, in plot order. Visually hidden; the chart
+ * draws the same runs.
  */
 const TestSummaryRunList = ({
   points,
@@ -38,7 +40,10 @@ const TestSummaryRunList = ({
     () =>
       points.flatMap((point, position) =>
         seriesLabels
-          .filter((label) => isNumber(point[label]))
+          .filter(
+            (label) =>
+              isNumber(point[label]) || isNumber(point[placedSeriesKey(label)])
+          )
           .map((label) => ({
             id: `${String(point.name)}-${label}-${position}`,
             label,

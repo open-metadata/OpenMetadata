@@ -50,6 +50,7 @@ import {
   getThresholdReference,
   isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
+  placedSeriesKey,
   prepareChartData,
   TooltipBoundary,
   TooltipPosition,
@@ -372,6 +373,16 @@ function TestSummaryGraph({
           },
         ]
       : [];
+    // A row a series holds no value for - a run that produced nothing, or one
+    // whose value was placed off the line - draws no dot.
+    const pointStyleOf = (key: string) => (point: Record<string, unknown>) =>
+      isUndefined(point[key])
+        ? undefined
+        : {
+            status: getStatusChartStatus(point.status as TestCaseStatus),
+            hollow: point.status === POINT_STATUS_HOLLOW,
+            selected: point.name === activeRunTimestamp,
+          };
     const lines = seriesLabels.map<ChartSeries>((label) => ({
       key: label,
       name: label,
@@ -381,22 +392,32 @@ function TestSummaryGraph({
       type: isSingleSeries ? 'area' : 'line',
       status: isSingleSeries ? 'muted' : undefined,
       smooth: false,
-      // A row this series holds no value for - a run that produced nothing,
-      // or one placed on another series - draws no dot.
-      pointStyle: (point) =>
-        isUndefined(point[label])
-          ? undefined
-          : {
-              status: getStatusChartStatus(point.status as TestCaseStatus),
-              hollow: point.status === POINT_STATUS_HOLLOW,
-              selected: point.name === activeRunTimestamp,
-            },
-      // Focusing the hovered series fades the others, and with them the band
-      // and the expectation label; only worth it when there are others.
-      seriesOption: isSingleSeries ? undefined : MULTI_SERIES_EMPHASIS,
+      pointStyle: pointStyleOf(label),
+      seriesOption: {
+        // The line bridges the runs placed off it, so it joins measured
+        // runs only.
+        connectNulls: true,
+        // Focusing the hovered series fades the others, and with them the
+        // band and the expectation label; only worth it when there are others.
+        ...(isSingleSeries ? {} : MULTI_SERIES_EMPHASIS),
+      },
     }));
+    // Aborted and queued runs as dots alone, after the lines so no line's
+    // palette colour shifts. Named like their line, so the legend lists and
+    // toggles the two once.
+    const placed = seriesLabels
+      .filter((label) =>
+        plottedData.some((point) => !isUndefined(point[placedSeriesKey(label)]))
+      )
+      .map<ChartSeries>((label) => ({
+        key: placedSeriesKey(label),
+        name: label,
+        type: 'line',
+        pointStyle: pointStyleOf(placedSeriesKey(label)),
+        seriesOption: { lineStyle: { opacity: 0 } },
+      }));
 
-    return [...band, ...lines];
+    return [...band, ...lines, ...placed];
   }, [plottedData, seriesLabels, isSingleSeries, activeRunTimestamp, t]);
 
   const referenceLines = useMemo<ChartReferenceLine[]>(

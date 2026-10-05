@@ -30,6 +30,7 @@ import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { axisTickFormatter } from '../../../../utils/ChartUtils';
+import { placedSeriesKey } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import TestSummaryGraph from './TestSummaryGraph';
 import { TOOLTIP_CLOSE_DELAY } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
@@ -86,6 +87,20 @@ const singleSeriesResults = [
   {
     ...mockProps.testCaseResults[0],
     testResultValue: [{ name: 'value', value: '9990' }],
+  },
+] as TestSummaryGraphProps['testCaseResults'];
+// An aborted run between two measured ones, newest first as the API sends them.
+const runsAroundAnAbort = [
+  {
+    timestamp: 3,
+    testCaseStatus: 'Success',
+    testResultValue: [{ name: 'value', value: '90' }],
+  },
+  { timestamp: 2, testCaseStatus: 'Aborted' },
+  {
+    timestamp: 1,
+    testCaseStatus: 'Success',
+    testResultValue: [{ name: 'value', value: '120' }],
   },
 ] as TestSummaryGraphProps['testCaseResults'];
 // No parameters and no learned bounds, so only the runs set the y axis.
@@ -456,6 +471,38 @@ describe('TestSummaryGraph', () => {
     ).toEqual({ status: 'warning', hollow: true, selected: false });
   });
 
+  // An aborted run has no value: drawn on the line, it read as a measured
+  // drop. The line bridges it, and the run keeps a ring of its own.
+  it('should keep an aborted run off the line and bridge the line over it', () => {
+    render(
+      <TestSummaryGraph {...mockProps} testCaseResults={runsAroundAnAbort} />
+    );
+
+    const aborted = getChartProps().data.find(
+      (point) => point.status === TestCaseStatus.Aborted
+    ) as Point;
+    const markers = getSeries(placedSeriesKey('value'));
+
+    expect(aborted.value).toBeUndefined();
+    expect(getSeries('value').seriesOption).toEqual(
+      expect.objectContaining({ connectNulls: true })
+    );
+    expect(markers.name).toBe('value');
+    expect(markers.pointStyle?.(aborted, 1)).toEqual({
+      status: 'warning',
+      hollow: true,
+      selected: false,
+    });
+  });
+
+  it('should still list an aborted run kept off the line for screen readers', () => {
+    render(
+      <TestSummaryGraph {...mockProps} testCaseResults={runsAroundAnAbort} />
+    );
+
+    expect(screen.getAllByTestId('test-summary-point-value')).toHaveLength(3);
+  });
+
   it('should draw a passing run as a filled success dot', () => {
     render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
 
@@ -541,16 +588,16 @@ describe('TestSummaryGraph', () => {
       <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
     );
 
-    expect(getSeries('value').seriesOption).toBeUndefined();
+    expect(getSeries('value').seriesOption).not.toHaveProperty('emphasis');
   });
 
   it('should bring the hovered series forward when there are several', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
     ['min', 'max'].forEach((key) => {
-      expect(getSeries(key).seriesOption).toEqual({
-        emphasis: { focus: 'series' },
-      });
+      expect(getSeries(key).seriesOption).toEqual(
+        expect.objectContaining({ emphasis: { focus: 'series' } })
+      );
     });
   });
 
