@@ -86,14 +86,6 @@ repos:
         files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js|less)$
         pass_filenames: false
         require_serial: true
-      - id: svg-deprecation-guard
-        name: Raw SVG deprecation guard (no new assets/svg debt)
-        description: Fails if a change adds a new assets/svg .svg file or a new import from assets/svg. Use @openmetadata/ui-core-components/icons.
-        entry: node openmetadata-ui/src/main/resources/ui/scripts/svg-deprecation-guard.js
-        language: system
-        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js|svg)$
-        pass_filenames: false
-        require_serial: true
       - id: core-components-i18n
         name: core-components i18n checks (gates 1+2+3)
         description: Fails if core-components `t()` keys, locale files, or the language-set are out of sync. Run `yarn check-i18n-all` in openmetadata-ui-core-components/src/main/resources/ui.

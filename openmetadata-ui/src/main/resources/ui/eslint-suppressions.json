@@ -1071,5 +1071,335 @@
     "om-playwright/no-positional-locator": {
       "count": 1
     }
+  },
+  "src/components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.test.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState.test.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/Common/WidgetHeader/WidgetHeader.test.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/components/MyData/Widgets/Common/WidgetMoreOptions/WidgetMoreOptions.test.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/components/Settings/Applications/AppLogsViewer/AppLogsViewer.test.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/components/common/ManageButtonContentItem/ManageButtonContentItem.test.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/constants/Assets.constants.ts": {
+    "no-restricted-imports": {
+      "count": 74
+    }
+  },
+  "src/constants/BlockEditor.constants.ts": {
+    "no-restricted-imports": {
+      "count": 4
+    }
+  },
+  "src/constants/CustomProperty.constants.ts": {
+    "no-restricted-imports": {
+      "count": 17
+    }
+  },
+  "src/constants/DataQuality.constants.ts": {
+    "no-restricted-imports": {
+      "count": 3
+    }
+  },
+  "src/constants/LeftSidebar.constants.ts": {
+    "no-restricted-imports": {
+      "count": 27
+    }
+  },
+  "src/constants/Navbar.constants.ts": {
+    "no-restricted-imports": {
+      "count": 5
+    }
+  },
+  "src/constants/StatusBadge.constant.ts": {
+    "no-restricted-imports": {
+      "count": 13
+    }
+  },
+  "src/constants/constants.ts": {
+    "no-restricted-imports": {
+      "count": 3
+    }
+  },
+  "src/hooks/user-profile/useUserProfile.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/AgentsStatusWidgetUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 11
+    }
+  },
+  "src/utils/Alerts/AlertsUtil.test.tsx": {
+    "no-restricted-imports": {
+      "count": 8
+    }
+  },
+  "src/utils/Alerts/AlertsUtil.tsx": {
+    "no-restricted-imports": {
+      "count": 8
+    }
+  },
+  "src/utils/BlockEditorUtils.ts": {
+    "no-restricted-imports": {
+      "count": 4
+    }
+  },
+  "src/utils/BrandData/BrandClassBase.ts": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/CSV/CSV.utils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/ClassificationUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/CustomizableLandingPageCarouselUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataAssetServiceUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataAssetsHeader.utils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataAssetsVersionHeaderUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataContract/DataContractUtils.ts": {
+    "no-restricted-imports": {
+      "count": 3
+    }
+  },
+  "src/utils/DataProductUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/DataQuality/DataQualityPureUtils.ts": {
+    "no-restricted-imports": {
+      "count": 8
+    }
+  },
+  "src/utils/DataQuality/DataQualityUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/Database/DatabaseDropdownOptions.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/DatabaseSchemaDropdownOptions.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/DatabaseServiceUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/DomainUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/EntityIconUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/EntityLineageUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntitySummaryPanelUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/EntitySummaryPanelUtilsV1.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/FeedElementUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/GlobalSettingsClassBase.ts": {
+    "no-restricted-imports": {
+      "count": 60
+    }
+  },
+  "src/utils/IngestionListTableUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 3
+    }
+  },
+  "src/utils/KnowledgeComponentUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/KnowledgePageUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/LandingPageWidgetIconUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/LeftSidebarClassBase.test.ts": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/Lineage/LineageUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/NavbarUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/NodeIconUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ObservabilityUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 10
+    }
+  },
+  "src/utils/PersonaClassBase.ts": {
+    "no-restricted-imports": {
+      "count": 29
+    }
+  },
+  "src/utils/PipelineDetailsUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 3
+    }
+  },
+  "src/utils/SSOUtils.ts": {
+    "no-restricted-imports": {
+      "count": 4
+    }
+  },
+  "src/utils/ServiceIconUtils.test.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/ServiceIconUtils.ts": {
+    "no-restricted-imports": {
+      "count": 31
+    }
+  },
+  "src/utils/ServiceInsightsWidgets.tsx": {
+    "no-restricted-imports": {
+      "count": 6
+    }
+  },
+  "src/utils/ServiceUtilClassBase.ts": {
+    "no-restricted-imports": {
+      "count": 9
+    }
+  },
+  "src/utils/TableColumn.util.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/TableDropdownOptions.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/TableUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 45
+    }
+  },
+  "src/utils/TagsUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "src/utils/TaskActionUtils.ts": {
+    "no-restricted-imports": {
+      "count": 4
+    }
+  },
+  "src/utils/TeamUtils.ts": {
+    "no-restricted-imports": {
+      "count": 4
+    }
+  },
+  "src/utils/TestCaseUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 3
+    }
+  },
+  "src/utils/TestConnectionModalUtils.tsx": {
+    "no-restricted-imports": {
+      "count": 5
+    }
+  },
+  "src/utils/Users.util.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/utils/mocks/EntitySummaryPanelUtils.mock.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
   }
 }

@@ -268,13 +268,14 @@ export default [
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
 
-      // Design-system import discipline — warn while existing violations are
-      // migrated; promote to error once the backlog reaches zero.
-      //
-      // Safety: no-restricted-imports carries no auto-fixer, so 'warn' here
-      // does not trigger the eslint --fix footgun in ui-checkstyle.
+      // Design-system import discipline. Raw SVG imports from assets/ are an
+      // error; the ~489 pre-existing violations are baselined in
+      // eslint-suppressions.json (native ESLint bulk suppressions — the same
+      // mechanism already used for the playwright rules), so only NEW imports
+      // fail CI. Regenerate the baseline with:
+      //   yarn lint:base --suppress-rule no-restricted-imports './src/**/*.{ts,tsx}'
       'no-restricted-imports': [
-        'warn',
+        'error',
         {
           patterns: [
             {
