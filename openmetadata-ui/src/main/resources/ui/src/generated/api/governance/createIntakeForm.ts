@@ -57,6 +57,7 @@ export enum TargetEntityType {
     DataProduct = "dataProduct",
     Domain = "domain",
     GlossaryTerm = "glossaryTerm",
+    Metric = "metric",
 }
 
 /**

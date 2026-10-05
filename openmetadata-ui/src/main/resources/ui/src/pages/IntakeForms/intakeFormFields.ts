@@ -32,6 +32,16 @@ export const NATIVE_FIELDS_BY_ENTITY_TYPE: Record<
   TargetEntityType,
   IntakeFormNativeField[]
 > = {
+  [TargetEntityType.Metric]: [
+    { path: 'displayName', labelKey: 'label.display-name' },
+    { path: 'description', labelKey: 'label.description' },
+    { path: 'metricType', labelKey: 'label.metric-type' },
+    { path: 'granularity', labelKey: 'label.granularity' },
+    { path: 'unitOfMeasurement', labelKey: 'label.unit-of-measurement' },
+    { path: 'owners', labelKey: 'label.owner-plural' },
+    { path: 'reviewers', labelKey: 'label.reviewer-plural' },
+    { path: 'domains', labelKey: 'label.domain-plural' },
+  ],
   [TargetEntityType.DataProduct]: [
     { path: 'displayName', labelKey: 'label.display-name' },
     { path: 'dataProductType', labelKey: 'label.data-product-type' },
@@ -61,6 +71,7 @@ export const NATIVE_FIELDS_BY_ENTITY_TYPE: Record<
  * /v1/metadata/types/name/{entityType}/customProperties API.
  */
 export const ENTITY_TYPE_API_NAME: Record<TargetEntityType, string> = {
+  [TargetEntityType.Metric]: 'metric',
   [TargetEntityType.DataProduct]: 'dataProduct',
   [TargetEntityType.Domain]: 'domain',
   [TargetEntityType.GlossaryTerm]: 'glossaryTerm',

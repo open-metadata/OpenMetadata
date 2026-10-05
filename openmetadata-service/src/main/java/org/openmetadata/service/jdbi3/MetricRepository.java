@@ -86,6 +86,7 @@ import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
@@ -441,6 +442,11 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void storeEntity(Metric metric, boolean update) {
+    // Intake requirements apply when creating a metric, including PUT upserts. Adding a
+    // requirement later must not block metadata edits or workflow status updates.
+    if (!update) {
+      IntakeFormValidator.validate(metric, METRIC);
+    }
     store(metric, update);
   }
 
@@ -452,6 +458,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void storeEntities(List<Metric> entities) {
+    entities.forEach(metric -> IntakeFormValidator.validate(metric, METRIC));
     storeMany(entities);
   }
 

@@ -29,6 +29,7 @@ type IntakeFormFieldConfiguration = Pick<
 
 /** i18n key for each TargetEntityType's display label. Resolve with t(). */
 export const ENTITY_TYPE_LABEL_KEYS: Record<TargetEntityType, string> = {
+  [TargetEntityType.Metric]: 'label.metric',
   [TargetEntityType.DataProduct]: 'label.data-product',
   [TargetEntityType.Domain]: 'label.domain',
   [TargetEntityType.GlossaryTerm]: 'label.glossary-term',
@@ -88,7 +89,7 @@ export const computeFieldRows = ({
 }: {
   nativeFields: { path: string; labelKey: string }[];
   customProperties: CustomProperty[];
-  initialValue?: IntakeForm | null;
+  initialValue?: IntakeFormFieldConfiguration | null;
   t: TFunction;
 }): IntakeFormFieldRow[] => {
   const existingSelections = new Map<string, IntakeFormField>(

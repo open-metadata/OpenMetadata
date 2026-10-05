@@ -17,10 +17,9 @@ import {
   CustomProperty,
   EntityReference,
 } from '../../../generated/entity/type';
-import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
+import { serializeIntakeFormExtension } from '../../../utils/IntakeFormExtensionUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
-import { getExtensionPropertyNameFromFormKey } from '../../Domain/AddDomainForm/AddDomainFormExtensionFields.utils';
 import {
   getOwnersOrCurrentUser,
   toEntityReferenceOption,
@@ -122,28 +121,7 @@ export const resolveRelatedTerms = (
         .filter((id): id is string => Boolean(id))
     : relatedTerms.map((term) => term.tagFQN);
 
-export const buildGlossaryTermExtension = (
-  extensionFormValues: Record<string, unknown> = {},
-  customProperties: CustomProperty[]
-): Record<string, unknown> =>
-  Object.entries(extensionFormValues).reduce<Record<string, unknown>>(
-    (extension, [formKey, rawValue]) => {
-      const propertyName = getExtensionPropertyNameFromFormKey(formKey);
-      const definition = customProperties.find(
-        (property) => property.name === propertyName
-      );
-      const value = definition
-        ? serializeExtensionValue(definition, rawValue)
-        : rawValue;
-
-      if (value !== undefined) {
-        extension[propertyName] = value;
-      }
-
-      return extension;
-    },
-    {}
-  );
+export const buildGlossaryTermExtension = serializeIntakeFormExtension;
 
 interface BuildGlossaryTermSavePayloadParams {
   values: GlossaryTermFormValues;
