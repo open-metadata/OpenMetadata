@@ -46,12 +46,11 @@
 
   // Quill draws its icons with a fixed #444 stroke, which is near-invisible on
   // a dark surface, while the text-glyph buttons (@, #) take the panel's
-  // near-white text. Give every toolbar icon one muted tone in dark; light
-  // keeps Quill's look.
-  .dark-mode & .ql-toolbar.ql-snow {
-    button {
-      color: var(--om-color-text-tertiary);
-    }
+  // near-white text. Give every idle toolbar icon one muted tone in dark;
+  // hovered and active buttons keep Quill's highlight so toggled formats stay
+  // visible. Light keeps Quill's look.
+  .dark-mode & .ql-toolbar.ql-snow button:not(:hover):not(.ql-active) {
+    color: var(--om-color-text-tertiary);
 
     .ql-stroke {
       stroke: var(--om-color-text-tertiary);
