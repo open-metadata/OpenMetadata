@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
-import { get, isUndefined } from 'lodash';
+import { get, isUndefined, omit } from 'lodash';
 import { ASSET_FILTER_KEYS } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
@@ -2062,3 +2062,68 @@ export const clickTreeNode = async (page: Page, nodeId: string) => {
   const node = getTreeNode(page, nodeId);
   await node.click();
 };
+
+// GlossaryTermApprovalWorkflow owns every glossary term's lifecycle stage, so a direct stage change
+// is rejected unless the workflow's trigger filter excludes the term. Specs that need terms in a
+// given stage exclude their own glossary while seeding. Parallel specs share the one filter, so
+// each adds or removes only its own clause through a compare-and-set patch, retried on conflict.
+const updateApprovalWorkflowExclusion = async (
+  apiContext: APIRequestContext,
+  glossary: Glossary,
+  exclude: boolean
+) => {
+  const clause = JSON.stringify({
+    in: [
+      `${glossary.responseData.fullyQualifiedName}.`,
+      { var: 'fullyQualifiedName' },
+    ],
+  });
+  let updated = false;
+  for (let attempt = 0; attempt < 5 && !updated; attempt++) {
+    const workflow = await (
+      await apiContext.get(
+        `/api/v1/governance/workflowDefinitions/name/${GLOSSARY_TERM_APPROVAL_WORKFLOW}`
+      )
+    ).json();
+    const filter = workflow.trigger.config.filter ?? {};
+    const current = filter.glossaryTerm
+      ? JSON.parse(filter.glossaryTerm)
+      : undefined;
+    const others = (current?.or ?? (current ? [current] : [])).filter(
+      (existing: unknown) => JSON.stringify(existing) !== clause
+    );
+    const clauses = exclude ? [...others, JSON.parse(clause)] : others;
+    const otherTypes = omit(filter, 'glossaryTerm');
+    const nextFilter = clauses.length
+      ? { ...otherTypes, glossaryTerm: JSON.stringify({ or: clauses }) }
+      : otherTypes;
+    const guard = isUndefined(workflow.trigger.config.filter)
+      ? []
+      : [{ op: 'test', path: '/trigger/config/filter', value: filter }];
+    const response = await apiContext.patch(
+      `/api/v1/governance/workflowDefinitions/${workflow.id}`,
+      {
+        data: [
+          ...guard,
+          { op: 'add', path: '/trigger/config/filter', value: nextFilter },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      }
+    );
+    updated = response.ok();
+  }
+
+  expect(updated, 'update GlossaryTermApprovalWorkflow trigger filter').toBe(
+    true
+  );
+};
+
+export const excludeGlossaryFromApprovalWorkflow = (
+  apiContext: APIRequestContext,
+  glossary: Glossary
+) => updateApprovalWorkflowExclusion(apiContext, glossary, true);
+
+export const includeGlossaryInApprovalWorkflow = (
+  apiContext: APIRequestContext,
+  glossary: Glossary
+) => updateApprovalWorkflowExclusion(apiContext, glossary, false);

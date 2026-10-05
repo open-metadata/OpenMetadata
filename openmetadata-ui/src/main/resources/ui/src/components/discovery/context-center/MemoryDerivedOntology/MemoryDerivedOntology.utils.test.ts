@@ -18,7 +18,7 @@ import {
 } from '../../../../generated/api/data/ontologyMemoryProposalStatus';
 import {
   ContextMemory,
-  MemoryStatus,
+  EntityStatus,
   ShareVisibility,
 } from '../../../../generated/entity/context/contextMemory';
 import {
@@ -40,7 +40,7 @@ const memory = (visibility: ShareVisibility): ContextMemory =>
   ({
     id: 'memory-id',
     name: 'memory',
-    status: MemoryStatus.Active,
+    entityStatus: EntityStatus.Approved,
     shareConfig: { visibility },
     derivedEntities: [],
   } as unknown as ContextMemory);
