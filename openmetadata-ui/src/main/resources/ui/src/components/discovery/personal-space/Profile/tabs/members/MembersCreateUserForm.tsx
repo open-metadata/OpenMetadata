@@ -56,7 +56,7 @@ import { useApplicationStore } from '../../../../../../hooks/useApplicationStore
 import { generateRandomPwd } from '../../../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
-import { getTeams } from '../../../../../../rest/teamsAPI';
+import { getTeamsHierarchy } from '../../../../../../rest/teamsAPI';
 import { createUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
@@ -80,6 +80,20 @@ interface FormValues {
   roles: string[];
   personas: string[];
 }
+
+// Minimal recursive shape of the /teams/hierarchy response.
+type TeamNode = {
+  id: string;
+  name: string;
+  displayName?: string;
+  children?: TeamNode[];
+};
+
+const flattenTeamHierarchy = (teams: TeamNode[]): SelectItemType[] =>
+  teams.flatMap((team) => [
+    { id: team.id, label: getEntityName(team) },
+    ...flattenTeamHierarchy(team.children ?? []),
+  ]);
 
 const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   isAdmin,
@@ -208,13 +222,10 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
 
   const fetchTeams = async () => {
     try {
-      const { data } = await getTeams({
-        parentTeam: 'Organization',
-        limit: AGGREGATE_PAGE_SIZE_LARGE,
-      });
-      setTeamItems(
-        data.map((team) => ({ id: team.id, label: getEntityName(team) }))
-      );
+      // Flatten the full team hierarchy (not just Organization's direct children)
+      // so nested teams — e.g. a Group under a Department — are assignable too.
+      const { data } = await getTeamsHierarchy();
+      setTeamItems(flattenTeamHierarchy(data as TeamNode[]));
     } catch (error) {
       showErrorToast(
         error as AxiosError,
