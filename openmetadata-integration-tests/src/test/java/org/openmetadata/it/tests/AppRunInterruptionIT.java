@@ -12,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -25,8 +27,13 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  * A run that ends without reporting its own status must still say why, on MySQL and Postgres. Every
  * record here belongs to an app name no real app uses, so the concurrent tests sharing this
  * database never see them.
+ *
+ * <p>These tests, and those of the other class sharing {@link SharedResourceLocks#APP_RUN_RECORDS},
+ * run one at a time: they share the same small run timestamps, and on MySQL the interrupt UPDATE
+ * scans by timestamp, so a concurrent test's cleanup DELETE can deadlock it.
  */
-@Execution(ExecutionMode.CONCURRENT)
+@Execution(ExecutionMode.SAME_THREAD)
+@ResourceLock(SharedResourceLocks.APP_RUN_RECORDS)
 public class AppRunInterruptionIT {
   private static final String STATUS = AppExtension.ExtensionType.STATUS.toString();
 
