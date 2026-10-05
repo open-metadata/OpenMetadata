@@ -616,11 +616,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         // Index the feature's tags the way the pipeline updater does for a task. applyTags only
         // runs on create, so without this a tag added or removed by a patch never reaches
         // tag_usage and any reader querying by FQN prefix keeps seeing the pre-patch set.
-        updateTags(
-            storedFeature.getFullyQualifiedName(),
-            EntityUtil.getFieldName(FEATURES_FIELD, updatedFeature.getName(), FIELD_TAGS),
-            storedFeature.getTags(),
-            updatedFeature.getTags());
+        updatedFeature.setTags(
+            updateTags(
+                storedFeature.getFullyQualifiedName(),
+                EntityUtil.getFieldName(FEATURES_FIELD, updatedFeature.getName(), FIELD_TAGS),
+                storedFeature.getTags(),
+                updatedFeature.getTags()));
       }
 
       indexTagsOfAddedAndRemovedFeatures(origModel, updatedModel);
