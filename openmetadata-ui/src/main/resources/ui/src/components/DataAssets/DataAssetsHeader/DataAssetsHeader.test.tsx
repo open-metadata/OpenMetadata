@@ -652,6 +652,20 @@ describe('DataAssetsHeader component', () => {
     expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
   });
 
+  it('should not render source URL button when sourceUrl is not http(s)', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          sourceUrl: 'javascript:alert(1)',
+        }}
+      />
+    );
+
+    expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
+  });
+
   it('should show the source URL tooltip when the link receives focus', async () => {
     render(
       <DataAssetsHeader
