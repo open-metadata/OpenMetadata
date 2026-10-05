@@ -78,7 +78,6 @@ import {
   waitForDomainAssetsAddDryRun,
 } from '../../utils/domain';
 import { assignDomainOnlyAccess } from '../../utils/domainIsolationUtils';
-import { expectBreadcrumbToContainAncestor } from '../../utils/headerBreadcrumbUtils';
 import {
   assignGlossaryTerm,
   createAnnouncement,
@@ -93,6 +92,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
+import { expectBreadcrumbToContainAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin } from '../../utils/user';
