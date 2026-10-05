@@ -112,9 +112,11 @@ const TeamsPage = () => {
     useState<boolean>(true);
   const [isFetchAllTeamAdvancedDetails, setIsFetchAllTeamAdvancedDetails] =
     useState<boolean>(false);
-  // Request id for the all-teams advanced fetch. A basic fetch chains an advanced one, so a newer
-  // refresh can start before an older one resolves; only the latest request may apply results or
-  // clear the loading flag, so an older response can't overwrite the list with stale data.
+  // Request ids for the two-phase all-teams fetch (basic then advanced). A basic fetch from a
+  // previous fqn can resolve late, overwrite the list with stale data, and chain an advanced fetch
+  // that bumps advancedFetchIdRef — causing the live advanced fetch to be dropped as superseded.
+  // Guard both phases with their own counter so either can be discarded independently.
+  const basicFetchIdRef = useRef<number>(0);
   const advancedFetchIdRef = useRef<number>(0);
   const [teamAssetCounts, setTeamAssetCounts] = useState<
     Record<string, number>
@@ -209,12 +211,17 @@ const TeamsPage = () => {
 
   const fetchAllTeamsBasicDetails = useCallback(
     async (parentTeam?: string) => {
+      const fetchId = ++basicFetchIdRef.current;
       setIsTeamBasicDataLoading(true);
       try {
         const { data } = await getTeams({
           parentTeam: parentTeam ?? 'organization',
           include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
         });
+
+        if (fetchId !== basicFetchIdRef.current) {
+          return;
+        }
 
         setChildTeams(data.map(toListTeam));
         // Basic details render the rows fast; chain the advanced fetch directly for the counts.
