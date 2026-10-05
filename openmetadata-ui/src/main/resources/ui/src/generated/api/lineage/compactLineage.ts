@@ -159,10 +159,6 @@ export interface CompactLineageEdge {
      */
     sqlQuery?: string;
     /**
-     * True when the returned SQL was cut.
-     */
-    sqlTruncated?: boolean;
-    /**
      * Temporary-table hops parsed from the SQL, only when the SQL was requested.
      */
     tempLineageTables?: TempLineageTable[];
