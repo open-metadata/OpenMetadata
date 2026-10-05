@@ -19,7 +19,7 @@
       "description": "PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding both the key and the certificate can be supplied in both fields.",
       "type": "string",
       "format": "password",
-      "accept": [".pem", ".key"],
+      "accept": [".pem", ".key", ".p8"],
       "uiFieldType": "fileOrInput"
     },
     "privateKeyPassphrase": {

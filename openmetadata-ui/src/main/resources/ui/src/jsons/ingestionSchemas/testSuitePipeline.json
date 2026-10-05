@@ -9696,7 +9696,8 @@
                                   "format": "password",
                                   "accept": [
                                     ".pem",
-                                    ".key"
+                                    ".key",
+                                    ".p8"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
