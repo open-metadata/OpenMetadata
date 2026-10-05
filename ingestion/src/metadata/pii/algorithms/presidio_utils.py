@@ -73,7 +73,7 @@ def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bo
     A plain `"cid" in "acid level"` test is true, which would boost the CVV recognizer on
     any column whose name merely contains the letters of a context word -- `acid_level`,
     `incident_count`, `decoder_ring` -- turning a 0.5 "3-4 digits" regex into a 1.0 match.
-    Multi-word entries keep substring semantics; they have no single token to compare against.
+    Multi-word entries match complete contiguous terms in the column context.
     """
     context_lower = " ".join(context).lower()
     tokens = {token for token in _CONTEXT_TOKEN_SEPARATORS.split(context_lower) if token}
@@ -84,8 +84,11 @@ def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bo
         if len(parts) == 1:
             if parts[0] in tokens:
                 return True
-        elif word in context_lower:
-            return True
+        else:
+            prefix = r"(?<!\w)" if word[:1].isalnum() or word[:1] == "_" else ""
+            suffix = r"(?!\w)" if word[-1:].isalnum() or word[-1:] == "_" else ""
+            if re.search(f"{prefix}{re.escape(word)}{suffix}", context_lower):
+                return True
 
     return False
 
