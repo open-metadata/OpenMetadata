@@ -15,7 +15,10 @@ package org.openmetadata.service.secrets.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication;
@@ -54,6 +57,28 @@ class MicrosoftFabricConnectionClassConverterTest {
     ClientSecretAuthentication converted =
         assertInstanceOf(ClientSecretAuthentication.class, result.getAuthType());
     assertEquals("fixture-client-secret", converted.getClientSecret());
+  }
+
+  @Test
+  void testRejectsAuthTypeMixingBothOptions() {
+    Map<String, String> mixed =
+        Map.of(
+            "clientSecret", "fixture-client-secret",
+            "certificate", "fixture-certificate",
+            "privateKey", "fixture-private-key");
+
+    // Left untyped, these secrets would be stored in the clear and returned unmasked.
+    assertThrows(IllegalArgumentException.class, () -> convert(mixed));
+  }
+
+  @Test
+  void testTypesAnIncompleteCertificateSoItsSecretsAreStillProtected() {
+    MicrosoftFabricConnection result = convert(Map.of("certificate", "fixture-certificate"));
+
+    CertificateAuthentication converted =
+        assertInstanceOf(CertificateAuthentication.class, result.getAuthType());
+    assertEquals("fixture-certificate", converted.getCertificate());
+    assertNull(converted.getPrivateKey());
   }
 
   private MicrosoftFabricConnection convert(Object authType) {

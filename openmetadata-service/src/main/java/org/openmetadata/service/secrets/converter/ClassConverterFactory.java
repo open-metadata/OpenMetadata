@@ -82,8 +82,6 @@ import org.openmetadata.schema.services.connections.database.databricks.Databric
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
-import org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication;
-import org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
@@ -201,13 +199,6 @@ public final class ClassConverterFactory {
               new NestedConfigClassConverter(
                   MicrosoftAccessConnection.class,
                   Map.of("connection", List.of(S3Connection.class)))),
-          Map.entry(
-              MicrosoftFabricConnection.class,
-              new NestedConfigClassConverter(
-                  MicrosoftFabricConnection.class,
-                  Map.of(
-                      "authType",
-                      List.of(ClientSecretAuthentication.class, CertificateAuthentication.class)))),
           Map.entry(
               MongoDBConnection.class,
               new NestedConfigClassConverter(
@@ -355,6 +346,8 @@ public final class ClassConverterFactory {
                 Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
                 Map.entry(RangerConnection.class, new RangerConnectionClassConverter()),
                 Map.entry(DatabricksConnection.class, new DatabricksConnectionClassConverter()),
+                Map.entry(
+                    MicrosoftFabricConnection.class, new MicrosoftFabricConnectionClassConverter()),
                 Map.entry(UnityCatalogConnection.class, new UnityCatalogConnectionClassConverter()),
                 Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
                 Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
