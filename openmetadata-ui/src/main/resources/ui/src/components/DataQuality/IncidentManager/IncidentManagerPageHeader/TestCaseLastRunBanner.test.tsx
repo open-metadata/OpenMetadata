@@ -304,7 +304,12 @@ describe('TestCaseLastRunBanner', () => {
     );
   });
 
-  it.each<[string, TestCase, TestCaseResult['testResultValue']]>([
+  it.each<[string, TestCase | undefined, TestCaseResult['testResultValue']]>([
+    [
+      'the test case has not loaded yet',
+      undefined,
+      [{ name: 'rowCount', value: '110' }],
+    ],
     [
       'the test states no expectation',
       testCaseWith('columnValuesToMatchRegex', [

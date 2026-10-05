@@ -12,7 +12,9 @@
  */
 
 import { render, screen, within } from '@testing-library/react';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import {
   Column as ContainerColumn,
   DataType as ContainerDataType,
@@ -26,11 +28,15 @@ import {
   ChangeDescription,
   FieldChange,
 } from '../generated/entity/services/databaseService';
+import { EntityReference } from '../generated/entity/type';
 import {
   getComputeRowCountDiffDisplay,
+  getOwnerVersionLabel,
   getParameterValueDiffRows,
+  getSummary,
 } from './EntityVersionUtils';
 import { getStringEntityDiff } from './EntityVersionUtilsPure';
+import { t } from './i18next/LocalUtil';
 // Mock data for testing
 const createMockTableColumn = (
   name: string,
@@ -594,6 +600,185 @@ describe('EntityVersionUtils', () => {
 
       expect(rows).toEqual([{ label: 'minValue', value: '12' }]);
       expect(sqlDiff).toBeUndefined();
+    });
+  });
+
+  describe('getSummary', () => {
+    const mockT = t as unknown as jest.Mock;
+
+    // The shared mock drops interpolation, which would hide which action the
+    // summary names.
+    beforeEach(() => {
+      mockT.mockImplementation((key: string, params?: Record<string, string>) =>
+        params ? `${key} ${Object.values(params).join(' ')}` : key
+      );
+    });
+
+    afterEach(() => {
+      mockT.mockImplementation((key: string) => key);
+    });
+
+    it.each([
+      [true, 'label.deleted-lowercase'],
+      [false, 'label.restored-lowercase'],
+    ])(
+      'should say whether the asset was deleted (deleted: %s)',
+      (deleted, actionType) => {
+        render(
+          getSummary({
+            changeDescription: {
+              fieldsUpdated: [
+                { name: 'deleted', oldValue: !deleted, newValue: deleted },
+              ],
+            },
+          })
+        );
+
+        expect(
+          screen.getByText(
+            `message.data-asset-has-been-action-type ${actionType}`
+          )
+        ).toBeInTheDocument();
+      }
+    );
+
+    it('should list the fields that were added, updated and deleted', () => {
+      render(
+        getSummary({
+          changeDescription: {
+            fieldsAdded: [{ name: 'description', newValue: 'Orders' }],
+            fieldsUpdated: [
+              { name: 'displayName', oldValue: 'a', newValue: 'b' },
+            ],
+            fieldsDeleted: [
+              {
+                name: 'tags',
+                oldValue: JSON.stringify([{ tagFQN: 'PII.Sensitive' }]),
+              },
+            ],
+          },
+        })
+      );
+
+      expect(
+        screen.getByText(
+          /description label.has-been-action-type-lowercase label.added-lowercase/
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /displayName label.has-been-action-type-lowercase label.updated-lowercase/
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /label.tag-lowercase-plural PII.Sensitive label.has-been-action-type-lowercase label.deleted-lowercase/
+        )
+      ).toBeInTheDocument();
+    });
+
+    const importResult = {
+      numberOfRowsProcessed: 3,
+      numberOfRowsPassed: 2,
+      numberOfRowsFailed: 1,
+    };
+
+    it.each([
+      ['a JSON string', JSON.stringify(importResult)],
+      ['an object', importResult],
+    ])(
+      "should show a bulk import's result reported as %s",
+      async (_, newValue) => {
+        render(
+          getSummary({
+            changeDescription: {
+              fieldsUpdated: [{ name: 'bulkImport', newValue }],
+            },
+          })
+        );
+
+        expect(
+          screen.getByText('message.bulk-import-completed')
+        ).toBeInTheDocument();
+        expect(await screen.findByTestId('processed-row')).toHaveTextContent(
+          '3'
+        );
+      }
+    );
+
+    it('should name the bulk import field when its result cannot be read', () => {
+      render(
+        getSummary({
+          changeDescription: {
+            fieldsUpdated: [{ name: 'bulkImport', newValue: 'not json' }],
+          },
+        })
+      );
+
+      expect(
+        screen.queryByText('message.bulk-import-completed')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/bulkImport label.has-been-action-type-lowercase/)
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('getOwnerVersionLabel', () => {
+    const owner: EntityReference = {
+      id: 'owner-1',
+      name: 'aaron',
+      type: 'user',
+    };
+
+    it('should mark an owner added in the version being viewed', () => {
+      render(
+        <>
+          {getOwnerVersionLabel(
+            {
+              owners: [owner],
+              changeDescription: {
+                fieldsAdded: [
+                  { name: 'owners', newValue: JSON.stringify([owner]) },
+                ],
+                fieldsUpdated: [],
+                fieldsDeleted: [],
+              },
+            },
+            true
+          )}
+        </>
+      );
+
+      expect(screen.getByTestId('diff-added')).toHaveTextContent('aaron');
+    });
+
+    it('should show the current owners outside the version page', () => {
+      render(<>{getOwnerVersionLabel({ owners: [owner] }, false)}</>);
+
+      expect(screen.getByTestId('owner-label')).toHaveTextContent('aaron');
+      expect(screen.queryByTestId('diff-added')).not.toBeInTheDocument();
+    });
+
+    it('should show a placeholder only to a user who cannot add an owner', () => {
+      const { container, rerender } = render(
+        <>{getOwnerVersionLabel({ owners: [] }, false)}</>
+      );
+
+      expect(container).toBeEmptyDOMElement();
+
+      rerender(
+        <>
+          {getOwnerVersionLabel(
+            { owners: [] },
+            false,
+            TabSpecificField.OWNERS,
+            false
+          )}
+        </>
+      );
+
+      expect(container).toHaveTextContent(NO_DATA_PLACEHOLDER);
     });
   });
 });
