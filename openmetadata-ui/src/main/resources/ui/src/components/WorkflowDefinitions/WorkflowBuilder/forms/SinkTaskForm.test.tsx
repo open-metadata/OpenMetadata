@@ -289,6 +289,30 @@ const createMockNodeWithSigningConfig = (): Node => ({
   },
 });
 
+const createMockWebhookNode = (): Node => ({
+  id: 'test-node-4',
+  type: 'sinkTask',
+  position: { x: 0, y: 0 },
+  data: {
+    label: 'Webhook Sink',
+    displayName: 'Webhook Sink',
+    description: '',
+    config: {
+      sinkType: 'webhook',
+      outputFormat: 'json',
+      batchMode: false,
+      sinkConfig: {
+        endpoint: 'https://hooks.example.com/metadata',
+        httpMethod: 'POST',
+        headers: { 'X-Api-Key': MASKED_PASSWORD_VALUE },
+        authentication: { type: 'bearer', token: MASKED_PASSWORD_VALUE },
+        retryConfig: { maxRetries: 2 },
+        timeout: 15,
+      },
+    },
+  },
+});
+
 const ARMORED_KEY = [
   '-----BEGIN PGP PRIVATE KEY BLOCK-----',
   'lQVYBGZexample',
@@ -304,6 +328,9 @@ const getPassphraseInput = (): HTMLInputElement =>
   screen
     .getByTestId('signing-passphrase-input')
     .querySelector('input') as HTMLInputElement;
+
+const getTokenInput = (): HTMLInputElement =>
+  screen.getByTestId('token-input').querySelector('input') as HTMLInputElement;
 
 const mockOnSave = jest.fn();
 const mockOnClose = jest.fn();
@@ -654,6 +681,74 @@ describe('SinkTaskForm', () => {
 
       expect(tokenInput).toHaveAttribute('type', 'password');
     });
+
+    it('should replace a masked token with the typed value', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      fireEvent.change(getTokenInput(), {
+        target: { value: `${MASKED_PASSWORD_VALUE}ghp_new` },
+      });
+
+      expect(getTokenInput()).toHaveValue('ghp_new');
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: 'ghp_new',
+      });
+    });
+
+    it('should send a masked token back as the mask when untouched', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: MASKED_PASSWORD_VALUE,
+      });
+    });
+  });
+
+  describe('Stored Webhook Sink', () => {
+    it('should not carry webhook fields or masks into the git config', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockWebhookNode(),
+      });
+
+      fireEvent.change(getInputByTestId('repository-url-input'), {
+        target: { value: 'https://github.com/org/repo.git' },
+      });
+      fireEvent.change(getTokenInput(), { target: { value: 'ghp_token' } });
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      const { config } = getSavedConfig();
+
+      expect(config.sinkType).toBe('git');
+      expect(config.sinkConfig).toEqual({
+        repositoryUrl: 'https://github.com/org/repo.git',
+        branch: 'main',
+        basePath: 'metadata',
+        credentials: { type: 'token', token: 'ghp_token' },
+        conflictResolution: 'overwriteExternal',
+        commitConfig: {
+          messageTemplate: 'Sync {entityType}: {entityName}',
+          authorName: 'label.brand-name-bot',
+          authorEmail: 'bot@openmetadata.org',
+        },
+      });
+      expect(JSON.stringify(config.sinkConfig)).not.toContain(
+        MASKED_PASSWORD_VALUE
+      );
+    });
   });
 
   describe('Stored Fields', () => {
@@ -821,6 +916,39 @@ describe('SinkTaskForm', () => {
       expect(getSavedConfig().config.sinkConfig).not.toHaveProperty(
         'signingKey'
       );
+    });
+
+    it('should replace a masked passphrase and keep the masked key', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      fireEvent.change(getPassphraseInput(), {
+        target: { value: `${MASKED_PASSWORD_VALUE}new*phrase` },
+      });
+
+      expect(getPassphraseInput()).toHaveValue('new*phrase');
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.signingKey).toEqual({
+        privateKey: MASKED_PASSWORD_VALUE,
+        passphrase: 'new*phrase',
+      });
+    });
+
+    it('should keep text inserted inside a masked passphrase', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      fireEvent.change(getPassphraseInput(), {
+        target: { value: '****a*b*****' },
+      });
+
+      expect(getPassphraseInput()).toHaveValue('a*b');
     });
 
     it('should clear a masked key when one mask character is deleted', () => {

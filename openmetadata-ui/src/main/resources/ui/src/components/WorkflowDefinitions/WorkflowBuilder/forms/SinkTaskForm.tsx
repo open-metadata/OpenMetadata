@@ -24,6 +24,7 @@ import { Node } from 'reactflow';
 import { MASKED_PASSWORD_VALUE } from '../../../../constants/Secrets.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { CommitSigningKey } from '../../../../generated/governance/workflows/elements/nodes/automatedTask/sinkConfig/gitSinkConfig';
+import { SinkType } from '../../../../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
 import {
   createNodeConfig,
   isValidString,
@@ -55,6 +56,7 @@ interface SinkNodeConfig {
 }
 
 interface SinkTaskConfig {
+  sinkType?: SinkType;
   outputFormat?: string;
   sinkConfig?: SinkNodeConfig;
 }
@@ -157,24 +159,47 @@ const buildSinkConfig = (
   };
 };
 
-// A masked key is a placeholder, not key text: the first edit replaces it
-// rather than appending to it. Armored keys and secret references never contain
-// '*', so stripping them leaves only what the user typed or pasted. A masked
-// passphrase belongs to the replaced key, so it is reset too.
+const countEdgeMaskChars = (value: string, edge: RegExp, limit: number) =>
+  Math.min(value.length - value.replace(edge, '').length, limit);
+
+// A masked secret is a placeholder, not secret text: the first edit replaces it
+// rather than adding to it. The edit keeps the mask characters on either side of
+// the cursor, so the text between them is what the user typed or pasted, '*'
+// included. Deleting a mask character leaves only mask, so the field clears.
+const replaceMask = (prevValue: string, value: string): string => {
+  let result = value;
+  if (prevValue === MASKED_PASSWORD_VALUE) {
+    const maskLength = MASKED_PASSWORD_VALUE.length;
+    const before = countEdgeMaskChars(value, /^\*+/, maskLength);
+    const rest = value.slice(before);
+    const after = countEdgeMaskChars(rest, /\*+$/, maskLength - before);
+    result = rest.slice(0, rest.length - after);
+  }
+
+  return result;
+};
+
+// A masked passphrase belongs to the replaced key, so it is reset too.
 const applyPrivateKeyChange = (
   prev: SinkFormData,
   value: string
 ): SinkFormData => {
-  const replacesMask = prev.signingPrivateKey === MASKED_PASSWORD_VALUE;
   const resetsPassphrase =
-    replacesMask && prev.signingPassphrase === MASKED_PASSWORD_VALUE;
+    prev.signingPrivateKey === MASKED_PASSWORD_VALUE &&
+    prev.signingPassphrase === MASKED_PASSWORD_VALUE;
 
   return {
     ...prev,
-    signingPrivateKey: replacesMask ? value.replace(/\*/g, '') : value,
+    signingPrivateKey: replaceMask(prev.signingPrivateKey, value),
     signingPassphrase: resetsPassphrase ? '' : prev.signingPassphrase,
   };
 };
+
+const applySecretChange = (
+  prev: SinkFormData,
+  field: 'token' | 'signingPassphrase',
+  value: string
+): SinkFormData => ({ ...prev, [field]: replaceMask(prev[field], value) });
 
 export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
   node,
@@ -228,6 +253,14 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
     setFormData((prev) => applyPrivateKeyChange(prev, value));
   }, []);
 
+  const handleTokenChange = useCallback((value: string) => {
+    setFormData((prev) => applySecretChange(prev, 'token', value));
+  }, []);
+
+  const handlePassphraseChange = useCallback((value: string) => {
+    setFormData((prev) => applySecretChange(prev, 'signingPassphrase', value));
+  }, []);
+
   const handleAllowUnsignedFastPushChange = useCallback((value: boolean) => {
     setFormData((prev) => ({ ...prev, allowUnsignedFastPush: value }));
   }, []);
@@ -249,6 +282,12 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
 
   const handleSave = () => {
     const storedConfig = (node.data as SinkNodeData)?.config ?? {};
+    // Saving writes a git sink, so only a stored git sinkConfig is carried over;
+    // another sink type's fields and masked secrets are not valid git config.
+    const storedGitSinkConfig =
+      storedConfig.sinkType === SinkType.Git
+        ? storedConfig.sinkConfig ?? {}
+        : {};
 
     // The node's config is replaced as a whole on save, so the task-level
     // fields this form does not render (batchMode, syncMode, entityFilter, ...)
@@ -260,9 +299,9 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
       subType: 'sinkTask',
       config: {
         ...storedConfig,
-        sinkType: 'git',
+        sinkType: SinkType.Git,
         outputFormat: storedConfig.outputFormat ?? 'yaml',
-        sinkConfig: buildSinkConfig(storedConfig.sinkConfig ?? {}, formData),
+        sinkConfig: buildSinkConfig(storedGitSinkConfig, formData),
       },
     });
 
@@ -343,7 +382,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
             placeholder="ghp_xxxxxxxxxxxx"
             type="password"
             value={formData.token}
-            onChange={(value) => updateFormData('token', value)}
+            onChange={handleTokenChange}
           />
         </div>
 
@@ -404,7 +443,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
             label={t('label.passphrase')}
             type="password"
             value={formData.signingPassphrase}
-            onChange={(value) => updateFormData('signingPassphrase', value)}
+            onChange={handlePassphraseChange}
           />
         </div>
 
