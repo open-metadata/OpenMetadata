@@ -569,10 +569,6 @@ PREPARE announcement_type_default_stmt FROM @announcement_type_default_ddl;
 EXECUTE announcement_type_default_stmt;
 DEALLOCATE PREPARE announcement_type_default_stmt;
 
--- Flowable schema upgrades run after this migration and inherit the database default. Existing
--- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
-ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
 -- Direct-child container listings (issue #22530). "Children of <fqn>" was expressed as
 -- `fqnHash LIKE '<parent>.%' AND fqnHash NOT LIKE '<parent>.%.%'`. Neither predicate is an
 -- indexable equality, so with the listing's `ORDER BY name, id LIMIT n` the optimizer prefers
@@ -636,3 +632,7 @@ SET @container_parent_children_index_ddl = (
 PREPARE container_parent_children_index_stmt FROM @container_parent_children_index_ddl;
 EXECUTE container_parent_children_index_stmt;
 DEALLOCATE PREPARE container_parent_children_index_stmt;
+
+-- Flowable schema upgrades run after this migration and inherit the database default. Existing
+-- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
