@@ -429,7 +429,6 @@
     "chart-entity": "图表{{entity}}",
     "chart-plural": "图表",
     "chart-type": "图表类型",
-    "check-active-data-quality-incident-plural": "检查活跃数据质量事件",
     "check-status": "检查状态",
     "check-type": "检查类型",
     "check-upstream-failure": "检查上游故障",

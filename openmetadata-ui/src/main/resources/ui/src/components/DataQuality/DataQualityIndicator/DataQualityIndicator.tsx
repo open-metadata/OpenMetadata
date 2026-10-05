@@ -110,6 +110,7 @@ const ConditionList = ({ counts }: { counts: DataQualityIndicatorCounts }) => {
 };
 
 interface IndicatorContent {
+  isList: boolean;
   title: string;
   description: ReactNode;
   actionLabel: string;
@@ -137,6 +138,7 @@ const useIndicatorContent = (
 
   if (hasMultipleDataQualityConditions(counts)) {
     return {
+      isList: true,
       title: t('label.data-quality-needs-attention'),
       description: <ConditionList counts={counts} />,
       actionLabel: t('label.view-data-quality'),
@@ -146,6 +148,7 @@ const useIndicatorContent = (
 
   if (level === 'failing') {
     return {
+      isList: false,
       title: t('label.data-quality-test-failing'),
       description: t(
         pluralKey('message.dq-failing-tests-description', counts.failingTests),
@@ -158,6 +161,7 @@ const useIndicatorContent = (
 
   if (level === 'incident') {
     return {
+      isList: false,
       title: t('label.data-quality-incident-still-open'),
       description: t(
         pluralKey(
@@ -172,6 +176,7 @@ const useIndicatorContent = (
   }
 
   return {
+    isList: false,
     title: t('label.upstream-data-quality-issue'),
     description: t('message.dq-upstream-failing-test'),
     actionLabel: t('label.view-upstream-issue'),
@@ -199,10 +204,9 @@ export const DataQualityIndicator = ({
     return null;
   }
 
-  const { title, description, actionLabel, to } = content;
+  const { isList, title, description, actionLabel, to } = content;
   const tone = level === 'failing' ? 'error' : 'warning';
   const isUpstream = level === 'upstream';
-  const isList = hasMultipleDataQualityConditions(counts);
   const AlarmIcon = isUpstream ? DataQualityAlarmUpstream : DataQualityAlarm;
 
   const card = (

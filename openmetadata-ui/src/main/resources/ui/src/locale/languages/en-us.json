@@ -429,7 +429,6 @@
     "chart-entity": "Chart {{entity}}",
     "chart-plural": "Charts",
     "chart-type": "Chart type",
-    "check-active-data-quality-incident-plural": "Check active data quality incidents",
     "check-status": "Check status",
     "check-type": "Check type",
     "check-upstream-failure": "Check Upstream Failure",

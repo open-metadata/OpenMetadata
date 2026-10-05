@@ -429,7 +429,6 @@
     "chart-entity": "Диаграмма объекта «{{entity}}»",
     "chart-plural": "Диаграммы",
     "chart-type": "Тип диаграммы",
-    "check-active-data-quality-incident-plural": "Проверить активные инциденты качества данных",
     "check-status": "Проверить статус",
     "check-type": "Тип проверки",
     "check-upstream-failure": "Проверьте сбой в источниках данных",

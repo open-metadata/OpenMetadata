@@ -429,7 +429,6 @@
     "chart-entity": "Graphique {{entity}}",
     "chart-plural": "Graphiques",
     "chart-type": "Type de graphique",
-    "check-active-data-quality-incident-plural": "Vérifier les incidents de qualité des données actifs",
     "check-status": "Vérifier le Statut",
     "check-type": "Type de vérification",
     "check-upstream-failure": "Vérifiez l'échec en amont",

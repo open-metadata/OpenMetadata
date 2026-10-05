@@ -429,7 +429,6 @@
     "chart-entity": "{{entity}} 차트",
     "chart-plural": "차트들",
     "chart-type": "차트 유형",
-    "check-active-data-quality-incident-plural": "활성 데이터 품질 문제 확인",
     "check-status": "상태 확인",
     "check-type": "검사 유형",
     "check-upstream-failure": "상위 시스템 장애 확인",

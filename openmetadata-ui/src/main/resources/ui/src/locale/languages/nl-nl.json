@@ -429,7 +429,6 @@
     "chart-entity": "Diagram {{entity}}",
     "chart-plural": "Grafieken",
     "chart-type": "Grafiektype",
-    "check-active-data-quality-incident-plural": "Controleer actieve datakwaliteitsincidenten",
     "check-status": "Status controleren",
     "check-type": "Controletype",
     "check-upstream-failure": "Controleer de upstream-fout",

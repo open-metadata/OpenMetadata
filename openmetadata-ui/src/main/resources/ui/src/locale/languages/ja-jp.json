@@ -429,7 +429,6 @@
     "chart-entity": "{{entity}} のチャート",
     "chart-plural": "チャート",
     "chart-type": "チャートタイプ",
-    "check-active-data-quality-incident-plural": "アクティブなデータ品質インシデントを確認",
     "check-status": "ステータス確認",
     "check-type": "チェックの種類",
     "check-upstream-failure": "上流の障害を確認",

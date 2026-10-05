@@ -163,13 +163,6 @@ const TableDetailsPageV1: React.FC = () => {
     [columnPart, datasetFQN]
   );
 
-  const alertBadge = useMemo(
-    () => (
-      <DataQualityIndicator counts={dqIndicatorCounts} tableFqn={tableFqn} />
-    ),
-    [dqIndicatorCounts, tableFqn]
-  );
-
   const {
     permissions: fetchedTablePermissions,
     isLoading: isPermissionsLoading,
@@ -346,69 +339,77 @@ const TableDetailsPageV1: React.FC = () => {
     [tablePermissions, tableFqn, tableDetails, navigate]
   );
 
-  const fetchDqIndicatorCounts = useCallback(async () => {
-    if (!tableClassBase.getAlertEnableStatus()) {
-      setDqIndicatorCounts(EMPTY_DQ_INDICATOR_COUNTS);
+  const fetchDqIndicatorCounts = useCallback(
+    async (isCurrent: () => boolean) => {
+      if (!tableClassBase.getAlertEnableStatus()) {
+        setDqIndicatorCounts(EMPTY_DQ_INDICATOR_COUNTS);
 
-      return;
-    }
+        return;
+      }
 
-    // ponytail: incidents are classified from the first DQ_INDICATOR_FETCH_LIMIT failing tests and
-    // open incidents only. Past that the level is still right, only the tooltip counts drift;
-    // a server-side "open incidents on passing tests" count is the upgrade path.
-    const [failingResult, incidentResult, lineageResult] =
-      await Promise.allSettled([
-        getListTestCaseBySearch({
-          entityLink: generateEntityLink(tableFqn),
-          includeAllTests: true,
-          testCaseStatus: TestCaseStatus.Failed,
-          limit: DQ_INDICATOR_FETCH_LIMIT,
-        }),
-        getListTestCaseIncidentStatus({
-          originEntityFQN: tableFqn,
-          latest: true,
-          // The server picks each test case's latest status before applying this filter, so
-          // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
-          // before that and still includes resolved test cases.
-          testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
-          // `latest` is only honoured together with a time range.
-          startTs: 0,
-          endTs: Date.now(),
-          limit: DQ_INDICATOR_FETCH_LIMIT,
-        }),
-        getDataQualityLineage(tableFqn, { upstreamDepth: 1 }),
-      ]);
+      // ponytail: incidents are classified from the first DQ_INDICATOR_FETCH_LIMIT failing tests and
+      // open incidents only. Past that the level is still right, only the tooltip counts drift;
+      // a server-side "open incidents on passing tests" count is the upgrade path.
+      const [failingResult, incidentResult, lineageResult] =
+        await Promise.allSettled([
+          getListTestCaseBySearch({
+            entityLink: generateEntityLink(tableFqn),
+            includeAllTests: true,
+            testCaseStatus: TestCaseStatus.Failed,
+            limit: DQ_INDICATOR_FETCH_LIMIT,
+          }),
+          getListTestCaseIncidentStatus({
+            originEntityFQN: tableFqn,
+            latest: true,
+            // The server picks each test case's latest status before applying this filter, so
+            // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
+            // before that and still includes resolved test cases.
+            testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
+            // `latest` is only honoured together with a time range.
+            startTs: 0,
+            endTs: Date.now(),
+            limit: DQ_INDICATOR_FETCH_LIMIT,
+          }),
+          getDataQualityLineage(tableFqn, { upstreamDepth: 1 }),
+        ]);
 
-    const failingTests =
-      failingResult.status === 'fulfilled' ? failingResult.value.data : [];
-    const failingTestCaseIds = new Set(
-      failingTests.map((testCase) => testCase.id ?? '')
-    );
+      // A slower response for the table the user just left must not overwrite this one.
+      if (!isCurrent()) {
+        return;
+      }
 
-    if (lineageResult.status === 'fulfilled') {
-      setDqLineageData(lineageResult.value);
-    }
+      const failingTests =
+        failingResult.status === 'fulfilled' ? failingResult.value.data : [];
+      const failingTestCaseIds = new Set(
+        failingTests.map((testCase) => testCase.id ?? '')
+      );
 
-    setDqIndicatorCounts({
-      failingTests:
-        failingResult.status === 'fulfilled'
-          ? failingResult.value.paging?.total ?? failingTests.length
-          : 0,
-      unresolvedIncidents:
-        incidentResult.status === 'fulfilled'
-          ? countUnresolvedIncidents(
-              incidentResult.value.data,
-              failingTestCaseIds
-            )
-          : 0,
-      upstreamIssues:
-        lineageResult.status === 'fulfilled'
-          ? lineageResult.value.nodes?.filter(
-              (node) => node?.fullyQualifiedName !== tableFqn
-            ).length ?? 0
-          : 0,
-    });
-  }, [tableFqn, setDqLineageData]);
+      if (lineageResult.status === 'fulfilled') {
+        setDqLineageData(lineageResult.value);
+      }
+
+      setDqIndicatorCounts({
+        failingTests:
+          failingResult.status === 'fulfilled'
+            ? failingResult.value.paging?.total ?? failingTests.length
+            : 0,
+        unresolvedIncidents:
+          incidentResult.status === 'fulfilled'
+            ? countUnresolvedIncidents(
+                incidentResult.value.data,
+                failingTestCaseIds
+              )
+            : 0,
+        upstreamIssues:
+          lineageResult.status === 'fulfilled'
+            ? lineageResult.value.nodes?.filter(
+                (node) => node?.fullyQualifiedName !== tableFqn
+              ).length ?? 0
+            : 0,
+      });
+    },
+    [tableFqn, setDqLineageData]
+  );
 
   const {
     tableTags,
@@ -906,9 +907,15 @@ const TableDetailsPageV1: React.FC = () => {
   // so it must run as soon as tableDetails resolves — deferring would mean the user could
   // miss a critical "this dataset has failing tests" indicator on first paint.
   useEffect(() => {
-    if (loadedTableFqn) {
-      void fetchDqIndicatorCounts();
+    if (!loadedTableFqn) {
+      return;
     }
+    let isCurrent = true;
+    void fetchDqIndicatorCounts(() => isCurrent);
+
+    return () => {
+      isCurrent = false;
+    };
   }, [loadedTableFqn, fetchDqIndicatorCounts]);
 
   useSub(
@@ -1027,7 +1034,12 @@ const TableDetailsPageV1: React.FC = () => {
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={updateTableDetailsState}
-              badge={alertBadge}
+              badge={
+                <DataQualityIndicator
+                  counts={dqIndicatorCounts}
+                  tableFqn={tableFqn}
+                />
+              }
               breadcrumbData={breadcrumbData}
               dataAsset={tableDetails}
               entityType={EntityType.TABLE}

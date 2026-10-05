@@ -429,7 +429,6 @@
     "chart-entity": "กราฟ {{entity}}",
     "chart-plural": "กราฟหลายรายการ",
     "chart-type": "ประเภทกราฟ",
-    "check-active-data-quality-incident-plural": "ตรวจสอบเหตุการณ์คุณภาพข้อมูลที่กำลังใช้งาน",
     "check-status": "ตรวจสอบสถานะ",
     "check-type": "ประเภทการตรวจสอบ",
     "check-upstream-failure": "ตรวจสอบความล้มเหลวของอัพสตรีม",

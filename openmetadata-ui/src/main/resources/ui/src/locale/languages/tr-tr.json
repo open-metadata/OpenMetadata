@@ -429,7 +429,6 @@
     "chart-entity": "Grafik {{entity}}",
     "chart-plural": "Grafikler",
     "chart-type": "Grafik türü",
-    "check-active-data-quality-incident-plural": "Aktif veri kalitesi olaylarını kontrol et",
     "check-status": "Durumu kontrol et",
     "check-type": "Kontrol türü",
     "check-upstream-failure": "Yukarı Akış Hatalarını Kontrol Et",
