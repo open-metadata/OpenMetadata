@@ -147,14 +147,6 @@ export const createIconWithStroke = (
 };
 
 /**
- * The Ontology Studio glyph, as every nav entry leading there renders it —
- * classic sidebar and app-mode sub-nav — so the two surfaces cannot drift
- * apart. Drawn at the core-ui stock weight so it reads identically to the
- * other `LayersThree01` nav entries (AI Assets → Frameworks) beside it.
- */
-export const OntologyStudioIcon = LayersThree01;
-
-/**
  * Get the default icon for an entity type
  * @param entityType - The type of entity
  * @returns The icon component

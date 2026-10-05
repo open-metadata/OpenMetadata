@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01 } from '@openmetadata/ui-core-components/icons';
+import { Cube01, LayersThree01 } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
@@ -42,7 +42,7 @@ import { ReactComponent as DocumentsIcon } from '../assets/svg/sidebar-icons/doc
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
-import { createIconWithStroke, OntologyStudioIcon } from '../utils/IconUtils';
+import { createIconWithStroke } from '../utils/IconUtils';
 import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 type UntitledIconType = React.ComponentType<{
@@ -187,7 +187,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.ONTOLOGY_EXPLORER,
         title: 'label.ontology-studio',
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
-        icon: OntologyStudioIcon,
+        icon: LayersThree01,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
       },
       {
