@@ -38,7 +38,10 @@ from metadata.ingestion.source.database.starrocks.metadata import (
     StarRocksSource,
     _get_sqlalchemy_type,
 )
-from metadata.ingestion.source.database.starrocks.queries import STARROCKS_SQL_STATEMENT
+from metadata.ingestion.source.database.starrocks.queries import (
+    STARROCKS_SQL_STATEMENT,
+    STARROCKS_TABLE_COMMENTS,
+)
 from metadata.ingestion.source.database.starrocks.usage import StarRocksUsageSource
 from metadata.utils import fqn
 
@@ -393,3 +396,40 @@ class TestStarRocksLineageFqnResolution:
         )
 
         assert found is None
+
+
+class TestStarRocksTableDescription:
+    """Table comments are read from INFORMATION_SCHEMA.TABLES (#26692).
+
+    StarRocks writes COMMENT on its own line in SHOW CREATE TABLE, which the
+    MySQL dialect's parser (the connector uses mysql+pymysql) does not pick up.
+    """
+
+    MULTILINE_COMMENT = "Observations of FRED series.\n\n**Grain:** one row per (series_id, obs_date)."
+
+    @staticmethod
+    def _inspector(row):
+        inspector = MagicMock()
+        inspector.bind.execute.return_value.first.return_value = row
+        return inspector
+
+    def test_returns_the_comment_from_information_schema(self):
+        inspector = self._inspector((self.MULTILINE_COMMENT,))
+
+        description = StarRocksSource.get_table_description("datadrone", "fred_observations", inspector)
+
+        assert description == self.MULTILINE_COMMENT
+        query, params = inspector.bind.execute.call_args.args
+        assert str(query) == STARROCKS_TABLE_COMMENTS
+        assert params == {"schema": "datadrone", "table_name": "fred_observations"}
+        inspector.get_table_comment.assert_not_called()
+
+    @pytest.mark.parametrize("row", [None, ("",), (None,)])
+    def test_table_without_comment_has_no_description(self, row):
+        assert StarRocksSource.get_table_description("datadrone", "countries", self._inspector(row)) is None
+
+    def test_query_error_is_logged_and_returns_none(self):
+        inspector = MagicMock()
+        inspector.bind.execute.side_effect = RuntimeError("boom")
+
+        assert StarRocksSource.get_table_description("datadrone", "fred_observations", inspector) is None
