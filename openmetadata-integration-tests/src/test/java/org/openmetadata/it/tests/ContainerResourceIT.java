@@ -62,6 +62,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
 
   {
     supportsLifeCycle = true;
+    supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
     supportsDataContract = true;

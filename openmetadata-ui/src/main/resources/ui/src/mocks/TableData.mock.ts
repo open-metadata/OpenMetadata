@@ -213,6 +213,11 @@ export const MOCK_TABLE = {
     },
   },
   retentionPeriod: 'P23DT23H',
+  lifeCycle: {
+    created: {
+      timestamp: 1609459200000,
+    },
+  },
   deleted: false,
 } as unknown as Table;
 
