@@ -17,8 +17,8 @@ import {
   CustomProperty,
   EntityReference,
 } from '../../../generated/entity/type';
-import { serializeIntakeFormExtension } from '../../../utils/IntakeFormExtensionUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { serializeIntakeFormExtension } from '../../../utils/IntakeFormExtensionUtils';
 import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
 import {
   getOwnersOrCurrentUser,

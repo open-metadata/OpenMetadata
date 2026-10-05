@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { getExtensionPropertyNameFromFormKey } from '../components/Domain/AddDomainForm/AddDomainFormExtensionFields.utils';
 import { CustomProperty } from '../generated/entity/type';
 import { serializeExtensionValue } from './CustomProperty.utils';
-import { getExtensionPropertyNameFromFormKey } from '../components/Domain/AddDomainForm/AddDomainFormExtensionFields.utils';
 
 export const serializeIntakeFormExtension = (
   extensionFormValues: Record<string, unknown> = {},
