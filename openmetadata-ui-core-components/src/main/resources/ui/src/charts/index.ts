@@ -47,6 +47,7 @@ export {
   referenceLinesToMarkLine,
   tooltipConfig,
   valueAxis,
+  withAlpha,
 } from './options/common';
 export { buildGeoMapOption, resolveGeoData } from './options/geo';
 export type { ResolvedGeoData } from './options/geo';
@@ -69,6 +70,10 @@ export {
 } from './palette';
 export { registerEChartsParts, registerGeoMap } from './register';
 export { buildChartTheme, DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
+export {
+  hideChartTooltips,
+  HIDE_CHART_TOOLTIPS_EVENT,
+} from './tooltip-events';
 export { useChartPalette } from './use-chart-palette';
 export { useIsDarkMode } from './use-is-dark-mode';
 
