@@ -14,17 +14,17 @@
 import { ResourceType } from '../../generated/entity/learning/learningResource';
 import { getSafeHttpUrl } from '../StringUtils';
 
-const READ_TIME_RESOURCE_TYPES: string[] = [
+const READ_TIME_RESOURCE_TYPES = new Set<string>([
   ResourceType.Article,
   ResourceType.Link,
   ResourceType.PDF,
-];
+]);
 
 export const opensInNewTab = (resourceType: string): boolean =>
   resourceType === ResourceType.Link;
 
 export const getDurationUnitLabelKey = (resourceType: string): string =>
-  READ_TIME_RESOURCE_TYPES.includes(resourceType)
+  READ_TIME_RESOURCE_TYPES.has(resourceType)
     ? 'label.min-read'
     : 'label.min-watch';
 
