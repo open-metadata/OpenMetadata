@@ -38,7 +38,7 @@ const TestCaseLastRunBanner = ({
   incidentTask,
   nextRunTimestamp,
   onAcknowledge,
-  parameterValues,
+  testCase,
   testCaseResult,
   testCaseStatus: authoritativeTestCaseStatus,
   testCaseStatusData,
@@ -80,7 +80,7 @@ const TestCaseLastRunBanner = ({
     );
   }
 
-  const { result, testResultValue, timestamp } = testCaseResult;
+  const { result, timestamp } = testCaseResult;
   const config = STATUS_CONFIG[testCaseStatus];
   const description = getRunDescription(
     result,
@@ -89,8 +89,8 @@ const TestCaseLastRunBanner = ({
   );
   const incidentLink = getIncidentLink(taskLinkInfo, testCaseStatus);
   const metricSummary = getMetricSummary(
-    parameterValues,
-    testResultValue,
+    testCase,
+    testCaseResult,
     testCaseStatus
   );
   const incidentTitle = incidentTask
