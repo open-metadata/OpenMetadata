@@ -1282,20 +1282,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  // Selects the cross-pod WebSocket relay behind WebSocketManager.sendToOne: Redis pub/sub when a
-  // Redis cache is configured, otherwise the DB-poll relay. Falls back to the no-op (node-local)
-  // relay only if initialization fails. Fixes completion frames dropped when the job runs on a
-  // different pod than the one holding the user's socket (#33179).
+  // Selects the cross-pod WebSocket relay behind sendToOne: Redis pub/sub when a Redis cache is
+  // configured, otherwise the DB-poll relay; no-op only if initialization fails.
   private void initializeWebSocketRelay(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     org.openmetadata.service.cache.CacheConfig cacheConfig = catalogConfig.getCacheConfig();
     org.openmetadata.service.socket.WebSocketRelay relay = null;
     try {
-      // Backend follows the cache provider — no separate toggle. Redis pub/sub when a Redis cache
-      // is
-      // configured, otherwise the DB-poll relay (works on both single- and multi-pod; single-pod
-      // just
-      // delivers locally and the published row is a cheap no-op cleaned up by TTL).
       if (cacheConfig != null
           && cacheConfig.provider == org.openmetadata.service.cache.CacheConfig.Provider.redis) {
         relay = new org.openmetadata.service.socket.RedisWebSocketRelay(cacheConfig);
