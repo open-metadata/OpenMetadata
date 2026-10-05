@@ -13,6 +13,7 @@
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
+import { SidebarItem } from '../../../constant/sidebar';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
 import { EntityClass } from '../../../support/entity/EntityClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
@@ -34,6 +35,7 @@ import {
   clickEdgeBetweenNodes,
   connectEdgeBetweenNodesViaAPI,
   deleteNode,
+  dismissLineageMapOnboarding,
   expectLineageNodeVisible,
   fitToScreen,
   openLineageMenu,
@@ -42,6 +44,7 @@ import {
   verifyNodePresent,
   visitLineageTab,
 } from '../../../utils/lineage';
+import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
 
 test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
@@ -367,26 +370,20 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await fitToScreen(page);
     });
 
-    test('Verify node click drills into the field scene', async ({ page }) => {
+    test('Verify node click on an asset page does not drill into the node', async ({
+      page,
+    }) => {
       const tableFqn = get(table1, 'entityResponseData.fullyQualifiedName', '');
+      const initialUrl = new URL(page.url());
+      const tableNode = page.getByTestId(`lineage-node-${tableFqn}`);
 
-      await page
-        .getByTestId(`lineage-node-${tableFqn}`)
-        .click({ position: { x: 10, y: 10 } });
+      await tableNode.click({ position: { x: 10, y: 10 } });
 
-      await expect
-        .poll(() => {
-          const currentUrl = new URL(page.url());
-
-          return {
-            band: currentUrl.searchParams.get('lineageBand'),
-            focus: currentUrl.searchParams.get('lineageFocus'),
-          };
-        })
-        .toEqual({
-          band: 'FIELD',
-          focus: tableFqn,
-        });
+      await expect(tableNode).toBeVisible();
+      await expect(page.getByTestId('lineage-map-band-ASSET')).toHaveCount(0);
+      expect(new URL(page.url()).searchParams.get('lineageBand')).toBe(
+        initialUrl.searchParams.get('lineageBand')
+      );
     });
 
     test('Verify node full path is present as breadcrumb in lineage node', async ({
@@ -560,30 +557,22 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         }
       });
 
-      test('drills into the field scene when an asset node is selected', async ({
+      test('keeps the asset scene when an asset node is selected', async ({
         page,
       }) => {
         await table2.visitEntityPage(page);
         await visitLineageTab(page);
         await fitToScreen(page);
 
-        await page
-          .getByTestId(`lineage-node-${table2Fqn}`)
-          .click({ position: { x: 10, y: 10 } });
+        const initialUrl = new URL(page.url());
+        const tableNode = page.getByTestId(`lineage-node-${table2Fqn}`);
 
-        await expect
-          .poll(() => {
-            const currentUrl = new URL(page.url());
+        await tableNode.click({ position: { x: 10, y: 10 } });
 
-            return {
-              band: currentUrl.searchParams.get('lineageBand'),
-              focus: currentUrl.searchParams.get('lineageFocus'),
-            };
-          })
-          .toEqual({
-            band: 'FIELD',
-            focus: table2Fqn,
-          });
+        await expect(tableNode).toBeVisible();
+        expect(new URL(page.url()).searchParams.get('lineageBand')).toBe(
+          initialUrl.searchParams.get('lineageBand')
+        );
       });
 
       test('clears the connected asset path after leaving a node', async ({
@@ -709,13 +698,16 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test.describe('Hierarchical map edit guards', () => {
     test('disables lineage editing in the LAYER band', async ({ page }) => {
-      await table1.visitEntityPage(page);
-      await visitLineageTab(page);
+      const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
+      await sidebarClick(page, SidebarItem.LINEAGE);
+      expect((await sceneResponse).ok()).toBeTruthy();
+      await dismissLineageMapOnboarding(page);
 
-      await page.getByTestId('lineage-map-band-LAYER').click();
-      await expect
-        .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
-        .toBe('LAYER');
+      await expect(
+        page
+          .getByTestId('lineage-map-band-LAYER')
+          .locator('.lineage-map-rail-dot.active')
+      ).toBeVisible();
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
@@ -737,9 +729,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByRole('menuitem', { name: 'Edit Downstream' }).click();
 
       await expect(page.getByTestId('add-lineage-popover')).toBeVisible();
-      await expect(
-        page.getByTestId('lineage-map-band-ASSET').locator('.active')
-      ).toBeVisible();
+      await expect(page.getByTestId('lineage-map-band-ASSET')).toHaveCount(0);
       await expect
         .poll(() => {
           const currentUrl = new URL(page.url());

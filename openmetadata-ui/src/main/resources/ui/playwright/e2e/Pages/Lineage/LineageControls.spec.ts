@@ -186,7 +186,11 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ).not.toBeVisible();
       await expect(
         page.getByTestId('lineage-layer-lens-service')
-      ).toBeVisible();
+      ).not.toBeVisible();
+      await expect(
+        page.getByTestId('lineage-layer-band-LAYER')
+      ).not.toBeVisible();
+      await expect(page.getByTestId('lineage-layer-band-ASSET')).toBeVisible();
       await expect(page.getByTestId('lineage-layer-band-FIELD')).toBeVisible();
     });
   });

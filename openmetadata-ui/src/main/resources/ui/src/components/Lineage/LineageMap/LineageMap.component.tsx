@@ -228,7 +228,7 @@ interface SceneFlowNodeData {
   sceneNode: LineageSceneNode;
   sceneBand: LineageBand;
   nodeWidth: number;
-  onSceneDrill: (node: LineageSceneNode) => void;
+  onSceneDrill?: (node: LineageSceneNode) => void;
   onSceneNodeSelect?: (nodeId: string) => void;
   sceneDrillLabel: string;
   isRootNode: boolean;
@@ -1158,13 +1158,12 @@ const LineageMapCanvas = ({
   }, []);
 
   useEffect(() => {
-    setShowOnboarding(
-      !deleted &&
-        !isTourOpen &&
-        !isTourPage &&
-        cookieStorage.getItem(LINEAGE_MAP_ONBOARDING_COOKIE) !== 'true'
-    );
-  }, [deleted, isTourOpen, isTourPage]);
+    const isOnboardingContext =
+      Boolean(isPlatformLineage) && !deleted && !isTourOpen && !isTourPage;
+    const hasSeenOnboarding =
+      cookieStorage.getItem(LINEAGE_MAP_ONBOARDING_COOKIE) === 'true';
+    setShowOnboarding(isOnboardingContext && !hasSeenOnboarding);
+  }, [deleted, isPlatformLineage, isTourOpen, isTourPage]);
 
   const getOriginRequestTarget = useCallback(
     (currentScene?: LineageScene): LineageSceneFocus =>
@@ -1404,9 +1403,11 @@ const LineageMapCanvas = ({
     refetchCurrentScene();
   }, [lineageMutationTick, refetchCurrentScene]);
 
+  // Asset pages stay on their own asset: moving through the scene hierarchy
+  // is only offered from the main Lineage page.
   const handleDrill = useCallback(
     (node: LineageSceneNode) => {
-      if (!isSceneNodeDrillable(node)) {
+      if (!isPlatformLineage || !isSceneNodeDrillable(node)) {
         return;
       }
       updateRequest({
@@ -1416,7 +1417,7 @@ const LineageMapCanvas = ({
         entityType: node.entityType,
       });
     },
-    [request.lens, updateRequest]
+    [isPlatformLineage, request.lens, updateRequest]
   );
 
   const handleSceneColumnHover = useCallback((columnFqn?: string) => {
@@ -1513,7 +1514,7 @@ const LineageMapCanvas = ({
           sceneNode: node,
           sceneBand: scene.band,
           nodeWidth: getNodeWidth(node),
-          onSceneDrill: handleDrill,
+          onSceneDrill: isPlatformLineage ? handleDrill : undefined,
           onSceneNodeSelect: getRealEntityRef(node)
             ? handleSceneNodeSelect
             : undefined,
@@ -1648,36 +1649,51 @@ const LineageMapCanvas = ({
     [nodes, reactFlowInstance]
   );
 
+  // Moving to a deeper band drills into the scene focus, or into the node the
+  // user is zooming into.
+  const getDeeperBandDrillRequest = useCallback(
+    (
+      currentScene: LineageScene,
+      band: LineageBand
+    ): LineageSceneRequest | undefined => {
+      if (!isDeeperBand(currentScene.band, band)) {
+        return undefined;
+      }
+      const focus = getSceneFocus(
+        currentScene.focusFqn,
+        currentScene.focusEntityType
+      );
+      if (band === LineageBand.Asset && focus.focusFqn) {
+        return { lens: currentScene.lens, band, ...focus };
+      }
+      const { target } = pickZoomTargetNode();
+      if (!isSceneNodeDrillable(target)) {
+        return undefined;
+      }
+
+      return {
+        lens: currentScene.lens,
+        band:
+          band === LineageBand.Field ? getDrillBand(target) : LineageBand.Asset,
+        focusFqn: target.fullyQualifiedName,
+        entityType: target.entityType,
+      };
+    },
+    [pickZoomTargetNode]
+  );
+
   const handleBandChange = useCallback(
     (band: LineageBand) => {
       if (!scene || scene.band === band) {
         return;
       }
-      if (isDeeperBand(scene.band, band)) {
-        const focus = getSceneFocus(scene.focusFqn, scene.focusEntityType);
-        if (band === LineageBand.Asset && focus.focusFqn) {
-          updateRequest({
-            lens: scene.lens,
-            band,
-            ...focus,
-          });
+      const drillRequest = isPlatformLineage
+        ? getDeeperBandDrillRequest(scene, band)
+        : undefined;
+      if (drillRequest) {
+        updateRequest(drillRequest);
 
-          return;
-        }
-        const { target } = pickZoomTargetNode();
-        if (isSceneNodeDrillable(target)) {
-          updateRequest({
-            lens: scene.lens,
-            band:
-              band === LineageBand.Field
-                ? getDrillBand(target)
-                : LineageBand.Asset,
-            focusFqn: target.fullyQualifiedName,
-            entityType: target.entityType,
-          });
-
-          return;
-        }
+        return;
       }
       const originTarget = getOriginRequestTarget(scene);
       if (band !== LineageBand.Layer && !originTarget.focusFqn) {
@@ -1689,7 +1705,13 @@ const LineageMapCanvas = ({
         ...originTarget,
       });
     },
-    [getOriginRequestTarget, pickZoomTargetNode, scene, updateRequest]
+    [
+      getDeeperBandDrillRequest,
+      getOriginRequestTarget,
+      isPlatformLineage,
+      scene,
+      updateRequest,
+    ]
   );
 
   const handleSemanticZoomIn = useCallback(
@@ -1710,7 +1732,8 @@ const LineageMapCanvas = ({
 
   const handleMove = useCallback(
     (event: MouseEvent | TouchEvent | null, viewport: { zoom: number }) => {
-      if (!scene || semanticZoomSuppressedRef.current) {
+      // Zoom only changes band on the main Lineage page.
+      if (!isPlatformLineage || !scene || semanticZoomSuppressedRef.current) {
         previousZoomRef.current = viewport.zoom;
 
         return;
@@ -1742,7 +1765,13 @@ const LineageMapCanvas = ({
         handleBandChange(nextBand);
       }
     },
-    [handleBandChange, handleSemanticZoomIn, scene, updateRequest]
+    [
+      handleBandChange,
+      handleSemanticZoomIn,
+      isPlatformLineage,
+      scene,
+      updateRequest,
+    ]
   );
 
   const closeLineageEditRequest = useCallback(
@@ -2126,15 +2155,19 @@ const LineageMapCanvas = ({
         onEdgeClick={handleEdgeClick}
         onEdgeHover={setHoveredEdge}
       />
-      <LineageMapControls
-        canDrill={canDrillScene}
-        scene={scene}
-        onBandChange={handleBandChange}
-      />
-      <LineageMapBreadcrumbs
-        scene={scene}
-        onBreadcrumbFocus={handleBreadcrumbFocus}
-      />
+      {isPlatformLineage && (
+        <>
+          <LineageMapControls
+            canDrill={canDrillScene}
+            scene={scene}
+            onBandChange={handleBandChange}
+          />
+          <LineageMapBreadcrumbs
+            scene={scene}
+            onBreadcrumbFocus={handleBreadcrumbFocus}
+          />
+        </>
+      )}
       <LineageMapStatusPanel error={sceneError} scene={scene} />
       <LineageMapOnboardingDialog
         open={showOnboarding}

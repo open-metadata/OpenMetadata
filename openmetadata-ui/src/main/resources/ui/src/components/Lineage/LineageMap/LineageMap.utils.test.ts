@@ -128,7 +128,9 @@ describe('scene URL navigation', () => {
       request
     );
 
-    expect(getSceneRequestFromSearch(search, defaultFocus)).toEqual(request);
+    expect(getSceneRequestFromSearch(search, defaultFocus, true)).toEqual(
+      request
+    );
   });
 
   it('uses the current route entity when no focus has been selected', () => {
@@ -176,36 +178,15 @@ describe('scene URL navigation', () => {
   });
 
   it.each([{}, defaultFocus])(
-    'recenters the entity-page table after reloading a Layer URL with focus %j',
+    'keeps an asset page on the Asset band when the URL asks for the Layer band, focus %j',
     (focus) => {
-      const request = {
+      const search = getSceneSearch('', {
         lens: LineageLens.Service,
         band: LineageBand.Layer,
         ...focus,
-      };
-      const search = getSceneSearch('', request);
-      const reloaded = getSceneRequestFromSearch(search, defaultFocus);
+      });
 
-      expect(reloaded).toEqual(request);
-
-      const scene: LineageScene = {
-        ...request,
-        nodes: [],
-        edges: [],
-        breadcrumb: [],
-      };
-      const recentered = {
-        lens: scene.lens,
-        band: LineageBand.Asset,
-        ...getSceneOriginFocus(scene, defaultFocus),
-      };
-
-      expect(
-        getSceneRequestFromSearch(
-          getSceneSearch(search, recentered),
-          defaultFocus
-        )
-      ).toEqual({
+      expect(getSceneRequestFromSearch(search, defaultFocus)).toEqual({
         lens: LineageLens.Service,
         band: LineageBand.Asset,
         ...defaultFocus,

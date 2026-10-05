@@ -1142,6 +1142,14 @@ export const removeColumnLineage = async (
 
 export const dismissLineageMapOnboarding = async (page: Page) => {
   const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
+  // The onboarding dialog belongs to the main Lineage page; asset lineage
+  // tabs never show it.
+  const isMainLineagePage = new URL(page.url()).pathname.startsWith('/lineage');
+  if (!isMainLineagePage) {
+    await expect(onboardingDialog).not.toBeVisible();
+
+    return;
+  }
   const hasSeenOnboarding = (await page.context().cookies()).some(
     ({ name, value }) =>
       name === 'lineageMapsOnboardingSeen' && value === 'true'

@@ -17,7 +17,7 @@ import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
 } from '../../../utils/common';
-import { visitLineageTab } from '../../../utils/lineage';
+import { dismissLineageMapOnboarding } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
 
 test.describe(
@@ -48,29 +48,24 @@ test.describe(
       await redirectToHomePage(page);
     });
 
-    test('drills into asset details instead of opening the legacy right panel', async ({
+    test('drills into asset details from the main Lineage page instead of opening the legacy right panel', async ({
       page,
     }) => {
       const tableFqn = table.entityResponseData.fullyQualifiedName;
       const serviceFqn = table.serviceResponseData.fullyQualifiedName;
 
-      await table.visitEntityPage(page);
-      await visitLineageTab(page);
-
-      const tableNode = page.getByTestId(`lineage-node-${tableFqn}`);
-      await expect(tableNode).toBeVisible();
-
-      await page.getByTestId('lineage-layer-btn').click();
-      const layerBandButton = page.getByTestId('lineage-layer-band-LAYER');
-      const isLayerBandSelected = await layerBandButton.evaluate((element) =>
-        element.hasAttribute('data-selected')
-      );
-
-      if (!isLayerBandSelected) {
-        await layerBandButton.click();
-      } else {
-        await page.keyboard.press('Escape');
-      }
+      // Hierarchy drilling lives on the main Lineage page, so open it at the
+      // Layer band focused on this table, as the asset tab used to.
+      const search = new URLSearchParams({
+        lineageLens: 'service',
+        lineageBand: 'LAYER',
+        lineageFocus: tableFqn,
+        lineageEntityType: 'table',
+      });
+      const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
+      await page.goto(`/lineage?${search.toString()}`);
+      expect((await sceneResponse).ok()).toBeTruthy();
+      await dismissLineageMapOnboarding(page);
 
       await expect(
         page

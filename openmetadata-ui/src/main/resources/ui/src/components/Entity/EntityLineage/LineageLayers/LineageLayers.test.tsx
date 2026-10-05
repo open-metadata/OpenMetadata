@@ -29,17 +29,23 @@ import LineageLayers from './LineageLayers';
 const mockSetActiveLayer = jest.fn();
 const mockSetPlatformView = jest.fn();
 
+let mockIsPlatformLineage = false;
+
 jest.mock('../../../../hooks/useLineageStore', () => ({
   useLineageStore: jest.fn().mockImplementation(() => ({
     activeLayer: [],
     platformView: [],
     setPlatformView: mockSetPlatformView,
-    isPlatformLineage: false,
+    isPlatformLineage: mockIsPlatformLineage,
     setActiveLayer: mockSetActiveLayer,
   })),
 }));
 
 describe('LineageLayers component', () => {
+  afterEach(() => {
+    mockIsPlatformLineage = false;
+  });
+
   it('renders LineageLayers component', () => {
     const { container } = render(
       <ReactFlowProvider>
@@ -91,7 +97,40 @@ describe('LineageLayers component', () => {
     ]);
   });
 
+  it('offers only the Asset and Field bands, without lenses, on an asset page', async () => {
+    render(
+      <ReactFlowProvider>
+        <LineageLayers
+          entityType={EntityType.TABLE}
+          sceneBand={LineageBand.Asset}
+          sceneLens={LineageLens.Service}
+          sceneLevelLabelKey="label.lineage-map-schema-level"
+          onSceneBandChange={jest.fn()}
+          onSceneLensChange={jest.fn()}
+        />
+      </ReactFlowProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('lineage-layer-btn'));
+    });
+
+    expect(
+      screen.getByTestId(`lineage-layer-band-${LineageBand.Asset}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`lineage-layer-band-${LineageBand.Field}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`lineage-layer-band-${LineageBand.Layer}`)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('lineage-layer-lens-domain')
+    ).not.toBeInTheDocument();
+  });
+
   it('calls scene lens handler in scene mode', async () => {
+    mockIsPlatformLineage = true;
     const onSceneBandChange = jest.fn();
     const onSceneLensChange = jest.fn();
 
