@@ -11,9 +11,34 @@
  *  limitations under the License.
  */
 import { snakeCase } from 'lodash';
+import { DateTime } from 'luxon';
 
 export const getVersionedStorageKey = (key: string, appVersion?: string) => {
   const versionedKey = key + '_' + snakeCase(appVersion ?? '');
 
   return versionedKey;
+};
+
+/**
+ * Drops the build segment from a version string for display.
+ * "1.13.202609250000" -> "1.13"
+ */
+export const getSimplifiedVersion = (version?: string): string =>
+  (version ?? '').split('.').slice(0, 2).join('.');
+
+/**
+ * Derives the release date from the build segment (YYYYMMDDHHMM) of a version
+ * string. Parsed in the local zone so a same-zone format call does not drift a
+ * day. Returns undefined for clean releases without a 12-digit build stamp.
+ */
+export const getVersionReleaseTimestamp = (
+  version?: string
+): number | undefined => {
+  const build = (version ?? '').split('.').pop() ?? '';
+  if (!/^\d{12}$/.test(build)) {
+    return undefined;
+  }
+  const dt = DateTime.fromFormat(build, 'yyyyMMddHHmm');
+
+  return dt.isValid ? dt.toMillis() : undefined;
 };
