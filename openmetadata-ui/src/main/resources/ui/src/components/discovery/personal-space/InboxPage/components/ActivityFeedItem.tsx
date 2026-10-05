@@ -254,7 +254,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
       <Card
         className={classNames(
-          'tw:ml-10 tw:bg-utility-gray-blue-50 tw:border-utility-gray-blue-100 tw:border-[0.6px] tw:px-4 tw:py-3 tw:transition-colors tw:group-hover:bg-white',
+          'tw:ml-10 tw:bg-utility-gray-blue-50 tw:border-utility-gray-blue-100 tw:border-[0.6px] tw:px-4 tw:py-3 tw:transition-colors tw:group-hover:bg-surface',
           {
             'tw:bg-active': isActive,
           }
