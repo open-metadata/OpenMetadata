@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -23,15 +24,20 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.Relationship;
@@ -40,6 +46,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.util.EntityRelationshipCleanup;
+import org.openmetadata.service.util.ServiceHierarchyCleanup;
 
 /**
  * End-to-end test for the rewritten {@link EntityRelationshipCleanup} used by the Data Retention
@@ -134,6 +141,41 @@ public class EntityRelationshipCleanupIT {
     } finally {
       deleteByFromId(fromId);
     }
+  }
+
+  /**
+   * A chart is contained by its dashboard service; a dashboard only references it through HAS. The
+   * hierarchy check used to look for a dashboard parent, so the weekly Data Retention run
+   * hard-deleted every chart that no dashboard used. Reads the detection query the delete shares
+   * instead of deleting, so no other suite's entities are touched.
+   */
+  @Test
+  void hierarchyCleanup_keepsChartThatNoDashboardUses(TestNamespace ns) {
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+    Chart chart =
+        SdkClients.adminClient()
+            .charts()
+            .create(
+                new CreateChart()
+                    .withName(ns.prefix("standaloneChart"))
+                    .withService(service.getFullyQualifiedName())
+                    .withChartType(ChartType.Bar));
+
+    ServiceHierarchyCleanup cleanup = new ServiceHierarchyCleanup(Entity.getCollectionDAO(), true);
+    List<ServiceHierarchyCleanup.ServiceHierarchy> chartHierarchies =
+        ServiceHierarchyCleanup.getServiceHierarchies().values().stream()
+            .flatMap(List::stream)
+            .filter(hierarchy -> Entity.CHART.equals(hierarchy.getChildEntityType()))
+            .toList();
+    assertFalse(chartHierarchies.isEmpty(), "the hierarchy cleanup must still check charts");
+
+    List<String> brokenCharts =
+        chartHierarchies.stream()
+            .flatMap(hierarchy -> cleanup.getBrokenEntitiesForHierarchy(hierarchy).stream())
+            .toList();
+    assertTrue(
+        brokenCharts.stream().noneMatch(fqn -> fqn.contains(chart.getFullyQualifiedName())),
+        "a chart contained by its dashboard service must not be reported broken: " + brokenCharts);
   }
 
   private Table createTable(TestNamespace ns) throws Exception {

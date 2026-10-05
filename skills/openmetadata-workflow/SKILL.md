@@ -44,7 +44,7 @@ This skill is loaded automatically at session start. It ensures you follow the r
 
 5. **Review before merging.** Use `/code-review` for two-stage review (spec compliance + code quality).
 
-6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue, high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps.
+6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue (a test fix needs none), high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps.
 
 ### OpenMetadata Cross-Layer Checklist
 

@@ -448,6 +448,11 @@ const ExplorePageV1: FC<unknown> = () => {
         )
       );
     };
+    const finishResultsLoading = () => {
+      if (!isStale()) {
+        setIsLoading(false);
+      }
+    };
     const captureSetSearchResults: typeof setSearchResults = (value) => {
       if (isStale()) {
         return;
@@ -551,6 +556,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        onResultsSettled: finishResultsLoading,
         showRankingDetails,
       }).then(commitCacheIfFresh);
 
@@ -583,6 +589,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        onResultsSettled: finishResultsLoading,
         showRankingDetails,
       });
       commitCacheIfFresh();
