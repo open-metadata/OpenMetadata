@@ -127,7 +127,9 @@ export const TreeSelectTreeItemContent = <T,>({
   onNodeClick,
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
-  const isRowDisabled = disabled || node.disabled || !isSelectable;
+  // A glossary row cannot be picked but is a live container, not a dead one.
+  const isRowBlocked = Boolean(disabled || node.disabled);
+  const isRowDisabled = isRowBlocked || !isSelectable;
   // One choice at a time reads as a radio: a single-select tree otherwise shows
   // no control at all, leaving the rows looking inert.
   const isSingleChoice = !multiple || Boolean(node.isParentMutuallyExclusive);
@@ -143,7 +145,12 @@ export const TreeSelectTreeItemContent = <T,>({
         <div
           className={cx(
             'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
-            isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
+            // not-allowed is for a blocked row, not one with nothing to pick.
+            isRowBlocked
+              ? 'tw:cursor-not-allowed'
+              : isSelectable
+              ? 'tw:cursor-pointer'
+              : 'tw:cursor-default'
           )}
           data-selected={isSelected}
           data-testid={`tree-node-${node.id}`}

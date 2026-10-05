@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Space, Tag } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import { lazy, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -69,9 +69,14 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
                 </Typography>
               </div>
               {persona.default && (
-                <Tag color="blue" data-testid="default-persona-tag">
+                <Badge
+                  className="tw:mr-2"
+                  color="blue"
+                  data-testid="default-persona-tag"
+                  size="sm"
+                  type="color">
                   {t('label.default')}
-                </Tag>
+                </Badge>
               )}
             </div>
           }

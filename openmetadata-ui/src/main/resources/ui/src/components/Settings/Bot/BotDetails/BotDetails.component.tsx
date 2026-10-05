@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Input, Row, Tag, Tooltip } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -204,14 +204,15 @@ const BotDetails: FC<BotsDetailProps> = ({
                   )}
                 </div>
                 {botUserData.allowImpersonation && (
-                  <Tooltip title={t('message.allow-impersonation-help')}>
-                    <Tag
-                      className="w-fit-content"
-                      color="blue"
-                      data-testid="impersonation-enabled-badge">
-                      {t('label.impersonation-enabled')}
-                    </Tag>
-                  </Tooltip>
+                  <Badge
+                    className="tw:mr-2"
+                    color="blue"
+                    data-testid="impersonation-enabled-badge"
+                    size="sm"
+                    tooltip={t('message.allow-impersonation-help')}
+                    type="color">
+                    {t('label.impersonation-enabled')}
+                  </Badge>
                 )}
                 <Description
                   description={botData.description}

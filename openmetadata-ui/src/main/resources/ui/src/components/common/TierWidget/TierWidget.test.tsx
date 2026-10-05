@@ -19,8 +19,10 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import TierCard from '../TierCard/TierCard';
 import TierWidget from './TierWidget';
 
@@ -155,10 +157,12 @@ describe('TierCard stale selectedTier', () => {
   });
 });
 
+const mockOnUpdate = jest.fn();
+
 const mockUseGenericContextResult = {
   data: { name: 'domain', tags: [] } as unknown as Domain,
   permissions: {} as OperationPermission,
-  onUpdate: jest.fn(),
+  onUpdate: mockOnUpdate,
   isVersionView: false,
 };
 
@@ -211,5 +215,75 @@ describe('TierWidget permissions', () => {
     render(<TierWidget />);
 
     expect(screen.queryByTestId('add-tier')).not.toBeInTheDocument();
+  });
+});
+
+const axiosError = {
+  message: 'Request failed with status code 403',
+  response: { status: 403, data: { message: 'Forbidden' } },
+} as AxiosError;
+
+const saveTier = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('add-tier'));
+  });
+  await screen.findByTestId('radio-btn-Tier3');
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('radio-btn-Tier3'));
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('update-tier-card'));
+  });
+};
+
+// The widget swallows a failed save without toasting, because the pages that
+// render it (Domain, DataProduct) toast in their own onUpdate before rethrowing.
+describe('TierWidget failed save', () => {
+  beforeEach(() => {
+    mockOnUpdate.mockReset();
+    mockUseGenericContextResult.isVersionView = false;
+    (showErrorToast as jest.Mock).mockClear();
+    mockUseGenericContextResult.permissions = {
+      EditTier: true,
+    } as unknown as OperationPermission;
+  });
+
+  it('should toast once when the page updater toasts and rethrows', async () => {
+    mockOnUpdate.mockImplementation(async () => {
+      showErrorToast(axiosError);
+
+      throw axiosError;
+    });
+
+    render(<TierWidget />);
+    await saveTier();
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('should toast once when the page updater toasts and swallows', async () => {
+    mockOnUpdate.mockImplementation(async () => {
+      showErrorToast(axiosError);
+    });
+
+    render(<TierWidget />);
+    await saveTier();
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not toast on a successful save', async () => {
+    mockOnUpdate.mockResolvedValue(undefined);
+
+    render(<TierWidget />);
+    await saveTier();
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });

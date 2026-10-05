@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Divider, Form, Input, Row, Skeleton } from 'antd';
+import {
+  Divider,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Form, Input, Row } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -345,7 +349,7 @@ const AddNotificationPage = () => {
                   validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSave}>
                   {isLoading ? (
-                    <Skeleton title paragraph={{ rows: 8 }} />
+                    <SkeletonParagraph animation={false} rows={8} />
                   ) : (
                     <Row gutter={[20, 20]}>
                       <Col span={24}>
@@ -379,7 +383,11 @@ const AddNotificationPage = () => {
                           {shouldShowFiltersSection && (
                             <>
                               <Col>
-                                <Divider dashed type="vertical" />
+                                <Divider
+                                  dashed
+                                  className="tw:mx-2 tw:h-6 tw:border-r"
+                                  orientation="vertical"
+                                />
                               </Col>
                               <Col span={24}>
                                 <ObservabilityFormFiltersItem
@@ -391,7 +399,11 @@ const AddNotificationPage = () => {
                             </>
                           )}
                           <Col>
-                            <Divider dashed type="vertical" />
+                            <Divider
+                              dashed
+                              className="tw:mx-2 tw:h-6 tw:border-r"
+                              orientation="vertical"
+                            />
                           </Col>
                           <Col span={24}>
                             <DestinationFormItemFormBridge
@@ -427,7 +439,11 @@ const AddNotificationPage = () => {
                                 ([name, Widget]) => (
                                   <Fragment key={name}>
                                     <Col>
-                                      <Divider dashed type="vertical" />
+                                      <Divider
+                                        dashed
+                                        className="tw:mx-2 tw:h-6 tw:border-r"
+                                        orientation="vertical"
+                                      />
                                     </Col>
                                     <Col span={24}>
                                       <Widget

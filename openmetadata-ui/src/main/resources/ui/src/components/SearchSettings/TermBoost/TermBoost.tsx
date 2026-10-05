@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Row, Slider } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ComponentProps, useEffect, useState } from 'react';

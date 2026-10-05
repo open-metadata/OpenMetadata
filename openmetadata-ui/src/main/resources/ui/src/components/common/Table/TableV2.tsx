@@ -76,6 +76,7 @@ import {
   ResizableTableContainer,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { twMerge } from 'tailwind-merge';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
@@ -1763,8 +1764,9 @@ const TableV2 = <T extends object>(
 
   return (
     <div
-      className={classNames(
+      className={twMerge(
         'table-container',
+        'tw:border tw:border-utility-gray-200',
         'tw:[&_tbody_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}

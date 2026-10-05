@@ -55,17 +55,33 @@ jest.mock('./tabs/TasksTab', () => ({
   ),
 }));
 
+// The shell is presentational; render its two slots so the tabs and the active
+// surface this component supplies stay observable.
+jest.mock('./InboxPage', () => ({
+  __esModule: true,
+  default: ({ tabs, content }: { tabs?: ReactNode; content?: ReactNode }) => (
+    <div>
+      {tabs}
+      {content}
+    </div>
+  ),
+}));
+
 let tabsOnChange: ((key: string) => void) | undefined;
+let tabsSelectedKey: string | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const TabsRoot = ({
+    selectedKey,
     onSelectionChange,
     children,
   }: {
+    selectedKey?: string;
     onSelectionChange?: (...args: unknown[]) => void;
     children?: ReactNode;
   }) => {
     tabsOnChange = onSelectionChange;
+    tabsSelectedKey = selectedKey;
 
     return <div>{children}</div>;
   };
@@ -74,24 +90,27 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
   const TabsItem = ({
     id,
-    label,
-    badge,
+    children,
   }: {
     id: string;
-    label?: ReactNode;
-    badge?: ReactNode;
+    children: (state: { isSelected: boolean }) => ReactNode;
   }) => (
     <button
       data-testid={`tab-${id}`}
       type="button"
       onClick={() => tabsOnChange?.(id)}>
-      {`${label}${badge ? `:${badge}` : ''}`}
+      {children({ isSelected: id === tabsSelectedKey })}
     </button>
   );
 
   const Tabs = Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
 
   return {
+    Badge: ({ children, color }: { children?: ReactNode; color?: string }) => (
+      <span data-color={color} data-testid="tab-count">
+        {`:${children}`}
+      </span>
+    ),
     Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
@@ -189,9 +208,18 @@ describe('InboxContent', () => {
     expect(screen.getByTestId('tab-activity')).toHaveTextContent(
       'label.activity:5'
     );
-    expect(screen.getByTestId('tab-tasks')).toHaveTextContent(
-      'label.task-plural:2'
-    );
+    expect(screen.getByTestId('tab-tasks')).toHaveTextContent('label.triage:2');
+  });
+
+  // The selected tab's count is brand-tinted; the other stays gray.
+  it('tints the selected tab count', () => {
+    mockPathname = '/inbox/tasks';
+    render(<InboxContent />);
+
+    const [activityCount, tasksCount] = screen.getAllByTestId('tab-count');
+
+    expect(activityCount).toHaveAttribute('data-color', 'gray');
+    expect(tasksCount).toHaveAttribute('data-color', 'brand');
   });
 
   it('keeps the selected custom range (with its label) as the live filter range', () => {

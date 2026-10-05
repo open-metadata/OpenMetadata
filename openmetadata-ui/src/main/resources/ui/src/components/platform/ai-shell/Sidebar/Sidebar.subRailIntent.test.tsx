@@ -220,9 +220,15 @@ describe('Sidebar collapsed sub-rail', () => {
     expect(dataQuality.tagName).toBe('A');
     expect(dataQuality).toHaveAttribute('href', DATA_QUALITY_PATH);
 
-    ['incidents', 'alerts', 'pipeline', 'test-library'].forEach((key) => {
+    ['incidents', 'alerts', 'test-library'].forEach((key) => {
       expect(screen.getByTestId(`ask-sub-rail-item-${key}`).tagName).toBe('A');
     });
+  });
+
+  it('does not render the Collate-only pipeline observability item', () => {
+    renderSidebar();
+
+    expect(screen.queryByTestId('ask-sub-rail-item-pipeline')).toBeNull();
   });
 
   it('keeps the nav items when the user lacks TEST_SUITE.Create', () => {

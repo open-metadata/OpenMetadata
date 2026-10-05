@@ -340,8 +340,8 @@ test.describe('Context Center Articles', () => {
       page
         .getByTestId('knowledge-page-listing')
         .locator('[data-testid^="knowledge-card-"]')
-        .first()
-    ).toBeVisible();
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
