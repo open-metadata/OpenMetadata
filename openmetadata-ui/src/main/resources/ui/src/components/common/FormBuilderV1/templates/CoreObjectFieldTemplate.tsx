@@ -19,11 +19,7 @@ import {
   Button,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  ChevronDown,
-  Hexagon01,
-  Plus,
-} from '@openmetadata/ui-core-components/icons';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { Fragment, FunctionComponent, ReactNode, useState } from 'react';
