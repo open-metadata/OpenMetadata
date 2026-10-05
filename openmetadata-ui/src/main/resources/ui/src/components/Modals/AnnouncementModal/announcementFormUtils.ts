@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CalendarDate, DateValue } from '@internationalized/date';
 import { DateTime } from 'luxon';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import {
@@ -18,17 +19,27 @@ import {
   EditableAnnouncement,
 } from './AnnouncementModal.interface';
 
-/** The value format a native `<input type="date">` reads and writes. */
-const DATE_INPUT_FORMAT = 'yyyy-MM-dd';
+/**
+ * Epoch millis -> the calendar day the picker binds to, in the viewer's zone.
+ *
+ * `CalendarDate` is a plain year/month/day with no time and no zone, which is
+ * why the conversion goes through Luxon rather than `new Date(...)`: the day
+ * has to be the one the viewer sees, not the one UTC is on.
+ */
+export const toCalendarValue = (
+  timestamp?: number | null
+): CalendarDate | null => {
+  if (timestamp == null) {
+    return null;
+  }
 
-/** Epoch millis -> the string the date input binds to, in the viewer's zone. */
-export const toDateInputValue = (timestamp?: number | null): string =>
-  timestamp == null
-    ? ''
-    : DateTime.fromMillis(timestamp).toFormat(DATE_INPUT_FORMAT);
+  const local = DateTime.fromMillis(timestamp);
+
+  return new CalendarDate(local.year, local.month, local.day);
+};
 
 /**
- * The date input's value -> epoch millis.
+ * The picker's value -> epoch millis.
  *
  * The end date resolves to the *end* of the chosen day, not its start. Both
  * dates are days, but the window is a half-open range in millis: anchoring the
@@ -36,23 +47,33 @@ export const toDateInputValue = (timestamp?: number | null): string =>
  * date of Friday would never show on Friday, and a one-day announcement
  * (start = end) would be impossible because `startTime >= endTime`.
  *
- * A cleared or half-typed field reads back as `null` rather than a NaN
- * timestamp, which is what makes it fail its required rule and keeps submit
- * disabled until a real date is picked. `null`, not `undefined`: react-hook-form
- * treats an `undefined` from `field.onChange` as "no change" and would keep the
- * previous value, so clearing the input would silently do nothing.
+ * A cleared field reads back as `null` rather than a NaN timestamp, which is
+ * what makes it fail its required rule and keeps submit disabled until a real
+ * date is picked. `null`, not `undefined`: react-hook-form treats an
+ * `undefined` from `field.onChange` as "no change" and would keep the previous
+ * value, so clearing the picker would silently do nothing.
  */
-export const fromDateInputValue = (
-  value: string,
+export const fromCalendarValue = (
+  value: DateValue | null,
   boundary: 'start' | 'end' = 'start'
 ): number | null => {
-  const parsed = DateTime.fromFormat(value, DATE_INPUT_FORMAT);
-
-  if (!parsed.isValid) {
+  if (value == null) {
     return null;
   }
 
-  return (boundary === 'end' ? parsed.endOf('day') : parsed).toMillis();
+  const day = DateTime.fromObject({
+    year: value.year,
+    month: value.month,
+    day: value.day,
+  });
+
+  if (!day.isValid) {
+    return null;
+  }
+
+  return (
+    boundary === 'end' ? day.endOf('day') : day.startOf('day')
+  ).toMillis();
 };
 
 /**

@@ -19,6 +19,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { CalendarDate, getLocalTimeZone } from '@internationalized/date';
 import { DateTime } from 'luxon';
 import { useForm } from 'react-hook-form';
 import {
@@ -26,8 +27,61 @@ import {
   AnnouncementType,
 } from '../../../generated/entity/feed/announcement';
 import AnnouncementForm from './AnnouncementForm.component';
-import { toDateInputValue } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
+
+/**
+ * What the picker's trigger reads for a timestamp. Mirrors the formatter the
+ * design system's `DatePicker` uses, so the case is not tied to a timezone or
+ * to a locale's month spelling. Built independently of the conversion under
+ * test, so a bug there cannot make this agree with itself.
+ */
+const triggerLabel = (timestamp: number): string => {
+  const local = DateTime.fromMillis(timestamp);
+  const day = new CalendarDate(local.year, local.month, local.day);
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(day.toDate(getLocalTimeZone()));
+};
+
+/**
+ * Pick a day from one of the two pickers. The popover portals out of the
+ * field, so the cell is looked up at document level; the clickable node is a
+ * `role="button"` inside the grid cell, not the cell itself.
+ */
+const pickDay = async (testId: string, day: string) => {
+  await act(async () => {
+    // `hidden` because the surrounding modal marks its subtree inaccessible to
+    // the role query, which would otherwise match nothing.
+    fireEvent.click(
+      within(screen.getByTestId(testId)).getByRole('button', { hidden: true })
+    );
+  });
+
+  const cell = screen
+    .queryAllByRole('gridcell', { hidden: true })
+    .find((candidate) => candidate.textContent === day);
+  const target = cell?.firstElementChild;
+
+  if (!(target instanceof HTMLElement)) {
+    throw new Error(`No day cell "${day}" in the open calendar`);
+  }
+
+  await act(async () => {
+    fireEvent.click(target);
+  });
+
+  // The picker keeps its popover open after a selection, so it has to be
+  // dismissed before the next field is touched -- otherwise this grid is still
+  // mounted and would shadow the next one's cells.
+  await act(async () => {
+    fireEvent.click(
+      screen.getByRole('button', { hidden: true, name: 'Apply' })
+    );
+  });
+};
 
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
@@ -100,10 +154,10 @@ describe('AnnouncementForm', () => {
     expect(screen.getByLabelText(/label\.title/)).toHaveValue('A title');
     expect(screen.getByTestId('announcement-type-select')).toBeInTheDocument();
     // Asserted through the same helper so the case is not tied to a timezone.
-    expect(screen.getByTestId('startTime')).toHaveValue(
-      toDateInputValue(START)
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(START)
     );
-    expect(screen.getByTestId('endTime')).toHaveValue(toDateInputValue(END));
+    expect(screen.getByTestId('endTime')).toHaveTextContent(triggerLabel(END));
   });
 
   it('should reveal the colour swatches only for a Custom announcement', () => {
@@ -120,16 +174,17 @@ describe('AnnouncementForm', () => {
     expect(screen.getByTestId('announcement-color-select')).toBeInTheDocument();
   });
 
-  it('should clear the date and block submit when the input is emptied', async () => {
-    render(<Harness onSubmit={jest.fn()} />);
+  it('should block submit while a date is unset', () => {
+    // The state the add modal opens in. The picker has no clear affordance, so
+    // an unset date is only reachable before the first pick -- which is also
+    // the only moment the required rule has to hold.
+    render(
+      <Harness defaultValues={{ startTime: null }} onSubmit={jest.fn()} />
+    );
 
-    const startInput = screen.getByTestId('startTime');
-    await act(async () => {
-      fireEvent.change(startInput, { target: { value: '' } });
-    });
-
-    // Empty rather than a NaN timestamp, and the form knows it is incomplete.
-    expect(startInput).toHaveValue('');
+    // Core's own catalogue is not registered under the i18n mock above, so the
+    // picker falls back to its built-in English copy.
+    expect(screen.getByTestId('startTime')).toHaveTextContent('Select date');
     expect(screen.getByTestId('announcement-submit')).toBeDisabled();
   });
 
@@ -306,17 +361,20 @@ describe('AnnouncementForm', () => {
 
   it('should include the chosen end day, so a one-day announcement is possible', async () => {
     const onSubmit = jest.fn();
-    render(<Harness onSubmit={onSubmit} />);
+    // Both defaults sit in the month the day below is picked from, so each
+    // calendar opens on it.
+    const october = DateTime.fromISO('2026-10-10').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={onSubmit}
+      />
+    );
 
     // Same day in both fields — the window must still be non-empty.
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('startTime'), {
-        target: { value: '2026-10-01' },
-      });
-      fireEvent.change(screen.getByTestId('endTime'), {
-        target: { value: '2026-10-01' },
-      });
-    });
+    await pickDay('startTime', '15');
+    await pickDay('endTime', '15');
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('announcement-submit'));
     });
@@ -326,7 +384,10 @@ describe('AnnouncementForm', () => {
     expect(endTime).toBeGreaterThan(startTime);
     // The end is the last instant of the chosen day, not the first.
     expect(DateTime.fromMillis(endTime).toFormat('yyyy-MM-dd HH:mm')).toBe(
-      '2026-10-01 23:59'
+      '2026-10-15 23:59'
+    );
+    expect(DateTime.fromMillis(startTime).toFormat('yyyy-MM-dd HH:mm')).toBe(
+      '2026-10-15 00:00'
     );
   });
 

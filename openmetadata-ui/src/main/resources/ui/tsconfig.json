@@ -56,6 +56,14 @@
     "noImplicitAny": true,
     "paths": {
       "react-hook-form": ["./node_modules/react-hook-form"],
+      // Same reason as react-hook-form above: ui-core-components declares these
+      // as peer dependencies but also installs its own copies for its standalone
+      // build, and it is linked rather than hoisted, so both resolve twice.
+      // `CalendarDate` carries a `#private` brand, so the two identities are not
+      // assignable and passing a date to core's `DatePicker` fails to compile.
+      // Pinning resolution to this app's copy is what makes that a single type.
+      "@internationalized/date": ["./node_modules/@internationalized/date"],
+      "react-aria-components": ["./node_modules/react-aria-components"],
       "@openmetadata/ui-core-components": [
         "../../../../../openmetadata-ui-core-components/src/main/resources/ui/dist/types/src/index.d.ts"
       ],
