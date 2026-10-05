@@ -104,6 +104,7 @@ const buildTeamActionsMenu = (
   const {
     canCreateTeam,
     canDelete,
+    canEditAll,
     isGroupType,
     isOrgType,
     onTeamExport,
@@ -137,7 +138,7 @@ const buildTeamActionsMenu = (
           )}
         </>
       )}
-      {!isOrgType && !team.deleted && (
+      {!isOrgType && !team.deleted && canEditAll && (
         <Dropdown.Item
           data-testid="toggle-joinable"
           icon={Lock01}
@@ -145,7 +146,7 @@ const buildTeamActionsMenu = (
           {getJoinableLabel(t, team)}
         </Dropdown.Item>
       )}
-      {team.deleted && (
+      {team.deleted && canEditAll && (
         <Dropdown.Item data-testid="restore-team" onAction={onRestoreTeam}>
           {t('label.restore-entity', {
             entity: t('label.team'),
@@ -169,21 +170,31 @@ const buildHeaderActions = (
   team: Team,
   params: UseMembersTeamHeaderParams
 ): ReactNode => {
-  const { isGroupType, isCurrentUserMember, onJoinTeam, onLeaveTeam } = params;
+  const {
+    canEditAll,
+    isGroupType,
+    isCurrentUserMember,
+    onJoinTeam,
+    onLeaveTeam,
+  } = params;
 
   return (
     <Box align="center" direction="row" gap={2}>
-      {isGroupType && !team.deleted && (
-        <Button
-          color={isCurrentUserMember ? 'secondary' : 'primary'}
-          data-testid={
-            isCurrentUserMember ? 'leave-team-button' : 'join-team-button'
-          }
-          size="sm"
-          onPress={isCurrentUserMember ? onLeaveTeam : onJoinTeam}>
-          {isCurrentUserMember ? t('label.leave-team') : t('label.join-team')}
-        </Button>
-      )}
+      {/* A member can always leave; joining is only offered on joinable teams
+          (admins hold canEditAll, so they can still join a private team). */}
+      {isGroupType &&
+        !team.deleted &&
+        (isCurrentUserMember || team.isJoinable || canEditAll) && (
+          <Button
+            color={isCurrentUserMember ? 'secondary' : 'primary'}
+            data-testid={
+              isCurrentUserMember ? 'leave-team-button' : 'join-team-button'
+            }
+            size="sm"
+            onPress={isCurrentUserMember ? onLeaveTeam : onJoinTeam}>
+            {isCurrentUserMember ? t('label.leave-team') : t('label.join-team')}
+          </Button>
+        )}
       <Dropdown.Root>
         <Dropdown.DotsButton />
         <Dropdown.Popover className="tw:w-min">

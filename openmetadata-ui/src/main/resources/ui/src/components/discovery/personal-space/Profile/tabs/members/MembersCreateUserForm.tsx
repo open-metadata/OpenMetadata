@@ -366,6 +366,50 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
     }
   };
 
+  // Teams / roles / personas are the same multi-select wired to a string[] field;
+  // one renderer keeps them in sync. `filter` enables client-side contains filtering
+  // (teams/personas, which load their full list); roles fetch server-side instead.
+  const renderMultiSelect = (
+    name: 'teams' | 'roles' | 'personas',
+    label: string,
+    testId: string,
+    items: SelectItemType[],
+    opts?: { filter?: boolean; onSearchChange?: (value: string) => void }
+  ) => (
+    <FormField control={form.control} name={name}>
+      {({ field }) => (
+        <Box direction="col" gap={1}>
+          <FormItemLabel label={label} />
+          <Autocomplete
+            data-testid={testId}
+            filterOption={
+              opts?.filter
+                ? (item, filterText) => contains(item.label || '', filterText)
+                : undefined
+            }
+            items={items}
+            placeholder={t('label.please-select-entity', { entity: label })}
+            selectedItems={selectedItems(field.value as string[], items)}
+            onItemCleared={(key) =>
+              field.onChange(
+                (field.value as string[]).filter((id) => id !== String(key))
+              )
+            }
+            onItemInserted={(key) =>
+              field.onChange([...(field.value as string[]), String(key)])
+            }
+            onSearchChange={opts?.onSearchChange}>
+            {(item) => (
+              <Autocomplete.Item id={item.id} key={item.id}>
+                {item.label}
+              </Autocomplete.Item>
+            )}
+          </Autocomplete>
+        </Box>
+      )}
+    </FormField>
+  );
+
   return (
     <Box className="tw:h-full tw:min-h-0" direction="col" justify="between">
       <HookForm
@@ -508,125 +552,27 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
 
             {!isAdmin && (
               <>
-                <FormField control={form.control} name="teams">
-                  {({ field }) => (
-                    <Box direction="col" gap={1}>
-                      <FormItemLabel label={t('label.team-plural')} />
-                      <Autocomplete
-                        data-testid="teams-dropdown"
-                        filterOption={(item, filterText) =>
-                          contains(item.label || '', filterText)
-                        }
-                        items={teamItems}
-                        placeholder={t('label.please-select-entity', {
-                          entity: t('label.team-plural'),
-                        })}
-                        selectedItems={selectedItems(
-                          field.value as string[],
-                          teamItems
-                        )}
-                        onItemCleared={(key) =>
-                          field.onChange(
-                            (field.value as string[]).filter(
-                              (id) => id !== String(key)
-                            )
-                          )
-                        }
-                        onItemInserted={(key) =>
-                          field.onChange([
-                            ...(field.value as string[]),
-                            String(key),
-                          ])
-                        }>
-                        {(item) => (
-                          <Autocomplete.Item id={item.id} key={item.id}>
-                            {item.label}
-                          </Autocomplete.Item>
-                        )}
-                      </Autocomplete>
-                    </Box>
-                  )}
-                </FormField>
-
-                <FormField control={form.control} name="roles">
-                  {({ field }) => (
-                    <Box direction="col" gap={1}>
-                      <FormItemLabel label={t('label.role-plural')} />
-                      <Autocomplete
-                        data-testid="roles-dropdown"
-                        items={roleItems}
-                        placeholder={t('label.please-select-entity', {
-                          entity: t('label.role-plural'),
-                        })}
-                        selectedItems={selectedItems(
-                          field.value as string[],
-                          roleItems
-                        )}
-                        onItemCleared={(key) =>
-                          field.onChange(
-                            (field.value as string[]).filter(
-                              (id) => id !== String(key)
-                            )
-                          )
-                        }
-                        onItemInserted={(key) =>
-                          field.onChange([
-                            ...(field.value as string[]),
-                            String(key),
-                          ])
-                        }
-                        onSearchChange={(value) =>
-                          debouncedFetchRoleOptions(value)
-                        }>
-                        {(item) => (
-                          <Autocomplete.Item id={item.id} key={item.id}>
-                            {item.label}
-                          </Autocomplete.Item>
-                        )}
-                      </Autocomplete>
-                    </Box>
-                  )}
-                </FormField>
-
-                <FormField control={form.control} name="personas">
-                  {({ field }) => (
-                    <Box direction="col" gap={1}>
-                      <FormItemLabel label={t('label.persona-plural')} />
-                      <Autocomplete
-                        data-testid="personas-dropdown"
-                        filterOption={(item, filterText) =>
-                          contains(item.label || '', filterText)
-                        }
-                        items={personaItems}
-                        placeholder={t('label.please-select-entity', {
-                          entity: t('label.persona-plural'),
-                        })}
-                        selectedItems={selectedItems(
-                          field.value as string[],
-                          personaItems
-                        )}
-                        onItemCleared={(key) =>
-                          field.onChange(
-                            (field.value as string[]).filter(
-                              (id) => id !== String(key)
-                            )
-                          )
-                        }
-                        onItemInserted={(key) =>
-                          field.onChange([
-                            ...(field.value as string[]),
-                            String(key),
-                          ])
-                        }>
-                        {(item) => (
-                          <Autocomplete.Item id={item.id} key={item.id}>
-                            {item.label}
-                          </Autocomplete.Item>
-                        )}
-                      </Autocomplete>
-                    </Box>
-                  )}
-                </FormField>
+                {renderMultiSelect(
+                  'teams',
+                  t('label.team-plural'),
+                  'teams-dropdown',
+                  teamItems,
+                  { filter: true }
+                )}
+                {renderMultiSelect(
+                  'roles',
+                  t('label.role-plural'),
+                  'roles-dropdown',
+                  roleItems,
+                  { onSearchChange: debouncedFetchRoleOptions }
+                )}
+                {renderMultiSelect(
+                  'personas',
+                  t('label.persona-plural'),
+                  'personas-dropdown',
+                  personaItems,
+                  { filter: true }
+                )}
               </>
             )}
           </Box>
