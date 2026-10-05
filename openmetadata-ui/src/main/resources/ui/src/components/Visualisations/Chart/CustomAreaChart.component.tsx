@@ -76,7 +76,7 @@ const CustomAreaChart = ({
   );
 
   return (
-    <div className="w-full" id={`${name}-area-chart`}>
+    <div className="tw:w-full" id={`${name}-area-chart`}>
       <AreaChart
         ariaLabel={ariaLabel}
         data={rows}

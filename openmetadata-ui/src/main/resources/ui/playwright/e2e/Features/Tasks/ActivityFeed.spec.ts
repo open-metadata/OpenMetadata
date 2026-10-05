@@ -440,7 +440,9 @@ test.describe('Activity Feed - Entity Page', () => {
     const feedContainer = page
       .locator('[data-testid="global-setting-left-panel"]')
       .or(page.getByRole('button', { name: /all|tasks/i }));
-    await expect(feedContainer.first()).toBeVisible({ timeout: 10000 });
+    await expect(feedContainer.filter({ visible: true })).not.toHaveCount(0, {
+      timeout: 10000,
+    });
   });
 
   test('entity task filters should request open, closed, and mentions views', async ({
@@ -847,8 +849,10 @@ test.describe('Activity Feed - Entity Page counts', () => {
     );
 
     await expect(
-      feedItems.filter({ hasText: seededActivitySummary }).first()
-    ).toBeVisible({ timeout: 30_000 });
+      feedItems
+        .filter({ hasText: seededActivitySummary })
+        .filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: 30_000 });
 
     // Deliberately not asserting badge === rendered here. The badge is a
     // server count and the list a separate query, and this fixture also

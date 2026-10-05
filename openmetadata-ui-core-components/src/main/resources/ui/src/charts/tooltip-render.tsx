@@ -28,7 +28,8 @@ export type ChartTooltipRender<D> = (
 export interface ChartTooltipRenderProps<D> extends ChartTooltipProps {
   /**
    * React content for the tooltip. Rendered to static HTML, so it can hold
-   * no state, effects or event handlers. Replaces `formatter`.
+   * no state, effects or event handlers. Replaces `formatter`, and items carry
+   * raw values: `valueFormatter` does not apply here.
    */
   render?: ChartTooltipRender<D>;
 }
