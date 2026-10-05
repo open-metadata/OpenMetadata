@@ -89,6 +89,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.ResponseBudget;
 
 @Path("/v1/lineage")
 @Tag(
@@ -101,9 +102,6 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Collection(name = "lineage")
 public class LineageResource {
   static final String LINEAGE_FIELD = "lineage";
-
-  /** The serialized size one compact lineage page stays under; the same cap the MCP tool uses. */
-  private static final int COMPACT_LINEAGE_MAX_CHARS = 100_000;
 
   private final LineageRepository dao;
   private final Authorizer authorizer;
@@ -362,18 +360,19 @@ public class LineageResource {
           @QueryParam("services")
           List<String> services) {
     return compactLineageService.getLineage(
-        new CompactLineageRequest(
-            entity,
-            fqn,
-            upstreamDepth,
-            downstreamDepth,
-            column,
-            includeColumnLineage,
-            includeSql,
-            from,
-            limit,
-            COMPACT_LINEAGE_MAX_CHARS,
-            LineageEdgeFilter.of(entityTypes, excludeEntityTypes, services)),
+        CompactLineageRequest.builder()
+            .entityType(entity)
+            .fqn(fqn)
+            .upstreamDepth(upstreamDepth)
+            .downstreamDepth(downstreamDepth)
+            .column(column)
+            .includeColumnLineage(includeColumnLineage)
+            .includeSql(includeSql)
+            .from(from)
+            .limit(limit)
+            .maxResponseChars(ResponseBudget.DEFAULT_MAX_RESPONSE_CHARS)
+            .edgeFilter(LineageEdgeFilter.of(entityTypes, excludeEntityTypes, services))
+            .build(),
         securityContext);
   }
 

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.mcp.util;
+package org.openmetadata.service.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -47,7 +47,7 @@ class ResponseBudgetTest {
     assertThat(fit).isBetween(1, 1_000);
     long used = 0;
     for (int i = 0; i < fit; i++) {
-      used += McpResponseTrim.serializedLength(items.get(i)) + 1;
+      used += ResponseBudget.serializedLength(items.get(i)) + 1;
     }
     assertThat(used).isLessThanOrEqualTo(10_000);
   }
@@ -87,7 +87,7 @@ class ResponseBudgetTest {
 
   @Test
   void singleItemOverMaxResponseCharsStillReturnsOne() {
-    List<Map<String, Object>> items = items(1, McpResponseTrim.MAX_RESPONSE_CHARS + 1_000);
+    List<Map<String, Object>> items = items(1, ResponseBudget.DEFAULT_MAX_RESPONSE_CHARS + 1_000);
 
     int fit = ResponseBudget.fitCount(items, 0, ResponseBudget.defaultBudgetChars());
 
@@ -95,7 +95,7 @@ class ResponseBudgetTest {
         .as(
             "un-pageable single item returns one (forward progress); the dispatch floor envelopes it")
         .isEqualTo(1);
-    assertThat(McpResponseTrim.serializedLength(items.getFirst()))
-        .isGreaterThan(McpResponseTrim.MAX_RESPONSE_CHARS);
+    assertThat(ResponseBudget.serializedLength(items.getFirst()))
+        .isGreaterThan(ResponseBudget.DEFAULT_MAX_RESPONSE_CHARS);
   }
 }

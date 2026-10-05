@@ -1,9 +1,12 @@
 package org.openmetadata.service.lineage;
 
+import static java.util.Comparator.naturalOrder;
+import static java.util.Comparator.nullsLast;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -92,7 +95,7 @@ public class LineagePermissionFilter {
     if (lineage == null || nullOrEmpty(lineage.getNodes()) || isAdmin(subjectContext)) {
       return Result.unchanged(lineage);
     }
-    List<EntityReference> nodes = List.copyOf(lineage.getNodes());
+    List<EntityReference> nodes = nearestFirst(lineage);
     List<EntityReference> checkable = withinCeiling(nodes);
     Set<UUID> visible = visibleIds(securityContext, checkable);
     // The root is already authorized by the caller; re-checking it could only prune the graph the
@@ -100,6 +103,22 @@ public class LineagePermissionFilter {
     visible.add(lineage.getEntity().getId());
     int hidden = LineageGraphPruner.retainReachable(lineage, visible);
     return new Result(lineage, hidden, nodes.size() - checkable.size());
+  }
+
+  /**
+   * Nearest first, ties by FQN then id. The repository lists nodes in no fixed order, so without
+   * this the ceiling could keep a different set on each request for the same graph and paging would
+   * skip or repeat edges; and the nodes closest to the root are the ones a caller needs most.
+   */
+  private static List<EntityReference> nearestFirst(EntityLineage lineage) {
+    Map<UUID, Integer> hops = LineageGraphPruner.hopsFromRoot(lineage);
+    return lineage.getNodes().stream()
+        .sorted(
+            Comparator.<EntityReference>comparingInt(
+                    node -> hops.getOrDefault(node.getId(), Integer.MAX_VALUE))
+                .thenComparing(EntityReference::getFullyQualifiedName, nullsLast(naturalOrder()))
+                .thenComparing(EntityReference::getId, nullsLast(naturalOrder())))
+        .toList();
   }
 
   /**

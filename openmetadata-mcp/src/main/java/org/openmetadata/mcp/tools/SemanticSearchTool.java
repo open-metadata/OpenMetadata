@@ -14,7 +14,6 @@ import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
-import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -24,6 +23,7 @@ import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.util.ResponseBudget;
 
 @Slf4j
 public class SemanticSearchTool implements McpTool {

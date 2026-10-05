@@ -671,6 +671,9 @@ class GetLineageToolTest {
 
     assertEquals(10, listOf(response.get("oversizedEdges")).size());
     assertTrue(((String) response.get(McpResponseTrim.MESSAGE_KEY)).contains("12 edge(s)"));
+    assertTrue(
+        ((String) response.get(McpResponseTrim.MESSAGE_KEY)).contains("up to 10 are named"),
+        "the message is the one MCP clients saw before the service move");
     assertTrue(JsonUtils.pojoToJson(response).length() < McpResponseTrim.MAX_RESPONSE_CHARS);
   }
 

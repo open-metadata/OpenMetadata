@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.PageCursor;
-import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -20,6 +19,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.ResponseBudget;
 
 @Slf4j
 public class TestDefinitionsTool implements McpTool {

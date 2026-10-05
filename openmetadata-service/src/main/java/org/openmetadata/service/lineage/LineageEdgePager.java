@@ -6,16 +6,18 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 import org.openmetadata.schema.api.lineage.CompactLineage;
 import org.openmetadata.schema.api.lineage.CompactLineageEdge;
 import org.openmetadata.schema.api.lineage.LineageEdgeEndpoints;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.ResponseBudget;
 
 /**
  * Cuts one page out of a lineage graph's edges, in an order that is the same on every call so an
@@ -33,25 +35,42 @@ public final class LineageEdgePager {
    */
   private static final int ANNOTATION_HEADROOM_CHARS = 5_000;
 
-  /**
-   * Fraction of the cap the edges may fill once a page has to be cut, leaving room for the response
-   * shell and the serialization overhead around the edge lists.
-   */
-  private static final double ITEM_BUDGET_FACTOR = 0.8;
-
   /** Naming every skipped edge is itself unbounded; past a few names, the count says the rest. */
-  private static final int MAX_NAMED_OVERSIZED_EDGES = 10;
+  public static final int MAX_NAMED_OVERSIZED_EDGES = 10;
 
   private record DirectedEdge(boolean upstream, CompactLineageEdge edge) {}
+
+  /** Each edge's serialized size, separator included, measured at most once and only if needed. */
+  private static final class Sizes {
+    private final List<DirectedEdge> edges;
+    private final long[] sizes;
+
+    Sizes(List<DirectedEdge> edges) {
+      this.edges = edges;
+      this.sizes = new long[edges.size()];
+      Arrays.fill(sizes, -1);
+    }
+
+    long of(int index) {
+      if (sizes[index] < 0) {
+        sizes[index] = ResponseBudget.serializedLength(edges.get(index).edge()) + 1;
+      }
+      return sizes[index];
+    }
+
+    long[] window(int first, int count) {
+      return IntStream.range(first, first + count).mapToLong(this::of).toArray();
+    }
+  }
 
   /** The sizes one page is measured against, all in serialized characters. */
   private record Budget(long overhead, long pageLimit, long itemBudget) {
     static Budget of(CompactLineage slim, int maxResponseChars) {
-      long overhead = serializedLength(withEdges(slim, List.of()));
+      long overhead = ResponseBudget.serializedLength(withEdges(slim, List.of()));
       return new Budget(
           overhead,
           maxResponseChars - ANNOTATION_HEADROOM_CHARS,
-          Math.max(0, (long) (maxResponseChars * ITEM_BUDGET_FACTOR) - overhead));
+          Math.max(0, ResponseBudget.budgetChars(maxResponseChars) - overhead));
     }
 
     /**
@@ -59,32 +78,20 @@ public final class LineageEdgePager {
      * the whole page for a stub with no cursor, stranding every edge after it. Skipping it keeps the
      * rest of the graph reachable.
      */
-    boolean isTooLargeAlone(DirectedEdge edge) {
-      return overhead + serializedLength(edge.edge()) + 1 > pageLimit;
+    boolean isTooLargeAlone(long size) {
+      return overhead + size > pageLimit;
     }
 
     /**
      * The whole window when it fits under the cap less the marker headroom (the common case,
      * returned unchanged); otherwise as many leading edges as fit the item budget, never zero while
-     * any remain. Each edge is measured once.
+     * any remain.
      */
-    int fittingCount(List<DirectedEdge> window) {
-      long[] sizes = window.stream().mapToLong(edge -> serializedLength(edge.edge()) + 1).toArray();
-      long total = overhead;
-      for (long size : sizes) {
-        total += size;
-      }
-      return total <= pageLimit ? window.size() : prefixWithinItemBudget(sizes);
-    }
-
-    private int prefixWithinItemBudget(long[] sizes) {
-      long used = 0;
-      int count = 0;
-      while (count < sizes.length && used + sizes[count] <= itemBudget) {
-        used += sizes[count];
-        count++;
-      }
-      return count == 0 && sizes.length > 0 && itemBudget > 0 ? 1 : count;
+    int fittingCount(long[] windowSizes) {
+      long total = overhead + Arrays.stream(windowSizes).sum();
+      return total <= pageLimit
+          ? windowSizes.length
+          : ResponseBudget.fitWithin(windowSizes, itemBudget).count();
     }
   }
 
@@ -96,29 +103,33 @@ public final class LineageEdgePager {
    */
   public static CompactLineage page(
       CompactLineage slim, int from, int limit, int maxResponseChars) {
-    List<DirectedEdge> ordered =
-        interleave(
-            nearestFirst(
-                slim.getUpstream(),
-                slim.getRoot(),
-                CompactLineageEdge::getToFQN,
-                CompactLineageEdge::getFromFQN),
-            nearestFirst(
-                slim.getDownstream(),
-                slim.getRoot(),
-                CompactLineageEdge::getFromFQN,
-                CompactLineageEdge::getToFQN));
+    List<DirectedEdge> ordered = ordered(slim);
     Budget budget = Budget.of(slim, maxResponseChars);
-    int start = Math.clamp(from, 0, ordered.size());
+    Sizes sizes = new Sizes(ordered);
+    int first = Math.clamp(from, 0, ordered.size());
     List<CompactLineageEdge> oversized = new ArrayList<>();
-    while (start < ordered.size() && budget.isTooLargeAlone(ordered.get(start))) {
-      oversized.add(ordered.get(start).edge());
-      start++;
+    while (first < ordered.size() && budget.isTooLargeAlone(sizes.of(first))) {
+      oversized.add(ordered.get(first).edge());
+      first++;
     }
-    List<DirectedEdge> window =
-        ordered.subList(start, start + Math.min(ordered.size() - start, Math.max(limit, 1)));
-    List<DirectedEdge> kept = window.subList(0, budget.fittingCount(window));
-    return describe(slim, kept, start, ordered.size(), oversized);
+    int windowSize = Math.min(ordered.size() - first, Math.max(limit, 1));
+    int fitting = budget.fittingCount(sizes.window(first, windowSize));
+    return describe(
+        slim, ordered.subList(first, first + fitting), first, ordered.size(), oversized);
+  }
+
+  private static List<DirectedEdge> ordered(CompactLineage slim) {
+    return interleave(
+        nearestFirst(
+            slim.getUpstream(),
+            slim.getRoot(),
+            CompactLineageEdge::getToFQN,
+            CompactLineageEdge::getFromFQN),
+        nearestFirst(
+            slim.getDownstream(),
+            slim.getRoot(),
+            CompactLineageEdge::getFromFQN,
+            CompactLineageEdge::getToFQN));
   }
 
   private static CompactLineage describe(
@@ -172,10 +183,6 @@ public final class LineageEdgePager {
         .withUpstream(edgesOf(edges, true))
         .withDownstream(edgesOf(edges, false))
         .withOversizedEdges(null);
-  }
-
-  private static long serializedLength(Object value) {
-    return JsonUtils.pojoToJson(value).length();
   }
 
   private static List<CompactLineageEdge> edgesOf(List<DirectedEdge> edges, boolean upstream) {

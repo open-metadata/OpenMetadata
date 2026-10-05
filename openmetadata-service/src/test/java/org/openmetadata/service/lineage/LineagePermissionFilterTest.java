@@ -16,7 +16,10 @@ import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -169,6 +172,59 @@ class LineagePermissionFilterTest {
         overCeiling - 1,
         lineage.getNodes().size(),
         "the nodes that were checked and allowed still come back");
+  }
+
+  /**
+   * Paging asks for the same graph again and again. If the ceiling kept whichever nodes the
+   * repository happened to list first (it has no ORDER BY), each page could authorize a different
+   * 500 and offsets would skip or repeat edges. The nearest nodes are kept, ties by FQN.
+   */
+  @Test
+  void theCeilingKeepsTheNearestNodesWhateverOrderTheyArrive() {
+    List<UUID> direct = new ArrayList<>();
+    List<EntityReference> directNodes = new ArrayList<>();
+    List<Edge> edges = new ArrayList<>();
+    for (int i = 0; i < 500; i++) {
+      UUID id = UUID.randomUUID();
+      direct.add(id);
+      directNodes.add(ref(id));
+      edges.add(new Edge().withFromEntity(id).withToEntity(ROOT));
+    }
+    // A chain two to four hops out, hanging off one of the one-hop nodes, listed first.
+    List<EntityReference> nodes = new ArrayList<>();
+    UUID previous = direct.getFirst();
+    for (int hop = 0; hop < 3; hop++) {
+      UUID deep = UUID.randomUUID();
+      nodes.add(ref(deep));
+      edges.add(new Edge().withFromEntity(deep).withToEntity(previous));
+      previous = deep;
+    }
+    nodes.addAll(directNodes);
+    EntityLineage deepFirst = lineage(nodes, edges);
+    List<EntityReference> reversed = new ArrayList<>(nodes);
+    Collections.reverse(reversed);
+    EntityLineage deepLast = lineage(reversed, edges);
+
+    filter.filter(securityContext, nonAdmin(), deepFirst);
+    filter.filter(securityContext, nonAdmin(), deepLast);
+
+    Set<UUID> keptFirst = ids(deepFirst);
+    assertEquals(new HashSet<>(direct), keptFirst, "the 500 one-hop nodes win over the far chain");
+    assertEquals(keptFirst, ids(deepLast), "the same graph keeps the same nodes in any order");
+  }
+
+  private static EntityLineage lineage(List<EntityReference> nodes, List<Edge> upstream) {
+    return new EntityLineage()
+        .withEntity(ref(ROOT))
+        .withNodes(new ArrayList<>(nodes))
+        .withUpstreamEdges(new ArrayList<>(upstream))
+        .withDownstreamEdges(new ArrayList<>());
+  }
+
+  private static Set<UUID> ids(EntityLineage lineage) {
+    Set<UUID> ids = new HashSet<>();
+    lineage.getNodes().forEach(node -> ids.add(node.getId()));
+    return ids;
   }
 
   @Test
