@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 /**
  * Defines a Task for a given User to approve.
  */
@@ -86,6 +87,11 @@ export interface NodeConfiguration {
  */
 export interface Assignees {
     /**
+     * Resolve owners from the asset’s domains at execution time. For a domain, use its own
+     * owners.
+     */
+    addDomainOwners?: boolean;
+    /**
      * Add the Owners to the assignees List.
      */
     addOwners?: boolean;
@@ -101,7 +107,8 @@ export interface Assignees {
      * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
      * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
      * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
-     * excluding the requester so self-approval can never happen.
+     * excluding the requester so self-approval can never happen. 'wait' creates an unassigned
+     * task when no eligible assignee is available, without auto-approval or an admin fallback.
      */
     emptyAssigneeStrategy?: EmptyAssigneeStrategy;
 }
@@ -159,11 +166,13 @@ export interface EntityReference {
  * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
  * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
  * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
- * excluding the requester so self-approval can never happen.
+ * excluding the requester so self-approval can never happen. 'wait' creates an unassigned
+ * task when no eligible assignee is available, without auto-approval or an admin fallback.
  */
 export enum EmptyAssigneeStrategy {
     AssignAdmins = "assignAdmins",
     None = "none",
+    Wait = "wait",
 }
 
 /**

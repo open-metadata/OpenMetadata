@@ -432,6 +432,7 @@ public class UserApprovalTask implements NodeInterface {
     if (config != null) {
       result.put("addReviewers", config.getOrDefault("addReviewers", true));
       result.put("addOwners", config.getOrDefault("addOwners", false));
+      result.put("addDomainOwners", config.getOrDefault("addDomainOwners", false));
       result.put("emptyAssigneeStrategy", config.getOrDefault("emptyAssigneeStrategy", "none"));
 
       Set<String> users = new HashSet<>();
@@ -439,9 +440,19 @@ public class UserApprovalTask implements NodeInterface {
 
       Object candidatesObj = config.get("candidates");
       if (candidatesObj instanceof List<?> candidates) {
+        result.put(
+            "candidateIds",
+            candidates.stream()
+                .filter(
+                    candidate ->
+                        candidate instanceof Map<?, ?> reference && reference.get("id") != null)
+                .toList());
         for (Object candidate : candidates) {
           if (candidate instanceof Map) {
             Map<String, Object> candidateMap = (Map<String, Object>) candidate;
+            if (candidateMap.get("id") != null) {
+              continue;
+            }
             Object typeObj = candidateMap.get("type");
             Object fqnObj = candidateMap.get("fullyQualifiedName");
             String type = typeObj instanceof String value ? value : null;

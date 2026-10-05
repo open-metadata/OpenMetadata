@@ -60,10 +60,18 @@
               "default": []
             },
             "emptyAssigneeStrategy": {
-              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen.",
+              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen. 'wait' creates an unassigned task when no eligible assignee is available, without auto-approval or an admin fallback.",
               "type": "string",
-              "enum": ["none", "assignAdmins"],
+              "enum": [
+                "none",
+                "assignAdmins",
+                "wait"
+              ],
               "default": "none"
+            },
+            "addDomainOwners": {
+              "description": "Resolve owners from the asset’s domains at execution time. For a domain, use its own owners.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -132,7 +140,12 @@
                 "default": false
               }
             },
-            "required": ["id", "label", "targetStageId", "targetTaskStatus"],
+            "required": [
+              "id",
+              "label",
+              "targetStageId",
+              "targetTaskStatus"
+            ],
             "additionalProperties": false
           },
           "default": []
@@ -160,21 +173,37 @@
               "$ref": "../../../../../entity/tasks/task.json#/definitions/resolutionType"
             }
           },
-          "required": ["transitionId"],
+          "required": [
+            "transitionId"
+          ],
           "oneOf": [
-            {"required": ["durationVariable"]},
-            {"required": ["dateVariable"]}
+            {
+              "required": [
+                "durationVariable"
+              ]
+            },
+            {
+              "required": [
+                "dateVariable"
+              ]
+            }
           ],
           "additionalProperties": false
         }
       },
-      "required": ["assignees"],
+      "required": [
+        "assignees"
+      ],
       "additionalProperties": false
     },
     "input": {
       "type": "array",
-      "items": { "type":  "string" },
-      "default": ["relatedEntity"],
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "relatedEntity"
+      ],
       "minItems": 1,
       "maxItems": 1
     },
@@ -187,19 +216,30 @@
         }
       },
       "additionalProperties": false,
-      "required": ["relatedEntity"]
+      "required": [
+        "relatedEntity"
+      ]
     },
     "output": {
       "type": "array",
-      "items": { "type":  "string" },
-      "default": ["updatedBy"],
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "updatedBy"
+      ],
       "minItems": 1,
       "maxItems": 1
     },
     "branches": {
       "type": "array",
-      "items": { "type":  "string" },
-      "default": ["true", "false"],
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "true",
+        "false"
+      ],
       "minItems": 2,
       "maxItems": 2
     }

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 /**
  * SubType of the Node.
  */
@@ -17,6 +18,7 @@ export enum NodeSubType {
     ApplyRecognizerFeedbackTask = "applyRecognizerFeedbackTask",
     CheckChangeDescriptionTask = "checkChangeDescriptionTask",
     CheckEntityAttributesTask = "checkEntityAttributesTask",
+    CollectMetadataTask = "collectMetadataTask",
     CreateAndRunAIAutomationTask = "createAndRunAIAutomationTask",
     CreateAndRunIngestionPipelineTask = "createAndRunIngestionPipelineTask",
     CreateRecognizerFeedbackApprovalTask = "createRecognizerFeedbackApprovalTask",

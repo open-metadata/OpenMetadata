@@ -452,7 +452,8 @@ public class TaskRepository extends EntityRepository<Task> {
    * assignees. This ensures tasks about owned entities are automatically routed to the right people.
    */
   private void setDefaultAssigneesFromEntityOwners(Task task) {
-    if (!nullOrEmpty(task.getAssignees())) {
+    // A running workflow has already resolved its assignees, including an intentional wait.
+    if (!nullOrEmpty(task.getAssignees()) || task.getWorkflowInstanceId() != null) {
       return;
     }
 

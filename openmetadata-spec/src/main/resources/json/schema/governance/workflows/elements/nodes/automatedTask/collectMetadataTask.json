@@ -1,0 +1,108 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/collectMetadataTask.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CollectMetadataTaskDefinition",
+  "description": "Maintains an assigned metadata task while an entity field fails its check. Stage gates decide whether a missing field blocks advancement.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CollectMetadataTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "collectMetadataTask"
+    },
+    "name": {
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "config": {
+      "title": "MetadataCollectionConfiguration",
+      "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.MetadataCollectionConfiguration",
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rules": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appliesWhen": {
+          "type": "string"
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "../../../../../type/entityReference.json"
+          }
+        },
+        "guidance": {
+          "type": "string"
+        },
+        "example": {
+          "type": "string"
+        },
+        "taskAssignees": {
+          "type": "string",
+          "enum": [
+            "owners",
+            "reviewers",
+            "candidates"
+          ],
+          "default": "owners"
+        },
+        "stage": {
+          "$ref": "../../../../../type/status.json"
+        }
+      },
+      "required": [
+        "field",
+        "rules",
+        "taskAssignees",
+        "stage"
+      ],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "relatedEntity"
+      ],
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "required": [
+        "relatedEntity"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "config"
+  ],
+  "additionalProperties": false
+}
