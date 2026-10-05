@@ -34,19 +34,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 
 class OntologyChangePreflightTest {
   @Test
-  void acceptsALegacySourceMemoryWithoutStoredStatus() {
-    final UUID glossaryId = UUID.randomUUID();
-    final UUID memoryId = UUID.randomUUID();
-    final OntologyChangeOperation proposal =
-        createOperation(storedTerm(glossaryId, null)).withSourceMemoryIds(Set.of(memoryId));
-    final OntologyChangePreflight preflight =
-        new OntologyChangePreflight(
-            (entityType, id) -> new ContextMemory().withId(id).withEntityStatus(null));
-
-    assertDoesNotThrow(() -> preflight.validate(changeSet(glossaryId), List.of(proposal)));
-  }
-
-  @Test
   void rejectsAProposalWhoseSourceMemoryWasRetired() {
     final UUID glossaryId = UUID.randomUUID();
     final UUID memoryId = UUID.randomUUID();

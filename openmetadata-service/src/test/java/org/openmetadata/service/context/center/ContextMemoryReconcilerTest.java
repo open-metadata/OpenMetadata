@@ -143,16 +143,6 @@ class ContextMemoryReconcilerTest {
     verify(memoryRepository, never()).update(any(), any(), any(), any());
   }
 
-  @Test
-  void keepsUnchangedLegacyPillWithoutRewritingIt() {
-    existing(pill("Q1", "A1", ContextMemorySourceType.PAGE_EXTRACTION, null));
-
-    ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(derived("Q1", "A1")));
-
-    assertEquals(1, result.kept());
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
-  }
-
   @ParameterizedTest
   @EnumSource(
       value = EntityStatus.class,
@@ -337,28 +327,6 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.kept());
     verify(memoryRepository).linkExtractedMemory(memory.getId(), copy);
     verify(memoryRepository, never()).create(any(), any());
-  }
-
-  @Test
-  void identicalSourceReusesLegacyMemoryWithoutStoredStatus() {
-    EntityReference original =
-        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
-    EntityReference copy =
-        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
-    ContextMemory legacy =
-        pill(
-            "What is the retention window?",
-            "Events are retained for 90 days.",
-            ContextMemorySourceType.FILE_EXTRACTION,
-            null);
-    when(memoryRepository.listExtractedMemories(original.getId(), Entity.CONTEXT_FILE))
-        .thenReturn(List.of(legacy));
-
-    ContextMemoryReconciler.ReconcileResult result =
-        new ContextMemoryReconciler(memoryRepository).reuseExtractedFrom(copy, original);
-
-    assertEquals(1, result.kept());
-    verify(memoryRepository).linkExtractedMemory(legacy.getId(), copy);
   }
 
   @Test

@@ -86,18 +86,6 @@ class SemanticMemoryDuplicateFinderTest {
   }
 
   @Test
-  void identicalLegacyFactWithoutStoredStatusIsReusable() {
-    ContextMemory candidate =
-        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.")
-            .withEntityStatus(null);
-    ContextMemory derived =
-        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.");
-
-    assertEquals(candidate, finderWithCandidate(candidate).findEquivalent(derived));
-    verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
-  }
-
-  @Test
   void semanticCandidateIsReusedOnlyWhenFactsAreEquivalent() {
     ContextMemory candidate =
         memory(UUID.randomUUID(), "What is churn?", "Customers lost during the period.");

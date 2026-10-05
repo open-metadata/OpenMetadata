@@ -1,7 +1,5 @@
 package org.openmetadata.service.ontology;
 
-import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -76,7 +74,7 @@ public final class OntologyMemoryDerivationQueue {
 
   public static boolean isPublished(ContextMemory memory) {
     if (memory == null
-        || effectiveStatus(memory.getEntityStatus()) != EntityStatus.APPROVED
+        || memory.getEntityStatus() != EntityStatus.APPROVED
         || memory.getShareConfig() == null
         || memory.getQuestion() == null
         || memory.getQuestion().isBlank()

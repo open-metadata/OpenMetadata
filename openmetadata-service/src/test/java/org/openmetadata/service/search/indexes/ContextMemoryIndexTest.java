@@ -82,7 +82,6 @@ class ContextMemoryIndexTest {
     assertEquals("Filter the Explore page by the Certification tag.", doc.get("answer"));
     assertEquals(ContextMemoryType.FAQ.value(), doc.get("memoryType"));
     assertEquals(ContextMemoryScope.USER_GLOBAL.value(), doc.get("memoryScope"));
-    assertEquals(EntityStatus.APPROVED.value(), doc.get("entityStatus"));
     assertFalse(
         doc.containsKey("status"),
         "the memory's stage is indexed through the shared entityStatus field, not its own status");
@@ -263,20 +262,6 @@ class ContextMemoryIndexTest {
 
     assertTrue(index.getRequiredReindexFields().contains("tags"));
     assertTrue(index.getRequiredReindexFields().contains("owners"));
-  }
-
-  @Test
-  void statusValue_treatsLegacyMissingStatusAsActive() {
-    assertEquals(
-        "Deprecated",
-        ContextMemoryIndex.statusValue(baseMemory().withEntityStatus(EntityStatus.DEPRECATED)));
-    ContextMemory legacy = baseMemory().withEntityStatus(null);
-    assertEquals(EntityStatus.APPROVED.value(), ContextMemoryIndex.statusValue(legacy));
-    assertEquals(
-        EntityStatus.APPROVED.value(),
-        new ContextMemoryIndex(legacy)
-            .buildSearchIndexDocInternal(new HashMap<>())
-            .get("entityStatus"));
   }
 
   @Test

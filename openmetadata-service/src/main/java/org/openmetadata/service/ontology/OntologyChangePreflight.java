@@ -14,7 +14,6 @@
 package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
@@ -81,7 +80,7 @@ public final class OntologyChangePreflight {
           (ContextMemory) entityLoader.load(Entity.CONTEXT_MEMORY, memoryId);
       active =
           !Boolean.TRUE.equals(memory.getDeleted())
-              && effectiveStatus(memory.getEntityStatus()) == EntityStatus.APPROVED;
+              && memory.getEntityStatus() == EntityStatus.APPROVED;
     } catch (EntityNotFoundException e) {
       active = false;
     }

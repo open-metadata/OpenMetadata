@@ -37,7 +37,6 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
 
 /**
  * Lifecycle of a context memory over the REST API. A memory is patched at most once per principal
@@ -342,65 +341,6 @@ public class ContextMemoryLifecycleIT {
   }
 
   @Test
-  void legacyStatuslessMemoriesCanBePatchedAndPut(TestNamespace ns) {
-    ContextMemory patched = persistWithoutStatus(admin().create(memory(ns, "legacy-patch")));
-    ContextMemory put = persistWithoutStatus(admin().create(memory(ns, "legacy-put")));
-
-    ContextMemory patchedResult =
-        admin()
-            .patch(
-                idOf(patched),
-                JsonUtils.readTree(
-                    "[{\"op\":\"replace\",\"path\":\"/answer\",\"value\":\"Corrected answer\"}]"));
-    ContextMemory putResult = admin().put(memory(ns, "legacy-put").withAnswer("New answer"));
-
-    assertEquals(EntityStatus.APPROVED, patchedResult.getEntityStatus());
-    assertEquals("Corrected answer", patchedResult.getAnswer());
-    assertEquals(EntityStatus.APPROVED, putResult.getEntityStatus());
-    assertEquals("New answer", putResult.getAnswer());
-  }
-
-  @Test
-  void legacyStatuslessMemoryUsesActiveTransitionRules(TestNamespace ns) {
-    ContextMemory invalidated =
-        persistWithoutStatus(admin().create(memory(ns, "legacy-invalidate")));
-    ContextMemory rejected = persistWithoutStatus(admin().create(memory(ns, "legacy-reject")));
-
-    ContextMemory result = admin().patch(idOf(invalidated), status(EntityStatus.REJECTED));
-    InvalidRequestException error =
-        assertThrows(
-            InvalidRequestException.class,
-            () -> admin().patch(idOf(rejected), status(EntityStatus.DRAFT)));
-
-    assertEquals(EntityStatus.REJECTED, result.getEntityStatus());
-    assertTrue(error.getMessage().contains("Invalid memory status transition"));
-    assertNull(admin().get(idOf(rejected)).getEntityStatus());
-  }
-
-  @Test
-  void legacyStatuslessMemoryRemainsListedAfterReindex(TestNamespace ns) {
-    String query = "legacyread" + UUID.randomUUID().toString().substring(0, 8);
-    ContextMemory legacy =
-        persistWithoutStatus(admin().create(memory(ns, "legacy-search").withQuestion(query)));
-    Entity.getSearchRepository().deleteEntityIndex(legacy);
-    Entity.getSearchRepository().updateEntityIndex(legacy);
-    ListParams active =
-        new ListParams().setLimit(20).addFilter("q", query).addFilter("statuses", "Approved");
-
-    Awaitility.await("legacy statusless memory is indexed as Active")
-        .atMost(Duration.ofSeconds(120))
-        .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              assertTrue(searchMemoryById(legacy.getId()).contains(idOf(legacy)));
-              assertTrue(
-                  admin().list(active).getData().stream()
-                      .anyMatch(memory -> memory.getId().equals(legacy.getId())));
-            });
-    assertNull(admin().get(idOf(legacy)).getEntityStatus());
-  }
-
-  @Test
   void conversationExtraction_isGroundTruth_soContentEditsKeepTheSource(TestNamespace ns) {
     ContextMemory captured =
         admin()
@@ -500,16 +440,6 @@ public class ContextMemoryLifecycleIT {
 
   private static String idOf(ContextMemory memory) {
     return memory.getId().toString();
-  }
-
-  private static ContextMemory persistWithoutStatus(ContextMemory memory) {
-    memory.setEntityStatus(null);
-    EntityRepository<?> repository = Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
-    repository.getDao().update(memory);
-    EntityRepository.invalidateCacheForEntity(
-        Entity.CONTEXT_MEMORY, memory.getId(), memory.getFullyQualifiedName());
-    assertNull(admin().get(idOf(memory)).getEntityStatus());
-    return memory;
   }
 
   private static ContextMemoryService admin() {

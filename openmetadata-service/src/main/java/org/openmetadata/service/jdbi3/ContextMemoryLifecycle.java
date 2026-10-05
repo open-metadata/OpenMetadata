@@ -38,10 +38,6 @@ public final class ContextMemoryLifecycle {
 
   private ContextMemoryLifecycle() {}
 
-  public static EntityStatus effectiveStatus(EntityStatus status) {
-    return status == null ? EntityStatus.APPROVED : status;
-  }
-
   static void applyUpdate(ContextMemory original, ContextMemory updated, MemoryResolver resolver) {
     applyStatusChange(original, updated);
     validateSupersession(updated);
@@ -54,8 +50,7 @@ public final class ContextMemoryLifecycle {
   }
 
   private static void applyStatusChange(ContextMemory original, ContextMemory updated) {
-    boolean statusChanged =
-        effectiveStatus(original.getEntityStatus()) != updated.getEntityStatus();
+    boolean statusChanged = original.getEntityStatus() != updated.getEntityStatus();
     if (statusChanged && original.getEntityStatus() == EntityStatus.DEPRECATED) {
       updated.setSupersededBy(null);
     }

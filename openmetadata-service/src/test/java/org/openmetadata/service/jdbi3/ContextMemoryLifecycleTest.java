@@ -172,11 +172,6 @@ class ContextMemoryLifecycleTest {
   }
 
   @Test
-  void aMissingStoredStageIsTreatedAsApprovedOnReads() {
-    assertEquals(EntityStatus.APPROVED, ContextMemoryLifecycle.effectiveStatus(null));
-  }
-
-  @Test
   void createCannotBeDeprecatedWithoutASuccessor() {
     assertThrows(
         BadRequestException.class,

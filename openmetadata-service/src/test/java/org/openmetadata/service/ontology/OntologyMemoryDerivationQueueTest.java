@@ -44,14 +44,6 @@ class OntologyMemoryDerivationQueueTest {
   }
 
   @Test
-  void legacyPublishedMemoryWithoutStoredStatusIsEligible() {
-    ContextMemory legacy =
-        memory(UUID.randomUUID(), MemoryVisibility.ENTITY).withEntityStatus(null);
-
-    assertTrue(OntologyMemoryDerivationQueue.isPublished(legacy));
-  }
-
-  @Test
   void batchesMemoriesExtractedFromOneSourceBehindADelay() {
     UUID memoryId = UUID.randomUUID();
     UUID fileId = UUID.randomUUID();

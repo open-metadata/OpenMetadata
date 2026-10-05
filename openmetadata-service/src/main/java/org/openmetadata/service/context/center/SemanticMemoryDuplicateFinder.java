@@ -1,7 +1,5 @@
 package org.openmetadata.service.context.center;
 
-import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -196,7 +194,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   private boolean isReusable(ContextMemory candidate, ContextMemory derived) {
-    return effectiveStatus(candidate.getEntityStatus()) == EntityStatus.APPROVED
+    return candidate.getEntityStatus() == EntityStatus.APPROVED
         && candidate.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
         && candidate.getShareConfig() != null
         && candidate.getShareConfig().getVisibility() == MemoryVisibility.ENTITY

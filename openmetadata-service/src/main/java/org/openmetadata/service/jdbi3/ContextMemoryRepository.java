@@ -669,26 +669,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     public ContextMemoryUpdater(
         ContextMemory original, ContextMemory updated, Operation operation) {
       super(original, updated, operation);
-      if (original.getEntityStatus() == null && updated.getEntityStatus() == null) {
-        updated.setEntityStatus(EntityStatus.APPROVED);
-      }
     }
 
     @Override
     void updateEntityStatus(boolean consolidatingChanges) {
-      if (operation == Operation.PATCH
-          && original.getEntityStatus() != null
-          && updated.getEntityStatus() == null) {
+      if (operation == Operation.PATCH && updated.getEntityStatus() == null) {
         throw new BadRequestException("A context memory requires an entityStatus");
-      }
-      if (original.getEntityStatus() == null) {
-        EntityStatus target =
-            Objects.requireNonNullElse(updated.getEntityStatus(), EntityStatus.APPROVED);
-        if (target != EntityStatus.APPROVED && !LIFECYCLE.allows(EntityStatus.APPROVED, target)) {
-          throw new BadRequestException(
-              "Invalid memory status transition from Approved to " + target.value());
-        }
-        updated.setEntityStatus(target);
       }
       super.updateEntityStatus(consolidatingChanges);
     }
