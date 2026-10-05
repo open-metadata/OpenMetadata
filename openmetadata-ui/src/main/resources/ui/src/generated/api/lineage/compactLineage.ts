@@ -38,6 +38,11 @@ export interface CompactLineage {
      */
     edgesTruncated?: boolean;
     /**
+     * Edges left out because the asset they lead to did not match the requested entity type or
+     * service filters.
+     */
+    filteredEdges?: number;
+    /**
      * Offset of the first edge on this page.
      */
     firstEdge?: number;
