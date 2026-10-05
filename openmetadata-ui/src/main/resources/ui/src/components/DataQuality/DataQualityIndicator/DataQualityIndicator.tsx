@@ -19,13 +19,14 @@ import {
 import {
   ArrowRight,
   ArrowUp,
+  DataQualityAlarm,
+  DataQualityAlarmUpstream,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import QueryString from 'qs';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as AlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
@@ -44,8 +45,7 @@ import {
 const UpstreamBadge = ({ className }: { className: string }) => (
   <span
     aria-hidden
-    className={`tw:grid tw:place-items-center tw:rounded-full tw:bg-warning-solid tw:text-fg-white ${className}`}
-    data-testid="dq-indicator-upstream-badge">
+    className={`tw:grid tw:place-items-center tw:rounded-full tw:bg-warning-solid tw:text-fg-white ${className}`}>
     <ArrowUp className="tw:size-2.5" />
   </span>
 );
@@ -74,11 +74,7 @@ const ConditionList = ({ counts }: { counts: DataQualityIndicatorCounts }) => {
     {
       count: counts.unresolvedIncidents,
       icon: (
-        <AlertIcon
-          className="tw:text-fg-warning-primary"
-          height={16}
-          width={16}
-        />
+        <DataQualityAlarm className="tw:text-fg-warning-primary" size={16} />
       ),
       i18nKey: 'message.dq-unresolved-incidents-count',
     },
@@ -207,21 +203,18 @@ export const DataQualityIndicator = ({
   const tone = level === 'failing' ? 'error' : 'warning';
   const isUpstream = level === 'upstream';
   const isList = hasMultipleDataQualityConditions(counts);
+  const AlarmIcon = isUpstream ? DataQualityAlarmUpstream : DataQualityAlarm;
 
   const card = (
     <div className="tw:flex tw:w-80 tw:flex-col tw:gap-3">
       <div className="tw:flex tw:items-start tw:gap-3">
-        <span className="tw:relative tw:shrink-0">
-          <FeaturedIcon
-            color={tone}
-            icon={<AlertIcon height={16} width={16} />}
-            shape="square"
-            size="sm"
-          />
-          {isUpstream && (
-            <UpstreamBadge className="tw:absolute tw:-right-1 tw:-bottom-1 tw:size-3.5" />
-          )}
-        </span>
+        <FeaturedIcon
+          className="tw:shrink-0"
+          color={tone}
+          icon={<AlarmIcon size={16} />}
+          shape="square"
+          size="sm"
+        />
         <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1 tw:pt-1">
           <Typography as="p" size="text-sm" weight="semibold">
             {title}
@@ -249,16 +242,19 @@ export const DataQualityIndicator = ({
     <HoverCard content={card} placement="bottom start">
       <Link
         aria-label={title}
-        className={`tw:relative tw:inline-flex tw:rounded-lg tw:p-2 ${TONE_CLASSES[tone].trigger}`}
+        className={`tw:inline-flex tw:rounded-lg tw:p-1.5 ${TONE_CLASSES[tone].trigger}`}
         data-level={level}
         data-testid="dq-indicator"
         to={to}>
         {/* Colour sits on the svg, not the link: antd's global a:hover/a:focus
             colour would otherwise turn the icon primary blue. */}
-        <AlertIcon className={TONE_CLASSES[tone].icon} height={24} width={24} />
-        {isUpstream && (
-          <UpstreamBadge className="tw:absolute tw:right-1 tw:bottom-1 tw:size-3.5" />
-        )}
+        <AlarmIcon
+          className={TONE_CLASSES[tone].icon}
+          data-testid={
+            isUpstream ? 'dq-indicator-upstream-icon' : 'dq-indicator-icon'
+          }
+          size={20}
+        />
       </Link>
     </HoverCard>
   );

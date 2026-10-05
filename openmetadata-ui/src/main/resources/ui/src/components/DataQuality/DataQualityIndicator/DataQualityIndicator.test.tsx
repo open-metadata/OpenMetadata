@@ -73,9 +73,7 @@ describe('DataQualityIndicator', () => {
     const indicator = screen.getByTestId('dq-indicator');
 
     expect(indicator).toHaveAttribute('data-level', 'failing');
-    // The svg mock renders className as a literal `classname` attribute.
-    expect(indicator.firstElementChild).toHaveAttribute(
-      'classname',
+    expect(screen.getByTestId('dq-indicator-icon')).toHaveClass(
       'tw:text-fg-error-primary'
     );
     expect(indicator.getAttribute('href')).toContain('profiler/data-quality');
@@ -99,12 +97,11 @@ describe('DataQualityIndicator', () => {
     const indicator = screen.getByTestId('dq-indicator');
 
     expect(indicator).toHaveAttribute('data-level', 'incident');
-    expect(indicator.firstElementChild).toHaveAttribute(
-      'classname',
+    expect(screen.getByTestId('dq-indicator-icon')).toHaveClass(
       'tw:text-fg-warning-primary'
     );
     expect(
-      screen.queryByTestId('dq-indicator-upstream-badge')
+      screen.queryByTestId('dq-indicator-upstream-icon')
     ).not.toBeInTheDocument();
 
     openCard();
@@ -126,7 +123,7 @@ describe('DataQualityIndicator', () => {
 
     expect(indicator).toHaveAttribute('data-level', 'upstream');
     expect(
-      screen.getByTestId('dq-indicator-upstream-badge')
+      screen.getByTestId('dq-indicator-upstream-icon')
     ).toBeInTheDocument();
     expect(indicator.getAttribute('href')).toContain('lineage');
 
