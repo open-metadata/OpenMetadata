@@ -934,12 +934,6 @@ cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}
 
-  # Cross-pod WebSocket relay for sendToOne (CSV import/export, bulk-assets completion, etc.).
-  # With provider=redis the relay uses Redis pub/sub automatically. With provider=none, set this
-  # true on a MULTI-POD deployment to enable the DB-poll fallback so completion frames reach the
-  # pod holding the user's socket; leave false for single-pod (no relay overhead).
-  webSocketRelayEnabled: ${WEBSOCKET_RELAY_ENABLED:-false}
-
   # TTL (Time To Live) settings in seconds
   entityTtlSeconds: ${CACHE_ENTITY_TTL:-172800}             # 48 hour for entities
   relationshipTtlSeconds: ${CACHE_RELATIONSHIP_TTL:-172800} # 48 hour for relationships

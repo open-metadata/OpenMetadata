@@ -1292,20 +1292,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     org.openmetadata.service.cache.CacheConfig cacheConfig = catalogConfig.getCacheConfig();
     org.openmetadata.service.socket.WebSocketRelay relay = null;
     try {
+      // Backend follows the cache provider — no separate toggle. Redis pub/sub when a Redis cache
+      // is
+      // configured, otherwise the DB-poll relay (works on both single- and multi-pod; single-pod
+      // just
+      // delivers locally and the published row is a cheap no-op cleaned up by TTL).
       if (cacheConfig != null
           && cacheConfig.provider == org.openmetadata.service.cache.CacheConfig.Provider.redis) {
         relay = new org.openmetadata.service.socket.RedisWebSocketRelay(cacheConfig);
-      } else if (cacheConfig != null && cacheConfig.webSocketRelayEnabled) {
+      } else {
         relay =
             new org.openmetadata.service.socket.DbWebSocketRelay(
                 Entity.getJdbi().onDemand(org.openmetadata.service.socket.WsRelayDAO.class));
       }
     } catch (Exception e) {
       LOG.error("Failed to initialize WebSocket relay; staying node-local", e);
-      relay = null;
-    }
-    if (relay == null) {
-      return; // WebSocketManager defaults to a no-op relay (single-pod behavior).
+      return; // WebSocketManager keeps its no-op relay (node-local delivery).
     }
     relay.start();
     WebSocketManager.getInstance().setRelay(relay);
