@@ -13,11 +13,8 @@
 
 import {
   Box,
-  Button,
   EmptyPlaceholder,
   PaginationCardWithControls,
-  Popover,
-  PopoverTrigger,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -33,7 +30,6 @@ import {
 import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import type { User } from '../../../../../../generated/entity/teams/user';
-import type { EntityReference } from '../../../../../../generated/entity/type';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
@@ -43,22 +39,16 @@ import {
 } from '../../../../../../rest/userAPI';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
-import {
-  profileHash,
-  ProfileHashTarget,
-  toHashLocation,
-} from './profileHash.utils';
-import ProfileHashLink from './ProfileHashLink';
+import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
+import { profileHash } from './profileHash.utils';
 
 const USER_FIELDS = 'profile,teams,roles,lastLoginTime,lastActivityTime';
 
@@ -198,83 +188,6 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeWindow, pageSize]);
 
-  const renderEntityLinks = useCallback(
-    (
-      items: User['teams'] | User['roles'],
-      targetFn: (fqn: string) => ProfileHashTarget
-    ) => {
-      if (!items || items.length === 0) {
-        return '-';
-      }
-
-      const visible = items.slice(0, LIST_CAP);
-      const overflow = items.length - LIST_CAP;
-
-      return (
-        <Box align="center" direction="row" gap={1}>
-          {visible.map((item) => (
-            <ProfileHashLink
-              key={item.id}
-              target={targetFn(item.fullyQualifiedName ?? item.name ?? '')}
-              onNavigate={goTo}>
-              {getEntityName(item)}
-            </ProfileHashLink>
-          ))}
-          {overflow > 0 && (
-            <Typography
-              as="span"
-              className="tw:text-tertiary"
-              data-testid="plus-more-count"
-              size="text-xs">
-              {`+${overflow} ${t('label.more')}`}
-            </Typography>
-          )}
-        </Box>
-      );
-    },
-    [t, goTo]
-  );
-
-  const renderRolesCell = useCallback(
-    (roles: User['roles']) => {
-      if (!roles || roles.length === 0) {
-        return '-';
-      }
-
-      const renderRoleItem = (role: EntityReference) => (
-        <ProfileHashLink
-          key={role.id}
-          target={profileHash.role(role.fullyQualifiedName ?? role.name ?? '')}
-          onNavigate={goTo}>
-          {getEntityName(role)}
-        </ProfileHashLink>
-      );
-
-      return (
-        <Box data-testid="role-link" direction="row" gap={1} wrap="wrap">
-          {roles.slice(0, LIST_CAP).map(renderRoleItem)}
-          {roles.length > LIST_CAP && (
-            <PopoverTrigger>
-              <Button
-                className="tw:py-0.5 tw:bg-tertiary"
-                color="secondary"
-                data-testid="plus-more-count"
-                size="xs">
-                {t('label.plus-count-more', { count: roles.length - LIST_CAP })}
-              </Button>
-              <Popover className="tw:max-h-80! tw:overflow-scroll">
-                <Box className="tw:p-3" direction="col" gap={1}>
-                  {roles.slice(LIST_CAP).map(renderRoleItem)}
-                </Box>
-              </Popover>
-            </PopoverTrigger>
-          )}
-        </Box>
-      );
-    },
-    [t, goTo]
-  );
-
   const columns = useMemo(
     (): ColumnsType<User> => [
       {
@@ -282,18 +195,9 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         dataIndex: 'name',
         key: 'username',
         ellipsis: true,
-        render: (_: string, record: User) =>
-          record.name ? (
-            <UserPopOverCard
-              showUserName
-              profileWidth={16}
-              to={toHashLocation(profileHash.user(record.name))}
-              userName={record.name}
-              onTitleClick={() => goTo(profileHash.user(record.name ?? ''))}
-            />
-          ) : (
-            <Typography size="text-sm">{getEntityName(record)}</Typography>
-          ),
+        render: (_: string, record: User) => (
+          <UserNameCell goTo={goTo} record={record} />
+        ),
       },
       {
         title: t('label.name'),
@@ -330,17 +234,31 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         title: t('label.team-plural'),
         dataIndex: 'teams',
         key: 'teams',
-        render: (_: unknown, record: User) =>
-          renderEntityLinks(record.teams, (fqn) => profileHash.team(fqn)),
+        render: (_: unknown, record: User) => (
+          <EntityLinksCell
+            emptyLabel="-"
+            goTo={goTo}
+            items={record.teams}
+            targetFn={profileHash.team}
+          />
+        ),
       },
       {
         title: t('label.role-plural'),
         dataIndex: 'roles',
         key: 'roles',
-        render: (_: unknown, record: User) => renderRolesCell(record.roles),
+        render: (_: unknown, record: User) => (
+          <EntityLinksCell
+            emptyLabel="-"
+            goTo={goTo}
+            items={record.roles}
+            targetFn={profileHash.role}
+            testId="role-link"
+          />
+        ),
       },
     ],
-    [t, goTo, renderEntityLinks, renderRolesCell]
+    [t, goTo]
   );
 
   const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));

@@ -25,7 +25,6 @@ import type {
 } from '../../../../../common/Table/Table.interface';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import type { MembersView } from './Members.types';
-import type { ProfileHashTarget } from './profileHash.utils';
 
 export type TeamTab = 'teams' | 'users' | 'assets' | 'roles' | 'policies';
 
@@ -164,9 +163,4 @@ export interface UseMembersTeamHeaderParams {
   onSetHeaderActions?: (actions: ReactNode) => void;
   onSetHeaderTitleInput?: (input: ReactNode) => void;
   onSetHeaderTitleSuffix?: (suffix: ReactNode) => void;
-}
-
-export interface UserRolesCellProps {
-  record: User;
-  goTo: (target: ProfileHashTarget) => void;
 }

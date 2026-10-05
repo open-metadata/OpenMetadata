@@ -17,13 +17,9 @@ import {
   ButtonUtility,
   EmptyPlaceholder,
   PaginationCardWithControls,
-  Popover,
-  PopoverTrigger,
   SimpleModal,
   TableCard,
   Toggle,
-  Tooltip,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { RefreshCcw01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -54,7 +50,6 @@ import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { User } from '../../../../../../generated/entity/teams/user';
-import { EntityReference } from '../../../../../../generated/entity/type';
 import { Include } from '../../../../../../generated/type/include';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
@@ -62,23 +57,19 @@ import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getUsers, restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import {
-  checkPermission,
-  LIST_CAP,
-} from '../../../../../../utils/PermissionsUtils';
+import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
-import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
 import type { MembersUsersPanelProps } from './Members.types';
-import { profileHash, toHashLocation } from './profileHash.utils';
-import ProfileHashLink from './ProfileHashLink';
+import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
+import { profileHash } from './profileHash.utils';
 
 const USER_FIELDS = [
   TabSpecificField.PROFILE,
@@ -295,18 +286,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       dataIndex: 'username',
       key: 'username',
       ellipsis: true,
-      render: (_: unknown, record: User) =>
-        record.name ? (
-          <UserPopOverCard
-            showUserName
-            profileWidth={16}
-            to={toHashLocation(profileHash.user(record.name))}
-            userName={record.name}
-            onTitleClick={() => goTo(profileHash.user(record.name ?? ''))}
-          />
-        ) : (
-          <Typography size="text-sm">{getEntityName(record)}</Typography>
-        ),
+      render: (_: unknown, record: User) => (
+        <UserNameCell goTo={goTo} record={record} />
+      ),
     };
 
     const nameColumn = {
@@ -321,92 +303,29 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       title: t('label.team-plural'),
       dataIndex: 'teams',
       key: 'teams',
-      render: (_: unknown, record: User) => {
-        const teams = record.teams ?? [];
-
-        if (teams.length === 0) {
-          return t('label.no-entity', { entity: t('label.team') });
-        }
-
-        const visible = teams.slice(0, LIST_CAP);
-        const overflow = teams.length - LIST_CAP;
-
-        return (
-          <Box align="center" direction="row" gap={1}>
-            {visible.map((team) => (
-              <ProfileHashLink
-                key={team.id}
-                target={profileHash.team(
-                  team.fullyQualifiedName ?? team.name ?? ''
-                )}
-                onNavigate={goTo}>
-                {getEntityName(team)}
-              </ProfileHashLink>
-            ))}
-            {overflow > 0 && (
-              <Tooltip
-                title={teams
-                  .slice(LIST_CAP)
-                  .map((team) => getEntityName(team))
-                  .join(', ')}>
-                <span
-                  className="tw:text-xs tw:text-tertiary tw:cursor-pointer"
-                  data-testid="plus-more-count">
-                  {`+${overflow} ${t('label.more')}`}
-                </span>
-              </Tooltip>
-            )}
-          </Box>
-        );
-      },
+      render: (_: unknown, record: User) => (
+        <EntityLinksCell
+          emptyLabel={t('label.no-entity', { entity: t('label.team') })}
+          goTo={goTo}
+          items={record.teams}
+          targetFn={profileHash.team}
+        />
+      ),
     };
 
     const rolesColumn = {
       title: t('label.role-plural'),
       dataIndex: 'roles',
       key: 'roles',
-      render: (_: unknown, record: User) => {
-        const roles = record.roles ?? [];
-
-        if (roles.length === 0) {
-          return t('label.no-entity', { entity: t('label.role') });
-        }
-
-        const renderRoleItem = (role: EntityReference) => (
-          <ProfileHashLink
-            key={role.id}
-            target={profileHash.role(
-              role.fullyQualifiedName ?? role.name ?? ''
-            )}
-            onNavigate={goTo}>
-            {getEntityName(role)}
-          </ProfileHashLink>
-        );
-
-        return (
-          <Box data-testid="role-link" direction="row" gap={1} wrap="wrap">
-            {roles.slice(0, LIST_CAP).map(renderRoleItem)}
-            {roles.length > LIST_CAP && (
-              <PopoverTrigger>
-                <Button
-                  className="tw:py-0.5 tw:bg-tertiary"
-                  color="secondary"
-                  data-testid="plus-more-count"
-                  size="xs">
-                  {t('label.plus-count-more', {
-                    count: roles.length - LIST_CAP,
-                  })}
-                </Button>
-                <Popover className="tw:max-h-80! tw:overflow-scroll">
-                  <Box className="tw:p-3" direction="col" gap={1}>
-                    {roles.slice(LIST_CAP).map(renderRoleItem)}
-                  </Box>
-                </Popover>
-              </PopoverTrigger>
-            )}
-          </Box>
-        );
-      },
+      render: (_: unknown, record: User) => (
+        <EntityLinksCell
+          emptyLabel={t('label.no-entity', { entity: t('label.role') })}
+          goTo={goTo}
+          items={record.roles}
+          targetFn={profileHash.role}
+          testId="role-link"
+        />
+      ),
     };
 
     const actionColumn = {

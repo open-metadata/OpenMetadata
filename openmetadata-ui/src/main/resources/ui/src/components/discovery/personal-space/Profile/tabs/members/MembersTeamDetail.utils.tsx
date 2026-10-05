@@ -12,32 +12,23 @@
  */
 
 import {
-  Box,
   Button,
   ButtonUtility,
-  Popover,
-  PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
-import { FC } from 'react';
-import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
-import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import type { MembersView } from './Members.types';
-import type { TeamTab, UserRolesCellProps } from './MembersTeamDetail.types';
-import {
-  profileHash,
-  ProfileHashTarget,
-  toHashLocation,
-} from './profileHash.utils';
+import type { TeamTab } from './MembersTeamDetail.types';
+import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
+import { profileHash, ProfileHashTarget } from './profileHash.utils';
 
 export const TEAM_FIELDS = [
   TabSpecificField.USERS,
@@ -99,45 +90,6 @@ export const getTabLabel = (
     default:
       return `${t('label.policy-plural')} (${team.policies?.length ?? 0})`;
   }
-};
-
-export const UserRolesCell: FC<UserRolesCellProps> = ({ record, goTo }) => {
-  const { t } = useTranslation();
-  const roles = record.roles ?? [];
-  if (roles.length === 0) {
-    return <>{t('label.no-entity', { entity: t('label.role') })}</>;
-  }
-  const renderRoleItem = (role: EntityReference) => (
-    <Button
-      color="link-color"
-      key={role.id}
-      size="sm"
-      onPress={() => goTo(profileHash.role(role.fullyQualifiedName ?? ''))}>
-      {getEntityName(role)}
-    </Button>
-  );
-
-  return (
-    <Box align="center" direction="row" gap={1}>
-      {roles.slice(0, LIST_CAP).map(renderRoleItem)}
-      {roles.length > LIST_CAP && (
-        <PopoverTrigger>
-          <Button
-            className="tw:py-0.5 tw:bg-tertiary"
-            color="secondary"
-            data-testid="plus-more-count"
-            size="xs">
-            {t('label.plus-count-more', { count: roles.length - LIST_CAP })}
-          </Button>
-          <Popover className="tw:max-h-80! tw:overflow-scroll">
-            <Box className="tw:p-3" direction="col" gap={1}>
-              {roles.slice(LIST_CAP).map(renderRoleItem)}
-            </Box>
-          </Popover>
-        </PopoverTrigger>
-      )}
-    </Box>
-  );
 };
 
 // The child-team table is a lazy-loaded tree: a row with sub-teams carries an
@@ -250,18 +202,9 @@ export const getUserColumns = (
     dataIndex: 'name',
     key: 'username',
     ellipsis: true,
-    render: (_: unknown, record: User) =>
-      record.name ? (
-        <UserPopOverCard
-          showUserName
-          profileWidth={16}
-          to={toHashLocation(profileHash.user(record.name))}
-          userName={record.name}
-          onTitleClick={() => goTo(profileHash.user(record.name ?? ''))}
-        />
-      ) : (
-        getEntityName(record)
-      ),
+    render: (_: unknown, record: User) => (
+      <UserNameCell goTo={goTo} record={record} />
+    ),
   },
   {
     title: t('label.name'),
@@ -279,7 +222,12 @@ export const getUserColumns = (
     dataIndex: 'roles',
     key: 'roles',
     render: (_: unknown, record: User) => (
-      <UserRolesCell goTo={goTo} record={record} />
+      <EntityLinksCell
+        emptyLabel={t('label.no-entity', { entity: t('label.role') })}
+        goTo={goTo}
+        items={record.roles}
+        targetFn={profileHash.role}
+      />
     ),
   },
   ...(canEditAll
