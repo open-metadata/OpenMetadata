@@ -165,6 +165,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         UPDATE_FIELDS);
     supportsSearch = true;
     TestCaseBodyTextContributor.INSTANCE.register();
+    onlyReviewersDeleteInReview = true;
     approvalTaskReviewsEntityStatus = true;
     // Add the canonical name for test case results
     // As test case result` does not have its own repository

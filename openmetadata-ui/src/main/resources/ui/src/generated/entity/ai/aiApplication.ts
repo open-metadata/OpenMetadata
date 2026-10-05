@@ -95,6 +95,10 @@ export interface AIApplication {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that led to this version
      */
     incrementalChangeDescription?: ChangeDescription;

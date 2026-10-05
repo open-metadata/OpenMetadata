@@ -2918,7 +2918,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   /** Stage a minimal entity of this type starts in when its create request carries none. */
   protected EntityStatus expectedInitialEntityStatus() {
-    return EntityStatus.APPROVED;
+    return EntityStatus.UNPROCESSED;
   }
 
   /**

@@ -118,6 +118,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         UPDATE_FIELDS);
     supportsSearch = true;
     entityLifecycle = LIFECYCLE;
+    defaultEntityStatus = EntityStatus.APPROVED;
   }
 
   public ResultList<ContextMemory> listContextMemoriesWithStatuses(
@@ -425,7 +426,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   private Map<UUID, EntityReference> batchFetchSources(List<ContextMemory> entities) {
-    Map<UUID, EntityReference> sourceById = new HashMap<>();
+    Map<UUID, List<EntityReference>> sourcesById = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
@@ -437,9 +438,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     for (CollectionDAO.EntityRelationshipObject record : records) {
       EntityReference ref = refById.get(record.getFromId());
       if (ref != null) {
-        sourceById.putIfAbsent(UUID.fromString(record.getToId()), ref);
+        sourcesById
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(ref);
       }
     }
+    Map<UUID, EntityReference> sourceById = new HashMap<>();
+    sourcesById.forEach(
+        (id, refs) -> {
+          refs.sort(EntityUtil.compareEntityReference);
+          sourceById.put(id, refs.getFirst());
+        });
     return sourceById;
   }
 

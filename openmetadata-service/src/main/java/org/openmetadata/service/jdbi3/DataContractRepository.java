@@ -134,7 +134,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         DATA_CONTRACT_UPDATE_FIELDS);
     // A contract's rules and inheritance apply only once it is Approved, so a new contract starts
     // in Draft until it is reviewed.
-    defaultEntityStatus = EntityStatus.DRAFT;
     onlyReviewersDeleteInReview = true;
     approvalTaskReviewsEntityStatus = true;
     this.ingestionPipelineMapper = new IngestionPipelineMapper(config);
@@ -393,10 +392,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     // Get schema validation results (prepareForValidation already validated but we want the
-    // details)
-    SchemaValidation schemaValidation =
-        validateSchemaFieldsAgainstEntity(dataContract, dataContract.getEntity());
-    validation.setSchemaValidation(schemaValidation);
+    // details). This call can throw (e.g. NPE when entity is null, EntityNotFoundException when the
+    // referenced entity does not exist); those failures are collected as constraint errors so the
+    // method still returns a structured ContractValidation instead of propagating the exception.
+    try {
+      SchemaValidation schemaValidation =
+          validateSchemaFieldsAgainstEntity(dataContract, dataContract.getEntity());
+      validation.setSchemaValidation(schemaValidation);
+    } catch (Exception e) {
+      validation.setValid(false);
+      constraintErrors.add(e.getMessage());
+    }
 
     validation.setEntityErrors(entityErrors.isEmpty() ? null : entityErrors);
     validation.setConstraintErrors(constraintErrors.isEmpty() ? null : constraintErrors);

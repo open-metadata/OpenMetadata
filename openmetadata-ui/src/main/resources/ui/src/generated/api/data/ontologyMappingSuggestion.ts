@@ -201,11 +201,15 @@ export interface OntologyAxiom {
     /**
      * Class expressions participating in the axiom, ordered from left to right.
      */
-    expressions:                   OntologyExpression[];
-    fullyQualifiedName:            string;
-    glossary:                      EntityReference;
-    href?:                         string;
-    id:                            string;
+    expressions:        OntologyExpression[];
+    fullyQualifiedName: string;
+    glossary:           EntityReference;
+    href?:              string;
+    id:                 string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?:               string;
     incrementalChangeDescription?: ChangeDescription;
     literal?:                      Literal;
     name:                          string;

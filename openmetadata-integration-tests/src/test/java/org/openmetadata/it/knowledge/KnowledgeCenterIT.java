@@ -71,7 +71,7 @@ public class KnowledgeCenterIT {
   }
 
   @Test
-  void testNewArticleStartsInDraftUnlessItsRequestSetsAStage(TestNamespace ns)
+  void testNewArticleStartsUnprocessedUnlessItsRequestSetsAStage(TestNamespace ns)
       throws HttpResponseException {
     RestClient rest = RestClient.admin();
     EntityReference orgRef = getOrganizationRef();
@@ -83,7 +83,7 @@ public class KnowledgeCenterIT {
             buildCreateRequest(ns.prefix("articleApproved"), orgRef)
                 .withEntityStatus(EntityStatus.APPROVED));
 
-    assertEquals(EntityStatus.DRAFT, draft.getEntityStatus());
+    assertEquals(EntityStatus.UNPROCESSED, draft.getEntityStatus());
     assertEquals(EntityStatus.APPROVED, requested.getEntityStatus());
   }
 

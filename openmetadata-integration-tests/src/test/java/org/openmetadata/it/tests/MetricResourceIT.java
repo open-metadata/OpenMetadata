@@ -129,6 +129,12 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
 
+  // Without reviewers the minimal entity has nobody to review it, so it starts approved.
+  @Override
+  protected EntityStatus expectedInitialEntityStatus() {
+    return EntityStatus.APPROVED;
+  }
+
   @Override
   protected CreateMetric createMinimalRequest(TestNamespace ns) {
     return new CreateMetric()

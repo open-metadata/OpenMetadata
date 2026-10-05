@@ -560,7 +560,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * describe assets that already exist in the data infrastructure, so they start Approved; entity
    * types created and reviewed in OpenMetadata start in Draft instead.
    */
-  protected EntityStatus defaultEntityStatus = EntityStatus.APPROVED;
+  protected EntityStatus defaultEntityStatus = EntityStatus.UNPROCESSED;
 
   /**
    * Whether an active governance workflow that sets this entity type's lifecycle stage is the only
@@ -1490,6 +1490,50 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return supportsEntityStatus && workflowsOwnEntityStatus
         ? stageOwnership.owningStageOf(entityType)
         : List.of();
+  }
+
+  private void validateEntityStatusChange(T current, T change, EntityStatus from, EntityStatus to) {
+    requireMoveInLifecycle(from, to);
+    checkEntityStatusNotOwnedByWorkflow(current, change);
+    // A workflow's approval task already decided who may approve (reviewers, owners or named
+    // candidates), so the reviewer rule only guards direct edits and imports.
+    if (from == EntityStatus.IN_REVIEW
+        && (to == EntityStatus.APPROVED || to == EntityStatus.REJECTED)
+        && !EntityStatusWorkflows.isWorkflowChange(change)) {
+      checkUpdatedByReviewer(current, change.getUpdatedBy());
+    }
+  }
+
+  /**
+   * Applies the update path's stage rules to a CSV row that the batched import stores without an
+   * {@link EntityUpdater}: a row without a stage keeps the stored one, and a stage change must be a
+   * move in the type's lifecycle that no active workflow owns. Throws so the row is reported as
+   * failed instead of silently leaving the lifecycle.
+   */
+  public void applyEntityStatusRulesForImport(T original, T updated, String importedBy) {
+    if (supportsEntityStatus) {
+      if (updated.getEntityStatus() == null) {
+        updated.setEntityStatus(original.getEntityStatus());
+      }
+      EntityStatus from = original.getEntityStatus();
+      EntityStatus to = updated.getEntityStatus();
+      if (from != to) {
+        updated.setUpdatedBy(importedBy);
+        loadReviewersForStageCheck(original, from);
+        validateEntityStatusChange(original, updated, from, to);
+      }
+    }
+  }
+
+  // An import row is matched from stored JSON, which holds no relationship fields, so the reviewer
+  // rule would see an entity without reviewers. Load them the way a PATCH does, inherited ones
+  // included, before checking who may move the entity out of review.
+  private void loadReviewersForStageCheck(T original, EntityStatus from) {
+    if (supportsReviewers && from == EntityStatus.IN_REVIEW) {
+      T withReviewers =
+          get(null, original.getId(), getFields(FIELD_REVIEWERS), Include.NON_DELETED, false);
+      original.setReviewers(withReviewers.getReviewers());
+    }
   }
 
   private void checkEntityStatusNotOwnedByWorkflow(T current, T change) {
@@ -4167,8 +4211,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // 2. Set impersonatedBy for each entity
     for (T entity : entities) {
       entity.setImpersonatedBy(impersonatedBy);
-      assignInitialEntityStatus(entity);
     }
+    entities.forEach(this::assignInitialEntityStatus);
 
     // 3. Store entities and relationships in one atomic transaction. Cache invalidations issued by
     // storeRelationshipsInternal are recorded and drained post-commit (no Redis round trip while
@@ -5440,7 +5484,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected T createNewEntity(T entity) {
-    assignInitialEntityStatus(entity);
     createNewEntityFlush(entity);
     try (var ignored = phase("createPostCreate")) {
       postCreate(entity);
@@ -5449,6 +5492,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createNewEntityFlush(T entity) {
+    assignInitialEntityStatus(entity);
     flushInOneTransaction(() -> createNewEntityFlushBody(entity));
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
@@ -5737,7 +5781,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
-    entities.forEach(this::assignInitialEntityStatus);
     createManyEntitiesFlush(entities);
     try (var ignored = phase("postCreate")) {
       postCreate(entities);
@@ -5747,6 +5790,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createManyEntitiesFlush(List<T> entities) {
+    entities.forEach(this::assignInitialEntityStatus);
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
@@ -9946,12 +9990,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void validateEntityStatusChange(EntityStatus from, EntityStatus to) {
-      requireMoveInLifecycle(from, to);
-      checkEntityStatusNotOwnedByWorkflow(original, updated);
-      if (from == EntityStatus.IN_REVIEW
-          && (to == EntityStatus.APPROVED || to == EntityStatus.REJECTED)) {
-        checkUpdatedByReviewer(original, updated.getUpdatedBy());
-      }
+      EntityRepository.this.validateEntityStatusChange(original, updated, from, to);
     }
 
     private void updateOwners() {

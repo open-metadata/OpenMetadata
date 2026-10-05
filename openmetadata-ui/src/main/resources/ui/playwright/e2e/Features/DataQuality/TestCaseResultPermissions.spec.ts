@@ -223,7 +223,9 @@ test.describe(
 
         const resultChart = viewResultsPage.getByTestId('chart-container');
         if (await resultChart.first().isVisible()) {
-          await expect(resultChart.first()).toBeVisible();
+          await expect(resultChart.filter({ visible: true })).not.toHaveCount(
+            0
+          );
         }
       });
 

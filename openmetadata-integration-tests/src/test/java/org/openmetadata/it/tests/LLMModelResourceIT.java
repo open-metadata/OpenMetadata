@@ -23,7 +23,6 @@ import org.openmetadata.schema.type.AIDetection;
 import org.openmetadata.schema.type.AIDetectionSource;
 import org.openmetadata.schema.type.AIEvidence;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.RemediationAction;
 import org.openmetadata.schema.type.RemediationStatus;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -118,11 +117,6 @@ public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
   @Override
   protected String getEntityType() {
     return "llmModel";
-  }
-
-  @Override
-  protected EntityStatus expectedInitialEntityStatus() {
-    return EntityStatus.DRAFT;
   }
 
   @Override

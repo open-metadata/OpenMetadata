@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 /**
  * Reusable context memory for Context Center and AI-assisted retrieval.
  */
@@ -65,6 +66,10 @@ export interface ContextMemory {
      * Unique identifier of the memory.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Incremental change that led to this version.
      */

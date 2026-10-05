@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Checkbox, Col, Divider, Row, Select, Space } from 'antd';
-
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Checkbox, Col, Row, Select, Space } from 'antd';
 import { capitalize } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { FilterPatternProps } from './filterPattern.interface';
@@ -95,7 +94,7 @@ const FilterPattern = ({
               onChange={(value) => getExcludeValue(value, type)}
             />
 
-            {showSeparator && <Divider />}
+            {showSeparator && <Divider className="tw:my-6" />}
           </Col>
         </Row>
       )}

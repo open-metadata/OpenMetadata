@@ -1329,6 +1329,7 @@ const BulkEntityImportPage = () => {
             >[]
           }
           rowHeight={getEditableRowHeight}
+          rowTestId={(row) => (row.id ? `rdg-row-${row.id}` : undefined)}
           rows={editableDataSource}
           onCopy={handleCopy}
           onPaste={handlePaste}

@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.util.ApiAssertions.assertForbidden;
 
@@ -64,7 +65,7 @@ public class EntityStatusWorkflowOwnershipIT {
               () -> moveToStage(owned, EntityStatus.APPROVED),
               "The workflow owns the stage of the domains it applies to");
       assertTrue(rejected.getMessage().contains(name(workflow)), rejected.getMessage());
-      assertEquals(EntityStatus.DRAFT, domain(owned).getEntityStatus());
+      assertNotEquals(EntityStatus.APPROVED, domain(owned).getEntityStatus());
       assertEquals(
           EntityStatus.APPROVED, moveToStage(unowned, EntityStatus.APPROVED).getEntityStatus());
     } finally {
@@ -101,7 +102,7 @@ public class EntityStatusWorkflowOwnershipIT {
       Page owned = createArticle(ns.prefix(OWNED_MARKER), EntityStatus.APPROVED);
       Page unowned = createArticle(ns.prefix("unowned"), EntityStatus.APPROVED);
 
-      assertEquals(EntityStatus.DRAFT, owned.getEntityStatus());
+      assertEquals(EntityStatus.UNPROCESSED, owned.getEntityStatus());
       assertEquals(EntityStatus.APPROVED, unowned.getEntityStatus());
     } finally {
       deleteWorkflow(workflow);

@@ -151,11 +151,6 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   }
 
   @Override
-  protected EntityStatus expectedInitialEntityStatus() {
-    return EntityStatus.DRAFT;
-  }
-
-  @Override
   protected void validateCreatedEntity(Glossary entity, CreateGlossary createRequest) {
     assertEquals(createRequest.getName(), entity.getName());
     if (createRequest.getDescription() != null) {

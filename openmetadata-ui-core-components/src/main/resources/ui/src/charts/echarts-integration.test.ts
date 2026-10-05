@@ -12,7 +12,7 @@
  */
 
 // @vitest-environment node
-import { BarChart, LineChart, MapChart } from 'echarts/charts';
+import { BarChart, LineChart, MapChart, PieChart } from 'echarts/charts';
 import {
   AriaComponent,
   DataZoomComponent,
@@ -32,6 +32,7 @@ import {
 } from './options/cartesian';
 import { applyZoomWindow } from './options/common';
 import { buildGeoMapOption } from './options/geo';
+import { buildPieOption } from './options/pie';
 import { REPLACE_MERGE_KEYS } from './options/merge';
 import { LIGHT_CHART_THEME } from './theme';
 import type { CartesianBuildInput, ChartOption, GeoJson } from './types';
@@ -49,6 +50,7 @@ echarts.use([
   MarkLineComponent,
   AriaComponent,
   MapChart,
+  PieChart,
   VisualMapComponent,
   SVGRenderer,
 ]);
@@ -287,5 +289,241 @@ describe('geo map on a real chart', () => {
     expect(
       (chart.getOption() as { visualMap?: unknown[] }).visualMap ?? []
     ).toHaveLength(0);
+  });
+});
+
+describe('pie on a real chart', () => {
+  type PieLayout = { angle: number };
+  type PieData = {
+    count: () => number;
+    getItemLayout: (index: number) => PieLayout;
+    get: (dim: string, index: number) => unknown;
+  };
+  const sliceData = (chart: echarts.ECharts): PieData =>
+    (
+      chart as unknown as {
+        getModel: () => {
+          getSeriesByIndex: (i: number) => { getData: () => PieData };
+        };
+      }
+    )
+      .getModel()
+      .getSeriesByIndex(0)
+      .getData();
+  // A zero slice is still emitted, as `<path d="">`, so DOM order keeps
+  // matching data order (the Playwright slice-click helper relies on it).
+  const paths = (chart: echarts.ECharts) =>
+    (chart.renderToSVGString().match(/<path d="[^"]*"/g) ?? []).map((path) =>
+      path.slice(9, -1)
+    );
+  const arcs = (chart: echarts.ECharts) =>
+    paths(chart).filter((d) => d !== '').length;
+
+  it('draws no arc for a zero slice and keeps every slice at its index', () => {
+    const chart = mount(
+      buildPieOption(
+        {
+          ariaLabel: 'Tests',
+          minAngle: 3,
+          legend: { show: false },
+          data: [
+            { name: 'Aborted', value: 0 },
+            { name: 'Success', value: 5 },
+            { name: 'Failed', value: 3 },
+          ],
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    const data = sliceData(chart);
+
+    expect(data.count()).toBe(3);
+    expect(Number.isNaN(data.getItemLayout(0).angle)).toBe(true);
+    expect(data.getItemLayout(1).angle).toBeGreaterThan(0);
+    expect(data.get('value', 2)).toBe(3);
+    expect(paths(chart)).toHaveLength(3);
+    expect(paths(chart)[0]).toBe('');
+    expect(arcs(chart)).toBe(2);
+  });
+
+  it('draws only the track when every slice is zero', () => {
+    const chart = mount(
+      buildPieOption(
+        {
+          ariaLabel: 'Tests',
+          minAngle: 3,
+          track: true,
+          legend: { show: false },
+          data: [
+            { name: 'Success', value: 0 },
+            { name: 'Failed', value: 0 },
+          ],
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+
+    expect(arcs(chart)).toBe(1);
+  });
+});
+
+describe('category value axis on a real chart', () => {
+  it('draws string values as categories', () => {
+    const chart = mount(
+      buildLineOption(
+        {
+          data: [
+            { day: 'Mon', min: 'apac' },
+            { day: 'Tue', min: 'eu' },
+            { day: 'Wed', min: 'apac' },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Min',
+          series: [{ key: 'min', name: 'Min' }],
+          yAxis: { type: 'category' },
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    const svg = chart.renderToSVGString();
+
+    expect(svg).toContain('apac');
+    expect(svg).toContain('eu');
+  });
+
+  it('sorts the categories, so a min never sits above its max', () => {
+    const chart = mount(
+      buildLineOption(
+        {
+          data: [
+            { day: 'Mon', max: '2024-06-04', min: '2024-06-01' },
+            { day: 'Tue', max: '2024-06-02', min: '2020-01-01' },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Range',
+          series: [
+            { key: 'max', name: 'Max' },
+            { key: 'min', name: 'Min' },
+          ],
+          yAxis: { type: 'category' },
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    const yAxis = (chart.getOption().yAxis as Array<{ data: string[] }>)[0];
+
+    expect(yAxis.data).toEqual([
+      '2020-01-01',
+      '2024-06-01',
+      '2024-06-02',
+      '2024-06-04',
+    ]);
+  });
+
+  it('adds no category for a series without values', () => {
+    const chart = mount(
+      buildLineOption(
+        {
+          data: [
+            { day: 'Mon', min: 'apac', mean: null },
+            { day: 'Tue', min: 'eu', mean: undefined },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Range',
+          series: [
+            { key: 'min', name: 'Min' },
+            { key: 'mean', name: 'Mean' },
+          ],
+          yAxis: { type: 'category' },
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    type OrdinalAxis = {
+      axis: { scale: { getOrdinalMeta: () => { categories: unknown[] } } };
+    };
+    const model = (
+      chart as unknown as {
+        getModel: () => {
+          getComponent: (type: string, index: number) => OrdinalAxis;
+        };
+      }
+    ).getModel();
+    const categories = model
+      .getComponent('yAxis', 0)
+      .axis.scale.getOrdinalMeta().categories;
+
+    expect(categories).toEqual(['apac', 'eu']);
+  });
+});
+
+describe('band series on a real chart', () => {
+  it('fills up to the high value and keeps the line on top', () => {
+    const chart = mount(
+      buildComposedOption(
+        {
+          data: [
+            { day: 'Mon', range: [2, 6], value: 4 },
+            { day: 'Tue', range: [3, 8], value: 7 },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Runs',
+          series: [
+            { key: 'range', name: 'Range', type: 'band' },
+            { key: 'value', name: 'Value', type: 'line' },
+          ],
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    type SeriesData = {
+      getCalculationInfo: (key: string) => string;
+      get: (dim: string, index: number) => number;
+    };
+    const model = (
+      chart as unknown as {
+        getModel: () => {
+          getSeriesByIndex: (i: number) => { getData: () => SeriesData };
+        };
+      }
+    ).getModel();
+    const span = model.getSeriesByIndex(1).getData();
+    const stacked = span.getCalculationInfo('stackResultDimension');
+
+    expect(span.get(stacked, 0)).toBe(6);
+    expect(span.get(stacked, 1)).toBe(8);
+  });
+
+  it('stacks the span from a negative low', () => {
+    const chart = mount(
+      buildComposedOption(
+        {
+          data: [
+            { day: 'Mon', range: [-3, 2] },
+            { day: 'Tue', range: [-1, 4] },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Runs',
+          series: [{ key: 'range', name: 'Range', type: 'band' }],
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    type SeriesData = {
+      getCalculationInfo: (key: string) => string;
+      get: (dim: string, index: number) => number;
+    };
+    const model = (
+      chart as unknown as {
+        getModel: () => {
+          getSeriesByIndex: (i: number) => { getData: () => SeriesData };
+        };
+      }
+    ).getModel();
+    const span = model.getSeriesByIndex(1).getData();
+    const stacked = span.getCalculationInfo('stackResultDimension');
+
+    expect(span.get(stacked, 0)).toBe(2);
+    expect(span.get(stacked, 1)).toBe(4);
   });
 });

@@ -14,6 +14,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -82,6 +83,9 @@ class ContextMemoryIndexTest {
     assertEquals(ContextMemoryType.FAQ.value(), doc.get("memoryType"));
     assertEquals(ContextMemoryScope.USER_GLOBAL.value(), doc.get("memoryScope"));
     assertEquals(EntityStatus.APPROVED.value(), doc.get("entityStatus"));
+    assertFalse(
+        doc.containsKey("status"),
+        "the memory's stage is indexed through the shared entityStatus field, not its own status");
     assertEquals(true, doc.get("pinned"));
     assertEquals(ContextMemorySourceType.CHAT_PROMOTION.value(), doc.get("sourceType"));
     assertEquals(7, doc.get("usageCount"));

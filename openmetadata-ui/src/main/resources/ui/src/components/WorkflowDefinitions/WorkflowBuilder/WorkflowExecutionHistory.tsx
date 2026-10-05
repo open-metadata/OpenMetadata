@@ -243,6 +243,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
           sticky
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
+          containerClassName="tw:rounded-xl tw:border-subtle"
           data-testid="workflow-execution-history-table"
           dataSource={instances}
           loading={loading}
