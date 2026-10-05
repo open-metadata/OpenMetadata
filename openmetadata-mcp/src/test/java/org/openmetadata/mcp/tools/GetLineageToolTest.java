@@ -760,6 +760,16 @@ class GetLineageToolTest {
         request.edgeFilter());
   }
 
+  /** filteredEdges is a count for the whole graph, repeated on every page. */
+  @Test
+  void theFilteredEdgesNoteSpeaksForTheWholeGraph() {
+    Map<String, Object> response =
+        GetLineageTool.toToolResponse(new CompactLineage().withFilteredEdges(2));
+
+    assertTrue(
+        ((String) response.get(McpResponseTrim.MESSAGE_KEY)).contains("2 edge(s) in this graph"));
+  }
+
   @Test
   void noFilterParamsMeanNoFilter() {
     assertEquals(

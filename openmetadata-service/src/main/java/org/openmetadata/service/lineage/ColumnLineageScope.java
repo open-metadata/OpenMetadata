@@ -129,7 +129,7 @@ public final class ColumnLineageScope {
         : listOrEmpty(edge.getLineageDetails().getColumnsLineage());
   }
 
-  private static Set<UUID> endpointsOf(EntityLineage lineage) {
+  static Set<UUID> endpointsOf(EntityLineage lineage) {
     Set<UUID> endpoints = new HashSet<>(Set.of(lineage.getEntity().getId()));
     Stream.concat(
             listOrEmpty(lineage.getUpstreamEdges()).stream(),

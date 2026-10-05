@@ -57,7 +57,7 @@ public final class CompactLineageSlimmer {
         .withOversizedEdges(null);
   }
 
-  private static Map<UUID, EntityReference> buildNodeIndex(EntityLineage lineage) {
+  static Map<UUID, EntityReference> buildNodeIndex(EntityLineage lineage) {
     Map<UUID, EntityReference> index = new HashMap<>();
     if (lineage.getEntity() != null) {
       index.put(lineage.getEntity().getId(), lineage.getEntity());

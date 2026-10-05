@@ -17,6 +17,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDashboard;
@@ -136,6 +137,21 @@ public class CompactLineageIT {
     assertEquals(400, error.getStatusCode());
   }
 
+  /** A mistyped entity type used to filter the graph down to nothing without saying why. */
+  @Test
+  void anUnknownEntityTypeIsABadRequest() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table root =
+        createTable(client, new TestNamespace("CompactLineageIT"), "compact_unknown_type_root");
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> compactLineage(client, root, Map.of("entityTypes", "tables")));
+
+    assertEquals(400, error.getStatusCode());
+  }
+
   @Test
   void aCompleteGraphSaysItIsComplete() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -177,6 +193,32 @@ public class CompactLineageIT {
     assertEquals(1, tablesOnly.getFilteredEdges(), "the dashboard edge is counted, not hidden");
     assertEquals(List.of(consumer.getFullyQualifiedName()), toFqns(noDashboards));
     assertEquals(List.of(dashboard.getFullyQualifiedName()), toFqns(dashboardService));
+  }
+
+  /**
+   * Dropping the edge into an excluded asset must not cut off what lies past it for a non-admin:
+   * the permission filter keeps only what is still connected to the root, and admins skip it.
+   */
+  @Test
+  void aNonAdminGetsTheSameFilteredGraphAsAnAdminPastOneHop() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("CompactLineageIT");
+    Table root = createTable(admin, namespace, "compact_hop_root");
+    Dashboard dashboard = createDashboard(admin, namespace, "compact_hop_dashboard");
+    Table beyond = createTable(admin, namespace, "compact_hop_beyond");
+    addLineage(admin, root.getEntityReference(), dashboard.getEntityReference());
+    addLineage(admin, dashboard.getEntityReference(), beyond.getEntityReference());
+    Map<String, String> query =
+        Map.of("upstreamDepth", "0", "downstreamDepth", "2", "excludeEntityTypes", "dashboard");
+
+    CompactLineage asAdmin = compactLineage(admin, root, query);
+    UserTestFactory.getDataConsumer(namespace);
+    CompactLineage asConsumer = compactLineage(SdkClients.dataConsumerClient(), root, query);
+
+    assertEquals(List.of(beyond.getFullyQualifiedName()), toFqns(asAdmin));
+    assertEquals(toFqns(asAdmin), toFqns(asConsumer));
+    assertEquals(0, asConsumer.getHiddenNodes(), "nothing here is hidden by a permission");
+    assertEquals(asAdmin.getFilteredEdges(), asConsumer.getFilteredEdges());
   }
 
   private static CompactLineage compactLineage(

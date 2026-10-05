@@ -4,9 +4,14 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.CompactLineage;
@@ -44,10 +49,12 @@ public class CompactLineageService {
       Predicate<EntityReference> pipelineVisible,
       LineagePermissionFilter.Result filtered,
       int domainHiddenNodes,
-      Integer columnUnmappedEdges) {}
+      Integer columnUnmappedEdges,
+      Integer filteredEdges) {}
 
   public CompactLineage getLineage(CompactLineageRequest request, SecurityContext securityContext) {
     authorizeRoot(request, securityContext);
+    requireKnownEntityTypes(request.edgeFilter());
     String column = requireExistingColumn(request, securityContext);
     LOG.info(
         "Getting compact lineage for {} '{}', upstreamDepth: {}, downstreamDepth: {}, column: {}",
@@ -57,17 +64,14 @@ public class CompactLineageService {
         request.downstreamDepth(),
         column);
     VisibleGraph graph = visibleGraph(request, column, securityContext);
-    // Filter before paging, so offsets and totals count only the edges the caller asked for.
-    LineageEdgeFilter.Filtered wanted =
-        request
-            .edgeFilter()
-            .apply(
-                CompactLineageSlimmer.toSlim(
-                    graph.lineage(), request.edgeOptions(), graph.pipelineVisible()));
     CompactLineage page =
         LineageEdgePager.page(
-            wanted.slim(), request.from(), request.limit(), request.maxResponseChars());
-    return page.withFilteredEdges(request.edgeFilter().isActive() ? wanted.removedEdges() : null)
+            CompactLineageSlimmer.toSlim(
+                graph.lineage(), request.edgeOptions(), graph.pipelineVisible()),
+            request.from(),
+            request.limit(),
+            request.maxResponseChars());
+    return page.withFilteredEdges(graph.filteredEdges())
         .withColumnUnmappedEdges(graph.columnUnmappedEdges())
         .withHiddenNodes(graph.filtered().hiddenNodes() + graph.domainHiddenNodes())
         .withHiddenNodesUnchecked(graph.filtered().hiddenUnchecked())
@@ -85,6 +89,25 @@ public class CompactLineageService {
         securityContext,
         new OperationContext(request.entityType(), MetadataOperation.VIEW_BASIC),
         new ResourceContext<>(request.entityType(), null, request.fqn()));
+  }
+
+  /** A misspelt type such as "tables" would otherwise filter the graph down to nothing, silently. */
+  private static void requireKnownEntityTypes(LineageEdgeFilter filter) {
+    Set<String> known =
+        Entity.getEntityList().stream()
+            .map(type -> type.toLowerCase(Locale.ROOT))
+            .collect(Collectors.toSet());
+    List<String> unknown =
+        Stream.concat(filter.entityTypes().stream(), filter.excludedEntityTypes().stream())
+            .filter(type -> !known.contains(type))
+            .distinct()
+            .sorted()
+            .toList();
+    if (!unknown.isEmpty()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Unknown entity type(s) in entityTypes or excludeEntityTypes: %s", unknown));
+    }
   }
 
   /** The cheap FQN check first, so a column of another entity never costs an entity read. */
@@ -127,12 +150,24 @@ public class CompactLineageService {
     LineagePermissionFilter permissionFilter = new LineagePermissionFilter(authorizer);
     LineagePermissionFilter.Result filtered =
         permissionFilter.filter(securityContext, subjectContext, pruned.lineage());
+    // After the permission filter, unlike the column walk: that filter keeps only what is still
+    // connected to the root, so an edge dropped here first would cut off, for every caller but an
+    // admin, the wanted assets past it. It also keeps filteredEdges to edges the caller may see.
+    // ponytail: the node ceiling is still spent on assets this then drops; pre-pruning nodes on no
+    // path to a wanted asset would save it, if a filtered busy graph is seen hitting the ceiling.
+    Integer filteredEdges = filterEdges(request.edgeFilter(), filtered.lineage());
     return new VisibleGraph(
         filtered.lineage(),
         pipelineVisibility(permissionFilter, securityContext, filtered.lineage()),
         filtered,
         pruned.hiddenNodes(),
-        unmapped);
+        unmapped,
+        filteredEdges);
+  }
+
+  /** Null when no filter was asked for, so the response carries no count. */
+  private static Integer filterEdges(LineageEdgeFilter filter, EntityLineage lineage) {
+    return filter.isActive() ? filter.apply(lineage) : null;
   }
 
   /**

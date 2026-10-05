@@ -110,8 +110,8 @@ public class GetLineageTool implements McpTool {
       appendMessage(
           result,
           String.format(
-              "%d edge(s) lead to assets outside the requested entityTypes, excludeEntityTypes or"
-                  + " services and were left out.",
+              "%d edge(s) in this graph lead to assets outside the requested entityTypes,"
+                  + " excludeEntityTypes or services and were left out.",
               page.getFilteredEdges()));
     }
     if (page.getColumnUnmappedEdges() != null && page.getColumnUnmappedEdges() > 0) {

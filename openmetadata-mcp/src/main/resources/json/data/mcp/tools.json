@@ -649,12 +649,12 @@
           "entityTypes": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Keep only edges leading to these entity types, judged by the asset each edge leads to (e.g. [\"table\"] for tables only)."
+            "description": "Keep only edges leading to these entity types, judged by the asset each edge leads to (e.g. [\"table\"] for tables only). The asset an edge starts from is not checked, so at depth > 1 a kept edge can start at an asset of another type."
           },
           "excludeEntityTypes": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Drop edges leading to these entity types (e.g. [\"dashboard\"])."
+            "description": "Drop edges leading to these entity types (e.g. [\"dashboard\"]). The asset an edge starts from is not checked, so at depth > 1 a kept edge can start at an excluded asset."
           },
           "services": {
             "type": "array",

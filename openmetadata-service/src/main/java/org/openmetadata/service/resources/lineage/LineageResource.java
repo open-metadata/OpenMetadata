@@ -289,7 +289,9 @@ public class LineageResource {
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = CompactLineage.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid depth, offset, limit or column"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid depth, offset, limit, column or entity type"),
         @ApiResponse(responseCode = "404", description = "Entity for instance {fqn} is not found")
       })
   public CompactLineage getCompactLineageByName(
@@ -342,10 +344,18 @@ public class LineageResource {
           @Max(1000)
           @QueryParam("limit")
           int limit,
-      @Parameter(description = "Keep only edges leading to these entity types (e.g. table)")
+      @Parameter(
+              description =
+                  "Keep only edges leading to these entity types (e.g. table). The asset an edge"
+                      + " starts from is not checked, so at depth > 1 a kept edge can start at an"
+                      + " asset of another type")
           @QueryParam("entityTypes")
           List<String> entityTypes,
-      @Parameter(description = "Drop edges leading to these entity types (e.g. dashboard)")
+      @Parameter(
+              description =
+                  "Drop edges leading to these entity types (e.g. dashboard). The asset an edge"
+                      + " starts from is not checked, so at depth > 1 a kept edge can start at an"
+                      + " excluded asset")
           @QueryParam("excludeEntityTypes")
           List<String> excludeEntityTypes,
       @Parameter(description = "Keep only edges leading into assets of these services")
