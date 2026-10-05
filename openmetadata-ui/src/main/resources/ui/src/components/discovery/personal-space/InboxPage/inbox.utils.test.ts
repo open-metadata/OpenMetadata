@@ -228,9 +228,17 @@ describe('inbox.utils', () => {
       expect(formatInboxCount({ total: 42, isCapped: false })).toBe('42');
     });
 
+    it('shows a count at the cap as is', () => {
+      expect(formatInboxCount({ total: 99, isCapped: false })).toBe('99');
+    });
+
+    it('caps a count past 99', () => {
+      expect(formatInboxCount({ total: 128, isCapped: false })).toBe('99+');
+    });
+
     // A full page is a floor, not a total.
-    it('marks a capped count with a trailing plus', () => {
-      expect(formatInboxCount({ total: 300, isCapped: true })).toBe('300+');
+    it('caps a count that is only a floor', () => {
+      expect(formatInboxCount({ total: 300, isCapped: true })).toBe('99+');
     });
   });
 

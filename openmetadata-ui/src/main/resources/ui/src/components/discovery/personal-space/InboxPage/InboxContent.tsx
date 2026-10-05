@@ -12,7 +12,6 @@
  */
 
 import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -36,8 +35,8 @@ export type InboxTabKey = 'activity' | 'tasks';
 
 const DEFAULT_TAB: InboxTabKey = 'activity';
 
-// A soft pill with no outline, brand-tinted on the selected tab. The tab's own
-// `badge` prop draws an outlined pill, so the count is rendered here instead.
+// The same outlined count badge as the Activity sub-tabs, brand on the selected
+// tab. The tab's own `badge` prop draws a pill, so the count is rendered here.
 const renderTabLabel = (label: string, count: InboxCount) =>
   function TabLabel({ isSelected }: { isSelected: boolean }) {
     return (
@@ -45,14 +44,11 @@ const renderTabLabel = (label: string, count: InboxCount) =>
         {label}
         {count.total > 0 && (
           <Badge
-            bordered={false}
-            className={classNames(
-              'tw:px-2.5',
-              !isSelected && 'tw:bg-utility-gray-100'
-            )}
+            // Keeps a badged tab as tall as a bare one.
+            className="tw:-my-px"
             color={isSelected ? 'brand' : 'gray'}
             size="sm"
-            type="pill-color">
+            type="color">
             {formatInboxCount(count)}
           </Badge>
         )}

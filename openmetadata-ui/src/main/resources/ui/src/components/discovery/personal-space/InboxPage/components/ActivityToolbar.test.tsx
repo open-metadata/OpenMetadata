@@ -164,10 +164,10 @@ describe('ActivityToolbar', () => {
   });
 
   // The lists are capped, so a full page reads as a floor.
-  it('marks a capped count with a plus', () => {
+  it('caps a full count at 99+', () => {
     renderToolbar({ [ActivityFilter.All]: { total: 300, isCapped: true } });
 
-    expect(screen.getByTestId('tab-all')).toHaveTextContent('label.all300+');
+    expect(screen.getByTestId('tab-all')).toHaveTextContent('label.all99+');
   });
 
   it('reads Group until a grouping is picked, with day groups as None', () => {

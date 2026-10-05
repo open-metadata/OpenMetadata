@@ -194,12 +194,12 @@ describe('InboxContent', () => {
   });
 
   // The activity lists are capped, so a full page reads as a floor.
-  it('marks a capped activity count with a plus', () => {
+  it('caps a full activity count at 99+', () => {
     mockActivityCount = { total: 300, isCapped: true };
     render(<InboxContent />);
 
     expect(screen.getByTestId('tab-activity')).toHaveTextContent(
-      'label.activity:300+'
+      'label.activity:99+'
     );
   });
 
