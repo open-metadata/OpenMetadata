@@ -89,7 +89,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   const { contains } = useFilter({ sensitivity: 'base' });
   const descEditorRef = useRef<EditorContentRef>(null);
 
-  const { authConfig, setInlineAlertDetails } = useApplicationStore();
+  const { authConfig } = useApplicationStore();
   const { getResourceLimit } = useLimitStore();
 
   const isAuthProviderBasic = useMemo(
@@ -351,17 +351,16 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
       );
       onNavigate({ type: isAdmin ? 'admins' : 'users' });
     } catch (error) {
-      setInlineAlertDetails({
-        type: 'error',
-        heading: t('label.error'),
-        description: getUserCreationErrorMessage({
+      // The Members tree never renders the app store's inlineAlert, so a toast is
+      // the only visible feedback for 409 duplicate email / password rejection.
+      showErrorToast(
+        getUserCreationErrorMessage({
           error: error as AxiosError,
           entity: t('label.user'),
           entityLowercase: t('label.user-lowercase'),
           entityName: userPayload.name,
-        }),
-        onClose: () => setInlineAlertDetails(undefined),
-      });
+        })
+      );
     } finally {
       setIsSaveLoading(false);
     }

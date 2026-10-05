@@ -44,6 +44,7 @@ import {
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
+import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
@@ -93,7 +94,9 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
 
       try {
         const queryParams: OnlineUsersQueryParams = {
-          timeWindow: timeWindow || undefined,
+          // 0 means "All time" — a valid server value; `|| undefined` dropped it
+          // and the backend silently fell back to its 5-minute default.
+          timeWindow,
           fields: USER_FIELDS,
           limit: pageSize,
           ...params,
@@ -150,6 +153,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
           searchIndex: SearchIndex.USER,
           pageSize,
           pageNumber: INITIAL_PAGING_VALUE,
+          queryFilter: getTermQuery({ isBot: 'false' }),
         });
 
         const now = Date.now();
@@ -191,10 +195,14 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   }, []);
 
   useEffect(() => {
-    if (!searchText) {
+    // Reset to the first page and re-run the active query so a time-window change
+    // re-filters a running search instead of leaving stale results + drifting cursor.
+    handlePageChange(INITIAL_PAGING_VALUE);
+    if (searchText) {
+      void handleSearch(searchText);
+    } else {
       void fetchOnlineUsers();
     }
-    // Refetch on time-window / page-size change; search is handled separately.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeWindow, pageSize]);
 

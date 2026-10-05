@@ -454,7 +454,10 @@ test.describe('AI Profile Team Detail', () => {
       .getByRole('button', { name: 'Open menu' })
       .click();
     await page.getByTestId('restore-team').click();
-    await restoreResponse;
+    const restored = await restoreResponse;
+
+    expect(restored.ok()).toBeTruthy();
+    await expect(page.getByTestId('team-detail')).toBeVisible();
   });
 
   test('Should export the Organization team to CSV', async ({ page }) => {

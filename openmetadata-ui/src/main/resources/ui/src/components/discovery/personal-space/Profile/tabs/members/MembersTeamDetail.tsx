@@ -57,7 +57,7 @@ import {
   patchTeamDetail,
   restoreTeam,
 } from '../../../../../../rest/teamsAPI';
-import { getUsers } from '../../../../../../rest/userAPI';
+import { getUsers, updateUserDetail } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
@@ -468,9 +468,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     };
     try {
       const patch = compare(currentUser, updatedUser);
-      const { updateUserDetail } = await import(
-        '../../../../../../rest/userAPI'
-      );
       await updateUserDetail(currentUser.id, patch);
       showSuccessToast(
         t('server.join-team-success', { team: getEntityName(team) })

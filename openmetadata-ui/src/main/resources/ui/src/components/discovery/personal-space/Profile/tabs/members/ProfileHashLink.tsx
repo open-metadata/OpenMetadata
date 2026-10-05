@@ -24,6 +24,11 @@ const ProfileHashLink: FC<ProfileHashLinkProps> = ({
   <Link
     to={toHashLocation(target)}
     onClick={(e) => {
+      // Let the browser handle modifier/middle clicks so the hash link opens in
+      // a new tab; only intercept a plain left click for in-app navigation.
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) {
+        return;
+      }
       e.preventDefault();
       onNavigate(target);
     }}>

@@ -243,7 +243,7 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
           ? t('server.entity-already-exist', {
               entity: t('label.team'),
-              entityPlural: t('label.team-lowercase-plural'),
+              entityPlural: t('label.team-plural-lowercase'),
               name: data.name.trim(),
             })
           : (error as AxiosError)

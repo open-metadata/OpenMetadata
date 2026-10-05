@@ -153,6 +153,7 @@ test.describe('AI Profile Users', () => {
 
     expect(created.ok()).toBeTruthy();
     const body = await created.json();
+    expect(body.isAdmin).toBe(true);
     createdUsers.push(
       Object.assign(new UserClass(), { responseData: body }) as UserClass
     );

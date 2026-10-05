@@ -66,6 +66,7 @@ import {
   checkPermission,
   LIST_CAP,
 } from '../../../../../../utils/PermissionsUtils';
+import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -172,16 +173,11 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           pageNumber: page,
           pageSize,
           searchIndex: SearchIndex.USER,
-          queryFilter: {
-            query: {
-              bool: {
-                must: [
-                  { term: { isBot: false } },
-                  ...(isAdmin ? [{ term: { isAdmin: true } }] : []),
-                ],
-              },
-            },
-          },
+          includeDeleted: showDeleted,
+          queryFilter: getTermQuery({
+            isBot: 'false',
+            ...(isAdmin && { isAdmin: 'true' }),
+          }),
         });
         if (searchId !== latestSearchIdRef.current) {
           return;
@@ -196,7 +192,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         setIsLoading(false);
       }
     },
-    [pageSize, isAdmin, handlePagingChange]
+    [pageSize, isAdmin, showDeleted, handlePagingChange]
   );
 
   const handleSearch = useCallback(
