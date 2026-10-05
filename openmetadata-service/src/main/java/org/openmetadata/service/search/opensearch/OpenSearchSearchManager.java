@@ -96,7 +96,6 @@ import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.mapping.Property;
-import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
@@ -1998,44 +1997,14 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   /**
-   * Fallback to basic query_string search when NLQ transformation fails or is unavailable.
-   * Uses the new Java API client for query execution.
+   * Answers an NLQ request that could not be translated with the regular keyword search, so it gets
+   * the configured fields, boosts, filters and clause budget of /search/query.
    */
   private Response fallbackToBasicSearch(
       org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext) {
     try {
-      LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
-
-      OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
-
-      // Build basic query_string query using new API
-      Query queryStringQuery =
-          Query.of(
-              q -> q.queryString(qs -> qs.query(request.getQuery()).defaultOperator(Operator.And)));
-
-      requestBuilder.query(queryStringQuery);
-      requestBuilder.from(request.getFrom());
-      requestBuilder.size(request.getSize());
-
-      // Apply RBAC constraints using applyRbacQueryWithCaching
-      applyRbacQueryWithCaching(subjectContext, requestBuilder);
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
-
-      // Add aggregations for fallback NLQ search
-      addAggregationsToNLQQuery(requestBuilder, request.getIndex());
-
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
-      SearchResponse<JsonData> searchResponse;
-      try {
-        searchResponse = client.search(searchRequest, JsonData.class);
-      } finally {
-        if (searchTimerSample != null) {
-          RequestLatencyContext.endSearchOperation(searchTimerSample);
-        }
-      }
-
-      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
+      LOG.debug("Falling back to keyword search for NLQ: {}", request.getQuery());
+      return search(request, subjectContext);
     } catch (Exception e) {
       LOG.error("Error in fallback search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

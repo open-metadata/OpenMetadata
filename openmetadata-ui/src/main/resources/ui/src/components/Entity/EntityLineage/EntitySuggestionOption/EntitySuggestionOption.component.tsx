@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tag } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { get } from 'lodash';
 import { FC, useMemo } from 'react';
-import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { getEntityIcon } from '../../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -83,11 +83,13 @@ const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
           </div>
         </div>
         {showEntityTypeBadge && (
-          <Tag
-            className="entity-tag text-xs ml-2 whitespace-nowrap"
-            color={PRIMARY_COLOR}>
+          <Badge
+            bordered={false}
+            className="tw:mr-2 tw:ml-2 tw:inline-flex tw:bg-brand-solid tw:text-white tw:capitalize"
+            size="sm"
+            type="color">
             {(entity as SourceType)?.entityType}
-          </Tag>
+          </Badge>
         )}
       </div>
     </Button>

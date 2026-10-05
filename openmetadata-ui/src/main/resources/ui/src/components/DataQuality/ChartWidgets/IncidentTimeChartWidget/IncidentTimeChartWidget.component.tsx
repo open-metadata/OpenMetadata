@@ -108,6 +108,7 @@ const IncidentTimeChartWidget = ({
       )}
 
       <CustomAreaChart
+        ariaLabel={title}
         data={chartData}
         height={height}
         name={name}

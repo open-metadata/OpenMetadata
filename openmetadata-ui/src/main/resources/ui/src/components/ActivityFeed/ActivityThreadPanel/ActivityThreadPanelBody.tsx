@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Switch } from 'antd';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -305,6 +305,10 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Space className="w-full" direction="vertical">
             <Typography as="p">{t('message.new-conversation')}</Typography>
             <ActivityFeedEditor
+              // Shown on demand (new conversation, or an empty panel just
+              // opened), so it takes focus as it did before FeedEditor stopped
+              // focusing itself on mount.
+              focused
               placeHolder={t('message.enter-a-field', {
                 field: t('label.message-lowercase'),
               })}
@@ -352,15 +356,15 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             align="center"
             className="w-full justify-end p-r-xs m-t-xs"
             size={4}>
-            <Switch
-              size="small"
-              onChange={(checked) =>
+            <Toggle
+              label={t('label.closed-task-plural')}
+              size="sm"
+              onChange={(isSelected) =>
                 setTaskStatusGroup(
-                  checked ? TaskStatusGroup.Closed : TaskStatusGroup.Open
+                  isSelected ? TaskStatusGroup.Closed : TaskStatusGroup.Open
                 )
               }
             />
-            <span>{t('label.closed-task-plural')}</span>
           </Space>
         )}
 

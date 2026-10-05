@@ -58,6 +58,72 @@ describe('useGlossaryTreeData', () => {
     expect(nodes.some(({ allowSelection }) => allowSelection)).toBe(false);
   });
 
+  describe('glossary paging', () => {
+    it('reports the cursor and total of a truncated glossary listing', async () => {
+      mockGetGlossariesList.mockResolvedValue({
+        data: [{ name: 'Filled', fullyQualifiedName: 'Filled' }],
+        paging: { total: 137, after: 'glossary-cursor-1' },
+      });
+
+      const response = await fetchRoots();
+
+      expect(response).toMatchObject({
+        hasMore: true,
+        total: 137,
+        nextCursor: 'glossary-cursor-1',
+      });
+    });
+
+    it('passes the cursor back when loading more glossaries', async () => {
+      const { result } = renderHook(() => useGlossaryTreeData());
+
+      await result.current({ after: 'glossary-cursor-1', pageSize: 50 });
+
+      expect(mockGetGlossariesList).toHaveBeenCalledWith(
+        expect.objectContaining({ after: 'glossary-cursor-1', limit: 50 }),
+        undefined
+      );
+    });
+
+    // Swallowed, a failed later page reads as the end of the listing and the
+    // tree drops its cursor, stranding every glossary after it.
+    it('lets a failed later page reject instead of ending the listing', async () => {
+      const { result } = renderHook(() => useGlossaryTreeData());
+      mockGetGlossariesList.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        result.current({ after: 'glossary-cursor-1' })
+      ).rejects.toThrow('boom');
+    });
+
+    // The first page has no cursor to lose, so it still degrades to empty.
+    it('still swallows a failed first page', async () => {
+      const { result } = renderHook(() => useGlossaryTreeData());
+      mockGetGlossariesList.mockRejectedValue(new Error('boom'));
+
+      await expect(result.current({})).resolves.toMatchObject({ nodes: [] });
+    });
+
+    // Search matches names against the loaded listing, so page two has to stay
+    // searchable alongside page one.
+    it('keeps earlier pages searchable after loading more', async () => {
+      mockSearchGlossaryTerms.mockResolvedValue([]);
+      const { result } = renderHook(() => useGlossaryTreeData());
+
+      await result.current({});
+      mockGetGlossariesList.mockResolvedValue({
+        data: [{ name: 'Later', fullyQualifiedName: 'Later' }],
+      });
+      await result.current({ after: 'glossary-cursor-1' });
+
+      const first = await result.current({ searchTerm: 'fill' });
+      const second = await result.current({ searchTerm: 'later' });
+
+      expect(first.nodes.map(({ id }) => id)).toEqual(['Filled']);
+      expect(second.nodes.map(({ id }) => id)).toEqual(['Later']);
+    });
+  });
+
   // A glossary whose own name matches has no term hit to carry it into results.
   it('surfaces a glossary whose name matches the search', async () => {
     mockSearchGlossaryTerms.mockResolvedValue([]);

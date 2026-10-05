@@ -12,9 +12,9 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
-import { Button, Col, Form, FormListFieldData, Input, Row, Switch } from 'antd';
+import { Button, Col, Form, FormListFieldData, Input, Row } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
@@ -224,8 +224,8 @@ export const ContractSemanticFormTab: React.FC<{
                                   {...field}
                                   className="enable-form-item"
                                   name={[field.name, 'enabled']}
-                                  valuePropName="checked">
-                                  <Switch />
+                                  valuePropName="isSelected">
+                                  <Toggle size="md" />
                                 </Form.Item>
 
                                 <div className="d-flex flex-column">

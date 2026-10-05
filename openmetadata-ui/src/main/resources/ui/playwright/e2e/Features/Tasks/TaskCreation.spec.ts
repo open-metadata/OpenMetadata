@@ -15,6 +15,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { CreatedTask, getTaskCard } from '../../../utils/taskWorkflow';
 
 /**
  * Task Creation Tests
@@ -102,11 +103,15 @@ test.describe('Task Creation - Request Description', () => {
         response.request().method() === 'POST'
     );
     await submitBtn.click();
-    await taskResponse;
 
-    // Verify task appears in activity feed
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    await expect(taskCard).toBeVisible({ timeout: 10000 });
+    // The create response carries the task's own id, and the card announces it
+    // via aria-label -- so the card this test just produced can be named
+    // rather than taken as whichever one happens to sit on top of the feed.
+    const createdTask = (await (await taskResponse).json()) as CreatedTask;
+
+    await expect(getTaskCard(page, createdTask)).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('should create request description task for column', async ({
@@ -150,8 +155,8 @@ test.describe('Task Creation - Request Description', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -192,8 +197,8 @@ test.describe('Task Creation - Request Description', () => {
     await taskResponse;
 
     await expect(
-      page.locator('[data-testid="task-feed-card"]').first()
-    ).toBeVisible({
+      page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+    ).not.toHaveCount(0, {
       timeout: 10000,
     });
   });
@@ -280,8 +285,8 @@ test.describe('Task Creation - Request Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -442,8 +447,8 @@ test.describe('Task Creation - Suggest Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }

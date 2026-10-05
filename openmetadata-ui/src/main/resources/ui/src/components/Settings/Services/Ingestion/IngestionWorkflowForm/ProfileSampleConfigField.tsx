@@ -17,13 +17,16 @@ import {
   Grid,
   Input,
   Select,
+  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
-import { Form, Switch } from 'antd';
+import { Form } from 'antd';
+import { isNil } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MIN_PROFILE_SAMPLE } from '../../../../../constants/profiler.constant';
 import {
   ICSamplingConfig,
   ProfileSampleConfig,
@@ -75,6 +78,14 @@ const StaticSampleConfig = ({
             data-testid="profile-sample-input"
             type="number"
             value={config.profileSample?.toString() ?? ''}
+            onBlur={() => {
+              if (
+                !isNil(config.profileSample) &&
+                config.profileSample < MIN_PROFILE_SAMPLE
+              ) {
+                onFieldChange('profileSample', MIN_PROFILE_SAMPLE);
+              }
+            }}
             onChange={(value) =>
               onFieldChange(
                 'profileSample',
@@ -161,14 +172,15 @@ const DynamicSampleConfig = ({
     <div className="m-t-sm">
       <Form.Item className="m-t-md" colon={false}>
         <div className="flex items-center gap-2">
-          <Switch
+          <Toggle
             aria-label={t('label.smart-sampling')}
-            checked={config.smartSampling ?? true}
             data-testid="smart-sampling-toggle"
-            onChange={(checked) =>
+            isSelected={config.smartSampling ?? true}
+            size="sm"
+            onChange={(isSelected) =>
               onChange({
                 sampleConfigType,
-                config: { ...config, smartSampling: checked },
+                config: { ...config, smartSampling: isSelected },
               })
             }
           />
@@ -234,6 +246,15 @@ const DynamicSampleConfig = ({
                         data-testid={`profile-sample-${index}`}
                         type="number"
                         value={threshold.profileSample.toString()}
+                        onBlur={() => {
+                          if (threshold.profileSample < MIN_PROFILE_SAMPLE) {
+                            onThresholdChange(
+                              index,
+                              'profileSample',
+                              MIN_PROFILE_SAMPLE
+                            );
+                          }
+                        }}
                         onChange={(value) =>
                           onThresholdChange(
                             index,
