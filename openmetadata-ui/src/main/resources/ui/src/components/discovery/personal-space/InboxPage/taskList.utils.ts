@@ -109,6 +109,12 @@ export const filterTasksByTypes = (tasks: Task[], keys: string[]): Task[] =>
     ? tasks
     : tasks.filter((task) => keys.includes(getTaskTypeKey(task)));
 
+/** Tasks of any of the given task types; none given keeps every task. */
+export const filterTasksByTaskType = (tasks: Task[], types: string[]): Task[] =>
+  types.length === 0
+    ? tasks
+    : tasks.filter((task) => types.includes(task.type ?? ''));
+
 /**
  * How the queue reads a task's status. "Pending approval" is the viewer's own
  * queue — derived from who holds the task, not a backend status — and the rest

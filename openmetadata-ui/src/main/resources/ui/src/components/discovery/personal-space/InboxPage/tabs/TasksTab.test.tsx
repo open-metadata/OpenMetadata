@@ -79,6 +79,8 @@ jest.mock('rest/tasksAPI', () => ({
   listTasks: (...a: unknown[]) => mockListTasks(...a),
   listMyVisibleTasks: (...a: unknown[]) => mockListVisibleTasks(...a),
   TaskStatusGroup: { Open: 'open', Closed: 'closed' },
+  // The task-type titles are keyed by it (constants/Task.constant).
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
 }));
 
 // The toolbar has its own suite; here it only has to report what the user
@@ -112,6 +114,11 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
         data-testid="toolbar-status-pending"
         onClick={() => onStatusFilterChange(['pending-approval'])}>
         pending approval
+      </button>
+      <button
+        data-testid="toolbar-search-title"
+        onClick={() => onSearchChange('Request TestCase orders')}>
+        search title
       </button>
       <button
         data-testid="toolbar-search"
@@ -268,8 +275,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
+// One task type's title prefix is translated, so a title search can name it.
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string) =>
+      key === 'message.request-test-case-failure-resolution-message'
+        ? 'Request TestCase Failure Resolution for'
+        : key,
+  }),
 }));
 
 import TasksTab, { TasksTabProps } from './TasksTab';
@@ -677,6 +690,39 @@ describe('TasksTab', () => {
         expect(mockListVisibleTasks).toHaveBeenCalledWith(
           expect.objectContaining({ q: 'customer' })
         );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    // The composed title's type words narrow by type here; the server only
+    // gets the rest, since it never stores the title.
+    it('reads a search that opens with a type title as that type', () => {
+      jest.useFakeTimers();
+      try {
+        hookState = {
+          items: [
+            { id: 'inc', type: 'TestCaseResolution' },
+            { id: 'tag', type: 'TagUpdate' },
+          ] as unknown as Task[],
+          isLoading: false,
+          total: 2,
+        };
+        renderTab();
+
+        act(() => {
+          fireEvent.click(screen.getByTestId('toolbar-search-title'));
+        });
+        act(() => {
+          jest.advanceTimersByTime(300);
+        });
+        capturedFetchPage();
+
+        expect(mockListVisibleTasks).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'orders' })
+        );
+        expect(screen.getByTestId('task-inc')).toBeInTheDocument();
+        expect(screen.queryByTestId('task-tag')).not.toBeInTheDocument();
       } finally {
         jest.useRealTimers();
       }

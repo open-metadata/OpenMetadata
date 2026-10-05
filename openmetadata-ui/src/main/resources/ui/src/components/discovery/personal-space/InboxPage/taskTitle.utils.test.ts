@@ -13,7 +13,11 @@
 
 import { TFunction } from 'i18next';
 import { Task } from '../../../../generated/entity/tasks/task';
-import { getTaskTitle, getTaskTitleParts } from './taskTitle.utils';
+import {
+  getTaskTitle,
+  getTaskTitleParts,
+  splitTaskTitleSearch,
+} from './taskTitle.utils';
 
 const TASK_ID = 'TASK-19665';
 
@@ -176,5 +180,61 @@ describe('getTaskTitle', () => {
 
   it('keeps the name when the task has no taskId', () => {
     expect(getTaskTitle({ name: 'raw-name' } as Task, t)).toBe('raw-name');
+  });
+});
+
+describe('splitTaskTitleSearch', () => {
+  // The composed title's type words are not stored anywhere the server sees.
+  it('reads a search that opens with a type title as that type', () => {
+    expect(splitTaskTitleSearch('Request TestCase', t)).toEqual({
+      types: ['TestCaseResolution'],
+      text: '',
+    });
+  });
+
+  it('sends the words after the type title to the server', () => {
+    expect(
+      splitTaskTitleSearch(
+        'request testcase failure resolution for orders_row_count',
+        t
+      )
+    ).toEqual({ types: ['TestCaseResolution'], text: 'orders_row_count' });
+  });
+
+  it('takes a half-typed last word as the start of the title word', () => {
+    expect(splitTaskTitleSearch('Data access req', t)).toEqual({
+      types: ['DataAccessRequest'],
+      text: '',
+    });
+  });
+
+  // Two types share the approval title, so both are meant.
+  it('names every type that shares the title', () => {
+    expect(splitTaskTitleSearch('approval request', t).types).toEqual([
+      'GlossaryApproval',
+      'RequestApproval',
+    ]);
+  });
+
+  // One word ("Request") is too common to read as a type.
+  it('leaves a single matching word as plain text', () => {
+    expect(splitTaskTitleSearch('Request', t)).toEqual({
+      types: [],
+      text: 'Request',
+    });
+  });
+
+  it('leaves a search that names no type as plain text', () => {
+    expect(splitTaskTitleSearch('  orders_row_count  ', t)).toEqual({
+      types: [],
+      text: 'orders_row_count',
+    });
+  });
+
+  // A missing translation echoes its key, which is no title to match.
+  it('never matches an untranslated type title', () => {
+    expect(splitTaskTitleSearch('message.update-tag-message', t).types).toEqual(
+      []
+    );
   });
 });

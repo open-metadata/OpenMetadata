@@ -54,11 +54,13 @@ import { isTaskOpen } from '../inbox.utils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
 import {
   filterTasksByStatus,
+  filterTasksByTaskType,
   filterTasksByTypes,
   groupTasksByType,
   TaskStatusBucket,
   TaskTypeGroup,
 } from '../taskList.utils';
+import { splitTaskTitleSearch } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { INBOX_COUNTS_QUERY_KEY } from '../useInboxCounts';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
@@ -453,6 +455,14 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [commitSearch]
   );
 
+  // A search that opens with a task type's title words ("Request TestCase")
+  // narrows by that type here; only the rest goes to the server, which never
+  // stores the composed title.
+  const titleSearch = useMemo(
+    () => splitTaskTitleSearch(searchQuery, t),
+    [searchQuery, t]
+  );
+
   const fetchPage = useCallback(
     (after?: string) => {
       const params = {
@@ -460,7 +470,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         fields: TASK_FIELDS,
         limit: TASK_LIMIT,
         after,
-        q: searchQuery || undefined,
+        q: titleSearch.text || undefined,
       };
 
       // aboutEntity = entity-page mode (all tasks about that entity); otherwise
@@ -469,12 +479,15 @@ const TasksTab: React.FC<TasksTabProps> = ({
         ? listTasks({ ...params, aboutEntity })
         : listMyVisibleTasks(params);
     },
-    [status, aboutEntity, searchQuery]
+    [status, aboutEntity, titleSearch.text]
   );
 
   // A short narrowed list keeps the scroll sentinel in view, which would page
   // through the user's whole history; stop after a bounded scan.
-  const isClientNarrowed = typeFilter.length > 0 || statusFilter.length > 0;
+  const isClientNarrowed =
+    typeFilter.length > 0 ||
+    statusFilter.length > 0 ||
+    titleSearch.types.length > 0;
   // "Load more" on a capped no-match raises the cap by another scan, for that
   // narrowing only: the raise is keyed to the inputs it was made under, so any
   // change of tab, search or filter falls back to the base cap.
@@ -511,7 +524,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setItems,
     setTotal,
   } = useInboxInfiniteList<Task>(
-    [TASK_LIST_QUERY_KEY, scope, status, searchQuery],
+    [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text],
     fetchPage,
     canLoadMore
   );
@@ -547,11 +560,14 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const visibleTasks = useMemo(
     () =>
       filterTasksByStatus(
-        filterTasksByTypes(tasks, typeFilter),
+        filterTasksByTaskType(
+          filterTasksByTypes(tasks, typeFilter),
+          titleSearch.types
+        ),
         statusFilter,
         currentUserIds
       ),
-    [tasks, typeFilter, statusFilter, currentUserIds]
+    [tasks, typeFilter, titleSearch.types, statusFilter, currentUserIds]
   );
 
   // Grouped once here so the list and the default selection agree on order.

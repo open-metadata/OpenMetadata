@@ -128,3 +128,69 @@ export const getTaskTitleParts = (
 
 export const getTaskTitle = (task: Task, t?: TFunction): string =>
   getTaskTitleParts(task, t).title;
+
+// Fewer leading words than this are too common ("Request") to read as a type.
+const MIN_TYPE_WORDS = 2;
+
+export interface TaskTitleSearch {
+  // Task types whose composed title the search opens with; empty for plain text.
+  types: string[];
+  // What is left for the server to match against the task's stored fields.
+  text: string;
+}
+
+const toWords = (value: string) => value.trim().split(/\s+/).filter(Boolean);
+
+// How many of the search's leading words a title prefix starts with. The last
+// search word may be half-typed, so it need only start that prefix word.
+const countPrefixWords = (search: string[], prefix: string[]) => {
+  let count = 0;
+  while (count < search.length && count < prefix.length) {
+    const isLast = count === search.length - 1;
+    const word = search[count];
+    const matches = isLast
+      ? prefix[count].startsWith(word)
+      : prefix[count] === word;
+    if (!matches) {
+      break;
+    }
+    count++;
+  }
+
+  return count;
+};
+
+/**
+ * Read a search the way a composed task title reads. A composed title opens
+ * with its task type ("Request TestCase Failure Resolution for orders"), which
+ * the server never stores. A search that opens with at least two words of a
+ * type's prefix names that type, and the words after it go to the server; any
+ * other search is plain text. The prefix is compared in the viewer's language.
+ */
+export const splitTaskTitleSearch = (
+  query: string,
+  t: TFunction
+): TaskTitleSearch => {
+  const words = toWords(query);
+  const lowered = words.map((word) => word.toLowerCase());
+  let best = 0;
+  let types: string[] = [];
+
+  Object.entries(TASK_TYPE_MESSAGE_KEYS).forEach(([type, key]) => {
+    const label = t(key);
+    if (!label || label === key) {
+      return;
+    }
+    const count = countPrefixWords(lowered, toWords(label.toLowerCase()));
+    if (count > best) {
+      best = count;
+      types = [type];
+    } else if (count === best && count > 0) {
+      types.push(type);
+    }
+  });
+
+  return best >= MIN_TYPE_WORDS
+    ? { types, text: words.slice(best).join(' ') }
+    : { types: [], text: words.join(' ') };
+};
