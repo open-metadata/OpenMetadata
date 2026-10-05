@@ -128,7 +128,7 @@ export const clickFeedReaction = async (page: Page, reaction: string) => {
   await expect(popup).not.toHaveAttribute('data-entering');
 
   await popup
-    .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
+    .locator(`[data-testid="reaction-button"][aria-label="${reaction}"]`)
     .click();
 };
 
