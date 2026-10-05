@@ -36,17 +36,103 @@ import os.org.opensearch.client.opensearch.generic.Response;
 class OpenSearchVectorServiceTest {
 
   @Test
-  void memoryFilterChangesRestampChunksWithoutChangingContent() {
-    ContextMemory memory = new ContextMemory().withEntityStatus(EntityStatus.APPROVED);
-    assertFalse(OpenSearchVectorService.memoryFilterChanged(memory, "Approved", "unanchored"));
-    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, null, null));
-    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Deprecated", "unanchored"));
+  void contentChangesReembedWhileFilterAndMappingChangesRestampStoredVectors() {
+    ContextMemory memory = refreshableMemory();
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(memory);
+    int current = VectorDocBuilder.CHUNK_DOC_VERSION;
 
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.NONE,
+        refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
+    assertEquals(OpenSearchVectorService.ChunkRefresh.REEMBED, refresh(memory, null));
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.REEMBED,
+        refresh(memory, header("stale", current, "Approved", "unanchored")));
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        refresh(memory, header(fingerprint, current - 1, "Approved", "unanchored")));
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        refresh(memory, header(fingerprint, current, "Deprecated", "unanchored")));
     UUID anchorId = UUID.randomUUID();
     memory.setPrimaryEntity(new EntityReference().withId(anchorId).withType("table"));
-    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Approved", "unanchored"));
-    assertFalse(
-        OpenSearchVectorService.memoryFilterChanged(memory, "Approved", anchorId.toString()));
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.NONE,
+        refresh(memory, header(fingerprint, current, "Approved", anchorId.toString())));
+  }
+
+  @Test
+  void filterMetadataOnlyAppliesToMemoryChunks() {
+    Table table = new Table().withId(UUID.randomUUID()).withName("orders");
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(table);
+
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.NONE,
+        refresh(table, header(fingerprint, VectorDocBuilder.CHUNK_DOC_VERSION, null, null)));
+  }
+
+  /** A recreate in flight would otherwise promote the chunks it copied before this update. */
+  @Test
+  void liveUpdateDuringARecreateAlsoRewritesTheStagedGeneration() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("stagedChunkIndex", "staged_chunk_generation");
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(EntityStatus.REJECTED), "entityIndex");
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    List<String> bulkTargets =
+        captor.getAllValues().stream()
+            .filter(request -> "/_bulk".equals(request.getEndpoint()))
+            .map(OpenSearchVectorServiceTest::bodyOf)
+            .toList();
+    String live = vectorService.getChunkIndexName();
+    assertTrue(bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"" + live + "\"")));
+    assertTrue(
+        bulkTargets.stream()
+            .anyMatch(body -> body.contains("\"_index\":\"staged_chunk_generation\"")));
+  }
+
+  private static ContextMemory refreshableMemory() {
+    return new ContextMemory()
+        .withId(UUID.randomUUID())
+        .withName("memory")
+        .withTitle("SQL preference")
+        .withQuestion("Should keywords be upper case?")
+        .withAnswer("Yes, use upper case keywords.")
+        .withEntityStatus(EntityStatus.APPROVED);
+  }
+
+  private static OpenSearchVectorService.ChunkRefresh refresh(
+      org.openmetadata.schema.EntityInterface entity, OpenSearchVectorService.ChunkHeader header) {
+    return OpenSearchVectorService.chunkRefresh(
+        entity, VectorDocBuilder.computeFingerprintForEntity(entity), header);
+  }
+
+  private static OpenSearchVectorService.ChunkHeader header(
+      String fingerprint, int docVersion, String status, String anchorId) {
+    return new OpenSearchVectorService.ChunkHeader(fingerprint, 1, docVersion, status, anchorId);
+  }
+
+  private void setField(String name, Object value) throws ReflectiveOperationException {
+    java.lang.reflect.Field field = OpenSearchVectorService.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(vectorService, value);
+  }
+
+  private static String bodyOf(os.org.opensearch.client.opensearch.generic.Request request) {
+    return request
+        .getBody()
+        .map(body -> new String(body.bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8))
+        .orElse("");
   }
 
   @Test

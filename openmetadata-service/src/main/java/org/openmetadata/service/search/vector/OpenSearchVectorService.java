@@ -276,12 +276,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       String parentId = entity.getId().toString();
       String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
       ChunkHeader stagedHeader = getChunkHeader(staged, parentId);
-      boolean alreadyBackfilled =
-          stagedHeader != null
-              && fingerprint.equals(stagedHeader.fingerprint())
-              && !docVersionStale(stagedHeader)
-              && !memoryFilterChanged(entity, stagedHeader);
-      if (!alreadyBackfilled) {
+      if (chunkRefresh(entity, fingerprint, stagedHeader) != ChunkRefresh.NONE) {
         String live = getChunkIndexName();
         ChunkHeader liveHeader = getChunkHeader(live, parentId);
         List<Map<String, Object>> chunkDocs =
@@ -324,18 +319,15 @@ public class OpenSearchVectorService implements VectorIndexService {
       boolean entityDocStale =
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
-      boolean fingerprintChanged =
-          header == null || !currentFingerprint.equals(header.fingerprint());
-      boolean chunksStale =
-          fingerprintChanged || docVersionStale(header) || memoryFilterChanged(entity, header);
-      if (entityDocStale || chunksStale) {
-        // Filter or mapping changes restamp chunks with stored vectors; content changes re-embed.
+      ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
+      if (entityDocStale || refresh != ChunkRefresh.NONE) {
         List<Map<String, Object>> chunkDocs =
-            (chunksStale && !fingerprintChanged)
+            refresh == ChunkRefresh.RESTAMP
                 ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
                 : VectorDocBuilder.fromEntity(entity, embeddingClient);
-        if (chunksStale) {
+        if (refresh != ChunkRefresh.NONE) {
           replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+          mirrorToStagedGeneration(parentId, chunkDocs);
         }
         if (entityDocStale && !chunkDocs.isEmpty()) {
           partialUpdateEntity(entityIndexName, parentId, legacyEmbeddingFields(chunkDocs.get(0)));
@@ -965,11 +957,12 @@ public class OpenSearchVectorService implements VectorIndexService {
    *
    * <p>Absent-on-old-docs fields are inert for anything that merely scores or widens on them, so
    * those upgrades carry no regression before the backfill runs. That is <b>not</b> true of a field a
-   * filter restricts on: {@code visibility} is required by the context memory clause in {@link
-   * VectorSearchQueryBuilder}, where absence means exclusion rather than indifference. Memory chunks
-   * written before it was stamped therefore stay out of every KNN result until a Search Reindex
-   * restamps them — deliberately, since an unstamped document may be a Private memory. Weigh that
-   * before making any future field a filter depends on.
+   * filter restricts on: {@code visibility}, {@code entityStatus} and {@code anchorId} are required
+   * by the context memory clause in {@link VectorSearchQueryBuilder}, where absence means exclusion
+   * rather than indifference. Memory chunks written before they were stamped therefore stay out of
+   * every KNN result, for admins too, until a Search Reindex restamps them — deliberately, since an
+   * unstamped document may be a Private, retired or anchored memory. Weigh that before making any
+   * future field a filter depends on.
    */
   private String buildChunkMappingUpgradeBody() {
     ObjectNode properties = buildChunkProperties();
@@ -1125,19 +1118,16 @@ public class OpenSearchVectorService implements VectorIndexService {
       String parentId = entity.getId().toString();
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-      boolean fingerprintChanged =
-          header == null || !currentFingerprint.equals(header.fingerprint());
-      boolean metadataStale = docVersionStale(header) || memoryFilterChanged(entity, header);
-      if (!fingerprintChanged && !metadataStale) {
+      ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
+      if (refresh == ChunkRefresh.NONE) {
         LOG.debug("Skipping chunk embedding for {} - content and filters current", parentId);
-        return;
+      } else {
+        List<Map<String, Object>> chunkDocs =
+            refresh == ChunkRefresh.RESTAMP
+                ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
+                : VectorDocBuilder.fromEntity(entity, embeddingClient);
+        replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
       }
-      // Mapping and filter updates reuse stored vectors when the embedded text is unchanged.
-      List<Map<String, Object>> chunkDocs =
-          (metadataStale && !fingerprintChanged)
-              ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
-              : VectorDocBuilder.fromEntity(entity, embeddingClient);
-      replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
     } catch (EmbeddingUnavailableException unavailable) {
       LOG.debug("Skipping chunk embeddings for {}: {}", entity.getId(), unavailable.getMessage());
     } catch (Exception e) {
@@ -1234,18 +1224,49 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /** Header of an entity's chunk set, read from chunk 0. */
-  private record ChunkHeader(
+  record ChunkHeader(
       String fingerprint, int chunkCount, int docVersion, String status, String anchorId) {}
 
-  private static boolean memoryFilterChanged(EntityInterface entity, ChunkHeader header) {
-    return header != null && memoryFilterChanged(entity, header.status(), header.anchorId());
+  /** How an entity's stored chunks must be brought up to date. */
+  enum ChunkRefresh {
+    NONE,
+    /** Same embedded text: rewrite the metadata around the stored vectors, at no embedding cost. */
+    RESTAMP,
+    REEMBED
   }
 
-  static boolean memoryFilterChanged(
-      EntityInterface entity, String indexedStatus, String indexedAnchorId) {
+  static ChunkRefresh chunkRefresh(EntityInterface entity, String fingerprint, ChunkHeader header) {
+    ChunkRefresh refresh = ChunkRefresh.NONE;
+    if (header == null || !fingerprint.equals(header.fingerprint())) {
+      refresh = ChunkRefresh.REEMBED;
+    } else if (docVersionStale(header) || memoryFilterChanged(entity, header)) {
+      refresh = ChunkRefresh.RESTAMP;
+    }
+    return refresh;
+  }
+
+  // Status and anchor gate memory visibility but are not embedded text, so the fingerprint
+  // cannot see them change.
+  private static boolean memoryFilterChanged(EntityInterface entity, ChunkHeader header) {
     return entity instanceof ContextMemory memory
-        && (!Objects.equals(ContextMemoryIndex.statusValue(memory), indexedStatus)
-            || !ContextMemoryIndex.anchorId(memory).equals(indexedAnchorId));
+        && (!Objects.equals(ContextMemoryIndex.statusValue(memory), header.status())
+            || !ContextMemoryIndex.anchorId(memory).equals(header.anchorId()));
+  }
+
+  /**
+   * A recreate in flight would otherwise promote the chunks it copied before this update, the same
+   * staleness {@link #deleteEntityChunks} guards against for deletes.
+   */
+  private void mirrorToStagedGeneration(String parentId, List<Map<String, Object>> chunkDocs) {
+    String staged = resolveChunkSinkTarget();
+    if (staged != null) {
+      try {
+        replaceChunks(staged, parentId, chunkDocs, previousCount(getChunkHeader(staged, parentId)));
+      } catch (IOException | RuntimeException e) {
+        LOG.warn(
+            "Failed to mirror chunks for {} into staged {}: {}", parentId, staged, e.getMessage());
+      }
+    }
   }
 
   private static boolean docVersionStale(ChunkHeader header) {

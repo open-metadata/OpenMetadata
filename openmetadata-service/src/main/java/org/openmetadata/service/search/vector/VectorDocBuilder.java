@@ -320,7 +320,8 @@ public class VectorDocBuilder {
    *
    * <p>Every field here is already covered by the fingerprint (via {@code metaLight}/{@code body}),
    * so denormalizing them does not change the fingerprint; the {@link #CHUNK_DOC_VERSION} marker is
-   * what drives the additive backfill.
+   * what drives the additive backfill. A memory's status and anchor are the exception: they filter
+   * rather than describe, so the chunk header records them for the restamp check instead.
    */
   private static Map<String, Object> buildDenormalizedFields(
       EntityInterface entity, String entityType) {
