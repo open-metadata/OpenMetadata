@@ -32,11 +32,7 @@ import {
 } from '../../../../../../enums/entity.enum';
 import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
-import {
-  Operation,
-  Policy,
-} from '../../../../../../generated/entity/policies/policy';
-import { Role } from '../../../../../../generated/entity/teams/role';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
@@ -109,6 +105,19 @@ const ReorderDragIcon: FC<{ className?: string }> = ({ className }) => (
   <Reorder className={className} style={{ height: 16, width: 16 }} />
 );
 
+// The inline role/policy add flow is identical bar the team field it writes to.
+type InlineAddField = 'defaultRoles' | 'policies';
+type AddOption = {
+  id: string;
+  name: string;
+  fullyQualifiedName?: string;
+  displayName?: string;
+};
+const ADD_REF_TYPE: Record<InlineAddField, string> = {
+  defaultRoles: 'role',
+  policies: 'policy',
+};
+
 const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   fqn,
   onNavigate,
@@ -147,14 +156,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   // now-current team's header. Bumped on each fetch start and on unmount.
   const fetchIdRef = useRef(0);
 
-  // Inline add role/policy
-  const [isAddingRole, setIsAddingRole] = useState(false);
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
-  const [selectedNewRoles, setSelectedNewRoles] = useState<string[]>([]);
-
-  const [isAddingPolicy, setIsAddingPolicy] = useState(false);
-  const [availablePolicies, setAvailablePolicies] = useState<Policy[]>([]);
-  const [selectedNewPolicies, setSelectedNewPolicies] = useState<string[]>([]);
+  // Inline add role/policy — only one tab is ever adding at a time, so a single
+  // field-keyed add session serves both (defaultRoles | policies).
+  const [addingField, setAddingField] = useState<InlineAddField | null>(null);
+  const [addOptions, setAddOptions] = useState<AddOption[]>([]);
+  const [selectedNew, setSelectedNew] = useState<string[]>([]);
 
   const [isSavingInline, setIsSavingInline] = useState(false);
   const { contains } = useFilter({ sensitivity: 'base' });
@@ -554,115 +560,57 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [team, handlePatchTeam, fetchTeamUsers]
   );
 
-  const handleStartAddRole = useCallback(async () => {
-    setIsAddingRole(true);
-    try {
-      const data = await getRoles('', undefined, undefined, false, 100);
-      const existingIds = new Set((team?.defaultRoles ?? []).map((r) => r.id));
-      setAvailableRoles(
-        (data.data ?? []).filter((r) => !existingIds.has(r.id))
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [team]);
+  const handleStartAdd = useCallback(
+    async (field: InlineAddField) => {
+      setAddingField(field);
+      setSelectedNew([]);
+      try {
+        const data =
+          field === 'defaultRoles'
+            ? (await getRoles('', undefined, undefined, false, 100)).data
+            : (await getPolicies('', undefined, undefined, 100)).data;
+        const existingIds = new Set((team?.[field] ?? []).map((e) => e.id));
+        setAddOptions((data ?? []).filter((o) => !existingIds.has(o.id)));
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [team]
+  );
 
-  const handleConfirmAddRoles = useCallback(async () => {
-    if (!team || selectedNewRoles.length === 0) {
+  const handleConfirmAdd = useCallback(async () => {
+    if (!team || !addingField || selectedNew.length === 0) {
       return;
     }
-    const newRefs = selectedNewRoles
+    const field = addingField;
+    const newRefs = selectedNew
       .map((fqnOrName) => {
-        const r = availableRoles.find(
-          (ar) => ar.fullyQualifiedName === fqnOrName || ar.name === fqnOrName
+        const o = addOptions.find(
+          (a) => a.fullyQualifiedName === fqnOrName || a.name === fqnOrName
         );
 
-        return r
+        return o
           ? ({
-              id: r.id,
-              type: 'role',
-              fullyQualifiedName: r.fullyQualifiedName,
-              name: r.name,
-              displayName: r.displayName,
+              id: o.id,
+              type: ADD_REF_TYPE[field],
+              fullyQualifiedName: o.fullyQualifiedName,
+              name: o.name,
+              displayName: o.displayName,
             } as EntityReference)
           : null;
       })
       .filter(Boolean) as EntityReference[];
-    const updated = {
-      ...team,
-      defaultRoles: [...(team.defaultRoles ?? []), ...newRefs],
-    };
     setIsSavingInline(true);
-    try {
-      const patch = compare(team, updated);
-      await patchTeamDetail(team.id, patch);
-      setTeam(updated);
-      setIsAddingRole(false);
-      setSelectedNewRoles([]);
-      showSuccessToast(
-        t('server.update-entity-success', { entity: t('label.team') })
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsSavingInline(false);
-    }
-  }, [team, selectedNewRoles, availableRoles, t]);
-
-  const handleStartAddPolicy = useCallback(async () => {
-    setIsAddingPolicy(true);
-    try {
-      const data = await getPolicies('', undefined, undefined, 100);
-      const existingIds = new Set((team?.policies ?? []).map((p) => p.id));
-      setAvailablePolicies(
-        (data.data ?? []).filter((p) => !existingIds.has(p.id))
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [team]);
-
-  const handleConfirmAddPolicies = useCallback(async () => {
-    if (!team || selectedNewPolicies.length === 0) {
-      return;
-    }
-    const newRefs = selectedNewPolicies
-      .map((fqnOrName) => {
-        const p = availablePolicies.find(
-          (ap) => ap.fullyQualifiedName === fqnOrName || ap.name === fqnOrName
-        );
-
-        return p
-          ? ({
-              id: p.id,
-              type: 'policy',
-              fullyQualifiedName: p.fullyQualifiedName,
-              name: p.name,
-              displayName: p.displayName,
-            } as EntityReference)
-          : null;
-      })
-      .filter(Boolean) as EntityReference[];
-    const updated = {
+    const ok = await handlePatchTeam({
       ...team,
-      policies: [...(team.policies ?? []), ...newRefs],
-    };
-    setIsSavingInline(true);
-    try {
-      const patch = compare(team, updated);
-      await patchTeamDetail(team.id, patch);
-      setTeam(updated);
-      setIsAddingPolicy(false);
-      setSelectedNewPolicies([]);
-      showSuccessToast(
-        t('server.update-entity-success', { entity: t('label.team') })
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsSavingInline(false);
+      [field]: [...(team[field] ?? []), ...newRefs],
+    });
+    if (ok) {
+      setAddingField(null);
+      setSelectedNew([]);
     }
-  }, [team, selectedNewPolicies, availablePolicies, t]);
+    setIsSavingInline(false);
+  }, [team, addingField, selectedNew, addOptions, handlePatchTeam]);
 
   const handleMoveConfirm = useCallback(async () => {
     if (!movedTeam?.from || !team) {
@@ -794,56 +742,19 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [t, canEditAll, goTo]
   );
 
-  const handleRemoveRole = useCallback(
-    async (roleRef: EntityReference) => {
+  const handleRemoveEntity = useCallback(
+    async (field: InlineAddField, ref: EntityReference) => {
       if (!team) {
         return;
       }
-      const updated = {
-        ...team,
-        defaultRoles: (team.defaultRoles ?? []).filter(
-          (r) => r.id !== roleRef.id
-        ),
-      };
       setIsSavingInline(true);
-      try {
-        await patchTeamDetail(team.id, compare(team, updated));
-        setTeam(updated);
-        showSuccessToast(
-          t('server.update-entity-success', { entity: t('label.team') })
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsSavingInline(false);
-      }
-    },
-    [team, t]
-  );
-
-  const handleRemovePolicy = useCallback(
-    async (policyRef: EntityReference) => {
-      if (!team) {
-        return;
-      }
-      const updated = {
+      await handlePatchTeam({
         ...team,
-        policies: (team.policies ?? []).filter((p) => p.id !== policyRef.id),
-      };
-      setIsSavingInline(true);
-      try {
-        await patchTeamDetail(team.id, compare(team, updated));
-        setTeam(updated);
-        showSuccessToast(
-          t('server.update-entity-success', { entity: t('label.team') })
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsSavingInline(false);
-      }
+        [field]: (team[field] ?? []).filter((e) => e.id !== ref.id),
+      });
+      setIsSavingInline(false);
     },
-    [team, t]
+    [team, handlePatchTeam]
   );
 
   const handleConfirmRemove = useCallback(async () => {
@@ -853,13 +764,14 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     const { ref, kind } = removeEntity;
     if (kind === 'user') {
       await handleRemoveUser(ref.id);
-    } else if (kind === 'role') {
-      await handleRemoveRole(ref);
     } else {
-      await handleRemovePolicy(ref);
+      await handleRemoveEntity(
+        kind === 'role' ? 'defaultRoles' : 'policies',
+        ref
+      );
     }
     setRemoveEntity(undefined);
-  }, [removeEntity, handleRemoveUser, handleRemoveRole, handleRemovePolicy]);
+  }, [removeEntity, handleRemoveUser, handleRemoveEntity]);
 
   const roleColumns = useMemo(
     () =>
@@ -918,22 +830,13 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     );
   }, [teamUsers, usersSearchTerm]);
 
-  const roleItems = useMemo<SelectItemType[]>(
+  const addItems = useMemo<SelectItemType[]>(
     () =>
-      availableRoles.map((r) => ({
-        id: r.fullyQualifiedName ?? r.name,
-        label: r.displayName || r.name,
+      addOptions.map((o) => ({
+        id: o.fullyQualifiedName ?? o.name,
+        label: o.displayName || o.name,
       })),
-    [availableRoles]
-  );
-
-  const policyItems = useMemo<SelectItemType[]>(
-    () =>
-      availablePolicies.map((p) => ({
-        id: p.fullyQualifiedName ?? p.name,
-        label: p.displayName || p.name,
-      })),
-    [availablePolicies]
+    [addOptions]
   );
 
   const inlineFilterOption = useCallback(
@@ -943,34 +846,18 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [contains]
   );
 
-  const handleCancelAddRole = useCallback(() => {
-    setIsAddingRole(false);
-    setSelectedNewRoles([]);
+  const handleCancelAdd = useCallback(() => {
+    setAddingField(null);
+    setSelectedNew([]);
   }, []);
 
-  const handleRoleItemCleared = useCallback(
-    (id: string) => setSelectedNewRoles((prev) => prev.filter((i) => i !== id)),
+  const handleItemCleared = useCallback(
+    (id: string) => setSelectedNew((prev) => prev.filter((i) => i !== id)),
     []
   );
 
-  const handleRoleItemInserted = useCallback(
-    (id: string) => setSelectedNewRoles((prev) => [...prev, id]),
-    []
-  );
-
-  const handleCancelAddPolicy = useCallback(() => {
-    setIsAddingPolicy(false);
-    setSelectedNewPolicies([]);
-  }, []);
-
-  const handlePolicyItemCleared = useCallback(
-    (id: string) =>
-      setSelectedNewPolicies((prev) => prev.filter((i) => i !== id)),
-    []
-  );
-
-  const handlePolicyItemInserted = useCallback(
-    (id: string) => setSelectedNewPolicies((prev) => [...prev, id]),
+  const handleItemInserted = useCallback(
+    (id: string) => setSelectedNew((prev) => [...prev, id]),
     []
   );
 
@@ -1119,23 +1006,23 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           <MembersInlineEntityTab
             addButtonTestId="add-role"
             addSelectTestId="add-role-select"
-            available={availableRoles}
+            available={addOptions}
             canEditAll={canEditAll}
             columns={roleColumns}
             dataSource={team.defaultRoles ?? []}
             entityLabel={t('label.role')}
             entityPluralLabel={t('label.role-plural')}
             filterOption={inlineFilterOption}
-            isAdding={isAddingRole}
+            isAdding={addingField === 'defaultRoles'}
             isSavingInline={isSavingInline}
-            items={roleItems}
-            selectedNew={selectedNewRoles}
+            items={addItems}
+            selectedNew={selectedNew}
             tableTestId="team-roles-table"
-            onCancelAdd={handleCancelAddRole}
-            onConfirmAdd={handleConfirmAddRoles}
-            onItemCleared={handleRoleItemCleared}
-            onItemInserted={handleRoleItemInserted}
-            onStartAdd={handleStartAddRole}
+            onCancelAdd={handleCancelAdd}
+            onConfirmAdd={handleConfirmAdd}
+            onItemCleared={handleItemCleared}
+            onItemInserted={handleItemInserted}
+            onStartAdd={() => handleStartAdd('defaultRoles')}
           />
         );
       default:
@@ -1143,23 +1030,23 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           <MembersInlineEntityTab
             addButtonTestId="add-policy"
             addSelectTestId="add-policy-select"
-            available={availablePolicies}
+            available={addOptions}
             canEditAll={canEditAll}
             columns={policyColumns}
             dataSource={team.policies ?? []}
             entityLabel={t('label.policy')}
             entityPluralLabel={t('label.policy-plural')}
             filterOption={inlineFilterOption}
-            isAdding={isAddingPolicy}
+            isAdding={addingField === 'policies'}
             isSavingInline={isSavingInline}
-            items={policyItems}
-            selectedNew={selectedNewPolicies}
+            items={addItems}
+            selectedNew={selectedNew}
             tableTestId="team-policies-table"
-            onCancelAdd={handleCancelAddPolicy}
-            onConfirmAdd={handleConfirmAddPolicies}
-            onItemCleared={handlePolicyItemCleared}
-            onItemInserted={handlePolicyItemInserted}
-            onStartAdd={handleStartAddPolicy}
+            onCancelAdd={handleCancelAdd}
+            onConfirmAdd={handleConfirmAdd}
+            onItemCleared={handleItemCleared}
+            onItemInserted={handleItemInserted}
+            onStartAdd={() => handleStartAdd('policies')}
           />
         );
     }
