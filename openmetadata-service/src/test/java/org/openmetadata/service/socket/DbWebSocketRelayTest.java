@@ -158,6 +158,39 @@ class DbWebSocketRelayTest {
   }
 
   @Test
+  void aLateCommittingBatchBelowTheCursorIsFullyReScanned() {
+    // The batching case the reviewer flagged, bounded by the fix: a batch commits atomically with
+    // ids below a cursor a higher single row already advanced. Because MAX_BATCH <= LOOKBACK_IDS
+    // the
+    // whole batch stays inside the re-scan window and is still delivered.
+    InMemoryDao dao = new InMemoryDao();
+    Capture capB = new Capture();
+    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
+    podB.start();
+    long later = System.currentTimeMillis() + HOUR;
+    // A higher single-row id commits first and advances the cursor to 1000.
+    dao.insertWithId(
+        1000, WebSocketRelay.SCOPE_USER, UUID.randomUUID().toString(), "e", "hi", "podA", later);
+    podB.dispatchOnce();
+    // A 60-id batch commits afterwards, all within LOOKBACK_IDS of the cursor.
+    for (long id = 940; id < 1000; id++) {
+      dao.insertWithId(
+          id,
+          WebSocketRelay.SCOPE_USER,
+          UUID.randomUUID().toString(),
+          "e",
+          "b" + id,
+          "podA",
+          later);
+    }
+    podB.dispatchOnce();
+
+    assertEquals(
+        61, capB.rows.size(), "a late batch within the lookback window must all be delivered");
+    podB.stop();
+  }
+
+  @Test
   void expiredFramesAreNotDelivered() {
     InMemoryDao dao = new InMemoryDao();
     Capture capB = new Capture();
