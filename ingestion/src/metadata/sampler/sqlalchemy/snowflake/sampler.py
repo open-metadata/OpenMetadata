@@ -14,7 +14,6 @@ for the profiler
 """
 
 import json
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import Column, Table, func, text
@@ -25,13 +24,6 @@ from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingCo
 from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
-
-
-def _exact_number(text: str) -> float | Decimal:
-    """A JSON number that a float cannot hold exactly stays a Decimal, which sample data stores as exact text,
-    as it does for NUMBER columns."""
-    number = float(text)
-    return number if Decimal(repr(number)) == Decimal(text) else Decimal(text)
 
 
 class SnowflakeSampler(SQASampler):
@@ -68,7 +60,8 @@ class SnowflakeSampler(SQASampler):
     def _process_sample_value(self, column: Column, value: Any) -> Any:
         """The driver returns VARIANT, OBJECT (both profiled as VARIANT) and ARRAY values as JSON text.
 
-        A value longer than the sample cell limit stays text, so truncation still bounds it.
+        A value longer than the sample cell limit stays text, so truncation still bounds it, and so does a value
+        nested deeper than the decoder allows. Decimal numbers decode as floats, as sample data stores NUMBER values.
         """
         if (
             isinstance(value, str)
@@ -76,7 +69,7 @@ class SnowflakeSampler(SQASampler):
             and isinstance(column.type, self._json_text_types)
         ):
             try:
-                return json.loads(value, parse_float=_exact_number)
+                return json.loads(value)
             except (ValueError, RecursionError):
                 return value
         return value

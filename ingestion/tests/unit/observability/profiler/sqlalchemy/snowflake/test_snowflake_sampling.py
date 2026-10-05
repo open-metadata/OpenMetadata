@@ -1,6 +1,5 @@
 import subprocess
 import sys
-from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
@@ -220,12 +219,7 @@ class SampleTest(TestCase):
         (CustomArray(String), '[\n  "a",\n  "b"\n]', ["a", "b"]),
         (VARIANT, None, None),
         (VARIANT, "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1), "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)),
-        (VARIANT, "[" * 1500 + "]" * 1500, "[" * 1500 + "]" * 1500),
-        (
-            VARIANT,
-            '{"exact": 1.10, "wide": 12345678901234567890.12, "count": 12345678901234567890}',
-            {"exact": 1.1, "wide": Decimal("12345678901234567890.12"), "count": 12345678901234567890},
-        ),
+        (VARIANT, '{"amount": 12345678901234567890.12}', {"amount": 1.2345678901234567e19}),
         (String, '{"kind": "fixture"}', '{"kind": "fixture"}'),
         (
             SQASGeography,
@@ -242,6 +236,19 @@ def test_semi_structured_samples_are_json(_build_table_orm, column_type, fetched
         entity=Table(id=uuid4(), name="user", columns=[EntityColumn(name=ColumnName("id"), dataType=DataType.INT)]),
     )
     assert sampler._process_sample_value(Column("value", column_type), fetched) == sampled
+
+
+@patch.object(SQASampler, "build_table_orm", return_value=User)
+def test_text_nested_deeper_than_the_decoder_allows_stays_text(_build_table_orm):
+    """The nesting depth that exhausts the decoder depends on the Python version, so the failure is injected."""
+    sampler = SnowflakeSampler(
+        service_connection_config=SnowflakeConnection(username="myuser", account="myaccount", warehouse="mywarehouse"),
+        ometa_client=None,
+        entity=Table(id=uuid4(), name="user", columns=[EntityColumn(name=ColumnName("id"), dataType=DataType.INT)]),
+    )
+    nested = "[" * 3 + "]" * 3
+    with patch("json.loads", side_effect=RecursionError("maximum recursion depth exceeded while decoding")):
+        assert sampler._process_sample_value(Column("value", VARIANT), nested) == nested
 
 
 def test_sampler_modules_import_without_the_snowflake_extra():
