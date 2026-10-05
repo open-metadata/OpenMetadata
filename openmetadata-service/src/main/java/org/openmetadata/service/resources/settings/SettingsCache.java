@@ -35,6 +35,7 @@ import com.cronutils.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -56,6 +57,7 @@ import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
+import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -651,9 +653,10 @@ public class SettingsCache {
     try {
       INVALIDATIONS.incrementAndGet();
       CACHE.invalidate(settingsName);
-      // If search settings are being invalidated, also invalidate aggregated fields
+      // If search settings are being invalidated, also invalidate the values derived from them
       if (SEARCH_SETTINGS.toString().equals(settingsName)) {
         CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+        CACHE.invalidate(SEARCH_SETTINGS_COLUMN_INDEXING);
       }
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for settings {}", settingsName, ex);
@@ -717,9 +720,41 @@ public class SettingsCache {
         .withConfigValue(Collections.unmodifiableMap(fields));
   }
 
+  /**
+   * Whether table columns get their own documents in the column search index. Every table write
+   * asks, so the flag is cached on its own instead of copying all of SearchSettings per call.
+   */
+  public static boolean isColumnIndexingEnabled() {
+    try {
+      return (Boolean) currentSettings(SEARCH_SETTINGS_COLUMN_INDEXING).getConfigValue();
+    } catch (ExecutionException | UncheckedExecutionException ex) {
+      LOG.warn("Failed to read the column indexing flag, treating it as enabled", ex);
+      return true;
+    }
+  }
+
+  /** A missing flag means enabled: installs that predate the setting always indexed columns. */
+  public static boolean isColumnIndexingEnabled(SearchSettings searchSettings) {
+    GlobalSettings globalSettings =
+        searchSettings == null ? null : searchSettings.getGlobalSettings();
+    return globalSettings == null
+        || !Boolean.FALSE.equals(globalSettings.getEnableColumnIndexing());
+  }
+
+  private static Settings computeColumnIndexingEnabled() {
+    SearchSettings searchSettings =
+        getSettingOrDefault(SEARCH_SETTINGS, null, SearchSettings.class);
+    return new Settings()
+        .withConfigType(SEARCH_SETTINGS)
+        .withConfigValue(isColumnIndexingEnabled(searchSettings));
+  }
+
   // Special key for caching aggregated search fields
   public static final String SEARCH_SETTINGS_AGGREGATED_FIELDS =
       "SEARCH_SETTINGS_AGGREGATED_FIELDS";
+
+  // Special key for caching the column indexing flag
+  public static final String SEARCH_SETTINGS_COLUMN_INDEXING = "SEARCH_SETTINGS_COLUMN_INDEXING";
 
   static class SettingsLoader extends CacheLoader<String, LoadedSettings> {
     /** A null result reaches callers as InvalidCacheLoadException, meaning the setting is unset. */
@@ -738,6 +773,9 @@ public class SettingsCache {
       // Handle special case for aggregated fields
       if (SEARCH_SETTINGS_AGGREGATED_FIELDS.equals(settingsName)) {
         return computeAggregatedSearchFields();
+      }
+      if (SEARCH_SETTINGS_COLUMN_INDEXING.equals(settingsName)) {
+        return computeColumnIndexingEnabled();
       }
 
       switch (SettingsType.fromValue(settingsName)) {
@@ -774,9 +812,14 @@ public class SettingsCache {
         }
         case SEARCH_SETTINGS -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
-          LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
-          // When SEARCH_SETTINGS are loaded, invalidate aggregated fields cache
+          // Absent until SettingsCache.initialize seeds it on a fresh install, but startup reads
+          // the column indexing flag before that.
+          if (fetchedSettings != null) {
+            LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+          }
+          // When SEARCH_SETTINGS are loaded, invalidate the values derived from them
           CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+          CACHE.invalidate(SEARCH_SETTINGS_COLUMN_INDEXING);
         }
         default -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
