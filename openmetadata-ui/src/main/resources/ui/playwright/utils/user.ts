@@ -103,8 +103,8 @@ export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
     page
       .locator('[data-testid="user-profile"] [data-testid="edit-user-persona"]')
-      .first()
-  ).toBeVisible();
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await expect(page.locator('[data-testid="edit-teams-button"]')).toBeVisible();
   await expect(page.locator('[data-testid="edit-roles-button"]')).toBeVisible();
@@ -741,8 +741,7 @@ export const addUser = async (
   await rolesSearchResponse;
   const roleOption = page
     .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) })
-    .first();
+    .filter({ hasText: new RegExp(`^${role}$`) });
   await expect(roleOption).toBeVisible({ timeout: 120000 });
   await roleOption.click();
   await clickOutside(page);
@@ -755,14 +754,11 @@ export const addUser = async (
       .getByTestId('personas-dropdown')
       .getByRole('combobox')
       .fill(personas[0]);
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
+    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
     const personaOption = page
       .locator('.ant-select-dropdown:visible')
       .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] })
-      .first();
+      .filter({ hasText: personas[0] });
     await personaOption.waitFor({ state: 'visible' });
     await personaOption.click();
     await clickOutside(page);

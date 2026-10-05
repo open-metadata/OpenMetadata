@@ -210,11 +210,15 @@ export interface OntologyAxiom {
     /**
      * Class expressions participating in the axiom, ordered from left to right.
      */
-    expressions:                   OntologyExpression[];
-    fullyQualifiedName:            string;
-    glossary:                      EntityReference;
-    href?:                         string;
-    id:                            string;
+    expressions:        OntologyExpression[];
+    fullyQualifiedName: string;
+    glossary:           EntityReference;
+    href?:              string;
+    id:                 string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?:               string;
     incrementalChangeDescription?: ChangeDescription;
     literal?:                      Literal;
     name:                          string;
@@ -305,8 +309,9 @@ export interface FieldChange {
 }
 
 /**
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
  *
  * Status of the Glossary.
  *

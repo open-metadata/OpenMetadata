@@ -73,6 +73,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   private static final String ALL_RESOURCES = "All";
 
   public PolicyResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = false;
     supportsDomains = false;

@@ -494,9 +494,9 @@ test('Classification Page', async ({ page }) => {
 
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('side-panel-classification').first().waitFor({
-      state: 'visible',
-    });
+    await expect(
+      page.getByTestId('side-panel-classification').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Find the classification and verify term count is 0
     const classificationElement = page
@@ -602,9 +602,9 @@ test('Verify system classification term counts', async ({ page }) => {
 
   await classificationsResponse;
 
-  await page.getByTestId('side-panel-classification').first().waitFor({
-    state: 'visible',
-  });
+  await expect(
+    page.getByTestId('side-panel-classification').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   // Get all classification elements
   const classificationElements = await page

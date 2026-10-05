@@ -922,7 +922,9 @@ pickEntityMatrix(
             );
 
             // Should have at least one nested column link
-            await expect(nestedColumnLinks.first()).toBeVisible({
+            await expect(
+              nestedColumnLinks.filter({ visible: true })
+            ).not.toHaveCount(0, {
               timeout: 5000,
             });
 
@@ -1218,7 +1220,9 @@ pickEntityMatrix(
             );
 
             if ((await nestedColumnLinks.count()) > 0) {
-              await expect(nestedColumnLinks.first()).toBeVisible();
+              await expect(
+                nestedColumnLinks.filter({ visible: true })
+              ).not.toHaveCount(0);
 
               const linkCount = await nestedColumnLinks.count();
 
@@ -1883,12 +1887,9 @@ pickEntityMatrix(
                 testCaseCardsSection.locator('.test-case-card');
 
               await expect(failedCards).toHaveCount(1);
-
-              const failedCard = failedCards.first();
-
-              await expect(failedCard.locator('.test-case-name')).toContainText(
-                testCase2Name
-              );
+              await expect(
+                failedCards.locator('.test-case-name')
+              ).toContainText(testCase2Name);
             });
 
             await test.step('Filter by success and verify test case card', async () => {

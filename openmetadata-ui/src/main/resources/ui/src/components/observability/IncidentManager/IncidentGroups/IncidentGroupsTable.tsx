@@ -12,98 +12,107 @@
  */
 
 import {
-  Avatar,
-  BadgeWithIcon,
+  AvatarGroup,
   Box,
+  Button,
+  Checkbox,
   Table,
+  toOwnerRefs,
   Typography,
 } from '@openmetadata/ui-core-components';
-// The core-components icon barrel re-exports the design team's own SVG set
-// only; it carries no generic person glyph, so this one comes from the shared
-import { User01 } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronRight,
+  Cube01,
+  LayersTwo01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import {
-  Severities,
+  IncidentGroupBy,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
-import { Severities as ResolutionSeverities } from '../../../../generated/tests/testCaseResolutionStatus';
+import { IncidentGroupSortField } from '../../../../rest/incidentManagerAPI';
 import {
   formatDate,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
-import { INCIDENT_GROUPS_SORT_COLUMN } from './IncidentGroups.constants';
+import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
+import {
+  INCIDENT_GROUP_MAX_AVATARS,
+  INCIDENT_GROUP_SORTABLE_COLUMNS,
+} from './IncidentGroups.constants';
 import {
   IncidentGroupCellProps,
   IncidentGroupsTableProps,
   StackedCellProps,
 } from './IncidentGroups.types';
 import {
-  getIncidentGroupAssignees,
   getIncidentGroupByOption,
+  getIncidentGroupKey,
+  getIncidentGroupName,
   getIncidentGroupSubLine,
-  isUnownedIncidentGroup,
+  getIncidentGroupSubLineTitle,
 } from './IncidentGroups.utils';
+import IncidentSeverityBadge from './IncidentSeverityBadge';
 import IncidentStatusBreakdown from './IncidentStatusBreakdown';
 import IncidentTrendSparkline from './IncidentTrendSparkline';
 
 /** Short form of the first-seen date, e.g. `Aug '25`. */
 const FIRST_SEEN_FORMAT = "MMM ''yy";
 
-/**
- * The groups schema `$ref`s the severity of a resolution status, but the TS
- * generator emits one enum per schema file, so the two are nominally distinct
- * with identical members. This bridges them for the shared severity chip.
- */
-const toResolutionSeverity = (severity?: Severities) =>
-  severity as unknown as ResolutionSeverities | undefined;
-
-/** Matches the avatars the incident rows below draw for their assignees. */
-const ASSIGNEE_AVATAR_WIDTH = '24';
-
+// Truncated text keeps its full value in `title`: a hover reveals it without
+// making every cell of a clickable row a focus stop.
 const StackedCell = ({
   value,
+  valueTitle,
+  valueWeight = 'semibold',
   caption,
+  captionTitle,
+  captionIcon: CaptionIcon,
   valueTestId,
   captionTestId,
 }: StackedCellProps) => (
-  <Box className="tw:gap-0.5" direction="col">
+  <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
     <Typography
       as="span"
-      className="tw:text-primary"
+      className="tw:truncate tw:text-primary"
       data-testid={valueTestId}
       size="text-sm"
-      weight="semibold">
+      title={valueTitle}
+      weight={valueWeight}>
       {value}
     </Typography>
     {caption && (
-      <Typography
-        as="span"
-        className="tw:text-tertiary"
-        data-testid={captionTestId}
-        size="text-xs">
-        {caption}
-      </Typography>
+      <Box align="center" className="tw:min-w-0 tw:text-tertiary" gap={1}>
+        {CaptionIcon && (
+          <CaptionIcon className="tw:size-3 tw:shrink-0 tw:text-fg-quaternary" />
+        )}
+        <Typography
+          as="span"
+          className="tw:truncate"
+          data-testid={captionTestId}
+          size="text-xs"
+          title={captionTitle}>
+          {caption}
+        </Typography>
+      </Box>
     )}
   </Box>
 );
 
 /**
- * The assignee names the group carries, drawn by the app's standard avatar so a
- * group row reads the same as the incident rows it aggregates. Only the `+N`
- * bubble is local to the group: it counts from `assigneeCount`, which no single
- * user's avatar knows about.
+ * The group's assignees as the owner stack every other listing draws: a hover
+ * card per avatar, and a `+N` that lists the rest. It takes the resolved
+ * references, which know whether a name is a user or a team.
  */
 const AssigneesCell = ({ group }: IncidentGroupCellProps) => {
   const { t } = useTranslation();
-  const { visible, overflowCount } = getIncidentGroupAssignees(group);
+  const assignees = toOwnerRefs(group.assigneeReferences);
 
-  if (visible.length === 0 && overflowCount === 0) {
+  if (assignees.length === 0) {
     return (
       <Box className="tw:items-center tw:gap-1 tw:text-tertiary">
         <User01 className="tw:size-4" />
@@ -115,22 +124,15 @@ const AssigneesCell = ({ group }: IncidentGroupCellProps) => {
   }
 
   return (
-    <Box className="tw:items-center tw:gap-1" data-testid="group-assignees">
-      {visible.map((assignee) => (
-        // ProfilePicture takes no `data-testid`, so the hook sits on a wrapper.
-        <span data-testid={`group-assignee-${assignee}`} key={assignee}>
-          <ProfilePicture name={assignee} width={ASSIGNEE_AVATAR_WIDTH} />
-        </span>
-      ))}
-      {overflowCount > 0 && (
-        <Avatar
-          colorVariant="neutral"
-          data-testid="group-assignee-overflow"
-          initials={`+${overflowCount}`}
-          size="xs"
-        />
-      )}
-    </Box>
+    <span data-testid="group-assignees">
+      <AvatarGroup
+        maxCount={INCIDENT_GROUP_MAX_AVATARS}
+        overflowTeamsLabel={t('label.team-plural')}
+        overflowTitleLabel={t('label.assignee-plural')}
+        overflowUsersLabel={t('label.user-plural')}
+        owners={assignees}
+      />
+    </span>
   );
 };
 
@@ -149,6 +151,7 @@ const LastSeenCell = ({ group }: IncidentGroupCellProps) => {
       captionTestId="group-first-seen"
       value={group.lastSeen ? formatDate(group.lastSeen) : NO_DATA_PLACEHOLDER}
       valueTestId="group-last-seen"
+      valueWeight="regular"
     />
   );
 };
@@ -156,75 +159,112 @@ const LastSeenCell = ({ group }: IncidentGroupCellProps) => {
 /**
  * The loaded incident groups, one row each. Every cell reads a field the groups
  * endpoint already returns — nothing here fetches or mutates. The only control
- * is the incident-count sort, which the endpoint takes as `sortType` and the
- * caller turns back into a request.
+ * is the ordering, by incident count, severity or last seen, which the caller
+ * turns back into a request.
  */
 const IncidentGroupsTable = ({
   groups,
   groupBy,
-  sortType,
-  onSortTypeChange,
+  sort,
+  onSortChange,
+  onGroupPreview,
+  onGroupOpen,
+  selectedKeys,
+  isSelectable,
+  onGroupSelect,
+  onPageSelect,
 }: IncidentGroupsTableProps) => {
   const { t } = useTranslation();
 
   const dimension = getIncidentGroupByOption(groupBy);
-  const DimensionIcon = dimension.icon;
+  // A table group's sub-line lists check types; every other group's, tables.
+  const subLineIcon = groupBy === IncidentGroupBy.Table ? LayersTwo01 : Cube01;
 
   const columns = useMemo(
     () => [
+      ...(isSelectable ? [{ id: 'select' }] : []),
       { id: 'name', label: t(dimension.labelKey) },
-      { id: 'dimension', label: t('label.dimension') },
       {
-        id: INCIDENT_GROUPS_SORT_COLUMN,
-        label: t('label.incident-plural'),
-        allowsSorting: true,
+        id: 'related',
+        label: t(
+          groupBy === IncidentGroupBy.TestDefinition
+            ? 'label.table-plural'
+            : 'label.check-type'
+        ),
       },
+      { id: 'incidentCount', label: t('label.incident-plural') },
       { id: 'severity', label: t('label.severity') },
       { id: 'status', label: t('label.status') },
       { id: 'assignees', label: t('label.assignee-plural') },
       { id: 'lastSeen', label: t('label.last-seen') },
       { id: 'trend', label: t('label.trend') },
+      { id: 'open', ariaLabel: t('label.action-plural') },
     ],
-    [dimension.labelKey, t]
+    [dimension.labelKey, groupBy, isSelectable, t]
   );
 
-  // react-aria drives the header arrow off the descriptor; `sortType` is the
-  // same ordering in the shape the endpoint takes it.
+  // react-aria drives the header arrow off the descriptor; `sort` is the same
+  // ordering in the shape the endpoint takes it.
   const sortDescriptor: SortDescriptor = {
-    column: INCIDENT_GROUPS_SORT_COLUMN,
-    direction: sortType === 'asc' ? 'ascending' : 'descending',
+    column: sort.field,
+    direction: sort.type === 'asc' ? 'ascending' : 'descending',
   };
 
-  const handleSortChange = (descriptor: SortDescriptor) =>
-    onSortTypeChange(descriptor.direction === 'ascending' ? 'asc' : 'desc');
+  const selectedOnPage = groups.filter((group) =>
+    selectedKeys.has(getIncidentGroupKey(group))
+  ).length;
+
+  // A column pressed for the first time opens on its useful end — the most
+  // incidents, the worst severity, the latest — where react-aria would start
+  // ascending; pressing it again flips it.
+  const handleSortChange = (descriptor: SortDescriptor) => {
+    const field = descriptor.column as IncidentGroupSortField;
+    const isNewColumn = field !== sort.field;
+
+    onSortChange({
+      field,
+      type:
+        isNewColumn || descriptor.direction === 'descending' ? 'desc' : 'asc',
+    });
+  };
 
   const renderRow = (group: TestCaseIncidentGroup) => {
-    const rowId = group.id ?? group.fullyQualifiedName ?? group.name;
+    const rowId = getIncidentGroupKey(group);
+    const groupName = getIncidentGroupName(
+      group,
+      t('label.no-entity', { entity: t('label.owner') })
+    );
 
     return (
-      <Table.Row id={rowId} key={rowId}>
-        <Table.Cell>
+      <Table.Row
+        className="tw:cursor-pointer"
+        id={rowId}
+        key={rowId}
+        onAction={() => onGroupPreview(group)}>
+        {isSelectable && (
+          <Table.Cell className="tw:w-9 tw:pr-0">
+            <Checkbox
+              aria-label={t('label.select-entity', { entity: groupName })}
+              data-testid={`group-select-${rowId}`}
+              isSelected={selectedKeys.has(rowId)}
+              slot={null}
+              onChange={(isSelected) => onGroupSelect(group, isSelected)}
+            />
+          </Table.Cell>
+        )}
+        <Table.Cell className="tw:max-w-72">
           <StackedCell
             caption={getIncidentGroupSubLine(group) || undefined}
+            captionIcon={subLineIcon}
             captionTestId="group-sub-line"
-            value={
-              // The unowned bucket stands for no entity, so it is named here
-              // rather than after something the server resolved.
-              isUnownedIncidentGroup(group)
-                ? t('label.no-entity', { entity: t('label.owner') })
-                : getEntityName(group)
-            }
+            captionTitle={getIncidentGroupSubLineTitle(group)}
+            value={groupName}
             valueTestId="group-name"
+            valueTitle={group.fullyQualifiedName}
           />
         </Table.Cell>
         <Table.Cell>
-          {/* BadgeWithIcon takes no `data-testid`, so the hook sits on a
-              wrapper rather than on the pill itself. */}
-          <span data-testid="group-dimension">
-            <BadgeWithIcon color="gray" iconLeading={DimensionIcon} size="sm">
-              {t(dimension.labelKey)}
-            </BadgeWithIcon>
-          </span>
+          <IncidentGroupRelatedBadge group={group} />
         </Table.Cell>
         <Table.Cell>
           <StackedCell
@@ -234,14 +274,8 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          {/* The same read-only chip the incident rows below render, so the
-              group and its incidents cannot drift apart in palette or wording.
-              InlineSeverity takes no `data-testid`; the hook sits on a wrapper. */}
           <span data-testid="group-severity">
-            <InlineSeverity
-              hasEditPermission={false}
-              severity={toResolutionSeverity(group.severity)}
-            />
+            <IncidentSeverityBadge severity={group.severity} />
           </span>
         </Table.Cell>
         <Table.Cell>
@@ -260,6 +294,16 @@ const IncidentGroupsTable = ({
             trendDirection={group.trendDirection}
           />
         </Table.Cell>
+        <Table.Cell>
+          <Button
+            aria-label={t('label.view-entity', { entity: groupName })}
+            color="tertiary"
+            data-testid={`group-open-${rowId}`}
+            iconLeading={ChevronRight}
+            size="sm"
+            onPress={() => onGroupOpen(group)}
+          />
+        </Table.Cell>
       </Table.Row>
     );
   };
@@ -271,18 +315,49 @@ const IncidentGroupsTable = ({
       size="sm"
       sortDescriptor={sortDescriptor}
       onSortChange={handleSortChange}>
-      <Table.Header columns={columns}>
-        {(column) => (
-          <Table.Head
-            allowsSorting={column.allowsSorting}
-            id={column.id}
-            isRowHeader={column.id === 'name'}
-            key={column.id}
-            label={column.label}
-          />
-        )}
+      {/* The collection caches its rows and headers; the checkboxes in them
+          follow the selection only if it is a dependency. */}
+      <Table.Header
+        columns={columns}
+        dependencies={[selectedOnPage, groups.length]}>
+        {(column) =>
+          column.id === 'select' ? (
+            <Table.Head
+              className="tw:w-9 tw:pr-0"
+              id={column.id}
+              key={column.id}>
+              <Checkbox
+                aria-label={t('label.select-all')}
+                data-testid="group-select-page"
+                isIndeterminate={
+                  selectedOnPage > 0 && selectedOnPage < groups.length
+                }
+                isSelected={
+                  groups.length > 0 && selectedOnPage === groups.length
+                }
+                // Not the table's own selection slot: selection is ours, so a
+                // row press always previews.
+                slot={null}
+                onChange={onPageSelect}
+              />
+            </Table.Head>
+          ) : (
+            <Table.Head
+              allowsSorting={INCIDENT_GROUP_SORTABLE_COLUMNS.includes(
+                column.id as IncidentGroupSortField
+              )}
+              aria-label={column.ariaLabel}
+              id={column.id}
+              isRowHeader={column.id === 'name'}
+              key={column.id}
+              label={column.label}
+            />
+          )
+        }
       </Table.Header>
-      <Table.Body dependencies={[groups]} items={groups}>
+      <Table.Body
+        dependencies={[groups, selectedKeys, isSelectable]}
+        items={groups}>
         {(group) => renderRow(group)}
       </Table.Body>
     </Table>

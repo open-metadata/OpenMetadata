@@ -193,7 +193,9 @@ export const findPageWithAlert = async (
   // pagination past the alert, and because the walk is forward-only and returns
   // silently, the caller's click then waited out the whole test budget on a row
   // sitting on an earlier page. Wait for the body to paint before sampling.
-  await expect(page.locator('[data-row-key]').first()).toBeVisible();
+  await expect(
+    page.locator('[data-row-key]').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   // Support both core-ui Table (id attr) and legacy Ant Design Table (data-row-key)
   const alertRow = page.locator(`[id="${id}"], [data-row-key="${id}"]`);
@@ -316,11 +318,6 @@ export const addOwnerFilter = async ({
   // Select owner filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible (fail fast if multiple)
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -345,11 +342,6 @@ export const addOwnerFilter = async ({
   await expect(ownerInput).toBeVisible();
   await expect(ownerInput).toBeEnabled();
   await ownerInput.click();
-
-  // Wait for search dropdown to open
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -397,11 +389,6 @@ export const addEntityFQNFilter = async ({
   // Select entity FQN filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -431,11 +418,6 @@ export const addEntityFQNFilter = async ({
     entityFQN
   );
   await getSearchResult;
-
-  // Wait for search dropdown to open
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -476,11 +458,6 @@ export const addEventTypeFilter = async ({
   // Select event type filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -506,11 +483,6 @@ export const addEventTypeFilter = async ({
     await expect(eventTypeInput).toBeVisible();
     await expect(eventTypeInput).toBeEnabled();
     await eventTypeInput.click();
-
-    // Wait for dropdown to open
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
 
     // CRITICAL: Verify EXACTLY one dropdown is visible
     await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -560,11 +532,6 @@ export const addDomainFilter = async ({
   // Open filter dropdown
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -589,11 +556,6 @@ export const addDomainFilter = async ({
   await expect(domainInput).toBeVisible();
   await expect(domainInput).toBeEnabled();
   await domainInput.click();
-
-  // Wait for search dropdown to open
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -645,11 +607,6 @@ export const addGMEFilter = async ({
 
   // Select general metadata events filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
@@ -791,11 +748,6 @@ export const addGetSchemaChangesAction = async ({
   // Select schema changes action
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
 
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -835,11 +787,6 @@ export const addPipelineStatusUpdatesAction = async ({
   // Select pipeline status action
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
 
-  // Wait for dropdown to be fully visible and stable
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
 
@@ -864,11 +811,6 @@ export const addPipelineStatusUpdatesAction = async ({
   await expect(pipelineStatusInput).toBeVisible();
   await expect(pipelineStatusInput).toBeEnabled();
   await pipelineStatusInput.click();
-
-  // Wait for search dropdown to open
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
   await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);

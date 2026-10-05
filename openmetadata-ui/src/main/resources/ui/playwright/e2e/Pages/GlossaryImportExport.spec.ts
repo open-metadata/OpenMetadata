@@ -426,6 +426,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           failed: '1',
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- glossary grid rows are not keyed by row index
         const firstRow = page.locator('.rdg-row').first();
         const errorText = await firstRow
           .locator('.rdg-cell-details')
