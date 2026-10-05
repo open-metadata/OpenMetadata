@@ -969,7 +969,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   );
 
   const handleAddAsset = useCallback(() => {
-    navigate(ROUTES.EXPLORE);
+    void navigate(ROUTES.EXPLORE);
     closePersonalSpace();
   }, [navigate, closePersonalSpace]);
 

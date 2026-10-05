@@ -26,7 +26,7 @@ export interface PersonaSelectProps {
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Consumer-owned trigger (e.g. an edit pencil), rendered in place of the default. */
-  renderTrigger?: TreeSelectProps<EntityReference>['renderTrigger'];
+  renderTrigger?: NonNullable<TreeSelectProps<EntityReference>['renderTrigger']>;
   label?: string;
   placeholder?: string;
   className?: string;

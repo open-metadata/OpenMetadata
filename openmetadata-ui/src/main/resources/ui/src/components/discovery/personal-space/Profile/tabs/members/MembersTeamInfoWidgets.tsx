@@ -211,7 +211,7 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
 
       return;
     }
-    onPatch({ ...team, email: trimmed || undefined });
+    void onPatch({ ...team, email: trimmed || undefined });
     setIsEditing(false);
   }, [team, value, onPatch, t]);
 
@@ -374,7 +374,7 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     const data: SubscriptionWebhook | undefined = webhook
       ? { webhook, endpoint }
       : undefined;
-    onPatch({
+    void onPatch({
       ...team,
       profile: {
         subscription: data

@@ -203,7 +203,7 @@ export const useSettingsHash = () => {
 
       if (storeHash !== next) {
         setStoreHash(next);
-        navigateRef.current(
+        void navigateRef.current(
           {
             pathname: globalThis.location.pathname,
             search: globalThis.location.search,
@@ -219,7 +219,7 @@ export const useSettingsHash = () => {
   const clearHash = useCallback(() => {
     if (storeHash) {
       setStoreHash('');
-      navigateRef.current(
+      void navigateRef.current(
         {
           pathname: globalThis.location.pathname,
           search: globalThis.location.search,
