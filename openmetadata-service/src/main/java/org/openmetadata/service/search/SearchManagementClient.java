@@ -6,6 +6,7 @@ import java.util.List;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -140,7 +141,7 @@ public interface SearchManagementClient {
    * @return response containing paginated search results
    * @throws IOException if search execution fails
    */
-  SearchResultListMapper listWithOffset(
+  default SearchResultListMapper listWithOffset(
       String filter,
       int limit,
       int offset,
@@ -149,18 +150,30 @@ public interface SearchManagementClient {
       String q,
       String queryString,
       SubjectContext subjectContext)
-      throws IOException;
+      throws IOException {
+    return listWithOffset(
+        filter,
+        limit,
+        offset,
+        index,
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext,
+        ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+  }
 
-  /** Authenticated Context Center listing with an explicit selection of memory statuses. */
-  SearchResultListMapper listContextMemoriesWithStatuses(
+  /** As above, admitting context memories in any of {@code memoryStatuses}. */
+  SearchResultListMapper listWithOffset(
       String filter,
       int limit,
       int offset,
       String index,
       SearchSortFilter searchSortFilter,
       String q,
+      String queryString,
       SubjectContext subjectContext,
-      List<EntityStatus> statuses)
+      List<EntityStatus> memoryStatuses)
       throws IOException;
 
   /**

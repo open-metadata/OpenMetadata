@@ -69,6 +69,9 @@ public class ContextMemorySearchVisibility {
   public static final String FIELD_OWNERS_ID = "owners.id";
   public static final String FIELD_SHARED_WITH_IDS = "sharedWithIds";
 
+  /** Memory stages ordinary search admits; the Context Center listing may ask for others. */
+  public static final List<EntityStatus> SEARCHABLE_STATUSES = List.of(EntityStatus.APPROVED);
+
   private final QueryBuilderFactory queryBuilderFactory;
 
   public ContextMemorySearchVisibility(QueryBuilderFactory queryBuilderFactory) {
@@ -81,7 +84,7 @@ public class ContextMemorySearchVisibility {
    * returns {@code null} so the caller can apply the org-wide fallback.
    */
   public OMQueryBuilder buildVisibilityFilter(SubjectContext subjectContext) {
-    return buildVisibilityFilter(subjectContext, List.of(EntityStatus.APPROVED));
+    return buildVisibilityFilter(subjectContext, SEARCHABLE_STATUSES);
   }
 
   /** As above, admitting memories in any of {@code statuses} instead of Approved only. */
@@ -108,7 +111,7 @@ public class ContextMemorySearchVisibility {
     OMQueryBuilder orgWideFile =
         queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value());
     return scopeGovernedTypes(
-        statusMemoryClause(unanchoredOrgWideClause(), List.of(EntityStatus.APPROVED)),
+        statusMemoryClause(unanchoredOrgWideClause(), SEARCHABLE_STATUSES),
         queryBuilderFactory.boolQuery().should(List.of(unstamped(), orgWideFile)));
   }
 

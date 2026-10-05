@@ -71,7 +71,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
-import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -266,43 +265,30 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId, primaryEntityId);
     SearchListFilter searchListFilter =
         buildContextMemorySearchFilter(include, assets, author, pinned, null);
+    if (statuses != null) {
+      searchListFilter.withMemoryStatuses(statuses);
+    }
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
     EntityUtil.Fields fields = getFields(fieldsParam);
-    // shareConfig visibility and the conservative anchor rule are enforced at query time by
-    // ContextMemorySearchVisibility (see
+    // shareConfig visibility, the conservative anchor rule and the selected statuses are enforced
+    // at query time by ContextMemorySearchVisibility (see
     // OpenSearch/ElasticSearchSearchManager#applyContextMemoryVisibility, #29384), so the search
     // already excludes memories the caller may not see. Post-filtering here would be redundant and
     // would break offset pagination — it truncates a page below the requested limit and drops the
     // engine's paging metadata (total count, cursors), so a client paging by offset silently stops
     // short of the real result set.
-    if (statuses == null) {
-      return listInternalFromSearch(
-          uriInfo,
-          securityContext,
-          fields,
-          searchListFilter,
-          limit,
-          offset,
-          searchSortFilter,
-          q,
-          null,
-          getAuthRequestsForListOps());
-    }
-    authorizer.authorizeRequests(
-        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
-    return addPermissions(
+    return listInternalFromSearch(
         uriInfo,
         securityContext,
-        repository.listContextMemoriesWithStatuses(
-            uriInfo,
-            searchListFilter,
-            limit,
-            offset,
-            searchSortFilter,
-            q,
-            securityContext,
-            statuses));
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        searchSortFilter,
+        q,
+        null,
+        getAuthRequestsForListOps());
   }
 
   private static List<EntityStatus> parseStatuses(String statuses) {

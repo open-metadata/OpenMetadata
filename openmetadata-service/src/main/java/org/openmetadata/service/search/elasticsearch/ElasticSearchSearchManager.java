@@ -404,43 +404,6 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       SearchSortFilter searchSortFilter,
       String q,
       String queryString,
-      SubjectContext subjectContext)
-      throws IOException {
-    return listWithOffsetForStatuses(
-        filter,
-        limit,
-        offset,
-        index,
-        searchSortFilter,
-        q,
-        queryString,
-        subjectContext,
-        List.of(EntityStatus.APPROVED));
-  }
-
-  @Override
-  public SearchResultListMapper listContextMemoriesWithStatuses(
-      String filter,
-      int limit,
-      int offset,
-      String index,
-      SearchSortFilter searchSortFilter,
-      String q,
-      SubjectContext subjectContext,
-      List<EntityStatus> statuses)
-      throws IOException {
-    return listWithOffsetForStatuses(
-        filter, limit, offset, index, searchSortFilter, q, null, subjectContext, statuses);
-  }
-
-  private SearchResultListMapper listWithOffsetForStatuses(
-      String filter,
-      int limit,
-      int offset,
-      String index,
-      SearchSortFilter searchSortFilter,
-      String q,
-      String queryString,
       SubjectContext subjectContext,
       List<EntityStatus> statuses)
       throws IOException {
@@ -668,7 +631,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
   private void applyRbacCondition(
       SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
-    applyRbacCondition(subjectContext, requestBuilder, List.of(EntityStatus.APPROVED));
+    applyRbacCondition(
+        subjectContext, requestBuilder, ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
   }
 
   private void applyRbacCondition(
@@ -721,7 +685,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
    */
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
-    applyContextMemoryVisibility(subjectContext, requestBuilder, List.of(EntityStatus.APPROVED));
+    applyContextMemoryVisibility(
+        subjectContext, requestBuilder, ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
   }
 
   private void applyContextMemoryVisibility(

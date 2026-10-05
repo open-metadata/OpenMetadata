@@ -77,6 +77,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
@@ -3196,6 +3197,7 @@ class SearchRepositoryBehaviorTest {
     SubjectContext subjectContext = mock(SubjectContext.class);
 
     when(filter.getCondition(Entity.TABLE)).thenReturn("status = 'Active'");
+    when(filter.getMemoryStatuses()).thenReturn(List.of(EntityStatus.DEPRECATED));
     when(searchClient.listWithOffset(
             "status = 'Active'", 25, 10, "cluster_table_search_index", sortFilter, "orders", null))
         .thenReturn(listMapper);
@@ -3207,7 +3209,8 @@ class SearchRepositoryBehaviorTest {
             sortFilter,
             "orders",
             "query",
-            subjectContext))
+            subjectContext,
+            List.of(EntityStatus.DEPRECATED)))
         .thenReturn(listMapper);
     when(searchClient.listWithDeepPagination(
             "cluster_table_search_index",

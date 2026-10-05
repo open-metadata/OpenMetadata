@@ -407,25 +407,19 @@ public class ElasticSearchClient implements SearchClient {
       SearchSortFilter searchSortFilter,
       String q,
       String queryString,
-      SubjectContext subjectContext)
+      SubjectContext subjectContext,
+      List<EntityStatus> memoryStatuses)
       throws IOException {
     return searchManager.listWithOffset(
-        filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
-  }
-
-  @Override
-  public SearchResultListMapper listContextMemoriesWithStatuses(
-      String filter,
-      int limit,
-      int offset,
-      String index,
-      SearchSortFilter searchSortFilter,
-      String q,
-      SubjectContext subjectContext,
-      List<EntityStatus> statuses)
-      throws IOException {
-    return searchManager.listContextMemoriesWithStatuses(
-        filter, limit, offset, index, searchSortFilter, q, subjectContext, statuses);
+        filter,
+        limit,
+        offset,
+        index,
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext,
+        memoryStatuses);
   }
 
   @Override
