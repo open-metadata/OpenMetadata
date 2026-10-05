@@ -340,7 +340,5 @@ The manually dispatched v2 workflow runs Snowflake with four workers and passes 
 test drops and recreates that database for every test, so the Snowflake jobs of both workflows share the
 concurrency group `cli-e2e-snowflake-database`, which runs one at a time and never cancels a running job.
 GitHub keeps one pending job per group, so a newer Snowflake run replaces a pending one, and a replaced
-v1 nightly leg reports as cancelled. Release branches carry the v1 workflow without this group, so a v1
-run dispatched on one of them is not serialized with this job. Remove the v1 Snowflake test, its
-`py-cli-e2e-tests.yml` matrix entry and that workflow's concurrency group only after this suite has passed
-for the agreed stability window.
+v1 nightly leg reports as cancelled. Remove the v1 Snowflake test, its `py-cli-e2e-tests.yml` matrix entry
+and that workflow's concurrency group only after this suite has passed for the agreed stability window.
