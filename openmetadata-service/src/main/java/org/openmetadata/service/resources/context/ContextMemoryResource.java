@@ -45,7 +45,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -190,7 +192,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("primaryEntityId")
           UUID primaryEntityId)
       throws IOException {
-    if (statuses != null) {
+    if (statuses != null || hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
       return listMemoriesFromSearch(
           uriInfo,
           securityContext,
@@ -209,28 +211,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           sourceFileId,
           sourceEntityId,
           primaryEntityId,
-          parseStatuses(statuses));
-    }
-    if (hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
-      return listMemoriesFromSearch(
-          uriInfo,
-          securityContext,
-          fieldsParam,
-          q,
-          assets,
-          author,
-          pinned,
-          sortBy,
-          sortOrder,
-          limitParam,
-          offset == null ? 0 : offset,
-          before,
-          after,
-          include,
-          sourceFileId,
-          sourceEntityId,
-          primaryEntityId,
-          null);
+          statuses == null ? null : parseStatuses(statuses));
     }
 
     ListFilter filter = new ListFilter(include);
@@ -325,24 +306,24 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   }
 
   private static List<EntityStatus> parseStatuses(String statuses) {
-    List<EntityStatus> parsed = new ArrayList<>();
+    Set<EntityStatus> parsed = new LinkedHashSet<>();
     for (String value : statuses.split(",", -1)) {
-      try {
-        EntityStatus status = EntityStatus.fromValue(value.trim());
-        if (!ContextMemoryRepository.LIFECYCLE.includes(status)) {
-          throw new IllegalArgumentException("Stage is not in the memory lifecycle");
-        }
-        if (!parsed.contains(status)) {
-          parsed.add(status);
-        }
-      } catch (IllegalArgumentException ex) {
-        throw new BadRequestException("Invalid memory status: " + value);
-      }
+      parsed.add(parseMemoryStatus(value.trim()));
     }
-    if (parsed.isEmpty()) {
-      throw new BadRequestException("At least one memory status is required");
+    return List.copyOf(parsed);
+  }
+
+  private static EntityStatus parseMemoryStatus(String value) {
+    EntityStatus status = null;
+    try {
+      status = EntityStatus.fromValue(value);
+    } catch (IllegalArgumentException ex) {
+      LOG.debug("Unknown memory status '{}'", value, ex);
     }
-    return parsed;
+    if (status == null || !ContextMemoryRepository.LIFECYCLE.includes(status)) {
+      throw new BadRequestException("Invalid memory status: " + value);
+    }
+    return status;
   }
 
   private static boolean hasSearchBackedListParams(

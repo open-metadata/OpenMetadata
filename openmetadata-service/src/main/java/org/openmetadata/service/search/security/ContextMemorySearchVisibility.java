@@ -84,7 +84,7 @@ public class ContextMemorySearchVisibility {
     return buildVisibilityFilter(subjectContext, List.of(EntityStatus.APPROVED));
   }
 
-  /** Status-aware visibility is used only by the authenticated Context Center list endpoint. */
+  /** As above, admitting memories in any of {@code statuses} instead of Approved only. */
   public OMQueryBuilder buildVisibilityFilter(
       SubjectContext subjectContext, List<EntityStatus> statuses) {
     OMQueryBuilder filter = null;

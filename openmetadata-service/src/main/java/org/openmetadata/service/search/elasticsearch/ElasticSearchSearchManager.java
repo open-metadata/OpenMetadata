@@ -733,9 +733,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
-    // Admins still get the Active-only memory filter. An unidentifiable subject is NOT resolved, so
-    // ElasticSearchRequestBuilder#build falls back to its org-wide-only default instead of running
-    // the search unfiltered.
+    // Admins skip visibility but keep the status filter. An unidentifiable subject is NOT
+    // resolved, so ElasticSearchRequestBuilder#build falls back to its org-wide-only default
+    // instead of running the search unfiltered.
     if (contextMemoryVisibility.isSubjectResolvable(subjectContext)) {
       requestBuilder.contextMemoryVisibilityResolved();
     }

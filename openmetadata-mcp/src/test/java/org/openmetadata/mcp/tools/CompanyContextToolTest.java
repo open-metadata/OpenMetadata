@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -315,9 +316,13 @@ class CompanyContextToolTest {
             memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
                 .withEntityStatus(EntityStatus.DEPRECATED),
             "bob"));
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
     Map<String, Object> result =
-        tool.execute(
-            mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of("fqn", "pill-fqn"));
+        withSubject(
+            securityContext,
+            "bob",
+            () -> tool.execute(mock(Authorizer.class), securityContext, Map.of("fqn", "pill-fqn")));
 
     assertEquals(
         "Requested entity is not a shared Company Context knowledge pill", result.get("error"));
@@ -438,11 +443,12 @@ class CompanyContextToolTest {
     return memory;
   }
 
+  // Lenient: a pill rejected before the visibility check never reads the caller.
   private CatalogSecurityContext securityContextFor(String userName) {
     Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn(userName);
+    lenient().when(principal.getName()).thenReturn(userName);
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
-    when(securityContext.getUserPrincipal()).thenReturn(principal);
+    lenient().when(securityContext.getUserPrincipal()).thenReturn(principal);
     return securityContext;
   }
 
