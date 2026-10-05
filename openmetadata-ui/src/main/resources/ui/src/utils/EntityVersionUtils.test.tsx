@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { render, screen } from '@testing-library/react';
 import { EntityField } from '../constants/Feeds.constants';
 import {
   Column as ContainerColumn,
@@ -25,7 +26,10 @@ import {
   ChangeDescription,
   FieldChange,
 } from '../generated/entity/services/databaseService';
-import { getComputeRowCountDiffDisplay } from './EntityVersionUtils';
+import {
+  getComputeRowCountDiffDisplay,
+  getParameterValueDiffRows,
+} from './EntityVersionUtils';
 import { getStringEntityDiff } from './EntityVersionUtilsPure';
 // Mock data for testing
 const createMockTableColumn = (
@@ -497,6 +501,67 @@ describe('EntityVersionUtils', () => {
 
       // Should return a React element for removed diff
       expect(result).toBeDefined();
+    });
+  });
+
+  describe('getParameterValueDiffRows', () => {
+    const parameterChange = (
+      oldValues: { name: string; value: string }[],
+      newValues: { name: string; value: string }[]
+    ): ChangeDescription => ({
+      fieldsAdded: [],
+      fieldsDeleted: [],
+      fieldsUpdated: [
+        {
+          name: 'parameterValues',
+          oldValue: oldValues,
+          newValue: newValues,
+        },
+      ],
+    });
+
+    // A character diff glued the digits of two numbers into one ("1000012000").
+    it('should show a changed parameter as its whole old and new value', () => {
+      const { rows } = getParameterValueDiffRows(
+        parameterChange(
+          [{ name: 'value', value: '10000' }],
+          [{ name: 'value', value: '12000' }]
+        )
+      );
+
+      render(<>{rows[0].value}</>);
+
+      expect(rows[0].label).toBe('value');
+      expect(screen.getByTestId('diff-removed')).toHaveTextContent('10000');
+      expect(screen.getByTestId('diff-added')).toHaveTextContent('12000');
+    });
+
+    it('should keep the assertion SQL out of the rows, as its own diff', () => {
+      const { rows, sqlDiff } = getParameterValueDiffRows(
+        parameterChange(
+          [
+            { name: 'sqlExpression', value: 'SELECT 1' },
+            { name: 'threshold', value: '0' },
+          ],
+          [
+            { name: 'sqlExpression', value: 'SELECT 2' },
+            { name: 'threshold', value: '0' },
+          ]
+        )
+      );
+
+      expect(rows.map(({ label }) => label)).toEqual(['threshold']);
+      expect(sqlDiff).toBeDefined();
+    });
+
+    it('should show an unchanged parameter as its plain value', () => {
+      const { rows, sqlDiff } = getParameterValueDiffRows(
+        { fieldsAdded: [], fieldsDeleted: [], fieldsUpdated: [] },
+        [{ name: 'minValue', value: '12' }]
+      );
+
+      expect(rows).toEqual([{ label: 'minValue', value: '12' }]);
+      expect(sqlDiff).toBeUndefined();
     });
   });
 });

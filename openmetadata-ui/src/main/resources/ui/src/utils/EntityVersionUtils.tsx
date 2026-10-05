@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
 import type { ReactNode } from 'react';
 import { Fragment, lazy } from 'react';
@@ -207,60 +206,79 @@ export const renderVersionButton = (
   );
 };
 
-export const getParameterValueDiffDisplay = (
+type ParameterValueDiff = ReturnType<
+  typeof Pure.getParameterValuesDiff
+>[number];
+
+const PARAMETER_CHANGE_ARROW = ' → ';
+
+// Token colours rather than the shared `diff-added` class, which sets its own
+// font and size, so both values take the card row's mono type.
+const addedParameterValue = (text: string) => (
+  <span className="tw:text-success-primary" data-testid="diff-added">
+    {text}
+  </span>
+);
+
+const removedParameterValue = (text: string) => (
+  <span className="tw:text-tertiary tw:line-through" data-testid="diff-removed">
+    {text}
+  </span>
+);
+
+/**
+ * A parameter's change read whole, `10000 → 12000`: a character diff glued the
+ * digits of the two numbers into one (`1000012000`).
+ */
+const getParameterDiffValue = (diff: ParameterValueDiff): ReactNode => {
+  switch (diff.status) {
+    case EntityChangeOperations.UPDATED:
+      return (
+        <>
+          {removedParameterValue(diff.oldValue)}
+          {PARAMETER_CHANGE_ARROW}
+          {addedParameterValue(diff.newValue)}
+        </>
+      );
+    case EntityChangeOperations.ADDED:
+      return addedParameterValue(diff.newValue);
+    case EntityChangeOperations.DELETED:
+      return removedParameterValue(diff.oldValue);
+    case EntityChangeOperations.NORMAL:
+    default:
+      return diff.oldValue;
+  }
+};
+
+/**
+ * The version page's parameters as Configuration card rows, each value showing
+ * its change, plus the assertion SQL's diff, which keeps a block of its own.
+ */
+export const getParameterValueDiffRows = (
   changeDescription: ChangeDescription,
   defaultValues?: TestCaseParameterValue[]
-): React.ReactNode => {
+): { rows: { label: string; value: ReactNode }[]; sqlDiff?: ReactNode } => {
   const diffs = Pure.getParameterValuesDiff(changeDescription, defaultValues);
-
-  // Separate sqlExpression from other params
   const sqlParamDiff = diffs.find((diff) => diff.name === 'sqlExpression');
-  const otherParamDiffs = diffs.filter((diff) => diff.name !== 'sqlExpression');
 
-  return (
-    <>
-      {/* Render non-sqlExpression parameters as before */}
-      <Space
-        wrap
-        className="parameter-value-container parameter-value"
-        size={6}>
-        {otherParamDiffs.length === 0 ? (
-          <Typography color="secondary">
-            {t('label.no-parameter-available')}
-          </Typography>
-        ) : (
-          otherParamDiffs.map((diff, index) => (
-            <Space data-testid={diff.name} key={diff.name} size={4}>
-              <Typography className="parameter-label">
-                {`${diff.name}:`}
-              </Typography>
-              <Typography className="parameter-value-text">
-                {getDiffDisplayValue(diff)}
-              </Typography>
-              {otherParamDiffs.length - 1 !== index && (
-                <Divider
-                  className="tw:mx-2 tw:h-[0.9em] tw:self-center"
-                  orientation="vertical"
-                />
-              )}
-            </Space>
-          ))
-        )}
-      </Space>
-      {/* Render sqlExpression parameter separately, using inline diff in a code-style block */}
-      {sqlParamDiff && (
-        <div className="m-t-md">
-          <Typography className="right-panel-label">
-            {startCase(sqlParamDiff.name)}
-          </Typography>
-
-          <div className="m-t-sm version-sql-expression-container">
-            {getDiffDisplayValue(sqlParamDiff)}
-          </div>
+  return {
+    rows: diffs
+      .filter((diff) => diff.name !== 'sqlExpression')
+      .map((diff) => ({
+        label: diff.name,
+        value: getParameterDiffValue(diff),
+      })),
+    sqlDiff: sqlParamDiff && (
+      <>
+        <Typography className="right-panel-label">
+          {startCase(sqlParamDiff.name)}
+        </Typography>
+        <div className="m-t-sm version-sql-expression-container">
+          {getDiffDisplayValue(sqlParamDiff)}
         </div>
-      )}
-    </>
-  );
+      </>
+    ),
+  };
 };
 
 export const getComputeRowCountDiffDisplay = (
