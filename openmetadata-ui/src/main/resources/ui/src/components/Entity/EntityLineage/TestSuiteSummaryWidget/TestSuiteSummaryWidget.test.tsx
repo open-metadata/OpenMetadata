@@ -22,9 +22,9 @@ const mockSummary = {
 
 describe('TestSuiteSummaryWidget', () => {
   it('should show loader when isLoading is true', () => {
-    render(<TestSuiteSummaryWidget isLoading />);
+    const { container } = render(<TestSuiteSummaryWidget isLoading />);
 
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(container.querySelector('[aria-hidden="true"]')).toBeInTheDocument();
     expect(screen.queryByTestId('test-passed-value')).toBeNull();
     expect(screen.queryByTestId('test-aborted-value')).toBeNull();
     expect(screen.queryByTestId('test-failed-value')).toBeNull();

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Skeleton } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import './test-suite-summary-widget.less';
@@ -23,12 +24,7 @@ const TestSuiteSummaryWidget = ({
   size?: 'medium' | 'small';
 }) => {
   if (isLoading) {
-    return (
-      <div
-        className="tw:h-5 tw:w-16 tw:animate-pulse tw:rounded tw:bg-secondary"
-        data-testid="loader"
-      />
-    );
+    return <Skeleton height={36} variant="rounded" width={72} />;
   }
 
   return (

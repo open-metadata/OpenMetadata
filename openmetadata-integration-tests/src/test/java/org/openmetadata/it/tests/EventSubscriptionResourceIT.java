@@ -77,6 +77,7 @@ public class EventSubscriptionResourceIT
 
   // EventSubscription has special requirements
   {
+    supportsEntityStatus = false;
     supportsFieldsQueryParam = false;
     supportsEtag = false;
     supportsTags = false;

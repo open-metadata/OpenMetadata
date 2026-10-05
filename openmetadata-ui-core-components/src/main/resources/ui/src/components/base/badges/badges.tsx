@@ -1,7 +1,7 @@
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
-import { X as CloseX } from '@untitledui/icons';
+import { X as CloseX } from '../../../icons';
 import type {
   CSSProperties,
   HTMLAttributes,

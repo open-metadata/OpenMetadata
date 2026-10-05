@@ -11,7 +11,7 @@ import {
   Plus,
   Settings01,
   User01,
-} from '@untitledui/icons';
+} from '../../../../icons';
 import type { FC, HTMLAttributes } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import { useFocusManager } from 'react-aria';

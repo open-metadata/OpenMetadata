@@ -18,7 +18,9 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const { parseClause, parseAntdImports } = require('./tw-deprecation-guard');
+const { parseClause, parseAntdImports, parseSvgImports, svgKey } = require('./tw-deprecation-guard');
+
+const SVG_PATH = 'openmetadata-ui/src/main/resources/ui/src/assets/svg';
 
 let pass = 0;
 function check(name, fn) {
@@ -81,6 +83,27 @@ check('reconstructs a multi-line import clause', () => {
 check('returns an empty map when there is no antd import', () => {
   const map = parseAntdImports(`import { Typography } from '@openmetadata/ui-core-components';\n`);
   assert.strictEqual(map.size, 0);
+});
+
+// --- parseSvgImports / svgKey -------------------------------------------
+
+check('parseSvgImports extracts raw assets/svg specifiers', () => {
+  const paths = parseSvgImports(
+    `import A from '../assets/svg/alert.svg';\nimport B from '../../assets/svg/common/file.svg';\n`
+  );
+  setEq(paths, ['../assets/svg/alert.svg', '../../assets/svg/common/file.svg']);
+});
+
+check('parseSvgImports ignores non-svg and non-assets imports', () => {
+  const paths = parseSvgImports(
+    `import { Icon } from '@openmetadata/ui-core-components/icons';\nimport x from './thing.ts';\n`
+  );
+  assert.strictEqual(paths.size, 0);
+});
+
+check('svgKey normalizes different relative depths to the same key', () => {
+  assert.strictEqual(svgKey('../assets/svg/alert.svg'), svgKey('../../assets/svg/alert.svg'));
+  assert.strictEqual(svgKey('../assets/svg/alert.svg'), 'assets/svg/alert.svg');
 });
 
 // --- end-to-end CLI behaviour, against a throwaway git repo -------------
@@ -187,5 +210,56 @@ for (const file of ['LegacyForm.test.tsx', 'playwright/browser-tests/sidebar.spe
     }
   });
 }
+
+check('FAILS when a diff adds a new import from assets/svg', () => {
+  const { dir, git } = makeTmpRepo();
+  fs.writeFileSync(path.join(dir, 'Foo.tsx'), `export const x = 1;\n`);
+  git('add', '-A');
+  git('commit', '-q', '-m', 'base');
+  const baseSha = git('rev-parse', 'HEAD').trim();
+
+  fs.writeFileSync(path.join(dir, 'Foo.tsx'), `import icon from '../assets/svg/alert.svg';\nexport const x = icon;\n`);
+  git('add', '-A');
+  git('commit', '-q', '-m', 'add svg import');
+
+  const result = runGuard(dir, [baseSha]);
+  assert.strictEqual(result.code, 1, `expected exit 1, got ${result.code}:\n${result.out}`);
+  assert.ok(result.out.includes('Foo.tsx'), `expected the report to name Foo.tsx:\n${result.out}`);
+});
+
+check('PASSES when a file is moved to a different depth (svg specifier depth rewritten)', () => {
+  const { dir, git } = makeTmpRepo();
+  fs.mkdirSync(path.join(dir, 'a'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'a/Foo.tsx'), `import icon from '../assets/svg/alert.svg';\nexport const x = icon;\n`);
+  git('add', '-A');
+  git('commit', '-q', '-m', 'base');
+  const baseSha = git('rev-parse', 'HEAD').trim();
+
+  fs.mkdirSync(path.join(dir, 'a/b'), { recursive: true });
+  fs.rmSync(path.join(dir, 'a/Foo.tsx'));
+  fs.writeFileSync(path.join(dir, 'a/b/Foo.tsx'), `import icon from '../../assets/svg/alert.svg';\nexport const x = icon;\n`);
+  git('add', '-A');
+  git('commit', '-q', '-m', 'move Foo deeper');
+
+  const result = runGuard(dir, [baseSha]);
+  assert.strictEqual(result.code, 0, `expected exit 0, got ${result.code}:\n${result.out}`);
+});
+
+check('FAILS when a new .svg file is added under assets/svg', () => {
+  const { dir, git } = makeTmpRepo();
+  fs.writeFileSync(path.join(dir, 'App.tsx'), `export const App = () => null;\n`);
+  git('add', '-A');
+  git('commit', '-q', '-m', 'base');
+  const baseSha = git('rev-parse', 'HEAD').trim();
+
+  fs.mkdirSync(path.join(dir, SVG_PATH), { recursive: true });
+  fs.writeFileSync(path.join(dir, `${SVG_PATH}/new-icon.svg`), `<svg/>\n`);
+  git('add', '-A');
+  git('commit', '-q', '-m', 'add raw svg');
+
+  const result = runGuard(dir, [baseSha]);
+  assert.strictEqual(result.code, 1, `expected exit 1, got ${result.code}:\n${result.out}`);
+  assert.ok(result.out.includes('new-icon.svg'), `expected the report to name new-icon.svg:\n${result.out}`);
+});
 
 process.stdout.write(`\n${pass} check(s) passed.\n`);

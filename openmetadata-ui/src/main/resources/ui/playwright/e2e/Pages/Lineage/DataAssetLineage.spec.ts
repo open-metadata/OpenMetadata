@@ -36,6 +36,7 @@ import {
   redirectToHomePage,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { pickEntityMatrix } from '../../../utils/entityMatrix';
 import {
   activateColumnLayer,
   addColumnLineage,
@@ -80,11 +81,9 @@ const allEntities = {
   spreadsheet: SpreadsheetClass,
   worksheet: WorksheetClass,
 };
-const lineageSourceEntities =
-  process.env.CI === 'true' &&
-  process.env.PW_LINEAGE_REPRESENTATIVE_ONLY === 'true'
-    ? { table: TableClass }
-    : allEntities;
+const lineageSourceEntities = pickEntityMatrix(__filename, allEntities, {
+  table: TableClass,
+});
 
 const columnLevelEntities = {
   table: TableClass,
@@ -335,7 +334,9 @@ test.describe('Column Level Lineage', () => {
     await authenticateAdminPage(page);
   });
 
-  Object.entries(columnLevelEntities).forEach(([key, EntityClassSource]) => {
+  Object.entries(
+    pickEntityMatrix(__filename, columnLevelEntities, { table: TableClass })
+  ).forEach(([key, EntityClassSource]) => {
     const entityKeys = Object.keys(columnLevelEntities);
 
     entityKeys.forEach((targetKey) => {

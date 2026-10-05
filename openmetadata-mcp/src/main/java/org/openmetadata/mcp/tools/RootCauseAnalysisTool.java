@@ -2,6 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.mcp.tools.SearchMetadataTool.cleanSearchResponseObject;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
@@ -30,6 +31,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.SearchListFilter;
@@ -44,12 +46,8 @@ public class RootCauseAnalysisTool implements McpTool {
 
   private static final int DEFAULT_DEPTH = 3;
 
-  /**
-   * The bucket ceiling {@code EntityTimeSeriesRepository.buildAggregationNodes} applies when the
-   * caller passes no limit. Mirrored here so a full page can be reported as possibly-truncated
-   * rather than asserted complete.
-   */
-  private static final int RESULT_BUCKET_CAP = 100;
+  // Marks a failing-test list the backend had to cut short; consumed by annotateCompleteness.
+  private static final String RESULTS_TRUNCATED = "resultsTruncated";
 
   private static final int MAX_DEPTH = 10;
   // Slimming budgets come from McpResponseTrim so RCA's lineage-derived payload stays within
@@ -202,7 +200,8 @@ public class RootCauseAnalysisTool implements McpTool {
       // that node and edge details are cut for context. Say whether it is the full set.
       Object results = rootTests.get("testCaseResults");
       if (results instanceof List<?> list) {
-        annotateCompleteness(rootTests, list.size());
+        annotateCompleteness(
+            rootTests, list.size(), Boolean.TRUE.equals(rootTests.remove(RESULTS_TRUNCATED)));
       }
       upstreamAnalysis.put("rootFailingTests", rootTests);
     }
@@ -609,31 +608,34 @@ public class RootCauseAnalysisTool implements McpTool {
       testCaseResult.put(
           "note", "No test suite is attached to this asset, so no test results could be read.");
     } else {
-      readFailingTests(testSuiteId, testCaseResult);
+      readFailingTests((String) node.get("fullyQualifiedName"), testSuiteId, testCaseResult);
     }
     return testCaseResult;
   }
 
-  private void readFailingTests(String testSuiteId, Map<String, Object> testCaseResult) {
-    SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam("testCaseStatus", "Failed");
-    searchListFilter.addQueryParam("testSuiteId", testSuiteId);
+  private void readFailingTests(
+      String entityFqn, String testSuiteId, Map<String, Object> testCaseResult) {
     TestCaseResultRepository testResultTimeSeriesRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT);
     try {
-      ResultList<TestCaseResult> testCaseResults =
-          testResultTimeSeriesRepository.listLatestFromSearch(
+      EntityTimeSeriesRepository.LatestResults<TestCaseResult> latest =
+          testResultTimeSeriesRepository.listLatestWithCompleteness(
               testResultTimeSeriesRepository.getFields("testCaseStatus,result,testResultValue"),
-              searchListFilter,
-              "testCaseFQN.keyword",
+              failingTestsFilter(entityFqn, testSuiteId),
+              TestCaseResultRepository.LATEST_PER_TEST_CASE,
+              null,
               null,
               null,
               null,
               null,
               null);
+      ResultList<TestCaseResult> testCaseResults = latest.results();
       if (testCaseResults.getData() != null && !testCaseResults.getData().isEmpty()) {
         testCaseResult.put("testCaseResults", testCaseResults.getData());
         testCaseResult.put("testSuiteId", testSuiteId);
+        if (latest.truncated()) {
+          testCaseResult.put(RESULTS_TRUNCATED, true);
+        }
       } else {
         LOG.info("No failed test case results found for test suite: {}", testSuiteId);
       }
@@ -647,26 +649,38 @@ public class RootCauseAnalysisTool implements McpTool {
   }
 
   /**
-   * States how many tests are failing and whether that is all of them.
-   *
-   * <p>{@code complete} was hardcoded true, which the lookup cannot back: it passes no limit, so
-   * {@code EntityTimeSeriesRepository} caps the aggregation at {@link #RESULT_BUCKET_CAP} buckets
-   * and a bigger suite is silently truncated. Landing exactly on the cap is the one case where
-   * completeness is unknowable, so say so.
+   * The latest-result filter for an asset's failing tests. The asset's FQN scopes the search to its
+   * own test cases before they are grouped; the suite id alone cannot, because suite membership can
+   * change between a test case's results.
    */
   @VisibleForTesting
-  static void annotateCompleteness(Map<String, Object> tests, int failingCount) {
-    boolean atCap = failingCount >= RESULT_BUCKET_CAP;
+  static SearchListFilter failingTestsFilter(String entityFqn, String testSuiteId) {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testCaseStatus", "Failed");
+    searchListFilter.addQueryParam("testSuiteId", testSuiteId);
+    if (entityFqn != null) {
+      searchListFilter.addQueryParam("entityFQN", entityFqn);
+    }
+    return searchListFilter;
+  }
+
+  /**
+   * States how many tests are failing and whether that is all of them. Only the lookup knows
+   * whether it had to leave test cases out, so completeness comes from it rather than from the
+   * count.
+   */
+  @VisibleForTesting
+  static void annotateCompleteness(Map<String, Object> tests, int failingCount, boolean truncated) {
     tests.put("failingTestCount", failingCount);
-    tests.put("complete", !atCap);
-    if (atCap) {
+    tests.put("complete", !truncated);
+    if (truncated) {
       tests.put(
           "completeNote",
           String.format(
-              "The test-result lookup returns at most %d tests, and that many came back, so more may"
-                  + " be failing. Use search_metadata with entityType='testCase' and a filter on"
+              "The test-result lookup stops at %d test cases and more matched, so more may be"
+                  + " failing. Use search_metadata with entityType='testCase' and a filter on"
                   + " originEntityFQN for the full set.",
-              RESULT_BUCKET_CAP));
+              MAX_AGGREGATE_SIZE));
     }
   }
 

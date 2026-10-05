@@ -175,10 +175,6 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "status": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer"
-      },
       "pinned": {
         "type": "boolean"
       },

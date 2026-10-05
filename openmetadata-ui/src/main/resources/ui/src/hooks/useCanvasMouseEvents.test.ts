@@ -13,7 +13,7 @@
 import { renderHook } from '@testing-library/react';
 import { MutableRefObject, RefObject } from 'react';
 import { Edge } from 'reactflow';
-import { CanvasButton } from '../utils/CanvasButtonUtils';
+import { CanvasButton, ECanvasButtonType } from '../utils/CanvasButtonUtils';
 import { useCanvasMouseEvents } from './useCanvasMouseEvents';
 
 describe('useCanvasMouseEvents', () => {
@@ -58,7 +58,7 @@ describe('useCanvasMouseEvents', () => {
     width: 36,
     height: 36,
     edgeId: 'edge-1',
-    type: 'pipeline',
+    type: ECanvasButtonType.Pipeline,
   };
 
   beforeEach(() => {

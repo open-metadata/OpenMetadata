@@ -19,7 +19,11 @@ import {
   Box,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertTriangle, InfoCircle, XCircle } from '@untitledui/icons';
+import {
+  AlertTriangle,
+  InfoCircle,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

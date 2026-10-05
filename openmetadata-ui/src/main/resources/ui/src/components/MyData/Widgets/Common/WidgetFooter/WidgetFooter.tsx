@@ -12,7 +12,8 @@
  */
 
 import { ArrowRightOutlined } from '@ant-design/icons';
-import { Button, Divider, Row } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Button, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
 import './widget-footer.less';
 

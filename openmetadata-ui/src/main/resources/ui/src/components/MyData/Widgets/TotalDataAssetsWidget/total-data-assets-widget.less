@@ -28,6 +28,9 @@
 }
 
 .total-data-assets-widget-content {
+  // Centred in the widget body, so the spare height splits above and below.
+  margin-block: auto;
+
   .legend-list {
     display: flex;
     flex-wrap: wrap;
@@ -88,25 +91,6 @@
         border: 1px solid @blue-36;
         background: @blue-38;
       }
-    }
-  }
-
-  .recharts-tooltip-item-name,
-  .recharts-tooltip-item-value {
-    color: @black;
-  }
-
-  .recharts-default-tooltip {
-    background-color: var(--tw-color-bg-primary);
-    border-radius: @border-rad-md;
-    padding: @padding-sm;
-    border: none !important;
-    box-shadow: 0 0 6px var(--om-legacy-color-0-0-0-0-15);
-  }
-
-  .recharts-responsive-container {
-    svg {
-      margin-top: @margin-lg;
     }
   }
 }

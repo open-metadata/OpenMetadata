@@ -667,8 +667,7 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
         page.getByTestId('column-bulk-operations-form-drawer')
       ).not.toBeVisible({ timeout: 10000 });
 
-      const loaders = page.getByTestId('loader');
-      await expect(loaders.first()).toBeVisible();
+      await expect(page.getByTestId('loader')).not.toHaveCount(0);
 
       const value = await getPendingChangesValue(page);
       expect(value).toMatch(/^\d+\/\d+$/);

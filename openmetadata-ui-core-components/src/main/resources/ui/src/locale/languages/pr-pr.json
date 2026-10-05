@@ -7,6 +7,7 @@
     "close": "بستن",
     "close-navigation-menu": "بستن منوی ناوبری",
     "copy-link": "کپی پیوند",
+    "count-remaining": "{{count}} باقی‌مانده",
     "count-selected": "{{count}} مورد انتخاب شده",
     "current-page": "صفحه فعلی",
     "date-range-picker": "انتخابگر بازه تاریخ",
@@ -33,8 +34,10 @@
     "remove-filter": "حذف فیلتر",
     "search": "جستجو",
     "select-all": "انتخاب همه",
+    "select-date": "انتخاب تاریخ",
     "select-dates": "انتخاب تاریخ‌ها",
     "select-only-one-row": "یک ردیف را انتخاب کنید",
+    "show-count-more": "نمایش {{count}} مورد دیگر",
     "show-hidden-breadcrumbs": "نمایش مسیرهای پنهان",
     "today": "امروز",
     "tree-select": "انتخاب درختی"

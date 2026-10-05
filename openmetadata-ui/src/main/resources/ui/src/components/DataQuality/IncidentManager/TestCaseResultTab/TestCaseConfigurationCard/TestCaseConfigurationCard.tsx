@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../../../assets/svg/ic-suggestions.svg';
 import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
@@ -25,17 +25,31 @@ import {
   toSqlLines,
 } from './TestCaseConfigurationCard.utils';
 
+const SQL_BLOCK_CLASS_NAME =
+  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5 tw:focus-visible:outline-focus-ring';
+
 /**
  * The prototype's read-only, line-numbered SQL block. Deliberately not
  * `SchemaEditor` — CodeMirror is a full editor whose gutter and theme look
  * nothing like this, and loading it into a 320px rail costs a lazy chunk to
  * render three static lines.
+ *
+ * Capped in height: a custom SQL test can run past a hundred lines, which
+ * would otherwise stretch the rail thousands of pixels down the page.
  */
 function ConfigurationSql({ value }: Readonly<{ value: string }>) {
+  const { t } = useTranslation();
+
   return (
-    <div
-      className="tw:overflow-x-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5"
-      data-testid="sql-expression-container">
+    <Card
+      aria-label={t('label.sql-query')}
+      className={SQL_BLOCK_CLASS_NAME}
+      data-testid="sql-expression-container"
+      role="region"
+      // Safari does not make a scroll container keyboard-focusable, so the rest
+      // of a query past the cap would be out of keyboard reach.
+      tabIndex={0}
+      variant="ghost">
       {toSqlLines(value).map((line) => (
         <div
           className="tw:flex tw:font-mono tw:text-xs tw:leading-[1.8]"
@@ -60,7 +74,7 @@ function ConfigurationSql({ value }: Readonly<{ value: string }>) {
           </span>
         </div>
       ))}
-    </div>
+    </Card>
   );
 }
 

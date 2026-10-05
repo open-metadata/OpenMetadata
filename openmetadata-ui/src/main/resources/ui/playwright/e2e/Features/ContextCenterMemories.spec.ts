@@ -2079,7 +2079,9 @@ test.describe(
         await navigateToMemories(page);
 
         const firstPageRows = page.locator('[data-testid^="memory-row-"]');
-        await expect(firstPageRows.first()).toBeVisible();
+        await expect(firstPageRows.filter({ visible: true })).not.toHaveCount(
+          0
+        );
 
         // Capture ID of first row on page 1
         const firstRowId = await firstPageRows
@@ -2098,8 +2100,8 @@ test.describe(
 
         // Page 2 must show rows, and the first-page row must not be present
         await expect(
-          page.locator('[data-testid^="memory-row-"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid^="memory-row-"]').filter({ visible: true })
+        ).not.toHaveCount(0);
 
         if (firstRowId) {
           await expect(page.getByTestId(firstRowId)).not.toBeVisible();
@@ -2134,8 +2136,8 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.locator('[data-testid^="memory-row-"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid^="memory-row-"]').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   }

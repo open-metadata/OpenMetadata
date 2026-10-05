@@ -7,6 +7,7 @@
     "close": "关闭",
     "close-navigation-menu": "关闭导航菜单",
     "copy-link": "复制链接",
+    "count-remaining": "剩余 {{count}} 项",
     "count-selected": "已选择 {{count}} 项",
     "current-page": "当前页",
     "date-range-picker": "日期范围选择器",
@@ -33,8 +34,10 @@
     "remove-filter": "移除筛选",
     "search": "搜索",
     "select-all": "全选",
+    "select-date": "选择日期",
     "select-dates": "选择日期",
     "select-only-one-row": "选择一行",
+    "show-count-more": "显示另外 {{count}} 项",
     "show-hidden-breadcrumbs": "显示隐藏的面包屑",
     "today": "今天",
     "tree-select": "树形选择"

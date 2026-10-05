@@ -12,7 +12,7 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
-import { Link01 } from '@untitledui/icons';
+import { Link01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
@@ -38,6 +38,7 @@ import ProfileContentHeader from './ProfileContentHeader';
 import {
   APPLICATION_NAV_ITEMS,
   DEFAULT_PROFILE_NAV_ID,
+  FEATURES_NAV_ITEMS,
   ProfileHeaderOverride,
   ProfileNavGroup,
   ProfileNavId,
@@ -191,10 +192,15 @@ const ProfilePage: React.FC = () => {
       (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
     );
 
+    const featuresItems = FEATURES_NAV_ITEMS.filter(
+      (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
+    );
+
     return [
       ...coreItems,
       ...workspaceItems,
       ...applicationItems,
+      ...featuresItems,
       ...contributed,
     ];
   }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);

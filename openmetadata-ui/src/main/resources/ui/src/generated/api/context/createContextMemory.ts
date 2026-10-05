@@ -29,7 +29,11 @@ export interface CreateContextMemory {
     /**
      * Fully qualified names of the domains this memory belongs to.
      */
-    domains?:               string[];
+    domains?: string[];
+    /**
+     * Lifecycle stage the memory starts in. When omitted, the memory starts Approved.
+     */
+    entityStatus?:          EntityStatus;
     machineRepresentation?: MachineRepresentation;
     memoryScope?:           MemoryScope;
     memoryType?:            MemoryType;
@@ -62,7 +66,6 @@ export interface CreateContextMemory {
     sourceFile?:         EntityReference;
     sourceHumanMessage?: string;
     sourceType?:         SourceType;
-    status?:             MemoryStatus;
     /**
      * Optional summary of the memory.
      */
@@ -75,6 +78,23 @@ export interface CreateContextMemory {
      * Short title shown in Context Center.
      */
     title?: string;
+}
+
+/**
+ * Lifecycle stage the memory starts in. When omitted, the memory starts Approved.
+ *
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -236,6 +256,7 @@ export enum ShareRole {
 export enum ShareVisibility {
     Entity = "Entity",
     Private = "Private",
+    Public = "Public",
     Shared = "Shared",
 }
 
@@ -248,17 +269,6 @@ export enum SourceType {
     Manual = "Manual",
     PageExtraction = "PageExtraction",
     RememberRequest = "RememberRequest",
-}
-
-/**
- * Lifecycle state of the memory. Any status may be set at creation (e.g. importing an
- * already-archived memory); the Draft -> Active -> Archived transition rules are only
- * enforced on subsequent updates.
- */
-export enum MemoryStatus {
-    Active = "Active",
-    Archived = "Archived",
-    Draft = "Draft",
 }
 
 /**

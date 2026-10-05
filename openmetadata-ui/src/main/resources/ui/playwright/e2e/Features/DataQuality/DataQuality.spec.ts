@@ -24,7 +24,6 @@ import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  assignSingleSelectDomain,
   clickOutside,
   createNewPage,
   descriptionBox,
@@ -46,6 +45,7 @@ import {
   customFormatDateTime,
   getCurrentMillis,
 } from '../../../utils/dateTime';
+import { setDomain } from '../../../utils/domainPicker';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   glossaryFieldTrigger,
@@ -410,7 +410,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: NEW_COLUMN_TEST_CASE.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -996,7 +995,7 @@ test.describe(
 
       // Add domain to table
       await filterTable1.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       const testCases = [
         `pw_first_table_column_count_to_be_between_${uuid()}`,
         `pw_second_table_column_count_to_be_between_${uuid()}`,
@@ -1706,36 +1705,39 @@ test.describe(
         await Promise.all([detailsResponse, resultsResponse]);
         await waitForAllLoadersToDisappear(page);
 
-        const point = page
-          .locator('[data-testid^="test-summary-point-"]')
-          .first();
+        const plot = page
+          .getByTestId('graph-container')
+          .getByRole('group', { name: 'Test Case Results' });
         const tooltip = page.getByTestId('test-summary-tooltip');
 
-        await expect(point).toBeVisible();
-        await point.scrollIntoViewIfNeeded();
-        const pointBox = await point.boundingBox();
+        await expect(plot).toBeVisible();
+        await plot.scrollIntoViewIfNeeded();
+        const plotBox = await plot.boundingBox();
 
-        if (!pointBox) {
+        if (!plotBox) {
           throw new Error(
-            'Expected the test result point to have a bounding box'
+            'Expected the test result chart to have a bounding box'
           );
         }
 
-        // A nearby chart position must not inherit the dot's tooltip activation.
+        // A chart position with no run under it must not open a tooltip.
         await page.mouse.move(
-          pointBox.x + pointBox.width + 3,
-          pointBox.y + pointBox.height / 2
+          plotBox.x + plotBox.width / 2,
+          plotBox.y + plotBox.height * 0.1
         );
         await expect(tooltip).toBeHidden();
 
-        await point.hover();
+        // Runs are SVG paths with no node per dot, so the keyboard opens the
+        // newest run's tooltip. Focus alone may not count as :focus-visible,
+        // so End is what starts the navigation.
+        await plot.focus();
+        await page.keyboard.press('End');
         await expect(tooltip).toBeVisible();
 
         const incidentLink = tooltip.locator('a.tooltip-incident-link');
 
         await expect(incidentLink).toBeVisible();
-        // Recharts used to move the tooltip during this browser-level pointer
-        // transition, preventing Playwright (and users) from reaching the link.
+        // The tooltip must stay put while the pointer travels onto the link.
         await incidentLink.hover();
         await expect(incidentLink).toBeVisible();
         await expect

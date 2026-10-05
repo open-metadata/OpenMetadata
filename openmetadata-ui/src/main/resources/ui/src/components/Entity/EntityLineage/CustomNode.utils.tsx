@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
-import { Dataflow01, Plus } from '@untitledui/icons';
+import { Button, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Dataflow01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { memo, RefObject, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -161,12 +161,7 @@ const getColumnNameContent = (
   isLoading: boolean
 ) => {
   if (isLoading) {
-    return (
-      <div
-        className="tw:h-5 tw:w-16 tw:animate-pulse tw:rounded tw:bg-secondary"
-        data-testid="loader"
-      />
-    );
+    return <Skeleton height={32} variant="rounded" width={72} />;
   }
 
   return (

@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Maximize01, Minimize01 } from '@untitledui/icons';
+import { Maximize01, Minimize01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactFlow, {

@@ -21,6 +21,11 @@ import {
   getExpandHandle,
 } from './CustomNode.utils';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Skeleton: jest.fn().mockImplementation(() => <p data-testid="loader" />),
+}));
+
 // Add mock before describe blocks
 jest.mock('./TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () => ({
   __esModule: true,

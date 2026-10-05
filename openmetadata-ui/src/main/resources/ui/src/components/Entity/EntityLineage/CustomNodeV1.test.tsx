@@ -216,6 +216,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }),
   Button: jest.requireActual('@openmetadata/ui-core-components').Button,
   Dropdown: jest.requireActual('@openmetadata/ui-core-components').Dropdown,
+  Skeleton: jest.requireActual('@openmetadata/ui-core-components').Skeleton,
   Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
   Typography: jest
     .fn()

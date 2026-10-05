@@ -15,8 +15,8 @@ import {
   ButtonGroup,
   ButtonGroupItem,
   Card,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -59,6 +59,7 @@ import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
@@ -305,17 +306,18 @@ export const PipelineTaskTab = () => {
         sorter: getColumnSorter<Task, 'name'>('name'),
         onCell: (record: Task) => ({
           onClick: (event) =>
-            isEmpty(record.sourceUrl) && handleTaskClick(record, event),
+            !getSafeHttpUrl(record.sourceUrl) && handleTaskClick(record, event),
           'data-testid': 'column-name-cell',
         }),
-        render: (_, record) =>
-          isEmpty(record.sourceUrl) ? (
-            <span className="text-link-color">{getEntityName(record)}</span>
-          ) : (
+        render: (_, record) => {
+          const sourceUrl = getSafeHttpUrl(record.sourceUrl);
+
+          return sourceUrl ? (
             <Link
               className="flex items-center gap-2"
+              rel="noopener noreferrer"
               target="_blank"
-              to={record.sourceUrl ?? ''}>
+              to={sourceUrl}>
               <div className="d-flex items-center">
                 <span className="break-all">{getEntityName(record)}</span>
 
@@ -326,7 +328,10 @@ export const PipelineTaskTab = () => {
                 />
               </div>
             </Link>
-          ),
+          ) : (
+            <span className="text-link-color">{getEntityName(record)}</span>
+          );
+        },
       },
       {
         key: TABLE_COLUMNS_KEYS.TASK_TYPE,
@@ -334,7 +339,9 @@ export const PipelineTaskTab = () => {
         width: 180,
         title: t('label.type'),
         render: (text) => (
-          <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {text || NO_DATA_PLACEHOLDER}
+          </Typography>
         ),
       },
       {
