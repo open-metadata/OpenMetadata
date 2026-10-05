@@ -1159,7 +1159,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Add tags to Asset operation initiated successfully.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+    return jobStartedResponse(response, ApprovalGate.submittedCount(held, dryRun));
   }
 
   public Response bulkRemoveFromAssetsAsync(
@@ -1200,7 +1200,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Remove tags to Asset operation initiated successfully.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+    return jobStartedResponse(response, ApprovalGate.submittedCount(held, dryRun));
+  }
+
+  // The job applies the assets that were not held; the held ones already have change requests, so
+  // the response says how many.
+  private static Response jobStartedResponse(BulkAssetsOperationResponse response, int submitted) {
+    Response.ResponseBuilder builder =
+        Response.ok().entity(response).type(MediaType.APPLICATION_JSON);
+    if (submitted > 0) {
+      builder.header(RestUtil.PENDING_CHANGE_COUNT_HEADER, submitted);
+    }
+    return builder.build();
   }
 
   public Response importCsvInternalAsync(

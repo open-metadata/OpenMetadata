@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.governance.approval;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,24 +22,28 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 
-/** Presents a revision's ops in the ChangeDescription shape the task UI and workflow nodes read. */
+/**
+ * Presents a revision's ops in the ChangeDescription shape the task UI and workflow nodes read. Op
+ * values are stored as JSON text; each is read back into a plain value (a string, a list or a map),
+ * as in a change description recorded by an entity update.
+ */
 public final class MutationOps {
   private MutationOps() {}
 
   public static ChangeDescription toChangeDescription(
       List<MutationOp> ops, Double previousVersion) {
     List<FieldChange> updated = new ArrayList<>();
-    Map<String, ArrayNode> added = new LinkedHashMap<>();
-    Map<String, ArrayNode> deleted = new LinkedHashMap<>();
+    Map<String, List<Object>> added = new LinkedHashMap<>();
+    Map<String, List<Object>> deleted = new LinkedHashMap<>();
     for (MutationOp op : ops) {
       switch (op.getOp()) {
         case SET -> updated.add(
             new FieldChange()
                 .withName(op.getField())
-                .withOldValue(JsonUtils.readTree(op.getBaseValue()))
-                .withNewValue(JsonUtils.readTree(op.getValue())));
-        case ADD -> elements(added, op).add(JsonUtils.readTree(op.getValue()));
-        case REMOVE -> elements(deleted, op).add(JsonUtils.readTree(op.getValue()));
+                .withOldValue(plainValue(op.getBaseValue()))
+                .withNewValue(plainValue(op.getValue())));
+        case ADD -> elements(added, op).add(plainValue(op.getValue()));
+        case REMOVE -> elements(deleted, op).add(plainValue(op.getValue()));
       }
     }
     return new ChangeDescription()
@@ -50,12 +53,15 @@ public final class MutationOps {
         .withFieldsDeleted(asChanges(deleted, false));
   }
 
-  private static ArrayNode elements(Map<String, ArrayNode> byField, MutationOp op) {
-    return byField.computeIfAbsent(
-        op.getField(), ignored -> JsonUtils.getObjectMapper().createArrayNode());
+  private static Object plainValue(String json) {
+    return JsonUtils.readValue(json, Object.class);
   }
 
-  private static List<FieldChange> asChanges(Map<String, ArrayNode> byField, boolean added) {
+  private static List<Object> elements(Map<String, List<Object>> byField, MutationOp op) {
+    return byField.computeIfAbsent(op.getField(), ignored -> new ArrayList<>());
+  }
+
+  private static List<FieldChange> asChanges(Map<String, List<Object>> byField, boolean added) {
     List<FieldChange> changes = new ArrayList<>();
     byField.forEach(
         (field, values) ->

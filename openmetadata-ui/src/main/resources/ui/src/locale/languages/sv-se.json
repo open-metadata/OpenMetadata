@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "Det går inte att lägga till widgeten i det här avsnittet på grund av storleksbegränsningar.",
     "can-you-add-a-description": "Kan du lägga till en beskrivning?",
     "cannot-delete-relation-type-in-use": "Kan inte ta bort: används av {{count}} termrelation(er). Ta bort dessa relationer först.",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "Kontrollera stavningen, eller prova en kortare eller mer generell term.",

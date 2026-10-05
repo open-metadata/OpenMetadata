@@ -26,6 +26,7 @@ class ETagResponseFilterTest {
 
   private static final int OK = Response.Status.OK.getStatusCode();
   private static final int CREATED = Response.Status.CREATED.getStatusCode();
+  private static final int ACCEPTED = Response.Status.ACCEPTED.getStatusCode();
   private static final int NOT_MODIFIED = Response.Status.NOT_MODIFIED.getStatusCode();
 
   private final ETagResponseFilter filter = new ETagResponseFilter();
@@ -56,6 +57,19 @@ class ETagResponseFilterTest {
     ContainerResponseContext post = response(CREATED, entity);
     filter.filter(request("POST", null), post);
     assertEquals(EntityETag.generateETag(entity), post.getHeaders().getFirst(HttpHeaders.ETAG));
+  }
+
+  @Test
+  void heldEditResponseGetsETagOfTheUnchangedEntity() {
+    EntityInterface entity = entity(2.0, 222L);
+
+    ContainerResponseContext put = response(ACCEPTED, entity);
+    filter.filter(request("PUT", null), put);
+    assertEquals(EntityETag.generateETag(entity), put.getHeaders().getFirst(HttpHeaders.ETAG));
+
+    ContainerResponseContext patch = response(ACCEPTED, entity);
+    filter.filter(request("PATCH", null), patch);
+    assertEquals(EntityETag.generateETag(entity), patch.getHeaders().getFirst(HttpHeaders.ETAG));
   }
 
   @Test

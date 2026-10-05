@@ -268,6 +268,14 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(),
 }));
 
+jest.mock(
+  '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component',
+  () =>
+    jest.fn(({ changeRequestId }: { changeRequestId: string }) => (
+      <div data-testid="change-request-changes-by-id">{changeRequestId}</div>
+    ))
+);
+
 jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({
     isAdminUser: false,
@@ -977,6 +985,40 @@ describe('TaskTabNew Component', () => {
     expect(screen.getByTestId('entity-link')).toHaveTextContent('entityName');
     expect(screen.getByText('label.created-by')).toBeInTheDocument();
     expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
+  });
+
+  it('shows the change request a review task names instead of its preview chips', async () => {
+    const {
+      isTagsTaskType,
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isTagsTaskType.mockReturnValue(false);
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              changeRequestId: 'cr-42',
+              proposedChanges: {
+                tags: { added: ['PII.Sensitive'], removed: [] },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByTestId('change-request-changes-by-id')
+    ).toHaveTextContent('cr-42');
+    expect(
+      screen.getByText('label.proposed-change-plural')
+    ).toBeInTheDocument();
   });
 
   it('renders schema-driven payload details for custom tasks', async () => {

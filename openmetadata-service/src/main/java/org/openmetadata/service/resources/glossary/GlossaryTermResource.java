@@ -1028,10 +1028,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             securityContext.getUserPrincipal().getName(),
             Boolean.TRUE.equals(request.getDryRun()),
             asset -> asset.setTags(ApprovalGate.withTag(asset.getTags(), label)));
-    return Response.ok()
-        .entity(
-            ApprovalGate.withHeld(repository.bulkAddAndValidateGlossaryToAssets(id, request), held))
-        .build();
+    return ApprovalGate.bulkResponse(
+        ApprovalGate.withHeld(repository.bulkAddAndValidateGlossaryToAssets(id, request), held),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PUT
@@ -1093,9 +1092,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             securityContext.getUserPrincipal().getName(),
             Boolean.TRUE.equals(request.getDryRun()),
             asset -> asset.setTags(ApprovalGate.withoutTag(asset.getTags(), termFqn)));
-    return Response.ok()
-        .entity(ApprovalGate.withHeld(repository.bulkRemoveGlossaryToAssets(id, request), held))
-        .build();
+    return ApprovalGate.bulkResponse(
+        ApprovalGate.withHeld(repository.bulkRemoveGlossaryToAssets(id, request), held),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   private static TagLabel glossaryLabel(UUID termId) {

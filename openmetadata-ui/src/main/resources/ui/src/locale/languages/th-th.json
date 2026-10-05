@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "ไม่สามารถเพิ่มวิดเจ็ตในส่วนนี้ได้เนื่องจากข้อจำกัดขนาด",
     "can-you-add-a-description": "คุณสามารถเพิ่มคำอธิบายได้ไหม?",
     "cannot-delete-relation-type-in-use": "ไม่สามารถลบได้: ใช้อยู่ใน {{count}} ความสัมพันธ์ของคำศัพท์ กรุณาลบความสัมพันธ์เหล่านี้ก่อน",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "ตรวจสอบการสะกดคำ หรือลองใช้คำที่สั้นลงหรือทั่วไปมากขึ้น",

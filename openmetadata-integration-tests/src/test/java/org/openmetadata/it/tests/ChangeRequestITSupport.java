@@ -17,6 +17,11 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +71,7 @@ final class ChangeRequestITSupport {
   // shortPrefix is deterministic per test; the sequence keeps several fixtures in one test
   // distinct.
   private static final AtomicInteger SEQUENCE = new AtomicInteger();
+  private static final HttpClient HTTP = HttpClient.newHttpClient();
 
   static final String PUBLISHED = "approved baseline description";
   static final String ORIGINAL_DN = "original display name";
@@ -309,6 +315,41 @@ final class ChangeRequestITSupport {
     Glossary current = fetch(glossaryId);
     current.setDescription(value);
     SdkClients.adminClient().glossaries().update(glossaryId.toString(), current);
+  }
+
+  /**
+   * Sends a glossary edit over plain HTTP. The SDK client returns only the body, and the held-edit
+   * tests check the status code and headers.
+   */
+  static HttpResponse<String> sendAsAdmin(
+      String method, String path, String contentType, String body)
+      throws IOException, InterruptedException {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", contentType)
+            .method(method, HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  static HttpResponse<String> rawPatch(UUID glossaryId, String opsJson)
+      throws IOException, InterruptedException {
+    return sendAsAdmin(
+        "PATCH", "/v1/glossaries/%s".formatted(glossaryId), "application/json-patch+json", opsJson);
+  }
+
+  /** PUT /v1/glossaries with the glossary's own create request and a new description. */
+  static HttpResponse<String> rawPutDescription(Glossary glossary, String value)
+      throws IOException, InterruptedException {
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(glossary.getName())
+            .withDisplayName(glossary.getDisplayName())
+            .withDescription(value)
+            .withReviewers(List.of(SharedEntities.get().USER1.getEntityReference()));
+    return sendAsAdmin("PUT", "/v1/glossaries", "application/json", JsonUtils.pojoToJson(create));
   }
 
   static Map<String, String> openTaskFilters(String glossaryFqn) {

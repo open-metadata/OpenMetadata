@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "Das Widget kann aufgrund von Größenbeschränkungen nicht zu diesem Abschnitt hinzugefügt werden.",
     "can-you-add-a-description": "Können Sie eine Beschreibung hinzufügen?",
     "cannot-delete-relation-type-in-use": "Löschen nicht möglich: wird von {{count}} Begriffsbeziehung(en) verwendet. Entfernen Sie zuerst diese Beziehungen.",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "Überprüfen Sie die Schreibweise oder versuchen Sie einen kürzeren oder allgemeineren Begriff.",

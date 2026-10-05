@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "לא ניתן להוסיף את הווידג'ט לסקשן זה עקב הגבלות בגודל.",
     "can-you-add-a-description": "האם תוכל להוסיף תיאור?",
     "cannot-delete-relation-type-in-use": "לא ניתן למחוק: בשימוש על ידי {{count}} קשר(י) מונח. הסר קשרים אלה תחילה.",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "בדוק את האיות, או נסה מונח קצר או כללי יותר.",

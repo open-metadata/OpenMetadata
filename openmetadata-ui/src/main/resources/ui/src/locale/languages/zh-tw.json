@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "由於大小限制，無法將小工具新增到此區段。",
     "can-you-add-a-description": "您可以新增描述嗎？",
     "cannot-delete-relation-type-in-use": "無法刪除：正被{{count}}個術語關係使用中。請先移除這些關係。",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "請檢查拼字,或嘗試使用更簡短、更通用的詞語。",

@@ -19,6 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.ChangeRequestITSupport.*;
 
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.Response;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Set;
 import org.awaitility.Awaitility;
@@ -37,6 +40,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.MutationPlanner;
+import org.openmetadata.service.util.RestUtil;
 
 @ExtendWith(TestNamespaceExtension.class)
 class ChangeRequestAdmissionIT {
@@ -77,6 +81,43 @@ class ChangeRequestAdmissionIT {
     putDescription(glossary.getId(), "proposed via put");
     assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
     onlyPendingRequest(glossary.getId());
+  }
+
+  @Test
+  void heldPatchAnswersAcceptedWithThePublishedEntity(TestNamespace ns) throws Exception {
+    Glossary glossary = gated(ns);
+    HttpResponse<String> response =
+        rawPatch(
+            glossary.getId(),
+            "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"proposed\"}]");
+    assertHeldResponse(response, glossary);
+  }
+
+  @Test
+  void heldPutAnswersAcceptedWithThePublishedEntity(TestNamespace ns) throws Exception {
+    Glossary glossary = gated(ns);
+    HttpResponse<String> response = rawPutDescription(glossary, "proposed via raw put");
+    assertHeldResponse(response, glossary);
+  }
+
+  @Test
+  void publishedPatchAnswersOkWithoutPendingChangeHeader(TestNamespace ns) throws Exception {
+    Glossary glossary = gated(ns);
+    HttpResponse<String> response =
+        rawPatch(
+            glossary.getId(), "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"n\"}]");
+    assertEquals(Response.Status.OK.getStatusCode(), response.statusCode(), response.body());
+    assertTrue(response.headers().firstValue(RestUtil.PENDING_CHANGE_HEADER).isEmpty());
+  }
+
+  // A held edit answers 202 with the unchanged entity, its ETag, and the change request id.
+  private static void assertHeldResponse(HttpResponse<String> response, Glossary glossary) {
+    assertEquals(Response.Status.ACCEPTED.getStatusCode(), response.statusCode(), response.body());
+    assertEquals(
+        onlyPendingRequest(glossary.getId()).getId().toString(),
+        response.headers().firstValue(RestUtil.PENDING_CHANGE_HEADER).orElseThrow());
+    assertTrue(response.headers().firstValue(HttpHeaders.ETAG).isPresent());
+    assertEquals(PUBLISHED, JsonUtils.readValue(response.body(), Glossary.class).getDescription());
   }
 
   @Test

@@ -47,6 +47,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.util.RestUtil;
 
 /**
  * Admission for approval-gated edits. A human request that changes a gated field is diverted, whole,
@@ -245,6 +246,33 @@ public final class ApprovalGate {
           .withStatus(bulkStatus(result.getStatus(), succeeded, failed));
     }
     return result;
+  }
+
+  /**
+   * Answers a bulk asset write. It is 202 when assets were held for approval and none was applied,
+   * and 200 otherwise; when any change request was submitted, the {@link
+   * RestUtil#PENDING_CHANGE_COUNT_HEADER} header carries how many. A dry run submits nothing.
+   */
+  public static Response bulkResponse(BulkOperationResult result, boolean dryRun) {
+    int pending = dryRun ? 0 : orZero(result.getNumberOfRowsPendingApproval());
+    int applied =
+        listOrEmpty(result.getSuccessRequest()).size()
+            - orZero(result.getNumberOfRowsPendingApproval());
+    Response.ResponseBuilder builder =
+        Response.status(pending > 0 && applied == 0 ? Response.Status.ACCEPTED : Response.Status.OK)
+            .entity(result);
+    if (pending > 0) {
+      builder.header(RestUtil.PENDING_CHANGE_COUNT_HEADER, pending);
+    }
+    return builder.build();
+  }
+
+  /** How many change requests a bulk write submitted for the assets it held. */
+  public static int submittedCount(List<BulkResponse> held, boolean dryRun) {
+    return dryRun
+        ? 0
+        : (int)
+            held.stream().filter(r -> r.getStatus() == Response.Status.OK.getStatusCode()).count();
   }
 
   private static ApiStatus bulkStatus(

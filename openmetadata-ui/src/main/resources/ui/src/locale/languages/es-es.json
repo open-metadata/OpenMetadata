@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "No se puede agregar el widget a esta sección debido a restricciones de tamaño.",
     "can-you-add-a-description": "¿Puedes agregar una descripción?",
     "cannot-delete-relation-type-in-use": "No se puede eliminar: utilizado por {{count}} relación(es) de términos. Elimine estas relaciones primero.",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "Comprueba la ortografía o prueba con un término más corto o general.",

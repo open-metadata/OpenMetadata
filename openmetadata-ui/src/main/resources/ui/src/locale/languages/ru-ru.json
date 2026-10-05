@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "Невозможно добавить виджет в этот раздел из-за ограничений по размеру.",
     "can-you-add-a-description": "Можете добавить описание?",
     "cannot-delete-relation-type-in-use": "Невозможно удалить: используется в {{count}} связях терминов. Сначала удалите эти связи.",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "Проверьте написание или попробуйте более короткий или общий запрос.",

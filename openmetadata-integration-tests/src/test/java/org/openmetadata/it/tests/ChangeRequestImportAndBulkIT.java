@@ -17,7 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.ChangeRequestITSupport.*;
 
+import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.util.SdkClients;
@@ -26,6 +28,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -36,7 +39,9 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.classification.TagService;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.RestUtil;
 
 @ExtendWith(TestNamespaceExtension.class)
 class ChangeRequestImportAndBulkIT {
@@ -141,6 +146,79 @@ class ChangeRequestImportAndBulkIT {
             .getDomains()
             .isEmpty(),
         "the domain assignment is held");
+  }
+
+  @Test
+  void bulkAssetWriteAnswersAcceptedOnlyWhenEveryAssetIsHeld(TestNamespace ns) throws Exception {
+    Glossary gated = gatedGlossary(ns, "dn");
+    Glossary ungated = plainGlossary(ns);
+    deployHookWorkflow(ns, "\"domains\"", "", filterScopedTo(gated.getFullyQualifiedName()));
+    String path = "/v1/domains/%s/assets/add".formatted(domain(ns).getName());
+
+    HttpResponse<String> dryRun = sendBulk(path, List.of(gated), true);
+    assertEquals(200, dryRun.statusCode(), dryRun.body());
+    assertTrue(pendingCount(dryRun).isEmpty(), "a dry run submits nothing");
+
+    HttpResponse<String> allHeld = sendBulk(path, List.of(gated), false);
+    assertEquals(202, allHeld.statusCode(), allHeld.body());
+    assertEquals("1", pendingCount(allHeld).orElseThrow());
+
+    HttpResponse<String> partlyHeld = sendBulk(path, List.of(gated, ungated), false);
+    assertEquals(200, partlyHeld.statusCode(), partlyHeld.body());
+    assertEquals("1", pendingCount(partlyHeld).orElseThrow());
+    assertEquals(
+        1,
+        SdkClients.adminClient()
+            .glossaries()
+            .get(ungated.getId().toString(), "domains")
+            .getDomains()
+            .size(),
+        "the ungated asset is assigned");
+  }
+
+  @Test
+  void asyncTagAddReportsHeldAssetsWhenTheJobStarts(TestNamespace ns) throws Exception {
+    Glossary gated = gatedGlossary(ns, "tg");
+    deployHookWorkflow(ns, "\"tags\"", "", filterScopedTo(gated.getFullyQualifiedName()));
+    Tag tag =
+        new TagService(SdkClients.adminClient().getHttpClient())
+            .getByName(createMutuallyExclusiveTags(ns).get(0));
+
+    HttpResponse<String> started =
+        sendAsAdmin(
+            "PUT",
+            "/v1/tags/%s/assets/add".formatted(tag.getId()),
+            "application/json",
+            JsonUtils.pojoToJson(new BulkAssets().withAssets(List.of(gated.getEntityReference()))));
+
+    assertEquals(200, started.statusCode(), started.body());
+    assertEquals("1", pendingCount(started).orElseThrow());
+    onlyPendingRequest(gated.getId());
+  }
+
+  private Domain domain(TestNamespace ns) {
+    return ns.trackRoot(
+        Entity.DOMAIN,
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.shortPrefix("crdom"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("domain")));
+  }
+
+  private static HttpResponse<String> sendBulk(String path, List<Glossary> assets, boolean dryRun)
+      throws Exception {
+    BulkAssets request =
+        new BulkAssets()
+            .withAssets(assets.stream().map(Glossary::getEntityReference).toList())
+            .withDryRun(dryRun);
+    return sendAsAdmin("PUT", path, "application/json", JsonUtils.pojoToJson(request));
+  }
+
+  private static Optional<String> pendingCount(HttpResponse<String> response) {
+    return response.headers().firstValue(RestUtil.PENDING_CHANGE_COUNT_HEADER);
   }
 
   private BulkOperationResult bulkAssign(String path, Glossary glossary, boolean dryRun) {

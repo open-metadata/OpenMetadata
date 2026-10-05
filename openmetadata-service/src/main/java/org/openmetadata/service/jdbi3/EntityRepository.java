@@ -4268,7 +4268,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private PutResponse<T> stagedPutResponse(UriInfo uriInfo, T original, StagedChange change) {
     UUID requestId = ChangeRequestService.submit(change).getId();
-    return new PutResponse<>(Status.OK, withHref(uriInfo, original), ENTITY_NO_CHANGE)
+    return new PutResponse<>(Status.ACCEPTED, withHref(uriInfo, original), ENTITY_NO_CHANGE)
         .withPendingChangeRequestId(requestId);
   }
 
@@ -4573,7 +4573,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private PatchResponse<T> stagedPatchResponse(UriInfo uriInfo, T original, StagedChange change) {
     UUID requestId = ChangeRequestService.submit(change).getId();
-    return new PatchResponse<>(Status.OK, withHref(uriInfo, original), ENTITY_NO_CHANGE, requestId);
+    return new PatchResponse<>(
+        Status.ACCEPTED, withHref(uriInfo, original), ENTITY_NO_CHANGE, requestId);
   }
 
   /**

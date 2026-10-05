@@ -17,14 +17,11 @@ import {
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChangeRequest,
   ChangeRequestStatus,
-  MutationOp,
-  MutationOpType,
 } from '../../generated/governance/changeRequest/changeRequest';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
@@ -33,6 +30,7 @@ import {
 } from '../../rest/changeRequestsAPI';
 import { PENDING_CHANGE_EVENT } from '../../rest/pendingChangeInterceptor';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import ChangeRequestChanges from './ChangeRequestChanges/ChangeRequestChanges.component';
 
 interface ChangeRequestsIndicatorProps {
   entityId: string;
@@ -42,63 +40,6 @@ const OPEN_STATUSES = new Set([
   ChangeRequestStatus.Pending,
   ChangeRequestStatus.Approved,
 ]);
-
-const MAX_VALUE_LENGTH = 80;
-
-type OpValue = { displayName?: string; name?: string; tagFQN?: string };
-
-// A reference or tag reads by its name; anything else structured is shown compactly.
-const labelOf = (value: unknown): string => {
-  if (typeof value !== 'object' || value === null) {
-    return String(value);
-  }
-  const reference = value as OpValue;
-
-  return (
-    reference.displayName ??
-    reference.name ??
-    reference.tagFQN ??
-    JSON.stringify(value)
-  );
-};
-
-const truncate = (text: string): string =>
-  text.length > MAX_VALUE_LENGTH ? `${text.slice(0, MAX_VALUE_LENGTH)}…` : text;
-
-// Op values are JSON strings; rich text is reduced to plain text for the summary.
-const describeValue = (json?: string): string => {
-  const text = json ? labelOf(JSON.parse(json)) : '';
-
-  return truncate(
-    text
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-  );
-};
-
-const OpRow = ({ op }: { op: MutationOp }) => {
-  const { t } = useTranslation();
-  const kind = {
-    [MutationOpType.Add]: t('label.added'),
-    [MutationOpType.Remove]: t('label.removed'),
-    [MutationOpType.Set]: t('label.updated'),
-  }[op.op];
-
-  return (
-    <li
-      className="tw:flex tw:flex-wrap tw:gap-1 tw:text-sm"
-      data-testid={`change-op-${op.field}`}>
-      <span className="tw:font-medium tw:text-primary">
-        {startCase(op.field)}
-      </span>
-      <span className="tw:text-tertiary">{kind}</span>
-      <span className="tw:text-secondary tw:break-all">
-        {describeValue(op.value)}
-      </span>
-    </li>
-  );
-};
 
 const RequestCard = ({
   request,
@@ -131,11 +72,7 @@ const RequestCard = ({
           {t('label.approved')}
         </Badge>
       )}
-      <ul className="tw:flex tw:flex-col tw:gap-1">
-        {(request.activeRevision?.ops ?? []).map((op) => (
-          <OpRow key={`${op.field}-${op.op}-${op.key ?? ''}`} op={op} />
-        ))}
-      </ul>
+      <ChangeRequestChanges ops={request.activeRevision?.ops} />
       {canWithdraw && (
         <Button
           color="secondary"

@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "आकार निर्बंधांमुळे या विभागात विजेट जोडता येत नाही.",
     "can-you-add-a-description": "तुम्ही वर्णन जोडू शकता का?",
     "cannot-delete-relation-type-in-use": "हटवता येत नाही: {{count}} संज्ञा संबंधांमध्ये वापरात आहे. आधी हे संबंध काढून टाका.",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "शब्दलेखन तपासा, किंवा एखादा छोटा किंवा अधिक सर्वसाधारण शब्द वापरून पहा.",

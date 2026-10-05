@@ -14,6 +14,7 @@ import { AxiosInstance, AxiosResponse } from 'axios';
 import { showInfoToast } from '../utils/ToastUtils';
 import {
   attachPendingChangeInterceptor,
+  PENDING_CHANGE_COUNT_HEADER,
   PENDING_CHANGE_EVENT,
   PENDING_CHANGE_HEADER,
 } from './pendingChangeInterceptor';
@@ -23,7 +24,8 @@ jest.mock('../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../utils/i18next/LocalUtil', () => ({
-  t: (key: string) => key,
+  t: (key: string, options?: { count?: number }) =>
+    options?.count === undefined ? key : `${key}:${options.count}`,
 }));
 
 type ResponseHandler = (response: AxiosResponse) => AxiosResponse;
@@ -67,6 +69,33 @@ describe('pendingChangeInterceptor', () => {
     });
 
     window.removeEventListener(PENDING_CHANGE_EVENT, listener);
+  });
+
+  it('reports how many change requests a bulk asset write submitted', () => {
+    const handler = installInterceptor();
+    const listener = jest.fn();
+    window.addEventListener(PENDING_CHANGE_EVENT, listener);
+
+    handler(responseWith({ [PENDING_CHANGE_COUNT_HEADER]: '3' }));
+
+    expect(showInfoToast).toHaveBeenCalledWith(
+      'message.change-plural-submitted-for-approval:3'
+    );
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({
+      count: 3,
+    });
+
+    window.removeEventListener(PENDING_CHANGE_EVENT, listener);
+  });
+
+  it('uses the single-change message when a bulk write held one asset', () => {
+    const handler = installInterceptor();
+
+    handler(responseWith({ [PENDING_CHANGE_COUNT_HEADER]: '1' }));
+
+    expect(showInfoToast).toHaveBeenCalledWith(
+      'message.change-submitted-for-approval'
+    );
   });
 
   it('stays silent for an ordinary response', () => {

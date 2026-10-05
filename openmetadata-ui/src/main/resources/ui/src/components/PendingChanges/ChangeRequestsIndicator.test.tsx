@@ -64,6 +64,7 @@ const request = (overrides: Partial<ChangeRequest>): ChangeRequest => ({
         op: MutationOpType.Set,
         field: 'description',
         value: JSON.stringify('<p>New text</p>'),
+        baseValue: JSON.stringify('<p>Old text</p>'),
       },
     ],
   },
@@ -98,9 +99,12 @@ describe('ChangeRequestsIndicator', () => {
       fireEvent.click(screen.getByTestId('pending-change-requests'));
     });
 
-    expect(screen.getByTestId('change-op-description')).toHaveTextContent(
-      'New text'
-    );
+    const change = screen.getByTestId('change-description-updated');
+
+    expect(change).toHaveTextContent('label.updated');
+    expect(change).toHaveTextContent('label.previous');
+    expect(change).toHaveTextContent('Old text');
+    expect(change).toHaveTextContent('New text');
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('withdraw-change-request'));

@@ -51,6 +51,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
   public static final String PENDING_CHANGE_HEADER = "X-OpenMetadata-Pending-Change";
+  public static final String PENDING_CHANGE_COUNT_HEADER = "X-OpenMetadata-Pending-Change-Count";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
   public static final DateFormat DATE_TIME_FORMAT;
   public static final DateTimeFormatter DATE_FORMAT;

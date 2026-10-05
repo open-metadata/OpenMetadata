@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "Kan de widget niet toevoegen aan deze sectie vanwege beperkingen in grootte.",
     "can-you-add-a-description": "Kunt u een beschrijving toevoegen?",
     "cannot-delete-relation-type-in-use": "Kan niet verwijderen: wordt gebruikt door {{count}} termrelatie(s). Verwijder eerst deze relaties.",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "Controleer de spelling of probeer een kortere of algemenere term.",

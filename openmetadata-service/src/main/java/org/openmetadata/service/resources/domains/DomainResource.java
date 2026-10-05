@@ -60,6 +60,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -478,10 +479,9 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok()
-        .entity(
-            repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()))
-        .build();
+    return ApprovalGate.bulkResponse(
+        repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PUT
@@ -510,11 +510,9 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok()
-        .entity(
-            repository.bulkRemoveAssets(
-                name, request, securityContext.getUserPrincipal().getName()))
-        .build();
+    return ApprovalGate.bulkResponse(
+        repository.bulkRemoveAssets(name, request, securityContext.getUserPrincipal().getName()),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PATCH

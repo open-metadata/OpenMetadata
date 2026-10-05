@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "このセクションにウィジェットを追加できません（サイズ制限）。",
     "can-you-add-a-description": "説明を追加していただけますか？",
     "cannot-delete-relation-type-in-use": "削除できません: {{count}}件の用語関係で使用されています。まずこれらの関係を削除してください。",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "スペルを確認するか、より短い、または一般的な語句をお試しください。",

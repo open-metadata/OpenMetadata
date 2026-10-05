@@ -3661,6 +3661,7 @@
     "can-not-add-widget": "لا يمكن إضافة الأداة إلى هذا القسم بسبب قيود الحجم.",
     "can-you-add-a-description": "هل يمكنك إضافة وصف؟",
     "cannot-delete-relation-type-in-use": "لا يمكن الحذف: مستخدم بواسطة {{count}} علاقة مصطلح. أزل هذه العلاقات أولاً.",
+    "change-plural-submitted-for-approval": "{{count}} changes were submitted for approval. They will be published once they are approved.",
     "change-request-withdrawn": "Change request withdrawn.",
     "change-submitted-for-approval": "Your change was submitted for approval. It will be published once it is approved.",
     "check-spelling-or-try-different-term": "تحقّق من الإملاء، أو جرّب مصطلحاً أقصر أو أكثر عمومية.",

@@ -16,27 +16,41 @@ import { showInfoToast } from '../utils/ToastUtils';
 
 // Axios exposes response header names lower-cased.
 export const PENDING_CHANGE_HEADER = 'x-openmetadata-pending-change';
+// A bulk asset write holds each gated asset in its own change request and reports how many.
+export const PENDING_CHANGE_COUNT_HEADER =
+  'x-openmetadata-pending-change-count';
 export const PENDING_CHANGE_EVENT = 'om:pending-change-submitted';
 
 export interface PendingChangeEventDetail {
-  changeRequestId: string;
+  changeRequestId?: string;
+  count?: number;
 }
+
+const notifySubmitted = (detail: PendingChangeEventDetail) =>
+  window.dispatchEvent(
+    new CustomEvent<PendingChangeEventDetail>(PENDING_CHANGE_EVENT, { detail })
+  );
 
 /**
  * An edit to an approval-gated field is not published: the server answers with the unchanged
- * entity and names the change request it created. Tell the user, so an unchanged page does not
- * read as a failed save, and let pending-change indicators refresh.
+ * entity and names the change request it created, or, for a bulk asset write, says how many
+ * change requests it created. Tell the user, so an unchanged page does not read as a failed
+ * save, and let pending-change indicators refresh.
  */
 export const attachPendingChangeInterceptor = (client: AxiosInstance) => {
   client.interceptors.response.use((response) => {
     const changeRequestId = response.headers?.[PENDING_CHANGE_HEADER];
+    const count = Number(response.headers?.[PENDING_CHANGE_COUNT_HEADER] ?? 0);
     if (changeRequestId) {
       showInfoToast(t('message.change-submitted-for-approval'));
-      window.dispatchEvent(
-        new CustomEvent<PendingChangeEventDetail>(PENDING_CHANGE_EVENT, {
-          detail: { changeRequestId: String(changeRequestId) },
-        })
+      notifySubmitted({ changeRequestId: String(changeRequestId) });
+    } else if (count > 0) {
+      showInfoToast(
+        count === 1
+          ? t('message.change-submitted-for-approval')
+          : t('message.change-plural-submitted-for-approval', { count })
       );
+      notifySubmitted({ count });
     }
 
     return response;

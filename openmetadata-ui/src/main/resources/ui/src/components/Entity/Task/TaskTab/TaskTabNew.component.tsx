@@ -161,6 +161,7 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
+import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -231,6 +232,12 @@ const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
 
   return Object.keys(normalized).length > 0 ? normalized : null;
 };
+
+// A task that reviews a change request names it in its payload.
+const changeRequestIdOf = (payload: unknown): string | undefined =>
+  isPlainRecord(payload) && typeof payload.changeRequestId === 'string'
+    ? payload.changeRequestId
+    : undefined;
 
 const TaskPayloadSchemaFields = withSuspenseFallback(
   lazy(
@@ -505,6 +512,10 @@ export const TaskTabNew = ({
   } = deriveTaskTypeFlags(taskHandler.type, task.type);
   const proposedChanges = useMemo(
     () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
+    [isTaskApprovalRequest, task.payload]
+  );
+  const changeRequestId = useMemo(
+    () => (isTaskApprovalRequest ? changeRequestIdOf(task.payload) : undefined),
     [isTaskApprovalRequest, task.payload]
   );
   const readOnlyTaskPayload = useMemo(
@@ -1892,6 +1903,18 @@ export const TaskTabNew = ({
   const taskTitleDisplayName = task.displayName ?? taskDisplayMessage;
 
   const renderProposedChangesSection = () => {
+    if (changeRequestId) {
+      return (
+        <Col span={24}>
+          <div className="task-proposed-changes">
+            <Typography className="task-proposed-changes-title">
+              {t('label.proposed-change-plural')}
+            </Typography>
+            <ChangeRequestChangesById changeRequestId={changeRequestId} />
+          </div>
+        </Col>
+      );
+    }
     if (proposedChanges === null) {
       return null;
     }
