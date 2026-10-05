@@ -69,6 +69,16 @@ def test_valid_identifiers_keep_exact_original_span(name, language, value):
     ]
 
 
+@pytest.mark.parametrize("value", ["S1234567D", "T1234567J", "F2601815M", "G1234567X", "m7654321j"])
+def test_valid_fin_checksum_preserves_pattern_score_without_context(value):
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.en, context=["nric"])
+    text = f"sku: {value}; done"
+    results = recognizer.analyze(text, recognizer.supported_entities)
+    assert [(result.entity_type, result.score, text[result.start : result.end]) for result in results] == [
+        ("SG_NRIC_FIN", 0.5, value)
+    ]
+
+
 @pytest.mark.parametrize(
     "name,language,value",
     [

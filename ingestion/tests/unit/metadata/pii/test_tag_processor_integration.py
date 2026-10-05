@@ -830,11 +830,39 @@ def test_invalid_fin_cannot_be_promoted_by_shipped_context(
     assert all(result.entity_type != "SG_NRIC_FIN" for result in analysis.recognizer_results)
 
 
+@pytest.mark.parametrize("column_name", ["sku", "ticket_id"])
+def test_valid_fin_in_operational_column_does_not_receive_sensitive_tag(
+    shipped_pii_tags: tuple[Classification, list[Tag]], column_name: str
+):
+    classification, tags = shipped_pii_tags
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    sensitive = next(tag for tag in tags if tag.name.root == "Sensitive")
+    analysis = TagAnalyzer(
+        sensitive, column, load_nlp_engine(classification_language=ClassificationLanguage.en), ClassificationLanguage.en
+    ).analyze(["F2601815M"])
+    assert all(result.entity_type != "SG_NRIC_FIN" for result in analysis.recognizer_results)
+
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    assert processor.create_column_tag_labels(column, ["F2601815M"]) == []
+    sample = ["F2601815M", *(f"F{number:07d}Z" for number in range(39))]
+    assert processor.create_column_tag_labels(column, sample) == []
+
+
 def test_shipped_competitors_keep_email_and_valid_fin_in_mixed_content(
     shipped_pii_tags: tuple[Classification, list[Tag]],
 ):
     _, tags = shipped_pii_tags
-    column = Column(name="record", fullyQualifiedName="database.schema.table.record", dataType=DataType.VARCHAR)
+    column = Column(name="sg_nric", fullyQualifiedName="database.schema.table.sg_nric", dataType=DataType.VARCHAR)
     sensitive = next(tag for tag in tags if tag.name.root == "Sensitive")
     analysis = TagAnalyzer(
         sensitive, column, load_nlp_engine(classification_language=ClassificationLanguage.en), ClassificationLanguage.en
@@ -855,7 +883,12 @@ def test_identifier_adapter_works_in_non_pii_classification():
             "enabled": True,
             "target": "content",
             "confidenceThreshold": 0.8,
-            "recognizerConfig": {"type": "predefined", "name": "SgFinRecognizer", "supportedLanguage": "en"},
+            "recognizerConfig": {
+                "type": "predefined",
+                "name": "SgFinRecognizer",
+                "supportedLanguage": "en",
+                "context": ["nric"],
+            },
         }
     )
     tag = TagFactory.create(tag_name="Identifier", tag_classification=classification, recognizers=[recognizer])
@@ -869,7 +902,11 @@ def test_identifier_adapter_works_in_non_pii_classification():
         classification_manager=FakeClassificationManager((classification, [tag])),
         classification_filter=["Operations"],
     )
-    column = Column(name="reference", fullyQualifiedName="database.schema.table.reference", dataType=DataType.VARCHAR)
+    neutral_column = Column(
+        name="reference", fullyQualifiedName="database.schema.table.reference", dataType=DataType.VARCHAR
+    )
+    assert processor.create_column_tag_labels(neutral_column, ["S1234567D"]) == []
+    column = Column(name="sg_nric", fullyQualifiedName="database.schema.table.sg_nric", dataType=DataType.VARCHAR)
     assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, ["S1234567D"])] == [
         "Operations.Identifier"
     ]
