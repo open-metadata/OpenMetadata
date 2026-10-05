@@ -11,32 +11,14 @@
  *  limitations under the License.
  */
 
-import { CalendarDate, DateValue } from '@internationalized/date';
 import { DateTime } from 'luxon';
+import type { DateValue } from 'react-aria-components';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
+import { dateValueToMillis } from '../../observability/DataQuality/Dashboard/calendarDate.utils';
 import {
   AnnouncementFormValues,
   EditableAnnouncement,
 } from './AnnouncementModal.interface';
-
-/**
- * Epoch millis -> the calendar day the picker binds to, in the viewer's zone.
- *
- * `CalendarDate` is a plain year/month/day with no time and no zone, which is
- * why the conversion goes through Luxon rather than `new Date(...)`: the day
- * has to be the one the viewer sees, not the one UTC is on.
- */
-export const toCalendarValue = (
-  timestamp?: number | null
-): CalendarDate | null => {
-  if (timestamp == null) {
-    return null;
-  }
-
-  const local = DateTime.fromMillis(timestamp);
-
-  return new CalendarDate(local.year, local.month, local.day);
-};
 
 /**
  * The picker's value -> epoch millis.
@@ -61,19 +43,13 @@ export const fromCalendarValue = (
     return null;
   }
 
-  const day = DateTime.fromObject({
-    year: value.year,
-    month: value.month,
-    day: value.day,
-  });
+  // `dateValueToMillis` lands on the start of the day in the viewer's zone,
+  // which is already what a start date wants.
+  const startOfDay = dateValueToMillis(value);
 
-  if (!day.isValid) {
-    return null;
-  }
-
-  return (
-    boundary === 'end' ? day.endOf('day') : day.startOf('day')
-  ).toMillis();
+  return boundary === 'end'
+    ? DateTime.fromMillis(startOfDay).endOf('day').toMillis()
+    : startOfDay;
 };
 
 /**

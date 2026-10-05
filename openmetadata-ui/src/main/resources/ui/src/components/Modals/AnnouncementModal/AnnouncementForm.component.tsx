@@ -33,7 +33,8 @@ import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
-import { fromCalendarValue, toCalendarValue } from './announcementFormUtils';
+import { millisToDateValue } from '../../observability/DataQuality/Dashboard/calendarDate.utils';
+import { fromCalendarValue } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 import {
   AnnouncementColorSelect,
@@ -57,11 +58,10 @@ interface AnnouncementFormProps {
  * opening a popover with a calendar, a typable date field and a Today preset.
  * It carries its own calendar icon, so the field only supplies the label.
  *
- * `@internationalized/date` and `react-aria-components` are peer dependencies
- * of the component library but are also installed under it for its standalone
- * build, and it is linked rather than hoisted. `tsconfig.json` pins both to
- * this app's copy so `CalendarDate`'s `#private` brand is a single identity —
- * without that pin the value below does not typecheck against the picker.
+ * The epoch-millis <-> `DateValue` bridge is the shared one the data-quality
+ * date filters already use, so the conversion is not hand-rolled per form.
+ * `tsconfig.json` pins the react-aria packages to this app's copy, without
+ * which `DateValue` has two type identities and no value typechecks here.
  */
 const DateField = ({
   boundary = 'start',
@@ -85,7 +85,7 @@ const DateField = ({
       aria-label={label}
       data-testid={id}
       id={id}
-      value={toCalendarValue(value)}
+      value={millisToDateValue(value ?? undefined)}
       onChange={(selected) => onChange(fromCalendarValue(selected, boundary))}
     />
   </Box>

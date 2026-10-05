@@ -64,6 +64,11 @@
       // Pinning resolution to this app's copy is what makes that a single type.
       "@internationalized/date": ["./node_modules/@internationalized/date"],
       "react-aria-components": ["./node_modules/react-aria-components"],
+      "react-stately": ["./node_modules/react-stately"],
+      "react-aria": ["./node_modules/react-aria"],
+      "@react-types/shared": ["./node_modules/@react-types/shared"],
+      "@react-types/datepicker": ["./node_modules/@react-types/datepicker"],
+      "@react-types/calendar": ["./node_modules/@react-types/calendar"],
       "@openmetadata/ui-core-components": [
         "../../../../../openmetadata-ui-core-components/src/main/resources/ui/dist/types/src/index.d.ts"
       ],
