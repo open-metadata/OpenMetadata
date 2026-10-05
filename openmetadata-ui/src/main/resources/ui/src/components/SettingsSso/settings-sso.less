@@ -57,11 +57,6 @@
   .generate-scim-token-btn {
     width: @size-3xl * 2 + @size-lg;
   }
-  .scim-token-card .ant-divider.scim-divider {
-    margin: 0;
-    width: 100%;
-    min-width: 100%;
-  }
 }
 
 // `scim-modal-delete` is forwarded to core Dialog's *panel*
@@ -164,58 +159,6 @@
   }
   .enable-self-signup-desc {
     color: @grey-600;
-  }
-
-  // Custom toggle styling to match design
-  .ant-switch {
-    width: @size-xl;
-    height: @size-mlg;
-    border-radius: @size-mlg;
-    background-color: @grey-300;
-    border: none;
-    position: relative;
-
-    .ant-switch-handle {
-      width: @size-md;
-      height: @size-md;
-      border-radius: 50%;
-      background-color: var(--tw-color-bg-primary);
-      box-shadow: @box-shadow-small-dark;
-      top: @size-xxs / 2;
-      left: @size-xxs / 2;
-      border: none;
-      position: absolute;
-      transition: all var(--om-duration-200) ease;
-
-      &::before {
-        display: none;
-      }
-    }
-
-    &.ant-switch-checked {
-      background-color: @primary-6;
-
-      .ant-switch-handle {
-        left: calc(100% - @size-md - @size-xxs / 2);
-        background-color: var(--tw-color-bg-primary);
-      }
-    }
-
-    &:hover:not(.ant-switch-disabled) {
-      background-color: @grey-400;
-
-      &.ant-switch-checked {
-        background-color: @primary-7;
-      }
-    }
-
-    &:focus {
-      box-shadow: @button-box-shadow-focus;
-    }
-
-    .ant-switch-inner {
-      display: none;
-    }
   }
 }
 .settings-sso {

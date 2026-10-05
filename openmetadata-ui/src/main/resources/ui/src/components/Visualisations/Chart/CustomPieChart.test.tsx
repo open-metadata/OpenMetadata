@@ -10,256 +10,153 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, waitFor } from '@testing-library/react';
-import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
+import {
+  chartColor,
+  LIGHT_CHART_PALETTE,
+  PieChart,
+  type PieChartProps,
+} from '@openmetadata/ui-core-components/charts';
+import { render, screen } from '@testing-library/react';
+import { CustomPieChartData } from './Chart.interface';
 import CustomPieChart from './CustomPieChart.component';
 
-jest.mock('../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({
-    emptyFill: '#123456',
-    inactive: '#234567',
-  }),
-}));
+const mockPieChart = PieChart as unknown as jest.Mock<null, [PieChartProps]>;
+const pieProps = () =>
+  mockPieChart.mock.calls[mockPieChart.mock.calls.length - 1]?.[0];
+
+const mockData: CustomPieChartData[] = [
+  { name: 'Success', value: 400, status: 'success' },
+  { name: 'Failed', value: 0, status: 'failed' },
+  { name: 'Aborted', value: 3 },
+];
 
 describe('CustomPieChart', () => {
-  const mockData = [
-    { name: 'Category A', value: 400, color: '#0088FE' },
-    { name: 'Category B', value: 300, color: '#00C49F' },
-    { name: 'Category C', value: 300, color: '#FFBB28' },
-    { name: 'Category D', value: 200, color: '#FF8042' },
-  ];
+  it('renders a donut with a track ring from the data', () => {
+    render(
+      <CustomPieChart ariaLabel="Test results" data={mockData} name="test" />
+    );
 
-  it('renders without crashing', () => {
+    expect(pieProps()).toEqual(
+      expect.objectContaining({
+        ariaLabel: 'Test results',
+        data: mockData,
+        track: true,
+        innerRadius: '60%',
+        outerRadius: '80%',
+        minAngle: 3,
+        height: 200,
+        legend: { show: false },
+      })
+    );
+  });
+
+  it('keeps the chart id Playwright uses', () => {
     const { container } = render(
-      <CustomPieChart data={mockData} name="test-chart" />
+      <CustomPieChart ariaLabel="Test results" data={mockData} name="test" />
     );
 
-    expect(container).toBeInTheDocument();
+    expect(container.querySelector('#test-pie-chart')).toBeInTheDocument();
   });
 
-  it('renders the center label when label is a string', () => {
-    const label = 'Center Label';
-    const { getByText } = render(
-      <CustomPieChart data={mockData} label={label} name="test-chart" />
+  it('passes a custom minAngle', () => {
+    render(
+      <CustomPieChart ariaLabel="x" data={mockData} minAngle={0} name="test" />
     );
-    const centerLabel = getByText(label);
 
-    expect(centerLabel).toBeInTheDocument();
-    expect(centerLabel).toHaveAttribute('fill', '#234567');
+    expect(pieProps()?.minAngle).toBe(0);
   });
 
-  it('renders the center label when label is a React element', () => {
-    const label = <text>Center Label</text>;
-    const { getByText } = render(
-      <CustomPieChart data={mockData} label={label} name="test-chart" />
-    );
-    const centerLabel = getByText('Center Label');
-
-    expect(centerLabel).toBeInTheDocument();
-  });
-
-  it('does not render the center label when label is undefined', () => {
-    const { container } = render(
-      <CustomPieChart data={mockData} name="test-chart" />
-    );
-    const centerLabel = container.querySelector('text');
-
-    expect(centerLabel).toBeNull();
-  });
-
-  it('applies the correct dimensions to the chart', () => {
-    const { container } = render(
-      <CustomPieChart data={mockData} name="test-chart" />
-    );
-    const pieChart = container.querySelector('.recharts-wrapper');
-
-    expect(pieChart).toBeInTheDocument();
-    expect(pieChart).toHaveStyle(`height: ${CHART_SMALL_SIZE}px`);
-    expect(pieChart).toHaveStyle(`width: ${CHART_SMALL_SIZE}px`);
-  });
-
-  it('applies the correct fill color to the cells', () => {
-    const { container } = render(
-      <CustomPieChart data={mockData} name="test-chart" />
-    );
-    const cells = container.querySelectorAll('path.recharts-pie-sector');
-    cells.forEach((cell, index) => {
-      expect(cell).toHaveAttribute('fill', mockData[index].color);
-    });
-  });
-
-  it('keeps a tiny non-zero segment visible by default', async () => {
-    const { container } = render(
+  it('renders a string label in the centre', () => {
+    render(
       <CustomPieChart
-        data={[
-          { name: 'Covered', value: 1, color: '#0088FE' },
-          { name: 'Not Covered', value: 115_508, color: '#FF8042' },
-        ]}
-        name="test-chart"
-        onSegmentClick={jest.fn()}
+        ariaLabel="x"
+        data={mockData}
+        label="Center"
+        name="test"
       />
     );
 
-    await waitFor(() => {
-      const segments = container.querySelectorAll('path.recharts-sector');
-
-      expect(segments).toHaveLength(3);
-
-      const coordinatePairs =
-        segments[1]
-          .getAttribute('d')
-          ?.match(/-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?/g) ?? [];
-      const [startX, startY] = coordinatePairs[0]?.split(',').map(Number) ?? [
-        0, 0,
-      ];
-      const [endX, endY] = coordinatePairs[3]?.split(',').map(Number) ?? [0, 0];
-
-      expect(Math.hypot(endX - startX, endY - startY)).toBeGreaterThan(1);
-    });
+    expect(screen.getByText('Center')).toBeInTheDocument();
   });
 
-  it('renders legends when showLegends is true', () => {
-    const { getByText, getAllByText, container } = render(
-      <CustomPieChart showLegends data={mockData} name="test-chart" />
-    );
-
-    // Check that all legend items are rendered
-    mockData.forEach((item) => {
-      expect(getByText(item.name)).toBeInTheDocument();
-
-      // Use getAllByText for values since some values might appear multiple times
-      const valueElements = getAllByText(item.value.toString());
-
-      expect(valueElements.length).toBeGreaterThan(0);
-    });
-
-    // Check that legend dots are rendered with correct colors
-    const legendDots = container.querySelectorAll('.legend-dot');
-
-    expect(legendDots).toHaveLength(mockData.length);
-
-    legendDots.forEach((dot, index) => {
-      expect(dot).toHaveStyle(`background-color: ${mockData[index].color}`);
-    });
-  });
-
-  it('does not render legends when showLegends is false or undefined', () => {
-    const { container: containerFalse } = render(
-      <CustomPieChart data={mockData} name="test-chart" showLegends={false} />
-    );
-
-    const { container: containerUndefined } = render(
-      <CustomPieChart data={mockData} name="test-chart" />
-    );
-
-    // Check that no legend dots are rendered
-    expect(containerFalse.querySelectorAll('.legend-dot')).toHaveLength(0);
-    expect(containerUndefined.querySelectorAll('.legend-dot')).toHaveLength(0);
-  });
-
-  it('renders tooltip component', () => {
-    const { container } = render(
-      <CustomPieChart data={mockData} name="test-chart" />
-    );
-
-    // Check that tooltip is rendered
-    const tooltip = container.querySelector('.recharts-tooltip-wrapper');
-
-    expect(tooltip).toBeInTheDocument();
-  });
-
-  it('applies correct chart ID', () => {
-    const chartName = 'test-chart';
-    const { container } = render(
-      <CustomPieChart data={mockData} name={chartName} />
-    );
-
-    const pieChart = container.querySelector(`#${chartName}-pie-chart`);
-
-    expect(pieChart).toBeInTheDocument();
-  });
-
-  it('renders multiple pie components for layered effect', () => {
-    const { container } = render(
-      <CustomPieChart data={mockData} name="test-chart" />
-    );
-
-    // Should have two pie components (background and data)
-    const pieComponents = container.querySelectorAll('.recharts-pie');
-
-    expect(pieComponents).toHaveLength(2);
-  });
-
-  it('handles empty data gracefully', () => {
-    const { container } = render(
-      <CustomPieChart data={[]} name="test-chart" />
-    );
-
-    expect(container.querySelector('.custom-pie-chart')).toBeInTheDocument();
-    expect(container.querySelector('.recharts-wrapper')).toBeInTheDocument();
-  });
-
-  it('calls onSegmentClick when a data segment is clicked', () => {
-    const onSegmentClick = jest.fn();
-    const { container } = render(
+  it('renders a React label in the centre', () => {
+    render(
       <CustomPieChart
+        ariaLabel="x"
         data={mockData}
-        name="test-chart"
+        label={<span>React label</span>}
+        name="test"
+      />
+    );
+
+    expect(screen.getByText('React label')).toBeInTheDocument();
+  });
+
+  it('renders no centre label when label is undefined', () => {
+    render(<CustomPieChart ariaLabel="x" data={mockData} name="test" />);
+
+    expect(pieProps()?.centerLabel).toBeUndefined();
+  });
+
+  it('maps a slice click to the segment and its index', () => {
+    const onSegmentClick = jest.fn();
+    render(
+      <CustomPieChart
+        ariaLabel="x"
+        data={mockData}
+        name="test"
         onSegmentClick={onSegmentClick}
       />
     );
+    pieProps()?.onSliceClick?.(mockData[2], {} as never);
 
-    const sectors = container.querySelectorAll('.recharts-pie-sector');
-    const firstDataSector = sectors[1];
-
-    fireEvent.click(firstDataSector as Element);
-
-    expect(onSegmentClick).toHaveBeenCalled();
-    expect(onSegmentClick).toHaveBeenCalledTimes(1);
-    expect(onSegmentClick).toHaveBeenCalledWith(mockData[0], 0);
+    expect(onSegmentClick).toHaveBeenCalledWith(mockData[2], 2);
   });
 
-  it('calls onSegmentClick with correct segment and index for each data segment', () => {
-    const onSegmentClick = jest.fn();
-    const { container } = render(
-      <CustomPieChart
-        data={mockData}
-        name="test-chart"
-        onSegmentClick={onSegmentClick}
-      />
+  it('passes no click handler when onSegmentClick is not set', () => {
+    render(<CustomPieChart ariaLabel="x" data={mockData} name="test" />);
+
+    expect(pieProps()?.onSliceClick).toBeUndefined();
+  });
+
+  it('renders legends with counts when showLegends is true', () => {
+    render(
+      <CustomPieChart showLegends ariaLabel="x" data={mockData} name="test" />
     );
 
-    const sectors = container.querySelectorAll('.recharts-pie-sector');
+    expect(screen.getByTestId('legend-count-success')).toHaveTextContent('400');
+    expect(screen.getByTestId('legend-count-failed')).toHaveTextContent('0');
+  });
 
-    mockData.forEach((segment, index) => {
-      onSegmentClick.mockClear();
-      fireEvent.click(sectors[index + 1] as Element);
+  it('colours legend dots like the slices: status colour, else palette by index', () => {
+    const { container } = render(
+      <CustomPieChart showLegends ariaLabel="x" data={mockData} name="test" />
+    );
+    const dots = container.querySelectorAll('.legend-dot');
 
-      expect(onSegmentClick).toHaveBeenCalledWith(segment, index);
+    expect(dots[0]).toHaveStyle({
+      backgroundColor: LIGHT_CHART_PALETTE.status.success,
+    });
+    expect(dots[1]).toHaveStyle({
+      backgroundColor: LIGHT_CHART_PALETTE.status.failed,
+    });
+    expect(dots[2]).toHaveStyle({
+      backgroundColor: chartColor(LIGHT_CHART_PALETTE, 2),
     });
   });
 
-  it('applies custom-pie-chart-clickable class when onSegmentClick is provided', () => {
-    const { container } = render(
-      <CustomPieChart
-        data={mockData}
-        name="test-chart"
-        onSegmentClick={jest.fn()}
-      />
-    );
+  it('renders no legends by default', () => {
+    render(<CustomPieChart ariaLabel="x" data={mockData} name="test" />);
 
-    const clickablePie = container.querySelector('.custom-pie-chart-clickable');
-
-    expect(clickablePie).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('legend-count-success')
+    ).not.toBeInTheDocument();
   });
 
-  it('does not apply custom-pie-chart-clickable class when onSegmentClick is not provided', () => {
-    const { container } = render(
-      <CustomPieChart data={mockData} name="test-chart" />
-    );
+  it('passes empty data through so core draws the empty track', () => {
+    render(<CustomPieChart ariaLabel="x" data={[]} label="0" name="test" />);
 
-    const clickablePie = container.querySelector('.custom-pie-chart-clickable');
-
-    expect(clickablePie).toBeNull();
+    expect(pieProps()?.data).toEqual([]);
+    expect(screen.getByText('0')).toBeInTheDocument();
   });
 });

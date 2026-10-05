@@ -21,7 +21,7 @@ import { Card, Space } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
-import { lazy, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
@@ -143,10 +143,14 @@ const ActivityFeedCardNew = ({
 
   const { entityFQN, entityType } = useMemo(() => {
     const aboutValue = feed?.about ?? activity?.about ?? '';
+    // `||`, not `??`: the EntityLink accessors return '' for a missing or
+    // unparseable link, and an activity event's `about` is optional. `??` would
+    // keep that '' and skip the entity reference the event does carry, leaving
+    // the card with no entity link, icon or popover.
     const entityFQN =
-      getEntityFQN(aboutValue) ?? activity?.entity?.fullyQualifiedName ?? '';
+      getEntityFQN(aboutValue) || activity?.entity?.fullyQualifiedName || '';
     const entityType =
-      getEntityType(aboutValue) ?? (activity?.entity?.type as EntityType) ?? '';
+      getEntityType(aboutValue) || (activity?.entity?.type as EntityType) || '';
 
     return { entityFQN, entityType };
   }, [feed?.about, activity?.about, activity?.entity]);
@@ -267,7 +271,7 @@ const ActivityFeedCardNew = ({
         </EntityPopOverCard>
       );
     }
-  }, [entityType, entityFQN, isUserOrTeam, entityRef, createdBy]);
+  }, [entityType, entityFQN, isUserOrTeam, entityRef, createdBy, showThread]);
 
   const feedHeaderText = useMemo(() => {
     if (isActivityEvent && activity) {
@@ -295,9 +299,9 @@ const ActivityFeedCardNew = ({
     </Tooltip>
   ) : null;
 
-  const closeFeedEditor = () => {
+  const closeFeedEditor = useCallback(() => {
     setShowFeedEditor(false);
-  };
+  }, []);
 
   // Rendered unconditionally and revealed with CSS: gating the mount on hover
   // put these permanently out of reach of the keyboard and screen readers.
@@ -525,6 +529,8 @@ const ActivityFeedCardNew = ({
       )}
       {showFeedEditor ? (
         <ActivityFeedEditorNew
+          // Revealed by a click on its placeholder, so it takes focus.
+          focused
           className={classNames(
             'm-t-md feed-editor activity-feed-editor-container-new',
             {

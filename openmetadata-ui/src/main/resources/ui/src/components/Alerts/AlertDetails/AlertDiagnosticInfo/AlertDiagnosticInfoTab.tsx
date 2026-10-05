@@ -12,8 +12,11 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Col, Row, Skeleton, Tooltip } from 'antd';
+import {
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
@@ -60,7 +63,9 @@ function AlertDiagnosticInfoTab() {
 
   return (
     <Card>
-      <Skeleton active loading={diagnosticIsLoading} paragraph={{ rows: 3 }}>
+      {diagnosticIsLoading ? (
+        <SkeletonParagraph rows={3} />
+      ) : (
         <Row className="w-full" gutter={[16, 16]}>
           {diagnosticItems.map((item) => (
             <Col key={item.key} span={12}>
@@ -85,7 +90,7 @@ function AlertDiagnosticInfoTab() {
             </Col>
           ))}
         </Row>
-      </Skeleton>
+      )}
     </Card>
   );
 }

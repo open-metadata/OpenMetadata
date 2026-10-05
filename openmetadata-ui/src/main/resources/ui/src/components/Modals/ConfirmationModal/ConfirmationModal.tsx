@@ -52,10 +52,14 @@ const ConfirmationModal = ({
     // `maskClosable={false}` -> `isDismissable={false}`: a confirmation is
     // often destructive, so a stray backdrop click must not answer it.
     <ModalOverlay
-      // Core's overlay is z-50; antd's Drawer and Modal roots are z-1000, and
-      // several callers open this from inside one (AnnouncementDrawer ->
-      // AnnouncementThreadBody -> here). Sit above antd's stack until those
-      // overlays move to core, or the prompt opens under their mask.
+      // Core's overlay is z-50; antd's Drawer and Modal roots are z-1000
+      // (@zindex-modal, and vite's `modifyVars` is empty so nothing lowers it).
+      // Callers still open this from inside one -- ActivityFeedDrawer and
+      // ActivityThreadPanel (antd Drawer) reach it through ActivityFeedActions,
+      // and TeamDetailsV1 (antd Modal) through AssetsTabs. Without this the
+      // prompt renders under their mask, so the click lands on the mask and
+      // dismisses the host instead of answering the prompt. Drop this once
+      // those overlays are on core.
       className="tw:z-[1001]"
       isDismissable={false}
       isOpen={visible}

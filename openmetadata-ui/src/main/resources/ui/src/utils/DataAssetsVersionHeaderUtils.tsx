@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Divider, Space } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
@@ -35,6 +35,7 @@ import { getEntityName } from './EntityNameUtils';
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './RichTextStringUtils';
+import { getSafeHttpUrl } from './StringUtils';
 
 export const VersionExtraInfoLink = ({
   value,
@@ -44,7 +45,10 @@ export const VersionExtraInfoLink = ({
   href?: string;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider
+      className="self-center m-x-sm tw:h-[0.9em]"
+      orientation="vertical"
+    />
     <div className="d-flex items-center text-xs">
       <Typography>
         <a href={href} style={{ fontSize: '12px' }}>
@@ -65,7 +69,10 @@ export const VersionExtraInfoLabel = ({
   dataTestId?: string;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider
+      className="self-center m-x-sm tw:h-[0.9em]"
+      orientation="vertical"
+    />
     <Space align="center" data-testid={dataTestId}>
       <Typography className="self-center text-xs whitespace-nowrap">
         {!isEmpty(label) && (
@@ -96,6 +103,7 @@ export const getExtraInfoSourceUrl = (
     true
   );
   const changedEntityName = getChangedEntityName(fieldDiff);
+  const safeSourceUrl = getSafeHttpUrl(pipelineDetails.sourceUrl);
   if (isEmpty(sourceUrl)) {
     return null;
   }
@@ -104,10 +112,13 @@ export const getExtraInfoSourceUrl = (
     <>
       {isUndefined(changedEntityName) ? (
         <>
-          <Divider className="self-center m-x-sm" type="vertical" />
+          <Divider
+            className="self-center m-x-sm tw:h-[0.9em]"
+            orientation="vertical"
+          />
           <div className="d-flex items-center text-xs">
             <Typography>
-              <a href={pipelineDetails.sourceUrl} style={{ fontSize: '12px' }}>
+              <a href={safeSourceUrl} style={{ fontSize: '12px' }}>
                 {getEntityName(pipelineDetails)}{' '}
               </a>
             </Typography>
@@ -119,10 +130,7 @@ export const getExtraInfoSourceUrl = (
           </div>
         </>
       ) : (
-        <VersionExtraInfoLink
-          href={pipelineDetails.sourceUrl}
-          value={sourceUrl}
-        />
+        <VersionExtraInfoLink href={safeSourceUrl} value={sourceUrl} />
       )}
     </>
   );
@@ -189,7 +197,8 @@ const getMetricVersionExtraInfo = (
   );
 
   const displayUnitOfMeasurement =
-    unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
+    metricDetails.unitOfMeasurement === UnitOfMeasurement.Other &&
+    customUnitOfMeasurement
       ? customUnitOfMeasurement
       : unitOfMeasurement;
 
