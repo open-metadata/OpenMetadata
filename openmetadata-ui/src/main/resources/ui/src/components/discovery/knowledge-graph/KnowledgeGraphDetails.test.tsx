@@ -39,8 +39,6 @@ const props: ComponentProps<typeof KnowledgeGraphDetails> = {
   },
   concepts: { terms: [], loading: false, error: null, partial: false },
   coverage: new Map(),
-  coverageMode: 'all',
-  onCoverageMode: jest.fn(),
   onDrawerChange: jest.fn(),
   onSelect: jest.fn(),
   onClose: jest.fn(),
