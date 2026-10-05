@@ -190,7 +190,9 @@ const TeamsPage = () => {
     const isLatestFullRefresh = () =>
       !isFullRefresh || fetchId === advancedFetchIdRef.current;
     loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
-    setIsFetchAllTeamAdvancedDetails(true);
+    // Whole-table count skeletons are for full refreshes only; an expand fetches one subtree and
+    // must not blank every row's columns.
+    setIsFetchAllTeamAdvancedDetails(isFullRefresh);
 
     try {
       const { data } = await getTeams({
