@@ -99,6 +99,14 @@ const paddedYAxisMin = (extent: AxisExtent) =>
 const paddedYAxisMax = (extent: AxisExtent) =>
   extent.max + yAxisPadding(extent);
 
+// ECharts does not draw a reference line outside the axis range, and a failing
+// run can sit far from its expectation (110 rows against 10,000), so the
+// extent takes the expectation in.
+const includeInExtent = (extent: AxisExtent, value?: number): AxisExtent =>
+  isUndefined(value)
+    ? extent
+    : { min: Math.min(extent.min, value), max: Math.max(extent.max, value) };
+
 interface ActiveTooltip {
   anchor: TooltipPosition;
   payload: Record<string, unknown>;
@@ -425,11 +433,13 @@ function TestSummaryGraph({
 
   const yAxis = useMemo<ChartYAxisProps>(
     () => ({
-      min: paddedYAxisMin,
-      max: paddedYAxisMax,
+      min: (extent: AxisExtent) =>
+        paddedYAxisMin(includeInExtent(extent, thresholdReference?.y)),
+      max: (extent: AxisExtent) =>
+        paddedYAxisMax(includeInExtent(extent, thresholdReference?.y)),
       formatter: (value) => formatYAxis(Number(value)),
     }),
-    [formatYAxis]
+    [formatYAxis, thresholdReference]
   );
 
   // With one series there is nothing to tell apart.

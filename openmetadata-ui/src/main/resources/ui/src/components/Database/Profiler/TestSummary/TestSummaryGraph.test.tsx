@@ -25,6 +25,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { omit } from 'lodash';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getTaskById } from '../../../../rest/tasksAPI';
@@ -87,6 +88,13 @@ const singleSeriesResults = [
     testResultValue: [{ name: 'value', value: '9990' }],
   },
 ] as TestSummaryGraphProps['testCaseResults'];
+// No parameters and no learned bounds, so only the runs set the y axis.
+const noExpectationProps: Partial<TestSummaryGraphProps> = {
+  testCaseParameterValue: [],
+  testCaseResults: mockProps.testCaseResults.map((result) =>
+    omit(result, ['maxBound', 'minBound'])
+  ) as TestSummaryGraphProps['testCaseResults'],
+};
 const PLOT_RECT = { height: 400, width: 800 };
 let mockTooltipRect = { height: 160, width: 240 };
 
@@ -307,7 +315,7 @@ describe('TestSummaryGraph', () => {
   });
 
   it('should pad the y axis by a share of the data span', () => {
-    render(<TestSummaryGraph {...mockProps} />);
+    render(<TestSummaryGraph {...mockProps} {...noExpectationProps} />);
 
     const { min, max } = getYAxisBounds();
 
@@ -315,8 +323,30 @@ describe('TestSummaryGraph', () => {
     expect(max({ min: 100, max: 200 })).toBe(204);
   });
 
+  // ECharts drops a reference line outside the axis range, and a failing run
+  // can sit far from its expectation: 110 rows against an expected 10,000.
+  it.each<[string, string, AxisExtent]>([
+    ['above', '10000', { min: 110, max: 120 }],
+    ['below', '100', { min: 500, max: 600 }],
+  ])(
+    'should stretch the y axis to an expectation %s every run',
+    (_, expected, extent) => {
+      render(
+        <TestSummaryGraph
+          {...mockProps}
+          testCaseParameterValue={[{ name: 'value', value: expected }]}
+        />
+      );
+
+      const { min, max } = getYAxisBounds();
+
+      expect(min(extent)).toBeLessThan(Number(expected));
+      expect(max(extent)).toBeGreaterThan(Number(expected));
+    }
+  );
+
   it('should pad a flat series so it is not drawn on the plot edge', () => {
-    render(<TestSummaryGraph {...mockProps} />);
+    render(<TestSummaryGraph {...mockProps} {...noExpectationProps} />);
 
     const { min, max } = getYAxisBounds();
 
