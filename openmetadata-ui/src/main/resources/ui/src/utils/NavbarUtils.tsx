@@ -16,13 +16,23 @@ import { Col, Row, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { HELP_ITEMS_ENUM, SupportItem } from '../constants/Navbar.constants';
+import { formatDate } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
 import navbarUtilClassBase from './NavbarUtilClassBase';
+import {
+  getSimplifiedVersion,
+  getVersionReleaseTimestamp,
+} from './Version/Version';
 
 const getHelpDropdownLabelContentRenderer = (
   item: SupportItem,
   version?: string
 ) => {
+  const isVersion = item.key === HELP_ITEMS_ENUM.VERSION;
+  const releaseTimestamp = isVersion
+    ? getVersionReleaseTimestamp(version)
+    : undefined;
+
   return (
     <Row className="cursor-pointer" onClick={item.handleSupportItemClick}>
       <Col span={4}>
@@ -33,10 +43,22 @@ const getHelpDropdownLabelContentRenderer = (
         />
       </Col>
       <Col className="flex items-center" span={20}>
-        <Typography.Text className="text-base-color">
-          {t(item.label)}{' '}
-          {item.key === HELP_ITEMS_ENUM.VERSION && (version ?? '?')}
-        </Typography.Text>
+        {isVersion ? (
+          <div className="flex flex-col">
+            <Typography.Text className="text-base-color">
+              {t('label.version')} {getSimplifiedVersion(version)}
+            </Typography.Text>
+            {releaseTimestamp && (
+              <Typography.Text className="text-grey-muted text-xs">
+                {t('label.released')} {formatDate(releaseTimestamp)}
+              </Typography.Text>
+            )}
+          </div>
+        ) : (
+          <Typography.Text className="text-base-color">
+            {t(item.label)}
+          </Typography.Text>
+        )}
 
         {item.isExternal && (
           <Icon
