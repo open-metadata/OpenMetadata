@@ -44,6 +44,11 @@ def prepare_partitioned_schemas(cockroach_container):
     - public.sec_index_events : primary partition on `region` + secondary index
                                  partitioned on `category` (validates the
                                  fix's `index_type = 'primary'` filter)
+    - public.sub_events   : LIST partition on `region`, with `us` sub-partitioned
+                             on `city` (validates the `parent_name IS NULL` filter)
+    - public.odd_events   : LIST partition on `("My Col", "a,b")` — identifiers
+                             containing a space and a comma, which CockroachDB
+                             emits unquoted as "My Col, a,b"
 
     This is the configuration that exposed the bug where partitions from one
     schema's table were attributed to another schema's same-named table, and
@@ -125,6 +130,36 @@ def prepare_partitioned_schemas(cockroach_container):
                 PARTITION cat_b VALUES IN ('b')
             );
         """,
+        # public.sub_events — top-level LIST on `region`, with the `us`
+        # partition sub-partitioned on `city`. Sub-partition rows carry
+        # `column_names = "city"`; only the top-level `region` must be published.
+        """
+        CREATE TABLE public.sub_events (
+            region TEXT NOT NULL,
+            city TEXT NOT NULL,
+            id INT8 NOT NULL DEFAULT unique_rowid(),
+            PRIMARY KEY (region, city, id)
+        ) PARTITION BY LIST (region) (
+            PARTITION us VALUES IN ('us') PARTITION BY LIST (city) (
+                PARTITION us_nyc VALUES IN ('nyc'),
+                PARTITION us_rest VALUES IN (DEFAULT)
+            ),
+            PARTITION eu VALUES IN ('eu')
+        );
+        """,
+        # public.odd_events — partition key columns whose names contain a space
+        # and a comma. `column_names` is "My Col, a,b"; splitting on a bare ","
+        # would tear `a,b` apart, splitting on ", " keeps it whole.
+        """
+        CREATE TABLE public.odd_events (
+            "My Col" TEXT NOT NULL,
+            "a,b" TEXT NOT NULL,
+            id INT8 NOT NULL DEFAULT unique_rowid(),
+            PRIMARY KEY ("My Col", "a,b", id)
+        ) PARTITION BY LIST ("My Col", "a,b") (
+            PARTITION p1 VALUES IN (('x', 'y'))
+        );
+        """,
     ]
     with engine.connect() as conn:
         for stmt in sql:
@@ -158,6 +193,11 @@ def prepare_partitioned_schemas(cockroach_container):
         # columns ("region") must be published; the secondary index's partition
         # column ("category") must NOT leak in.
         ("public", "sec_index_events", TableType.Partitioned, ["region"]),
+        # Sub-partitioned table: only the top-level key ("region") is published;
+        # the sub-partition key ("city") must NOT leak in.
+        ("public", "sub_events", TableType.Partitioned, ["region"]),
+        # Identifiers containing a space and a comma survive the split intact.
+        ("public", "odd_events", TableType.Partitioned, ["My Col", "a,b"]),
     ],
     ids=lambda x: x if isinstance(x, str) else "",
 )

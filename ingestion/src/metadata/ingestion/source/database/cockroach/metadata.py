@@ -79,6 +79,10 @@ PGDialect.ischema_names = ischema_names
 # See: https://www.cockroachlabs.com/docs/stable/hash-sharded-indexes
 HIDDEN_SHARD_COLUMN_PATTERN = re.compile(r"^crdb_internal_.*_shard_\d+$")
 
+# `crdb_internal.partitions.column_names` joins the partition key columns with
+# this separator, e.g. "region, country".
+PARTITION_COLUMN_SEPARATOR = ", "
+
 
 class CockroachSource(CommonDbSourceService, MultiDBSource):
     """
@@ -230,17 +234,24 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
             # therefore a representative sample, mirroring how StarRocks/Doris
             # take `result[0]`/`.first()` before splitting and deduplicating.
             row = result[0]
-            column_names = [name.strip() for name in str(row[1]).split(",") if name.strip()]
+            # Split on the ", " separator CockroachDB joins with, not a bare ",":
+            # identifiers are emitted unquoted, so a column named `a,b` would be
+            # torn apart by a bare-comma split.
+            column_names = [name.strip() for name in str(row[1]).split(PARTITION_COLUMN_SEPARATOR) if name.strip()]
             # Validate the split tokens against the table's real columns so we
-            # never publish an invalid `columnName`. This also guards the
-            # pathological case of a quoted identifier containing a literal
-            # comma, which the naive split would mis-tokenize: such a column
-            # simply drops out of the partition list rather than producing an
-            # invalid name that fails ingestion.
+            # never publish an invalid `columnName` the server would reject.
             table_column_names = {
                 col["name"] for col in inspector.get_columns(table_name=table_name, schema=schema_name)
             }
             partition_columns = [name for name in column_names if name in table_column_names]
+            dropped_columns = [name for name in column_names if name not in table_column_names]
+            if dropped_columns:
+                logger.debug(
+                    "Dropping partition key tokens %s of %s.%s: not columns of the table",
+                    dropped_columns,
+                    schema_name,
+                    table_name,
+                )
             if partition_columns:
                 partition_details = TablePartition(
                     columns=[

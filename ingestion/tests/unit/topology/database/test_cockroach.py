@@ -620,8 +620,8 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         self.assertEqual(len(column_names), len(set(column_names)))
 
     def test_partition_details_trims_whitespace_around_split_tokens(self):
-        """`column_names` joins names with ", " (comma + space); splitting on
-        "," must trim surrounding whitespace so tokens match real columns."""
+        """Split tokens are trimmed so stray whitespace around the ", "
+        separator still yields names that match real columns."""
         rows = [("p", " region , kind ", "list", "t", "db", "public")]
         engine, _ = _make_partition_engine(rows)
         self.cockroach_source.engine = engine
@@ -632,10 +632,37 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         self.assertEqual([col.columnName for col in partition.columns], ["region", "kind"])
 
+    def test_partition_details_keeps_column_name_containing_comma(self):
+        """CockroachDB emits identifiers unquoted, so `PARTITION BY LIST
+        ("My Col", "a,b", "Upper")` yields `column_names = "My Col, a,b, Upper"`.
+        Splitting on the ", " separator must keep `a,b` whole; a bare ","
+        split would tear it into `a` and `b` and silently drop it."""
+        rows = [("p1", "My Col, a,b, Upper", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        _, partition = self.cockroach_source.get_table_partition_details(
+            "t", "public", _make_inspector(["My Col", "a,b", "Upper", "id"])
+        )
+
+        self.assertEqual([col.columnName for col in partition.columns], ["My Col", "a,b", "Upper"])
+
+    def test_partition_details_logs_dropped_tokens(self):
+        """A token that is not a table column is dropped with a debug log, so a
+        partition column that disappears from the published entity is traceable."""
+        rows = [("p", "region, ghost_col", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        with patch("metadata.ingestion.source.database.cockroach.metadata.logger") as logger:
+            self.cockroach_source.get_table_partition_details("t", "public", _make_inspector(["region"]))
+
+        logger.debug.assert_called_once()
+        self.assertIn(["ghost_col"], logger.debug.call_args.args)
+
     def test_partition_details_drops_tokens_not_in_table_columns(self):
         """Split tokens that are not real table columns are dropped, guarding
-        against publishing an invalid `columnName` (e.g. a pathological quoted
-        identifier containing a comma that the naive split mis-tokenizes)."""
+        against publishing an invalid `columnName` the server would reject."""
         rows = [("p", "region, ghost_col", "list", "t", "db", "public")]
         engine, _ = _make_partition_engine(rows)
         self.cockroach_source.engine = engine
