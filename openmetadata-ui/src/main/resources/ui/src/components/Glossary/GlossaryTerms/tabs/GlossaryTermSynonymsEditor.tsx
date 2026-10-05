@@ -58,6 +58,10 @@ const GlossaryTermSynonymsEditor = ({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // Enter also confirms an IME (ja/zh/ko) candidate; Safari reports that keydown as keyCode 229.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) {
+      return;
+    }
     if (event.key === 'Enter' || event.key === ',') {
       event.preventDefault();
       commitInput();
@@ -85,12 +89,15 @@ const GlossaryTermSynonymsEditor = ({
               color={synonym === duplicateSynonym ? 'error' : 'gray'}
               key={synonym}
               size="sm"
+              tooltip={synonym}
               type="color"
               onButtonClick={() =>
                 onChange(synonyms.filter((item) => item !== synonym))
               }>
               {/* Narrow enough that two long synonyms fit per row. */}
-              <span className="tw:max-w-24 tw:truncate">{synonym}</span>
+              <span className="tw:block tw:max-w-24 tw:truncate">
+                {synonym}
+              </span>
             </BadgeWithButton>
           ))}
           <input

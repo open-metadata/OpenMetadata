@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -129,6 +129,28 @@ describe('GlossaryTermSynonyms', () => {
 
       expect(mockContext.onUpdate).toHaveBeenCalledWith(
         expect.objectContaining({ synonyms: ['accessory', 'turnover'] })
+      );
+    });
+
+    it('ignores Enter while an IME composition is active', async () => {
+      const input = await startEditing();
+
+      fireEvent.change(input, { target: { value: 'とうきょ' } });
+      fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+
+      expect(input).toHaveValue('とうきょ');
+      expect(screen.getAllByTestId(/^remove-synonym-/)).toHaveLength(1);
+    });
+
+    it('shows the full synonym in a tooltip on the editor chip', async () => {
+      await startEditing();
+      fireEvent.mouseMove(document);
+
+      await user.hover(screen.getByText('accessory'));
+      jest.advanceTimersByTime(500);
+
+      await waitFor(() =>
+        expect(screen.getByRole('tooltip')).toHaveTextContent('accessory')
       );
     });
 
