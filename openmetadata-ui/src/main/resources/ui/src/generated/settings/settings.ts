@@ -2060,6 +2060,12 @@ export interface GlobalSettings {
      */
     enableAccessControl?: boolean;
     /**
+     * Index table columns as standalone search documents in the column search index. Disabling
+     * it stops column indexing and deletes the column search index; enabling it creates the
+     * index again, and a reindex of tables fills it.
+     */
+    enableColumnIndexing?: boolean;
+    /**
      * Optional list of numeric field-based boosts applied globally.
      */
     fieldValueBoosts?: FieldValueBoost[];

@@ -694,6 +694,45 @@ describe('FilterSelect', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 
+  it('pressing the trigger of an open filter closes it', () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      'data-testid': 'filter-trigger',
+      triggerVariant: 'button',
+      onOpenChange,
+    });
+    const trigger = screen.getByTestId('filter-trigger');
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    // A real mouse click: detail 1, so React Aria does not treat the click as
+    // a virtual (screen reader) press that reopens the menu.
+    fireEvent.pointerDown(trigger, { pointerType: 'mouse' });
+    fireEvent.click(trigger, { detail: 1 });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('pressing a chip remove button keeps an open filter open', () => {
+    renderFilter({
+      isOpen: undefined,
+      'data-testid': 'chips-trigger',
+      selectedValues: ['snowflake', 'bigquery'],
+      triggerDisplay: 'chips',
+      triggerVariant: 'input',
+    });
+    fireEvent.click(screen.getByTestId('chips-trigger'));
+    const [removeSnowflake] = screen.getAllByRole('button', {
+      name: 'Remove filter',
+    });
+    fireEvent.pointerDown(removeSnowflake, { pointerType: 'mouse' });
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
   it('consumes Escape so a host drawer does not also dismiss', () => {
     const hostKeyDown = vi.fn();
     const onOpenChange = vi.fn();

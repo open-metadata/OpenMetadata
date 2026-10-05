@@ -64,7 +64,6 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put("memoryType", memory.getMemoryType() != null ? memory.getMemoryType().value() : null);
     doc.put(
         "memoryScope", memory.getMemoryScope() != null ? memory.getMemoryScope().value() : null);
-    doc.put("status", memory.getStatus() != null ? memory.getStatus().value() : null);
     doc.put("pinned", Boolean.TRUE.equals(memory.getPinned()));
     doc.put("sourceType", memory.getSourceType() != null ? memory.getSourceType().value() : null);
     doc.put(

@@ -51,8 +51,7 @@
             "Deprecated",
             "Rejected",
             "Unprocessed"
-          ],
-          "default": "Unprocessed"
+          ]
         }
       },
       "required": [
