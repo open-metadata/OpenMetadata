@@ -471,6 +471,10 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
   const [processingType, setProcessingType] = useState<ProcessingType>();
   const [activeJob, setActiveJob] = useState<ActiveJob>();
   const activeJobRef = useRef<CSVImportJobType>();
+  // A fast CSV can emit COMPLETED on the socket before `runImport` resolves and
+  // registers activeJobRef. Buffer that early response (single slot — only one
+  // import runs at a time) so the start handler can drain it once the id is known.
+  const pendingResponseRef = useRef<CSVImportAsyncWebsocketResponse>();
 
   const entity = importType === 'users' ? t('label.user') : t('label.team');
 
@@ -517,72 +521,8 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
     [t]
   );
 
-  const handleStartPreview = useCallback(async () => {
-    if (!selectedFile) {
-      return;
-    }
-    setProcessingType('preview');
-    setActiveJob({});
-    try {
-      const response = await runImport(selectedFile.content, true);
-      activeJobRef.current = {
-        ...response,
-        type: 'initialLoad',
-        initialResult: selectedFile.content,
-      };
-      setActiveJob({ jobId: response.jobId });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setProcessingType(undefined);
-    }
-  }, [runImport, selectedFile]);
-
-  const handleImport = useCallback(async () => {
-    if (!selectedFile) {
-      return;
-    }
-    setProcessingType('import');
-    setActiveStep(VALIDATION_STEP.UPDATE);
-    setActiveJob({});
-    try {
-      const response = await runImport(selectedFile.content, false);
-      activeJobRef.current = { ...response, type: 'onValidate' };
-      setActiveJob({ jobId: response.jobId });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setProcessingType(undefined);
-      setActiveStep(VALIDATION_STEP.EDIT_VALIDATE);
-    }
-  }, [runImport, selectedFile]);
-
-  const handleBack = useCallback(() => {
-    setCsvImportResult(undefined);
-    setActiveStep(VALIDATION_STEP.UPLOAD);
-  }, []);
-
-  const handleRetryUpload = useCallback(() => {
-    setCsvImportResult(undefined);
-    setSelectedFile(undefined);
-    setProcessingType(undefined);
-    setActiveJob(undefined);
-    setActiveStep(VALIDATION_STEP.UPLOAD);
-  }, []);
-
-  useEffect(() => {
-    if (!socket) {
-      return;
-    }
-    // Keep a stable reference so cleanup removes only THIS listener — a bare
-    // socket.off(channel) would also drop the app-wide CsvJobsTray subscription.
-    const handleCsvImportChannel = (payload: string) => {
-      if (!payload) {
-        return;
-      }
-      const response = JSON.parse(payload) as CSVImportAsyncWebsocketResponse;
-      const job = activeJobRef.current;
-      if (response.jobId !== job?.jobId) {
-        return;
-      }
+  const processImportResponse = useCallback(
+    (response: CSVImportAsyncWebsocketResponse, job: CSVImportJobType) => {
       setActiveJob({ jobId: response.jobId, status: response.status });
       // A FAILED job must clear the spinner and drop back to an actionable step,
       // otherwise the form hangs on the ProcessingBanner with no footer/retry.
@@ -612,6 +552,97 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
         setActiveStep(VALIDATION_STEP.EDIT_VALIDATE);
       }
       activeJobRef.current = undefined;
+    },
+    [t]
+  );
+
+  // Register the job id, then drain any socket response that arrived before it
+  // was known (the fast-CSV race).
+  const registerJob = useCallback(
+    (job: CSVImportJobType) => {
+      activeJobRef.current = job;
+      setActiveJob({ jobId: job.jobId });
+      const buffered = pendingResponseRef.current;
+      if (buffered && buffered.jobId === job.jobId) {
+        pendingResponseRef.current = undefined;
+        processImportResponse(buffered, job);
+      }
+    },
+    [processImportResponse]
+  );
+
+  const handleStartPreview = useCallback(async () => {
+    if (!selectedFile) {
+      return;
+    }
+    setProcessingType('preview');
+    setActiveJob({});
+    try {
+      const response = await runImport(selectedFile.content, true);
+      registerJob({
+        ...response,
+        type: 'initialLoad',
+        initialResult: selectedFile.content,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setProcessingType(undefined);
+    }
+  }, [runImport, selectedFile, registerJob]);
+
+  const handleImport = useCallback(async () => {
+    if (!selectedFile) {
+      return;
+    }
+    setProcessingType('import');
+    setActiveStep(VALIDATION_STEP.UPDATE);
+    setActiveJob({});
+    try {
+      const response = await runImport(selectedFile.content, false);
+      registerJob({ ...response, type: 'onValidate' });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setProcessingType(undefined);
+      setActiveStep(VALIDATION_STEP.EDIT_VALIDATE);
+    }
+  }, [runImport, selectedFile, registerJob]);
+
+  const handleBack = useCallback(() => {
+    setCsvImportResult(undefined);
+    setActiveStep(VALIDATION_STEP.UPLOAD);
+  }, []);
+
+  const handleRetryUpload = useCallback(() => {
+    setCsvImportResult(undefined);
+    setSelectedFile(undefined);
+    setProcessingType(undefined);
+    setActiveJob(undefined);
+    setActiveStep(VALIDATION_STEP.UPLOAD);
+  }, []);
+
+  useEffect(() => {
+    if (!socket) {
+      return;
+    }
+    // Keep a stable reference so cleanup removes only THIS listener — a bare
+    // socket.off(channel) would also drop the app-wide CsvJobsTray subscription.
+    const handleCsvImportChannel = (payload: string) => {
+      if (!payload) {
+        return;
+      }
+      const response = JSON.parse(payload) as CSVImportAsyncWebsocketResponse;
+      const job = activeJobRef.current;
+      if (!job) {
+        // The id isn't registered yet (fast CSV finished before runImport
+        // resolved); buffer so registerJob can drain it.
+        pendingResponseRef.current = response;
+
+        return;
+      }
+      if (response.jobId !== job.jobId) {
+        return;
+      }
+      processImportResponse(response, job);
     };
 
     socket.on(SOCKET_EVENTS.CSV_IMPORT_CHANNEL, handleCsvImportChannel);
@@ -619,7 +650,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
     return () => {
       socket.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL, handleCsvImportChannel);
     };
-  }, [socket, t]);
+  }, [socket, processImportResponse]);
 
   const previewProgress = useMemo(() => {
     if (!activeJob?.jobId) {
