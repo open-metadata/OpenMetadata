@@ -299,27 +299,25 @@ test.describe('AI Profile Users', () => {
     await patch;
   });
 
-  test('Non-admin can edit own name but not persona', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    const nonAdmin = new UserClass();
-    await nonAdmin.create(apiContext);
-    createdUsers.push(nonAdmin);
-    await afterAction();
-
-    const page = await browser.newPage();
-    await enableAiAppMode(page);
-    await nonAdmin.signIn(page);
-    await redirectToHomePage(page);
+  test('Non-admin can edit own name but not persona', async ({
+    dataConsumerPage,
+  }) => {
+    await enableAiAppMode(dataConsumerPage);
+    await redirectToHomePage(dataConsumerPage);
 
     // Non-admins cannot reach Members; open their own profile directly.
-    await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
-    await page.getByTestId('ask-ai-user-menu-trigger').click();
-    await page.getByTestId('ai-user-menu-profile').click();
-    await expect(page.getByTestId('profile-details-panel')).toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('ask-ai-user-menu-trigger')
+    ).toBeVisible();
+    await dataConsumerPage.getByTestId('ask-ai-user-menu-trigger').click();
+    await dataConsumerPage.getByTestId('ai-user-menu-profile').click();
+    await expect(
+      dataConsumerPage.getByTestId('profile-details-panel')
+    ).toBeVisible();
 
-    await expect(page.getByTestId('preferred-name-edit')).toBeVisible();
-    await expect(page.getByTestId('persona-edit')).toBeHidden();
-
-    await page.close();
+    await expect(
+      dataConsumerPage.getByTestId('preferred-name-edit')
+    ).toBeVisible();
+    await expect(dataConsumerPage.getByTestId('persona-edit')).toBeHidden();
   });
 });

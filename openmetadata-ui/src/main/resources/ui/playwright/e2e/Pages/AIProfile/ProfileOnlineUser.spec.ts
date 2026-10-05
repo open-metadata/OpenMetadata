@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
   navigateToMembersPanel,
@@ -75,30 +74,20 @@ test.describe('AI Profile Online Users', () => {
   });
 
   test('Non-admin users cannot access the Members surface', async ({
-    browser,
+    dataConsumerPage,
   }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    const nonAdmin = new UserClass();
-    await nonAdmin.create(apiContext);
-    await afterAction();
+    await enableAiAppMode(dataConsumerPage);
+    await redirectToHomePage(dataConsumerPage);
 
-    const page = await browser.newPage();
-    await enableAiAppMode(page);
-    await nonAdmin.signIn(page);
-    await redirectToHomePage(page);
+    await expect(
+      dataConsumerPage.getByTestId('ask-ai-user-menu-trigger')
+    ).toBeVisible();
+    await dataConsumerPage.getByTestId('ask-ai-user-menu-trigger').click();
+    await dataConsumerPage.getByTestId('ai-user-menu-profile').click();
+    await dataConsumerPage.getByTestId('ai-profile-page').waitFor();
 
-    await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
-    await page.getByTestId('ask-ai-user-menu-trigger').click();
-    await page.getByTestId('ai-user-menu-profile').click();
-    await page.getByTestId('ai-profile-page').waitFor();
-
-    await expect(page.getByTestId('profile-nav-members')).toBeHidden();
-
-    await page.close();
-
-    const { apiContext: cleanupCtx, afterAction: cleanupAfter } =
-      await performAdminLogin(browser);
-    await nonAdmin.delete(cleanupCtx).catch(() => undefined);
-    await cleanupAfter();
+    await expect(
+      dataConsumerPage.getByTestId('profile-nav-members')
+    ).toBeHidden();
   });
 });
