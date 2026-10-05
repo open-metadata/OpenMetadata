@@ -2425,11 +2425,7 @@ public class TableRepository extends EntityRepository<Table> {
         LineageRepository lineageRepository = Entity.getLineageRepository();
         if (lineageRepository != null) {
           lineageRepository.updateColumnLineage(
-              updated.getId(),
-              originalUpdatedColumnFqnMap,
-              deletedColumns,
-              updated.getSchemaDefinition(),
-              updated.getUpdatedBy());
+              updated.getId(), originalUpdatedColumnFqnMap, deletedColumns, updated.getUpdatedBy());
         }
         List<String> deletedColumnFqns = List.copyOf(deletedColumns);
         HashMap<String, String> renamedColumnFqns = new HashMap<>(originalUpdatedColumnFqnMap);
