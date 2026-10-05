@@ -118,6 +118,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
         />
         <Popover
           containerClassName="tw:flex tw:gap-2 tw:p-1"
+          data-testid="feed-reactions-popover"
           placement="top start">
           {reactionList}
         </Popover>
