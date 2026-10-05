@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -27,8 +28,10 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 
 /**
@@ -46,6 +49,7 @@ public class BulkOverrideMetadataIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+  private static final String CERTIFICATION_GOLD = "Certification.Gold";
 
   @Test
   void test_botCannotOverwriteDescription_withoutOverride(TestNamespace ns) throws Exception {
@@ -79,6 +83,23 @@ public class BulkOverrideMetadataIT {
         "connector description",
         getTable(fqn).getDescription(),
         "overrideMetadata=true lets a bot PUT overwrite the description");
+  }
+
+  @Test
+  void test_overrideDoesNotBlankDescription(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_desc_blank", "curated description", "hash-v1");
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    CreateTable changed = table(ns, schemaFqn, "ovr_desc_blank", null, "hash-v2");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    assertEquals(
+        "curated description",
+        getTable(fqn).getDescription(),
+        "overrideMetadata=true must not blank a description when none is supplied");
   }
 
   @Test
@@ -118,6 +139,63 @@ public class BulkOverrideMetadataIT {
         "Curated Display Name",
         getTable(fqn).getDisplayName(),
         "a bot PUT must not overwrite a non-empty displayName without overrideMetadata");
+  }
+
+  @Test
+  void test_botOverwritesDisplayName_withOverride(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_dn_on", "desc", "hash-v1");
+    original.setDisplayName("Curated Display Name");
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    CreateTable changed = table(ns, schemaFqn, "ovr_dn_on", "desc", "hash-v2");
+    changed.setDisplayName("Connector Display Name");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    assertEquals(
+        "Connector Display Name",
+        getTable(fqn).getDisplayName(),
+        "overrideMetadata=true lets a bot PUT overwrite the displayName");
+  }
+
+  @Test
+  void test_overrideDoesNotBlankDisplayName(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_dn_blank", "desc", "hash-v1");
+    original.setDisplayName("Curated Display Name");
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    CreateTable changed = table(ns, schemaFqn, "ovr_dn_blank", "desc", "hash-v2");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    assertEquals(
+        "Curated Display Name",
+        getTable(fqn).getDisplayName(),
+        "overrideMetadata=true must not blank a displayName when none is supplied");
+  }
+
+  @Test
+  void test_overrideDoesNotRemoveCertificationWhenNoneSupplied(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_cert_blank", "desc", "hash-v1");
+    original.setCertification(goldCertification());
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    assertNotNull(getTable(fqn).getCertification(), "test setup failed to certify the table");
+
+    CreateTable changed = table(ns, schemaFqn, "ovr_cert_blank", "desc", "hash-v2");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    AssetCertification certification = getTable(fqn).getCertification();
+    assertNotNull(
+        certification, "overrideMetadata=true must not remove a certification when none is sent");
+    assertEquals(CERTIFICATION_GOLD, certification.getTagLabel().getTagFQN());
   }
 
   @Test
@@ -250,6 +328,76 @@ public class BulkOverrideMetadataIT {
   // HELPERS
   // ===================================================================
 
+  private AssetCertification goldCertification() {
+    long now = System.currentTimeMillis();
+    return new AssetCertification()
+        .withTagLabel(
+            new TagLabel()
+                .withTagFQN(CERTIFICATION_GOLD)
+                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                .withLabelType(TagLabel.LabelType.MANUAL))
+        .withAppliedDate(now)
+        .withExpiryDate(now + 30L * 24 * 60 * 60 * 1000);
+  }
+
+  @Test
+  void test_botPutWithoutConstraintsKeepsThem_withoutOverride(TestNamespace ns) throws Exception {
+    assertConstraintsSurviveBotPutWithoutThem(ns, "ovr_cons_off", false);
+  }
+
+  @Test
+  void test_botPutWithoutConstraintsKeepsThem_withOverride(TestNamespace ns) throws Exception {
+    assertConstraintsSurviveBotPutWithoutThem(ns, "ovr_cons_on", true);
+  }
+
+  @Test
+  void test_botPutDropsConstraintOnRemovedColumn(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_cons_col", "desc", "hash-v1");
+    original.setColumns(
+        List.of(
+            new Column().withName("c1").withDataType(ColumnDataType.STRING),
+            new Column().withName("c2").withDataType(ColumnDataType.STRING)));
+    original.setTableConstraints(List.of(primaryKey("c2")));
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    CreateTable changed = table(ns, schemaFqn, "ovr_cons_col", "desc", "hash-v2");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    List<TableConstraint> constraints = getTable(fqn).getTableConstraints();
+    assertTrue(
+        constraints == null || constraints.isEmpty(),
+        "a constraint on a column the source dropped must still be removed: " + constraints);
+  }
+
+  private void assertConstraintsSurviveBotPutWithoutThem(
+      TestNamespace ns, String baseName, boolean overrideMetadata) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, baseName, "desc", "hash-v1");
+    original.setTableConstraints(List.of(primaryKey("c1")));
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    CreateTable changed = table(ns, schemaFqn, baseName, "desc", "hash-v2");
+    BulkApi.upsert("tables", List.of(changed), overrideMetadata, botToken);
+
+    List<TableConstraint> constraints = getTable(fqn).getTableConstraints();
+    assertNotNull(constraints, "a bot PUT without constraints must not remove the stored ones");
+    assertEquals(1, constraints.size());
+    assertEquals(
+        TableConstraint.ConstraintType.PRIMARY_KEY, constraints.getFirst().getConstraintType());
+    assertEquals(List.of("c1"), constraints.getFirst().getColumns());
+  }
+
+  private TableConstraint primaryKey(String column) {
+    return new TableConstraint()
+        .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+        .withColumns(List.of(column));
+  }
+
   private void setColumnDescription(CreateTable createTable, String description) {
     createTable.getColumns().getFirst().withDescription(description);
   }
@@ -315,7 +463,10 @@ public class BulkOverrideMetadataIT {
         HttpRequest.newBuilder()
             .uri(
                 URI.create(
-                    SdkClients.getServerUrl() + "/v1/tables/name/" + fqn + "?fields=columns,tags"))
+                    SdkClients.getServerUrl()
+                        + "/v1/tables/name/"
+                        + fqn
+                        + "?fields=columns,tags,certification,tableConstraints"))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .GET()
             .build();
