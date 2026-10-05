@@ -55,6 +55,7 @@ import {
 } from '../../../../../../rest/teamsAPI';
 import { getUsers, updateUserDetail } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { getTableExpandableConfig } from '../../../../../../utils/TableUtils';
@@ -191,6 +192,14 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       deleted: team?.deleted,
       enabled: Boolean(fqn),
     });
+
+  // Ungated edit flag: the deleted-aware canEditAll is false on a soft-deleted
+  // team, which would hide the only affordance to restore it (precedent:
+  // DataAssetsHeader's ungatedFlags).
+  const canRestore = useMemo(
+    () => getDerivedPermissionFlags(permissions).canEditAll,
+    [permissions]
+  );
 
   const canCreateTeam = useMemo(
     () =>
@@ -907,6 +916,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     canEditAll,
     canEditDisplayName,
     canDelete,
+    canRestore,
     canCreateTeam,
     isGroupType,
     isOrgType,

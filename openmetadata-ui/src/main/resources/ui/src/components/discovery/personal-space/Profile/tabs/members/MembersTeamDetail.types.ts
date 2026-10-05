@@ -144,6 +144,9 @@ export interface UseMembersTeamHeaderParams {
   canEditAll: boolean;
   canEditDisplayName: boolean;
   canDelete: boolean;
+  // Ungated (not deleted-aware) edit flag — restore must stay reachable on a
+  // soft-deleted team, where the deleted-gated canEditAll is false.
+  canRestore: boolean;
   canCreateTeam: boolean;
   isGroupType: boolean;
   isOrgType: boolean;

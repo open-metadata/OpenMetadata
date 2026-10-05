@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Box,
   Button,
   ButtonUtility,
@@ -39,19 +40,35 @@ const buildTitleSuffix = (
   canEdit: boolean,
   isEditingName: boolean,
   onStartEditName: (value: string) => void
-): ReactNode =>
-  canEdit && !isEditingName ? (
-    <ButtonUtility
-      aria-label={t('label.edit-entity', {
-        entity: t('label.display-name'),
-      })}
-      color="tertiary"
-      data-testid="edit-display-name"
-      icon={Edit01}
-      size="xs"
-      onClick={() => onStartEditName(getEntityName(team))}
-    />
-  ) : undefined;
+): ReactNode => {
+  if (isEditingName) {
+    return undefined;
+  }
+
+  // Edit is gated off on a deleted team, so the pencil is hidden there; the
+  // deleted badge takes its place next to the name.
+  return (
+    <Box align="center" direction="row" gap={2}>
+      {team.deleted && (
+        <Badge color="error" data-testid="deleted-badge" size="sm">
+          {t('label.deleted')}
+        </Badge>
+      )}
+      {canEdit && (
+        <ButtonUtility
+          aria-label={t('label.edit-entity', {
+            entity: t('label.display-name'),
+          })}
+          color="tertiary"
+          data-testid="edit-display-name"
+          icon={Edit01}
+          size="xs"
+          onClick={() => onStartEditName(getEntityName(team))}
+        />
+      )}
+    </Box>
+  );
+};
 
 const buildTitleInput = (
   t: TranslateFn,
@@ -106,12 +123,15 @@ const buildManageMenuItems = (
   const {
     canDelete,
     canEditAll,
+    canRestore,
     isOrgType,
     onToggleJoinable,
     onRestoreTeam,
     onDelete,
   } = params;
   const notDeleted = !team.deleted;
+  // Can't restore into a deleted parent — mirrors the legacy team page.
+  const parentDeleted = Boolean(team.parents?.[0]?.deleted);
 
   return (
     <>
@@ -123,14 +143,14 @@ const buildManageMenuItems = (
           {getJoinableLabel(t, team)}
         </Dropdown.Item>
       )}
-      {team.deleted && canEditAll && (
+      {team.deleted && canRestore && !parentDeleted && (
         <Dropdown.Item data-testid="restore-team" onAction={onRestoreTeam}>
           {t('label.restore-entity', {
             entity: t('label.team'),
           })}
         </Dropdown.Item>
       )}
-      {canDelete && notDeleted && !isOrgType && (
+      {canDelete && !isOrgType && (
         <Dropdown.Item
           data-testid="delete-team"
           icon={Trash01}
@@ -280,6 +300,7 @@ export const useMembersTeamHeader = (
     canEditAll,
     canEditDisplayName,
     params.canDelete,
+    params.canRestore,
     params.canCreateTeam,
     params.isGroupType,
     params.isOrgType,

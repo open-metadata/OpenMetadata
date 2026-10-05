@@ -44,6 +44,7 @@ const buildParams = (
   canEditAll: true,
   canEditDisplayName: true,
   canDelete: true,
+  canRestore: true,
   canCreateTeam: true,
   isGroupType: true,
   isOrgType: false,
@@ -124,5 +125,44 @@ describe('useMembersTeamHeader', () => {
     render(<>{lastPatch(params.onSetHeader).actions}</>);
 
     expect(screen.getByTestId('leave-team-button')).toBeInTheDocument();
+  });
+
+  it('shows a deleted badge in the title suffix for a soft-deleted team', () => {
+    const params = buildParams({
+      team: { name: 'team1', deleted: true } as Team,
+    });
+    render(<Harness {...params} />);
+
+    render(<>{lastPatch(params.onSetHeader).titleSuffix}</>);
+
+    expect(screen.getByTestId('deleted-badge')).toBeInTheDocument();
+  });
+
+  it('offers restore and delete for a deleted team, gated on canRestore', () => {
+    const params = buildParams({
+      team: { name: 'team1', deleted: true } as Team,
+      canRestore: true,
+      canDelete: true,
+    });
+    render(<Harness {...params} />);
+
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }));
+
+    expect(screen.getByTestId('restore-team')).toBeInTheDocument();
+    expect(screen.getByTestId('delete-team')).toBeInTheDocument();
+  });
+
+  it('hides restore when the user lacks the ungated edit permission', () => {
+    const params = buildParams({
+      team: { name: 'team1', deleted: true } as Team,
+      canRestore: false,
+    });
+    render(<Harness {...params} />);
+
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
+    fireEvent.click(screen.getByRole('button', { name: /open menu/i }));
+
+    expect(screen.queryByTestId('restore-team')).not.toBeInTheDocument();
   });
 });
