@@ -326,14 +326,14 @@ ingestion has always stored it as `DECIMAL`. `VARIANT` and `OBJECT` hold JSON do
 Ingestion keeps the time zone out of the data type for every source (Postgres `TIMESTAMP WITH TIME ZONE` is
 `TIMESTAMP` too), so every Snowflake `TIMESTAMP` variant is `TIMESTAMP`. Table-level profile metrics come from
 `INFORMATION_SCHEMA.TABLES` and describe the whole table, so a partitioned profile shows its window in
-column metrics only.
+column metrics only. Snowflake tag classifications are not mutually exclusive, so a table that sets its own
+value of a tag also inherits its schema's value, as for every source.
 
-Fixed while migrating, each found by a strict assertion here: Snowflake tag classifications are created
-mutually exclusive (a table that sets its own value no longer also shows the schema's inherited value),
-`VARIANT`, `OBJECT` and `ARRAY` samples persist as JSON instead of the driver's JSON text, samples taken
-through a profile query convert through the table column types (binary values were stored as their Python
-repr), and `tableDiff` resolves the table's service from the workflow's connection instead of the server's
-copy, whose secrets a non-bot token reads masked.
+Fixed while migrating, each found by a strict assertion here: `VARIANT`, `OBJECT` and `ARRAY` samples
+persist as JSON instead of the driver's JSON text, samples taken through a profile query convert through the
+table column types (binary values were stored as their Python repr), and `tableDiff` resolves the table's
+service from the workflow's connection instead of the server's copy, whose secrets a non-bot token reads
+masked.
 
 The manually dispatched v2 workflow runs Snowflake with four workers and passes the v1 job's existing
 `TEST_SNOWFLAKE_*` secrets (key pair, database and warehouse) only to its Snowflake matrix job. The v1

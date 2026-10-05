@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.data.table import (
     TableType,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.type.tagLabel import LabelType
 from metadata.ingestion.ometa.utils import model_str
 
 from ..features._om_compat import unwrap_root_list
@@ -116,16 +117,24 @@ def schema_query(om, fqn: str) -> Query[DatabaseSchema | None]:
     return Query(f"schema {fqn}", lambda: om.get_by_name(entity=DatabaseSchema, fqn=fqn, fields=["tags"]))
 
 
-def has_tags(*tags: str):
-    """Exact tag set, so a tag Snowflake reports only through inheritance cannot pass."""
-    wanted = set(tags)
+def has_tags(*tags: str, inherited: tuple[str, ...] = ()):
+    """Exact tag set, so a tag Snowflake reports only through inheritance cannot pass.
+
+    ``inherited`` names the tags the server inherits from a parent entity, which carry the Derived label type,
+    and only those may carry it.
+    """
+    wanted, wanted_inherited = set(tags) | set(inherited), set(inherited)
 
     def check(entity):
         entity_exists(entity)
         labels = unwrap_root_list(entity.tags)
         actual = {model_str(item.tagFQN) for item in labels}
+        actual_inherited = {model_str(item.tagFQN) for item in labels if item.labelType == LabelType.Derived}
         details = sorted((model_str(item.tagFQN), str(item.labelType), str(item.source)) for item in labels)
         assert actual == wanted, f"tags: expected {sorted(wanted)}, got {details}"
+        assert actual_inherited == wanted_inherited, (
+            f"inherited tags: expected {sorted(wanted_inherited)}, got {details}"
+        )
 
     return check
 

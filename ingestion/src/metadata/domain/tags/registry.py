@@ -107,7 +107,6 @@ class TagRegistry:
                     classification_description=tag.classification_description,
                     tag_name=tag.tag_name,
                     tag_description=tag.tag_description,
-                    mutually_exclusive=tag.mutually_exclusive,
                 )
 
     def attach(
@@ -130,23 +129,7 @@ class TagRegistry:
                 label_type=label_type,
                 state=state,
             )
-            labels = self._labels_by_entity.setdefault(entity_fqn, [])
-            held = self._held_label_locked(labels, tag) if tag.mutually_exclusive else None
-            if held is None or held.tagFQN.root == tag_label.tagFQN.root:
-                labels.append(tag_label)
-        if held is not None and held.tagFQN.root != tag_label.tagFQN.root:
-            # The server rejects the whole asset when it holds two tags of a mutually exclusive classification.
-            logger.warning(
-                "%s: skipped tag %s because the asset already holds %s and the classification is mutually exclusive",
-                entity_fqn,
-                tag_label.tagFQN.root,
-                held.tagFQN.root,
-            )
-
-    @staticmethod
-    def _held_label_locked(labels: list[TagLabel], tag: TagDefinition) -> TagLabel | None:
-        """The label the entity already holds in the tag's classification. Caller must hold ``self._lock``."""
-        return next((label for label in labels if fqn.split(label.tagFQN.root)[0] == tag.classification_name), None)
+            self._labels_by_entity.setdefault(entity_fqn, []).append(tag_label)
 
     def labels_for(self, entity_fqn: str) -> list[TagLabel]:
         """Return tag labels attached to ``entity_fqn`` (idempotent; returns a copy)."""
@@ -197,7 +180,6 @@ class TagRegistry:
         classification_description: str,
         tag_name: str,
         tag_description: str,
-        mutually_exclusive: bool = False,
     ) -> OMetaTagAndClassification:
         """Compose the sink-bound create-payload for a classification + tag."""
         return OMetaTagAndClassification(
@@ -205,7 +187,6 @@ class TagRegistry:
             classification_request=CreateClassificationRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(classification_name),
                 description=Markdown(classification_description),
-                mutuallyExclusive=mutually_exclusive,
             ),
             tag_request=CreateTagRequest(  # pyright: ignore[reportCallIssue]
                 classification=FullyQualifiedEntityName(classification_name),

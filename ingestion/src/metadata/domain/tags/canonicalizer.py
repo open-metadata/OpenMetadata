@@ -77,14 +77,11 @@ class TagCanonicalizer:
         tag_name: str,
         classification_description: str,
         tag_description: str,
-        mutually_exclusive: bool = False,
     ) -> TagDefinition:
         """Resolve a definition against system classifications and tags."""
         classification = self.classification(classification_name, classification_description)
         tag = self.tag(classification.name, tag_name, tag_description)
-        return TagDefinition(
-            classification.name, tag.name, classification.description, tag.description, mutually_exclusive
-        )
+        return TagDefinition(classification.name, tag.name, classification.description, tag.description)
 
     def classification(
         self,

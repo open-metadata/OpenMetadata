@@ -165,9 +165,11 @@ def test_custom_case_and_multiple_values_remain_distinct(source):
         tag = source.define_tag(
             classification_name="Custom", tag_name=name, classification_description="", tag_description=""
         )
-        source.attach_tag(entity_fqn=f"svc.db.schema.table_{name}", tag=tag)
-    assert [label.tagFQN.root for label in source.get_tag_by_fqn("svc.db.schema.table_Mixed")] == ["Custom.Mixed"]
-    assert [label.tagFQN.root for label in source.get_tag_by_fqn("svc.db.schema.table_MIXED")] == ["Custom.MIXED"]
+        source.attach_tag(entity_fqn="svc.db.schema.table", tag=tag)
+    assert [label.tagFQN.root for label in source.get_tag_by_fqn("svc.db.schema.table")] == [
+        "Custom.Mixed",
+        "Custom.MIXED",
+    ]
     assert len(list(source.tags_registry.drain())) == 2
 
 
@@ -368,57 +370,3 @@ def test_snowflake_schema_stage_skips_feature_store_json_tags(source, status):
         f"svc.db.schema.{feature_view}",
         "svc.db.schema.SRC.COL_A",
     ]
-
-
-# A Snowflake tag holds one value per object. The server hides a schema's inherited value on a table that sets
-# its own only when the classification is mutually exclusive, so Snowflake creates its classifications that way.
-def test_snowflake_classifications_are_mutually_exclusive(source):
-    source.define_tag(
-        classification_name="SENSITIVITY", tag_name="PII", classification_description="", tag_description=""
-    )
-    [record] = list(source.tags_registry.drain())
-    assert record.classification_request.mutuallyExclusive is True
-
-
-def test_default_source_classifications_are_not_mutually_exclusive(default_source):
-    default_source.metadata.es_search_from_fqn.side_effect = None
-    default_source.metadata.es_search_from_fqn.return_value = []
-    default_source.define_tag(
-        classification_name="Class", tag_name="Value", classification_description="", tag_description=""
-    )
-    [record] = list(default_source.tags_registry.drain())
-    assert record.classification_request.mutuallyExclusive is False
-
-
-# Snowflake names a classification after the tag alone, so same-named tags from two schemas meet in one
-# classification, and the server rejects an asset that holds two tags of a mutually exclusive classification.
-def test_snowflake_asset_keeps_one_tag_per_classification(source, status):
-    for value in ("email", "ssn"):
-        tag = source.define_tag(
-            classification_name="PII", tag_name=value, classification_description="", tag_description=""
-        )
-        source.attach_tag(entity_fqn="svc.db.schema.table.col", tag=tag)
-    assert [label.tagFQN.root for label in source.get_tag_by_fqn("svc.db.schema.table.col")] == ["PII.email"]
-    assert len(list(source.tags_registry.drain())) == 2
-    [warning] = _warning_messages(status)
-    assert "svc.db.schema.table.col" in warning
-    assert "PII.ssn" in warning
-    assert "PII.email" in warning
-
-
-def test_default_source_keeps_every_value_of_a_classification(default_source):
-    for value in ("email", "ssn"):
-        default_source.attach_tag(entity_fqn="svc.db.schema.table.col", tag=TagDefinition("PII", value, "", ""))
-    assert [label.tagFQN.root for label in default_source.get_tag_by_fqn("svc.db.schema.table.col")] == [
-        "PII.email",
-        "PII.ssn",
-    ]
-
-
-def test_registered_definition_keeps_its_mutual_exclusion(default_source):
-    default_source.metadata.es_search_from_fqn.side_effect = None
-    default_source.metadata.es_search_from_fqn.return_value = []
-    definition = TagDefinition("Class", "Value", "", "", mutually_exclusive=True)
-    assert list(default_source.register_tag(entity_fqn="svc.db.schema.table", definition=definition)) == []
-    [record] = list(default_source.tags_registry.drain())
-    assert record.classification_request.mutuallyExclusive is True

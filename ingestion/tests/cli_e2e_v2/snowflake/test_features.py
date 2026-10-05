@@ -59,9 +59,11 @@ def test_stored_procedures_and_udfs(cli, snowflake):
 
 @pytest.mark.e2e_contract("tags.source")
 def test_source_tags_on_schema_table_and_column(cli, snowflake, snowflake_tag):
-    """A Snowflake tag holds one value per object, and a table without its own value inherits the schema's.
+    """Each object keeps the tags set on it, and every table also carries the schema's.
 
-    Column tags stay direct: a table's tags stay on the table instead of being copied to every column.
+    The classification is not mutually exclusive, so a table that sets its own value of the tag still inherits
+    the schema's value from the server, as for every source. Column tags stay direct: a table's tags stay on the
+    table instead of being copied to every column.
     """
     qualified = snowflake.source.qualified
     tag = f"{qualified}.{snowflake_tag}"
@@ -74,12 +76,13 @@ def test_source_tags_on_schema_table_and_column(cli, snowflake, snowflake_tag):
     expect.poll(schema_query(snowflake.om, snowflake.schema_fqn())).satisfies(has_tags(public))
 
     def check(table):
-        has_tags(pii)(table)
+        has_tags(pii, inherited=(public,))(table)
         has_tags(pii)(column(table, "EMAIL"))
         for name in ("ID", "STATUS"):
             has_tags()(column(table, name))
 
     expect.poll(snowflake.table_query("CUSTOMERS")).satisfies(check)
+    # The connector itself copies the schema's value to a table that has no value of the tag.
     expect.poll(snowflake.table_query("TRANSACTIONS")).satisfies(has_tags(public))
 
 

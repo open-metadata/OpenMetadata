@@ -21,5 +21,3 @@ class TagDefinition:
     tag_name: str
     classification_description: str
     tag_description: str
-    # Applies only when the classification is created: the server never changes it afterwards.
-    mutually_exclusive: bool = False
