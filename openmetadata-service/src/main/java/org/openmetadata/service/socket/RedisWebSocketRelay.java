@@ -28,12 +28,8 @@ import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.RedisURIFactory;
 
 /**
- * Redis pub/sub relay for cross-pod WebSocket delivery. Mirrors {@code CacheInvalidationPubSub}: one
- * subscriber connection and one publisher connection per pod, a sender-id filter to drop self-echoes.
- *
- * <p>{@link #publish} fans a frame out to every pod; each pod's subscriber delivers it to its own
- * local sockets via {@link WebSocketManager#sendToOneLocal}. The producing pod has already delivered
- * to its own sockets in {@code sendToOne}, so it skips its own message here to avoid double delivery.
+ * Redis pub/sub relay (mirrors {@code CacheInvalidationPubSub}). {@link #publish} fans a frame to
+ * every pod; each subscriber delivers it to its own sockets, skipping frames it sent itself.
  */
 @Slf4j
 public class RedisWebSocketRelay implements WebSocketRelay {

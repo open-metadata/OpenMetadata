@@ -28,15 +28,10 @@ import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * DB-backed broadcast relay for cross-pod WebSocket delivery — the fallback when no Redis is
- * configured ({@code CACHE_PROVIDER=none}). The producing pod inserts a frame into
- * {@code ws_relay_message}; every pod runs a scheduled poll that reads rows newer than its cursor
- * (skipping its own, skipping expired) and delivers each to its local sockets via
- * {@link WebSocketManager#sendToOneLocal}.
- *
- * <p>Broadcast, not claim: a user's socket is single-homed per pod, so every pod reading the row and
- * delivering to its own sockets yields exactly-once per socket. No lease or ownership registry is
- * needed — unlike the hybrid-runner relay, which must claim because a runner is a shared singleton.
+ * DB-backed relay used when no Redis is configured. The producing pod inserts a frame into
+ * {@code ws_relay_message}; every pod polls for new rows (skipping its own and expired) and delivers
+ * to its local sockets. Broadcast, not claim — a socket is single-homed, so each pod delivering to
+ * its own sockets is exactly-once; no lease needed.
  */
 @Slf4j
 public class DbWebSocketRelay implements WebSocketRelay {
@@ -158,10 +153,10 @@ public class DbWebSocketRelay implements WebSocketRelay {
   // Visible for test/trigger. Reads one batch of new frames and delivers them locally.
   void dispatchOnce() {
     long now = System.currentTimeMillis();
-    // Re-scan a short trailing window rather than just id > cursor: auto-increment ids are assigned
-    // at INSERT but visible at COMMIT, so a row with a lower id can commit after the cursor already
-    // passed a higher neighbour. The window re-reads those late committers; the seen-set drops ones
-    // already delivered, and the start floor skips rows that predate this pod.
+    // Re-scan a trailing window, not just id > cursor: ids are assigned at INSERT but visible at
+    // COMMIT, so a lower id can commit after the cursor passed a higher one. The seen-set dedupes
+    // the
+    // re-read; the start floor skips rows predating this pod.
     long from = Math.max(startFloor, cursor.get() - LOOKBACK_IDS);
     List<WsRelayDAO.RelayRow> rows = dao.fetchNewer(from, instanceId, now, FETCH_LIMIT);
     for (WsRelayDAO.RelayRow row : rows) {

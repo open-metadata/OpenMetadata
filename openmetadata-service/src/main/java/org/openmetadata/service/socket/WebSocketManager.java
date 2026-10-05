@@ -58,10 +58,8 @@ public class WebSocketManager {
   private final Map<String, String> socketSessionIds = new ConcurrentHashMap<>();
   private final Map<String, Long> socketSessionValidatedAt = new ConcurrentHashMap<>();
 
-  // Cross-pod delivery for sendToOne. Defaults to no-op (single-pod); a Redis or DB-backed relay is
-  // injected at startup on multi-pod deployments so a frame produced on one pod reaches the pod
-  // that
-  // holds the user's socket.
+  // Cross-pod delivery for sendToOne; a Redis or DB relay is injected at startup (no-op by
+  // default).
   private volatile WebSocketRelay relay = new NoopWebSocketRelay();
 
   private WebSocketManager(EngineIoServerOptions eiOptions) {
@@ -146,18 +144,14 @@ public class WebSocketManager {
     return instance;
   }
 
-  // Node-local today. The relay already supports SCOPE_ALL (see deliverRelayedFrame), so a future
-  // change can make this publishToAll for cross-pod broadcast — deliberately not wired yet to avoid
-  // relaying high-frequency job-status broadcasts.
+  // Node-local; cross-pod broadcast is not wired through the relay (the relay supports SCOPE_ALL).
   public void broadCastMessageToAll(String event, String message) {
     broadCastMessageToAllLocal(event, message);
   }
 
   public void sendToOne(UUID receiver, String event, String message) {
-    // Deliver to this pod's sockets, then relay to peers so a user's sockets on other pods (or a
-    // socket on a different pod than the one that produced this frame) are reached too. The relay
-    // is
-    // a no-op on single-pod, keeping this a plain local send there.
+    // Deliver locally, then relay to peers so the pod holding the socket is reached (no-op
+    // single-pod).
     sendToOneLocal(receiver, event, message);
     relay.publishToUser(receiver, event, message);
   }
@@ -171,11 +165,7 @@ public class WebSocketManager {
     }
   }
 
-  /**
-   * Deliver to the given user's sockets on this pod only, without relaying. Used directly by the
-   * relay when a peer pod (or this pod's own loopback) hands off a frame, so a received frame is
-   * never re-published.
-   */
+  /** Deliver to this user's sockets on this pod only (no relay) — used by the relay on receive. */
   public void sendToOneLocal(UUID receiver, String event, String message) {
     Map<String, SocketIoSocket> connections = activityFeedEndpoints.get(receiver);
     if (connections != null) {
@@ -183,18 +173,13 @@ public class WebSocketManager {
     }
   }
 
-  /** Broadcast to every socket on THIS pod only, without relaying — the receive side of a relayed
-   * {@link WebSocketRelay#SCOPE_ALL} frame (so it is not re-published). */
+  /** Broadcast to this pod's sockets only (no relay) — the receive side of a SCOPE_ALL frame. */
   public void broadCastMessageToAllLocal(String event, String message) {
     activityFeedEndpoints.forEach(
         (key, value) -> value.forEach((key1, value1) -> value1.send(event, message)));
   }
 
-  /**
-   * Deliver a frame received from the relay to this pod's local sockets, dispatched by scope. New
-   * scopes are handled by adding a branch here — no transport or schema change. A received frame is
-   * delivered locally only (never re-published) to avoid a fan-out loop.
-   */
+  /** Deliver a relayed frame to this pod's sockets by scope (local only — never re-published). */
   public void deliverRelayedFrame(String scope, String target, String event, String message) {
     if (WebSocketRelay.SCOPE_ALL.equals(scope)) {
       broadCastMessageToAllLocal(event, message);
