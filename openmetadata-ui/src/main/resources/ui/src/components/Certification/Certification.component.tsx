@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Card } from '@openmetadata/ui-core-components';
-import { Button, Empty, Popover, Radio, Space, Spin, Typography } from 'antd';
+import { Card, Typography } from '@openmetadata/ui-core-components';
+import { Button, Empty, Popover, Radio, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import {
   lazy,
@@ -32,7 +32,7 @@ import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { isImageUrl } from '../../utils/IconUtils';
 import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
-import { stringToHTML } from '../../utils/StringUtils';
+import { stringToHTML } from '../../utils/RichTextStringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
 import Loader from '../common/Loader/Loader';
@@ -213,12 +213,17 @@ const Certification = ({
                 <div className="certification-card-content">
                   {iconContent}
                   <div>
-                    <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
+                    <Typography
+                      as="p"
+                      className="m-b-0 font-regular text-xs text-grey-body">
                       {title}
-                    </Typography.Paragraph>
-                    <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
+                    </Typography>
+                    <Typography
+                      as="div"
+                      className="m-b-0 font-regular text-xs"
+                      color="secondary">
                       {stringToHTML(description)}
-                    </Typography.Paragraph>
+                    </Typography>
                   </div>
                 </div>
               </div>
@@ -282,13 +287,13 @@ const Certification = ({
                 <Space className="w-full justify-between">
                   <div className="flex gap-2 items-center w-full">
                     <CertificationIcon height={18} width={18} />
-                    <Typography.Text className="m-b-0 font-semibold text-sm">
+                    <Typography className="m-b-0 font-semibold text-sm tw:text-primary">
                       {t('label.edit-entity', {
                         entity: t('label.certification'),
                       })}
-                    </Typography.Text>
+                    </Typography>
                   </div>
-                  <Typography.Text
+                  <Typography
                     className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
                     data-testid="clear-certification"
                     tabIndex={0}
@@ -297,7 +302,7 @@ const Certification = ({
                       updateCertificationData
                     )}>
                     {t('label.clear')}
-                  </Typography.Text>
+                  </Typography>
                 </Space>
               </div>
             </div>

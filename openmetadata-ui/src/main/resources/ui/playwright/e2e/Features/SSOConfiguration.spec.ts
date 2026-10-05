@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
 import path from 'path';
 
 import {
@@ -262,7 +261,9 @@ test.describe('SSO Configuration Tests', () => {
       ]);
 
       // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
+      await expect(
+        page.getByRole('radio', { name: /public|confidential/i })
+      ).toHaveCount(2);
 
       // Verify Secret field is NOT visible for public client
       await expect(page.getByLabel('Secret Key')).not.toBeVisible();
@@ -291,7 +292,9 @@ test.describe('SSO Configuration Tests', () => {
       ]);
 
       // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
+      await expect(
+        page.getByRole('radio', { name: /public|confidential/i })
+      ).toHaveCount(2);
 
       const hiddenFields = [
         'LDAP Host',
@@ -329,7 +332,9 @@ test.describe('SSO Configuration Tests', () => {
       ]);
 
       // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
+      await expect(
+        page.getByRole('radio', { name: /public|confidential/i })
+      ).toHaveCount(2);
 
       const hiddenFields = [
         'LDAP Host',
@@ -497,9 +502,7 @@ test.describe('SSO Configuration Tests', () => {
 
       await expect(confidentialRadio).toBeChecked();
 
-      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
-
-      await expect(publicKeyUrlsField).not.toBeVisible();
+      await expect(page.locator('[id*="publicKeyUrls"]')).toHaveCount(0);
     });
 
     test('should hide serverUrl field for OIDC providers', async ({ page }) => {
@@ -571,17 +574,13 @@ test.describe('SSO Configuration Tests', () => {
     test('should hide publicKeyUrls for SAML provider', async ({ page }) => {
       await selectSSOProvider(page, 'saml');
 
-      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
-
-      await expect(publicKeyUrlsField).not.toBeVisible();
+      await expect(page.locator('[id*="publicKeyUrls"]')).toHaveCount(0);
     });
 
     test('should hide publicKeyUrls for LDAP provider', async ({ page }) => {
       await selectSSOProvider(page, 'ldap');
 
-      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
-
-      await expect(publicKeyUrlsField).not.toBeVisible();
+      await expect(page.locator('[id*="publicKeyUrls"]')).toHaveCount(0);
     });
 
     test('should hide SAML SP callback URL field', async ({ page }) => {
@@ -690,23 +689,50 @@ test.describe('SSO Configuration Tests', () => {
       await selectSSOProvider(page, 'ldap');
 
       const addMappingButton = page.getByTestId('add-mapping-btn');
+      const mappingCards = page.locator('[data-testid^="mapping-card-"]');
       const ldapGroupInputs = page.locator(
         '[data-testid^="ldap-group-input-"]'
       );
-      const rolesSelects = page.locator('[data-testid^="roles-select-"]');
       const errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
 
+      // Every mapping row carries its own generated id in its test ids. Capturing
+      // that id when the row is added keeps each interaction bound to one
+      // specific mapping, so later rows cannot shift what an earlier step edits.
+      const mappingIds = () =>
+        mappingCards.evaluateAll((cards) =>
+          cards.map((card) =>
+            (card.getAttribute('data-testid') ?? '').replace(
+              'mapping-card-',
+              ''
+            )
+          )
+        );
+
+      const addMapping = async () => {
+        const before = await mappingIds();
+        await addMappingButton.click();
+        await expect(mappingCards).toHaveCount(before.length + 1);
+
+        const added = (await mappingIds()).find((id) => !before.includes(id));
+
+        return {
+          input: page.getByTestId(`ldap-group-input-${added}`),
+          rolesSelect: page.getByTestId(`roles-select-${added}`),
+          removeButton: page.getByTestId(`remove-mapping-btn-${added}`),
+        };
+      };
+
       // Add first mapping — inputs and roles select appear; fill DN value persists
-      await addMappingButton.click();
-      await expect(ldapGroupInputs.first()).toBeVisible();
-      await expect(rolesSelects.first()).toBeVisible();
-      await ldapGroupInputs.first().fill('cn=admins,dc=example,dc=com');
-      await expect(ldapGroupInputs.first()).toHaveValue(
+      const adminsMapping = await addMapping();
+      await expect(adminsMapping.input).toBeVisible();
+      await expect(adminsMapping.rolesSelect).toBeVisible();
+      await adminsMapping.input.fill('cn=admins,dc=example,dc=com');
+      await expect(adminsMapping.input).toHaveValue(
         'cn=admins,dc=example,dc=com'
       );
 
       // Open the roles dropdown — options are loaded from the API
-      const roleInput = rolesSelects.getByRole('combobox');
+      const roleInput = adminsMapping.rolesSelect.getByRole('combobox');
       await roleInput.focus();
       await roleInput.press('ArrowDown');
       const roleOption = page
@@ -716,42 +742,40 @@ test.describe('SSO Configuration Tests', () => {
       await roleOption.click();
       await roleInput.press('Escape');
       await expect(
-        rolesSelects.getByTitle('Data Consumer', { exact: true })
+        adminsMapping.rolesSelect.getByTitle('Data Consumer', { exact: true })
       ).toBeVisible();
 
       // Add a second mapping with a duplicate DN — both rows show an error
-      await addMappingButton.click();
-      await ldapGroupInputs.last().fill('cn=admins,dc=example,dc=com');
+      const duplicateMapping = await addMapping();
+      await duplicateMapping.input.fill('cn=admins,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(2);
-      await expect(errorMessages.first()).toContainText(
-        /already mapped|duplicate/i
-      );
+      await expect(errorMessages).toHaveText([
+        /already mapped|duplicate/i,
+        /already mapped|duplicate/i,
+      ]);
 
       // Fix the duplicate — errors clear; case-insensitive and whitespace variants also trigger errors
-      await ldapGroupInputs.last().clear();
-      await ldapGroupInputs.last().fill('cn=unique,dc=example,dc=com');
+      await duplicateMapping.input.clear();
+      await duplicateMapping.input.fill('cn=unique,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(0);
 
-      await ldapGroupInputs.last().clear();
-      await ldapGroupInputs.last().fill('CN=ADMINS,DC=EXAMPLE,DC=COM');
+      await duplicateMapping.input.clear();
+      await duplicateMapping.input.fill('CN=ADMINS,DC=EXAMPLE,DC=COM');
       await expect(errorMessages).toHaveCount(2);
 
-      await ldapGroupInputs.last().clear();
-      await ldapGroupInputs.last().fill('  cn=admins,dc=example,dc=com  ');
+      await duplicateMapping.input.clear();
+      await duplicateMapping.input.fill('  cn=admins,dc=example,dc=com  ');
       await expect(errorMessages).toHaveCount(2);
 
       // Add a third unique mapping — no errors with three distinct DNs
-      await ldapGroupInputs.last().clear();
-      await ldapGroupInputs.last().fill('cn=users,dc=example,dc=com');
-      await addMappingButton.click();
-      await ldapGroupInputs.last().fill('cn=guests,dc=example,dc=com');
+      await duplicateMapping.input.clear();
+      await duplicateMapping.input.fill('cn=users,dc=example,dc=com');
+      const guestsMapping = await addMapping();
+      await guestsMapping.input.fill('cn=guests,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(0);
 
       // Remove the first mapping — row disappears
-      await page
-        .locator('[data-testid^="remove-mapping-btn-"]')
-        .first()
-        .click();
+      await adminsMapping.removeButton.click();
       await expect(ldapGroupInputs).toHaveCount(2);
     });
 
@@ -763,7 +787,7 @@ test.describe('SSO Configuration Tests', () => {
       const field = page.getByTestId(
         'sso-configuration-form-array-field-template-authReassignRoles'
       );
-      const dropdown = page.locator('.ant-select-dropdown').last();
+      const dropdown = page.locator('.ant-select-dropdown:visible');
 
       // Field renders as a combobox (not a plain tags input)
       await expect(field).toBeVisible();
@@ -776,13 +800,8 @@ test.describe('SSO Configuration Tests', () => {
         0
       );
 
-      // Select the first available role — it appears as a selection tag
-      await dropdown
-        .locator(
-          '.ant-select-item-option:not(.ant-select-item-option-disabled)'
-        )
-        .first()
-        .click();
+      // Select a named role — it appears as a selection tag
+      await dropdown.getByTitle('Data Consumer', { exact: true }).click();
       await expect(field.locator('.ant-select-selection-item')).toHaveCount(1);
 
       // Remove the selected role via its remove button
@@ -964,7 +983,8 @@ test.describe('SAML Metadata XML Upload', () => {
           response.request().method() === 'POST'
       );
 
-      await page.getByTestId('save-sso-configuration').click();
+      // A new configuration is held until Test Login passes; this test only needs the submit.
+      await page.getByTestId('save-anyway-sso-configuration').click();
 
       const errors = (await (await validateResponse).json())?.errors ?? [];
       const certificateError = errors.find(
@@ -1085,81 +1105,5 @@ test.describe('SSO Back Navigation', () => {
     await expect(page.locator('.provider-selector-container')).toBeVisible();
 
     expect(page.url()).not.toContain('provider=');
-  });
-});
-
-test.describe('SSO Test Configuration', () => {
-  const VALIDATE_URL = '**/system/security/validate';
-
-  const mockValidate = (page: Page, body: Record<string, unknown>) =>
-    page.route(VALIDATE_URL, async (route) => {
-      if (route.request().method() === 'POST') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(body),
-        });
-      } else {
-        await route.continue();
-      }
-    });
-
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await enableSSOEditMode(page);
-  });
-
-  test('should show the Test Configuration button and lockout warning for a new configuration', async ({
-    page,
-  }) => {
-    await selectSSOProvider(page, 'google');
-
-    await expect(page.getByTestId('test-sso-configuration')).toBeVisible();
-    await expect(page.locator('.sso-save-warning')).toBeVisible();
-  });
-
-  test('should validate the configuration without saving and show a success banner', async ({
-    page,
-  }) => {
-    await mockValidate(page, { status: 'success' });
-    await selectSSOProvider(page, 'google');
-
-    const validateResponse = page.waitForResponse(VALIDATE_URL);
-    await page.getByTestId('test-sso-configuration').click();
-    await validateResponse;
-
-    await expect(page.locator('.sso-test-result.success-alert')).toBeVisible();
-    await expect(page.locator('.sso-test-result')).toContainText(
-      /valid and reachable/i
-    );
-
-    // Testing must never sign the admin out or leave the form
-    await expect(page).toHaveURL(/settings\/sso/);
-    await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
-  });
-
-  test('should surface validation errors when the test fails', async ({
-    page,
-  }) => {
-    await mockValidate(page, {
-      status: 'failed',
-      errors: [
-        {
-          field: 'authenticationConfiguration.authority',
-          error: 'Authority is required',
-        },
-      ],
-    });
-    await selectSSOProvider(page, 'google');
-
-    const validateResponse = page.waitForResponse(VALIDATE_URL);
-    await page.getByTestId('test-sso-configuration').click();
-    await validateResponse;
-
-    await expect(page.locator('.sso-test-result.error-alert')).toBeVisible();
-    await expect(page.locator('.sso-test-result')).toContainText(
-      /validation failed/i
-    );
-    await expect(page).toHaveURL(/settings\/sso/);
   });
 });

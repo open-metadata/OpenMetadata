@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Box,
-  Typography as CoreTypography,
-} from '@openmetadata/ui-core-components';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 import {
   FailedTests,
   MinusCircle,
   SuccessfulTests,
 } from '@openmetadata/ui-core-components/icons';
-import { Col, Divider, Tooltip, Typography } from 'antd';
+import { Col, Tooltip } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -244,12 +241,12 @@ const ContractSLA: React.FC<{
       span={24}>
       <div className="contract-card-header-container">
         <div className="d-flex items-center gap-1">
-          <Typography.Text className="contract-card-header">
+          <Typography className="contract-card-header">
             {t('label.service-level-agreement')}
-          </Typography.Text>
+          </Typography>
           {inheritedIcon}
         </div>
-        <Divider className="contract-dash-separator" />
+        <Divider dashed className="contract-dash-separator" />
       </div>
 
       <div className="sla-item-container">
@@ -269,11 +266,11 @@ const ContractSLA: React.FC<{
           gap={1}>
           {contractStatus && (
             <Box align="center" gap={2}>
-              <CoreTypography size="text-sm">
+              <Typography size="text-sm">
                 {`${t('label.entity-status', {
                   entity: t('label.service-level-agreement'),
                 })} :`}
-              </CoreTypography>
+              </Typography>
               <StatusBadgeV2
                 dataTestId="contract-status-card-item-sla-status"
                 label={contractStatus}
@@ -282,7 +279,7 @@ const ContractSLA: React.FC<{
             </Box>
           )}
           {slaValidation.lastRefreshedAt && slaValidation.refreshedAtSource && (
-            <CoreTypography
+            <Typography
               color="secondary"
               data-testid="sla-last-refreshed"
               size="text-sm">
@@ -292,15 +289,15 @@ const ContractSLA: React.FC<{
                   REFRESH_SOURCE_LABEL[slaValidation.refreshedAtSource]
                 ),
               })}
-            </CoreTypography>
+            </Typography>
           )}
           {slaValidation.message && (
-            <CoreTypography
+            <Typography
               color="secondary"
               data-testid="sla-validation-message"
               size="text-sm">
               {slaValidation.message}
-            </CoreTypography>
+            </Typography>
           )}
         </Box>
       )}

@@ -12,12 +12,17 @@ import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.jobs.BackgroundJob;
 
 class GenericBackgroundWorkerTest {
-  @Test
-  void memoryJobLeavesWorkerCapacityForOtherJobs() throws InterruptedException {
+  @ParameterizedTest
+  @EnumSource(
+      value = BackgroundJob.JobType.class,
+      names = {"CONTEXT_MEMORY_EXTRACTION", "ONTOLOGY_MEMORY_DERIVATION"})
+  void memoryJobLeavesWorkerCapacityForOtherJobs(BackgroundJob.JobType firstType)
+      throws InterruptedException {
     JobDAO jobDao = mock(JobDAO.class);
     CountDownLatch firstMemoryStarted = new CountDownLatch(1);
     CountDownLatch releaseFirstMemory = new CountDownLatch(1);
@@ -26,7 +31,7 @@ class GenericBackgroundWorkerTest {
     AtomicBoolean firstOffered = new AtomicBoolean();
     AtomicBoolean secondOffered = new AtomicBoolean();
     AtomicBoolean exportOffered = new AtomicBoolean();
-    BackgroundJob firstMemory = job(1L, BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION);
+    BackgroundJob firstMemory = job(1L, firstType);
     BackgroundJob secondMemory = job(2L, BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION);
     BackgroundJob export = job(3L, BackgroundJob.JobType.CSV_EXPORT);
 

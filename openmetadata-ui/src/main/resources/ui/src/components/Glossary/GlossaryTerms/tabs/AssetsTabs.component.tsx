@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import {
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
   Alert,
   Button,
   Checkbox,
@@ -19,10 +23,8 @@ import {
   MenuProps,
   notification,
   Row,
-  Skeleton,
   Space,
   Tooltip,
-  Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -331,13 +333,13 @@ const AssetsFilterBar = ({
               onFieldValueSelect={onFieldValueSelect}
             />
             {quickFilterQuery && (
-              <Typography.Text
+              <Typography
                 className="text-primary self-center cursor-pointer"
                 onClick={onClearFilters}>
                 {t('label.clear-entity', {
                   entity: '',
                 })}
-              </Typography.Text>
+              </Typography>
             )}
           </div>
         </Col>
@@ -375,9 +377,9 @@ const BulkDeleteNotification = ({
         visible: selectedItemsCount > 0,
       })}>
       <div className="d-flex items-center justify-between">
-        <Typography.Text className="text-white">
+        <Typography className="text-white">
           {selectedItemsCount} {t('label.items-selected-lowercase')}
-        </Typography.Text>
+        </Typography>
         <Button
           danger
           data-testid="delete-all-button"
@@ -698,7 +700,7 @@ const AssetsTabs = forwardRef(
 
         return (
           <>
-            <Typography.Text>{baseMessage}</Typography.Text>
+            <Typography>{baseMessage}</Typography>
             <Alert
               showIcon
               className="m-t-sm"
@@ -921,16 +923,14 @@ const AssetsTabs = forwardRef(
             }>
             {searchValue && type !== AssetsOfEntity.MY_DATA && (
               <div className="gap-4">
-                <Typography.Paragraph>
+                <Typography as="p">
                   {t('label.no-matching-data-asset')}
-                </Typography.Paragraph>
+                </Typography>
               </div>
             )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
-                <Typography.Paragraph>
-                  {noDataPlaceholder.message}
-                </Typography.Paragraph>
+                <Typography as="p">{noDataPlaceholder.message}</Typography>
               </div>
             )}
           </ErrorPlaceHolderNew>
@@ -1271,9 +1271,9 @@ const AssetsTabs = forwardRef(
                   data-testid="loader"
                   direction="vertical"
                   size={16}>
-                  <Skeleton />
-                  <Skeleton />
-                  <Skeleton />
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
                 </Space>
               </Col>
             ) : (

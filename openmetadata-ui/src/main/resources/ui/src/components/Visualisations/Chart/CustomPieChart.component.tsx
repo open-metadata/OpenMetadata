@@ -10,110 +10,90 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
-import { isString, isUndefined } from 'lodash';
-import { useMemo } from 'react';
-import { Cell, Pie, PieChart, Tooltip } from 'recharts';
+import { Typography } from '@openmetadata/ui-core-components';
+import type { PieDatum } from '@openmetadata/ui-core-components/charts';
+import {
+  chartColor,
+  PieChart,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
+import { Space } from 'antd';
+import { isString } from 'lodash';
+import { useCallback } from 'react';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
-import { useChartColors } from '../../../hooks/useChartColors';
 import { formatNumberWithComma } from '../../../utils/NumberUtils';
 import { CustomPieChartProps } from './Chart.interface';
 import './chart.less';
 
+const LEGEND_HIDDEN = { show: false };
+
 const CustomPieChart = ({
   name,
+  ariaLabel,
   data,
   label,
   minAngle = 3,
   showLegends = false,
   onSegmentClick,
 }: CustomPieChartProps) => {
-  const { emptyFill, inactive } = useChartColors();
-  const hasClickHandler = Boolean(onSegmentClick);
+  const palette = useChartPalette();
+  const centerLabel = isString(label) ? (
+    <Typography color="secondary" size="text-sm" weight="medium">
+      {label}
+    </Typography>
+  ) : (
+    label
+  );
 
-  const centerLabel = useMemo(() => {
-    if (isUndefined(label)) {
-      return '';
-    }
-
-    if (isString(label)) {
-      return (
-        <text dy={8} fill={inactive} textAnchor="middle" x="50%" y="50%">
-          {label}
-        </text>
-      );
-    }
-
-    return label;
-  }, [inactive, label]);
+  const handleSliceClick = useCallback(
+    (slice: PieDatum) => {
+      const index = data.findIndex((entry) => entry.name === slice.name);
+      if (index >= 0) {
+        onSegmentClick?.(data[index], index);
+      }
+    },
+    [data, onSegmentClick]
+  );
 
   return (
     <div className="custom-pie-chart">
-      <PieChart
-        height={CHART_SMALL_SIZE}
-        id={`${name}-pie-chart`}
-        width={CHART_SMALL_SIZE}>
-        <Pie
-          cx="50%"
-          cy="50%"
-          // to show the empty pie chart when there is no data
-          data={[{ value: 1 }]}
-          dataKey="value"
-          endAngle={-270}
-          fill={emptyFill}
-          innerRadius={55}
-          outerRadius={80}
-          // to hide tooltip when there is no data
-          pointerEvents="none"
-          startAngle={90}>
-          <Cell fill={emptyFill} />
-        </Pie>
-        <Pie
-          className={hasClickHandler ? 'custom-pie-chart-clickable' : ''}
-          cx="50%"
-          cy="50%"
+      <div className="tw:w-50" id={`${name}-pie-chart`}>
+        <PieChart
+          track
+          ariaLabel={ariaLabel}
+          centerLabel={centerLabel}
           data={data}
-          dataKey="value"
-          endAngle={-270}
-          innerRadius={60}
+          height={CHART_SMALL_SIZE}
+          innerRadius="60%"
+          legend={LEGEND_HIDDEN}
           minAngle={minAngle}
-          outerRadius={80}
-          startAngle={90}
-          onClick={
-            onSegmentClick
-              ? (_, index) => {
-                  const entry = data[index];
-                  if (entry) {
-                    onSegmentClick(entry, index);
-                  }
-                }
-              : undefined
-          }>
-          {data.map((entry) => (
-            <Cell fill={entry.color} key={`cell-${entry.name}`} />
-          ))}
-        </Pie>
-        <Tooltip />
-        {centerLabel}
-      </PieChart>
+          outerRadius="80%"
+          onSliceClick={onSegmentClick ? handleSliceClick : undefined}
+        />
+      </div>
 
       {showLegends && (
         <Space wrap size={16}>
-          {data.map((item) => (
+          {data.map((item, index) => (
             <Space align="center" key={item.name} size={8}>
               <div
                 className="legend-dot"
-                style={{ backgroundColor: item.color }}
+                style={{
+                  backgroundColor: chartColor(palette, index, item.status),
+                }}
               />
-              <Typography.Paragraph className="text-grey-muted m-b-0 font-medium">
+              <Typography
+                as="p"
+                className="m-b-0 font-medium"
+                color="secondary">
                 {item.name}{' '}
-                <Typography.Text
-                  strong
-                  className="text-grey-muted"
-                  data-testid={`legend-count-${item.name.toLowerCase()}`}>
+                <Typography
+                  color="secondary"
+                  data-testid={`legend-count-${item.name.toLowerCase()}`}
+                  weight="semibold">
                   {formatNumberWithComma(item.value)}
-                </Typography.Text>
-              </Typography.Paragraph>
+                </Typography>
+              </Typography>
             </Space>
           ))}
         </Space>

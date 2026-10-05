@@ -141,7 +141,7 @@ test.describe(
     });
 
     test.beforeEach(async ({ page }) => {
-      await searchExportUser.login(page);
+      await searchExportUser.signIn(page);
       await redirectToExplorePage(page);
     });
 
@@ -164,9 +164,9 @@ test.describe(
 
         const modalContent = getExportModalContent(page);
 
-        await expect(modalContent.locator('.ant-modal-title')).toContainText(
-          'Export'
-        );
+        await expect(
+          modalContent.getByTestId('export-scope-modal-title')
+        ).toContainText('Export');
         await expect(modalContent.getByText('Export Scope')).toBeVisible();
       });
 
@@ -183,16 +183,16 @@ test.describe(
 
       await test.step('All matching assets is selected by default', async () => {
         await expect(
-          getExportModalContent(page).locator('input[value="all"]')
+          getExportModalContent(page).getByRole('radio', { name: 'All assets' })
         ).toBeChecked();
       });
 
       await test.step('Selecting the tab-scope card checks the visible radio', async () => {
         const modalContent = getExportModalContent(page);
 
-        await modalContent.locator('input[value="visible"]').click();
+        await modalContent.getByTestId('export-scope-visible-card').click();
         await expect(
-          modalContent.locator('input[value="visible"]')
+          modalContent.getByRole('radio', { name: 'Visible results' })
         ).toBeChecked();
       });
 
@@ -228,7 +228,7 @@ test.describe(
 
       const modalContent = getExportModalContent(page);
 
-      await modalContent.locator('input[value="visible"]').click();
+      await modalContent.getByTestId('export-scope-visible-card').click();
 
       const expectedCount =
         await test.step('Read displayed count from Visible Results card', () =>
@@ -268,7 +268,7 @@ test.describe(
         await test.step('Read the count from the first left panel result tab', async () => {
           const firstTabCountText = await page
             .getByTestId('explore-left-panel')
-            .locator('[role="menuitem"]')
+            .getByRole('tab')
             .first()
             .getByTestId('filter-count')
             .textContent();
@@ -347,7 +347,7 @@ test.describe(
         await test.step('Read filtered count from the first left panel tab', async () => {
           const filteredCountText = await page
             .getByTestId('explore-left-panel')
-            .locator('[role="menuitem"]')
+            .getByRole('tab')
             .first()
             .getByTestId('filter-count')
             .textContent();
@@ -358,7 +358,7 @@ test.describe(
       await openExportScopeModal(page);
 
       const modalContent = getExportModalContent(page);
-      await modalContent.locator('input[value="visible"]').click();
+      await modalContent.getByTestId('export-scope-visible-card').click();
 
       const visibleExportCount =
         await test.step('Read filtered visible count from the export modal', () =>
@@ -402,16 +402,18 @@ test.describe(
       await browseQueryPromise;
       await waitForAllLoadersToDisappear(page);
       await expect(
-        page.locator('[data-testid^="table-data-card_"]').first()
-      ).toBeVisible();
+        page
+          .locator('[data-testid^="table-data-card_"]')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
 
       await openExportScopeModal(page);
 
       const modalContent = getExportModalContent(page);
 
-      await modalContent.locator('input[value="visible"]').click();
+      await modalContent.getByTestId('export-scope-visible-card').click();
       await expect(
-        modalContent.locator('input[value="visible"]')
+        modalContent.getByRole('radio', { name: 'Visible results' })
       ).toBeChecked();
 
       const expectedCount =
@@ -528,8 +530,8 @@ test.describe(
         }).toPass({ timeout: 30_000 });
 
         await expect(
-          page.getByText(/Exporting|Exported/).first()
-        ).toBeVisible();
+          page.getByText(/Exporting|Exported/).filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Download from the tray serves the job result CSV', async () => {

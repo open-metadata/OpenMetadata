@@ -398,6 +398,25 @@ WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('ViewAll')));
 
+-- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
+-- the result polls, the credentials) that can reach different servers, so its state lives here
+-- rather than in one server's memory. pending_state holds the candidate configuration with its
+-- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
+CREATE TABLE IF NOT EXISTS sso_test_login_session (
+    test_session_id VARCHAR(64) NOT NULL PRIMARY KEY,
+    admin_principal VARCHAR(256) NOT NULL,
+    protocol VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    pending_state TEXT,
+    result TEXT,
+    credentials_submitted_at BIGINT,
+    expires_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
+    ON sso_test_login_session (admin_principal, credentials_submitted_at);
+CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
+    ON sso_test_login_session (expires_at);
+
 -- Direct-child container listings (issue #22530). See the MySQL companion for the measured
 -- numbers; PostgreSQL picks the same losing plan for the same reason -- the listing's
 -- `ORDER BY name, id LIMIT n` makes idx_storage_container_entity_deleted_name_id look free,

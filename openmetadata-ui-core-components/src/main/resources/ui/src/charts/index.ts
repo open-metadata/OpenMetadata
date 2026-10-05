@@ -48,20 +48,28 @@ export {
   tooltipConfig,
   valueAxis,
 } from './options/common';
-export {
-  buildGeoMapOption,
-  GEO_COLOR_RANGE,
-  resolveGeoData,
-} from './options/geo';
+export { buildGeoMapOption, resolveGeoData } from './options/geo';
 export type { ResolvedGeoData } from './options/geo';
 export { mergeOption, REPLACE_MERGE_KEYS } from './options/merge';
-export { buildPieOption, isPieEmpty } from './options/pie';
+export { buildPieOption, isPieEmpty, PIE_TRACK_SERIES_ID } from './options/pie';
+export { toTooltipItems } from './tooltip-render';
+export type {
+  ChartTooltipRender,
+  ChartTooltipRenderProps,
+} from './tooltip-render';
 
 // Palette, theme, formatting
 export { formatTooltipValue, formatYAxisTick } from './format';
-export { CHART_PALETTE, getSeriesColor } from './palette';
+export {
+  CHART_PALETTE,
+  chartColor,
+  DARK_CHART_PALETTE,
+  getSeriesColor,
+  LIGHT_CHART_PALETTE,
+} from './palette';
 export { registerEChartsParts, registerGeoMap } from './register';
 export { buildChartTheme, DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
+export { useChartPalette } from './use-chart-palette';
 export { useIsDarkMode } from './use-is-dark-mode';
 
 // Types
@@ -78,10 +86,15 @@ export type {
   ChartAxisProps,
   ChartLegendProps,
   ChartOption,
+  ChartPalette,
+  ChartPixel,
+  ChartPointStyle,
   ChartReferenceLine,
   ChartSeries,
   ChartSeriesType,
+  ChartStatus,
   ChartTheme,
+  ChartTooltipItem,
   ChartTooltipProps,
   ChartXAxisProps,
   ChartYAxisProps,

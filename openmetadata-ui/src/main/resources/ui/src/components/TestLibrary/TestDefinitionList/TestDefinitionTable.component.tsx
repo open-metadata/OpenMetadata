@@ -16,9 +16,11 @@ import {
   EmptyPlaceholder,
   Skeleton,
   Table,
+  Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@openmetadata/ui-core-components/icons';
-import { Button, Space, Switch, Tooltip, Typography } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -155,12 +157,11 @@ const TestDefinitionTable = ({
     return (
       <Tooltip title={tooltipTitle}>
         <div className="new-form-style d-inline-flex">
-          <Switch
-            checked={record.enabled ?? true}
+          <Toggle
             data-testid={`enable-switch-${record.name}`}
-            disabled={isExternal || !hasEditPermission || isRefetching}
-            size="small"
-            onChange={(checked) => onEnableToggle(record, checked)}
+            isDisabled={isExternal || !hasEditPermission || isRefetching}
+            isSelected={record.enabled ?? true}
+            onChange={(isSelected) => onEnableToggle(record, isSelected)}
           />
         </div>
       </Tooltip>
@@ -225,20 +226,20 @@ const TestDefinitionTable = ({
   const renderRow = (record: TestDefinition) => (
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>
-        <Typography.Text data-testid={record.name}>
+        <Typography className="tw:text-primary" data-testid={record.name}>
           {getEntityName(record)}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>
         <RichTextEditorPreviewerNew markdown={record.description ?? ''} />
       </Table.Cell>
       <Table.Cell>
-        <Typography.Text>{record.entityType}</Typography.Text>
+        <Typography className="tw:text-primary">{record.entityType}</Typography>
       </Table.Cell>
       <Table.Cell>
-        <Typography.Text>
+        <Typography className="tw:text-primary">
           {record.testPlatforms?.join(', ') ?? '--'}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>{renderEnabledCell(record)}</Table.Cell>
       <Table.Cell>{renderActionsCell(record)}</Table.Cell>

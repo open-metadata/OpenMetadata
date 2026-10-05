@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import classNames from 'classnames';
 
 import { useMemo } from 'react';
@@ -69,7 +70,9 @@ const ErrorPlaceHolderIngestion = ({
               direction="vertical"
               size={16}>
               <IconCollateSupport height={100} width={100} />
-              <Typography>{t('message.pipeline-scheduler-message')}</Typography>
+              <Typography as="article">
+                {t('message.pipeline-scheduler-message')}
+              </Typography>
             </Space>
           )}
         </Card>
