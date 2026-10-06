@@ -13,8 +13,9 @@ Models required for dbt
 """
 
 from typing import Any
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class DbtFiles(BaseModel):
@@ -68,4 +69,4 @@ class UpstreamNode(BaseModel):
     name: str
     qualified_name: str | None = None
     fqn: str
-    table: Any | None = Field(default=None, exclude=True)
+    table_id: UUID | None = None

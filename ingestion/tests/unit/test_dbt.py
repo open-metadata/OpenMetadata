@@ -4215,6 +4215,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link = MagicMock()
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+        data_model_link.upstream_table_ids = {}
 
         results = list(DbtSource.create_dbt_lineage(source, data_model_link))
 
@@ -4237,6 +4238,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
         data_model_link.datamodel.sql = None
+        data_model_link.upstream_table_ids = {}
 
         results = list(DbtSource.create_dbt_lineage(source, data_model_link))
 
@@ -4255,6 +4257,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link = MagicMock()
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+        data_model_link.upstream_table_ids = {}
 
         list(DbtSource.create_dbt_lineage(source, data_model_link))
 
@@ -4274,6 +4277,7 @@ class TestDbtLineageUnresolvedUpstream:
             data_model_link = MagicMock()
             data_model_link.table_entity = to_entity
             data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+            data_model_link.upstream_table_ids = {}
             list(DbtSource.create_dbt_lineage(source, data_model_link))
 
         assert source.status.warning.call_count == 1
@@ -4288,6 +4292,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link = MagicMock()
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders", "svc.db.sch.raw_customers"]
+        data_model_link.upstream_table_ids = {}
 
         list(DbtSource.create_dbt_lineage(source, data_model_link))
 
