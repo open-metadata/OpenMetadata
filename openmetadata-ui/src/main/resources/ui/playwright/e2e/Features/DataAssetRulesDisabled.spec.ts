@@ -49,13 +49,13 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
-  assignDomain,
   descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { addAssetsToDataProduct, assignDomainWidget } from '../../utils/domain';
+import { addAssetsToDataProduct } from '../../utils/domain';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -196,20 +196,18 @@ test.describe(
           page.locator("[data-testid='select-owner-tabs']")
         ).toBeVisible();
 
-        await page
-          .getByRole('tabpanel', { name: /Users/ })
-          .getByTestId('loader')
-          .waitFor({ state: 'hidden' });
+        await waitForAllLoadersToDisappear(
+          page.getByRole('tabpanel', { name: /Users/ })
+        );
 
         await page
           .locator("[data-testid='select-owner-tabs']")
           .getByRole('tab', { name: 'Teams' })
           .click();
 
-        await page
-          .getByRole('tabpanel', { name: 'Teams' })
-          .getByTestId('loader')
-          .waitFor({ state: 'hidden' });
+        await waitForAllLoadersToDisappear(
+          page.getByRole('tabpanel', { name: 'Teams' })
+        );
 
         const teamsSearchBar = page.getByTestId(
           'owner-select-teams-search-bar'
@@ -247,10 +245,10 @@ test.describe(
           ).toBeVisible();
         }
 
-        await assignDomain(page, domain.responseData);
-        await assignDomain(page, domain2.responseData, false);
+        await setDomain(page, domain.responseData);
+        await setDomain(page, domain2.responseData, { verify: 'none' });
 
-        await expect(page.getByTestId('domain-count-button')).toBeVisible();
+        await expect(page.getByTestId('show-all-domains')).toBeVisible();
 
         // Add Multiple DataProduct, since default single select is off
         if (!entityName.includes('Service')) {
@@ -312,7 +310,10 @@ test.describe(
     test('Database service', async ({ page, browser }) => {
       test.slow(true);
 
-      const table = new TableClass();
+      // Bulk-edit-import runs at the service level with recursive=false and
+      // asserts passed/processed counts — a shared service would contain
+      // other workers' databases and break the count.
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -450,7 +451,10 @@ test.describe(
     test('Database', async ({ page, browser }) => {
       test.slow(true);
 
-      const table = new TableClass();
+      // Navigates the service page and picks the database row by name — a
+      // shared databaseService listing contains other workers' databases
+      // and hides the target row under pagination.
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -599,7 +603,9 @@ test.describe(
     test('Database Schema', async ({ page, browser }) => {
       test.slow(true);
 
-      const table = new TableClass();
+      // Navigates service → database → schema; the shared listing pollutes
+      // every hop with other workers' rows.
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -694,9 +700,11 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         // Verify Domain
-        await expect(page.getByTestId('domain-link')).toContainText(
-          domain.responseData.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${domain.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
 
         // Verify Owners
         await expect(
@@ -783,36 +791,40 @@ test.describe(
         await page.getByTestId('add-domain').click();
         await waitForAllLoadersToDisappear(page);
 
-        // Verify checkboxes ARE visible (multi-select mode)
+        // Verify checkboxes ARE present (multi-select mode)
         await expect(
-          page.locator('.domain-selectable-tree .ant-tree-checkbox').first()
-        ).toBeVisible();
+          page
+            .getByTestId('domain-selectable-tree-popover')
+            .locator('[data-testid^="checkbox-"]')
+        ).not.toHaveCount(0);
 
         // Close the selector by clicking cancel btn
-        await page.getByTestId('cancelAssociatedTag').click();
+        await page.getByTestId('close-btn').click();
 
         // Wait for domain selector to be fully closed
-        await page.getByTestId('domain-selectable-tree').waitFor({
+        await page.getByTestId('domain-selectable-tree-search').waitFor({
           state: 'detached',
         });
 
         // Assign first domain (multi-select mode)
-        await assignDomainWidget(page, testDomain1.responseData, true);
+        await setDomain(page, testDomain1.responseData);
 
         // Assign second domain (should ADD to first, not replace)
-        await assignDomainWidget(page, testDomain2.responseData, true, true);
+        await setDomain(page, testDomain2.responseData, {
+          trigger: 'edit-domain',
+        });
 
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
         await expect(
-          page
-            .getByTestId('domain-link')
-            .filter({ hasText: testDomain1.data.displayName })
+          page.getByTestId(
+            `domain-tag-${testDomain1.responseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
         await expect(
-          page
-            .getByTestId('domain-link')
-            .filter({ hasText: testDomain2.data.displayName })
+          page.getByTestId(
+            `domain-tag-${testDomain2.responseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
       } finally {
         await testGlossaryTerm.delete(apiContext);
@@ -884,7 +896,7 @@ test.describe(
       await crossTable.visitEntityPage(page);
 
       // Asset belongs to assetDomain only.
-      await assignDomain(page, assetDomain.responseData);
+      await setDomain(page, assetDomain.responseData);
 
       // The Data Product from productDomain can be assigned even though the
       // asset is in assetDomain, because the domain validation rule is disabled

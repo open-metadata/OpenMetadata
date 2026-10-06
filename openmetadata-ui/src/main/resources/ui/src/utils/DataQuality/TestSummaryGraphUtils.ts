@@ -10,19 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import isEmpty from 'lodash/isEmpty';
 import isNumber from 'lodash/isNumber';
 import isUndefined from 'lodash/isUndefined';
 import omitBy from 'lodash/omitBy';
 import round from 'lodash/round';
-import { CartesianViewBox } from 'recharts/types/util/types';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import {
-  BLUE_500,
-  GREEN_3,
-  RED_3,
-  YELLOW_3,
-} from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
 import { Task } from '../../generated/entity/tasks/task';
 import {
@@ -62,20 +56,82 @@ export const getIncidentDetails = (task?: Task) => {
   };
 };
 
+/**
+ * Parameters on the `*ToEqual` tests that state the one value a run must hit.
+ * Any other numeric parameter that is not a min or max bound - such as
+ * rangeInterval, a time window, or radius, a distance - says nothing about
+ * where the charted value should sit, so it never becomes the line.
+ */
+const EXPECTED_VALUE_PARAMETERS = new Set([
+  'value',
+  'columnCount',
+  'missingCountValue',
+]);
+const MIN_BOUND_PARAMETER = /^min($|[A-Z])/;
+const MAX_BOUND_PARAMETER = /^max($|[A-Z])/;
+
+export const toFiniteNumber = (value?: string) => {
+  // Number('') is 0, so a cleared parameter would otherwise draw a line at 0.
+  if (isEmpty(value?.trim())) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+export interface ParameterBounds {
+  expected?: number;
+  min?: number;
+  max?: number;
+  threshold?: number;
+}
+
+/**
+ * The numeric bounds a test's parameters state, read by name so a parameter
+ * that is not a bound never passes for one. The chart's expectation line and
+ * the card's caption both read the test through this.
+ */
+export const getParameterBounds = (
+  testCaseParameterValue: TestCaseParameterValue[]
+): ParameterBounds => {
+  const valuesOf = (matches: (name: string) => boolean) =>
+    testCaseParameterValue.reduce<number[]>((values, parameter) => {
+      const value = toFiniteNumber(parameter.value);
+
+      if (matches(parameter.name ?? '') && !isUndefined(value)) {
+        values.push(value);
+      }
+
+      return values;
+    }, []);
+
+  const maxBounds = valuesOf((name) => MAX_BOUND_PARAMETER.test(name));
+  const minBounds = valuesOf((name) => MIN_BOUND_PARAMETER.test(name));
+  const [threshold] = valuesOf((name) => name === 'threshold');
+
+  return {
+    expected: valuesOf((name) => EXPECTED_VALUE_PARAMETERS.has(name))[0],
+    max: isEmpty(maxBounds) ? undefined : Math.max(...maxBounds),
+    min: isEmpty(minBounds) ? undefined : Math.min(...minBounds),
+    threshold,
+  };
+};
+
+const FALLBACK_SERIES_NAME = 'value';
+
 export const prepareChartData = ({
   testCaseParameterValue,
   testCaseResults,
   tasks = [],
 }: PrepareChartDataType) => {
-  // Bond will only be shown if params length is 2 and both values are present
-  const params =
-    testCaseParameterValue.length === 2 ? testCaseParameterValue : [];
+  // Read by name: a test's parameters can also hold a threshold or an expected
+  // value, and neither bounds a range.
+  const { min: minParameter, max: maxParameter } = getParameterBounds(
+    testCaseParameterValue
+  );
   const dataPoints: TestCaseChartDataType['data'] = [];
-  const yValues = params.reduce((acc, curr, i) => {
-    const value = Number.parseInt(curr.value ?? '', 10);
-
-    return { ...acc, [`y${i + 1}`]: Number.isNaN(value) ? undefined : value };
-  }, {});
   let showAILearningBanner = false;
   testCaseResults.forEach((result) => {
     const values = result.testResultValue?.reduce((acc, curr) => {
@@ -86,7 +142,7 @@ export const prepareChartData = ({
 
       return {
         ...acc,
-        [curr.name ?? 'value']: value,
+        [curr.name ?? FALLBACK_SERIES_NAME]: value,
       };
     }, {});
     const metric = {
@@ -99,9 +155,10 @@ export const prepareChartData = ({
         ? undefined
         : `${round(result.failedRowsPercentage, 2)}%`,
     };
-    // if minBound or maxBound is not present, will fallback to calculated yValues from params
-    const y1 = result?.minBound ?? yValues.y1;
-    const y2 = result?.maxBound ?? yValues.y2;
+    // A dynamic assertion's learned bounds, when the run has them, win over the
+    // range the parameters state.
+    const y1 = result?.minBound ?? minParameter;
+    const y2 = result?.maxBound ?? maxParameter;
 
     // if one of y1 or y2 is undefined, will not show the bound area
     const boundArea = isUndefined(y1) || isUndefined(y2) ? undefined : [y1, y2];
@@ -132,9 +189,17 @@ export const prepareChartData = ({
       (info) => !EXCLUDED_CHART_FIELDS.has(info.name ?? '')
     ) ?? [];
 
+  // A run that aborted before measuring records no values, so a test whose
+  // every run did so names no series; one stands in so its runs still get a point.
+  const measuredSeries = filteredResultValues.map((info) => info.name ?? '');
+  const seriesNames =
+    isEmpty(measuredSeries) && !isEmpty(dataPoints)
+      ? [FALLBACK_SERIES_NAME]
+      : measuredSeries;
+
   return {
-    information: filteredResultValues.map((info, i) => ({
-      label: info.name ?? '',
+    information: seriesNames.map((label, i) => ({
+      label,
       color: COLORS[i] ?? getRandomHexColor(),
     })),
     data: dataPoints,
@@ -142,36 +207,11 @@ export const prepareChartData = ({
   };
 };
 
-/**
- * Parameters on the `*ToEqual` tests that state the one value a run must hit.
- * Any other numeric parameter that is not a min or max bound - such as
- * rangeInterval, a time window, or radius, a distance - says nothing about
- * where the charted value should sit, so it never becomes the line.
- */
-const EXPECTED_VALUE_PARAMETERS = new Set([
-  'value',
-  'columnCount',
-  'missingCountValue',
-]);
-const MIN_BOUND_PARAMETER = /^min($|[A-Z])/;
-const MAX_BOUND_PARAMETER = /^max($|[A-Z])/;
-
 export interface ThresholdReference {
   y: number;
   labelKey: string;
   labelValue?: string;
 }
-
-const toFiniteNumber = (value?: string) => {
-  // Number('') is 0, so a cleared parameter would otherwise draw a line at 0.
-  if (isEmpty(value?.trim())) {
-    return undefined;
-  }
-
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) ? parsed : undefined;
-};
 
 /**
  * The value the chart draws its expectation line at, with the label the mock
@@ -182,18 +222,9 @@ export const getThresholdReference = (
   testCaseParameterValue: TestCaseParameterValue[],
   latestResult?: Pick<TestCaseResult, 'maxBound'>
 ): ThresholdReference | undefined => {
-  const valuesOf = (matches: (name: string) => boolean) =>
-    testCaseParameterValue.reduce<number[]>((values, parameter) => {
-      const value = toFiniteNumber(parameter.value);
-
-      if (matches(parameter.name ?? '') && !isUndefined(value)) {
-        values.push(value);
-      }
-
-      return values;
-    }, []);
-
-  const [expected] = valuesOf((name) => EXPECTED_VALUE_PARAMETERS.has(name));
+  const { expected, max, min, threshold } = getParameterBounds(
+    testCaseParameterValue
+  );
 
   if (!isUndefined(expected)) {
     return {
@@ -205,25 +236,16 @@ export const getThresholdReference = (
 
   // Both bounds are optional on the `*ToBeBetween` tests, so a range may be
   // one-sided. The line sits at the upper bound when there is one.
-  const maxBounds = valuesOf((name) => MAX_BOUND_PARAMETER.test(name));
-
-  if (!isEmpty(maxBounds)) {
-    return { y: Math.max(...maxBounds), labelKey: 'label.allowed-max' };
+  if (!isUndefined(max)) {
+    return { y: max, labelKey: 'label.allowed-max' };
   }
 
-  const minBounds = valuesOf((name) => MIN_BOUND_PARAMETER.test(name));
-
-  if (!isEmpty(minBounds)) {
-    return { y: Math.min(...minBounds), labelKey: 'label.allowed-min' };
+  if (!isUndefined(min)) {
+    return { y: min, labelKey: 'label.allowed-min' };
   }
 
   // `threshold` is a tolerance on most tests but the assertion itself on
   // tableCustomSQLQuery, so it is read only once nothing else supplies the line.
-  const threshold = toFiniteNumber(
-    testCaseParameterValue.find((parameter) => parameter.name === 'threshold')
-      ?.value
-  );
-
   if (!isUndefined(threshold)) {
     return {
       y: threshold,
@@ -243,12 +265,20 @@ export const getThresholdReference = (
  */
 export const PLACED_KEYS_FIELD = 'placedKeys';
 
+const PLACED_SERIES_SUFFIX = '__placed';
+
+/** The key a series' placed values are drawn under, apart from its line. */
+export const placedSeriesKey = (seriesKey: string) =>
+  `${seriesKey}${PLACED_SERIES_SUFFIX}`;
+
 /**
- * A run that produced no value carries no key for any series, so recharts drew
- * nothing at all for it and the run was missing from the chart. Aborted runs are
- * placed at the lowest value on the plot and queued runs on the expectation
- * line, on the series itself, so the line runs through them and the point is
- * not left floating off it. Which keys were placed is recorded on the point.
+ * A run that produced no value carries no key for any series, so it would be
+ * missing from the chart. Aborted runs are placed at the lowest value on the
+ * plot (or the expectation line, or zero, when nothing was plotted) and queued
+ * runs on the expectation line. The placed value goes under `placedSeriesKey`,
+ * not the series' own key, so the line joins measured runs only: drawn through
+ * a placed value, an aborted run read as a measured drop. Which keys were
+ * placed is recorded on the point.
  */
 export const applyStatusPlacements = (
   data: TestCaseChartDataType['data'],
@@ -259,11 +289,9 @@ export const applyStatusPlacements = (
     seriesLabels.map((label) => point[label]).filter(isNumber)
   );
 
-  if (isEmpty(plotted) && isUndefined(thresholdY)) {
-    return data;
-  }
-
-  const baseline = isEmpty(plotted) ? thresholdY : Math.min(...plotted);
+  // With no value and no line there is no scale to sit on, so the zero line
+  // stands in; otherwise every run of an always-aborting test would be invisible.
+  const baseline = isEmpty(plotted) ? thresholdY ?? 0 : Math.min(...plotted);
 
   const placementByStatus: Partial<Record<TestCaseStatus, number | undefined>> =
     {
@@ -275,36 +303,40 @@ export const applyStatusPlacements = (
     const placement = placementByStatus[point.status as TestCaseStatus];
 
     // A run that did record a value keeps it, whatever its status.
-    const missing = seriesLabels.filter((label) => !isNumber(point[label]));
+    const placedKeys = seriesLabels.reduce<string[]>((keys, label) => {
+      if (!isNumber(point[label])) {
+        keys.push(placedSeriesKey(label));
+      }
 
-    if (isUndefined(placement) || isEmpty(missing)) {
+      return keys;
+    }, []);
+
+    if (isUndefined(placement) || isEmpty(placedKeys)) {
       return point;
     }
 
     return {
       ...point,
-      ...Object.fromEntries(missing.map((label) => [label, placement])),
-      [PLACED_KEYS_FIELD]: missing,
+      ...Object.fromEntries(placedKeys.map((key) => [key, placement])),
+      [PLACED_KEYS_FIELD]: placedKeys,
     };
   });
 };
 
-// Aborted and Queued used to share one colour, which read as a single state:
-// a run that produced no result and a run that has not happened yet.
-export const getStatusDotColor = (status: TestCaseStatus): string => {
+export const getStatusChartStatus = (status?: TestCaseStatus): ChartStatus => {
   if (status === TestCaseStatus.Success) {
-    return GREEN_3;
+    return 'success';
   }
 
   if (status === TestCaseStatus.Failed) {
-    return RED_3;
+    return 'failed';
   }
 
   if (status === TestCaseStatus.Queued) {
-    return BLUE_500;
+    return 'info';
   }
 
-  return YELLOW_3;
+  return 'warning';
 };
 
 export const formatTestSummaryYAxis = (
@@ -349,14 +381,14 @@ export const isSameTooltipPosition = (
   Math.abs(current.y - next.y) < TOOLTIP_POSITION_EPSILON;
 
 /**
- * Recharts types every view-box coordinate as optional, while overflow-aware
+ * Chart view boxes may carry any coordinate as undefined, while overflow-aware
  * placement requires complete finite bounds. Invalid bounds intentionally fall
  * back to the dot-relative position instead of hiding the tooltip.
  */
 export const isTestSummaryTooltipBoundary = (
-  viewBox: CartesianViewBox
-): viewBox is TooltipBoundary =>
-  [viewBox.height, viewBox.width, viewBox.x, viewBox.y].every((value) =>
+  box: Partial<TooltipBoundary>
+): box is TooltipBoundary =>
+  [box.height, box.width, box.x, box.y].every((value) =>
     Number.isFinite(value)
   );
 

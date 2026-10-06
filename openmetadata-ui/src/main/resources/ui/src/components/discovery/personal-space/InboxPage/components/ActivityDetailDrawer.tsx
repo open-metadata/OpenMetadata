@@ -22,7 +22,13 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Maximize02, Minimize02, Trash01, X } from '@untitledui/icons';
+import {
+  Edit01,
+  Maximize02,
+  Minimize02,
+  Trash01,
+  X,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -275,6 +281,7 @@ const CommentRow: React.FC<CommentRowProps> = ({
       <Box align="center" className="tw:justify-between" gap={2}>
         <Box align="center" gap={2}>
           <ProfilePicture
+            matchRingToFill
             displayName={authorName}
             name={authorLogin}
             width="26"
@@ -546,6 +553,7 @@ const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             className="tw:min-w-0 tw:flex-1 tw:overflow-hidden"
             gap={2}>
             <ProfilePicture
+              matchRingToFill
               displayName={authorName}
               name={actorName}
               width="28"

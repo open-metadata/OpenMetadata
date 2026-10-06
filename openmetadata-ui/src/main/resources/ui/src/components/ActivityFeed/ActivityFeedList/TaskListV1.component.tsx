@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import classNames from 'classnames';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
@@ -93,18 +92,18 @@ const TaskListV1 = ({
         <ErrorPlaceHolderNew
           icon={<FeedEmptyIcon height={140} width={140} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph
-            className="placeholder-text"
-            style={{ marginBottom: '0' }}>
+          <Typography as="div" className="placeholder-text tw:break-words">
             {emptyPlaceholderText}
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolderNew>
       </div>
     );
   }
 
   return (
-    <div className={classNames('activity-feed-tab-padding')} id="taskData">
+    // Padding lives here, not in .activity-feed-tab-padding: that rule's stylesheet
+    // is not loaded on every page that renders this list (e.g. the incident tab).
+    <div className="tw:p-5" id="taskData">
       {tasks}
     </div>
   );

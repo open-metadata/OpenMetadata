@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
+import {
+  File06 as Articles,
+  Lock01 as Lock,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
@@ -861,8 +864,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   useEffect(() => {
-    knowledgePageIdRef.current = knowledgePage?.id;
-  }, [knowledgePage?.id]);
+    // A route can change before its page fetch resolves. Saves for the previous
+    // article must stop controlling the new route's badge during that gap.
+    knowledgePageIdRef.current =
+      knowledgePage?.fullyQualifiedName === fqn ? knowledgePage.id : undefined;
+  }, [fqn, knowledgePage?.fullyQualifiedName, knowledgePage?.id]);
 
   useEffect(() => {
     if (tab) {

@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@/components/base/buttons/button';
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Typography } from '@/components/foundations/typography';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { RefreshCw01 } from '@untitledui/icons';
+import { RefreshCw01 } from '../../../icons';
 import { Tree } from '../tree/tree';
 import type { TreeSelectNode } from './tree-select.types';
 
@@ -29,8 +31,12 @@ export interface TreeSelectTreeItemContentProps<T> {
   multiple: boolean;
   disabled: boolean;
   hasChildItems: boolean;
+  maxIndentLevel?: number;
   onNodeClick: () => void;
 }
+
+// Tighter than the Tree default; every row shares it or they misalign.
+const ROW_GAP = 'tw:gap-2';
 
 export const TreeSelectEmptyItemContent = ({
   message,
@@ -39,7 +45,7 @@ export const TreeSelectEmptyItemContent = ({
   message: string;
   parentId: string;
 }) => (
-  <Tree.ItemContent indentPerLevel={28} maxIndentLevel={2}>
+  <Tree.ItemContent className={ROW_GAP} indentPerLevel={28} maxIndentLevel={2}>
     {() => (
       <div
         className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:py-0.5 tw:text-xs tw:text-tertiary"
@@ -50,6 +56,61 @@ export const TreeSelectEmptyItemContent = ({
     )}
   </Tree.ItemContent>
 );
+
+// The tail of a truncated branch, rendered only once a page has arrived.
+export const TreeSelectLoadMoreItemContent = ({
+  parentId,
+  nextCount,
+  remaining,
+  isLoading,
+  maxIndentLevel = 2,
+  showExpandIcon,
+  onLoadMore,
+}: {
+  parentId: string;
+  /** What one more click fetches. */
+  nextCount: number;
+  /** Everything still unloaded; absent when the source reports no total. */
+  remaining?: number;
+  isLoading: boolean;
+  maxIndentLevel?: number;
+  showExpandIcon?: boolean;
+  onLoadMore: () => void;
+}) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <Tree.ItemContent
+      className={ROW_GAP}
+      hasChildItems={false}
+      indentPerLevel={28}
+      maxIndentLevel={maxIndentLevel}
+      showExpandIcon={showExpandIcon}>
+      {() => (
+        <div
+          className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5"
+          data-testid={`tree-node-load-more-${parentId}`}>
+          <Button
+            showTextWhileLoading
+            color="link-color"
+            isLoading={isLoading}
+            size="sm"
+            onPress={onLoadMore}>
+            {t('label.show-count-more', { count: nextCount })}
+          </Button>
+          {remaining !== undefined && (
+            <Typography
+              className="not-prose tw:shrink-0 tw:text-tertiary tw:tabular-nums"
+              size="text-xs"
+              weight="regular">
+              {`· ${t('label.count-remaining', { count: remaining })}`}
+            </Typography>
+          )}
+        </div>
+      )}
+    </Tree.ItemContent>
+  );
+};
 
 export const TreeSelectTreeItemContent = <T,>({
   node,
@@ -62,27 +123,36 @@ export const TreeSelectTreeItemContent = <T,>({
   multiple,
   disabled,
   hasChildItems,
+  maxIndentLevel = 2,
   onNodeClick,
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
-  const isRowDisabled = disabled || node.disabled || !isSelectable;
+  // A glossary row cannot be picked but is a live container, not a dead one.
+  const isRowBlocked = Boolean(disabled || node.disabled);
+  const isRowDisabled = isRowBlocked || !isSelectable;
   // One choice at a time reads as a radio: a single-select tree otherwise shows
   // no control at all, leaving the rows looking inert.
   const isSingleChoice = !multiple || Boolean(node.isParentMutuallyExclusive);
 
   return (
     <Tree.ItemContent
-      className="tw:text-sm tw:font-normal tw:text-primary"
+      className={cx('tw:text-sm tw:font-normal tw:text-primary', ROW_GAP)}
       hasChildItems={hasChildItems}
       indentPerLevel={28}
-      maxIndentLevel={2}
+      maxIndentLevel={maxIndentLevel}
       showExpandIcon={showExpandIcon}>
       {() => (
         <div
           className={cx(
             'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
-            isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
+            // not-allowed is for a blocked row, not one with nothing to pick.
+            isRowBlocked
+              ? 'tw:cursor-not-allowed'
+              : isSelectable
+              ? 'tw:cursor-pointer'
+              : 'tw:cursor-default'
           )}
+          data-selected={isSelected}
           data-testid={`tree-node-${node.id}`}
           role="presentation"
           onClick={(event) => {
@@ -124,6 +194,9 @@ export const TreeSelectTreeItemContent = <T,>({
           <Typography
             className={cx(
               'not-prose tw:grow tw:truncate',
+              // Single-choice rows carry no checkbox, so weight is the only
+              // affordance telling the user which row is active.
+              isSelected && 'tw:font-medium tw:text-primary',
               node.disabled && 'tw:text-disabled'
             )}
             title={node.label}>

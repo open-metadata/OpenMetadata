@@ -28,6 +28,9 @@ import { SubDomain } from '../support/domain/SubDomain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../support/entity/service/MessagingServiceClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
@@ -50,6 +53,7 @@ import {
   addOwner,
   escapeESReservedCharacters,
   openClassificationTagPicker,
+  visitEntityPageByFqn,
   waitForAllLoadersToDisappear,
 } from './entity';
 import {
@@ -58,13 +62,13 @@ import {
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
   try {
-    await page.getByTestId('loader').first().waitFor({
-      state: 'attached',
+    await expect(page.getByTestId('loader')).not.toHaveCount(0, {
       timeout: 999,
     });
     await waitForAllLoadersToDisappear(page);
@@ -255,85 +259,6 @@ export const removeCertificationFromWidget = async (
   await expect(page.getByTestId('add-certification')).toBeVisible();
 };
 
-export const assignDomainWidget = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  multiSelect = false,
-  isUpdate = false
-) => {
-  await openWidgetEditor(page, 'add-domain', 'edit-domain', isUpdate);
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
-  await searchDomain;
-
-  const domainTag = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
-  await domainTag.waitFor({ state: 'visible' });
-
-  if (multiSelect) {
-    await domainTag.click();
-    const patchReq = page.waitForResponse(
-      (req) => req.request().method() === 'PATCH'
-    );
-    await page.getByTestId('saveAssociatedTag').click();
-    await patchReq;
-  } else {
-    const patchReq = page.waitForResponse(
-      (req) => req.request().method() === 'PATCH'
-    );
-    await domainTag.click();
-    await patchReq;
-  }
-
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(
-    page.getByTestId('domain-link').filter({ hasText: domain.displayName })
-  ).toBeVisible();
-};
-
-export const removeDomainWidget = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  // Removing implies a domain is already assigned, so the widget shows edit.
-  await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
-  await waitForAllLoadersToDisappear(page);
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
-  await searchDomain;
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(page.getByTestId('domain-link')).not.toBeVisible();
-};
-
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await waitForAllLoadersToDisappear(page);
@@ -419,6 +344,66 @@ export const validateDomainForm = async (page: Page) => {
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
 
+/**
+ * Report where a domain the UI could not list actually is: present in the
+ * repository, present in the search index, both, or neither.
+ */
+const describeDomainVisibility = async (
+  page: Page,
+  domain: Domain['data']
+): Promise<string> => {
+  // Built inside the try, not above it: `getApiContext` reads the token through
+  // `page.evaluate`, which throws once the page or context is gone — and a
+  // closed page is exactly the case this diagnostic is here to explain. Outside
+  // the try that throw escapes and replaces the assertion failure the caller
+  // was reporting, so the diagnostic would eat the very error it exists for.
+  let afterAction: (() => Promise<void>) | undefined;
+
+  try {
+    const context = await getApiContext(page);
+    const apiContext = context.apiContext;
+    afterAction = context.afterAction;
+
+    const byName = await apiContext.get(
+      `/api/v1/domains/name/${encodeURIComponent(domain.name)}`
+    );
+    const inRepository = byName.status() === 200;
+
+    const search = await apiContext.get(
+      `/api/v1/search/query?q=${encodeURIComponent(
+        domain.name
+      )}&index=domain&from=0&size=10`
+    );
+    const hits = search.ok()
+      ? ((await search.json())?.hits?.hits ?? []).map(
+          (hit: { _source?: { name?: string } }) => hit._source?.name
+        )
+      : [];
+    const inIndex = hits.includes(domain.name);
+
+    return [
+      `Diagnostics for "${domain.name}":`,
+      `  GET /api/v1/domains/name/... -> ${byName.status()} (${
+        inRepository
+          ? 'the domain exists'
+          : 'the domain is NOT in the repository'
+      })`,
+      `  search index=domain -> ${search.status()}, ${
+        inIndex ? 'the domain IS indexed' : 'the domain is NOT indexed'
+      }; hits: ${JSON.stringify(hits)}`,
+      inRepository && inIndex
+        ? '  => written and indexed, so the listing UI or the search box is at fault, not eventual consistency.'
+        : inRepository
+        ? '  => written but not indexed: search read-after-write lag or a failed index write.'
+        : '  => never written: the fixture create failed or something deleted it.',
+    ].join('\n');
+  } catch (diagnosticError) {
+    return `Diagnostics unavailable: ${(diagnosticError as Error).message}`;
+  } finally {
+    await afterAction?.();
+  }
+};
+
 export const selectDomain = async (page: Page, domain: Domain['data']) => {
   const searchBox = page
     .getByTestId('page-layout-v1')
@@ -433,31 +418,44 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
   // is only clicked once it is actually there; otherwise the click auto-waits
   // against a list that will never contain it and burns the test timeout.
   let hasSearched = false;
-  await expect
-    .poll(
-      async () => {
-        if (hasSearched) {
-          await page.reload();
-          await waitForAllLoadersToDisappear(page);
+  try {
+    await expect
+      .poll(
+        async () => {
+          if (hasSearched) {
+            await page.reload({ waitUntil: 'domcontentloaded' });
+            await waitForAllLoadersToDisappear(page);
+          }
+          hasSearched = true;
+
+          await Promise.all([
+            searchBox.fill(domain.name),
+            page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
+          ]);
+
+          await waitForSearchDebounce(page);
+
+          return domainRow.isVisible();
+        },
+        {
+          message: `Wait for domain "${domain.name}" to appear in the domain listing`,
+          timeout: 60_000,
+          intervals: [2_000, 3_000, 5_000],
         }
-        hasSearched = true;
-
-        await Promise.all([
-          searchBox.fill(domain.name),
-          page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
-        ]);
-
-        await waitForSearchDebounce(page);
-
-        return domainRow.isVisible();
-      },
-      {
-        message: `Wait for domain "${domain.name}" to appear in the domain listing`,
-        timeout: 60_000,
-        intervals: [2_000, 3_000, 5_000],
-      }
-    )
-    .toBe(true);
+      )
+      .toBe(true);
+  } catch (error) {
+    // "It never showed up" is not a diagnosis. Ask the API the two questions
+    // that separate the candidate causes — was the domain ever written, and did
+    // the search index pick it up — so the failure names the layer that broke
+    // instead of costing another round of blob-artifact archaeology.
+    throw new Error(
+      `${(error as Error).message}\n\n${await describeDomainVisibility(
+        page,
+        domain
+      )}`
+    );
+  }
 
   // Click the domain name cell, not the row center — the row's center column is
   // the glossary-terms cell whose tags are their own links, so a row-center
@@ -562,7 +560,7 @@ export const selectDataProduct = async (
     .poll(
       async () => {
         if (hasSearched) {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
           await searchBox.waitFor({ state: 'visible' });
         }
@@ -790,7 +788,7 @@ export const checkSubDomainCount = async (page: Page, count: number) => {
     .poll(
       async () => {
         if (shouldReload) {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
         }
         shouldReload = true;
@@ -924,7 +922,10 @@ export const addAssetsToDomain = async (
       .fill(visibleName);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
 
     await expect(
       page.locator(
@@ -952,7 +953,7 @@ export const addAssetsToDomain = async (
 
   await searchRes;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await checkAssetsCount(page, assets.length);
@@ -961,7 +962,7 @@ export const addAssetsToDomain = async (
 export const addServicesToDomain = async (
   page: Page,
   domain: Domain['data'],
-  assets: EntityClass[]
+  services: Array<{ name?: string; fullyQualifiedName?: string }>
 ) => {
   await goToAssetsTab(page, domain);
 
@@ -971,10 +972,7 @@ export const addServicesToDomain = async (
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
   await assetRes;
 
-  for (const asset of assets) {
-    const name = get(asset, 'name') ?? '';
-    const fqn = get(asset, 'fullyQualifiedName');
-
+  for (const { name = '', fullyQualifiedName: fqn } of services) {
     const searchRes = page.waitForResponse(
       `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
     );
@@ -984,7 +982,10 @@ export const addServicesToDomain = async (
       .fill(name);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1042,7 +1043,10 @@ export const addAssetsToDataProduct = async (
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1053,16 +1057,26 @@ export const addAssetsToDataProduct = async (
 
   await checkAssetsCount(page, assets.length);
 
+  // Data-product page URL to return to after visiting each asset's page.
+  const dataProductUrl = page.url();
+
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
 
-    await page
-      .locator(
-        `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
-      )
-      .click();
+    if (!fqn) {
+      throw new Error(
+        `addAssetsToDataProduct verification: asset missing entityResponseData.fullyQualifiedName`
+      );
+    }
 
-    await waitForAllLoadersToDisappear(page);
+    // Navigate to the entity page via URL instead of clicking the
+    // entity-link inside the asset card. The card body re-renders
+    // asynchronously as tags / owners / counts stream in, so `.click()`
+    // retries "element is not stable" for the full test timeout under
+    // SharedInfra load. Direct navigation bypasses the stability race.
+    await visitEntityPageByFqn({ page, endpoint: asset.endpoint, fqn });
 
     await expect(
       page
@@ -1070,10 +1084,12 @@ export const addAssetsToDataProduct = async (
         .getByTestId('data-products-list')
         .getByTestId(`data-product-${dataProductFqn}`)
     ).toBeVisible();
-
-    await page.goBack();
-    await waitForAllLoadersToDisappear(page);
   }
+
+  // Return to the data-product page so the caller's next assertions
+  // (asset count, remove-assets, delete) can run against it.
+  await page.goto(dataProductUrl);
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const removeAssetsFromDataProduct = async (
@@ -1083,9 +1099,40 @@ export const removeAssetsFromDataProduct = async (
 ) => {
   await page.getByTestId('assets').click();
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `removeAssetsFromDataProduct: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // Narrow to this card so neighbor cards' streaming metadata
+    // (tags/owners/counts) can't reflow the target during .check().
+    // Tab wraps `q=*<value>*`, so match the name anywhere in the URL.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    await waitForAllLoadersToDisappear(page);
+
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
+
+  // Clear the filter before delete-all so the request URL matches the
+  // helper's wait pattern (a filtered list can otherwise defer or drop
+  // the /assets/remove request).
+  await page.getByTestId('searchbar').clear();
+  await waitForAllLoadersToDisappear(page);
 
   const assetsRemoveRes = page.waitForResponse(
     `/api/v1/dataProducts/${encodeURIComponent(
@@ -1097,11 +1144,25 @@ export const removeAssetsFromDataProduct = async (
   await assetsRemoveRes;
 };
 
-export const setupAssetsForDomain = async (page: Page) => {
+/**
+ * `ownServices` gives each asset its own service — pass it when the test
+ * assigns the domain to the services too; the shared ones would carry every
+ * concurrent test's domain.
+ */
+export const setupAssetsForDomain = async (
+  page: Page,
+  { ownServices = false }: { ownServices?: boolean } = {}
+) => {
   const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  const topic = new TopicClass();
-  const dashboard = new DashboardClass();
+  const table = new TableClass(
+    ownServices ? { service: new DatabaseServiceClass() } : {}
+  );
+  const topic = new TopicClass(
+    ownServices ? { service: new MessagingServiceClass() } : {}
+  );
+  const dashboard = new DashboardClass(
+    ownServices ? { service: new DashboardServiceClass() } : {}
+  );
   await Promise.all([
     table.create(apiContext),
     topic.create(apiContext),
@@ -1995,7 +2056,10 @@ export const addInputPortToDataProduct = async (
   await searchBar.fill(displayName);
   await searchRes;
 
-  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  await page
+    .locator(`[data-testid="table-data-card_${fqn}"]`)
+    .getByTestId('asset-checkbox')
+    .check();
 
   const addRes = page.waitForResponse(
     (res) =>
@@ -2039,7 +2103,10 @@ export const addOutputPortToDataProduct = async (
   await searchBar.fill(displayName);
   await searchRes;
 
-  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  await page
+    .locator(`[data-testid="table-data-card_${fqn}"]`)
+    .getByTestId('asset-checkbox')
+    .check();
 
   const addRes = page.waitForResponse(
     (res) =>
@@ -2082,20 +2149,22 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
 
-  const patchRes = page.waitForResponse(
+  const patchRes = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/domains/') &&
-      response.request().method() === 'PATCH' &&
-      response.ok()
+      response.request().method() === 'PATCH',
+    'ok'
   );
   await page.getByTestId('save-button').click();
   await patchRes;
-  await page.waitForURL((url) =>
-    url.pathname.includes(encodeURIComponent(newName))
+  await page.waitForURL(
+    (url) => url.pathname.includes(encodeURIComponent(newName)),
+    { waitUntil: 'domcontentloaded' }
   );
 
   const domainRes = page.waitForResponse('/api/v1/domains/name/*');
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await domainRes;
 };
 
@@ -2108,21 +2177,17 @@ export const selectDomainFromNavbar = async (
   domain: Domain['responseData']
 ) => {
   const domainDropdown = page.getByTestId('domain-dropdown');
-  const domainTree = page.getByTestId('domain-selectable-tree');
+  const domainSearch = page.getByTestId('domain-dropdown-search');
   const searchTerm = domain.displayName ?? domain.name;
 
   await domainDropdown.click();
-  await page
-    .getByTestId('domain-selectable-tree')
-    .waitFor({ state: 'visible' });
+  await domainSearch.waitFor({ state: 'visible' });
 
-  await domainTree.getByTestId('searchbar').waitFor({ state: 'visible' });
-
-  await domainTree.getByTestId('searchbar').click();
+  await domainSearch.click();
   await page.keyboard.press('Control+a');
-  await domainTree.getByTestId('searchbar').pressSequentially(searchTerm);
+  await domainSearch.pressSequentially(searchTerm);
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
   await waitForAllLoadersToDisappear(page);
 };
 

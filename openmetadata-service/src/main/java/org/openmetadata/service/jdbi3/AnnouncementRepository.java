@@ -44,6 +44,9 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
 
   public static final String COLLECTION_PATH = "/v1/announcements";
 
+  /** Mirrors {@code maxLength} on {@code customTypeName} in announcement.json. */
+  private static final int MAX_CUSTOM_TYPE_NAME_LENGTH = 64;
+
   public AnnouncementRepository() {
     super(
         COLLECTION_PATH,
@@ -77,18 +80,70 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
     // Backfill the default so a type is guaranteed even when the POJO initializer is bypassed
     // (e.g. an explicit "type": null on create, or a JSON Patch that removes /type).
     if (announcement.getType() == null) {
-      announcement.setType(AnnouncementType.Information);
+      announcement.setType(AnnouncementType.Notice);
     }
-    if (announcement.getStatus() == null) {
-      long now = System.currentTimeMillis();
-      if (announcement.getEndTime() < now) {
-        announcement.setStatus(AnnouncementStatus.Expired);
-      } else if (announcement.getStartTime() > now) {
-        announcement.setStatus(AnnouncementStatus.Scheduled);
-      } else {
-        announcement.setStatus(AnnouncementStatus.Active);
-      }
+    validateTypeFields(announcement);
+    announcement.setStatus(deriveStatus(announcement));
+  }
+
+  /**
+   * Status is a function of the time window, never of what was stored. Writing it on create and
+   * leaving it alone thereafter let the field drift: an announcement whose window had closed still
+   * reported {@code Active}, so the list filter — which derives the status — and the payload
+   * disagreed. Deriving it on both write and read keeps the stored column from mattering for
+   * correctness.
+   */
+  private AnnouncementStatus deriveStatus(Announcement announcement) {
+    long now = System.currentTimeMillis();
+    if (announcement.getEndTime() < now) {
+      return AnnouncementStatus.Expired;
     }
+    return announcement.getStartTime() > now
+        ? AnnouncementStatus.Scheduled
+        : AnnouncementStatus.Active;
+  }
+
+  /**
+   * `color` and `customTypeName` only mean anything on a {@code Custom} announcement. The form
+   * enforces that, but API, MCP and script callers do not go through the form, so without this the
+   * server would store a colour the UI never reads, or a Custom announcement with no label and no
+   * colour that falls back to the UI's pink default — a colour its author never chose.
+   */
+  private void validateTypeFields(Announcement announcement) {
+    if (announcement.getType() != AnnouncementType.Custom) {
+      announcement.setColor(null);
+      announcement.setCustomTypeName(null);
+      return;
+    }
+
+    if (announcement.getColor() == null) {
+      throw new IllegalArgumentException("color is required when the announcement type is Custom");
+    }
+    announcement.setCustomTypeName(validCustomTypeName(announcement.getCustomTypeName()));
+  }
+
+  /**
+   * The schema's {@code minLength}/{@code maxLength} only run on {@code @Valid CreateAnnouncement},
+   * so they cover create and PUT alone — PATCH binds the patched JSON straight to the POJO with no
+   * bean validation, and a 200-character name sent that way was stored as it arrived. Checking here
+   * covers all three paths at once.
+   *
+   * <p>Length is measured after trimming, which is the value actually stored; the schema measures
+   * the value as sent. A name that is only over the limit because of surrounding whitespace is
+   * therefore accepted here and rejected by the schema on create — the stricter of the two wins,
+   * and neither can store an over-length name.
+   */
+  private String validCustomTypeName(String customTypeName) {
+    String trimmed = nullOrEmpty(customTypeName) ? "" : customTypeName.trim();
+    if (trimmed.isEmpty()) {
+      throw new IllegalArgumentException(
+          "customTypeName is required when the announcement type is Custom");
+    }
+    if (trimmed.length() > MAX_CUSTOM_TYPE_NAME_LENGTH) {
+      throw new IllegalArgumentException(
+          "customTypeName cannot be longer than " + MAX_CUSTOM_TYPE_NAME_LENGTH + " characters");
+    }
+    return trimmed;
   }
 
   @Override
@@ -112,10 +167,26 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
 
   @Override
   public void setFields(Announcement announcement, Fields fields, RelationIncludes includes) {
+    announcement.setStatus(deriveStatus(announcement));
     announcement.setOwners(
         fields.contains(FIELD_OWNERS) ? getOwners(announcement) : announcement.getOwners());
     announcement.setDomains(
         fields.contains(FIELD_DOMAINS) ? getDomains(announcement) : announcement.getDomains());
+  }
+
+  /**
+   * The list path never reaches {@link #setFields}: {@code setFieldsInBulk} goes straight to the
+   * registered field fetchers. Deriving status only there left a row reporting {@code Expired} on a
+   * GET by id and the stored write-time snapshot in the list that the status filter had already
+   * matched it into — so the filter and the payload disagreed for exactly the rows the filter
+   * exists to find.
+   */
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Announcement> entities) {
+    if (!nullOrEmpty(entities)) {
+      entities.forEach(announcement -> announcement.setStatus(deriveStatus(announcement)));
+    }
+    super.setFieldsInBulk(fields, entities);
   }
 
   @Override
@@ -215,6 +286,8 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       recordChange("endTime", original.getEndTime(), updated.getEndTime());
       recordChange("status", original.getStatus(), updated.getStatus());
       recordChange("type", original.getType(), updated.getType());
+      recordChange("color", original.getColor(), updated.getColor());
+      recordChange("customTypeName", original.getCustomTypeName(), updated.getCustomTypeName());
     }
   }
 
@@ -240,7 +313,7 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       try {
         EntityRepository<?> targetRepo = Entity.getEntityRepository(about.getType());
         Object targetEntity =
-            targetRepo.get(null, about.getId(), targetRepo.getFields(FIELD_DOMAINS));
+            targetRepo.get(null, about.getId(), targetRepo.getOnlySupportedFields(FIELD_DOMAINS));
         announcement.setDomains(extractDomainsFromEntity(targetEntity));
       } catch (Exception e) {
         LOG.debug(

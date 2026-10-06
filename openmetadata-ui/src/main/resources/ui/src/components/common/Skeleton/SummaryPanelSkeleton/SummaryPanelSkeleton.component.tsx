@@ -29,9 +29,7 @@ const SummaryPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
               firstColSize={8}
               key={uniqueId()}
               secondColSize={16}
-              title={{
-                width: 100,
-              }}
+              width={100}
             />
           ))}
         </Col>

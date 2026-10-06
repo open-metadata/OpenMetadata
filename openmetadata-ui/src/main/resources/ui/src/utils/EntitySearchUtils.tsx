@@ -17,6 +17,7 @@ import { SearchedDataProps } from '../components/SearchedData/SearchedData.inter
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column } from '../generated/entity/data/table';
 import { getEntityName } from './EntityNameUtils';
+import { stripMarkdown } from './RichTextStringUtils';
 import { getDataTypeString } from './TablePureUtils';
 
 /**
@@ -62,20 +63,40 @@ export const searchInColumns = <T extends Column | SearchIndexField>(
   return searchedValue;
 };
 
+const SPAN_OPEN = '<span class="text-highlighter">';
+const SPAN_CLOSE = '</span>';
+const SENTINEL_OPEN = '{HL_O}';
+const SENTINEL_CLOSE = '{HL_C}';
+
+const stripMarkdownKeepingSpans = (text: string): string =>
+  stripMarkdown(
+    text
+      .replaceAll(SPAN_OPEN, SENTINEL_OPEN)
+      .replaceAll(SPAN_CLOSE, SENTINEL_CLOSE)
+  )
+    .replaceAll(SENTINEL_OPEN, SPAN_OPEN)
+    .replaceAll(SENTINEL_CLOSE, SPAN_CLOSE);
+
 export const highlightEntityNameAndDescription = (
   entity: SearchedDataProps['data'][number]['_source'],
-  highlight: SearchedDataProps['data'][number]['highlight']
+  highlight: SearchedDataProps['data'][number]['highlight'],
+  stripMd = false
 ): SearchedDataProps['data'][number]['_source'] => {
-  let entityDescription = entity.description ?? '';
+  let entityDescription = stripMd
+    ? stripMarkdown(entity.description ?? '')
+    : entity.description ?? '';
   const descHighlights = highlight?.description ?? [];
 
   if (descHighlights.length > 0) {
-    const matchTextArr = descHighlights.map((val: string) =>
+    const processed = stripMd
+      ? descHighlights.map(stripMarkdownKeepingSpans)
+      : descHighlights;
+    const matchTextArr = processed.map((val: string) =>
       val.replace(/<\/?span(.*?)>/g, '')
     );
 
     matchTextArr.forEach((text: string, i: number) => {
-      entityDescription = entityDescription.replace(text, descHighlights[i]);
+      entityDescription = entityDescription.replace(text, processed[i]);
     });
   }
 

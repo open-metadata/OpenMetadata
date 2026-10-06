@@ -33,6 +33,8 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,6 +50,8 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Durable delivery through real MySQL/PostgreSQL transactions and HTTP/TDB2 writes. */
+@Tag("rdf")
+@EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfLiveWriteRecoveryIT {
   private static final String BASE = "https://open-metadata.org/";

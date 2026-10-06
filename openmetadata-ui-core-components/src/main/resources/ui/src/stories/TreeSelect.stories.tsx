@@ -12,7 +12,7 @@
  */
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
-import { Edit, GlossaryTerm } from '../icons';
+import { Edit01, GlossaryTerm } from '../icons';
 import { ButtonUtility } from '../components/base/buttons/button-utility';
 import { Card } from '../components/base/card/card';
 import { GlossaryTag } from '../components/application/tag/glossary-tag';
@@ -229,6 +229,81 @@ export const GlossaryTermFilter: StoryObj = {
   },
 };
 
+// Both levels page, so each gets its own "Show N more" row.
+const PAGED_GLOSSARY_COUNT = 23;
+const PAGED_PAGE_SIZE = 5;
+
+const pagedGlossary = (index: number): TreeSelectNode => ({
+  id: `paged-${index}`,
+  label: `Glossary ${String(index + 1).padStart(2, '0')}`,
+  value: `Glossary${index + 1}`,
+  allowSelection: false,
+  lazyLoad: true,
+  isLeaf: false,
+  icon: <GlossaryIcon />,
+  count: 12,
+});
+
+const pagedTerm = (glossaryId: string, index: number): TreeSelectNode => ({
+  id: `${glossaryId}-term-${index}`,
+  label: `Term ${index + 1}`,
+  value: `${glossaryId}.Term${index + 1}`,
+  allowSelection: true,
+  icon: <GlossaryIcon />,
+});
+
+// A cursor is opaque to the tree — here it is just the next offset.
+const offsetOf = (after?: string) => (after ? Number(after) : 0);
+
+const fetchPagedGlossaries = async ({
+  parentId,
+  after,
+  pageSize = PAGED_PAGE_SIZE,
+}: {
+  parentId?: string;
+  after?: string;
+  pageSize?: number;
+}): Promise<TreeSelectDataResponse> => {
+  await wait(400);
+
+  const offset = offsetOf(after);
+  const total = parentId ? 12 : PAGED_GLOSSARY_COUNT;
+  const end = Math.min(offset + pageSize, total);
+  const nodes = Array.from({ length: end - offset }, (_, i) =>
+    parentId ? pagedTerm(parentId, offset + i) : pagedGlossary(offset + i)
+  );
+
+  return {
+    nodes,
+    total,
+    hasMore: end < total,
+    nextCursor: end < total ? String(end) : undefined,
+  };
+};
+
+export const PagedAtEveryLevel: StoryObj = {
+  render: () => {
+    const [value, setValue] = useState<TreeSelectNode[]>([]);
+
+    return (
+      <div style={{ width: 360 }}>
+        <FilterSelect.Tree
+          bordered
+          lazyLoad
+          multiple
+          searchable
+          fetchData={fetchPagedGlossaries}
+          label="Glossary Term"
+          pageSize={PAGED_PAGE_SIZE}
+          triggerVariant="button"
+          value={value}
+          onChange={(next) => setValue(Array.isArray(next) ? next : [])}
+        />
+      </div>
+    );
+  },
+};
+
 // The entity-widget shape: edit icon as trigger, terms visible, one PATCH on Apply.
 export const WidgetEditPopover: StoryObj = {
   render: () => {
@@ -252,7 +327,7 @@ export const WidgetEditPopover: StoryObj = {
                 renderTrigger={({ toggle }) => (
                   <ButtonUtility
                     color="tertiary"
-                    icon={Edit}
+                    icon={Edit01}
                     size="xs"
                     tooltip="Edit Glossary Terms"
                     onClick={toggle}
@@ -309,6 +384,38 @@ export const MutuallyExclusive: StoryObj = {
         <p style={{ fontSize: 12, marginTop: 12, color: '#667085' }}>
           Finance &amp; Customer use checkboxes (multi-select). PII uses radio
           buttons (mutually exclusive — only one term can be selected).
+        </p>
+      </div>
+    );
+  },
+};
+
+// The consumer owns the translated create-row label and the create flow itself
+// (e.g. a modal); TreeSelect only surfaces the trigger and the search term.
+export const WithCreate: StoryObj = {
+  render: () => {
+    const [value, setValue] = useState<TreeSelectNode[]>([]);
+    const [lastCreate, setLastCreate] = useState<string | null>(null);
+
+    return (
+      <div style={{ width: 360 }}>
+        <FilterSelect.Tree
+          bordered
+          lazyLoad
+          multiple
+          searchable
+          createLabel="Add new domain"
+          fetchData={fetchGlossaryTerms}
+          label="Domain"
+          triggerVariant="button"
+          value={value}
+          onChange={(next) => setValue(Array.isArray(next) ? next : [])}
+          onCreate={(searchTerm) => setLastCreate(searchTerm)}
+        />
+        <p style={{ fontSize: 12, marginTop: 12, color: '#667085' }}>
+          {lastCreate === null
+            ? 'Open the dropdown and click “Add new domain”.'
+            : `Create requested with search term: "${lastCreate}"`}
         </p>
       </div>
     );

@@ -2571,6 +2571,10 @@ om:disjointWith a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "disjointWith" .
 
+om:disputes a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "disputes" .
+
 om:documentForEntityType a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "documentForEntityType" .
@@ -3771,6 +3775,10 @@ om:sourceId a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sourceId" .
 
+om:sourceMemoryIds a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceMemoryIds" .
+
 om:sourcePythonClass a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sourcePythonClass" .
@@ -3799,6 +3807,10 @@ om:status a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "status" .
 
+om:statusReason a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "statusReason" .
+
 om:steps a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "steps" .
@@ -3826,6 +3838,10 @@ om:summary a rdf:Property ;
 om:superClassOf a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "superClassOf" .
+
+om:supersededBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "supersededBy" .
 
 om:supportEmail a rdf:Property ;
     om:projectionStatus om:Stored ;

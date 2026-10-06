@@ -129,7 +129,9 @@ test.describe('Domain Owner Management', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
     } finally {
       await domain.delete(apiContext);
       await user.delete(apiContext);
@@ -171,7 +173,9 @@ test.describe('Domain Owner Management', () => {
         timeout: 10000,
       });
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       // Click edit owner button
       await page.getByTestId('edit-owner').click();
@@ -470,7 +474,9 @@ test.describe('Data Product UI Operations', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
     } finally {
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
@@ -712,7 +718,7 @@ test.describe('Domain Global Dropdown', () => {
       await page.getByTestId('domain-dropdown').click();
 
       const domainOption = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
+        `tree-node-${domain.responseData.fullyQualifiedName}`
       );
 
       if (await domainOption.isVisible()) {
@@ -740,14 +746,14 @@ test.describe('Domain Global Dropdown', () => {
       await page.getByTestId('domain-dropdown').click();
 
       const domainOption = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
+        `tree-node-${domain.responseData.fullyQualifiedName}`
       );
 
       if (await domainOption.isVisible()) {
         await domainOption.click();
 
         await page.getByTestId('domain-dropdown').click();
-        await page.getByTestId('all-domains-selector').click();
+        await page.getByTestId('tree-node-All Domains').click();
 
         await expect(page.getByTestId('domain-dropdown')).toContainText(
           'All Domains'

@@ -35,6 +35,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 /**
  * Service entity classes here still use the legacy positional patch(apiContext, payload)
@@ -64,7 +65,7 @@ const applyServicePatch = async (
 /** Setup failures, keyed by test name, so one service cannot fail the rest. */
 const setupErrors = new Map<string, unknown>();
 
-const entities = {
+const allEntities = {
   'Api Service': new ApiServiceClass(),
   'Api Collection': new ApiCollectionClass(),
   'Dashboard Service': new DashboardServiceClass(),
@@ -79,6 +80,10 @@ const entities = {
   'Drive Service': new DriveServiceClass(),
 };
 
+const entities = pickEntityMatrix(__filename, allEntities, {
+  'Database Service': allEntities['Database Service'],
+});
+
 // use the admin user to login
 
 const adminUser = new UserClass();
@@ -86,7 +91,7 @@ const adminUser = new UserClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -197,6 +202,11 @@ test.describe('Service Version pages', () => {
      * in the UI to highlight what changed between versions
      */
     test(key, async ({ page }) => {
+      // Visits the version page and asserts diff markers across 4 version
+      // bumps (0.2 → 0.5). 6+ API round-trips + several UI transitions
+      // that can each drift under merge-queue load.
+      test.slow();
+
       const setupError = setupErrors.get(key);
 
       if (setupError) {

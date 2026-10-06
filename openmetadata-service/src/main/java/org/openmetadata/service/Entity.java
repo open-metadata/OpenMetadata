@@ -1046,6 +1046,15 @@ public final class Entity {
     return entityRepository.getAllowedFields().contains(field);
   }
 
+  /** Entity types that have a lifecycle stage, i.e. whose schema declares {@code entityStatus}. */
+  public static List<String> getEntityTypesWithLifecycleStage() {
+    return ENTITY_REPOSITORY_MAP.entrySet().stream()
+        .filter(entry -> entry.getValue().isSupportsEntityStatus())
+        .map(Map.Entry::getKey)
+        .sorted()
+        .toList();
+  }
+
   public static List<ServiceEntityInterface> getAllServicesForLineage() {
     List<ServiceEntityInterface> allServices = new ArrayList<>();
     Set<ServiceType> serviceTypes = new HashSet<>(List.of(ServiceType.values()));

@@ -10,261 +10,92 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Modal, Typography } from 'antd';
-import { isUndefined, uniq } from 'lodash';
-import { FC, useMemo, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { FC, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ENTITY_REFERENCE_OPTIONS,
-  PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
-} from '../../../../constants/CustomProperty.constants';
-import { EntityType } from '../../../../enums/entity.enum';
-import {
-  Config,
-  CustomProperty,
-} from '../../../../generated/type/customProperty';
-import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-} from '../../../../interface/FormUtils.interface';
-import { generateFormFields } from '../../../../utils/formUtils';
-import Banner from '../../../common/Banner/Banner';
-import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import { CustomPropertyChanges } from '../../../../rest/metadataTypeAPI';
+import CustomPropertyEditForm from '../CustomPropertyEditForm/CustomPropertyEditForm';
+import { isEnumProperty } from '../CustomPropertyEditForm/CustomPropertyEditForm.utils';
+import { EditCustomPropertyModalProps } from './EditCustomPropertyModal.interface';
 
-export interface FormData {
-  description: string;
-  customPropertyConfig: string[];
-  multiSelect?: boolean;
-  displayName?: string;
-}
-
-interface EditCustomPropertyModalProps {
-  customProperty: CustomProperty;
-  visible: boolean;
-  onCancel: () => void;
-  onSave: (data: FormData) => Promise<void>;
-}
+const MODAL_WIDTH = 720;
 
 const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
   customProperty,
   onCancel,
-  visible,
   onSave,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
-  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const formId = useId();
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = async (data: FormData) => {
+  const handleSubmit = async (changes: CustomPropertyChanges) => {
     setIsSaving(true);
-    await onSave(data);
-    setIsSaving(false);
-  };
-
-  const { hasEnumConfig, hasEntityReferenceConfig } = useMemo(() => {
-    const propertyName = customProperty.propertyType.name ?? '';
-    const hasEnumConfig = propertyName === 'enum';
-    const hasEntityReferenceConfig =
-      PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(propertyName);
-
-    return {
-      hasEnumConfig,
-      hasEntityReferenceConfig,
-    };
-  }, [customProperty]);
-
-  const formFields: FieldProp[] = [
-    {
-      name: 'displayName',
-      id: 'root/displayName',
-      label: t('label.display-name'),
-      required: false,
-      placeholder: t('label.display-name'),
-      type: FieldTypes.TEXT,
-      props: {
-        'data-testid': 'display-name',
-      },
-    },
-    {
-      name: 'description',
-      required: true,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: customProperty.description,
-      },
-    },
-  ];
-
-  const enumConfigField: FieldProp = {
-    name: 'customPropertyConfig',
-    required: false,
-    label: t('label.enum-value-plural'),
-    id: 'root/customPropertyConfig',
-    type: FieldTypes.SELECT,
-    props: {
-      'data-testid': 'customPropertyConfig',
-      mode: 'tags',
-      placeholder: t('label.enum-value-plural'),
-      onChange: (value: string[]) => {
-        const updatedValues = uniq([...value]);
-        form.setFieldsValue({ customPropertyConfig: updatedValues });
-      },
-      open: false,
-      className: 'trim-select',
-    },
-    rules: [
-      {
-        required: true,
-        message: t('label.field-required', {
-          field: t('label.enum-value-plural'),
-        }),
-      },
-    ],
-  };
-
-  const entityReferenceConfigField: FieldProp = {
-    name: 'customPropertyConfig',
-    required: false,
-    label: t('label.entity-reference-types'),
-    id: 'root/customPropertyConfig',
-    type: FieldTypes.SELECT,
-    props: {
-      'data-testid': 'customPropertyConfig',
-      mode: 'multiple',
-      options: ENTITY_REFERENCE_OPTIONS,
-      placeholder: t('label.entity-reference-types'),
-      onChange: (value: string[]) => {
-        const entityReferenceConfig = customProperty.customPropertyConfig
-          ?.config as string[];
-        const updatedValues = uniq([
-          ...value,
-          ...(entityReferenceConfig ?? []),
-        ]);
-        form.setFieldsValue({ customPropertyConfig: updatedValues });
-      },
-    },
-    rules: [
-      {
-        required: true,
-        message: t('label.field-required', {
-          field: t('label.entity-reference-types'),
-        }),
-      },
-    ],
-  };
-
-  const multiSelectField: FieldProp = {
-    name: 'multiSelect',
-    label: t('label.multi-select'),
-    type: FieldTypes.SWITCH,
-    required: false,
-    props: {
-      'data-testid': 'multiSelect',
-    },
-    formItemProps: {
-      style: { marginBottom: '0px' },
-    },
-    id: 'root/multiSelect',
-    formItemLayout: FormItemLayout.HORIZONTAL,
-  };
-
-  const initialValues = useMemo(() => {
-    if (hasEnumConfig) {
-      const enumConfig = customProperty.customPropertyConfig?.config as Config;
-
-      return {
-        description: customProperty.description,
-        customPropertyConfig: enumConfig?.values ?? [],
-        multiSelect: Boolean(enumConfig?.multiSelect),
-        displayName: customProperty.displayName,
-      };
+    try {
+      await onSave(changes);
+    } finally {
+      setIsSaving(false);
     }
-
-    return {
-      description: customProperty.description,
-      customPropertyConfig: customProperty.customPropertyConfig?.config,
-      displayName: customProperty.displayName,
-    };
-  }, [customProperty, hasEnumConfig]);
-
-  const note = (
-    <Typography.Text
-      className="text-grey-muted"
-      style={{ display: 'block', marginTop: '-18px' }}>
-      {`Note: ${t(
-        'message.updating-existing-not-possible-can-add-new-values'
-      )}`}
-    </Typography.Text>
-  );
-
-  const enumUpdateBanner = isSaving && (
-    <Banner
-      className="border-radius"
-      isLoading={isSaving}
-      message={t('message.enum-property-update-message')}
-      type="success"
-    />
-  );
+  };
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      cancelButtonProps={{ disabled: isSaving }}
-      closable={false}
-      data-testid="edit-custom-property-modal"
-      maskClosable={false}
-      okButtonProps={{
-        htmlType: 'submit',
-        form: 'edit-custom-property-form',
-        loading: isSaving,
-      }}
-      okText={t('label.save')}
-      open={visible}
-      title={
-        <Typography.Text>
-          {t('label.edit-entity-name', {
-            entityType: t('label.property'),
-            entityName: customProperty.name,
-          })}
-        </Typography.Text>
-      }
-      width={800}
-      onCancel={onCancel}>
-      <Form
-        form={form}
-        id="edit-custom-property-form"
-        initialValues={initialValues}
-        layout="vertical"
-        onFinish={handleSubmit}>
-        <EntityAttachmentProvider
-          entityFqn={customProperty?.name}
-          entityType={EntityType.TYPE}>
-          {generateFormFields(formFields)}
-        </EntityAttachmentProvider>
-        {!isUndefined(customProperty.customPropertyConfig) && (
-          <>
-            {hasEnumConfig && (
-              <>
-                {generateFormFields([enumConfigField, multiSelectField])}
-                {enumUpdateBanner}
-              </>
+    <ModalOverlay
+      isOpen
+      isDismissable={!isSaving}
+      onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <Modal>
+        <Dialog
+          data-testid="edit-custom-property-modal"
+          width={MODAL_WIDTH}
+          onClose={onCancel}>
+          <Dialog.Header
+            title={t('label.edit-entity-name', {
+              entityType: t('label.property'),
+              entityName: customProperty.name,
+            })}
+          />
+          <Dialog.Content>
+            <CustomPropertyEditForm
+              formId={formId}
+              property={customProperty}
+              onSubmit={handleSubmit}
+            />
+            {isSaving && isEnumProperty(customProperty) && (
+              <Alert
+                className="tw:mt-4"
+                title={t('message.enum-property-update-message')}
+                variant="success"
+              />
             )}
-
-            {hasEntityReferenceConfig && (
-              <>
-                {generateFormFields([entityReferenceConfigField])}
-                {note}
-              </>
-            )}
-          </>
-        )}
-      </Form>
-    </Modal>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="secondary"
+              data-testid="edit-custom-property-cancel"
+              isDisabled={isSaving}
+              size="md"
+              onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="edit-custom-property-save"
+              form={formId}
+              isLoading={isSaving}
+              size="md"
+              type="submit">
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

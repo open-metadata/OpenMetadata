@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, MenuProps, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -161,9 +162,9 @@ const QueryCardExtraOption = ({
         <QueryHeaderButton onClickHandler={onExpandClick} />
       )}
 
-      <Tag className="query-lines" data-testid="query-line">
+      <Badge color="gray" data-testid="query-line" size="sm">
         {queryLine}
-      </Tag>
+      </Badge>
 
       <Tooltip title={t('label.up-vote')}>
         <Button

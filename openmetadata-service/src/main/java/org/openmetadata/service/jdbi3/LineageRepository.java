@@ -20,10 +20,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.EntityCsv.getCsvDocumentation;
-import static org.openmetadata.service.Entity.API_ENDPOINT;
-import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -33,11 +30,7 @@ import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.METRIC;
-import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.PIPELINE;
-import static org.openmetadata.service.Entity.SEARCH_INDEX;
-import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.TOPIC;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
@@ -75,14 +68,7 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
-import org.openmetadata.schema.entity.data.APIEndpoint;
-import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
-import org.openmetadata.schema.entity.data.DashboardDataModel;
-import org.openmetadata.schema.entity.data.MlModel;
-import org.openmetadata.schema.entity.data.SearchIndex;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
@@ -93,7 +79,6 @@ import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
-import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -111,6 +96,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -1187,113 +1173,62 @@ public class LineageRepository {
   }
 
   private Set<String> getChildrenNames(EntityReference entityReference) {
-    switch (entityReference.getType()) {
-      case TABLE -> {
-        Table table =
-            Entity.getEntity(TABLE, entityReference.getId(), "columns", Include.NON_DELETED);
-        return CommonUtil.getChildrenNames(
-            table.getColumns(), "getChildren", table.getFullyQualifiedName());
-      }
-      case SEARCH_INDEX -> {
-        SearchIndex searchIndex =
-            Entity.getEntity(SEARCH_INDEX, entityReference.getId(), "fields", Include.NON_DELETED);
-        return CommonUtil.getChildrenNames(
-            searchIndex.getFields(), "getChildren", searchIndex.getFullyQualifiedName());
-      }
-      case TOPIC -> {
-        Topic topic =
-            Entity.getEntity(TOPIC, entityReference.getId(), "messageSchema", Include.NON_DELETED);
-        if (topic.getMessageSchema() == null
-            || topic.getMessageSchema().getSchemaFields() == null) {
-          return new HashSet<>();
-        }
-        return CommonUtil.getChildrenNames(
-            topic.getMessageSchema().getSchemaFields(),
-            "getChildren",
-            topic.getFullyQualifiedName());
-      }
-      case CONTAINER -> {
-        Container container =
-            Entity.getEntity(CONTAINER, entityReference.getId(), "dataModel", Include.NON_DELETED);
-        if (container.getDataModel() == null || container.getDataModel().getColumns() == null) {
-          return new HashSet<>();
-        }
-        return CommonUtil.getChildrenNames(
-            container.getDataModel().getColumns(),
-            "getChildren",
-            container.getFullyQualifiedName());
-      }
-      case DASHBOARD_DATA_MODEL -> {
-        DashboardDataModel dashboardDataModel =
-            Entity.getEntity(
-                DASHBOARD_DATA_MODEL, entityReference.getId(), "columns", Include.NON_DELETED);
-        return CommonUtil.getChildrenNames(
-            dashboardDataModel.getColumns(),
-            "getChildren",
-            dashboardDataModel.getFullyQualifiedName());
-      }
-      case DASHBOARD -> {
-        Dashboard dashboard =
-            Entity.getEntity(DASHBOARD, entityReference.getId(), "charts", Include.NON_DELETED);
-        Set<String> result = new HashSet<>();
-        for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
-          result.add(
-              chart.getFullyQualifiedName().replace(dashboard.getFullyQualifiedName() + ".", ""));
-        }
-        return result;
-      }
-      case MLMODEL -> {
-        MlModel mlModel =
-            Entity.getEntity(MLMODEL, entityReference.getId(), "", Include.NON_DELETED);
-        Set<String> result = new HashSet<>();
-        for (MlFeature feature : listOrEmpty(mlModel.getMlFeatures())) {
-          result.add(
-              feature.getFullyQualifiedName().replace(mlModel.getFullyQualifiedName() + ".", ""));
-        }
-        return result;
-      }
-      case API_ENDPOINT -> {
-        Set<String> result = new HashSet<>();
-        APIEndpoint apiEndpoint =
-            Entity.getEntity(
-                API_ENDPOINT,
-                entityReference.getId(),
-                "responseSchema,requestSchema",
-                Include.NON_DELETED);
-        if (apiEndpoint.getResponseSchema() != null) {
-          result.addAll(
-              CommonUtil.getChildrenNames(
-                  listOrEmpty(apiEndpoint.getResponseSchema().getSchemaFields()),
-                  "getChildren",
-                  apiEndpoint.getFullyQualifiedName()));
-        }
-        if (apiEndpoint.getRequestSchema() != null) {
-          result.addAll(
-              CommonUtil.getChildrenNames(
-                  listOrEmpty(apiEndpoint.getRequestSchema().getSchemaFields()),
-                  "getChildren",
-                  apiEndpoint.getFullyQualifiedName()));
-        }
-        return result;
-      }
-      case METRIC -> {
-        // A metric has no columns of its own -- it *is* the leaf a column feeds, e.g.
-        // Total Sales = sum(Sales.Amount). So the metric's own FQN is its single valid
-        // column endpoint. Names here are relative to the parent FQN, and stripping
-        // "<metricFqn>." off "<metricFqn>" is a no-op, hence the full FQN.
-        // singleton, not Set.of: tolerates a null FQN instead of throwing, and a
-        // singleton{null} rejects every toColumn, which is the behaviour we want there.
-        return Collections.singleton(entityReference.getFullyQualifiedName());
-      }
-      case PIPELINE -> {
-        LOG.info("Pipeline column level lineage is not supported");
-        return new HashSet<>();
-      }
-      default -> {
-        LOG.error("Unsupported Entity Type {} for column lineage", entityReference.getType());
-        return new HashSet<>();
-      }
+    String entityType = entityReference.getType();
+    Set<String> result;
+    if (DASHBOARD.equals(entityType)) {
+      result = getDashboardChartNames(entityReference);
+    } else if (METRIC.equals(entityType)) {
+      result = getMetricColumnName(entityReference);
+    } else if (ChildFieldResolver.supports(entityType)) {
+      result = getRegistryChildrenNames(entityReference, entityType);
+    } else {
+      LOG.info("Column level lineage is not supported for {}", entityType);
+      result = new HashSet<>();
     }
+    return result;
+  }
+
+  private Set<String> getRegistryChildrenNames(EntityReference entityReference, String entityType) {
+    // Only the container fields: this path reads child names, so asking for the write path's tags
+    // and constraints would add a tag lookup per lineage edge for nothing.
+    EntityInterface parent =
+        Entity.getEntity(
+            entityType,
+            entityReference.getId(),
+            ChildFieldResolver.containerFields(entityType),
+            Include.NON_DELETED);
+    return CommonUtil.getChildrenNames(
+        ChildFieldResolver.childrenOf(parent, entityType),
+        "getChildren",
+        parent.getFullyQualifiedName());
+  }
+
+  /**
+   * A metric has no columns of its own, it <i>is</i> the leaf a column feeds, for example Total
+   * Sales = sum(Sales.Amount). So the metric's own FQN is its single valid column endpoint. Names
+   * here are relative to the parent FQN, and stripping "&lt;metricFqn&gt;." off "&lt;metricFqn&gt;"
+   * is a no-op, hence the full FQN.
+   *
+   * <p>singleton, not Set.of: it tolerates a null FQN instead of throwing, and a singleton holding
+   * null rejects every toColumn, which is the behaviour we want there.
+   */
+  private Set<String> getMetricColumnName(EntityReference entityReference) {
+    return Collections.singleton(entityReference.getFullyQualifiedName());
+  }
+
+  /**
+   * Charts stay an explicit carve-out rather than a registry entry: a chart is a separate entity
+   * with its own RBAC, referenced by the dashboard, not an inline child collection.
+   */
+  private Set<String> getDashboardChartNames(EntityReference entityReference) {
+    Dashboard dashboard =
+        Entity.getEntity(DASHBOARD, entityReference.getId(), "charts", Include.NON_DELETED);
+    Set<String> result = new HashSet<>();
+    for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
+      result.add(
+          chart.getFullyQualifiedName().replace(dashboard.getFullyQualifiedName() + ".", ""));
+    }
+    return result;
   }
 
   @Transaction
@@ -1827,11 +1762,7 @@ public class LineageRepository {
 
   @Transaction
   public void updateColumnLineage(
-      UUID tableId,
-      Map<String, String> renamed,
-      List<String> deleted,
-      String schemaDefinition,
-      String updatedBy) {
+      UUID tableId, Map<String, String> renamed, List<String> deleted, String updatedBy) {
     if ((renamed == null || renamed.isEmpty()) && (deleted == null || deleted.isEmpty())) {
       return;
     }
@@ -1842,10 +1773,10 @@ public class LineageRepository {
     List<CollectionDAO.EntityRelationshipObject> lineageRows = new ArrayList<>();
     List<String> tableIdList = List.of(tableId.toString());
 
-    // Table is upstream
+    // Table is downstream
     lineageRows.addAll(
         dao.relationshipDAO().findFromBatch(tableIdList, Relationship.UPSTREAM.ordinal()));
-    // Table is downstream
+    // Table is upstream
     lineageRows.addAll(
         dao.relationshipDAO()
             .findToBatch(tableIdList, Relationship.UPSTREAM.ordinal(), Entity.TABLE, Entity.TABLE));
@@ -1855,7 +1786,6 @@ public class LineageRepository {
         LineageDetails details = JsonUtils.readValue(row.getJson(), LineageDetails.class);
         boolean rowModified = rewriteColumnMappings(details, fqnRenameMap, deletedFqns);
         if (rowModified) {
-          details.setSqlQuery(schemaDefinition);
           details.setUpdatedAt(System.currentTimeMillis());
           details.setUpdatedBy(updatedBy);
           // UPSERT the updated lineage JSON back into the relationship table

@@ -183,7 +183,9 @@ export const selectOption = async (
     'button[aria-haspopup="listbox"]'
   );
 
-  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
+  await expect(
+    comboboxInput.or(triggerButton).filter({ visible: true })
+  ).not.toHaveCount(0);
 
   if (isSearchable) {
     if ((await triggerButton.count()) === 0) {
@@ -376,6 +378,17 @@ export const fillRule = async (
       const listboxId = await dropdownInput.getAttribute('aria-controls');
       const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
 
+      // One chip per committed value: counted before picking so the assertion
+      // below can prove this call added exactly one, and no more.
+      const multiSelect = ruleLocator.getByTestId(
+        'advanced-search-value-multiselect'
+      );
+      const selectedChips = multiSelect.getByTestId(
+        'autocomplete-selected-item'
+      );
+      const isMultiSelect = (await multiSelect.count()) > 0;
+      const chipsBefore = isMultiSelect ? await selectedChips.count() : 0;
+
       // Match on the option's value, not its label. Tag-like fields (Tier,
       // Tags, Certification) render the display name — `Tier1` — while the
       // fixtures carry the FQN `Tier.Tier1`, and the two are legitimately
@@ -414,6 +427,10 @@ export const fillRule = async (
       await dropdown
         .waitFor({ state: 'hidden', timeout: 5_000 })
         .catch(() => undefined);
+
+      if (isMultiSelect) {
+        await expect(selectedChips).toHaveCount(chipsBefore + 1);
+      }
     }
   }
 };

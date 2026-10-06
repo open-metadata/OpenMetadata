@@ -84,6 +84,7 @@ export const basicProviderFixture: SsoProviderFixture = {
   hasBackendIssuedRefreshCookie: true,
   usesPkce: false,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: false,
 
   isAvailable: () => true, // Always available — no external deps
 
@@ -101,7 +102,7 @@ export const basicProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByLabel(/email/i).fill(ADMIN_EMAIL);
     await page.getByLabel(/password/i).fill(ADMIN_PASSWORD);
     await page.getByRole('button', { name: /^(sign in|log in)$/i }).click();

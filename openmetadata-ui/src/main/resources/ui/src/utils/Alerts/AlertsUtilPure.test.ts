@@ -17,7 +17,10 @@ import {
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { Status } from '../../generated/events/testDestinationStatus';
-import { getDestinationsWithTestStatus } from './AlertsUtilPure';
+import {
+  formatDiagnosticValue,
+  getDestinationsWithTestStatus,
+} from './AlertsUtilPure';
 
 const webhookDestination = {
   category: SubscriptionCategory.External,
@@ -88,5 +91,15 @@ describe('getDestinationsWithTestStatus', () => {
     expect(result).toHaveLength(2);
     expect(result[0].statusDetails).toBeUndefined();
     expect(result[1].config).toEqual(slackDestination.config);
+  });
+});
+
+describe('formatDiagnosticValue', () => {
+  it('shows flags as Yes/No, numbers as-is and a placeholder when unset', () => {
+    expect(formatDiagnosticValue(true)).toBe('label.yes');
+    expect(formatDiagnosticValue(false)).toBe('label.no');
+    expect(formatDiagnosticValue(0)).toBe('0');
+    expect(formatDiagnosticValue(42)).toBe('42');
+    expect(formatDiagnosticValue(undefined)).toBe('--');
   });
 });

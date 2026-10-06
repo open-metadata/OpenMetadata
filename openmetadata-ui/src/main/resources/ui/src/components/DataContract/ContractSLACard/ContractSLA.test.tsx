@@ -18,6 +18,10 @@ import {
   RefreshFrequencyUnit,
   RetentionUnit,
 } from '../../../generated/entity/data/dataContract';
+import {
+  DataContractResult,
+  RefreshedAtSource,
+} from '../../../generated/entity/datacontract/dataContractResult';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import ContractSLA from './ContractSLA.component';
@@ -456,5 +460,83 @@ describe('ContractSLA Component', () => {
 
       expect(checkIcons).toHaveLength(1);
     });
+  });
+});
+
+describe('ContractSLA with the latest validation', () => {
+  const contract = {
+    fullyQualifiedName: 'test.contract',
+    name: 'Test Contract',
+    sla: {
+      refreshFrequency: { interval: 1, unit: RefreshFrequencyUnit.Day },
+      maxLatency: { value: 4, unit: MaxLatencyUnit.Hour },
+      availabilityTime: '09:00',
+      retention: { period: 30, unit: RetentionUnit.Day },
+    },
+  } as DataContract;
+
+  it('marks each checked requirement met, missed or not evaluated', () => {
+    render(
+      <ContractSLA
+        contract={contract}
+        contractStatus="Failed"
+        latestContractResults={
+          {
+            slaValidation: {
+              refreshFrequencyMet: true,
+              availabilityMet: false,
+            },
+          } as DataContractResult
+        }
+      />
+    );
+
+    expect(
+      screen.getByTestId('sla-refresh_frequency-passed')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('sla-time_availability-failed')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('sla-max_latency-not-evaluated')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-status-card-item-sla-status')
+    ).toHaveTextContent('Failed');
+  });
+
+  it('shows when the data was last refreshed and what was not evaluated', () => {
+    render(
+      <ContractSLA
+        contract={contract}
+        latestContractResults={
+          {
+            slaValidation: {
+              refreshFrequencyMet: true,
+              lastRefreshedAt: 1758801600000,
+              refreshedAtSource: RefreshedAtSource.SystemProfile,
+              message:
+                'Latency is not evaluated: it needs a profile of the SLA column.',
+            },
+          } as DataContractResult
+        }
+      />
+    );
+
+    expect(screen.getByTestId('sla-last-refreshed')).toBeInTheDocument();
+    expect(screen.getByTestId('sla-validation-message')).toHaveTextContent(
+      'Latency is not evaluated: it needs a profile of the SLA column.'
+    );
+  });
+
+  it('shows no outcome before the contract has been validated', () => {
+    render(<ContractSLA contract={contract} />);
+
+    expect(
+      screen.queryByTestId('sla-validation-result')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('sla-refresh_frequency-passed')
+    ).not.toBeInTheDocument();
   });
 });

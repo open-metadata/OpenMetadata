@@ -33,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -49,6 +48,7 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -278,18 +278,50 @@ class AIContextBuilderTest {
   }
 
   @Test
-  void isActivePill_gatesNonActiveStatusesButTreatsMissingStatusAsActive() {
+  void isActivePill_admitsOnlyApprovedMemories() {
     assertTrue(
-        AIContextBuilder.isActivePill(new ContextMemory()),
-        "pre-lifecycle memories (no status) stay visible");
-    assertTrue(
-        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ACTIVE)));
+        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.APPROVED)));
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.DRAFT)),
+        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.DRAFT)),
         "Draft memories are not settled knowledge");
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ARCHIVED)),
+        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.ARCHIVED)),
         "Archived memories must not reach agents as current context");
+    assertFalse(
+        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.REJECTED)),
+        "Rejected memories were found to be wrong");
+  }
+
+  @Test
+  void pillsForContext_dropsRetiredAndHiddenPillsBeforeTheCap() {
+    List<ContextMemory> attached = new ArrayList<>();
+    for (int i = 0; i < 20; i++) {
+      attached.add(pill("retired-" + i, EntityStatus.REJECTED));
+    }
+    ContextMemory hidden = pill("hidden", EntityStatus.APPROVED);
+    ContextMemory usable = pill("usable", EntityStatus.APPROVED);
+    attached.add(hidden);
+    attached.add(usable);
+
+    List<ContextMemory> selected =
+        AIContextBuilder.pillsForContext(
+            attached, pills -> pills.stream().filter(pill -> pill != hidden).toList());
+
+    assertEquals(List.of(usable), selected);
+  }
+
+  @Test
+  void pillsForContext_capsTheUsablePills() {
+    List<ContextMemory> attached = new ArrayList<>();
+    for (int i = 0; i < 25; i++) {
+      attached.add(pill("approved-" + i, EntityStatus.APPROVED));
+    }
+
+    assertEquals(20, AIContextBuilder.pillsForContext(attached, pills -> pills).size());
+  }
+
+  private static ContextMemory pill(String name, EntityStatus status) {
+    return new ContextMemory().withId(UUID.randomUUID()).withName(name).withEntityStatus(status);
   }
 
   @Test

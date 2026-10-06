@@ -49,6 +49,7 @@ export enum TeamsPageTab {
   ASSETS = 'assets',
   ROLES = 'roles',
   POLICIES = 'policies',
+  CUSTOM_PROPERTIES = 'custom_properties',
 }
 
 export interface TeamsInfoProps {
