@@ -14,7 +14,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowVariableHand
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -180,15 +179,16 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     this.signals.add(signal);
   }
 
+  // Read the same way the approval gate reads them, including the deprecated single entityType, so
+  // a
+  // change request the gate holds for this workflow always has a start event to deliver to.
   private List<String> getEntityTypesFromConfig(Object configObj) {
-    Map<String, Object> configMap = JsonUtils.getMap(configObj);
-    @SuppressWarnings("unchecked")
-    List<String> entityTypes = (List<String>) configMap.get("entityTypes");
-    if (entityTypes != null && !entityTypes.isEmpty()) {
-      return entityTypes;
+    List<String> entityTypes =
+        GovernanceApprovalRegistry.targetEntityTypes(JsonUtils.valueToTree(configObj));
+    if (entityTypes.isEmpty()) {
+      LOG.debug("No entityTypes found in workflow trigger configuration");
     }
-    LOG.debug("No entityTypes found in workflow trigger configuration, returning empty list");
-    return new ArrayList<>();
+    return entityTypes;
   }
 
   private CallActivity getWorkflowTrigger(

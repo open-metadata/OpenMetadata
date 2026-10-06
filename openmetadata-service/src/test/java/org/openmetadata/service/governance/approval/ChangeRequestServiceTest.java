@@ -194,6 +194,7 @@ class ChangeRequestServiceTest {
     @Test
     void closesTheReviewTaskWithTheReason() {
       ChangeRequest request = stored(ChangeRequestStatus.PENDING, 1);
+      appliesAs(request, 1, ChangeRequestStatus.APPLIED);
       ChangeRequestService.override(request.getId(), override(1, "hotfix"), ADMIN);
       tasks.verify(
           () ->
@@ -202,10 +203,39 @@ class ChangeRequestServiceTest {
     }
 
     @Test
+    void aConflictingOverrideKeepsTheReviewTaskOpen() {
+      ChangeRequest request = stored(ChangeRequestStatus.PENDING, 1);
+      ChangeRequest conflicted =
+          new ChangeRequest()
+              .withStatus(ChangeRequestStatus.PENDING)
+              .withStatusReason("description changed since the request was made");
+      apply
+          .when(() -> ChangeApplyService.approveAndApply(request.getId(), 1))
+          .thenReturn(conflicted);
+
+      ChangeRequestService.override(request.getId(), override(1, "hotfix"), ADMIN);
+
+      tasks.verify(() -> ChangeRequestTasks.closeTask(any(), anyString()), never());
+      tasks.verify(
+          () ->
+              ChangeRequestTasks.comment(
+                  request.getTaskId(),
+                  "admin tried to publish this change without review, but it conflicts with the"
+                      + " current version: description changed since the request was made"));
+    }
+
+    @Test
     void anApprovedButUnappliedRequestCanBeOverridden() {
       ChangeRequest request = stored(ChangeRequestStatus.APPROVED, 1);
+      appliesAs(request, 1, ChangeRequestStatus.APPLIED);
       ChangeRequestService.override(request.getId(), override(1, "retry publish"), ADMIN);
       apply.verify(() -> ChangeApplyService.approveAndApply(request.getId(), 1));
+    }
+
+    private void appliesAs(ChangeRequest request, int revision, ChangeRequestStatus status) {
+      apply
+          .when(() -> ChangeApplyService.approveAndApply(request.getId(), revision))
+          .thenReturn(new ChangeRequest().withStatus(status));
     }
 
     @Test

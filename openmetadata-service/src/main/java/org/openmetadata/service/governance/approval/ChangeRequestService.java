@@ -235,11 +235,22 @@ public final class ChangeRequestService {
     }
     ChangeRequest result = ChangeApplyService.approveAndApply(id, revision.getRevisionNumber());
     UUID taskId = request.getTaskId();
+    // A change that conflicts with the current asset is not published; the request stays open
+    // with its conflicts, so its review task stays open too.
+    boolean published = result.getStatus() == ChangeRequestStatus.APPLIED;
     PostCommitActionQueue.runOrDefer(
-        () ->
+        () -> {
+          if (published) {
             ChangeRequestTasks.closeTask(
                 taskId,
-                "Published by %s without review: %s".formatted(admin, override.getReason())));
+                "Published by %s without review: %s".formatted(admin, override.getReason()));
+          } else {
+            ChangeRequestTasks.comment(
+                taskId,
+                "%s tried to publish this change without review, but it conflicts with the current version: %s"
+                    .formatted(admin, result.getStatusReason()));
+          }
+        });
     return result;
   }
 
