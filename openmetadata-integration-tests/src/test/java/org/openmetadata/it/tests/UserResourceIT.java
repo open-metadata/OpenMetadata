@@ -624,6 +624,31 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_putWithoutDefaultDomainKeepsTheSelection(TestNamespace ns) {
+    // A PUT body (CreateUser) has no defaultDomain, so a PUT must not clear the saved selection.
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("keptdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("navbar selection kept across PUT"));
+    CreateUser create = createMinimalRequest(ns);
+    User user = createEntity(create);
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchEntity(user.getId().toString(), user);
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/users", create.withDescription("updated by PUT"), User.class);
+
+    User reread = Users.get(user.getId().toString(), "defaultDomain");
+    assertNotNull(reread.getDefaultDomain(), "a PUT must keep the saved navbar selection");
+    assertEquals(domain.getId(), reread.getDefaultDomain().getId());
+  }
+
+  @Test
   void test_defaultDomainMustBeARealDomain(TestNamespace ns) {
     User user = createEntity(createMinimalRequest(ns));
     user.setDefaultDomain(new EntityReference().withId(UUID.randomUUID()).withType("domain"));

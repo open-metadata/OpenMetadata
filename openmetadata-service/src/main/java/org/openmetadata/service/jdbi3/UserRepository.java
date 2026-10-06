@@ -312,7 +312,8 @@ public class UserRepository extends EntityRepository<User> {
   private void validateDefaultDomain(User user) {
     if (user.getDefaultDomain() != null) {
       user.setDefaultDomain(
-          Entity.getEntityReferenceById(Entity.DOMAIN, user.getDefaultDomain().getId(), ALL));
+          Entity.getEntityReferenceById(
+              Entity.DOMAIN, user.getDefaultDomain().getId(), NON_DELETED));
     }
   }
 
@@ -1783,16 +1784,16 @@ public class UserRepository extends EntityRepository<User> {
     return false;
   }
 
-  /** Handles entity updated from PUT and POST operation. */
   /**
    * Evicts a cached subject twice: now, so this request reads its own write, and again after the
    * commit, so a concurrent load that captured the pre-commit row cannot outlive the update.
    */
-  private static void evictNowAndAfterCommit(Runnable evict) {
+  static void evictNowAndAfterCommit(Runnable evict) {
     evict.run();
     PostCommitActionQueue.runOrDefer(evict);
   }
 
+  /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
       super(original, updated, operation);
@@ -2038,6 +2039,11 @@ public class UserRepository extends EntityRepository<User> {
     private void updateDefaultDomain(User original, User updated) {
       // The relationship is: domain --DEFAULTS_TO--> user
       EntityReference originalDefaultDomain = getDefaultDomain(original);
+      if (operation.isPut() && updated.getDefaultDomain() == null) {
+        // A PUT body (CreateUser) has no defaultDomain; it must not clear the saved selection.
+        updated.setDefaultDomain(originalDefaultDomain);
+        return;
+      }
       EntityReference updatedDefaultDomain = updated.getDefaultDomain();
       deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.DOMAIN);
       assignDefaultDomain(updated, updatedDefaultDomain);

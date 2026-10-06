@@ -975,6 +975,11 @@ class EntityUtilTest {
             .withId(UUID.randomUUID())
             .withType("domain")
             .withFullyQualifiedName("Other");
+    EntityReference salesEmea =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales.EMEA");
     EntityReference domainRole =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -1000,17 +1005,32 @@ class EntityUtilTest {
             .withName("analyst-none")
             .withRoles(List.of(domainRole))
             .withDomains(List.of(finance, sales));
+    org.openmetadata.schema.entity.teams.User subDomainPick =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst-subdomain")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance, sales))
+            .withDefaultDomain(salesEmea);
 
     try (MockedStatic<DefaultAuthorizer> authorizer =
-        org.mockito.Mockito.mockStatic(DefaultAuthorizer.class)) {
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      for (EntityReference domain : List.of(finance, sales, other, salesEmea)) {
+        entity
+            .when(() -> Entity.getEntityReferenceById("domain", domain.getId(), NON_DELETED))
+            .thenReturn(domain);
+      }
       ListFilter narrowed = new ListFilter();
       ListFilter guarded = new ListFilter();
       ListFilter full = new ListFilter();
+      ListFilter subNarrowed = new ListFilter();
       authorizer
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(new SubjectContext(withinScope, null))
           .thenReturn(new SubjectContext(outsideScope, null))
-          .thenReturn(new SubjectContext(noSelection, null));
+          .thenReturn(new SubjectContext(noSelection, null))
+          .thenReturn(new SubjectContext(subDomainPick, null));
 
       ActiveDomainContext.setActiveDomain(sales);
       EntityUtil.addDomainQueryParam(securityContext, narrowed, "table");
@@ -1018,6 +1038,8 @@ class EntityUtilTest {
       EntityUtil.addDomainQueryParam(securityContext, guarded, "table");
       ActiveDomainContext.clear();
       EntityUtil.addDomainQueryParam(securityContext, full, "table");
+      ActiveDomainContext.setActiveDomain(salesEmea);
+      EntityUtil.addDomainQueryParam(securityContext, subNarrowed, "table");
 
       // The pick narrows the list within the role's scope.
       assertEquals("'" + sales.getId() + "'", narrowed.getQueryParam("domainId"));
@@ -1030,6 +1052,47 @@ class EntityUtilTest {
       assertTrue(fullScope.contains(finance.getId().toString()));
       assertTrue(fullScope.contains(sales.getId().toString()));
       assertEquals("true", full.getQueryParam("domainAccessControl"));
+      // A sub-domain of an allowed domain is within scope too.
+      assertEquals("'" + salesEmea.getId() + "'", subNarrowed.getQueryParam("domainId"));
+      assertEquals("true", subNarrowed.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void addDomainQueryParam_securityContextSelectionWinsOverThreadLocal() {
+    // A context built for another user on the same request carries that user's (empty) selection;
+    // the caller's thread-local must not leak into it.
+    EntityReference leftover =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    CatalogSecurityContext otherUser =
+        new CatalogSecurityContext(() -> "other", "https", "digest", null, false, null, null, null);
+    org.openmetadata.schema.entity.teams.User user =
+        new org.openmetadata.schema.entity.teams.User().withName("other");
+
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
+      entity.when(Entity::getSearchRepository).thenReturn(null);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", leftover.getId(), NON_DELETED))
+          .thenReturn(leftover);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(otherUser))
+          .thenReturn(new SubjectContext(user, null));
+      ActiveDomainContext.setActiveDomain(leftover);
+      ListFilter filter = new ListFilter();
+      EntityUtil.addDomainQueryParam(otherUser, filter, "table");
+
+      assertNull(filter.getQueryParam("domainId"));
     }
   }
 

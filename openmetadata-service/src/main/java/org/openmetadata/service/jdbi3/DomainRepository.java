@@ -568,7 +568,10 @@ public class DomainRepository extends EntityRepository<Domain> {
         domainHardDeleteSubtree.remove();
         reindexDetachedDataProducts(context);
         if (deleted) {
-          usersToEvict.forEach(SubjectCache::invalidateUserContext);
+          usersToEvict.forEach(
+              user ->
+                  UserRepository.evictNowAndAfterCommit(
+                      () -> SubjectCache.invalidateUserContext(user)));
         }
       }
     }
