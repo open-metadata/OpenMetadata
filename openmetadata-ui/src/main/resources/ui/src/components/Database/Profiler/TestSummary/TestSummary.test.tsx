@@ -261,6 +261,9 @@ describe('TestSummary component', () => {
     render(<TestSummary {...mockProps} />);
 
     expect(screen.getByText('Loader.component')).toBeInTheDocument();
+    // Only the body waits: the header and its date picker stay, so nothing shifts.
+    expect(screen.getByText('Result history')).toBeInTheDocument();
+    expect(screen.getByText('DqDateRangeFilter')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('TestSummaryGraph')).toBeInTheDocument();

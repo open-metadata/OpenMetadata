@@ -65,7 +65,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(() =>
     getPastDaysRange(PROFILER_FILTER_RANGE.last30days.days)
   );
-  const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
@@ -135,7 +134,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       } finally {
         // The fetch that replaced this one owns the loaders now.
         if (!isStale()) {
-          setIsLoading(false);
           setIsGraphLoading(false);
         }
       }
@@ -253,10 +251,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     testCaseFqn,
     t,
   ]);
-
-  if (isLoading) {
-    return <Loader />;
-  }
 
   return (
     <Box data-testid="test-summary-container" direction="col" gap={4}>
