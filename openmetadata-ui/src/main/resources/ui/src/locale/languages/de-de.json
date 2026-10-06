@@ -4981,6 +4981,7 @@
     "pipeline-service-unreachable-agent-actions": "Der Pipeline-Dienst ist nicht erreichbar. Agenten und ihr Ausführungsverlauf werden in ihrem zuletzt erfassten Zustand angezeigt, und Agentenaktionen bleiben nicht verfügbar, bis der Dienst wieder antwortet.",
     "pipeline-will-trigger-manually": "Die Pipeline wird nur manuell ausgelöst.",
     "pipeline-will-triggered-manually": "Die Pipeline wird nur manuell ausgelöst",
+    "pipelines-could-not-be-loaded": "Pipelines konnten nicht geladen werden",
     "platform-insight-description": "Verstehen Sie die verfügbaren Metadaten in Ihrem Service und halten Sie den Fortschritt der wichtigsten KPIs im Auge.",
     "please-contact-us": "Bitte kontaktiere uns unter support@getcollate.io für weitere details.",
     "please-enter-to-find-data-assets": "Drücke Enter, um Datenvermögenswerte mit <0>{{keyword}}<0> zu finden.",

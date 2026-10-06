@@ -197,6 +197,26 @@ describe('RunTestCaseButton', () => {
     ).toBeInTheDocument();
   });
 
+  it('disables the button with the load error when the pipelines could not be read', async () => {
+    (getIngestionPipelines as jest.Mock).mockRejectedValue(
+      new Error('Internal Server Error')
+    );
+    setPipelinePermission(false);
+    mockResourcePermissions.ingestionPipeline = { [Operation.Trigger]: true };
+
+    renderWithQueryClient(<RunTestCaseButton testCase={testCase} />);
+
+    expect(await screen.findByTestId('run-test-case-button')).toBeDisabled();
+    expect(
+      screen.getByRole('group', {
+        name: 'message.pipelines-could-not-be-loaded',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'message.no-pipeline-linked' })
+    ).not.toBeInTheDocument();
+  });
+
   it('runs the test case on click, confirms it was queued and reloads the run state', async () => {
     setPipelines([pipeline()]);
     setPipelinePermission(true);

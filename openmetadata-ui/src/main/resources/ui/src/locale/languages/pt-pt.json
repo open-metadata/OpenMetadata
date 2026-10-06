@@ -4981,6 +4981,7 @@
     "pipeline-service-unreachable-agent-actions": "Não é possível aceder ao serviço de pipelines. Os agentes e o respetivo histórico de execuções são apresentados com o último estado registado, e as ações sobre os agentes permanecem indisponíveis até que o serviço volte a responder.",
     "pipeline-will-trigger-manually": "O pipeline só será acionado manualmente.",
     "pipeline-will-triggered-manually": "O pipeline só será acionado manualmente",
+    "pipelines-could-not-be-loaded": "Não foi possível carregar os pipelines",
     "platform-insight-description": "Compreenda os metadados disponíveis no seu serviço e mantenha o controle das principais coberturas de KPI.",
     "please-contact-us": "Por favor contacte-nos em support@getcollate.io para mais detalhes.",
     "please-enter-to-find-data-assets": "Pressione Enter para encontrar ativos de dados contendo <0>{{keyword}}<0>",

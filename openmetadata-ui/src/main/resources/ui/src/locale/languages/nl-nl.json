@@ -4981,6 +4981,7 @@
     "pipeline-service-unreachable-agent-actions": "De pipelineservice is niet bereikbaar. Agents en hun uitvoeringsgeschiedenis worden getoond in hun laatst vastgelegde staat, en agentacties blijven niet beschikbaar totdat de service weer reageert.",
     "pipeline-will-trigger-manually": "Pipeline wordt alleen handmatig geactiveerd.",
     "pipeline-will-triggered-manually": "Pipeline wordt alleen handmatig geactiveerd",
+    "pipelines-could-not-be-loaded": "Pijplijnen konden niet worden geladen",
     "platform-insight-description": "Begrijp de beschikbare metadata in je service en volg de belangrijkste KPI-dekking.",
     "please-contact-us": "Neem contact met ons op via support@getcollate.io voor meer informatie.",
     "please-enter-to-find-data-assets": "Druk op Enter om data-assets te vinden met <0>{{keyword}}<0>",

@@ -4981,6 +4981,7 @@
     "pipeline-service-unreachable-agent-actions": "تعذّر الوصول إلى خدمة خطوط المعالجة. يتم عرض الوكلاء وسجل تشغيلهم وفق آخر حالة مسجّلة، وتظل إجراءات الوكلاء غير متاحة إلى أن تستجيب الخدمة مجددًا.",
     "pipeline-will-trigger-manually": "سيتم تشغيل المسار (pipeline) يدويًا فقط.",
     "pipeline-will-triggered-manually": "سيتم تشغيل المسار (pipeline) يدويًا فقط",
+    "pipelines-could-not-be-loaded": "تعذّر تحميل مسارات المعالجة",
     "platform-insight-description": "افهم البيانات الوصفية المتاحة في خدمتك وتتبع تغطية مؤشرات الأداء الرئيسية (KPIs) الرئيسية.",
     "please-contact-us": "يرجى الاتصال بنا على support@getcollate.io للحصول على مزيد من التفاصيل.",
     "please-enter-to-find-data-assets": "اضغط على Enter للعثور على أصول البيانات التي تحتوي على <0>{{keyword}}<0>",

@@ -4981,6 +4981,7 @@
     "pipeline-service-unreachable-agent-actions": "Det går inte att nå pipelinetjänsten. Agenter och deras körhistorik visas i sitt senast registrerade tillstånd, och agentåtgärder förblir otillgängliga tills tjänsten svarar igen.",
     "pipeline-will-trigger-manually": "Pipelinen utlöses endast manuellt.",
     "pipeline-will-triggered-manually": "Pipelinen utlöses endast manuellt",
+    "pipelines-could-not-be-loaded": "Pipelines kunde inte läsas in",
     "platform-insight-description": "Förstå den metadata som finns tillgänglig i din tjänst och håll koll på täckningen av de viktigaste KPI:erna.",
     "please-contact-us": "Kontakta oss på support@getcollate.io för ytterligare information.",
     "please-enter-to-find-data-assets": "Tryck på Enter för att hitta datatillgångar som innehåller <0>{{keyword}}<0>",

@@ -4981,6 +4981,7 @@
     "pipeline-service-unreachable-agent-actions": "دسترسی به سرویس خط لوله ممکن نیست. عامل‌ها و تاریخچه اجرای آن‌ها بر اساس آخرین وضعیت ثبت‌شده نمایش داده می‌شوند و اقدامات مربوط به عامل‌ها تا زمانی که سرویس دوباره پاسخ دهد در دسترس نخواهند بود.",
     "pipeline-will-trigger-manually": "خط لوله فقط به صورت دستی اجرا خواهد شد.",
     "pipeline-will-triggered-manually": "خط لوله فقط به صورت دستی اجرا خواهد شد.",
+    "pipelines-could-not-be-loaded": "خطوط لوله بارگیری نشدند",
     "platform-insight-description": "فهمیدن متادیتاهای موجود در سرویس خود و پیگیری پوشش اصلی KPIها.",
     "please-contact-us": "لطفاً برای جزئیات بیشتر با ما در support@getcollate.io تماس بگیرید.",
     "please-enter-to-find-data-assets": "دکمه Enter را فشار دهید تا دارایی‌های داده‌ای حاوی <0>{{keyword}}<0> پیدا شوند.",

@@ -4981,6 +4981,7 @@
     "pipeline-service-unreachable-agent-actions": "パイプラインサービスに接続できません。エージェントと実行履歴は最後に記録された状態で表示され、サービスが再び応答するまでエージェントの操作は利用できません。",
     "pipeline-will-trigger-manually": "パイプラインは手動でのみ実行されます。",
     "pipeline-will-triggered-manually": "パイプラインは手動でのみ起動されます",
+    "pipelines-could-not-be-loaded": "パイプラインを読み込めませんでした",
     "platform-insight-description": "サービス内で利用可能なメタデータの状況を把握し、主要なKPIのカバー率を追跡します。",
     "please-contact-us": "詳細については support@getcollate.io までご連絡ください。",
     "please-enter-to-find-data-assets": "Enterキーを押して <0>{{keyword}}</0> を含むデータアセットを検索してください",

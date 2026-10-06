@@ -4981,6 +4981,7 @@
     "pipeline-service-unreachable-agent-actions": "无法连接到流水线服务。代理及其运行历史按最后记录的状态显示，在服务恢复响应之前，代理操作将不可用。",
     "pipeline-will-trigger-manually": "工作流仅能手动触发",
     "pipeline-will-triggered-manually": "工作流仅能手动触发",
+    "pipelines-could-not-be-loaded": "无法加载管道",
     "platform-insight-description": "了解您的服务中的元数据并跟踪主要 KPI 的覆盖率。",
     "please-contact-us": "如需了解更多详情, 请通过 support@getcollate.io 与我们联系",
     "please-enter-to-find-data-assets": "按 Enter 键查找包含<0>{{keyword}}<0>的数据资产",

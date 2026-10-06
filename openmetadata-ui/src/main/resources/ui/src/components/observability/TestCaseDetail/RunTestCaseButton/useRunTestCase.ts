@@ -54,9 +54,11 @@ export const useRunTestCase = (testCase: TestCase) => {
   const [isTriggering, setIsTriggering] = useState(false);
   const testSuiteFqn = testCase.testSuite?.fullyQualifiedName;
 
+  // Only a failed first load counts: a failed poll keeps the pipelines it had.
   const {
     data: pipelines = [],
     isLoading,
+    isLoadingError,
     refetch,
   } = useQuery({
     queryKey: [RUN_PIPELINES_QUERY_KEY, testSuiteFqn],
@@ -131,7 +133,7 @@ export const useRunTestCase = (testCase: TestCase) => {
     activeRunState,
     // Known only once pipelines and permission have loaded, so a control never flashes in and then vanishes.
     canRun: !isLoading && !isPermissionLoading && canTrigger,
-    disabledReasonKey: getRunDisabledReasonKey(pipelines),
+    disabledReasonKey: getRunDisabledReasonKey(pipelines, isLoadingError),
     isTriggering,
     run,
     runInProgress,

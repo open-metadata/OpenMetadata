@@ -4981,6 +4981,7 @@
     "pipeline-service-unreachable-agent-actions": "無法連線至管線服務。代理程式及其執行紀錄會依最後記錄的狀態顯示，在服務恢復回應之前，代理程式的操作將無法使用。",
     "pipeline-will-trigger-manually": "管線只會手動觸發。",
     "pipeline-will-triggered-manually": "管線只會手動觸發",
+    "pipelines-could-not-be-loaded": "無法載入管線",
     "platform-insight-description": "了解您服務中可用的元資料，並追蹤主要 KPI 的涵蓋範圍。",
     "please-contact-us": "請透過 support@getcollate.io 聯繫我們以獲取更多詳情。",
     "please-enter-to-find-data-assets": "按 Enter 以尋找包含 <0>{{keyword}}</0> 的資料資產",
