@@ -27,7 +27,7 @@ import {
   Trash01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Team } from '../../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -261,7 +261,13 @@ export const useMembersTeamHeader = (
     onSetHeader,
   } = params;
 
-  useEffect(() => {
+  // The header content depends on the values below, but the builders also take
+  // several callbacks (onSetHeader, onEditNameValueChange, …) whose identities
+  // shouldn't re-publish the header. Read everything through a ref so the effect
+  // can key on just the content-affecting values without an exhaustive-deps
+  // disable.
+  const publishHeader = useRef<() => void>(() => undefined);
+  publishHeader.current = () => {
     if (!team || isLoading) {
       return;
     }
@@ -286,16 +292,22 @@ export const useMembersTeamHeader = (
         onStartEditName
       ),
     });
+  };
+
+  const clearHeader = useRef<() => void>(() => undefined);
+  clearHeader.current = () =>
+    onSetHeader?.({
+      actions: undefined,
+      titleInput: undefined,
+      titleSuffix: undefined,
+    });
+
+  useEffect(() => {
+    publishHeader.current();
 
     // The parent no longer clears header slots on view change (that raced the
     // child set), so clear what this hook owns when the team view unmounts.
-    return () =>
-      onSetHeader?.({
-        actions: undefined,
-        titleInput: undefined,
-        titleSuffix: undefined,
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => clearHeader.current();
   }, [
     team,
     isLoading,
@@ -309,14 +321,5 @@ export const useMembersTeamHeader = (
     params.isGroupType,
     params.isOrgType,
     params.isCurrentUserMember,
-    onSaveDisplayName,
-    params.onTeamExport,
-    params.onTeamImport,
-    params.onToggleJoinable,
-    params.onRestoreTeam,
-    params.onJoinTeam,
-    params.onLeaveTeam,
-    onSetHeader,
-    t,
   ]);
 };

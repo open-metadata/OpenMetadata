@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   INITIAL_PAGING_VALUE,
@@ -176,16 +176,22 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     setTimeWindow(Number(key));
   }, []);
 
-  useEffect(() => {
-    // Reset to the first page and re-run the active query so a time-window change
-    // re-filters a running search instead of leaving stale results + drifting cursor.
+  // Latest "reset + re-run the active query" closure. The effect runs on
+  // timeWindow/pageSize only (plus mount); searchText is read fresh here rather
+  // than being an effect dep, so a running search re-filters without the effect
+  // re-firing on every keystroke.
+  const refetchOnlineUsers = useRef<() => void>(() => undefined);
+  refetchOnlineUsers.current = () => {
     handlePageChange(INITIAL_PAGING_VALUE);
     if (searchText) {
       void handleSearch(searchText);
     } else {
       void fetchOnlineUsers();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  };
+
+  useEffect(() => {
+    refetchOnlineUsers.current();
   }, [timeWindow, pageSize]);
 
   const columns = useMemo(

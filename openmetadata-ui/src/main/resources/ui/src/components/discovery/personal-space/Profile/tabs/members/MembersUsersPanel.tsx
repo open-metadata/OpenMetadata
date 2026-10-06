@@ -240,22 +240,22 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     }
   }, [selectedUser, t, fetchUsers]);
 
-  useEffect(() => {
+  // Latest refetch closure. The pageSize/deleted effect runs on those keys only
+  // (plus mount) and must use the *current* search term + fetchers without
+  // re-firing on every keystroke — search-term changes are driven by the search
+  // input's own handler, so searchValue is deliberately not an effect dep.
+  const refetchUsers = useRef<() => void>(() => undefined);
+  refetchUsers.current = () => {
     if (searchValue) {
       void searchUsers(searchValue);
     } else {
       void fetchUsers();
     }
-    // Refetch on page-size / deleted-toggle using the current search term;
-    // search-term changes are driven by the search input's own handler.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageSize, showDeleted]);
+  };
 
   useEffect(() => {
-    void fetchUsers();
-    // Initial load only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    refetchUsers.current();
+  }, [pageSize, showDeleted]);
 
   useEffect(() => {
     if (!onSetHeader || !canCreateUser) {

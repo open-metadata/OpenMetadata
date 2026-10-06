@@ -226,6 +226,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     return team.users.some((u) => u.id === currentUser.id);
   }, [currentUser, team?.users]);
 
+  // Read the active tab through a ref so fetchTeam doesn't list it as a dep and
+  // refetch the whole team on every tab switch — it only needs the current tab to
+  // decide whether the fetched team type still contains it.
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
   const fetchTeam = useCallback(async () => {
     const id = ++fetchIdRef.current;
     setIsLoading(true);
@@ -244,7 +250,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       // it instead of the raw FQN (and refresh after a rename-driven refetch).
       onRename?.(getEntityName(data));
       const tabs = getAvailableTabs(data.teamType);
-      if (!tabs.includes(activeTab)) {
+      if (!tabs.includes(activeTabRef.current)) {
         setActiveTab(tabs[0]);
       }
     } catch (error) {
@@ -256,7 +262,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         setIsLoading(false);
       }
     }
-  }, [fqn, onRename]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fqn, onRename]);
 
   const fetchChildTeams = useCallback(async () => {
     if (!team?.fullyQualifiedName) {
@@ -375,21 +381,29 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     []
   );
 
-  useEffect(() => {
+  // Keyed on the stable team fqn + deleted toggle; the team object and the fetch
+  // callbacks change identity on every refresh, so they're read through refs here
+  // to avoid over-firing.
+  const refetchChildTeams = useRef<() => void>(() => undefined);
+  refetchChildTeams.current = () => {
     if (team) {
       void fetchChildTeams();
     }
-    // Keyed on the stable team fqn + deleted toggle; the team object and the
-    // fetch callback change identity on every refresh and would over-fire.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [team?.fullyQualifiedName, showDeletedTeam]);
+  };
 
-  useEffect(() => {
+  const refetchTeamUsers = useRef<() => void>(() => undefined);
+  refetchTeamUsers.current = () => {
     if (team && activeTab === 'users') {
       void fetchTeamUsers();
     }
-    // Keyed on the stable team fqn + tab + page size; see note above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  };
+
+  useEffect(() => {
+    refetchChildTeams.current();
+  }, [team?.fullyQualifiedName, showDeletedTeam]);
+
+  useEffect(() => {
+    refetchTeamUsers.current();
   }, [team?.fullyQualifiedName, activeTab, usersPageSize]);
 
   // Returns true only when the PATCH succeeded (or was a no-op), so callers can
@@ -646,8 +660,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           : undefined,
       };
       const patch = compare(data, updatedTeam);
-      // Sequential by necessity: the patch targets data.id from the fetch above.
-      // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
+      // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- patch needs the fetched id + diff
       await patchTeamDetail(data.id, patch);
       showSuccessToast(t('message.team-moved-success'));
       void fetchChildTeams();
