@@ -69,6 +69,38 @@ describe('CustomPropertyListItem', () => {
     expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
   });
 
+  it('renders a one-bound timeInterval value as plain text without crashing', () => {
+    renderItem({
+      hasEditPermissions: false,
+      property: createProperty('timeInterval'),
+      value: { start: 100 },
+    });
+
+    expect(
+      screen.getByTestId('custom-property-ownerTeam-row')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('property-value')).toHaveTextContent('100');
+    expect(screen.getByTestId('property-value')).not.toHaveTextContent(
+      /0 minutes/i
+    );
+  });
+
+  it('renders a null-bound timeInterval value as plain text without "0 minutes"', () => {
+    renderItem({
+      hasEditPermissions: false,
+      property: createProperty('timeInterval'),
+      value: { start: 100, end: null },
+    });
+
+    expect(
+      screen.getByTestId('custom-property-ownerTeam-row')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('property-value')).toHaveTextContent('100');
+    expect(screen.getByTestId('property-value')).not.toHaveTextContent(
+      /0 minutes/i
+    );
+  });
+
   it('renders the extra actions after the type badge', () => {
     renderItem({
       actions: (

@@ -50,6 +50,23 @@ const SUMMARY_FORMATTERS: Record<string, SummaryFormatter> = {
   timeInterval: (value, _t, locale) => {
     const { start, end } = value as { start?: number; end?: number };
 
+    // Legacy values can hold only one bound: toNumber(undefined) makes luxon
+    // throw and toNumber(null) silently renders "0 minutes", so fall back to
+    // the defined finite bound(s) instead of computing a duration.
+    const finiteStart = start != null && Number.isFinite(toNumber(start));
+    const finiteEnd = end != null && Number.isFinite(toNumber(end));
+
+    if (!finiteStart || !finiteEnd) {
+      return [start, end]
+        .filter(
+          (bound) =>
+            bound !== undefined &&
+            bound !== null &&
+            Number.isFinite(toNumber(bound))
+        )
+        .join(' – ');
+    }
+
     return formatDurationText(toNumber(end) - toNumber(start), locale);
   },
   [HYPERLINK_TYPE_CUSTOM_PROPERTY]: (value) => {
