@@ -73,9 +73,12 @@ const FieldError = ({
   ) : null;
 
 /**
- * The design system's `DatePicker`: a button trigger showing the selected day,
- * opening a popover with a calendar, a typable date field and a Today preset.
- * It carries its own calendar icon, so the field only supplies the label.
+ * The design system's `DatePicker` in its `input` trigger variant: a
+ * field-shaped control with a leading calendar icon, opening a popover with a
+ * calendar, a typable date field and a Today preset. The `input` shape is what
+ * the design calls for here — these two sit in a labelled column between Title
+ * and Description, so they have to line up with those fields rather than read
+ * as a pair of loose buttons.
  *
  * The epoch-millis <-> `DateValue` bridge is the shared one the data-quality
  * date filters already use, so the conversion is not hand-rolled per form.
@@ -113,6 +116,7 @@ const DateField = ({
         aria-label={label}
         data-testid={id}
         id={id}
+        triggerVariant="input"
         value={millisToDateValue(value ?? undefined)}
         onCancel={() => onChange(valueOnOpen.current)}
         onChange={(selected) => onChange(fromCalendarValue(selected, boundary))}
