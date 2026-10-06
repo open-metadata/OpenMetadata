@@ -16,7 +16,7 @@ import { get } from 'lodash';
 import { Query } from '../../../src/generated/entity/data/query';
 import {
   ACTION_TIMEOUT,
-  API_FIXTURE_TEST_TIMEOUT,
+  EXTENDED_TEST_TIMEOUT,
 } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -109,7 +109,7 @@ const expectQueryVisibleForDomain = async (
 
 test.describe('Domain Filter - User Behavior Tests', () => {
   // API fixture build needs more than the 60s default.
-  test.describe.configure({ timeout: API_FIXTURE_TEST_TIMEOUT });
+  test.describe.configure({ timeout: EXTENDED_TEST_TIMEOUT });
 
   test('Assets from selected domain should be visible in explore page', async ({
     page,
@@ -1019,7 +1019,7 @@ const HIERARCHY_SCENARIOS: {
 
 test.describe('Domain Filter - Multi-nested domain hierarchy', () => {
   // Six tagged tables, each waited on until searchable.
-  test.describe.configure({ timeout: API_FIXTURE_TEST_TIMEOUT });
+  test.describe.configure({ timeout: EXTENDED_TEST_TIMEOUT });
 
   let rootDomain: Domain;
   let subDomains: Record<HierarchySubDomain, SubDomain>;

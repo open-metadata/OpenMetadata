@@ -13,8 +13,11 @@
 /** Bound for a single UI action or response wait, so a miss fails here instead of hanging the test. */
 export const ACTION_TIMEOUT = 30_000;
 
-/** Test timeout for specs that build their fixtures through the API before touching the UI. */
-export const API_FIXTURE_TEST_TIMEOUT = 120_000;
+/** Same, for the few waits that legitimately need longer than {@link ACTION_TIMEOUT}. */
+export const LONG_ACTION_TIMEOUT = 120_000;
+
+/** Test timeout for specs that do more setup than the 60s default allows. */
+export const EXTENDED_TEST_TIMEOUT = 120_000;
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',

@@ -2016,7 +2016,7 @@ export const verifyPortCounts = async (
         };
       },
       {
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       }
     )
     .toEqual({
