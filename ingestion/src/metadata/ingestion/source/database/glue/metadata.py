@@ -358,10 +358,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         database_name = self.context.get().database
         schema_name = self.context.get().database_schema
         if storage_descriptor.Location:
-            # s3a doesn't occur as a path in containers, so it needs to be replaced for lineage to work
-            self.external_location_map[(database_name, schema_name, table_name)] = storage_descriptor.Location.replace(
-                "s3a://", "s3://"
-            )
+            self.external_location_map[(database_name, schema_name, table_name)] = storage_descriptor.Location
         try:
             columns = self.get_columns(storage_descriptor)
             # An Iceberg view is typed Iceberg rather than View, so keying off the Glue type
@@ -471,14 +468,18 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         Iceberg keeps a dropped field in the table schema flagged current=false, so emitting
         every column would resurrect it. GetTables already carries that flag on each column,
         which is why this needs neither a per-table GetTable nor a glue:GetTable grant.
+        Only regular columns can carry it: Glue rejects parameters on a partition key, and
+        Iceberg writes every field, partition sources included, to StorageDescriptor.Columns.
         """
         table = self.context.get().table_data
         is_iceberg = bool(table.Parameters and table.Parameters.table_type == "ICEBERG")
         # Glue sends an explicit null rather than an empty list for a table with neither.
-        for column in [*(column_data.Columns or []), *(table.PartitionKeys or [])]:
+        for column in column_data.Columns or []:
             if is_iceberg and not column.is_current_iceberg_field():
                 logger.debug("Table [%s]: dropping retired Iceberg column [%s].", table.Name, column.Name)
                 continue
+            yield self._get_column_object(column)
+        for column in table.PartitionKeys or []:
             yield self._get_column_object(column)
 
     @classmethod

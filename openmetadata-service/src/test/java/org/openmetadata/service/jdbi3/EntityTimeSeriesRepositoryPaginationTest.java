@@ -2,11 +2,19 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.json.JsonObject;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.SearchAggregationNode;
+import org.openmetadata.service.search.SearchListFilter;
 
 class EntityTimeSeriesRepositoryPaginationTest {
 
@@ -49,15 +57,88 @@ class EntityTimeSeriesRepositoryPaginationTest {
   }
 
   @Test
-  void testTermsSizeIsDefaultWhenNotPaginating() {
+  void testTermsSizeIsMaxAggSizeWhenNotPaginating() {
     List<SearchAggregationNode> nodes =
         EntityTimeSeriesRepository.buildAggregationNodes(
             GROUP_BY, CONTENT_FILTERS, null, null, null, null, MAX_AGG_SIZE);
 
     assertEquals(
-        "100",
+        String.valueOf(MAX_AGG_SIZE),
         byTerms(nodes).getValue().get("size"),
-        "byTerms size should be 100 when not paginating");
+        "content filters apply inside each bucket, so a smaller size silently drops groups");
+  }
+
+  @Test
+  void testLatestHitReturnsOnlyTheRequestedSourceFields() {
+    List<SearchAggregationNode> nodes =
+        EntityTimeSeriesRepository.buildAggregationNodes(
+            GROUP_BY, CONTENT_FILTERS, null, null, null, null, MAX_AGG_SIZE, List.of("a", "b"));
+
+    SearchAggregationNode latest =
+        byTerms(nodes).getChildren().stream()
+            .filter(n -> "top_hits".equals(n.getType()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("a,b", latest.getValue().get("source_fields"));
+  }
+
+  @Test
+  void testScopeFilterKeepsOnlyGroupInvariantParams() {
+    SearchListFilter content = new SearchListFilter();
+    content.addQueryParam("entityFQN", "svc.db.schema.table");
+    content.addQueryParam("testCaseStatus", "Failed");
+    content.addQueryParam("testSuiteId", "suite");
+    content.addQueryParam("testCaseFQN", (String) null);
+
+    SearchListFilter scope =
+        EntityTimeSeriesRepository.groupScopeFilter(content, Set.of("entityFQN", "testCaseFQN"));
+
+    assertEquals("svc.db.schema.table", scope.getQueryParam("entityFQN"));
+    assertNull(scope.getQueryParam("testCaseStatus"), "status belongs to the latest record");
+    assertNull(scope.getQueryParam("testSuiteId"), "suite membership can change between results");
+    assertFalse(scope.getQueryParams().containsKey("testCaseFQN"), "null params are skipped");
+  }
+
+  @Test
+  void testScopeFilterIsEmptyWithoutInvariantParams() {
+    SearchListFilter content = new SearchListFilter();
+    content.addQueryParam("entityFQN", "svc.db.schema.table");
+
+    assertTrue(
+        EntityTimeSeriesRepository.groupScopeFilter(content, Set.of()).getQueryParams().isEmpty());
+  }
+
+  @Test
+  void testTruncationIsReadFromEitherTermsAggregation() {
+    assertFalse(EntityTimeSeriesRepository.isTruncated(aggregations(0, null)));
+    assertTrue(EntityTimeSeriesRepository.isTruncated(aggregations(5, null)));
+    assertTrue(EntityTimeSeriesRepository.isTruncated(aggregations(0, 7)));
+    assertFalse(EntityTimeSeriesRepository.isTruncated(JsonUtils.readJson("{}").asJsonObject()));
+  }
+
+  @Test
+  void testInvariantParamsDependOnTheGroupingField() {
+    TestCaseResultRepository results =
+        Mockito.mock(TestCaseResultRepository.class, Mockito.CALLS_REAL_METHODS);
+    TestCaseResolutionStatusRepository incidents =
+        Mockito.mock(TestCaseResolutionStatusRepository.class, Mockito.CALLS_REAL_METHODS);
+
+    assertEquals(
+        Set.of("entityFQN", "testCaseFQN", "testCaseType"),
+        results.getGroupInvariantParams(TestCaseResultRepository.LATEST_PER_TEST_CASE));
+    assertEquals(
+        Set.of("testCaseFqn", "originEntityFQN"),
+        incidents.getGroupInvariantParams(TestCaseResolutionStatusRepository.LATEST_PER_TEST_CASE));
+    assertEquals(Set.of(), results.getGroupInvariantParams("someOtherField.keyword"));
+  }
+
+  private static JsonObject aggregations(long byTermsOther, Integer byTermsCountOther) {
+    Map<String, Object> aggregations = new HashMap<>();
+    aggregations.put("sterms#byTerms", Map.of("sum_other_doc_count", byTermsOther));
+    if (byTermsCountOther != null) {
+      aggregations.put("sterms#byTermsCount", Map.of("sum_other_doc_count", byTermsCountOther));
+    }
+    return JsonUtils.readJson(JsonUtils.pojoToJson(aggregations)).asJsonObject();
   }
 
   @Test

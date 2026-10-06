@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import { XCircle } from '@untitledui/icons';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 
 interface LineageNodeRemoveButtonProps {

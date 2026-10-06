@@ -40,9 +40,19 @@ export interface ContextMemory {
      */
     displayName?: string;
     /**
+     * Memories owned by someone else whose claims contradict this one.
+     */
+    disputes?: MemoryDispute[];
+    /**
      * Domains this memory belongs to.
      */
     domains?: EntityReference[];
+    /**
+     * Lifecycle stage of the memory: Draft, Approved (in use), Deprecated (replaced), Rejected
+     * (invalidated) or Archived. A Deprecated memory requires supersededBy. When omitted at
+     * creation, the memory starts Approved.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Fully qualified name of the memory.
      */
@@ -55,6 +65,10 @@ export interface ContextMemory {
      * Unique identifier of the memory.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Incremental change that led to this version.
      */
@@ -126,11 +140,19 @@ export interface ContextMemory {
      */
     sourceHumanMessage?: string;
     sourceType?:         SourceType;
-    status?:             MemoryStatus;
+    /**
+     * Why the memory reached its current status, e.g. the reconciliation verdict or the missing
+     * anchor. Cleared by a status change that brings no reason of its own.
+     */
+    statusReason?: string;
     /**
      * Optional summary of the memory.
      */
     summary?: string;
+    /**
+     * The memory that replaced this one. Set if and only if entityStatus is Deprecated.
+     */
+    supersededBy?: EntityReference;
     /**
      * Tags associated with this memory.
      */
@@ -238,6 +260,8 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * The contradicting context memory.
+ *
  * Immediate parent memory in an append-style thread.
  *
  * Primary entity this memory should attach to for reuse.
@@ -249,6 +273,8 @@ export interface FieldChange {
  * The Context Center entity (file or page) this memory was extracted from.
  *
  * Deprecated: use sourceEntity. The Context Center file this memory was extracted from.
+ *
+ * The memory that replaced this one. Set if and only if entityStatus is Deprecated.
  */
 export interface EntityReference {
     /**
@@ -291,6 +317,43 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * A memory owned by someone else whose claim contradicts this one. Both remain Approved.
+ */
+export interface MemoryDispute {
+    /**
+     * When the contradiction was detected.
+     */
+    detectedAt?: number;
+    /**
+     * The contradicting context memory.
+     */
+    memory: EntityReference;
+    /**
+     * Why the two memories contradict each other.
+     */
+    reason: string;
+}
+
+/**
+ * Lifecycle stage of the memory: Draft, Approved (in use), Deprecated (replaced), Rejected
+ * (invalidated) or Archived. A Deprecated memory requires supersededBy. When omitted at
+ * creation, the memory starts Approved.
+ *
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -373,10 +436,12 @@ export enum MemoryProcessingStatus {
 }
 
 /**
- * High-level type of reusable memory.
+ * High-level type of reusable memory. Learning is something the agent had to discover in a
+ * conversation, e.g. a failed query and its fix.
  */
 export enum MemoryType {
     FAQ = "Faq",
+    Learning = "Learning",
     Note = "Note",
     Preference = "Preference",
     Runbook = "Runbook",
@@ -424,29 +489,21 @@ export enum ShareRole {
 export enum ShareVisibility {
     Entity = "Entity",
     Private = "Private",
+    Public = "Public",
     Shared = "Shared",
 }
 
 /**
- * How the memory was created.
+ * How the memory was created. ConversationExtraction is captured automatically at the end
+ * of a chat turn; it is ground truth, not regenerable like a file or page pill.
  */
 export enum SourceType {
     ChatPromotion = "ChatPromotion",
+    ConversationExtraction = "ConversationExtraction",
     FileExtraction = "FileExtraction",
     Manual = "Manual",
     PageExtraction = "PageExtraction",
     RememberRequest = "RememberRequest",
-}
-
-/**
- * Lifecycle state of the memory. Any status may be set at creation (e.g. importing an
- * already-archived memory); the Draft -> Active -> Archived transition rules are only
- * enforced on subsequent updates.
- */
-export enum MemoryStatus {
-    Active = "Active",
-    Archived = "Archived",
-    Draft = "Draft",
 }
 
 /**

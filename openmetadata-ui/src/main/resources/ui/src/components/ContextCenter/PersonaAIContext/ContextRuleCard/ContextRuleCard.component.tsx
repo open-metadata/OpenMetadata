@@ -25,10 +25,10 @@ import {
   File02,
   FilterLines,
   Hexagon01,
-  SearchLg,
+  Search,
   Table,
   Trash01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -163,7 +163,7 @@ const RuleSections = ({
   if (isScoped) {
     return (
       <Box align="center" className="tw:gap-1.5" wrap="wrap">
-        <BadgeWithIcon color="brand" iconLeading={SearchLg} size="sm">
+        <BadgeWithIcon color="brand" iconLeading={Search} size="sm">
           {t('label.filtered-in-search')}
         </BadgeWithIcon>
       </Box>

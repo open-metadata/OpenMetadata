@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edit01, Plus, Trash01 } from '@untitledui/icons';
+import { Edit01, Plus, Trash01 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
 
@@ -169,6 +169,22 @@ export const LinkColorWithTrailingIcon: StoryObj = {
     <Button color="link-color" iconTrailing={Plus}>
       Learn more
     </Button>
+  ),
+};
+
+export const BoxedLink: StoryObj = {
+  render: () => (
+    <div className="tw:flex tw:items-center tw:gap-3">
+      <Button color="link-color" size="md">
+        Back
+      </Button>
+      <Button boxed color="link-color" size="md">
+        Back
+      </Button>
+      <Button color="primary" size="md">
+        Create
+      </Button>
+    </div>
   ),
 };
 

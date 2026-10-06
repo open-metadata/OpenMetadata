@@ -15,7 +15,7 @@
 .file-dragger-wrapper {
   padding: @padding-lg;
   background: var(--tw-color-bg-primary);
-  .ant-typography {
+  .file-dragger-text {
     font-weight: var(--om-font-weight-medium);
     font-size: var(--om-font-size-md);
 
@@ -24,7 +24,9 @@
     }
   }
   .ant-upload-disabled {
-    .ant-typography {
+    .file-dragger-text,
+    .file-dragger-compact-title,
+    .file-dragger-compact-description {
       color: @grey-300;
 
       .browse-text {
@@ -54,10 +56,6 @@
   &.ant-upload-wrapper .ant-upload-drag .ant-upload {
     padding: var(--om-space-38) var(--om-space-24);
   }
-
-  .ant-typography {
-    margin: 0;
-  }
 }
 
 .file-dragger-compact-content {
@@ -82,7 +80,7 @@
   width: 40px;
 }
 
-.file-dragger-compact-title.ant-typography {
+.file-dragger-compact-title {
   color: @grey-900;
   font-size: var(--om-font-size-15);
   font-weight: @font-semibold;
@@ -93,7 +91,7 @@
   }
 }
 
-.file-dragger-compact-description.ant-typography {
+.file-dragger-compact-description {
   color: @grey-600;
   font-size: var(--om-font-size-13);
   font-weight: @font-regular;

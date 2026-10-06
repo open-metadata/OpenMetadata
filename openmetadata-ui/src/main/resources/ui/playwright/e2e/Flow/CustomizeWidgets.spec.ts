@@ -33,7 +33,11 @@ import {
   verifyWidgetHeaderNavigation,
   waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
-import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
+import {
+  addKpi,
+  deleteKpiRequest,
+  deleteSeededKpisOnChart,
+} from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
@@ -138,7 +142,7 @@ const test = base.extend<WidgetTestFixtures>({
     void persona;
 
     const page = await browser.newPage();
-    await testUser.login(page);
+    await testUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -390,6 +394,13 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
   test.slow(true);
 
   const kpi = await test.step('Add KPI', async () => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await deleteSeededKpisOnChart(apiContext, 'owner');
+    } finally {
+      await afterAction();
+    }
+
     await waitForAllLoadersToDisappear(page);
 
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
@@ -476,13 +487,12 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
 
     await expect(kpiWidgetContent).toBeVisible();
 
-    const kpiChart = widget.locator('.recharts-responsive-container');
+    const kpiChart = widget.getByTestId('kpi-widget-chart');
     await expect(kpiChart).toBeVisible();
-    await expect(
-      kpiChart.locator('.recharts-area').filter({
-        has: page.locator(`[fill="url(#gradient-${kpi.name})"]`),
-      })
-    ).toBeVisible();
+    // ECharts labels its root `role="img"` with `<chart title>. <series names>`,
+    // so the KPI being named there proves it was plotted (axis and grid lines
+    // are also svg paths, which makes a path count vacuous).
+    await expect(kpiChart.getByRole('img', { name: kpi.name })).toBeVisible();
   });
 
   await test.step('Test widget customization', async () => {

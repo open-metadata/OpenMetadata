@@ -12,7 +12,7 @@
  */
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Bell01 } from '@untitledui/icons';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NotificationView } from './Notification.types';

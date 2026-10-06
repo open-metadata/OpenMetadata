@@ -12,7 +12,7 @@
  */
 
 import { Card } from '@openmetadata/ui-core-components';
-import { CheckCircle } from '@untitledui/icons';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';

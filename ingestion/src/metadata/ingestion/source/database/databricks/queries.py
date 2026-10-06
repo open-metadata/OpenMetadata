@@ -52,6 +52,8 @@ DATABRICKS_GET_TABLE_COMMENTS = "DESCRIBE TABLE EXTENDED {database_name}.{schema
 
 DATABRICKS_GET_TABLE_DESCRIBE_JSON = "DESCRIBE TABLE EXTENDED {database_name}.{schema_name}.{table_name} AS JSON"
 
+DATABRICKS_GET_COLUMN_TYPE = "DESCRIBE TABLE {database_name}.{schema_name}.{table_name} {column_name}"
+
 DATABRICKS_GET_TABLE_TYPES = textwrap.dedent(
     """
     SELECT table_name, table_type, data_source_format

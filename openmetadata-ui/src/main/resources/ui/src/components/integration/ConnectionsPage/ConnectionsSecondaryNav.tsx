@@ -21,11 +21,10 @@ import {
   HardDrive,
   LayersThree01,
   MessageSquare01,
-  SearchLg,
-  SearchMd,
+  Search,
   Server01,
   Shield01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,7 +47,7 @@ const CATEGORY_ICONS: Record<ConnectionsServiceCategory, NavigationIcon> = {
   [ServiceCategory.ML_MODEL_SERVICES]: Cube01,
   [ServiceCategory.PIPELINE_SERVICES]: Dataflow03,
   [ServiceCategory.STORAGE_SERVICES]: Server01,
-  [ServiceCategory.SEARCH_SERVICES]: SearchMd,
+  [ServiceCategory.SEARCH_SERVICES]: Search,
   [ServiceCategory.DRIVE_SERVICES]: HardDrive,
   [ServiceCategory.SECURITY_SERVICES]: Shield01,
 };
@@ -134,7 +133,7 @@ const ConnectionsSecondaryNav = ({
       <nav aria-label={t('label.connection-plural')}>
         <NavigationItem
           count={total}
-          icon={SearchLg}
+          icon={Search}
           isActive={category === 'all'}
           isLoading={category === 'all' && isCountLoading}
           label={t('label.all-connections')}

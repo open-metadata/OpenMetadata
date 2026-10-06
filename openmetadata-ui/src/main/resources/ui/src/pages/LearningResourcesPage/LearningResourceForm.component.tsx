@@ -14,10 +14,9 @@
 import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Form, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
-import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
+import { ResourceTypeIcon } from '../../components/Learning/ResourceTypeIcon/ResourceTypeIcon';
 import {
   CATEGORIES,
   DURATIONS,
@@ -25,11 +24,14 @@ import {
   LEARNING_RESOURCE_STATUSES,
   PAGE_IDS,
   ResourceType,
-  ResourceTypeOption,
+  RESOURCE_TYPE_LABEL_KEYS,
+  RESOURCE_TYPE_VALUES,
+  SOURCE_URL_PLACEHOLDERS,
 } from '../../constants/Learning.constants';
 import {
   createLearningResource,
   CreateLearningResource,
+  LearningResourceType,
   updateLearningResource,
 } from '../../rest/learningResourceAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -54,21 +56,9 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const RESOURCE_TYPES: ResourceTypeOption[] = useMemo(
-    () => [
-      {
-        value: ResourceType.Video,
-        label: t('label.video'),
-        icon: <VideoIcon height={24} width={24} />,
-      },
-      {
-        value: ResourceType.Storylane,
-        label: t('label.storylane'),
-        icon: <StoryLaneIcon height={24} width={24} />,
-      },
-    ],
-    [t]
+  const selectedResourceType: LearningResourceType | undefined = Form.useWatch(
+    'resourceType',
+    form
   );
 
   useEffect(() => {
@@ -250,11 +240,11 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           <Select
             data-testid="resource-type-select"
             placeholder={t('label.select-field', { field: t('label.type') })}>
-            {RESOURCE_TYPES.map((type) => (
-              <Select.Option key={type.value} value={type.value}>
+            {RESOURCE_TYPE_VALUES.map((type) => (
+              <Select.Option key={type} value={type}>
                 <Space align="center">
-                  {type.icon}
-                  {type.label}
+                  <ResourceTypeIcon aria-hidden resourceType={type} />
+                  {t(RESOURCE_TYPE_LABEL_KEYS[type])}
                 </Space>
               </Select.Option>
             ))}
@@ -320,7 +310,11 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           ]}>
           <Input
             data-testid="source-url-input"
-            placeholder="https://www.youtube.com/watch?v=..."
+            placeholder={
+              SOURCE_URL_PLACEHOLDERS[
+                selectedResourceType ?? ResourceType.Video
+              ]
+            }
           />
         </Form.Item>
 

@@ -440,6 +440,34 @@ describe('FilterSelect', () => {
     expect(className).not.toContain('text-fg-brand');
   });
 
+  it('sizes the input trigger on the Select scale', () => {
+    const renderInput = (size?: 'sm' | 'md') => (
+      <FilterSelect
+        data-testid="input-trigger"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={[]}
+        size={size}
+        triggerVariant="input"
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(renderInput());
+
+    expect(screen.getByTestId('input-trigger')).toHaveClass(
+      'tw:px-3',
+      'tw:py-2'
+    );
+
+    rerender(renderInput('md'));
+
+    expect(screen.getByTestId('input-trigger')).toHaveClass(
+      'tw:px-3.5',
+      'tw:py-2.5'
+    );
+    expect(screen.getByTestId('input-trigger')).not.toHaveClass('tw:h-8');
+  });
+
   it('exposes the label-keyed trigger test id as well as the key-keyed one', () => {
     // The component this replaces put a second test id on an element inside
     // the trigger, keyed by visible label rather than by filter key. A dozen
@@ -662,6 +690,45 @@ describe('FilterSelect', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('chips-trigger'));
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('pressing the trigger of an open filter closes it', () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      'data-testid': 'filter-trigger',
+      triggerVariant: 'button',
+      onOpenChange,
+    });
+    const trigger = screen.getByTestId('filter-trigger');
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    // A real mouse click: detail 1, so React Aria does not treat the click as
+    // a virtual (screen reader) press that reopens the menu.
+    fireEvent.pointerDown(trigger, { pointerType: 'mouse' });
+    fireEvent.click(trigger, { detail: 1 });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('pressing a chip remove button keeps an open filter open', () => {
+    renderFilter({
+      isOpen: undefined,
+      'data-testid': 'chips-trigger',
+      selectedValues: ['snowflake', 'bigquery'],
+      triggerDisplay: 'chips',
+      triggerVariant: 'input',
+    });
+    fireEvent.click(screen.getByTestId('chips-trigger'));
+    const [removeSnowflake] = screen.getAllByRole('button', {
+      name: 'Remove filter',
+    });
+    fireEvent.pointerDown(removeSnowflake, { pointerType: 'mouse' });
 
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });

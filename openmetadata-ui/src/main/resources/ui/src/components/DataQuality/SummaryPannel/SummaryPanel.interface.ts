@@ -1,3 +1,4 @@
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { TestSummary } from '../../../generated/tests/testSuite';
 
 /*
@@ -21,7 +22,8 @@ export interface SummaryPanelProps {
 export interface ChartData {
   name: string;
   value: number;
-  color: string;
+  /** Colour that carries meaning; otherwise the next palette colour. */
+  status?: ChartStatus;
 }
 
 export interface SummaryPieChartCardProps {

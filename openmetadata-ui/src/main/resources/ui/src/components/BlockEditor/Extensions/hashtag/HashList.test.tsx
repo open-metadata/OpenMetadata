@@ -250,6 +250,13 @@ describe('HashList', () => {
     });
 
     it('should open the breadcrumb tooltip with the full breadcrumb text on focus', () => {
+      // The ellipsis tooltip only opens when the breadcrumb is actually truncated.
+      const scrollWidth = jest
+        .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+        .mockReturnValue(200);
+      const clientWidth = jest
+        .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+        .mockReturnValue(100);
       render(<HashList {...mockProps} />);
 
       const trigger = screen
@@ -263,6 +270,9 @@ describe('HashList', () => {
       const tooltip = screen.getByRole('tooltip');
 
       expect(tooltip).toHaveTextContent('Database/Schema');
+
+      scrollWidth.mockRestore();
+      clientWidth.mockRestore();
     });
   });
 });

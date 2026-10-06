@@ -7,6 +7,7 @@
     "close": "Kapat",
     "close-navigation-menu": "Gezinme menüsünü kapat",
     "copy-link": "Bağlantıyı kopyala",
+    "count-remaining": "{{count}} kaldı",
     "count-selected": "{{count}} seçildi",
     "current-page": "Geçerli sayfa",
     "date-range-picker": "Tarih aralığı seçici",
@@ -33,8 +34,10 @@
     "remove-filter": "Filtreyi kaldır",
     "search": "Ara",
     "select-all": "Tümünü seç",
+    "select-date": "Tarih seç",
     "select-dates": "Tarihleri seç",
     "select-only-one-row": "Bir satır seçin",
+    "show-count-more": "{{count}} tane daha göster",
     "show-hidden-breadcrumbs": "Gizli içerik haritasını göster",
     "today": "Bugün",
     "tree-select": "Ağaç seçimi"
