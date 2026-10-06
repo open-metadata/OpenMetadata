@@ -125,6 +125,26 @@ describe('LearningResourceCard', () => {
     expect(screen.getByText('5 min watch')).toBeInTheDocument();
   });
 
+  it('should render formatted duration with min read for PDF', () => {
+    render(
+      <LearningResourceCard
+        resource={{ ...mockVideoResource, resourceType: 'PDF' }}
+      />
+    );
+
+    expect(screen.getByText('5 min read')).toBeInTheDocument();
+  });
+
+  it('should render the link icon for Link resource type', () => {
+    render(
+      <LearningResourceCard
+        resource={{ ...mockVideoResource, resourceType: 'Link' }}
+      />
+    );
+
+    expect(screen.getByTestId('resource-type-icon-Link')).toBeInTheDocument();
+  });
+
   it('should not render duration when estimatedDuration is not provided', () => {
     const resourceWithoutDuration = {
       ...mockVideoResource,
