@@ -924,20 +924,41 @@ export const verifyArticleSearch = async (page: Page, searchTerm: string) => {
   const searchInput = header
     .getByTestId('search-input')
     .getByLabel('Search Articles');
-  const searchResPromise = page.waitForResponse((res) => {
-    const url = new URL(res.url());
+  const card = page
+    .getByTestId('knowledge-page-listing')
+    .getByTestId(`knowledge-card-${searchTerm}`);
 
-    return (
-      url.pathname.includes('/api/v1/search/query') &&
-      url.searchParams.get('index') === 'page' &&
-      url.searchParams.get('q') ===
-        searchTerm.replaceAll(/["']/g, String.raw`\$&`)
-    );
-  });
+  await expect(async () => {
+    const currentValue = await searchInput.inputValue();
+    if (currentValue) {
+      const clearResPromise = page.waitForResponse((res) => {
+        const url = new URL(res.url());
 
-  await searchInput.fill(searchTerm);
-  const searchRes = await searchResPromise;
-  expect(searchRes.status()).toBe(200);
+        return (
+          url.pathname.includes('/api/v1/contextCenter/pages') &&
+          !url.pathname.includes('/name/') &&
+          res.request().method() === 'GET'
+        );
+      });
+      await searchInput.clear();
+      await clearResPromise;
+    }
+
+    const searchResPromise = page.waitForResponse((res) => {
+      const url = new URL(res.url());
+
+      return (
+        url.pathname.includes('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'page' &&
+        url.searchParams.get('q') ===
+          searchTerm.replaceAll(/["']/g, String.raw`\$&`)
+      );
+    });
+    await searchInput.fill(searchTerm);
+    const searchRes = await searchResPromise;
+    expect(searchRes.status()).toBe(200);
+    await expect(card).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 30000 });
 
   return searchInput;
 };

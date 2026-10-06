@@ -873,11 +873,12 @@ export const updateDescriptionForChildren = async (
     .getByTestId('edit-button');
 
   await expect(editButton).toBeVisible();
-  await editButton.click();
 
-  // Wait for modal to be visible
+  // The edit-button is a hover-revealed icon whose position shifts as sibling
+  // icons settle, so a single click can land without dispatching (target moves
+  // between mousedown and mouseup) and the modal never opens. Retry until it does.
   const modal = page.locator('[role="dialog"]');
-  await expect(modal).toBeVisible();
+  await clickUntilVisible(editButton, modal, { force: 'onRetry' });
 
   // Wait for editor to be ready
   const modalEditor = modal.locator(descriptionBox);
