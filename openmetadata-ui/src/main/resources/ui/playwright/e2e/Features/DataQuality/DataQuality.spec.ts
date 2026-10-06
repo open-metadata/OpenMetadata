@@ -951,10 +951,12 @@ test.describe(
         await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
           /^INC-\d+$/
         );
-        // What the test checks, and on which table, not the task's name.
+        // What the test checks, and on which table, not the task's name. The
+        // generated table name clamps the title, whose "more" toggle sits in
+        // the same element.
         await expect(
           incident.getByTestId('test-case-incident-description')
-        ).toHaveText(
+        ).toContainText(
           `Row count vs. allowed range 1–100 on ${failedRunTable.entity.name}`
         );
         await expect(
