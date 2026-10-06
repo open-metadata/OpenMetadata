@@ -94,6 +94,7 @@ function TestCaseSidePanel({
             description={description}
             entityType={EntityType.TEST_CASE}
             hasEditAccess={hasEditDescriptionPermission}
+            headerVariant="widget"
             showCommentsIcon={false}
             onDescriptionUpdate={handleDescriptionChange}
           />

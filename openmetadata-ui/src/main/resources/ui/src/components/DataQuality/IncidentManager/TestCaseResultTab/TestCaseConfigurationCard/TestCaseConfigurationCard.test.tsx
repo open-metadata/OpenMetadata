@@ -56,6 +56,10 @@ describe('TestCaseConfigurationCard', () => {
     expect(screen.getByTestId('configuration-test-name')).toHaveTextContent(
       'Column Values To Be Between'
     );
+    // Titled like the rail's other cards.
+    expect(screen.getByTestId('configuration-title')).toHaveClass(
+      'tw:text-quaternary'
+    );
     expect(screen.getByTestId('configuration-parameter-min')).toHaveTextContent(
       '90001'
     );

@@ -212,9 +212,13 @@ const TestCaseConfigurationCard = ({
         align="center"
         className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
         gap={2}>
+        {/* The rail's widget cards' title style, so the rail reads as one. */}
         <Typography
           as="span"
-          className="tw:text-sm tw:font-bold tw:text-primary">
+          className="tw:whitespace-nowrap tw:text-quaternary"
+          data-testid="configuration-title"
+          size="text-sm"
+          weight="semibold">
           {t('label.configuration')}
         </Typography>
         {showEditButton && (
