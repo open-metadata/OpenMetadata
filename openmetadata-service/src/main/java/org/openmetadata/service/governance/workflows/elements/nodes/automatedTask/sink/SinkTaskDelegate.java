@@ -151,10 +151,7 @@ public class SinkTaskDelegate implements JavaDelegate {
       SinkRun run;
 
       // Determine execution mode: batch or single entity
-      if (batchMode
-          && entityList != null
-          && !entityList.isEmpty()
-          && sinkProvider.supportsBatch()) {
+      if (batchMode && entityList != null && sinkProvider.supportsBatch()) {
         // Batch mode: process all entities at once (single workflow instance)
         String businessKey = execution.getProcessInstanceBusinessKey();
         run =

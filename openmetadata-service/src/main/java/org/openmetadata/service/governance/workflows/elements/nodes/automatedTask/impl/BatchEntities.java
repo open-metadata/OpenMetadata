@@ -45,7 +45,9 @@ final class BatchEntities {
 
   /**
    * The batch's entity links when the node handles the whole batch; empty when it handles {@code
-   * relatedEntity} alone, as a node deployed per entity or before batch fields existed does.
+   * relatedEntity} alone, as a node deployed per entity or before batch fields existed does. A batch
+   * that earlier nodes emptied is still the batch, so no node falls back to {@code relatedEntity},
+   * which names an entity those nodes dropped.
    */
   static Optional<List<String>> read(
       Expression batchExecutionExpr,
@@ -58,7 +60,7 @@ final class BatchEntities {
           varHandler.getNamespacedVariable(namespaceOf(namespaces), ENTITY_LIST_VARIABLE);
       // Flowable returns process variables as untyped Object; the periodic trigger stores the
       // batch as a List of entity-link strings.
-      if (value instanceof List<?> list && !list.isEmpty()) {
+      if (value instanceof List<?> list) {
         entityLinks = Optional.of(list.stream().map(String::valueOf).toList());
       }
     }
@@ -207,10 +209,13 @@ final class BatchEntities {
 
   /** What a batch action did: the entities it applied to, which stay in the batch. */
   record ActionOutcome(List<String> applied, Failures failures) {
-    /** Records the failures and the remaining batch; raises the runtime error if none applied. */
+    /**
+     * Records the failures and the remaining batch; raises the runtime error when the batch had
+     * entities and the action applied to none of them.
+     */
     void record(WorkflowVariableHandler varHandler, InputNamespaces namespaces, List<String> read) {
       failures.record(varHandler);
-      if (applied.isEmpty()) {
+      if (!read.isEmpty() && applied.isEmpty()) {
         throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, failures.summary());
       }
       writeIfChanged(varHandler, namespaces, read, applied);

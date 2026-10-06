@@ -29,7 +29,6 @@ import static org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
-import static org.openmetadata.service.migration.utils.v210.WorkflowSinkSecretsMigration.migrateSinkWorkflows;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -90,11 +89,5 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LifeCycleCreatedSentinelMigration.STEP_NAME,
         () -> removeCreatedSentinel(handle, POSTGRES));
-    // Fernet-encrypts plaintext sink secrets of stored workflow definitions and their versions, and
-    // redeploys each active sink definition at most once when its Flowable BPMN still holds a
-    // plaintext secret, lacks the batch execution of a once-per-batch workflow, or triggers a Git
-    // sink for query entities. Idempotent; a failed redeploy is logged and does not block the
-    // upgrade.
-    migrateSinkWorkflows(handle, POSTGRES, this::initializeWorkflowHandler);
   }
 }

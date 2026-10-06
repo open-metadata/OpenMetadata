@@ -15,7 +15,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -168,9 +167,6 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProvider;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProviderRegistry;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkResult;
-import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.migration.utils.v210.WorkflowSinkSecretsMigration;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
@@ -497,76 +493,6 @@ public class WorkflowDefinitionResourceIT {
   }
 
   /**
-   * Runs the v2.1.0 sink-secret migration over a definition whose row and version snapshot were put
-   * back to plaintext, as a definition stored before encryption at rest has them. The migration
-   * must encrypt both and redeploy the definition, and a second run must change nothing.
-   */
-  @Test
-  void test_sinkSecretsMigrationEncryptsStoredPlaintext(TestNamespace ns) throws Exception {
-    assertTrue(Fernet.getInstance().isKeyDefined(), "the migration needs the Fernet key");
-    OpenMetadataClient client = SdkClients.adminClient();
-    String workflowName = ns.prefix("gitSinkMigration");
-    String token = "ghp_itMigrationToken_%s".formatted(UUID.randomUUID());
-    String privateKey = "itMigrationPrivateKey_%s".formatted(UUID.randomUUID());
-    String passphrase = "itMigrationPassphrase_%s".formatted(UUID.randomUUID());
-    List<String> plaintexts = List.of(token, privateKey, passphrase);
-    Map<String, Object> request =
-        buildGitSinkWorkflowRequest(workflowName, token, privateKey, passphrase);
-    JsonNode created =
-        MAPPER.readTree(executeWorkflowRequest(client, HttpMethod.POST, BASE_PATH, request));
-    trackWorkflowFromJson(created);
-    String workflowId = created.get("id").asText();
-    request.put("description", "Stores a version snapshot");
-    executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, request);
-    request.put("description", "Stores another version snapshot");
-    executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, request);
-    assertFalse(storedVersionJson(workflowId).isEmpty(), "the updates must store a version row");
-
-    restorePlaintextSinkSecrets(workflowId, token, privateKey, passphrase);
-    String restoredDefinition = storedDefinitionJson(workflowId);
-    assertTrue(
-        restoredDefinition.contains(token),
-        () -> "the stored row lacks the restored plaintext: %s".formatted(restoredDefinition));
-    List<String> restoredVersions = storedVersionJson(workflowId);
-    assertTrue(
-        restoredVersions.stream().anyMatch(json -> json.contains(token)),
-        () ->
-            "no version row holds the restored plaintext: %s"
-                .formatted(
-                    restoredVersions.stream()
-                        .map(json -> json.substring(0, Math.min(json.length(), 1500)))
-                        .toList()));
-
-    WorkflowHandler.getInstance()
-        .deploy(new Workflow(JsonUtils.readValue(restoredDefinition, WorkflowDefinition.class)));
-    assertEquals(
-        token,
-        JsonUtils.readTree(deployedSinkConfig(workflowName)).at("/credentials/token").asText(),
-        "the deployment must hold the plaintext the migration replaces");
-
-    runSinkSecretsMigration();
-
-    JsonNode encrypted =
-        assertSinkSecretsStoredEncrypted(workflowId, token, privateKey, passphrase, plaintexts);
-    storedVersionJson(workflowId).forEach(version -> assertNoSecret(version, plaintexts));
-    assertDeployedTokenEncrypted(workflowName, token, plaintexts);
-
-    String storedAfterFirstRun = storedDefinitionJson(workflowId);
-    List<String> versionsAfterFirstRun = storedVersionJson(workflowId);
-    String deploymentAfterFirstRun = latestProcessDefinitionId(workflowName);
-    runSinkSecretsMigration();
-    assertEquals(storedAfterFirstRun, storedDefinitionJson(workflowId));
-    assertEquals(versionsAfterFirstRun, storedVersionJson(workflowId));
-    assertEquals(
-        deploymentAfterFirstRun,
-        latestProcessDefinitionId(workflowName),
-        "a deployment that holds no plaintext secret is not redeployed");
-    assertEquals(
-        encrypted,
-        assertSinkSecretsStoredEncrypted(workflowId, token, privateKey, passphrase, plaintexts));
-  }
-
-  /**
    * A copy or move patch reads the value at its {@code from} location, which the authorization of
    * its target path does not cover: copying a sink secret into the description needs EditAll, not
    * EditDescription.
@@ -744,102 +670,6 @@ public class WorkflowDefinitionResourceIT {
       after = history.path("paging").path("after").textValue();
     } while (after != null);
     assertTrue(workflowListed, "the workflow's versions must be in the history window");
-  }
-
-  private static String latestProcessDefinitionId(String workflowName) {
-    return WorkflowHandler.getInstance()
-        .getRepositoryService()
-        .createProcessDefinitionQuery()
-        .processDefinitionKey(workflowName)
-        .latestVersion()
-        .singleResult()
-        .getId();
-  }
-
-  private static final String UPDATE_STORED_DEFINITION_MYSQL =
-      "UPDATE workflow_definition_entity SET json = :json WHERE id = :id";
-
-  private static final String UPDATE_STORED_DEFINITION_POSTGRES =
-      "UPDATE workflow_definition_entity SET json = :json::jsonb WHERE id = :id";
-
-  private static final String UPDATE_STORED_VERSIONS_MYSQL =
-      "UPDATE entity_extension SET json = :json WHERE id = :id AND extension = :extension";
-
-  private static final String UPDATE_STORED_VERSIONS_POSTGRES =
-      "UPDATE entity_extension SET json = :json::jsonb WHERE id = :id AND extension = :extension";
-
-  private static final String STORED_VERSION_ROWS_SQL =
-      "SELECT extension, json FROM entity_extension WHERE id = :id AND extension LIKE :extensionPattern";
-
-  private static ConnectionType connectionType() {
-    return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-        ? ConnectionType.MYSQL
-        : ConnectionType.POSTGRES;
-  }
-
-  private static void runSinkSecretsMigration() {
-    // The test server's workflow handler is already running, so there is nothing to initialize.
-    Entity.getJdbi()
-        .useHandle(
-            handle ->
-                WorkflowSinkSecretsMigration.migrateSinkWorkflows(
-                    handle, connectionType(), () -> {}));
-  }
-
-  /** Puts the plaintext secrets back into the stored row and every stored version snapshot. */
-  private void restorePlaintextSinkSecrets(
-      String workflowId, String token, String privateKey, String passphrase) {
-    boolean mysql = connectionType() == ConnectionType.MYSQL;
-    String definition =
-        withPlaintextSinkSecrets(storedDefinitionJson(workflowId), token, privateKey, passphrase);
-    Entity.getJdbi()
-        .useHandle(
-            handle -> {
-              handle
-                  .createUpdate(
-                      mysql ? UPDATE_STORED_DEFINITION_MYSQL : UPDATE_STORED_DEFINITION_POSTGRES)
-                  .bind("id", workflowId)
-                  .bind("json", definition)
-                  .execute();
-              handle
-                  .createQuery(STORED_VERSION_ROWS_SQL)
-                  .bind("id", workflowId)
-                  .bind("extensionPattern", workflowVersionPattern())
-                  .map(
-                      (rs, ctx) ->
-                          new StoredVersion(rs.getString("extension"), rs.getString("json")))
-                  .list()
-                  .forEach(
-                      row ->
-                          handle
-                              .createUpdate(
-                                  mysql
-                                      ? UPDATE_STORED_VERSIONS_MYSQL
-                                      : UPDATE_STORED_VERSIONS_POSTGRES)
-                              .bind("id", workflowId)
-                              .bind("extension", row.extension())
-                              .bind(
-                                  "json",
-                                  withPlaintextSinkSecrets(
-                                      row.json(), token, privateKey, passphrase))
-                              .execute());
-            });
-  }
-
-  private record StoredVersion(String extension, String json) {}
-
-  private static String withPlaintextSinkSecrets(
-      String storedJson, String token, String privateKey, String passphrase) {
-    JsonNode stored = JsonUtils.readTree(storedJson);
-    // A stored sink config is a JSON object, so its credentials and signing key are too.
-    if (gitSinkNode(stored).at("/config/sinkConfig") instanceof ObjectNode sinkConfig) {
-      sinkConfig.putObject("credentials").put("type", "token").put("token", token);
-      sinkConfig
-          .putObject("signingKey")
-          .put("privateKey", privateKey)
-          .put("passphrase", passphrase);
-    }
-    return stored.toString();
   }
 
   private static String workflowVersionPattern() {

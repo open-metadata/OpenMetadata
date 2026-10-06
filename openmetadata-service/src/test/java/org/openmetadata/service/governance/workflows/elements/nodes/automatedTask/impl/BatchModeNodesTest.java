@@ -172,6 +172,47 @@ class BatchModeNodesTest {
         never());
   }
 
+  /**
+   * A condition upstream that matched no entity hands on an empty batch while {@code
+   * global_relatedEntity} still names the batch's first entity, which that condition dropped.
+   */
+  @Test
+  void conditionOnAnEmptiedBatchEvaluatesNoEntity() {
+    List<String> dropped = givenTables("gold");
+    variables.put("global_relatedEntity", dropped.getFirst());
+    variables.put(ENTITY_LIST, new ArrayList<>());
+    JavaDelegate check = checkEntityAttributes(true, "true");
+
+    check.execute(execution);
+
+    assertEquals(Boolean.FALSE, variables.get(RESULT));
+    assertEquals(List.of(), variables.get(ENTITY_LIST));
+    entityStatics.verify(
+        () -> Entity.getEntity(any(MessageParser.EntityLink.class), anyString(), any()), never());
+  }
+
+  @Test
+  void actionOnAnEmptiedBatchAppliesToNoEntity() {
+    List<String> dropped = givenTables("gold");
+    variables.put("global_relatedEntity", dropped.getFirst());
+    variables.put(ENTITY_LIST, new ArrayList<>());
+    SetEntityAttributeImpl setAttribute = new SetEntityAttributeImpl();
+    inject(setAttribute, "fieldNameExpr", expression("description"));
+    inject(setAttribute, "fieldValueExpr", expression("synced"));
+    injectBatchFields(setAttribute, true, null);
+
+    try (MockedStatic<EntityFieldUtils> fieldUtils = mockStatic(EntityFieldUtils.class)) {
+      setAttribute.execute(execution);
+
+      fieldUtils.verifyNoInteractions();
+    }
+
+    assertEquals(List.of(), variables.get(ENTITY_LIST));
+    assertNull(variables.get("global_failure"));
+    entityStatics.verify(
+        () -> Entity.getEntity(any(MessageParser.EntityLink.class), anyString(), any()), never());
+  }
+
   @Test
   void changeDescriptionConditionEvaluatesEveryEntity() {
     List<String> batch = givenTables("created", "updated");

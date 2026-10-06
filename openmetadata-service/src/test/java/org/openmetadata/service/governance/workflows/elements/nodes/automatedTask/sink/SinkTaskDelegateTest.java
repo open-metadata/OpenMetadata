@@ -165,6 +165,36 @@ class SinkTaskDelegateTest {
     verify(execution).setVariable(eq("process_failedCount"), eq(0));
   }
 
+  /**
+   * A condition upstream that matched no entity hands the sink an empty batch while {@code
+   * global_relatedEntity} still names the batch's first entity, which that condition dropped.
+   */
+  @Test
+  void emptiedBatchWritesNoEntity() {
+    setupCommonExpressions(true);
+    Map<String, String> namespaceMap = new HashMap<>();
+    namespaceMap.put(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE);
+    namespaceMap.put(RELATED_ENTITY_VARIABLE, GLOBAL_NAMESPACE);
+    when(inputNamespaceMapExpr.getValue(execution)).thenReturn(JsonUtils.pojoToJson(namespaceMap));
+    setupVariableAccess(List.of(), false);
+    when(execution.getVariable("global_relatedEntity")).thenReturn("<#E::table::dropped.fqn>");
+    List<String> loaded = new ArrayList<>();
+    delegate.entityLoader =
+        link -> {
+          loaded.add(link);
+          return mock(EntityInterface.class);
+        };
+
+    delegate.execute(execution);
+
+    assertEquals(List.of(), loaded);
+    assertEquals(0, testProvider.getWriteCallCount());
+    assertEquals(0, testProvider.getBatchWriteCallCount());
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+    verify(execution).setVariable(eq("process_syncedCount"), eq(0));
+    verify(execution).setVariable(eq("process_failedCount"), eq(0));
+  }
+
   @Test
   void providerReceivesTheDecryptedSinkSecrets() {
     Fernet.getInstance().setFernetKey(FERNET_KEY);
