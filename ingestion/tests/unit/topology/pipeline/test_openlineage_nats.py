@@ -343,32 +343,44 @@ class TestBatchKeepalive:
         )
 
     def test_the_lease_is_refreshed_repeatedly_while_suspended(self, source, quick_broker, event_payload, monkeypatch):
-        """One refresh before the yield only buys a single ackWait."""
+        """One refresh only buys a single ackWait, however long the pipeline takes."""
         monkeypatch.setattr(openlineage_metadata, "MIN_NATS_KEEPALIVE_INTERVAL", 0.01)
         message = _message(event_payload)
         source.client = MagicMock()
         source.client.fetch.side_effect = [[message], []]
 
         for _ in source._poll_nats(quick_broker):
-            # a downstream slower than one refresh interval
-            time.sleep(0.6)
+            # ackWait 1 puts the heartbeat at 0.5s, so this spans more than one
+            time.sleep(1.2)
 
         assert source.client.in_progress.call_count >= 2, "the lease was refreshed only once"
         assert source.client.in_progress.call_args[0][0] is message
 
-    def test_the_refresh_stops_before_the_acknowledgement(self, source, quick_broker, event_payload, monkeypatch):
-        """A refresh racing the ack of the same message would fight it."""
-        monkeypatch.setattr(openlineage_metadata, "MIN_NATS_KEEPALIVE_INTERVAL", 0.01)
-        calls: list[str] = []
+    def test_a_batch_that_keeps_up_costs_no_control_traffic(self, source, broker, event_payload):
+        """Refreshing per message was N(N-1)/2 blocking calls even when nothing was slow."""
+        messages = [_message(event_payload) for _ in range(5)]
         source.client = MagicMock()
-        source.client.in_progress.side_effect = lambda _m: calls.append("in_progress")
-        source.client.ack.side_effect = lambda _m: calls.append("ack")
-        source.client.fetch.side_effect = [[_message(event_payload)], []]
+        source.client.fetch.side_effect = [messages, []]
+
+        assert len(list(source._poll_nats(broker))) == 5
+        source.client.in_progress.assert_not_called()
+
+    def test_a_message_is_not_refreshed_once_it_is_acknowledged(self, source, quick_broker, event_payload, monkeypatch):
+        """A refresh racing the acknowledgement of the same message would fight it."""
+        monkeypatch.setattr(openlineage_metadata, "MIN_NATS_KEEPALIVE_INTERVAL", 0.01)
+        acknowledged: set[int] = set()
+        refreshed_after_ack: list[int] = []
+        source.client = MagicMock()
+        source.client.ack.side_effect = lambda m: acknowledged.add(id(m))
+        source.client.in_progress.side_effect = lambda m: (
+            refreshed_after_ack.append(id(m)) if id(m) in acknowledged else None
+        )
+        source.client.fetch.side_effect = [[_message(event_payload), _message(event_payload)], []]
 
         for _ in source._poll_nats(quick_broker):
-            time.sleep(0.05)
+            time.sleep(0.6)
 
-        assert calls[-1] == "ack"
+        assert refreshed_after_ack == []
 
     def test_nothing_is_kept_alive_for_an_unparseable_message(self, source, quick_broker):
         """It is acknowledged straight away, so there is no processing window to cover."""
