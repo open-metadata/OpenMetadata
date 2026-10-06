@@ -528,13 +528,15 @@ function TestSummaryGraph({
         customValues: tickValues,
         fontSize: AXIS_LABEL_FONT_SIZE,
       },
+      // ECharts' own axis grey does not follow the theme.
+      axisLine: { lineStyle: { color: palette.status.neutral } },
       boundaryGap: X_AXIS_EDGE_GAP,
       ...(instants.length === 1 && {
         min: instants[0] - SINGLE_INSTANT_X_PADDING,
         max: instants[0] + SINGLE_INSTANT_X_PADDING,
       }),
     };
-  }, [plottedData]);
+  }, [plottedData, palette]);
 
   const yAxis = useMemo<ChartYAxisProps>(
     () => ({
@@ -593,7 +595,7 @@ function TestSummaryGraph({
   }
 
   return (
-    <Box className="tw:bg-primary" direction="col">
+    <Box direction="col">
       <div className="tw:relative" id={`${testCaseName}_graph`} ref={plotRef}>
         <ComposedChart
           keyboardNavigation

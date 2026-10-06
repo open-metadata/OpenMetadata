@@ -334,6 +334,18 @@ describe('TestSummaryGraph', () => {
     (formatDateTimeLong as jest.Mock).mockReturnValue(FORMATTED_DATE);
   });
 
+  it('should sit on its card with no surface of its own, over a themed baseline', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    // tw:bg-primary is the page colour in dark mode: a darker slab on the card.
+    expect(
+      screen.getByTestId('core-composed-chart').closest('.tw\\:bg-primary')
+    ).toBeNull();
+    expect(getChartProps().xAxis?.axisLine).toEqual({
+      lineStyle: { color: '#a0a0a0' },
+    });
+  });
+
   it('should format the y axis as a duration for freshness tests', () => {
     render(
       <TestSummaryGraph
