@@ -12,6 +12,7 @@
  */
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import {
+  getMeasuredResult,
   getResultHistoryCaption,
   hasTestCaseNeverRun,
 } from './TestSummary.utils';
@@ -164,6 +165,41 @@ describe('getResultHistoryCaption', () => {
     expect(getResultHistoryCaption(testCase('myCustomTest', {}))).toEqual({
       metric: { key: 'label.result-metric-values' },
     });
+  });
+});
+
+describe('getMeasuredResult', () => {
+  const run = (testResultValue: { name: string; value: string }[]) => ({
+    timestamp: 1,
+    testCaseStatus: TestCaseStatus.Failed,
+    testResultValue,
+  });
+
+  it.each(['valueCount', 'valuesCount'])(
+    'shows a uniqueness test its duplicates, not the two counts it reports as %s and uniqueCount',
+    (countName) => {
+      expect(
+        getMeasuredResult(
+          testCase('columnValuesToBeUnique', {}),
+          run([
+            { name: countName, value: '100' },
+            { name: 'uniqueCount', value: '63' },
+          ])
+        ).testResultValue
+      ).toEqual([{ name: 'duplicateCount', value: '37' }]);
+    }
+  );
+
+  it('keeps the values of every other test, and of a uniqueness run missing a count', () => {
+    const rowCount = run([{ name: 'rowCount', value: '110' }]);
+    const partial = run([{ name: 'uniqueCount', value: '63' }]);
+
+    expect(
+      getMeasuredResult(testCase('tableRowCountToEqual', {}), rowCount)
+    ).toBe(rowCount);
+    expect(
+      getMeasuredResult(testCase('columnValuesToBeUnique', {}), partial)
+    ).toBe(partial);
   });
 });
 

@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 import type { TFunction } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
-import { TestCase } from '../../../../generated/tests/testCase';
-import { getParameterBounds } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
+import { isEmpty, isUndefined, keyBy } from 'lodash';
+import {
+  TestCase,
+  TestResultValue,
+} from '../../../../generated/tests/testCase';
+import {
+  getParameterBounds,
+  toFiniteNumber,
+} from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import {
   DEFAULT_RESULT_METRIC,
@@ -136,6 +142,39 @@ export const getResultHistoryCaption = (
     },
     ...(comparison && { comparison }),
   };
+};
+
+/**
+ * What a run measured, as the page shows it. A uniqueness test reports how
+ * many values it counted and how many were unique, but it checks their
+ * difference, the duplicates (ingestion fails it on `count - unique_count`),
+ * so that is the one value charted, compared and shown.
+ */
+export const getMeasuredResult = <
+  T extends { testResultValue?: TestResultValue[] }
+>(
+  testCase: Pick<TestCase, 'testDefinition'>,
+  result: T
+): T => {
+  if (testCase.testDefinition?.name !== 'columnValuesToBeUnique') {
+    return result;
+  }
+
+  const values = keyBy(result.testResultValue, 'name');
+  // Ingestion names it valueCount; older results say valuesCount.
+  const count = toFiniteNumber(
+    (values.valueCount ?? values.valuesCount)?.value
+  );
+  const unique = toFiniteNumber(values.uniqueCount?.value);
+
+  return isUndefined(count) || isUndefined(unique)
+    ? result
+    : {
+        ...result,
+        testResultValue: [
+          { name: 'duplicateCount', value: String(count - unique) },
+        ],
+      };
 };
 
 /** The caption as text, "Row count vs. expected 10,000". */

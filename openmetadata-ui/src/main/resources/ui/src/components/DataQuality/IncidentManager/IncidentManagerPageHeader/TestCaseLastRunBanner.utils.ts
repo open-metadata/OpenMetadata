@@ -25,6 +25,7 @@ import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import {
   formatNumber,
+  getMeasuredResult,
   getResultHistoryCaptionText,
 } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
 import {
@@ -80,7 +81,9 @@ export const getMetricSummary = (
   testCaseResult: TestCaseResult,
   testCaseStatus: TestCaseStatus
 ) => {
-  const found = getFoundValue(testCaseResult);
+  const found = getFoundValue(
+    testCase ? getMeasuredResult(testCase, testCaseResult) : testCaseResult
+  );
   const expectedValue = getExpectedText(testCase, testCaseResult);
 
   return {

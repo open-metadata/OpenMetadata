@@ -46,6 +46,7 @@ import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interfa
 import RunSummaryTiles from './RunSummaryTiles/RunSummaryTiles';
 import './test-summary.less';
 import {
+  getMeasuredResult,
   getResultHistoryCaptionText,
   hasTestCaseNeverRun,
 } from './TestSummary.utils';
@@ -179,6 +180,14 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     retryCount,
   ]);
 
+  const measuredResults = useMemo(
+    () =>
+      (results as (TestCaseResult | TestCaseDimensionResult)[]).map((result) =>
+        getMeasuredResult(data, result)
+      ),
+    [data, results]
+  );
+
   // Below the header: the results, or why there are none to show.
   const resultsContent = useMemo(() => {
     if (isGraphLoading) {
@@ -233,12 +242,12 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             testCaseFqn={testCaseFqn}
             testCaseName={data.name}
             testCaseParameterValue={data.parameterValues}
-            testCaseResults={results}
+            testCaseResults={measuredResults}
             testDefinitionName={data.testDefinition.name}
           />
         </div>
         <RunSummaryTiles results={results} />
-        <RunDetailsCard results={results} testCase={data} />
+        <RunDetailsCard results={measuredResults} testCase={data} />
       </>
     );
   }, [
@@ -246,6 +255,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     hasLoadError,
     data,
     results,
+    measuredResults,
     version,
     selectedTimeRange,
     testCaseFqn,

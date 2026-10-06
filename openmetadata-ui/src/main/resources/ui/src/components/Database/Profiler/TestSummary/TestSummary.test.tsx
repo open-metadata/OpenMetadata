@@ -473,6 +473,43 @@ describe('TestSummary component', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should show a uniqueness run its duplicates against the expected 0', async () => {
+    const run = {
+      timestamp: 1,
+      testCaseStatus: 'Failed',
+      testResultValue: [
+        { name: 'valueCount', value: '100' },
+        { name: 'uniqueCount', value: '63' },
+      ],
+    };
+    mockGetListTestCaseResults.mockResolvedValueOnce({ data: [run] });
+
+    render(
+      <TestSummary
+        data={
+          {
+            ...mockProps.data,
+            parameterValues: [],
+            testCaseResult: run,
+            testDefinition: {
+              ...mockProps.data.testDefinition,
+              name: 'columnValuesToBeUnique',
+            },
+          } as TestCase
+        }
+      />
+    );
+
+    // 100 values, 63 unique: the reader no longer works out the 37.
+    expect(await screen.findByTestId('run-details-found')).toHaveTextContent(
+      '37'
+    );
+    expect(screen.getByTestId('run-details-expected')).toHaveTextContent('0');
+    expect(screen.getByTestId('run-details-difference')).toHaveTextContent(
+      '+37'
+    );
+  });
+
   it('should not reload the results when the test case changes but its latest run does not', async () => {
     const testCase = {
       ...mockProps.data,
