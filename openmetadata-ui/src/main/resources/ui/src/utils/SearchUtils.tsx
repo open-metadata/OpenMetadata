@@ -26,6 +26,7 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
+import { getServiceLogoThemeClass } from './ServiceIconUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 type SearchIndexGroupConfig = {
@@ -178,7 +179,7 @@ export const getSuggestionElement = (
       icon={
         <img
           alt={serviceType}
-          className="m-r-sm"
+          className={`m-r-sm ${getServiceLogoThemeClass(serviceType)}`}
           height="16px"
           src={serviceUtilClassBase.getServiceTypeLogo(suggestion)}
           width="16px"

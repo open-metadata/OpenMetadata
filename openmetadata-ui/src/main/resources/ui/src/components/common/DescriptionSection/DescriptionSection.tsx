@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -64,12 +65,19 @@ const DescriptionDisplay: React.FC<DescriptionDisplayProps> = ({
       />
     </div>
     {(shouldShowButton || isExpanded) && (
-      <button
-        className="show-more-button"
+      <Button
+        className={[
+          'tw:inline-flex tw:border-0 tw:bg-transparent tw:p-0! tw:text-xs tw:font-normal tw:text-[var(--ant-primary-color)] tw:shadow-none',
+          'tw:after:outline-0 tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-6)] tw:hover:underline',
+          'tw:focus:text-[var(--ant-primary-6)] tw:dark:text-brand-secondary tw:dark:hover:text-brand-secondary',
+          'tw:dark:focus:text-brand-secondary',
+        ].join(' ')}
+        color="link-color"
+        size="sm"
         type="button"
         onClick={onToggleExpanded}>
         {isExpanded ? showLessLabel : showMoreLabel}
-      </button>
+      </Button>
     )}
     {metadataBlock}
     {editorModal}

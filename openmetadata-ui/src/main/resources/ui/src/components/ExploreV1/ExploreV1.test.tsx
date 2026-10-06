@@ -17,6 +17,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { ThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { SearchIndex } from '../../enums/search.enum';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 
@@ -429,7 +430,7 @@ const props = {
 };
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <>{children}</>
+  <ThemeProvider>{children}</ThemeProvider>
 );
 
 describe('ExploreV1', () => {

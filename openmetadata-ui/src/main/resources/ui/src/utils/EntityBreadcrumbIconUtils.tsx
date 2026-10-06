@@ -20,6 +20,7 @@ import type { SearchSourceAlias } from '../interface/search.interface';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import { getEntityIcon } from './EntityIconUtils';
 import { getEntityName } from './EntityNameUtils';
+import { getServiceLogoThemeClass } from './ServiceIconUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 type BreadcrumbIconFC = FC<{ className?: string }>;
@@ -50,7 +51,13 @@ const getServiceBreadcrumbIcon = (
   const logoUrl = serviceUtilClassBase.getServiceTypeLogo(source);
 
   return ({ className }) => (
-    <img alt="service-icon" className={className} src={logoUrl} />
+    <img
+      alt="service-icon"
+      className={`${className ?? ''} ${getServiceLogoThemeClass(
+        source.serviceType
+      )}`}
+      src={logoUrl}
+    />
   );
 };
 

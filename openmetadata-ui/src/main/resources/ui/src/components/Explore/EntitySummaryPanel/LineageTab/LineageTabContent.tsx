@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Owner, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Owner,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -178,50 +184,48 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
   return (
     <div className="lineage-tab-content">
-      <div className="lineage-filter-buttons">
-        <Button
-          className={`lineage-filter-button ${
-            filter === 'upstream' ? 'active' : ''
-          }`}
-          data-testid={`upstream-button-${
-            filter === 'upstream' ? 'active' : ''
-          }`}
-          size="small"
-          onClick={() => onFilterChange('upstream')}>
-          <span
-            className="lineage-filter-button-text"
-            data-testid="upstream-button-text">
-            {t('label.upstream')}
-          </span>
-          <span
-            className={`lineage-filter-button-count ${
-              filter === 'upstream' ? 'active' : ''
-            }`}>
-            {upstreamCount}
-          </span>
-        </Button>
-        <Button
-          className={`lineage-filter-button ${
-            filter === 'downstream' ? 'active' : ''
-          }`}
-          data-testid={`downstream-button-${
-            filter === 'downstream' ? 'active' : ''
-          }`}
-          size="small"
-          onClick={() => onFilterChange('downstream')}>
-          <span
-            className="lineage-filter-button-text"
-            data-testid="downstream-button-text">
-            {t('label.downstream')}
-          </span>
-          <span
-            className={`lineage-filter-button-count ${
-              filter === 'downstream' ? 'active' : ''
-            }`}>
-            {downstreamCount}
-          </span>
-        </Button>
-      </div>
+      <Box
+        className="tw:sticky tw:top-0 tw:z-2 tw:mb-3 tw:gap-2.5 tw:pt-2"
+        wrap="wrap">
+        {(['upstream', 'downstream'] as const).map((direction) => {
+          const isSelected = filter === direction;
+
+          return (
+            <Button
+              noTextPadding
+              aria-pressed={isSelected}
+              className={classNames(
+                'tw:h-7 tw:gap-0 tw:leading-[1.5715] tw:rounded-2xl tw:border tw:px-1.75 tw:py-0 tw:text-xs tw:font-normal tw:shadow-none tw:before:hidden tw:after:outline-0',
+                'tw:[&>[data-text]]:flex tw:[&>[data-text]]:items-center',
+                isSelected
+                  ? [
+                      'tw:border-[var(--ant-primary-6)] tw:bg-[var(--ant-primary-6)] tw:text-white tw:hover:bg-[var(--ant-primary-6)]',
+                      'tw:hover:text-white tw:dark:border-utility-brand-200 tw:dark:bg-utility-brand-50 tw:dark:text-utility-brand-700',
+                      'tw:dark:hover:bg-utility-brand-100 tw:dark:hover:text-utility-brand-700',
+                    ].join(' ')
+                  : 'tw:border-utility-gray-blue-100 tw:bg-primary tw:text-utility-gray-900'
+              )}
+              color="secondary"
+              data-testid={`${direction}-button-${isSelected ? 'active' : ''}`}
+              key={direction}
+              size="sm"
+              onClick={() => onFilterChange(direction)}>
+              <span data-testid={`${direction}-button-text`}>
+                {t(`label.${direction}`)}
+              </span>
+              <span
+                className={classNames(
+                  'tw:ml-1 tw:flex tw:size-4 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-[var(--om-radius-9)] tw:bg-utility-gray-blue-50 tw:text-[length:var(--om-font-size-10)]',
+                  isSelected
+                    ? 'tw:text-[var(--ant-primary-6)] tw:dark:bg-utility-brand-100 tw:dark:text-utility-brand-700'
+                    : 'tw:text-utility-gray-900'
+                )}>
+                {direction === 'upstream' ? upstreamCount : downstreamCount}
+              </span>
+            </Button>
+          );
+        })}
+      </Box>
       <SearchBarComponent
         containerClassName="searchbar-container"
         placeholder={t('label.search-for-type', {
@@ -272,14 +276,22 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                         placement="top"
                         title={t('label.upstream')}
                         triggerClassName="tw:inline-flex">
-                        <UpstreamIcon height={18} width={18} />
+                        <UpstreamIcon
+                          className="tw:dark:[&>rect]:fill-(--tw-background-color-secondary) tw:dark:[&>path]:stroke-fg-secondary"
+                          height={18}
+                          width={18}
+                        />
                       </Tooltip>
                     ) : (
                       <Tooltip
                         placement="top"
                         title={t('label.downstream')}
                         triggerClassName="tw:inline-flex">
-                        <DownstreamIcon height={18} width={18} />
+                        <DownstreamIcon
+                          className="tw:dark:[&>rect]:fill-(--tw-background-color-secondary) tw:dark:[&>path]:stroke-fg-secondary"
+                          height={18}
+                          width={18}
+                        />
                       </Tooltip>
                     )}
                   </div>

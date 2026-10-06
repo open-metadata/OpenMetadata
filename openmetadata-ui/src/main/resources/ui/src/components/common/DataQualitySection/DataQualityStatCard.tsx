@@ -35,9 +35,18 @@ export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
   onClick,
 }) => (
   <Button
+    aria-pressed={isActive}
     className={classNames(
       `data-quality-stat-card ${type}-card`,
       'tw:m-2 tw:flex-1',
+      isActive && {
+        'tw:dark:bg-success-primary tw:dark:hover:bg-success-secondary':
+          type === 'success',
+        'tw:dark:bg-warning-primary tw:dark:hover:bg-warning-secondary':
+          type === 'aborted',
+        'tw:dark:bg-error-primary tw:dark:hover:bg-error-secondary':
+          type === 'failed',
+      },
       {
         active: isActive,
       }

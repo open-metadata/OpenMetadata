@@ -31,6 +31,8 @@ import {
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import {
+  ArrowDown,
+  ArrowUp,
   ChevronDown,
   Download01,
   FilterFunnel01,
@@ -58,6 +60,7 @@ import {
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
+import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -628,6 +631,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onTreeSelect = noop,
 }) => {
   const { t, i18n } = useTranslation();
+  const { theme } = useTheme();
   // getTabsInfo() bakes translated labels into its result, so recompute on a
   // language switch rather than freezing the first language for the mount.
   const tabsInfo = useMemo(
@@ -890,6 +894,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => sortOrder === SORT_ORDER.ASC,
     [sortOrder]
   );
+  const SortOrderIcon = {
+    dark: isAscSortOrder ? ArrowDown : ArrowUp,
+    light: isAscSortOrder ? IconAscending : IconDescending,
+  }[theme];
   const sortProps = useMemo(
     () => ({
       className: 'text-base',
@@ -1263,7 +1271,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
               }
               fields={quickFilterFields}
               fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
-              helperText={t('message.pick-values-to-refine')}
+              helperText={
+                theme === 'dark'
+                  ? undefined
+                  : t('message.pick-values-to-refine')
+              }
               index={activeTabKey}
               showDeleted={showDeleted}
               onAdvanceSearch={() => toggleModal(true)}
@@ -1288,11 +1300,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
               color="tertiary"
               data-testid="sort-order-button"
               iconLeading={
-                isAscSortOrder ? (
-                  <IconAscending style={{ fontSize: '14px' }} {...sortProps} />
-                ) : (
-                  <IconDescending style={{ fontSize: '14px' }} {...sortProps} />
-                )
+                <SortOrderIcon
+                  {...sortProps}
+                  className="text-base tw:dark:size-4 tw:dark:text-fg-secondary"
+                  style={{ fontSize: '14px' }}
+                />
               }
               size="sm"
               onPress={() =>

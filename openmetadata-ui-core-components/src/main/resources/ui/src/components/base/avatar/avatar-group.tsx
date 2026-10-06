@@ -92,7 +92,11 @@ export const AvatarGroup = ({
     const avatar = (
       <Avatar
         alt={nameStr}
-        className={isTeam ? 'tw:bg-utility-gray-200 tw:opacity-60' : undefined}
+        className={
+          isTeam
+            ? 'tw:bg-utility-gray-200 tw:opacity-60 tw:dark:opacity-100'
+            : undefined
+        }
         contrastBorder={!isTeam}
         initials={
           !isTeam ? getFirstAlphanumeric(nameStr).toUpperCase() : undefined
@@ -150,7 +154,9 @@ export const AvatarGroup = ({
     <div className={cx('tw:flex tw:items-center', className)}>
       {visibleOwners.map((owner, i) => (
         <span
-          className={cx('tw:relative tw:block tw:rounded-full')}
+          // Name-based avatar tints can be translucent. An opaque dark surface
+          // keeps the previous avatar from showing through the overlap.
+          className="tw:relative tw:block tw:rounded-full tw:dark:bg-surface"
           data-testid="avatar-group-item"
           key={owner.id}
           style={{
@@ -186,7 +192,10 @@ export const AvatarGroup = ({
           <AriaTooltip
             className={({ isEntering, isExiting }) =>
               cx(
-                'tw:z-50 tw:max-h-96 tw:w-72 tw:overflow-y-auto tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:outline tw:outline-1 tw:outline-secondary tw:will-change-transform',
+                [
+                  'tw:z-50 tw:max-h-96 tw:w-72 tw:overflow-y-auto tw:rounded-xl tw:bg-primary tw:dark:bg-overlay-surface tw:py-2 tw:shadow-lg',
+                  'tw:outline tw:outline-1 tw:outline-secondary tw:will-change-transform',
+                ].join(' '),
                 isEntering &&
                   'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in',
                 isExiting &&

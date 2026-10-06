@@ -32,6 +32,8 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.requireActual('@openmetadata/ui-core-components').Button,
+  Box: jest.requireActual('@openmetadata/ui-core-components').Box,
   Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Tooltip: jest
     .fn()
@@ -106,23 +108,6 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
           onChange={(e) => onSearch(e.target.value)}
         />
       </div>
-    )),
-}));
-
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick, className, size, ...props }) => (
-      <button
-        className={className}
-        data-size={size}
-        data-testid="button"
-        onClick={onClick}
-        {...props}>
-        {children}
-      </button>
     )),
 }));
 
@@ -292,7 +277,7 @@ describe('LineageTabContent', () => {
         container.querySelector('.lineage-tab-content')
       ).toBeInTheDocument();
       expect(
-        container.querySelector('.lineage-filter-buttons')
+        screen.getByRole('button', { name: 'label.upstream 1' })
       ).toBeInTheDocument();
       expect(
         container.querySelector('.lineage-items-list')
@@ -322,7 +307,14 @@ describe('LineageTabContent', () => {
     it('should highlight active filter button', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(screen.getByTestId('upstream-button-active')).toBeInTheDocument();
+      expect(screen.getByTestId('upstream-button-active')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+      expect(screen.getByTestId('downstream-button-')).toHaveAttribute(
+        'aria-pressed',
+        'false'
+      );
     });
 
     it('should highlight downstream filter when active', () => {

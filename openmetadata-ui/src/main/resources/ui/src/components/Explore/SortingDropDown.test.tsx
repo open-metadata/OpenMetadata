@@ -11,166 +11,95 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render as rtlRender, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import {
   columnSortingFields,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
+import { ThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
 import SortingDropDown from './SortingDropDown';
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Button: jest
-    .fn()
-    .mockImplementation(
-      ({ children, hideFocusOutline, iconTrailing, size, ...props }) => (
-        <button
-          data-hide-focus-outline={hideFocusOutline}
-          data-size={size}
-          {...props}>
-          {children}
-          {iconTrailing}
-        </button>
-      )
-    ),
-  Dropdown: {
-    Root: jest.fn().mockImplementation(({ children, ...props }) => (
-      <div data-testid="dropdown" {...props}>
-        {children}
-      </div>
-    )),
-    Popover: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-    Menu: jest.fn().mockImplementation(({ children, ...props }) => (
-      <div role="menu" {...props}>
-        {children}
-      </div>
-    )),
-    Item: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
-      <div
-        role="menuitem"
-        tabIndex={0}
-        onClick={onClick}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            onClick?.(e);
-          }
-        }}
-        {...props}>
-        {children}
-      </div>
-    )),
-  },
-}));
+const render = (ui: Parameters<typeof rtlRender>[0]) =>
+  rtlRender(ui, { wrapper: ThemeProvider });
 
-jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  ChevronDown: () => <span>ChevronDown</span>,
-}));
-
-const handleFieldDropDown = jest.fn();
 const fieldList = [
   { name: 'Popularity', value: 'totalVotes' },
   { name: 'Name', value: 'displayName.keyword' },
-  { name: 'Weekly Usage', value: 'usageSummary.weeklyStats.count' },
-  { name: 'Relevance', value: '_score' },
   { name: 'Last Updated', value: 'updatedAt' },
 ];
-const sortField = '';
 
-const mockProps = {
-  fieldList,
-  sortField,
-  handleFieldDropDown,
+const SortingHarness = () => {
+  const [sortField, setSortField] = useState('totalVotes');
+
+  return (
+    <SortingDropDown
+      fieldList={fieldList}
+      handleFieldDropDown={setSortField}
+      sortField={sortField}
+    />
+  );
 };
 
-describe('Test Sorting DropDown Component', () => {
-  it('Should render dropdown component', async () => {
-    const { findByTestId, findByRole } = render(
-      <MemoryRouter>
-        <SortingDropDown {...mockProps} />
-      </MemoryRouter>
+describe('SortingDropDown', () => {
+  beforeEach(() => localStorage.setItem('ui-theme', 'dark'));
+
+  afterEach(() => localStorage.removeItem('ui-theme'));
+
+  it('marks the current sort and moves that selection after choosing another field', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<SortingHarness />);
+    await user.click(screen.getByRole('button', { name: 'Popularity' }));
+    const menu = await screen.findByRole('menu');
+
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(
+      fieldList.length
     );
+    expect(
+      within(menu).getByRole('menuitemradio', { name: 'Popularity' })
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(
+      within(menu).getByRole('menuitemradio', { name: 'Name' })
+    ).toHaveAttribute('aria-checked', 'false');
 
-    const dropdown = await findByTestId('dropdown');
+    await user.click(within(menu).getByRole('menuitemradio', { name: 'Name' }));
+    await user.click(screen.getByRole('button', { name: 'Name' }));
 
-    expect(dropdown).toBeInTheDocument();
-
-    const dropdownButton = dropdown.querySelector(
-      'button'
-    ) as HTMLButtonElement;
-
-    expect(dropdownButton).toBeInTheDocument();
-    expect(dropdownButton).toHaveAttribute('data-size', 'sm');
-    expect(dropdownButton).toHaveAttribute('data-hide-focus-outline', 'true');
-    expect(dropdownButton).not.toHaveClass('quick-filter-dropdown-trigger-btn');
-
-    fireEvent.click(dropdownButton);
-
-    const dropdownMenu = await findByRole('menu');
-
-    expect(dropdownMenu).toBeInTheDocument();
-
-    const menuItems = dropdownMenu.querySelectorAll('[role="menuitem"]');
-
-    expect(menuItems).toHaveLength(fieldList.length);
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'Name' })
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Popularity' })
+    ).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('Should call onSelect method on onClick option', async () => {
-    const { findByTestId, findByRole } = render(
-      <MemoryRouter>
-        <SortingDropDown {...mockProps} />
-      </MemoryRouter>
-    );
+  it('selects the displayed fallback for unsupported column sorts', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
-    const dropdown = await findByTestId('dropdown');
-
-    expect(dropdown).toBeInTheDocument();
-
-    const dropdownButton = dropdown.querySelector(
-      'button'
-    ) as HTMLButtonElement;
-
-    expect(dropdownButton).toBeInTheDocument();
-
-    fireEvent.click(dropdownButton);
-
-    const dropdownMenu = await findByRole('menu');
-
-    expect(dropdownMenu).toBeInTheDocument();
-
-    const menuItems = dropdownMenu.querySelectorAll('[role="menuitem"]');
-
-    expect(menuItems).toHaveLength(fieldList.length);
-
-    act(() => {
-      fireEvent.click(menuItems[0]);
-    });
-
-    expect(handleFieldDropDown).toHaveBeenCalledWith('totalVotes');
-  });
-
-  it('Should not render a blank label for the production Columns tab mismatch', async () => {
-    // Regression for #32645: the Columns tab default sort (INITIAL_SORT_FIELD =
-    // 'totalVotes') is not a member of columnSortingFields, so a naive lookup
-    // rendered a blank trigger label. Assert with the REAL production constants.
+    // Columns do not support the asset-level popularity default.
     expect(
       columnSortingFields.some((field) => field.value === INITIAL_SORT_FIELD)
     ).toBe(false);
 
-    const { findByTestId } = render(
-      <MemoryRouter>
-        <SortingDropDown
-          fieldList={columnSortingFields}
-          handleFieldDropDown={handleFieldDropDown}
-          sortField={INITIAL_SORT_FIELD}
-        />
-      </MemoryRouter>
+    render(
+      <SortingDropDown
+        fieldList={columnSortingFields}
+        handleFieldDropDown={jest.fn()}
+        sortField={INITIAL_SORT_FIELD}
+      />
     );
 
-    const label = await findByTestId('sorting-dropdown-label');
+    expect(screen.getByTestId('sorting-dropdown-label')).toHaveTextContent(
+      columnSortingFields[0].name
+    );
 
-    expect(label.textContent).not.toBe('');
-    expect(label.textContent).toContain(columnSortingFields[0].name);
+    await user.click(screen.getByTestId('sorting-dropdown-label'));
+
+    expect(
+      await screen.findByRole('menuitemradio', {
+        name: columnSortingFields[0].name,
+      })
+    ).toHaveAttribute('aria-checked', 'true');
   });
 });

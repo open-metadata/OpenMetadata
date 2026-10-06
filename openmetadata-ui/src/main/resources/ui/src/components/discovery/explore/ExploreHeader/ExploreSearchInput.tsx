@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCloseCircleOutlined } from '../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
+import { useTheme } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import type { SearchIndex } from '../../../../enums/search.enum';
 import { isFocusWithinSearchControl } from './ExploreSearchInput.utils';
 
@@ -91,7 +92,8 @@ const SUGGESTIONS_CONTAINER_CLASS =
 
 const SEARCH_POPOVER_CLASS = classNames(
   'tw:max-h-96! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point)',
-  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-primary',
+  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-primary tw:dark:bg-overlay-surface',
+  'tw:dark:[&_button:hover]:bg-secondary_hover! tw:dark:[&_button:focus-visible]:bg-secondary_hover!',
   'tw:px-0! tw:py-4! tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
   'tw:will-change-transform'
 );
@@ -176,6 +178,7 @@ export const ExploreSearchInput = ({
   onSuggestionSelect,
 }: ExploreSearchInputProps) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const isSearchPopoverOpen =
     isSearchBoxOpen && (Boolean(searchValue) || isNLPActive);
   const searchShortcutLabel = getSearchShortcutLabel();
@@ -284,7 +287,8 @@ export const ExploreSearchInput = ({
           containerPadding={0}
           data-testid="explore-search-popover"
           isOpen={isSearchPopoverOpen}
-          offset={12}
+          // Dark feedback requests an 8px reduction; preserve the light-mode gap.
+          offset={{ dark: 4, light: 12 }[theme]}
           placement="bottom"
           size="sm"
           style={{

@@ -80,7 +80,9 @@ export const OwnerChip = ({
   const avatar = (
     <Avatar
       alt={typeof displayName === 'string' ? displayName : owner.name}
-      className={isTeam ? 'tw:opacity-60' : USER_AVATAR_CLASSES}
+      className={
+        isTeam ? 'tw:opacity-60 tw:dark:opacity-100' : USER_AVATAR_CLASSES
+      }
       contrastBorder={!isTeam}
       initials={
         typeof displayName === 'string' && !isTeam

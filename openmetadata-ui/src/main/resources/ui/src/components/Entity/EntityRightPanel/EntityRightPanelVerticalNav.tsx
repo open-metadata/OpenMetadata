@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,6 @@ import {
   EntityRightPanelTab,
   EntityRightPanelVerticalNavProps,
 } from './EntityRightPanelVerticalNav.interface';
-import './EntityRightPanelVerticalNav.less';
 
 const shouldShowCustomPropertiesTab = (
   entityType: EntityType,
@@ -134,11 +133,14 @@ const EntityRightPanelVerticalNav: React.FC<
   };
 
   return (
-    <div
+    <Box
       className={classNames(
-        'entity-right-panel-vertical-nav',
+        'entity-right-panel-vertical-nav tw:relative tw:right-0.5 tw:flex tw:h-full tw:w-20 tw:flex-col tw:items-center tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-surface',
         verticalNavConatinerclassName,
-        { 'drawer-entity-right-panel-vertical-nav': isSideDrawer }
+        {
+          'drawer-entity-right-panel-vertical-nav tw:h-screen tw:max-h-[calc(100vh-70px)] tw:mr-2':
+            isSideDrawer,
+        }
       )}>
       <Tabs
         className="tw:w-full"
@@ -159,7 +161,7 @@ const EntityRightPanelVerticalNav: React.FC<
                     'tw:text-[var(--ant-primary-6)] tw:hover:text-[var(--ant-primary-6)]',
                     'tw:before:absolute tw:before:top-1/2 tw:before:left-0 tw:before:h-8 tw:before:w-1',
                     'tw:before:-translate-y-1/2 tw:before:rounded-r-sm tw:before:bg-[var(--ant-primary-6)]',
-                    'tw:dark:text-utility-brand-300 tw:dark:before:bg-utility-brand-300 tw:dark:hover:text-utility-brand-300',
+                    'tw:dark:bg-brand-primary tw:dark:text-brand-secondary tw:dark:before:bg-brand-solid tw:dark:hover:bg-brand-primary tw:dark:hover:text-brand-secondary',
                   ]
                 )
               }
@@ -182,7 +184,7 @@ const EntityRightPanelVerticalNav: React.FC<
           ))}
         </Tabs.List>
       </Tabs>
-    </div>
+    </Box>
   );
 };
 

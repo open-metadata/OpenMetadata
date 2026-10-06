@@ -15,6 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps, FormEvent } from 'react';
 import { useRef, useState } from 'react';
+import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import { ExploreSearchInput } from './ExploreSearchInput';
 
 let mockIsAppleDevice = true;
@@ -57,23 +58,25 @@ const SearchInputHarness = () => {
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState(false);
 
   return (
-    <ExploreSearchInput
-      isNLPEnabled
-      isNLPActive={false}
-      isSearchBoxOpen={isSearchBoxOpen}
-      searchContainerRef={searchContainerRef}
-      searchValue={searchValue}
-      suggestionSearch={searchValue}
-      onClearSearch={jest.fn()}
-      onNLPToggle={jest.fn()}
-      onSearchBoxOpenChange={setIsSearchBoxOpen}
-      onSearchChange={(value) => {
-        setSearchValue(value);
-        setIsSearchBoxOpen(Boolean(value));
-      }}
-      onSubmit={(event: FormEvent<HTMLFormElement>) => event.preventDefault()}
-      onSuggestionSelect={jest.fn()}
-    />
+    <ThemeProvider>
+      <ExploreSearchInput
+        isNLPEnabled
+        isNLPActive={false}
+        isSearchBoxOpen={isSearchBoxOpen}
+        searchContainerRef={searchContainerRef}
+        searchValue={searchValue}
+        suggestionSearch={searchValue}
+        onClearSearch={jest.fn()}
+        onNLPToggle={jest.fn()}
+        onSearchBoxOpenChange={setIsSearchBoxOpen}
+        onSearchChange={(value) => {
+          setSearchValue(value);
+          setIsSearchBoxOpen(Boolean(value));
+        }}
+        onSubmit={(event: FormEvent<HTMLFormElement>) => event.preventDefault()}
+        onSuggestionSelect={jest.fn()}
+      />
+    </ThemeProvider>
   );
 };
 
