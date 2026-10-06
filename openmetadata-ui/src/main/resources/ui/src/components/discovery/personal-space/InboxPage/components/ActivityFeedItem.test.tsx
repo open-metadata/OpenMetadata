@@ -226,9 +226,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ) => <div ref={ref}>{children}</div>
     ),
   Tooltip: ({ children }: { children?: ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
-  ),
   Typography: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),

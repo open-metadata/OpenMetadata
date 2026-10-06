@@ -106,7 +106,7 @@ export const useActivityReplies = (
     hasLoaded: data !== undefined,
     isLoading: enabled && isLoading,
     refetch: () => {
-      refetch();
+      void refetch();
     },
   };
 };

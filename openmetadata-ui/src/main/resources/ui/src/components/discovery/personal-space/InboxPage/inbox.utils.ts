@@ -12,7 +12,7 @@
  */
 
 import { TFunction } from 'i18next';
-import { castArray, compact, uniq } from 'lodash';
+import { castArray, compact } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType } from 'Models';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -316,7 +316,7 @@ export enum ActivityGrouping {
 // everything without one (lifecycle events, conversations).
 export const ACTIVITY_TYPE_OTHER = 'label.other';
 export const ACTIVITY_TYPE_KEYS = [
-  ...uniq(compact(Object.values(CHANGE_LABEL_KEY))),
+  ...new Set(compact(Object.values(CHANGE_LABEL_KEY))),
   ACTIVITY_TYPE_OTHER,
 ];
 

@@ -153,7 +153,7 @@ const ReplyRow = ({
           borderless
           displayName={authorName}
           name={authorLogin}
-          width="28"
+          size="xs"
         />
       </AuthorPopover>
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>

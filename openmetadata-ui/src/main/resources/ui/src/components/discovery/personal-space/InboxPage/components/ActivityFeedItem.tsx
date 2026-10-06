@@ -16,7 +16,6 @@ import {
   Box,
   Button,
   Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -261,7 +260,7 @@ const RepliesToggle = ({
               displayName={author?.displayName}
               key={id}
               name={author?.name ?? ''}
-              width="20"
+              size="xs"
             />
           ))}
         </span>
@@ -324,10 +323,10 @@ const CardMeta = ({
           {t('label.mentioned-you')}
         </Badge>
       )}
-      <Tooltip title={formatDateTime(timestamp)}>
-        <TooltipTrigger className="tw:shrink-0 tw:whitespace-nowrap tw:text-sm tw:text-quaternary">
-          {formatDateTimeLong(timestamp, timeFormat)}
-        </TooltipTrigger>
+      <Tooltip
+        title={formatDateTime(timestamp)}
+        triggerClassName="tw:shrink-0 tw:whitespace-nowrap tw:text-sm tw:text-quaternary">
+        {formatDateTimeLong(timestamp, timeFormat)}
       </Tooltip>
     </>
   );
@@ -352,20 +351,20 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const [, , user] = useUserProfile({ permission: false, name: actorName });
 
   const queryClient = useQueryClient();
-  const [reactions, setReactionsState] = useState<Reaction[]>(() =>
+  const [reactions, setReactions] = useState<Reaction[]>(() =>
     getSourceReactions(isActivity, activity, feed)
   );
   // Each reaction builds on the latest list, not the one its click rendered
   // with, so two quick reactions both land.
   const reactionsRef = useRef(reactions);
-  const setReactions = useCallback((next: Reaction[]) => {
+  const updateReactions = useCallback((next: Reaction[]) => {
     reactionsRef.current = next;
-    setReactionsState(next);
+    setReactions(next);
   }, []);
 
   useEffect(() => {
-    setReactions(getSourceReactions(isActivity, activity, feed));
-  }, [activity, feed, isActivity, setReactions]);
+    updateReactions(getSourceReactions(isActivity, activity, feed));
+  }, [activity, feed, isActivity, updateReactions]);
 
   const authorName = getAuthorName(user, isActivity, activity, feed, actorName);
   const actionLabel = getActionLabel(activity, feed, t);
@@ -437,11 +436,11 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
     if (next === before) {
       return;
     }
-    setReactions(next);
+    updateReactions(next);
     try {
       await sendReaction(threadIds, reactionType, operation);
     } catch (error) {
-      setReactions(
+      updateReactions(
         applyReaction(
           reactionsRef.current,
           reactionType,
@@ -472,7 +471,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                 borderless
                 displayName={authorName}
                 name={actorName}
-                width="40"
+                size="md"
               />
             </AuthorPopover>
             <span
