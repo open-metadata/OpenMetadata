@@ -3,8 +3,13 @@ package org.openmetadata.service.secrets.converter;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -15,6 +20,7 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.services.connections.database.AthenaConnection;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
+import org.slf4j.LoggerFactory;
 
 class TestServiceConnectionRequestClassConverterTest {
 
@@ -56,8 +62,39 @@ class TestServiceConnectionRequestClassConverterTest {
         failure.getMessage());
   }
 
+  /** A URI can embed credentials, so the log line must not quote the rejected value either. */
   @Test
-  void invalidUriKeepsTheOriginalCauseForServerDiagnostics() {
+  void rejectionIsLoggedOnceWithoutTheRejectedValue() {
+    Map<String, Object> request =
+        testConnectionRequest(
+            "Athena", athenaConfig("s3://AKIAEXAMPLE:" + SECRET + "@bucket/athena results/"));
+    Logger logger =
+        (Logger) LoggerFactory.getLogger(TestServiceConnectionRequestClassConverter.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      assertThrows(InvalidServiceConnectionException.class, () -> converter.convert(request));
+
+      assertEquals(1, appender.list.size());
+      ILoggingEvent warning = appender.list.get(0);
+      assertEquals(Level.WARN, warning.getLevel());
+      assertEquals(
+          "Rejected test connection for service [athena_service]: Invalid Athena connection: "
+              + "'s3StagingDir' must be a valid URI (Illegal character in path at index 53); "
+              + "cause: java.net.URISyntaxException",
+          warning.getFormattedMessage());
+      assertNull(
+          warning.getThrowableProxy(),
+          "a logged cause would print the rejected URI and its secret");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void invalidUriKeepsTheOriginalCause() {
     Map<String, Object> request =
         testConnectionRequest("Athena", athenaConfig(STAGING_DIR_WITH_SPACE));
 

@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -72,9 +73,10 @@ public class TestServiceConnectionRequestClassConverter extends ClassConverter {
   }
 
   /**
-   * The connection is user input, so the message names the offending field and the constraint it
-   * broke but never echoes a value, which may be a credential. The cause keeps the full detail for
-   * the server log.
+   * The connection is user input, and any value in it may be a credential, including a URI's
+   * user-info or signed query string. The message therefore names only the offending field and the
+   * constraint it broke. The cause stays on the exception but is not logged, because its messages
+   * quote the rejected value.
    */
   private static InvalidServiceConnectionException invalidConnection(
       TestServiceConnectionRequest request, Exception cause) {
@@ -85,7 +87,10 @@ public class TestServiceConnectionRequestClassConverter extends ClassConverter {
             JsonUtils.describeBindingFailure(cause)
                 .orElse("the connection could not be converted"));
     LOG.warn(
-        "Rejected test connection for service [{}]: {}", request.getServiceName(), message, cause);
+        "Rejected test connection for service [{}]: {}; cause: {}",
+        request.getServiceName(),
+        message,
+        ExceptionUtils.getRootCause(cause).getClass().getName());
     return new InvalidServiceConnectionException(message, cause);
   }
 }
