@@ -57,6 +57,11 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+// The URL sync has its own test; here it only needs a router to read.
+jest.mock('./useSelectedRunInUrl', () => ({
+  useSelectedRunInUrl: jest.fn(),
+}));
+
 const mockUseRequiredParams = jest.fn().mockReturnValue({});
 
 jest.mock('../../../../utils/useRequiredParams', () => ({

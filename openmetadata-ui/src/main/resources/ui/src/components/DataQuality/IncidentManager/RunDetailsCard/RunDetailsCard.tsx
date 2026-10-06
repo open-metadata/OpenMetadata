@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   BadgeWithDot,
   Box,
+  Button,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, maxBy } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
   TestCase,
@@ -174,7 +176,14 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
   const selectedRunTimestamp = useTestCaseStore(
     (state) => state.selectedRunTimestamp
   );
+  const setSelectedRunTimestamp = useTestCaseStore(
+    (state) => state.setSelectedRunTimestamp
+  );
   const result = getSelectedRun(results, selectedRunTimestamp);
+  // A run picked on the chart that is not the newest says so, with the way back.
+  const isOlderRunSelected =
+    !isUndefined(result) &&
+    result.timestamp !== maxBy(results, 'timestamp')?.timestamp;
   const status = result?.testCaseStatus;
 
   if (!result || !status) {
@@ -257,6 +266,24 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           size="text-sm">
           {customFormatDateTime(result.timestamp, 'MMM d, yyyy, h:mm a')}
         </Typography>
+        {isOlderRunSelected && (
+          <Box align="center" gap={2}>
+            <Badge
+              color="gray"
+              data-testid="run-details-selected"
+              size="sm"
+              type="pill-color">
+              {t('label.selected-run')}
+            </Badge>
+            <Button
+              color="link-color"
+              data-testid="run-details-back-to-latest"
+              size="sm"
+              onPress={() => setSelectedRunTimestamp(undefined)}>
+              {t('label.back-to-latest')}
+            </Button>
+          </Box>
+        )}
         <RunDuration duration={duration} errorDetails={errorDetails} />
       </Box>
       <Box

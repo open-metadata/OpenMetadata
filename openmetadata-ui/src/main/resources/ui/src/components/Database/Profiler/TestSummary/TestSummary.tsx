@@ -51,9 +51,11 @@ import {
   hasTestCaseNeverRun,
 } from './TestSummary.utils';
 import TestSummaryGraph from './TestSummaryGraph';
+import { useSelectedRunInUrl } from './useSelectedRunInUrl';
 
 const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const { t } = useTranslation();
+  useSelectedRunInUrl();
   const { dimensionKey, version } = useRequiredParams<{
     dimensionKey?: string;
     version?: string;

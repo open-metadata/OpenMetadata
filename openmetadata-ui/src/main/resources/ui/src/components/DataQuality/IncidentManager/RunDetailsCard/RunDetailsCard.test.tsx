@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import {
   TestCase,
   TestCaseResult,
@@ -261,6 +261,32 @@ describe('RunDetailsCard', () => {
     renderCard([FAILED_RUN, olderRun]);
 
     expect(screen.getByTestId('run-details-found')).toHaveTextContent('9,000');
+    // An older run says so, and offers the way back.
+    expect(screen.getByTestId('run-details-selected')).toHaveTextContent(
+      'label.selected-run'
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.back-to-latest' })
+    );
+
+    expect(useTestCaseStore.getState().selectedRunTimestamp).toBeUndefined();
+    expect(screen.getByTestId('run-details-found')).toHaveTextContent('110');
+    expect(
+      screen.queryByTestId('run-details-selected')
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not label the latest run as selected, even when it was clicked', () => {
+    act(() =>
+      useTestCaseStore.getState().setSelectedRunTimestamp(FAILED_RUN.timestamp)
+    );
+
+    renderCard([FAILED_RUN]);
+
+    expect(
+      screen.queryByTestId('run-details-selected')
+    ).not.toBeInTheDocument();
   });
 
   it('falls back to the latest run without a selection', () => {
