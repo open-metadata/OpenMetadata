@@ -10,6 +10,7 @@ import {
   type ReactNode,
   type Ref,
   createContext,
+  forwardRef,
   useContext,
 } from 'react';
 import type {
@@ -63,28 +64,35 @@ export interface InputBaseProps extends TextFieldProps {
 
 const TextFieldContext = createContext<TextFieldProps>({});
 
-export const InputBase = ({
-  ref,
-  tooltip,
-  shortcut,
-  groupRef,
-  trailingSlot,
-  inputDataTestId,
-  size = 'sm',
-  fontSize = 'sm',
-  isInvalid,
-  isDisabled,
-  icon: Icon,
-  placeholder,
-  step,
-  wrapperClassName,
-  tooltipClassName,
-  inputClassName,
-  iconClassName,
-  // Omit this prop to avoid invalid HTML attribute warning
-  isRequired: _isRequired,
-  ...inputProps
-}: Omit<InputBaseProps, 'label' | 'hint'>) => {
+// forwardRef rather than a `ref` prop: under React 18 a function component never
+// receives `ref`, so a prop of that name is always undefined.
+export const InputBase = forwardRef<
+  HTMLInputElement,
+  Omit<InputBaseProps, 'label' | 'hint' | 'ref'>
+>(function InputBase(
+  {
+    tooltip,
+    shortcut,
+    groupRef,
+    trailingSlot,
+    inputDataTestId,
+    size = 'sm',
+    fontSize = 'sm',
+    isInvalid,
+    isDisabled,
+    icon: Icon,
+    placeholder,
+    step,
+    wrapperClassName,
+    tooltipClassName,
+    inputClassName,
+    iconClassName,
+    // Omit this prop to avoid invalid HTML attribute warning
+    isRequired: _isRequired,
+    ...inputProps
+  },
+  ref
+) {
   // Check if the input has a leading icon or tooltip
   const hasTrailingIcon = tooltip || isInvalid;
   const hasLeadingIcon = Icon;
@@ -232,7 +240,7 @@ export const InputBase = ({
       )}
     </AriaGroup>
   );
-};
+});
 
 InputBase.displayName = 'InputBase';
 
@@ -281,74 +289,81 @@ export interface InputProps extends InputBaseProps, BaseProps {
   hideRequiredIndicator?: boolean;
 }
 
-export const Input = ({
-  size = 'sm',
-  fontSize = 'sm',
-  placeholder,
-  step,
-  icon: Icon,
-  label,
-  hint,
-  shortcut,
-  trailingSlot,
-  inputDataTestId,
-  hideRequiredIndicator,
-  className,
-  ref,
-  groupRef,
-  tooltip,
-  iconClassName,
-  inputClassName,
-  wrapperClassName,
-  tooltipClassName,
-  hintClassName,
-  ...props
-}: InputProps) => {
-  return (
-    <TextField
-      aria-label={label ? undefined : placeholder}
-      {...props}
-      className={className}>
-      {({ isRequired, isInvalid }) => (
-        <>
-          {label && (
-            <Label
-              isRequired={
-                hideRequiredIndicator ? !hideRequiredIndicator : isRequired
-              }>
-              {label}
-            </Label>
-          )}
+export const Input = forwardRef<HTMLInputElement, Omit<InputProps, 'ref'>>(
+  function Input(
+    {
+      size = 'sm',
+      fontSize = 'sm',
+      placeholder,
+      step,
+      icon: Icon,
+      label,
+      hint,
+      shortcut,
+      trailingSlot,
+      inputDataTestId,
+      hideRequiredIndicator,
+      className,
+      groupRef,
+      tooltip,
+      iconClassName,
+      inputClassName,
+      wrapperClassName,
+      tooltipClassName,
+      hintClassName,
+      ...props
+    },
+    ref
+  ) {
+    return (
+      <TextField
+        aria-label={label ? undefined : placeholder}
+        {...props}
+        className={className}>
+        {({ isRequired, isInvalid, isDisabled }) => (
+          <>
+            {label && (
+              <Label
+                isRequired={
+                  hideRequiredIndicator ? !hideRequiredIndicator : isRequired
+                }>
+                {label}
+              </Label>
+            )}
 
-          <InputBase
-            {...{
-              ref,
-              groupRef,
-              size,
-              fontSize,
-              placeholder,
-              step,
-              icon: Icon,
-              shortcut,
-              trailingSlot,
-              inputDataTestId,
-              iconClassName,
-              inputClassName,
-              wrapperClassName,
-              tooltipClassName,
-              tooltip,
-            }}
-          />
+            <InputBase
+              ref={ref}
+              {...{
+                // The group only restyles the outline; the input text and
+                // leading icon read their disabled colour from this prop.
+                isDisabled,
+                groupRef,
+                size,
+                fontSize,
+                placeholder,
+                step,
+                icon: Icon,
+                shortcut,
+                trailingSlot,
+                inputDataTestId,
+                iconClassName,
+                inputClassName,
+                wrapperClassName,
+                tooltipClassName,
+                tooltip,
+              }}
+            />
 
-          {hint && (
-            <HintText className={hintClassName} isInvalid={isInvalid}>
-              {hint}
-            </HintText>
-          )}
-        </>
-      )}
-    </TextField>
-  );
-};
+            {hint && (
+              <HintText className={hintClassName} isInvalid={isInvalid}>
+                {hint}
+              </HintText>
+            )}
+          </>
+        )}
+      </TextField>
+    );
+  }
+);
 
 Input.displayName = 'Input';

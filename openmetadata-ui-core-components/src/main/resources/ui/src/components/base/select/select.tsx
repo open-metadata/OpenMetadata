@@ -1,6 +1,7 @@
 import { Avatar } from '@/components/base/avatar/avatar';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
@@ -41,11 +42,15 @@ export const SelectEmptyState = ({
   emptyState,
 }: {
   emptyState?: ReactNode;
-}) => (
-  <div className="tw:px-3 tw:py-4 tw:text-center tw:text-sm tw:text-tertiary">
-    {emptyState ?? 'No data'}
-  </div>
-);
+}) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <div className="tw:px-3 tw:py-4 tw:text-center tw:text-sm tw:text-tertiary">
+      {emptyState ?? t('label.no-data-found')}
+    </div>
+  );
+};
 
 interface SelectProps
   extends Omit<AriaSelectProps<SelectItemType>, 'children' | 'items'>,
@@ -187,12 +192,16 @@ const Select = ({
   tooltip,
   emptyState,
   className,
+  // Without this react-aria keeps an empty list closed, so `emptyState`
+  // would never render.
+  allowsEmptyCollection = true,
   ...rest
 }: SelectProps) => {
   return (
     <SelectContext.Provider value={{ fontSize, size }}>
       <AriaSelect
         {...rest}
+        allowsEmptyCollection={allowsEmptyCollection}
         className={(state) =>
           cx(
             'tw:flex tw:flex-col tw:gap-1.5',
