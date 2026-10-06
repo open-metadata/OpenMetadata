@@ -244,8 +244,9 @@ test.describe('FeedWidget on landing page', () => {
     await expect(sortDropdown).toBeVisible();
 
     // Test dropdown options
+    const sortMenu = page.getByRole('menu', { name: 'All Activity' });
     await sortDropdown.click();
-    await page.getByRole('menu').waitFor({ state: 'visible' });
+    await sortMenu.waitFor({ state: 'visible' });
 
     await expect(
       page.getByRole('menuitem', { name: 'All Activity' })
@@ -257,7 +258,7 @@ test.describe('FeedWidget on landing page', () => {
 
     await page.keyboard.press('Escape');
 
-    await expect(page.getByRole('menu')).not.toBeVisible();
+    await expect(sortMenu).not.toBeVisible();
   });
 
   test('clicking title navigates to explore page', async ({ page }) => {

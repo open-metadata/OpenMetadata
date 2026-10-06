@@ -17,7 +17,7 @@ import {
   MoreOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import React, { Key } from 'react';
+import React, { Key, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useTranslation } from 'react-i18next';
 import { Tab } from '../../../generated/system/ui/tab';
@@ -50,6 +50,7 @@ export const TabItem = ({
   isEditable = item.editable,
 }: TabItemProps) => {
   const { t } = useTranslation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [{ isDragging }, drag] = useDrag({
     type: 'TAB',
     item: { index },
@@ -111,13 +112,20 @@ export const TabItem = ({
     <div
       ref={(node) => drag(drop(node))}
       style={{ opacity: isDragging ? 0.5 : 1 }}>
-      <Dropdown.Root>
+      {/* MenuTrigger opens on mouse press-start, whose underlay would swallow
+          the drop of a drag; open on press instead, which a drag never fires. */}
+      <Dropdown.Root
+        isOpen={isMenuOpen}
+        onOpenChange={(open) => !open && setIsMenuOpen(false)}>
         <Button
           className="draggable-tab-item tw:cursor-move tw:hover:cursor-grab tw:active:cursor-grabbing"
           color="secondary"
           data-testid={`tab-${item.name}`}
           iconTrailing={MoreOutlined}
-          onPress={() => onItemClick?.(item.id)}>
+          onPress={() => {
+            onItemClick?.(item.id);
+            setIsMenuOpen(true);
+          }}>
           {getTabDisplayName(item)}
         </Button>
         <Dropdown.Popover className="tw:w-auto" placement="bottom start">

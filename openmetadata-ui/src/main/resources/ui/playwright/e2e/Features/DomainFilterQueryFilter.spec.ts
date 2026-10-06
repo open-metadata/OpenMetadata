@@ -847,7 +847,7 @@ const applyCheckboxFilter = async (
   option: string
 ) => {
   await page.locator('.filters-row button').first().click();
-  await page.getByRole('menuitem', { name: menuItem }).click();
+  await page.getByRole('menuitemcheckbox', { name: menuItem }).click();
   await page.click(`[data-testid="${dropdownTestId}"]`);
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   const checkbox = page.getByTestId('drop-down-menu').getByTestId(option);
@@ -866,7 +866,7 @@ const applyTagFilter = async (
   tagPattern: RegExp
 ) => {
   await page.locator('.filters-row button').first().click();
-  await page.getByRole('menuitem', { name: /Tag/i }).click();
+  await page.getByRole('menuitemcheckbox', { name: /Tag/i }).click();
   await page.click('[data-testid="search-dropdown-Tag"]');
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   await page

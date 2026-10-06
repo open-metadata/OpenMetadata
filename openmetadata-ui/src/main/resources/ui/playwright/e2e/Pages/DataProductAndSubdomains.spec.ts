@@ -838,7 +838,9 @@ test.describe('Multiple Subdomains Tests', () => {
       await waitForAntdPopupToSettle(page);
       await deleteMenuItem.click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       await fillDeleteConfirmationIfPresent(page);
