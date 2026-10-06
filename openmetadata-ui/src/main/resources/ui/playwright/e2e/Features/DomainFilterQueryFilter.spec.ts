@@ -14,10 +14,7 @@
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { Query } from '../../../src/generated/entity/data/query';
-import {
-  ACTION_TIMEOUT,
-  EXTENDED_TEST_TIMEOUT,
-} from '../../constant/common';
+import { ACTION_TIMEOUT, EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -30,6 +27,7 @@ import {
   getApiContext,
   redirectToExplorePage,
   redirectToHomePage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   assignDomainToEntity,
@@ -821,15 +819,24 @@ const searchInDropdown = async (page: Page, searchText: string) => {
   await aggregation;
 };
 
-/** Opens the assets-tab filter menu. Clicks are bounded so a missed locator fails instead of hanging. */
-const openAssetFilterMenu = async (page: Page, menuItem: RegExp) => {
+// The quick-filter menu is an antd dropdown that is still growing into place
+// when Playwright decides the item is stable, so the item slides out from under
+// the pointer between mousedown and mouseup and Chrome retargets the click to
+// the menu `<ul>` — the selection is silently dropped and the filter trigger
+// never renders. Wait out the enter animation before picking an item.
+const selectQuickFilter = async (
+  page: Page,
+  menuItem: RegExp,
+  dropdownTestId: string
+) => {
   await page
-    .locator('.filters-row')
     .getByTestId('asset-filter-button')
     .click({ timeout: ACTION_TIMEOUT });
+  await waitForAntdPopupToSettle(page);
   await page
     .getByRole('menuitem', { name: menuItem })
     .click({ timeout: ACTION_TIMEOUT });
+  await expect(page.getByTestId(dropdownTestId)).toBeVisible();
 };
 
 const applyCheckboxFilter = async (
@@ -838,7 +845,7 @@ const applyCheckboxFilter = async (
   dropdownTestId: string,
   option: string
 ) => {
-  await openAssetFilterMenu(page, menuItem);
+  await selectQuickFilter(page, menuItem, dropdownTestId);
   await page.click(`[data-testid="${dropdownTestId}"]`);
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   const checkbox = page.getByTestId('drop-down-menu').getByTestId(option);
@@ -858,7 +865,7 @@ const applyTagFilter = async (
   searchTerm: string,
   tagPattern: RegExp
 ) => {
-  await openAssetFilterMenu(page, /Tag/i);
+  await selectQuickFilter(page, /Tag/i, 'search-dropdown-Tag');
   await page.click('[data-testid="search-dropdown-Tag"]');
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   await page
