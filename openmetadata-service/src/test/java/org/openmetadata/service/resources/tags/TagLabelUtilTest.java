@@ -1,8 +1,10 @@
 package org.openmetadata.service.resources.tags;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
@@ -14,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
@@ -233,5 +236,52 @@ class TagLabelUtilTest {
 
       assertNull(label.getName());
     }
+  }
+
+  /**
+   * A read projects the parent's glossary terms onto every column, so a plain GET/PUT round trip
+   * sends a column back carrying both its own term and the projected one. Both hang off the same
+   * glossary, so the unfiltered check pairs them up and rejects the write with a mutual-exclusivity
+   * 400 for a label the user never applied and cannot remove.
+   *
+   * <p>Only one label survives the filter, so the check never reaches the parent lookup — which is
+   * also what keeps this a unit test: {@code mutuallyExclusive} would need a live glossary.
+   */
+  @Test
+  void mutuallyExclusiveCheckIgnoresPropagatedAndDerivedLabels() {
+    List<TagLabel> roundTrippedColumnTags =
+        List.of(
+            glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
+            glossaryLabel("Finance.Cost", TagLabel.LabelType.PROPAGATED));
+
+    assertDoesNotThrow(
+        () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(roundTrippedColumnTags));
+    assertDoesNotThrow(
+        () ->
+            TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(
+                List.of(
+                    glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
+                    glossaryLabel("Finance.Cost", TagLabel.LabelType.DERIVED))));
+  }
+
+  @Test
+  void mutuallyExclusiveCheckStillPairsUpTwoUserAppliedLabels() {
+    List<TagLabel> userApplied =
+        List.of(
+            glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
+            glossaryLabel("Finance.Cost", TagLabel.LabelType.MANUAL));
+
+    try (MockedStatic<TagLabelUtil> utilMock =
+        mockStatic(TagLabelUtil.class, Mockito.CALLS_REAL_METHODS)) {
+      utilMock.when(() -> TagLabelUtil.mutuallyExclusive(any(TagLabel.class))).thenReturn(true);
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(userApplied));
+    }
+  }
+
+  private static TagLabel glossaryLabel(String fqn, TagLabel.LabelType labelType) {
+    return new TagLabel().withTagFQN(fqn).withSource(TagSource.GLOSSARY).withLabelType(labelType);
   }
 }
