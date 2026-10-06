@@ -61,14 +61,17 @@ const searchQueryMatcher =
  * The response listener is registered after the menu has settled but before the click,
  * so a request fired synchronously by the selection cannot be missed.
  */
-const selectWidgetSortOption = async (
+export const selectWidgetSortOption = async (
   page: Page,
   widget: Locator,
   optionName: string,
   responseMatcher: ResponseMatcher
 ): Promise<Response> => {
   const trigger = widget.getByTestId('widget-sort-by-dropdown');
-  const menuItem = page.getByRole('menuitem', { name: optionName });
+  const menuItem = widget.getByRole('menuitem', {
+    name: optionName,
+    exact: true,
+  });
 
   await trigger.click();
   await expect(menuItem).toBeVisible();
@@ -82,7 +85,7 @@ const selectWidgetSortOption = async (
 
   await menuItem.click();
 
-  await expect(trigger).toContainText(optionName);
+  await expect(trigger).toHaveText(optionName, { useInnerText: true });
 
   const response = await filterResponse;
 
@@ -274,7 +277,9 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
 
   const widget = await getWidgetForFilters(page, widgetKey);
 
-  await expect(widget.getByTestId('task-feed-card').first()).toBeVisible();
+  await expect(
+    widget.getByTestId('task-feed-card').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await selectWidgetSortOption(
     page,

@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 import {
+  DomainTag,
   TreeSelect,
   TreeSelectDataResponse,
   TreeSelectNode,
 } from '@openmetadata/ui-core-components';
-import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
+import { Globe01 as DomainIcon } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { FC, useCallback, useMemo } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_DOMAIN_VALUE,
@@ -29,12 +31,24 @@ import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
+import {
+  isDomainFqnAllowed,
+  toAllowedFqns,
+} from '../../../utils/DomainRestrictionUtils';
+import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainSelectProps } from './DomainSelect.types';
 import {
   buildDomainSearchQuery,
   domainsToTreeNodes,
   entityReferencesToTreeNodes,
+  fetchAllDomainChildren,
+  getSelectedAncestorKeys,
+  isSameDomainSelection,
   treeNodesToEntityReferences,
+  withDomainIcon,
 } from './DomainSelect.utils';
 
 const DomainSelect: FC<DomainSelectProps> = ({
@@ -47,6 +61,8 @@ const DomainSelect: FC<DomainSelectProps> = ({
   showAllDomains = false,
   onUpdate,
   triggerVariant = 'input',
+  triggerClassName,
+  fullWidthTrigger,
   bordered,
   commitMode,
   renderTrigger,
@@ -55,8 +71,6 @@ const DomainSelect: FC<DomainSelectProps> = ({
   label,
   placeholder,
   className,
-  onCreate,
-  createLabel,
   'data-testid': dataTestId,
 }) => {
   const { t } = useTranslation();
@@ -69,43 +83,26 @@ const DomainSelect: FC<DomainSelectProps> = ({
     (triggerVariant !== 'input' && multiple ? 'staged' : 'immediate');
 
   const allowedFqns = useMemo(
-    () =>
-      (restrictedDomains ?? [])
-        .map((domain) => domain.fullyQualifiedName)
-        .filter(Boolean) as string[],
+    () => toAllowedFqns(restrictedDomains ?? []),
     [restrictedDomains]
   );
 
   // `restrictedDomains` carries the domains a domain-restricted user is allowed
-  // to use, so keep only those and their descendants (mirrors the shared
-  // `filterDomainsToAllowed`). An empty list means "no restriction" — show all.
+  // to use, so keep only those and their descendants. The prefix rule itself
+  // lives in DomainRestrictionUtils so this cannot drift from the non-tree
+  // callers. An empty list means "no restriction" here — show everything.
   const filterAllowedNodes = useCallback(
     (nodes: TreeSelectNode<EntityReference>[]) =>
       allowedFqns.length === 0
         ? nodes
-        : nodes.filter((node) =>
-            allowedFqns.some(
-              (allowed) =>
-                node.value === allowed || node.value.startsWith(`${allowed}.`)
-            )
-          ),
+        : nodes.filter((node) => isDomainFqnAllowed(node.value, allowedFqns)),
     [allowedFqns]
   );
 
-  // The pure mappers cannot build JSX, so the domain glyph is attached here
-  // (recursively, so search-nested subdomains get it too).
-  const withDomainIcon = useCallback(
-    (
-      nodes: TreeSelectNode<EntityReference>[]
-    ): TreeSelectNode<EntityReference>[] =>
-      nodes.map((node) => ({
-        ...node,
-        icon: <DomainIcon height={16} width={16} />,
-        children: node.children ? withDomainIcon(node.children) : node.children,
-      })),
-    []
-  );
-
+  // The pure mappers cannot build JSX, so the domain glyph is attached here.
+  // Nested nodes are subdomains of the node above them, so they get the
+  // subdomain glyph; `isSubDomain` is threaded through the recursion (and set
+  // by the lazy-load path when fetching a parent's children).
   const fetchData = useCallback(
     async ({
       searchTerm,
@@ -131,13 +128,15 @@ const DomainSelect: FC<DomainSelectProps> = ({
         };
       }
 
-      const { data } = await getDomainChildrenPaginated(
-        parentId,
+      const data = await fetchAllDomainChildren(
+        (offset, pageSize) =>
+          getDomainChildrenPaginated(parentId, pageSize, offset, signal),
         PAGE_SIZE_LARGE
       );
 
       const nodes = withDomainIcon(
-        filterAllowedNodes(domainsToTreeNodes(data ?? []))
+        filterAllowedNodes(domainsToTreeNodes(data)),
+        Boolean(parentId)
       );
 
       // Scope-switcher: a single "All Domains" root with every domain nested
@@ -162,22 +161,58 @@ const DomainSelect: FC<DomainSelectProps> = ({
 
       return { nodes };
     },
-    [filterAllowedNodes, withDomainIcon, showAllDomains, t]
+    [filterAllowedNodes, showAllDomains, t]
   );
 
-  const value = useMemo(() => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const selectedDomainList = useMemo(() => {
     if (!selectedDomain) {
       return [];
     }
-    const domains = Array.isArray(selectedDomain)
-      ? selectedDomain
-      : [selectedDomain];
 
-    return entityReferencesToTreeNodes(domains);
+    return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
   }, [selectedDomain]);
 
+  // Keyed on the *content*, not the array reference. Consumers hand us a fresh
+  // array on every render, and the core TreeSelect re-runs
+  // `setSelection(toArray(value))` whenever `value` changes identity — which in
+  // staged (multi) mode wipes choices the user has not applied yet. Doing the
+  // comparison here covers every caller in OSS and Collate, instead of each one
+  // needing its own guard.
+  const selectedDomainKey = getDomainsContentKey(selectedDomainList);
+  const value = useMemo(() => {
+    // Scope switchers sit on "All Domains" when nothing is selected. Without a
+    // value the synthetic root renders unselected, so the user cannot see which
+    // scope is active — the legacy tree bolded that row.
+    if (showAllDomains && selectedDomainList.length === 0) {
+      return [
+        {
+          id: DEFAULT_DOMAIN_VALUE,
+          value: DEFAULT_DOMAIN_VALUE,
+          label: t('label.all-domain-plural'),
+        } as TreeSelectNode<EntityReference>,
+      ];
+    }
+
+    return entityReferencesToTreeNodes(selectedDomainList);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDomainKey, showAllDomains, t]);
+
+  // Open the synthetic root (scope switchers) plus the ancestors of anything
+  // already selected, so a nested selection is visible when the tree opens.
+  const defaultExpandedKeys = useMemo(() => {
+    const keys = [
+      ...(showAllDomains ? [DEFAULT_DOMAIN_VALUE] : []),
+      ...getSelectedAncestorKeys(selectedDomainList),
+    ];
+
+    return keys.length > 0 ? keys : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAllDomains, selectedDomainKey]);
+
   const handleChange = useCallback(
-    (
+    async (
       selected:
         | TreeSelectNode<EntityReference>
         | TreeSelectNode<EntityReference>[]
@@ -185,20 +220,80 @@ const DomainSelect: FC<DomainSelectProps> = ({
     ) => {
       const domains = treeNodesToEntityReferences(selected);
 
-      if (multiple) {
-        onUpdate(domains);
-
-        return;
-      }
-
       // Single mode: keep the current value when a clear is not allowed.
-      if (isEmpty(domains) && !isClearable) {
+      if (!multiple && isEmpty(domains) && !isClearable) {
         return;
       }
 
-      onUpdate(domains[0]);
+      // The legacy tree compared FQNs and cancelled when nothing changed. Apply
+      // always firing meant a no-change Apply still sent a GET + PATCH.
+      if (isSameDomainSelection(selectedDomainList, domains)) {
+        return;
+      }
+
+      // Await so a second Apply cannot land while the first PATCH is in flight.
+      if (isSubmitting) {
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+        await onUpdate(multiple ? domains : domains[0]);
+      } finally {
+        setIsSubmitting(false);
+      }
     },
-    [multiple, isClearable, onUpdate]
+    [multiple, isClearable, onUpdate, selectedDomainList, isSubmitting]
+  );
+
+  // The core toast would show a raw axios string; showErrorToast maps an API
+  // error to its translated server message and falls back sensibly.
+  const handleFetchError = useCallback(
+    (error: unknown) => {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.domain-plural') })
+      );
+    },
+    [t]
+  );
+
+  // The `input` trigger showed the selection as plain label text, which is the
+  // one place a selected domain did not read as a DomainTag. Render the shared
+  // chip so every surface shows the same thing.
+  const renderSelectedItem = useCallback(
+    (node: TreeSelectNode<EntityReference>) => {
+      const domain = node.data;
+      // The chip stops propagation on its own click, so the trigger's disabled
+      // state never reaches it — it has to be locked explicitly, or a user
+      // without edit permission could clear the domain from the chip.
+      const isLocked = disabled || !hasPermission;
+
+      return (
+        <DomainTag
+          data-testid={`domain-tag-${node.value}`}
+          disabled={isLocked}
+          href={
+            isClearable || !node.value ? undefined : getDomainPath(node.value)
+          }
+          inherited={domain?.inherited}
+          label={domain ? getEntityName(domain) : node.label}
+          size="sm"
+          onDelete={
+            isClearable && !isLocked
+              ? () => {
+                  // Drop only the chip that was clicked — the built-in chip used
+                  // `removeSelection(node.id)` — and route it through
+                  // handleChange so the no-op and in-flight guards still apply.
+                  const remaining = value.filter((item) => item.id !== node.id);
+                  void handleChange(multiple ? remaining : null);
+                }
+              : undefined
+          }
+        />
+      );
+    },
+    [isClearable, multiple, disabled, hasPermission, value, handleChange]
   );
 
   // Server already scoped the results, so skip the client-side label filter
@@ -212,12 +307,12 @@ const DomainSelect: FC<DomainSelectProps> = ({
       bordered={bordered}
       className={className}
       commitMode={resolvedCommitMode}
-      createLabel={createLabel}
       data-testid={dataTestId}
-      defaultExpandedKeys={showAllDomains ? [DEFAULT_DOMAIN_VALUE] : undefined}
+      defaultExpandedKeys={defaultExpandedKeys}
       disabled={disabled || !hasPermission}
       fetchData={fetchData}
       filterNode={skipClientFilter}
+      fullWidthTrigger={fullWidthTrigger}
       isOpen={isOpen}
       label={label}
       maxIndentLevel={showAllDomains ? 3 : undefined}
@@ -226,15 +321,17 @@ const DomainSelect: FC<DomainSelectProps> = ({
         placeholder ??
         t('label.select-field', { field: t('label.domain-plural') })
       }
+      renderSelectedItem={renderSelectedItem}
       renderTrigger={renderTrigger}
       searchPlaceholder={t('label.search-entity', {
         entity: t('label.domain-plural'),
       })}
+      triggerClassName={triggerClassName}
       triggerIcon={DomainIcon}
       triggerVariant={triggerVariant}
       value={value}
       onChange={handleChange}
-      onCreate={onCreate}
+      onFetchError={handleFetchError}
       onOpenChange={onOpenChange}
     />
   );

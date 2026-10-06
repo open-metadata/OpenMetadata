@@ -64,6 +64,17 @@ export const LeftPanelContainer = ({
     onUpdate(layout.filter((widget) => widget.i !== widgetKey));
   };
 
+  const handleWidgetConfigChange = (
+    widgetKey: string,
+    config: WidgetConfig['config']
+  ) => {
+    onUpdate(
+      layout.map((widget) =>
+        widget.i === widgetKey ? { ...widget, config } : widget
+      )
+    );
+  };
+
   const getWidgetFromLayout = (layout: WidgetConfig[]) => {
     return layout.map((widget) => {
       let widgetComponent = null;
@@ -88,7 +99,9 @@ export const LeftPanelContainer = ({
           <GenericWidget
             isEditView
             handleRemoveWidget={handleRemoveWidget}
+            handleWidgetConfigChange={handleWidgetConfigChange}
             selectedGridSize={widget.w}
+            widgetConfig={widget}
             widgetKey={widget.i}
           />
         );

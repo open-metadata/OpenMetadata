@@ -73,17 +73,22 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const fields = useMemo(() => {
     return getUpdatedSearchIndexFields(currentVersionData, changeDescription);
@@ -228,6 +233,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.SEARCH_INDEX}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

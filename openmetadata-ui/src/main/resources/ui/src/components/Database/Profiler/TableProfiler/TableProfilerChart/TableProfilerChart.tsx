@@ -246,6 +246,7 @@ const TableProfilerChart = ({
             }}
             title={t('label.volume-change')}>
             <CustomBarChart
+              ariaLabel={t('label.volume-change')}
               chartCollection={operationMetrics}
               name="operationMetrics"
               noDataPlaceholderText={noProfilerMessage}

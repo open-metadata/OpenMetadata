@@ -277,7 +277,7 @@ test.describe('Glossary Asset Operations', () => {
 
       if (await assetCard.isVisible({ timeout: 3000 }).catch(() => false)) {
         // Try checkbox selection
-        const checkbox = assetCard.locator('input[type="checkbox"]');
+        const checkbox = assetCard.getByTestId('asset-checkbox');
 
         if (await checkbox.isVisible({ timeout: 2000 }).catch(() => false)) {
           await checkbox.check();

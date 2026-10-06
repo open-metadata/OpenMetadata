@@ -646,7 +646,9 @@ public class ActivityStreamRepository {
           && !subject.hasDomains(event.getDomains())) {
         throw new AuthorizationException("Activity is outside the user's domains");
       }
-      Entity.getEntity(target.getType(), target.getId(), Entity.FIELD_DOMAINS, Include.ALL, false);
+      // Existence check only - domains were requested but never read, and domain targets have no
+      // domains field to request
+      Entity.getEntity(target.getType(), target.getId(), "", Include.ALL, false);
       authorizer.authorize(
           securityContext,
           new OperationContext(target.getType(), MetadataOperation.VIEW_BASIC),

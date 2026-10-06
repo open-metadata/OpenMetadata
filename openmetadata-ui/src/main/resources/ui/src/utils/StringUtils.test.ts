@@ -29,6 +29,7 @@ jest.mock('./i18next/LocalUtil', () => ({
 }));
 
 import { AxiosError } from 'axios';
+import { stringToHTML, stripMarkdown } from './RichTextStringUtils';
 import {
   decodeHtmlEntities,
   escapeESReservedCharacters,
@@ -38,14 +39,13 @@ import {
   getEncodedFqn,
   getPermissionErrorText,
   getQueryWithSlash,
+  getSafeHttpUrl,
   getTrimmedContent,
   jsonToCSV,
   ordinalize,
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
-  stringToHTML,
-  stripMarkdown,
 } from './StringUtils';
 
 describe('StringUtils', () => {
@@ -391,6 +391,19 @@ describe('StringUtils', () => {
     it('should trim surrounding whitespace', () => {
       expect(stripMarkdown('  **hello world**  ')).toBe('hello world');
     });
+
+    it('should keep words apart across HTML block boundaries', () => {
+      expect(stripMarkdown('<p>First.</p><p>Second.</p>')).toBe(
+        'First. Second.'
+      );
+      expect(stripMarkdown('<ul><li>a</li><li>b</li></ul>')).toBe('a b');
+    });
+
+    it('should not pad inline HTML formatting', () => {
+      expect(stripMarkdown('<p><strong>Bold</strong> then more</p>')).toBe(
+        'Bold then more'
+      );
+    });
   });
 
   describe('getPermissionErrorText', () => {
@@ -680,6 +693,28 @@ describe('StringUtils', () => {
       expect(getBase64EncodedString('Test\u00a7123\u00a3')).not.toBe(
         btoa('Test\u00a7123\u00a3')
       );
+    });
+  });
+
+  describe('getSafeHttpUrl', () => {
+    it.each(['https://example.com/a?b=c', 'http://example.com'])(
+      'should return http(s) URL %s unchanged',
+      (url) => {
+        expect(getSafeHttpUrl(url)).toBe(url);
+      }
+    );
+
+    it.each([
+      undefined,
+      '',
+      'javascript:alert(1)',
+      ' JavaScript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'ftp://example.com',
+      's3://bucket/model',
+      'not a url',
+    ])('should return undefined for unsafe or invalid URL %s', (url) => {
+      expect(getSafeHttpUrl(url)).toBeUndefined();
     });
   });
 });

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { HolderOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Switch, Tree, TreeDataNode, TreeProps } from 'antd';
+import { Toggle } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Tree, TreeDataNode, TreeProps } from 'antd';
 import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -138,10 +139,12 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
   const titleRenderer = (node: TreeDataNode) => (
     <div className="space-between">
       {t(node.title as string)}
-      <Switch
-        checked={!hiddenKeys.includes(node.key as string)}
+      <Toggle
         data-testid={`navigation-switch-${node.key}`}
-        onChange={(checked) => handleRemoveToggle(checked, node.key as string)}
+        isSelected={!hiddenKeys.includes(node.key as string)}
+        onChange={(isSelected) =>
+          handleRemoveToggle(isSelected, node.key as string)
+        }
       />
     </div>
   );

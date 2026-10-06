@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { AssetsOfEntity } from '../../../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { DATAPRODUCT_FILTERS } from '../../../../../constants/DataProduct.constants';
+import { AssetsOfEntity } from '../../../../../enums/Assets.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Aggregations } from '../../../../../interface/search.interface';
 import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';

@@ -12,8 +12,9 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DefaultOptionType } from 'antd/lib/select';
+import { PagingResponse } from '../../../interface/common/paging.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { AsyncSelect, PagingResponse } from './AsyncSelect';
+import { AsyncSelect } from './AsyncSelect';
 
 // Mock dependencies
 jest.mock('../../../utils/ToastUtils', () => ({

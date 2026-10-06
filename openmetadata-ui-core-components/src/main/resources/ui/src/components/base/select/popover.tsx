@@ -35,7 +35,7 @@ export const Popover = (props: PopoverProps) => {
           // thin/vanish in Safari when zoomed out). This ring had no `ring-inset`, so it
           // drew outward from the border-box edge — outline-offset 0 (the default) matches
           // that exactly. `outline-hidden` is gone: it would suppress this border.
-          'tw:max-h-64! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point) tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-raised tw:py-1 tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+          'tw:max-h-64! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point) tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-overlay-surface tw:py-1 tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
 
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',

@@ -16,26 +16,22 @@ import { TFunction } from 'i18next';
 import { isEmpty, isString, startCase } from 'lodash';
 import {
   DATA_CONTRACT_STATUS_OPTIONS,
+  DESTINATION_DROPDOWN_TABS,
   EXTERNAL_CATEGORY_OPTIONS,
   INTERNAL_CATEGORY_OPTIONS,
 } from '../../../constants/Alerts.constants';
 import { StatusType } from '../../../generated/entity/data/pipeline';
-import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import { PipelineState } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Type } from '../../../generated/events/eventSubscription';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { EventType } from '../../../generated/type/changeEvent';
 import {
+  getFilteredDestinationOptions,
   getSelectOptionsFromEnum,
+  getSelectOptionsFromValues,
   getSubscriptionTypeOptions,
 } from '../../../utils/Alerts/AlertsUtilPure';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getAlertDestinationCategoryIcons } from '../../../utils/ObservabilityUtils';
-import { getTemplateEntityRefObject } from './NotificationTemplateUtils';
-import {
-  CUSTOM_TEMPLATE_VALUE,
-  SYSTEM_DEFAULT_TEMPLATES,
-} from './Template.constants';
 
 /** Renders Core UI select items with a stable text value for search and a11y. */
 export const renderSelectItem = ({
@@ -63,12 +59,16 @@ export const toSelectItems = (
     label: option.label,
   }));
 
+const toDestinationCategoryItem = (option: {
+  value: string;
+}): SelectItemType => ({
+  icon: getAlertDestinationCategoryIcons(String(option.value)),
+  id: String(option.value),
+  label: startCase(String(option.value)),
+});
+
 export const INTERNAL_DESTINATION_ITEMS: SelectItemType[] =
-  INTERNAL_CATEGORY_OPTIONS.map((option) => ({
-    icon: getAlertDestinationCategoryIcons(String(option.value)),
-    id: String(option.value),
-    label: startCase(String(option.value)),
-  }));
+  INTERNAL_CATEGORY_OPTIONS.map(toDestinationCategoryItem);
 
 export const EXTERNAL_DESTINATION_ITEMS: SelectItemType[] =
   EXTERNAL_CATEGORY_OPTIONS.map((option) => ({
@@ -77,13 +77,23 @@ export const EXTERNAL_DESTINATION_ITEMS: SelectItemType[] =
     label: startCase(String(option.value)),
   }));
 
-export const getDestinationCategoryItems = (t: TFunction): SelectItemType[] => [
+/**
+ * Internal categories are narrowed by source exactly like the classic
+ * `DestinationSelectItem` (e.g. no Assignees/Mentions for plain entity events).
+ */
+export const getDestinationCategoryItems = (
+  t: TFunction,
+  selectedSource?: string
+): SelectItemType[] => [
   {
     id: 'header-internal',
     isDisabled: true,
     label: t('label.internal'),
   },
-  ...INTERNAL_DESTINATION_ITEMS,
+  ...getFilteredDestinationOptions(
+    DESTINATION_DROPDOWN_TABS.internal,
+    selectedSource ?? ''
+  ).map(toDestinationCategoryItem),
   {
     id: 'header-external',
     isDisabled: true,
@@ -109,11 +119,21 @@ export const getSubscriptionItems = (destinationType?: string) =>
   }));
 
 /** Provides Core UI select configuration for enum-backed alert rule arguments. */
-export const getSelectArgumentConfig = (argument: string, t: TFunction) => {
+export const getSelectArgumentConfig = (
+  argument: string,
+  t: TFunction,
+  supportedEventTypes?: EventType[]
+) => {
   switch (argument) {
     case 'eventTypeList':
       return {
-        items: toSelectItems(getSelectOptionsFromEnum(EventType)),
+        // Same narrowing as the classic notification form: only offer event
+        // types the selected source can emit.
+        items: toSelectItems(
+          isEmpty(supportedEventTypes)
+            ? getSelectOptionsFromEnum(EventType)
+            : getSelectOptionsFromValues(supportedEventTypes ?? [])
+        ),
         label: t('label.event-type'),
         placeholder: t('label.search-by-type', {
           type: t('label.event-type-lowercase'),
@@ -167,52 +187,4 @@ export const getSelectArgumentConfig = (argument: string, t: TFunction) => {
     default:
       return;
   }
-};
-
-/** Builds notification template options, including the selected template when it is not preloaded. */
-export const getTemplateItems = (
-  templates: NotificationTemplate[] | undefined,
-  selectedTemplate: string | undefined,
-  t: TFunction
-) => {
-  const items =
-    templates?.map((template) => ({
-      id: JSON.stringify(getTemplateEntityRefObject(template)),
-      label: getEntityName(template),
-    })) ?? [];
-
-  if (
-    isEmpty(templates) &&
-    selectedTemplate &&
-    ![CUSTOM_TEMPLATE_VALUE, SYSTEM_DEFAULT_TEMPLATES].includes(
-      selectedTemplate
-    )
-  ) {
-    try {
-      const parsedTemplate = JSON.parse(selectedTemplate);
-      items.push({
-        id: selectedTemplate,
-        label: parsedTemplate.displayName ?? parsedTemplate.name,
-      });
-    } catch {
-      items.push({
-        id: selectedTemplate,
-        label: selectedTemplate,
-      });
-    }
-  }
-
-  return [
-    ...items,
-    {
-      id: SYSTEM_DEFAULT_TEMPLATES,
-      label: t('label.system-default-template'),
-    },
-    {
-      id: CUSTOM_TEMPLATE_VALUE,
-      label: t('label.create-entity', {
-        entity: t('label.custom-template'),
-      }),
-    },
-  ];
 };

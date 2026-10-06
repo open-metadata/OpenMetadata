@@ -45,25 +45,6 @@ public class SqlMappingContext {
             .addColumnMapping("tags", "om:hasTag", "@id")
             .addColumnMapping("domain", "om:belongsToDomain", "@id")
             .addNestedMapping(
-                "votes",
-                NestedMapping.builder()
-                    .parentProperty("om:hasVotes")
-                    .nestedClass("om:Votes")
-                    .build()
-                    .addField("upVotes", "om:upVotes", "xsd:integer")
-                    .addField("downVotes", "om:downVotes", "xsd:integer")
-                    .addField("upVoters", "om:upVoters", "@id"))
-            .addNestedMapping(
-                "changeDescription",
-                NestedMapping.builder()
-                    .parentProperty("om:hasChangeDescription")
-                    .nestedClass("om:ChangeDescription")
-                    .build()
-                    .addField("previousVersion", "om:previousVersion", "xsd:decimal")
-                    .addField("fieldsAdded", "om:fieldsAdded", "@id")
-                    .addField("fieldsUpdated", "om:fieldsUpdated", "@id")
-                    .addField("fieldsDeleted", "om:fieldsDeleted", "@id"))
-            .addNestedMapping(
                 "lifeCycle",
                 NestedMapping.builder()
                     .parentProperty("om:hasLifeCycle")

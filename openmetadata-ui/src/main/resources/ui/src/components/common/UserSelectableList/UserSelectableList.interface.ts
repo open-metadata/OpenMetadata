@@ -20,6 +20,8 @@ export type UserSelectableListProps =
       selectedUsers: EntityReference[];
       children?: ReactNode;
       popoverProps?: PopoverProps;
+      /** Called when the list is dismissed without an update, for callers that own `popoverProps.open`. */
+      onClose?: () => void;
       filterCurrentUser?: boolean;
       includeBot?: boolean;
     } & (

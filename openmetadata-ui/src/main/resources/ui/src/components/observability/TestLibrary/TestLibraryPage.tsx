@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, PageLayout } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -124,7 +124,7 @@ const TestLibraryPage = () => {
           />
         }
         pageTitle={t('label.test-library')}>
-        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary">
+        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface">
           <div className="tw:p-4">
             <TestDefinitionFilterBar
               filterValues={urlFilters}

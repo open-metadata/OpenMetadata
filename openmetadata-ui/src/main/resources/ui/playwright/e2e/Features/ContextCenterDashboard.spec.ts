@@ -335,7 +335,9 @@ test.describe('Context Center - Dashboard', () => {
         mimeType: 'text/plain',
         buffer: Buffer.from('dashboard upload modal fixture'),
       });
-      await expect(modal.getByText(fileName).first()).toBeVisible();
+      await expect(
+        modal.getByText(fileName).filter({ visible: true })
+      ).not.toHaveCount(0);
 
       const uploadResPromise = page.waitForResponse(
         '/api/v1/contextCenter/drive/files/upload'

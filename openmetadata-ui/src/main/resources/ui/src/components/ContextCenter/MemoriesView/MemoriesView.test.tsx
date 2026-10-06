@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  EntityStatus,
+} from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
 jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
@@ -134,6 +137,26 @@ describe('MemoriesView', () => {
 
     expect(
       screen.getByText('A unified metadata platform.')
+    ).toBeInTheDocument();
+  });
+
+  it('shows a retired memory status and its reason', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            entityStatus: EntityStatus.Deprecated,
+            statusReason: 'The replacement has the corrected definition.',
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByText('label.deprecated')).toBeInTheDocument();
+    expect(
+      screen.getByText(/The replacement has the corrected definition/)
     ).toBeInTheDocument();
   });
 

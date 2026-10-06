@@ -219,6 +219,7 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
                     tag_name=value,
                     classification_description=ATHENA_TAG_CLASSIFICATION,
                     tag_description=ATHENA_TAG,
+                    entity_fqn=entity_fqn,
                 )
                 if definition:
                     self.attach_tag(entity_fqn=entity_fqn, tag=definition)

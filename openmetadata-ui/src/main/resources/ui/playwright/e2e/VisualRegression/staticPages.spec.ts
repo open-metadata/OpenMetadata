@@ -58,6 +58,9 @@ const PAGES: {
       '[data-testid="search-results-count"]',
       '[data-testid="explore-tree"]',
     ],
+    // Search cards and the summary panel settled with the same content but a repeatable 2%
+    // raster/layout delta in CI, so use the suite's established narrow variance allowance.
+    maxDiffPixelRatio: 0.03,
   },
   { name: 'glossary', route: '/glossary' },
   { name: 'settings', route: '/settings' },

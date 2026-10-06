@@ -4,7 +4,7 @@ import { Label } from '@/components/base/input/label';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '../../../icons';
 import type { FC, ReactNode, Ref, RefAttributes } from 'react';
 import { createContext, isValidElement } from 'react';
 import type { SelectProps as AriaSelectProps } from 'react-aria-components';

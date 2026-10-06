@@ -14,13 +14,6 @@ import { findByTestId, render, screen } from '@testing-library/react';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 
-jest.mock('../../hooks/insights/useDataInsightChartColors', () => ({
-  useDataInsightChartColors: jest.fn().mockReturnValue({
-    kpiBackgrounds: ['#123456', '#234567'],
-    kpiSeries: ['#345678', '#456789'],
-  }),
-}));
-
 const mockProps = {
   'description-coverage-completed-description-fraction': {
     timestamp: 1701396413075,
@@ -95,17 +88,17 @@ describe('KPILatestResultsV1', () => {
     expect(await findByTestId(kpi, 'kpi-success')).toBeInTheDocument();
   });
 
-  it('uses active theme colors for KPI status presentation', async () => {
+  it('colours each KPI from the chart palette, matching its line', async () => {
     const { container } = render(
       <KPILatestResultsV1 kpiLatestResultsRecord={mockProps} />
     );
 
     expect(container.querySelector('.kpi-days-section')).toHaveStyle({
-      backgroundColor: '#123456',
-      color: '#345678',
+      backgroundColor: '#100000@0.1',
+      color: '#100000',
     });
     expect(container.querySelector('.ant-progress-bg')).toHaveStyle({
-      backgroundColor: '#345678',
+      backgroundColor: '#100000',
     });
   });
 });

@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { Task } from '../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
+  applyStatusPlacements,
   formatTestSummaryYAxis,
-  getStatusDotColor,
+  getStatusChartStatus,
   getTestSummaryTooltipPosition,
+  getThresholdReference,
   isSameTooltipPosition,
+  isTestSummaryTooltipBoundary,
+  placedSeriesKey,
+  PLACED_KEYS_FIELD,
   prepareChartData,
   PrepareChartDataType,
 } from './TestSummaryGraphUtils';
@@ -378,6 +382,58 @@ describe('prepareChartData', () => {
     });
   });
 
+  // The band is the allowed range, so it is read by parameter name, not by
+  // position, and keeps decimal bounds.
+  it.each<
+    [
+      string,
+      PrepareChartDataType['testCaseParameterValue'],
+      [number, number] | undefined
+    ]
+  >([
+    [
+      'decimal bounds',
+      [
+        { name: 'minValueForMeanInCol', value: '0.5' },
+        { name: 'maxValueForMeanInCol', value: '1.5' },
+      ],
+      [0.5, 1.5],
+    ],
+    [
+      'a range that also has a threshold',
+      [
+        { name: 'minValue', value: '12' },
+        { name: 'maxValue', value: '34' },
+        { name: 'threshold', value: '5' },
+      ],
+      [12, 34],
+    ],
+    [
+      'an expected value and a threshold, which state no range',
+      [
+        { name: 'value', value: '10000' },
+        { name: 'threshold', value: '5' },
+      ],
+      undefined,
+    ],
+  ])(
+    'should read the allowed band from %s',
+    (_, testCaseParameterValue, boundArea) => {
+      const { data } = prepareChartData({
+        testCaseParameterValue,
+        testCaseResults: [
+          {
+            timestamp: 1720525804736,
+            testCaseStatus: TestCaseStatus.Success,
+            testResultValue: [{ name: 'value', value: '1' }],
+          },
+        ],
+      });
+
+      expect(data[0].boundArea).toEqual(boundArea);
+    }
+  );
+
   it('should show calculate test case result params accurately', () => {
     const testObj = {
       testCaseParameterValue: [],
@@ -481,23 +537,47 @@ describe('prepareChartData', () => {
           task: undefined,
         },
       ],
-      information: [],
+      // No run measured anything, so one series stands in for their points.
+      information: [{ label: 'value', color: '#7147E8' }],
       showAILearningBanner: true,
     });
   });
+
+  it('should name no series when there are no runs', () => {
+    expect(
+      prepareChartData({
+        testCaseParameterValue: [],
+        testCaseResults: [],
+        tasks: [],
+      } as PrepareChartDataType).information
+    ).toEqual([]);
+  });
 });
 
-describe('getStatusDotColor', () => {
-  it('should return GREEN_3 for Success', () => {
-    expect(getStatusDotColor(TestCaseStatus.Success)).toBe(GREEN_3);
+describe('getStatusChartStatus', () => {
+  it.each([
+    [TestCaseStatus.Success, 'success'],
+    [TestCaseStatus.Failed, 'failed'],
+    [TestCaseStatus.Queued, 'info'],
+    [TestCaseStatus.Aborted, 'warning'],
+    [undefined, 'warning'],
+  ])('should map %s to the %s chart status', (status, expected) => {
+    expect(getStatusChartStatus(status)).toBe(expected);
+  });
+});
+
+describe('isTestSummaryTooltipBoundary', () => {
+  it('should accept a box with every coordinate finite', () => {
+    expect(
+      isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10, height: 5 })
+    ).toBe(true);
   });
 
-  it('should return RED_3 for Failed', () => {
-    expect(getStatusDotColor(TestCaseStatus.Failed)).toBe(RED_3);
-  });
-
-  it('should return YELLOW_2 for non success/failure status', () => {
-    expect(getStatusDotColor(TestCaseStatus.Aborted)).toBe(YELLOW_2);
+  it('should reject a box with a missing or non-finite coordinate', () => {
+    expect(isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10 })).toBe(false);
+    expect(
+      isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10, height: NaN })
+    ).toBe(false);
   });
 });
 
@@ -594,5 +674,180 @@ describe('isSameTooltipPosition', () => {
     expect(isSameTooltipPosition({ x: 516, y: 196 }, { x: 516, y: 196 })).toBe(
       true
     );
+  });
+});
+
+describe('getThresholdReference', () => {
+  const params = (values: Record<string, string>) =>
+    Object.entries(values).map(([name, value]) => ({ name, value }));
+
+  it('should read the single assertion parameter as the expected value', () => {
+    expect(
+      getThresholdReference(
+        params({ value: '10000', threshold: '5', thresholdUnit: 'PERCENTAGE' })
+      )
+    ).toEqual({
+      y: 10000,
+      labelKey: 'label.expected-value',
+      labelValue: (10000).toLocaleString(),
+    });
+  });
+
+  // `threshold` is a tolerance on tableRowCountToEqual and the assertion
+  // itself on tableCustomSQLQuery, so it only becomes the line when no other
+  // numeric parameter carries the assertion.
+  it('should fall back to threshold when it is the only numeric parameter', () => {
+    expect(
+      getThresholdReference(
+        params({
+          sqlExpression: 'SELECT 1',
+          strategy: 'ROWS',
+          operator: '==',
+          threshold: '0',
+        })
+      )
+    ).toEqual({
+      y: 0,
+      labelKey: 'label.threshold-value',
+      labelValue: (0).toLocaleString(),
+    });
+  });
+
+  it('should draw the upper bound for a two-sided range', () => {
+    expect(
+      getThresholdReference(params({ minValue: '1', maxValue: '3489' }))
+    ).toEqual({ y: 3489, labelKey: 'label.allowed-max' });
+  });
+
+  // tableRowInsertedCountToBeBetween requires rangeInterval, a time window,
+  // while its bounds are optional.
+  it('should read a lone min as the allowed min, not the range interval', () => {
+    expect(
+      getThresholdReference(params({ min: '50', rangeInterval: '1000' }))
+    ).toEqual({ y: 50, labelKey: 'label.allowed-min' });
+  });
+
+  it('should read a lone minValue as the allowed min', () => {
+    expect(getThresholdReference(params({ minValue: '12' }))).toEqual({
+      y: 12,
+      labelKey: 'label.allowed-min',
+    });
+  });
+
+  it('should read a lone maxValue as the allowed max', () => {
+    expect(getThresholdReference(params({ maxValue: '99' }))).toEqual({
+      y: 99,
+      labelKey: 'label.allowed-max',
+    });
+  });
+
+  it('should ignore numeric parameters that are not bounds', () => {
+    expect(
+      getThresholdReference(params({ rangeInterval: '1000' }), {
+        maxBound: 10500,
+      })
+    ).toEqual({ y: 10500, labelKey: 'label.learned-baseline' });
+    expect(
+      getThresholdReference(params({ max: '500', rangeInterval: '1000' }))
+    ).toEqual({ y: 500, labelKey: 'label.allowed-max' });
+  });
+
+  it('should ignore a parameter saved with an empty value', () => {
+    expect(
+      getThresholdReference(params({ minValue: '', maxValue: ' ' }))
+    ).toBeUndefined();
+    expect(
+      getThresholdReference(params({ minValue: '', maxValue: '750' }))
+    ).toEqual({ y: 750, labelKey: 'label.allowed-max' });
+  });
+
+  it('should fall back to the learned bound when no parameter is numeric', () => {
+    expect(getThresholdReference([], { maxBound: 10500 })).toEqual({
+      y: 10500,
+      labelKey: 'label.learned-baseline',
+    });
+  });
+
+  it('should return undefined when there is nothing to draw', () => {
+    expect(getThresholdReference([])).toBeUndefined();
+    expect(getThresholdReference(params({ strategy: 'ROWS' }))).toBeUndefined();
+  });
+});
+
+describe('applyStatusPlacements', () => {
+  const series = ['rowCount'];
+
+  // A run that produced no value has no key for the series, so recharts drew
+  // nothing at all for it: the run was simply missing from the chart.
+  it('should pin an aborted run to the lowest plotted value', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 1, status: TestCaseStatus.Success, rowCount: 120 },
+        { name: 2, status: TestCaseStatus.Success, rowCount: 90 },
+        { name: 3, status: TestCaseStatus.Aborted },
+      ],
+      series
+    );
+
+    // Placed on a series of its own, so the line joins measured runs only
+    // and an aborted run does not read as a measured drop.
+    expect(data[2]).toEqual({
+      name: 3,
+      status: TestCaseStatus.Aborted,
+      [placedSeriesKey('rowCount')]: 90,
+      placedKeys: [placedSeriesKey('rowCount')],
+    });
+  });
+
+  it('should pin a queued run to the expectation line', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 1, status: TestCaseStatus.Success, rowCount: 120 },
+        { name: 2, status: TestCaseStatus.Queued },
+      ],
+      series,
+      10000
+    );
+
+    expect(data[1]).toEqual({
+      name: 2,
+      status: TestCaseStatus.Queued,
+      [placedSeriesKey('rowCount')]: 10000,
+      placedKeys: [placedSeriesKey('rowCount')],
+    });
+  });
+
+  // An aborted run that did record a value is plotted where it landed; only
+  // a missing value is placed.
+  it('should keep a value an aborted run did record', () => {
+    const point = { name: 1, status: TestCaseStatus.Aborted, rowCount: 42 };
+
+    expect(
+      applyStatusPlacements(
+        [{ name: 0, status: TestCaseStatus.Success, rowCount: 10 }, point],
+        series
+      )[1]
+    ).toEqual(point);
+  });
+
+  it('should leave a run that plotted a value untouched', () => {
+    const point = { name: 1, status: TestCaseStatus.Failed, rowCount: 5 };
+
+    expect(applyStatusPlacements([point], series)).toEqual([point]);
+  });
+
+  it('should place runs on the zero line when no run plotted a value and no line exists', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 1, status: TestCaseStatus.Aborted },
+        { name: 2, status: TestCaseStatus.Queued },
+      ],
+      series
+    );
+
+    expect(data.map((point) => point[placedSeriesKey(series[0])])).toEqual([
+      0, 0,
+    ]);
+    expect(data[0][PLACED_KEYS_FIELD]).toEqual(series.map(placedSeriesKey));
   });
 });

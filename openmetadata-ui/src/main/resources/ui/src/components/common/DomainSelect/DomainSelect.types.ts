@@ -29,7 +29,11 @@ export interface DomainSelectProps {
    * `DomainSelectableList` prop. @default true
    */
   isClearable?: boolean;
-  /** Domains that must not be offered for selection (filtered from results). */
+  /**
+   * Allowlist: when non-empty, only these domains and their descendants are
+   * offered. Empty/undefined means no restriction. Named for the caller-side
+   * concept (a domain-*restricted* user), not for what it filters out.
+   */
   restrictedDomains?: EntityReference[];
   /**
    * Prepend an "All Domains" reset row at the top of the picker (scope-switcher
@@ -43,11 +47,12 @@ export interface DomainSelectProps {
   onUpdate: (
     domain: EntityReference | EntityReference[] | undefined
   ) => Promise<void> | void;
-  /** Reserved for parity with the legacy picker; not yet wired to a cancel. */
-  onCancel?: () => void;
-
   /** @default 'input' */
   triggerVariant?: TreeSelectTriggerVariant;
+  /** Extra classes for the built-in button trigger — e.g. a max width. */
+  triggerClassName?: string;
+  /** Let a custom trigger stretch to its container. @see TreeSelectProps */
+  fullWidthTrigger?: boolean;
   bordered?: boolean;
   /**
    * Buffer selection until Apply (`staged`) or report every toggle
@@ -63,11 +68,6 @@ export interface DomainSelectProps {
   placeholder?: string;
   /** Class applied to the trigger wrapper (e.g. for nav alignment). */
   className?: string;
-
-  /** Inline "create domain" action; receives the current search term. */
-  onCreate?: (searchTerm: string) => void;
-  /** Label for the inline create row (required to render it). */
-  createLabel?: string;
 
   'data-testid'?: string;
 }

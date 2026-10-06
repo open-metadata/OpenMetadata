@@ -31,6 +31,7 @@ import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Button: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
@@ -63,7 +64,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
 }));
 

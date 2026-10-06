@@ -15,6 +15,7 @@ Validator for column values to be between test case
 
 import math
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import Column
 
@@ -38,7 +39,9 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import is_date_time
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.utils.time_utils import convert_timestamp
 
 logger = test_suite_logger()
@@ -60,6 +63,19 @@ class ColumnValuesToBeBetweenValidator(
             column: column
         """
         return self.run_query_results(self.runner, metric, column)
+
+    def _run_violation_count(self, column: SQALikeColumn | Column, test_params: dict) -> tuple[int | None, int | None]:
+        """Count the rows read and the values falling outside the window
+
+        Args:
+            column: column under test
+            test_params: test parameters including min and max bounds
+        """
+        checker = self._get_validation_checker(test_params)
+        return self._compute_row_violations(
+            cast(QueryRunner, self.runner),  # noqa: TC006
+            checker.build_row_level_violations_sqa(cast(Column, column)),  # noqa: TC006
+        )
 
     def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
         min_value = row.get(Metrics.min.name)
@@ -172,10 +188,11 @@ class ColumnValuesToBeBetweenValidator(
                 pre_processor=convert_timestamp,
             )
         else:
-            # The verdict is taken against the window the failure threshold widened into, so the
-            # failed rows are filtered with it too: a value the tolerance accepted is not a failure
-            # and has no business showing up in the sample.
-            min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
+            # The window is the one the test case configured: the failure threshold is a row
+            # tolerance here, and a row it tolerates is still a row that fell outside the window,
+            # so it belongs in the sample of failing rows.
+            min_bound = self.get_min_bound(self.MIN_BOUND)
+            max_bound = self.get_max_bound(self.MAX_BOUND)
 
         filters = []
         if min_bound is not None:

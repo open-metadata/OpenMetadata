@@ -12,14 +12,18 @@
  */
 
 import {
-  render,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
+  within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
 const mockCustomProperties = [
@@ -40,10 +44,6 @@ const mockCustomProperties = [
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
-}));
-
-jest.mock('./PropertyValue', () => ({
-  PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
 jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
@@ -89,11 +89,6 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
     }),
   }),
 }));
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: jest.fn().mockImplementation(() => <div>Skeleton.loader</div>),
-}));
-
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => ({
@@ -139,9 +134,17 @@ const mockProp = {
 };
 
 describe('Test CustomProperty Table Component', () => {
+  beforeEach(() => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: {},
+      onUpdate: jest.fn(),
+      filterWidgets: jest.fn(),
+    });
+  });
+
   it("Should render permission placeholder if doesn't have permission", async () => {
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable
           {...mockProp}
           entityType={EntityType.TABLE}
@@ -158,17 +161,71 @@ describe('Test CustomProperty Table Component', () => {
 
   it('Should render table component', async () => {
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
     const table = await screen.findByTestId('custom-properties-card');
 
     expect(table).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('custom-property-xName-card')
+    ).toBeInTheDocument();
+  });
 
-    const propertyValue = await screen.findByText('PropertyValue');
+  it('Should render read-only property rows in version view', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: { extension: { xName: 'Data Platform' } },
+      onUpdate: jest.fn(),
+      filterWidgets: jest.fn(),
+    });
 
-    expect(propertyValue).toBeInTheDocument();
+    await act(async () => {
+      renderWithQueryClient(
+        <CustomPropertyTable
+          {...mockProp}
+          isVersionView
+          entityType={EntityType.TABLE}
+        />
+      );
+    });
+
+    const row = await screen.findByTestId('custom-property-xName-row');
+
+    expect(within(row).getByTestId('property-value')).toHaveTextContent(
+      'Data Platform'
+    );
+    expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('add-value-button')).not.toBeInTheDocument();
+  });
+
+  it('Should save an edited value as the merged entity extension', async () => {
+    const onUpdate = jest.fn().mockResolvedValue(undefined);
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: { id: 'table-id', extension: { other: 'kept' } },
+      onUpdate,
+      filterWidgets: jest.fn(),
+    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    await act(async () => {
+      renderWithQueryClient(
+        <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+      );
+    });
+
+    await user.click(await screen.findByTestId('add-value-button'));
+    await user.type(screen.getByTestId('value-input'), 'Data Platform{Enter}');
+
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        {
+          id: 'table-id',
+          extension: { other: 'kept', xName: 'Data Platform' },
+        },
+        'extension'
+      )
+    );
   });
 
   it('Should render no data placeholder if custom properties list is empty', async () => {
@@ -176,7 +233,7 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: [] })
     );
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
@@ -192,7 +249,7 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: [] })
     );
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable
           {...mockProp}
           isRenderedInRightPanel
@@ -206,10 +263,14 @@ describe('Test CustomProperty Table Component', () => {
 
   it('Loader should be shown while loading the custom properties', async () => {
     (getTypeByFQN as jest.Mock).mockResolvedValueOnce(Promise.resolve({}));
-    render(<CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />);
+    renderWithQueryClient(
+      <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+    );
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
-    await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
+    await waitForElementToBeRemoved(() =>
+      screen.getByTestId('custom-property-table-loader')
+    );
 
     const noDataPlaceHolder = await screen.findByText(
       'CreatePlaceholder.component'
@@ -223,13 +284,13 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: mockCustomProperties })
     );
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
 
-    const tableRowValue = await screen.findByText('PropertyValue');
-
-    expect(tableRowValue).toBeInTheDocument();
+    expect(await screen.findByTestId('property-name')).toHaveTextContent(
+      'xName'
+    );
   });
 });

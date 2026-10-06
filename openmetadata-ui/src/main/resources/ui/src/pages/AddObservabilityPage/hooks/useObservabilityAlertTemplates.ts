@@ -15,7 +15,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
 import { getAllNotificationTemplates } from '../../../rest/notificationtemplateAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';

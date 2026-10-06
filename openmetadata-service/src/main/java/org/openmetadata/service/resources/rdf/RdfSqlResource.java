@@ -6,12 +6,14 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import javax.validation.constraints.NotEmpty;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -28,14 +30,14 @@ import org.openmetadata.service.security.Authorizer;
 public class RdfSqlResource {
 
   @Context private UriInfo uriInfo;
-  @Context private Authorizer authorizer;
+  private final Authorizer authorizer;
 
   private SqlToSparqlService sqlToSparqlService;
   private boolean rdfEnabled;
   private OpenMetadataApplicationConfig config;
 
-  public RdfSqlResource() {
-    // Default constructor for resource creation
+  public RdfSqlResource(final Authorizer authorizer) {
+    this.authorizer = Objects.requireNonNull(authorizer);
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -66,6 +68,7 @@ public class RdfSqlResource {
         @ApiResponse(responseCode = "503", description = "RDF support not enabled")
       })
   public Response executeQuery(
+      @Context SecurityContext securityContext,
       @Parameter(description = "SQL query to execute", required = true) @NotEmpty String sqlQuery,
       @Parameter(
               description = "Result format",
@@ -80,6 +83,8 @@ public class RdfSqlResource {
           @QueryParam("format")
           @DefaultValue("application/sparql-results+json")
           String format) {
+    // Like the SPARQL endpoints, this reads the whole graph with no per-entity filtering.
+    authorizer.authorizeAdmin(securityContext);
 
     if (!rdfEnabled) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
@@ -116,8 +121,11 @@ public class RdfSqlResource {
         @ApiResponse(responseCode = "503", description = "RDF support not enabled")
       })
   public Response translateQuery(
+      @Context SecurityContext securityContext,
       @Parameter(description = "SQL query to translate", required = true) @NotEmpty
           String sqlQuery) {
+    // Like the SPARQL endpoints, this reads the whole graph with no per-entity filtering.
+    authorizer.authorizeAdmin(securityContext);
 
     if (!rdfEnabled) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)

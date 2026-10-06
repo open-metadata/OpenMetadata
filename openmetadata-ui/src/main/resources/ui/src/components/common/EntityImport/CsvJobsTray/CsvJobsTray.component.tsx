@@ -22,7 +22,7 @@ import {
   Trash01,
   UploadCloud01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, kebabCase } from 'lodash';
 import {

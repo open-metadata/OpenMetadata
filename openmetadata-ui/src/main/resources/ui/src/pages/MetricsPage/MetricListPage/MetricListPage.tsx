@@ -32,11 +32,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  keepPreviousData,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
-import {
   BarChart03,
   ChevronDown,
   ChevronRight,
@@ -50,18 +45,30 @@ import {
   Package,
   Plus,
   Rows03,
-  SearchLg,
+  Search,
   Settings01,
   Trash01,
   UploadCloud01,
   User01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
 import type { ChangeEvent, Key } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
@@ -75,14 +82,15 @@ import MetricListHealth from '../../../components/Metric/MetricListHealth/Metric
 import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import type { Metric } from '../../../generated/entity/data/metric';
 import { EntityStatus } from '../../../generated/entity/data/metric';
 import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
@@ -221,8 +229,26 @@ const getDepthClassName = (depth: number) => {
   return '';
 };
 
+// AI padding standard: 16px under the header band (core PageLayout gives 8px).
+// Column flex so the list card can claim the leftover height for placeholders.
+const getContentClassName = (isAiMode: boolean) =>
+  classNames('tw:flex tw:flex-col tw:min-h-0', { 'tw:pt-4': isAiMode });
+const getIsPlaceholderState = ({
+  hasError,
+  isMetricsPending,
+  isSearchPending,
+  rowCount,
+}: {
+  hasError: boolean;
+  isMetricsPending: boolean;
+  isSearchPending: boolean;
+  rowCount: number;
+}) => hasError || (!isMetricsPending && !isSearchPending && rowCount === 0);
+
 const MetricListPage = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const contentClassName = getContentClassName(isAiMode);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { getResourcePermission } = usePermissionProvider();
@@ -1103,7 +1129,7 @@ const MetricListPage = () => {
     const isUnfiltered = !searchText && !statusFilter;
 
     return (
-      <Box className="tw:min-h-96 tw:p-4" justify="center">
+      <Box className="tw:flex-1 tw:min-h-0 tw:p-4" justify="center">
         <EmptyPlaceholder
           actions={
             isUnfiltered && permission.Create
@@ -1161,7 +1187,7 @@ const MetricListPage = () => {
   };
 
   const renderError = () => (
-    <Box className="tw:min-h-80 tw:p-6" justify="center">
+    <Box className="tw:flex-1 tw:min-h-0 tw:p-6" justify="center">
       <Card data-testid="metric-list-error" size="sm">
         <Card.Content>
           <Box align="center" direction="col" gap={3}>
@@ -1179,6 +1205,16 @@ const MetricListPage = () => {
     </Box>
   );
 
+  const renderHeader = (actions?: ReactNode) => (
+    <PageLayout.PageHeader
+      actions={actions}
+      data-testid="metric-list-header"
+      subtitle={t('message.metric-description')}
+      title={t('label.metric-plural')}
+      variant={isAiMode ? 'gradient' : 'flat'}
+    />
+  );
+
   const renderMetricActions = () => (
     <Box align="center" gap={2}>
       {permission.Create && (
@@ -1187,6 +1223,7 @@ const MetricListPage = () => {
             color="primary"
             data-testid="create-metric"
             iconLeading={Plus}
+            size="sm"
             onPress={() => openMetricCreateDrawer()}>
             {t('label.add-entity', { entity: t('label.metric') })}
           </Button>
@@ -1198,7 +1235,7 @@ const MetricListPage = () => {
           onOpenChange={setIsMetricActionsOpen}>
           <Dropdown.DotsButton
             aria-label={t('label.action-plural')}
-            className="tw:flex tw:size-10 tw:items-center tw:justify-center"
+            className="tw:flex tw:size-9 tw:items-center tw:justify-center"
             data-testid="metric-actions"
           />
           <Dropdown.Popover>
@@ -1234,7 +1271,7 @@ const MetricListPage = () => {
         <Input
           className="tw:w-full tw:sm:max-w-84"
           data-testid="metric-search"
-          icon={SearchLg}
+          icon={Search}
           placeholder={t('label.search-entity', {
             entity: t('label.metric-plural'),
           })}
@@ -1478,6 +1515,13 @@ const MetricListPage = () => {
     </Box>
   );
 
+  const isPlaceholderState = getIsPlaceholderState({
+    hasError: Boolean(listingError),
+    isMetricsPending,
+    isSearchPending: isSearchTextPending,
+    rowCount: rows.length,
+  });
+
   const renderListingContent = () => {
     if (listingError) {
       return renderError();
@@ -1493,7 +1537,11 @@ const MetricListPage = () => {
   };
 
   const renderListCard = () => (
-    <Card size="sm">
+    <Card
+      className={classNames({
+        'tw:flex tw:flex-col tw:flex-1 tw:min-h-0': isPlaceholderState,
+      })}
+      size="sm">
       {renderToolbar()}
       <span aria-live="polite" className="tw:sr-only">
         {isMetricsBusy || isSearchTextPending
@@ -1525,12 +1573,10 @@ const MetricListPage = () => {
     return (
       <PageLayout data-testid="metric-list-page">
         <DocumentTitle title={t('label.metric-plural')} />
-        <PageLayout.PageHeader
-          data-testid="metric-list-header"
-          subtitle={t('message.metric-description')}
-          title={t('label.metric-plural')}
-        />
-        <PageLayout.Content>{renderLoading()}</PageLayout.Content>
+        {renderHeader()}
+        <PageLayout.Content className={contentClassName}>
+          {renderLoading()}
+        </PageLayout.Content>
       </PageLayout>
     );
   }
@@ -1538,13 +1584,8 @@ const MetricListPage = () => {
   return (
     <PageLayout data-testid="metric-list-page">
       <DocumentTitle title={t('label.metric-plural')} />
-      <PageLayout.PageHeader
-        actions={renderMetricActions()}
-        data-testid="metric-list-header"
-        subtitle={t('message.metric-description')}
-        title={t('label.metric-plural')}
-      />
-      <PageLayout.Content>
+      {renderHeader(renderMetricActions())}
+      <PageLayout.Content className={contentClassName}>
         {renderAccessibleList()}
         <ModalOverlay
           isDismissable

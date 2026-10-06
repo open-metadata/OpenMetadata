@@ -34,5 +34,6 @@ export interface SeverityModalProps {
 export interface InlineSeverityProps {
   severity?: Severities;
   hasEditPermission: boolean;
-  onSubmit: SeverityProps['onSubmit'];
+  /** Absent for a read-only chip, which has nothing to submit. */
+  onSubmit?: SeverityProps['onSubmit'];
 }

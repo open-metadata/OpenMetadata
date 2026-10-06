@@ -24,6 +24,17 @@ mvn test -pl :openmetadata-integration-tests -Dtest="TableResourceIT"
 | `postgres-elasticsearch` | PostgreSQL 15 | Elasticsearch 8.11.4 |
 | `mysql-opensearch` | MySQL 8.3.0 | OpenSearch 2.19.0 |
 
+## RDF Tests
+
+Tests that need the RDF store skip unless RDF is enabled. The `rdf` lane enables it, builds a
+Fuseki image from `docker/rdf-store`, and runs the classes listed in `integrationTests.rdfTests`
+in the pom. CI runs the lane on MySQL and on PostgreSQL:
+
+```bash
+mvn verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch -DintegrationTests.lane=rdf
+mvn verify -pl :openmetadata-integration-tests -Ppostgres-opensearch -DintegrationTests.lane=rdf
+```
+
 ## Writing a New Integration Test
 
 ### 1. Create the Test Class

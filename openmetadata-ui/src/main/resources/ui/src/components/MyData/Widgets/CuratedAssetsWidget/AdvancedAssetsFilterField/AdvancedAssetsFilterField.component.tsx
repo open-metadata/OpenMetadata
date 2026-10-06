@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { Col, Form, Input, Row, Skeleton } from 'antd';
+import { Col, Form, Input, Row } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -197,12 +198,7 @@ export const AdvancedAssetsFilterField = ({
 
         {isCountLoading && (
           <Col span={24}>
-            <Skeleton
-              active
-              loading={isCountLoading}
-              paragraph={false}
-              title={{ style: { height: '32px' } }}
-            />
+            <Skeleton height={32} />
           </Col>
         )}
 

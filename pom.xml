@@ -74,8 +74,8 @@
     <mockito.version>5.14.2</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
-    <!-- 2.18.10 clears CVE-2026-83557 and CVE-2026-19032 (patch over 2.18.9). -->
-    <jackson.version>2.18.10</jackson.version>
+    <!-- 2.18.11 clears CVE-2026-89425 and CVE-2026-91777 (patch over 2.18.10). -->
+    <jackson.version>2.18.11</jackson.version>
     <!-- Single source for the AWS SDK v2 BOM version, consumed by the root BOM
          import below and by openmetadata-service's BOM import. -->
     <awssdk.version>2.41.30</awssdk.version>
@@ -178,8 +178,15 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.36</logback-core.version>
-    <logback-classic.version>1.5.36</logback-classic.version>
+    <!-- CVE-2026-70410: unsafe reflection in AvaticaUtils#instantiatePlugin, fixed in 1.29.0.
+         Pulled transitively via calcite-core; 1.42.0 (latest) still declares 1.28.0. -->
+    <avatica.version>1.29.0</avatica.version>
+    <!-- 1.5.38 clears CVE-2026-13006 (code execution via Janino conditional config, fixed in 1.5.37).
+         Do not move to 1.6.x yet: it removed PatternLayout.DEFAULT_CONVERTER_MAP, which Dropwizard's
+         LogbackAccessRequestLayout (5.0.0 through 5.0.2) reads in its static initializer, so text
+         request logging fails with NoSuchFieldError. -->
+    <logback-core.version>1.5.38</logback-core.version>
+    <logback-classic.version>1.5.38</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
@@ -460,6 +467,11 @@
         <groupId>ch.qos.logback.access</groupId>
         <artifactId>logback-access-common</artifactId>
         <version>2.0.7</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.calcite.avatica</groupId>
+        <artifactId>avatica-core</artifactId>
+        <version>${avatica.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -901,13 +913,13 @@
         <version>1.85</version>
       </dependency>
       <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively).
-           3.1.6 clears CVE-2026-83557 and CVE-2026-19032.
+           3.1.7 clears CVE-2026-89425 and CVE-2026-91777.
            jsonschema2pojo-core is scope=provided so none of this reaches the runtime
            classpath, but Snyk's Maven scanner walks the provided tree. -->
       <dependency>
         <groupId>tools.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
-        <version>3.1.6</version>
+        <version>3.1.7</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>

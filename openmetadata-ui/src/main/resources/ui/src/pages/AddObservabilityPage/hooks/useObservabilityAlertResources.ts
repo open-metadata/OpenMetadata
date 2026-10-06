@@ -13,89 +13,19 @@
 
 import type { FormInstance } from 'antd';
 import { Form } from 'antd';
-import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
-import { getResourceFunctions } from '../../../rest/observabilityAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  ModifiedCreateEventSubscription,
-  ObservabilityFilterResourceDescriptor,
-  UseObservabilityAlertResourcesReturn,
-} from '../AddObservabilityPage.interface';
-import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 
-export function useObservabilityAlertResources(
+/**
+ * The alert source picked in a classic antd alert form. Kept in this file, which already
+ * imports antd Form, so the antd import does not spread to a new file.
+ */
+export function useSelectedAlertTrigger(
   form: FormInstance<ModifiedCreateEventSubscription>
-): UseObservabilityAlertResourcesReturn {
-  const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [filterResources, setFilterResources] = useState<
-    ObservabilityFilterResourceDescriptor[]
-  >([]);
-
+): string | undefined {
   const [selectedTrigger] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
 
-  const fetchFunctions = async () => {
-    try {
-      setLoading(true);
-      const filterResources = await getResourceFunctions();
-
-      setFilterResources(
-        filterResources.data.map(toObservabilityFilterResourceDescriptor)
-      );
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchFunctions();
-  }, []);
-
-  const selectedResource = useMemo(
-    () => filterResources.find((resource) => resource.name === selectedTrigger),
-    [filterResources, selectedTrigger]
-  );
-
-  const supportedFilters = useMemo(
-    () => selectedResource?.supportedFilters,
-    [selectedResource]
-  );
-
-  const containerEntities = useMemo<
-    UseObservabilityAlertResourcesReturn['containerEntities']
-  >(() => selectedResource?.containerEntities, [selectedResource]);
-
-  const supportedTriggers = useMemo(
-    () => selectedResource?.supportedActions,
-    [selectedResource]
-  );
-
-  const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
-  );
-
-  const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
-    [selectedTrigger, supportedTriggers]
-  );
-
-  return {
-    containerEntities,
-    filterResources,
-    loading,
-    shouldShowActionsSection,
-    shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
-  };
+  return selectedTrigger;
 }

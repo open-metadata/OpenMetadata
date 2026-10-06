@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Select, Switch, Typography } from 'antd';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Form, Row, Select } from 'antd';
 import { isEmpty, isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -122,18 +123,18 @@ function ObservabilityFormTriggerItem({
                       )}
                     </div>
                     <Form.Item
-                      label={
-                        <Typography.Text>{t('label.include')}</Typography.Text>
-                      }
+                      label={<Typography>{t('label.include')}</Typography>}
                       labelAlign="left"
                       labelCol={{ span: 6 }}
                       name={[name, 'effect']}
                       normalize={(value) =>
                         value ? Effect.Include : Effect.Exclude
                       }>
-                      <Switch
-                        checked={effect === Effect.Include}
+                      <Toggle
                         data-testid={`trigger-switch-${name}`}
+                        isDisabled={isViewMode}
+                        isSelected={effect === Effect.Include}
+                        size="sm"
                       />
                     </Form.Item>
                   </Col>

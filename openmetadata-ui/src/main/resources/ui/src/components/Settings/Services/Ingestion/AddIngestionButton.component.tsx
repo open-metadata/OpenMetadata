@@ -12,7 +12,7 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Dropdown } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';

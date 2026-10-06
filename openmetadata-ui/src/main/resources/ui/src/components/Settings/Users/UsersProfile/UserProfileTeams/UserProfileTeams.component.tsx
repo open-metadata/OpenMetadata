@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Popover, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
-
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -119,9 +119,9 @@ const UserProfileTeams = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="text-sm font-medium p-l-xss">
+          <Typography className="text-sm font-medium p-l-xss">
             {t('label.team-plural')}
-          </Typography.Text>
+          </Typography>
 
           <Popover
             content={
@@ -136,9 +136,9 @@ const UserProfileTeams = ({
                     <IconTeamsGrey height={16} />
                   </div>
 
-                  <Typography.Text className="user-profile-edit-popover-card-title">
+                  <Typography className="user-profile-edit-popover-card-title">
                     {t('label.team-plural')}
-                  </Typography.Text>
+                  </Typography>
                 </div>
 
                 <div
@@ -215,14 +215,7 @@ const UserProfileTeams = ({
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="user-page-icon d-flex-center">
-          <Divider
-            style={{
-              height: '100%',
-              width: '1px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
+          <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         {teamsRenderElement}
       </div>

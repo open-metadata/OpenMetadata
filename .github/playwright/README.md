@@ -9,6 +9,22 @@ The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow s
 
 SSO stays in its dedicated workflow, while knowledge graph and ontology share one RDF workflow and environment. HTTP/2-specific, data-insight application, and nightly specs are explicitly recorded as delegated rather than being silently misclassified as common Chromium coverage. Add new production-to-test relationships to `impact-map.json`; do not make an unmapped source path trigger the full suite.
 
+## Local pre-merge runs
+
+PR checks run unit tests only; Playwright runs in the merge queue. Before requesting review, run the specs the PR impacts on your machine against a local stack (`./docker/run_local_docker.sh -m ui -d mysql`):
+
+```bash
+make playwright_affected                                         # list impacted specs + the exact command
+make playwright_affected_run                                     # run them, write playwright/output/local-pr-results.md
+make playwright_affected_run ARGS="--update-pr --workers=2"      # also upsert the block in the PR body (needs gh)
+```
+
+`.github/scripts/plan_local_playwright.py` diffs the branch against `origin/main` (`--base` to change it; includes uncommitted and untracked files) and feeds that list to `select_playwright_tests.py` as a `pull_request` event, so the selection is the same targeted plan CI computes from `impact-map.json` and `impact-map.generated.json`: smoke, directly changed specs, impact-mapped specs, and canaries when shared infrastructure or unmapped files change. Delegated specs stay with their dedicated workflows.
+
+Where CI escalates unmapped code paths to the full suite, the local plan instead runs the targeted set plus one canary per project and lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
+
+The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. Like every CI lane, the run sets `PLAYWRIGHT_IS_OSS=true` unless you export it yourself; without it `auth.setup.ts` calls the Collate-only ingestion-runner API and fails before any spec runs. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
+
 ## Duration-balanced plans
 
 `build_playwright_shards.py` discovers stable Playwright test IDs and assigns hook-inclusive p75 duration from the latest three successful full runs. It uses longest-processing-time-first balancing and computes the common shard count as:
@@ -19,11 +35,13 @@ ceil(total weighted worker time / (3 workers * 21 minutes * 0.85))
 
 The common matrix is bounded to 5–24 runners and uses a 21-minute allocation budget. Dedicated lanes use a 20-minute allocation budget. The common lane previously sat a minute below the dedicated lanes, but the chromium suite outgrew what 24 runners could hold at 19 minutes, so full-mode planning aborted outright; 21 minutes restores headroom while staying inside the `timeout` wrapper around `npx playwright test` (in `playwright-e2e-reusable.yml`) and the `playwright-ci` job clock. Note that the allocation budget bounds a whole *shard*, whereas the strict 20-minute ceiling below bounds a single *atomic unit*, so the two are independent. Planner weights use the hook-inclusive observed duration, including retries. Only an exact stable test ID explicitly reported as skipped may retain a zero weight; every other zero-duration observation and every unseen test uses the conservative fallback, and zero weights never transfer through the file/title identity fallback. The versioned bootstrap baseline uses stable expected and skipped observations from the coverage-complete but failed full run `29984209316`, while unexpected and flaky tests retain their prior duration weights from run `29980474263`. It is bootstrap data, not a fabricated successful history; normal planning still uses p75 from the latest three successful full runs when those artifacts exist. This keeps expensive internally parallel suites together instead of multiplying their shared setup across runners. Serial/global behavior stays in one-worker lanes. Large suites listed in `AUDITED_PARALLEL_SUITES` are split at test granularity only after confirming that they are not serial and do not depend on earlier tests. The planner fails when any remaining atomic unit or bounded lane exceeds the 20-minute ceiling.
 
-The `Basic` and `chromium` projects share that common 24-runner cap and are balanced together; they are not separate pools of standard hosted runners. Isolated ingestion, search, reindex, permission, and global-state lanes are additional because they cannot safely share mutable server state with the common matrix.
-
-Impact-mapped targeted CI runs the representative Table-source scenario from `DataAssetLineage.spec.ts`. A direct change to that spec, full CI, and local runs retain every source-entity scenario in the same file. This preserves stable IDs and lets the duration planner distribute the full matrix instead of concentrating it in an unsharded stress project. Custom Properties keeps the complete widget contract on Table and one String CRUD smoke per remaining entity.
+The `Basic` and `chromium` projects share that common 24-runner cap and are balanced together; they are not separate pools of standard hosted runners. Isolated ingestion, reindex, search-RBAC, and global-state lanes are additional because they cannot safely share mutable server state with the common matrix. The global-state lane runs one worker and also carries the domain-isolation and search-nightly suites, which are too short to justify their own runner; search-RBAC stays separate because it enables RBAC from a setup project rather than inside its spec.
 
 The `@ingestion` project is excluded from common Chromium only when the dynamic planner is active. Its source-matched Airflow image is restored only for ingestion shards, so other workflows that invoke the regular Chromium project keep their existing behavior.
+
+## Entity matrix
+
+Specs that repeat the same scenarios for every entity type (Entity, Lineage, Custom Properties, Explore right panel, service pages, …) wrap the generating collection in `pickEntityMatrix` from `playwright/utils/entityMatrix.ts`. Pull request and merge-queue runs (`entity_matrix=representative` from `select_playwright_tests.py`) generate those tests for one representative entity only — Table for data assets, Database Service for services. The nightly schedule and manual dispatches run the full matrix, as do local runs. A spec changed directly in the pull request keeps its full matrix so the edit is validated against every entity before it merges. Test titles do not depend on the selected set, so stable IDs and timing history are shared between both modes.
 
 ## Golden fixture
 

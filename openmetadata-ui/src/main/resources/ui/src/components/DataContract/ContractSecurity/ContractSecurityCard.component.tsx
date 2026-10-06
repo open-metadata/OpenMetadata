@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Divider, Row, Tag, Typography } from 'antd';
+import {
+  Badge,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -57,64 +64,79 @@ const ContractSecurityCard: React.FC<{
 
   const renderSecurityPolicies = useMemo(() => {
     return security?.policies?.map((policy, index) => (
-      <Card
-        className="contract-security-policy-card"
-        title={
-          <div>
-            <Typography.Text className="access-policy-label">{`${t(
+      <Card className="contract-security-policy-card tw:overflow-visible tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums">
+        <div
+          className={classNames(
+            'tw:-mb-px tw:flex tw:min-h-12 tw:items-center tw:border-b',
+            'tw:border-black/6 tw:px-3.5 tw:py-3 tw:text-base tw:leading-[1.5715]',
+            'tw:font-medium tw:text-black/85 tw:dark:border-secondary',
+            'tw:dark:text-primary'
+          )}>
+          <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap">
+            <Typography className="access-policy-label">{`${t(
               'label.access-policy'
-            )}: `}</Typography.Text>
-            <Typography.Text
+            )}: `}</Typography>
+            <Typography
               className="access-policy-value"
               data-testid={`contract-security-access-policy-${index}`}>
               {policy.accessPolicy || NO_DATA_PLACEHOLDER}
-            </Typography.Text>
+            </Typography>
           </div>
-        }>
-        <div className="contract-security-policy-card-identity-container">
-          <Typography.Text className="contract-security-policy-subtitle-label">
-            {t('label.identities')}
-          </Typography.Text>
-
-          {isEmpty(policy.identities)
-            ? NO_DATA_PLACEHOLDER
-            : policy.identities?.map((identity) => (
-                <Tag
-                  className="custom-tag"
-                  data-testid={`contract-security-identities-${index}-${identity}`}
-                  key={identity}>
-                  {identity}
-                </Tag>
-              ))}
         </div>
+        <div className="tw:rounded-xl tw:border-t tw:border-utility-gray-200 tw:py-3 tw:pl-3">
+          <div className="contract-security-policy-card-identity-container">
+            <Typography className="contract-security-policy-subtitle-label">
+              {t('label.identities')}
+            </Typography>
 
-        {!isEmpty(policy.rowFilters) && (
-          <>
-            <Divider className="contract-dash-separator" />
+            {isEmpty(policy.identities)
+              ? NO_DATA_PLACEHOLDER
+              : policy.identities?.map((identity) => (
+                  <Badge
+                    bordered={false}
+                    className="tw:mr-2.5 tw:mb-2.5 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                    color="gray"
+                    data-testid={`contract-security-identities-${index}-${identity}`}
+                    key={identity}
+                    size="sm"
+                    type="color">
+                    {identity}
+                  </Badge>
+                ))}
+          </div>
 
-            <div className="contract-security-policy-card-row-filter-container">
-              <Typography.Text className="contract-security-policy-subtitle-label">
-                {t('label.row-filter-plural')}
-              </Typography.Text>
+          {!isEmpty(policy.rowFilters) && (
+            <>
+              <Divider dashed className="contract-dash-separator" />
 
-              {policy.rowFilters?.map((filter, filterIndex) => {
-                return (
-                  <Tag
-                    className="custom-tag"
-                    data-testid={`contract-security-rowFilter-${index}-${filterIndex}`}
-                    key={filter.columnName}>
-                    {`${
-                      tableColumnNameMap?.get(filter.columnName ?? '') ??
-                      filter.columnName ??
-                      NO_DATA_PLACEHOLDER
-                    } = `}
-                    {renderRowFilterValues(filter)}
-                  </Tag>
-                );
-              })}
-            </div>
-          </>
-        )}
+              <div className="contract-security-policy-card-row-filter-container">
+                <Typography className="contract-security-policy-subtitle-label">
+                  {t('label.row-filter-plural')}
+                </Typography>
+
+                {policy.rowFilters?.map((filter, filterIndex) => {
+                  return (
+                    <Badge
+                      bordered={false}
+                      className="tw:mr-2.5 tw:mb-2.5 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                      color="gray"
+                      data-testid={`contract-security-rowFilter-${index}-${filterIndex}`}
+                      key={filter.columnName}
+                      size="sm"
+                      type="color">
+                      {`${
+                        tableColumnNameMap?.get(filter.columnName ?? '') ??
+                        filter.columnName ??
+                        NO_DATA_PLACEHOLDER
+                      } = `}
+                      {renderRowFilterValues(filter)}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
       </Card>
     ));
   }, [security?.policies]);
@@ -123,27 +145,34 @@ const ContractSecurityCard: React.FC<{
     <Row className="contract-security-component-container" gutter={[0, 26]}>
       <Col span={24}>
         <Card
-          className="contract-security-classification-container"
+          className="contract-security-classification-container tw:overflow-visible tw:px-5 tw:py-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums"
           data-testid="contract-security-classification">
-          <Typography.Text className="contract-security-classification-label">
+          <Typography className="contract-security-classification-label">
             {t('label.classification')}
-          </Typography.Text>
+          </Typography>
 
           {isEmpty(security?.dataClassification)
             ? NO_DATA_PLACEHOLDER
             : security?.dataClassification?.split(',').map((item) => (
-                <Tag className="custom-tag" color="pink">
+                <Badge
+                  bordered={false}
+                  className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                  color="pink"
+                  data-testid="contract-security-classification-tag"
+                  key={item}
+                  size="sm"
+                  type="color">
                   {item}
-                </Tag>
+                </Badge>
               ))}
         </Card>
       </Col>
 
       {!isEmpty(security?.policies) && (
         <Col data-testid="contract-security-policy-container" span={24}>
-          <Typography.Text className="contract-security-policy-label">
+          <Typography className="contract-security-policy-label">
             {t('label.policy-plural')}
-          </Typography.Text>
+          </Typography>
 
           {renderSecurityPolicies}
         </Col>

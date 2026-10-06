@@ -19,7 +19,7 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchLg, XClose } from '@untitledui/icons';
+import { Search, XClose } from '@openmetadata/ui-core-components/icons';
 import { Modal, Progress } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
@@ -495,7 +495,7 @@ const AuditLogsPage = () => {
                 data-testid="audit-log-search-container">
                 <Input
                   className="tw:max-w-86"
-                  icon={SearchLg}
+                  icon={Search}
                   inputDataTestId="audit-log-search"
                   placeholder={t('label.search-audit-logs')}
                   value={searchInputValue}

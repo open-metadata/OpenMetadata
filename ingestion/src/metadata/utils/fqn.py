@@ -68,6 +68,10 @@ T = TypeVar("T", bound=BaseModel)
 FQN_SEPARATOR: str = "."
 fqn_build_registry = class_register()
 
+# basic.json#/definitions/entityName. The generated EntityName model drops the pattern, so only the server enforces it.
+ENTITY_NAME_MAX_LENGTH = 256
+_ENTITY_NAME_PATTERN = re.compile(r'^((?!::)[^>"\x00-\x1f])*$')
+
 
 class FQNBuildingException(Exception):  # noqa: N818
     """
@@ -148,6 +152,12 @@ def _build(*args, quote: bool = True) -> str:
 
 def unquote_name(name: str) -> str:
     return name[1:-1] if name and name[0] == '"' and name[-1] == '"' else name
+
+
+def is_valid_entity_name(name: str) -> bool:
+    """Whether the server would accept ``name`` as an entity name (no '"', '>', '::' or control characters)."""
+    # fullmatch, since re's `$` also matches before a trailing newline
+    return 0 < len(name) <= ENTITY_NAME_MAX_LENGTH and _ENTITY_NAME_PATTERN.fullmatch(name) is not None
 
 
 def quote_name(name: str) -> str:
@@ -923,7 +933,7 @@ def get_query_checksum(query: str) -> str:
     Prepare the query checksum from its string representation.
     The checksum is used as the query's name.
     """
-    return hashlib.md5(query.encode()).hexdigest()
+    return hashlib.md5(query.encode(), usedforsecurity=False).hexdigest()
 
 
 # Not adding container since children can have recursive slots: service.container1.container2...

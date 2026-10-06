@@ -51,13 +51,15 @@ const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <Box
-      className="tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3.5 tw:shadow-xs"
+      className="tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-3.5 tw:shadow-xs"
       data-testid={testId}
       direction="col"
       gap={2}>
       <Box align="center" gap={2}>
         <FeaturedIcon
-          className="tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-600 tw:[&_svg]:stroke-[2px]"
+          // FeaturedIcon's gray/light theme switches to a solid gray tile in dark;
+          // keep the gray-blue tint, whose utility scale flips per theme.
+          className="tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-600 tw:dark:bg-utility-gray-blue-50 tw:dark:text-utility-gray-blue-600 tw:[&_svg]:stroke-[2px]"
           color="gray"
           shape="square"
           size="md"

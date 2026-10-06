@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Card } from '@openmetadata/ui-core-components';
 import CodeMirror from '@uiw/react-codemirror';
-import { Button, Card, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/copy-left.svg';
@@ -74,41 +75,60 @@ const CodeEditor = ({
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
   return (
+    // Light values reproduce the antd Card this replaced.
     <Card
-      className={classNames(className, 'code-editor-new-style')}
-      data-testid="code-mirror-container"
-      extra={
-        showCopyButton && (
-          <div data-testid="copy-button-container">
-            <Tooltip
-              title={
-                hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
-              }>
-              <Button
-                className="flex-center"
-                data-testid="query-copy-button"
-                icon={<CopyIcon height={16} width={16} />}
-                size="small"
-                type="text"
-                onClick={() => onCopyToClipBoard(internalValue)}
-              />
-            </Tooltip>
+      className={classNames(
+        'tw:overflow-visible tw:border-utility-gray-blue-100 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle',
+        className,
+        'code-editor-new-style'
+      )}
+      data-testid="code-mirror-container">
+      {(title || showCopyButton) && (
+        <div
+          className={classNames(
+            'tw:-mb-px tw:flex tw:min-h-7 tw:items-center tw:rounded-t-xl',
+            'tw:border-b tw:border-black/6 tw:bg-secondary tw:px-6 tw:text-base',
+            'tw:leading-[1.5715] tw:font-medium tw:text-black/85',
+            'tw:dark:border-secondary tw:dark:text-primary'
+          )}>
+          <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:[&_.ant-form-item-label]:p-0!">
+            {title}
           </div>
-        )
-      }
-      title={title}>
-      <CodeMirror
-        basicSetup={false}
-        className={editorClass}
-        extensions={editorExtensions}
-        indentWithTab={false}
-        ref={editorRef}
-        theme="none"
-        value={internalValue}
-        onBlur={handleBlur}
-        onChange={handleChange}
-        {...(onFocus && { onFocus })}
-      />
+          {showCopyButton && (
+            <div
+              className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
+              data-testid="copy-button-container">
+              <Tooltip
+                title={
+                  hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
+                }>
+                <Button
+                  className="flex-center"
+                  data-testid="query-copy-button"
+                  icon={<CopyIcon height={16} width={16} />}
+                  size="small"
+                  type="text"
+                  onClick={() => onCopyToClipBoard(internalValue)}
+                />
+              </Tooltip>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="tw:p-5">
+        <CodeMirror
+          basicSetup={false}
+          className={editorClass}
+          extensions={editorExtensions}
+          indentWithTab={false}
+          ref={editorRef}
+          theme="none"
+          value={internalValue}
+          onBlur={handleBlur}
+          onChange={handleChange}
+          {...(onFocus && { onFocus })}
+        />
+      </div>
     </Card>
   );
 };

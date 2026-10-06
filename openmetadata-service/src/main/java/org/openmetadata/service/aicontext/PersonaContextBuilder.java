@@ -160,6 +160,7 @@ public class PersonaContextBuilder {
     PersonaContext context =
         new PersonaContext()
             .withPersona(persona.getEntityReference())
+            .withPrompt(prompt(definition))
             .withGeneratedAt(System.currentTimeMillis())
             .withSharedKnowledge(sharedKnowledge)
             .withSearchScope(searchScope(definition));
@@ -171,6 +172,17 @@ public class PersonaContextBuilder {
     return persona.getContextDefinition() == null
         ? new PersonaContextDefinition()
         : persona.getContextDefinition();
+  }
+
+  /**
+   * The admin's instructions for the assistant, withheld while the context is switched off so a
+   * disabled persona reaches the assistant with nothing at all. Never rendered into the markdown,
+   * which consumers treat as reference data rather than instructions.
+   */
+  static String prompt(PersonaContextDefinition definition) {
+    return Boolean.TRUE.equals(definition.getEnabled()) && !nullOrEmpty(definition.getPrompt())
+        ? definition.getPrompt()
+        : null;
   }
 
   static int characterBudget(PersonaContextDefinition definition) {

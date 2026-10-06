@@ -13,12 +13,11 @@
 #
 # Each connector lives under ingestion/tests/cli_e2e_v2/<connector>/ and
 # is a self-contained pytest module (no inheritance). The matrix below
-# grows by one entry per connector migration PR; the connector's
-# corresponding entry is removed from py-cli-e2e-tests.yml in the same PR.
+# grows as migrated connector suites are ready for CI; each connector's
+# v1 entry remains until the replacement has passed its stability window.
 #
-# Triggers: workflow_dispatch only during the stabilization window for
-# the MySQL pilot. The schedule cron will be added once the pilot is
-# consistently green (see spec §7.1).
+# Triggers: workflow_dispatch during the v2 stabilization window. A
+# schedule can be added after the connector suites are consistently green.
 
 name: py-cli-e2e-tests-v2
 on:
@@ -27,7 +26,7 @@ on:
       connectors:
         description: "Connectors to run (JSON array)"
         required: true
-        default: '["mysql"]'
+        default: '["mysql", "postgres", "bigquery", "oracle"]'
 
 permissions:
   id-token: write
@@ -40,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        connector: ${{ fromJSON(inputs.connectors || '["mysql"]') }}
+        connector: ${{ fromJSON(inputs.connectors || '["mysql", "postgres", "bigquery", "oracle"]') }}
     environment: test
     env:
       E2E_CONNECTOR: ${{ matrix.connector }}
@@ -50,7 +49,7 @@ jobs:
         shell: bash
         run: |
           case "$E2E_CONNECTOR" in
-            mysql) ;;
+            mysql|postgres|bigquery|oracle) ;;
             *) echo "Unsupported E2E connector" >&2; exit 1 ;;
           esac
 
@@ -75,14 +74,9 @@ jobs:
 
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test
+        if: matrix.connector != 'bigquery'
         env:
-          # MySQL test data lives in a dedicated MySQL container that the
-          # session-scoped `mysql_container` pytest fixture (testcontainers)
-          # boots, bootstraps with the OM-doc minimum grants, and tears
-          # down. Teammates run the same way locally — no env plumbing.
-          # Only OM-server admin creds (used to mint the ingestion-bot
-          # JWT) need to be exported here; they come from the bundled
-          # docker-compose and are not secrets.
+          # The bundled server uses these admin credentials to mint a JWT.
           OM_ADMIN_EMAIL: admin@open-metadata.org
           OM_ADMIN_PASSWORD: admin
         run: |
@@ -91,6 +85,28 @@ jobs:
           mkdir -p junit
           pytest -v \
             --e2e-contract-check \
+            --junitxml="junit/test-results-v2-${E2E_CONNECTOR}.xml" \
+            "tests/cli_e2e_v2/${E2E_CONNECTOR}"
+        shell: bash
+
+      - name: Run BigQuery CLI E2E v2 tests
+        id: e2e-v2-bigquery-test
+        if: matrix.connector == 'bigquery'
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+          E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          E2E_BQ_PROJECT_ID2: ${{ secrets.TEST_BQ_PROJECT_ID2 }}
+          E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
+          E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+          E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
+        run: |
+          source env/bin/activate
+          cd ingestion
+          mkdir -p junit
+          pytest -v \
+            --e2e-contract-check \
+            -n 6 \
             --junitxml="junit/test-results-v2-${E2E_CONNECTOR}.xml" \
             "tests/cli_e2e_v2/${E2E_CONNECTOR}"
         shell: bash

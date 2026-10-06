@@ -36,6 +36,8 @@ interface TabItemProps {
   onRemove?: (targetKey: TargetKey) => void;
   onItemClick?: (key: string) => void;
   shouldHide?: boolean;
+  /** Offers "Edit widgets"; defaults to the tab's own editable flag. */
+  isEditable?: boolean;
 }
 
 export const TabItem = ({
@@ -47,6 +49,7 @@ export const TabItem = ({
   onRemove,
   onItemClick,
   shouldHide,
+  isEditable = item.editable,
 }: TabItemProps) => {
   const { t } = useTranslation();
   const [{ isDragging }, drag] = useDrag({
@@ -58,7 +61,7 @@ export const TabItem = ({
   });
 
   const tabMenuItems: MenuProps['items'] = [
-    ...(item.editable
+    ...(isEditable
       ? [
           {
             label: t('label.edit-widget-plural'),

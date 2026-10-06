@@ -403,6 +403,48 @@ describe('DestinationFormItem', () => {
     expect(testAlertDestination).not.toHaveBeenCalled();
   });
 
+  it('does not call API when every external destination has empty config', async () => {
+    mockGetFormattedDestinations.mockReturnValue([
+      {
+        category: SubscriptionCategory.External,
+        type: SubscriptionType.Slack,
+        config: {},
+      },
+      {
+        category: SubscriptionCategory.External,
+        type: SubscriptionType.Webhook,
+        config: {},
+      },
+    ]);
+
+    renderWithForm(<DestinationFormItem />, {
+      resources: ['container'],
+      destinations: [
+        {
+          destinationType: SubscriptionType.Slack,
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Slack,
+        },
+        {
+          destinationType: SubscriptionType.Webhook,
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Webhook,
+        },
+      ],
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-destination-button'));
+    });
+
+    await waitFor(() => {
+      expect(mockGetFormattedDestinations).toHaveBeenCalled();
+    });
+
+    expect(testAlertDestination).not.toHaveBeenCalled();
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
   it('shows error toast when testAlertDestination fails', async () => {
     const mockError = new Error('Network error');
 

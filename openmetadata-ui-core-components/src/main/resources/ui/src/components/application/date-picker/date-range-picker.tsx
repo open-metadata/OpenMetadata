@@ -8,7 +8,7 @@ import {
   today,
 } from '@internationalized/date';
 import { useControlledState } from '@react-stately/utils';
-import { Calendar as CalendarIcon } from '@untitledui/icons';
+import { Calendar as CalendarIcon } from '../../../icons';
 import { useDateFormatter } from 'react-aria';
 import type {
   DateRangePickerProps as AriaDateRangePickerProps,
@@ -37,6 +37,10 @@ interface DateRangePickerProps extends AriaDateRangePickerProps<DateValue> {
   onApply?: () => void;
   /** The function to call when the cancel button is clicked. */
   onCancel?: () => void;
+  /** Size of the trigger button, to line up with the inputs beside it. */
+  size?: 'sm' | 'md';
+  /** Stretch the trigger across its container instead of sizing it to the dates. */
+  fullWidth?: boolean;
 }
 
 export const DateRangePicker = ({
@@ -45,6 +49,8 @@ export const DateRangePicker = ({
   onChange,
   onApply,
   onCancel,
+  size = 'md',
+  fullWidth = false,
   ...props
 }: DateRangePickerProps) => {
   const { t } = useCoreTranslation();
@@ -133,7 +139,11 @@ export const DateRangePicker = ({
       value={value}
       onChange={setValue}>
       <AriaGroup>
-        <Button color="secondary" iconLeading={CalendarIcon} size="md">
+        <Button
+          className={cx(fullWidth && 'tw:w-full tw:justify-start')}
+          color="secondary"
+          iconLeading={CalendarIcon}
+          size={size}>
           {!value ? (
             <span className="tw:text-placeholder">
               {t('label.select-dates', 'Select dates')}
@@ -158,7 +168,7 @@ export const DateRangePicker = ({
         {/* `outline-[3px]` ports the bare `tw:ring` faithfully (3px in Tailwind v4 — likely
             unintended vs ring-1 elsewhere; tracked as a follow-up). `focus:outline-hidden`
             removed: it would suppress this border. */}
-        <AriaDialog className="tw:flex tw:rounded-2xl tw:bg-primary tw:shadow-xl tw:outline-[3px] tw:outline-secondary_alt">
+        <AriaDialog className="tw:flex tw:rounded-2xl tw:bg-overlay-surface tw:shadow-xl tw:outline-[3px] tw:outline-secondary_alt">
           {({ close }) => (
             <>
               <div className="tw:hidden tw:w-38 tw:flex-col tw:gap-0.5 tw:border-r tw:border-solid tw:border-secondary tw:p-3 tw:lg:flex">

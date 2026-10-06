@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Card, Divider } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import entries from 'lodash/entries';
 import isNumber from 'lodash/isNumber';
 import isUndefined from 'lodash/isUndefined';
@@ -24,7 +24,10 @@ import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
-import { getIncidentDetails } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
+import {
+  getIncidentDetails,
+  PLACED_KEYS_FIELD,
+} from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
   convertSecondsToHumanReadableFormat,
   formatDateTime,
@@ -71,7 +74,16 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
     } else if (status === TestCaseStatus.Success) {
       statusColor = GREEN_3;
     }
-    const data = entries(omit(payloadData, [...OMITTED_TOOLTIP_PAYLOAD_KEYS]));
+    // A placed value only positions a run that recorded nothing on the chart.
+    // Listing it would report a result the run never produced.
+    const placedKeys = (payloadData[PLACED_KEYS_FIELD] as string[]) ?? [];
+    const data = entries(
+      omit(payloadData, [
+        ...OMITTED_TOOLTIP_PAYLOAD_KEYS,
+        PLACED_KEYS_FIELD,
+        ...placedKeys,
+      ])
+    );
 
     return {
       status,
@@ -138,7 +150,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
       onMouseLeave={onMouseLeave}>
       <div className="test-summary-tooltip-container">
         <div className="tooltip-date-time">{formattedDateTime}</div>
-        <Divider className="tooltip-separator" />
+        <Divider dashed className="tw:my-2" />
         <ul data-testid="test-summary-tooltip-container">
           <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
             <Typography as="span" className="flex items-center text-grey-muted">

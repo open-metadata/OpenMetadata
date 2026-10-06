@@ -12,7 +12,7 @@
  */
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
-import { FilterFunnel01, XClose } from '@untitledui/icons';
+import { FilterFunnel01, XClose } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

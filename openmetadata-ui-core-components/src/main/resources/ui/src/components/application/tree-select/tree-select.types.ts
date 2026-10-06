@@ -32,6 +32,10 @@ export interface TreeSelectNode<T = unknown> {
   count?: number;
   /** Set when the loaded children are a truncated page, not the whole branch. */
   hasMoreChildren?: boolean;
+  /** Direct-child total; with `children.length` it gives the "N remaining" count. */
+  childrenTotal?: number;
+  /** Cursor for this branch's next page, echoed back as `after`. */
+  childrenCursor?: string;
   /**
    * When true, children of this node are mutually exclusive (radio buttons)
    * and this node itself will not render a selection control.
@@ -44,6 +48,10 @@ export interface TreeSelectDataFetcherParams {
   searchTerm?: string;
   parentId?: string;
   pageSize?: number;
+  /** Cursor from the previous page; set only when loading more of a branch. */
+  after?: string;
+  /** Every descendant in one response; a cascade cannot select a page. */
+  loadAll?: boolean;
   signal?: AbortSignal;
 }
 
@@ -51,6 +59,8 @@ export interface TreeSelectDataResponse<T = unknown> {
   nodes: TreeSelectNode<T>[];
   hasMore?: boolean;
   total?: number;
+  /** Cursor for the next page; required for `hasMore` to be actionable. */
+  nextCursor?: string;
 }
 
 export type TreeSelectDataFetcher<T = unknown> = (
@@ -103,6 +113,12 @@ export interface TreeSelectProps<T = unknown> {
   showCheckbox?: boolean;
   /** @default true */
   showIcon?: boolean;
+  /**
+   * When false, suppresses the expand/collapse chevron entirely — use for flat
+   * trees where no node has children (e.g. a classification tag list).
+   * @default true
+   */
+  showExpandIcon?: boolean;
   /** Selecting a node also selects/deselects all of its descendants. @default false */
   cascadeSelection?: boolean;
 
@@ -125,6 +141,30 @@ export interface TreeSelectProps<T = unknown> {
    */
   triggerVariant?: TreeSelectTriggerVariant;
   /**
+   * Extra classes for the built-in `button` trigger — e.g. a max width plus
+   * `tw:truncate` so a long label cannot stretch its container.
+   */
+  triggerClassName?: string;
+  /**
+   * Let a custom `renderTrigger` stretch to its container. Opt-in: the wrapper
+   * is content-sized by default, which is what inline triggers (tag and
+   * glossary pickers, TeamsSelectable) expect.
+   */
+  fullWidthTrigger?: boolean;
+  /**
+   * Render each selected value in the `input` trigger yourself — e.g. as the
+   * domain chip rather than plain label text. Applies to single and multiple
+   * alike; when set, the built-in chip/label rendering steps aside so the two
+   * cannot disagree.
+   */
+  renderSelectedItem?: (node: TreeSelectNode<T>) => ReactNode;
+  /**
+   * Handle a failed `fetchData` yourself. Without this the raw error message
+   * is toasted, which for an HTTP transport is an untranslated string like
+   * "Request failed with status code 500".
+   */
+  onFetchError?: (error: unknown) => void;
+  /**
    * Draw a border around the button-variant trigger. Only applies when
    * `triggerVariant` is `'button'`. Defaults to `false` (borderless text
    * button — the quick-filter look).
@@ -137,6 +177,8 @@ export interface TreeSelectProps<T = unknown> {
   showSelectAll?: boolean;
   /** @default 'immediate' */
   commitMode?: TreeSelectCommitMode;
+  /** Gap between trigger and dropdown, in px. @default 8 */
+  offset?: number;
   /** Controls the dropdown; omit to let the component own its open state. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -154,14 +196,6 @@ export interface TreeSelectProps<T = unknown> {
    * @default 2
    */
   maxIndentLevel?: number;
-  /**
-   * Enables an inline "create" action row at the top of the dropdown. Called
-   * with the current search term so the consumer can prefill a create form.
-   * The row only renders when `createLabel` is also provided.
-   */
-  onCreate?: (searchTerm: string) => void;
-  /** Consumer-translated label for the `onCreate` row (e.g. "Add new domain"). */
-  createLabel?: string;
 
   onNodeExpand?: (nodeId: string) => void;
   onNodeCollapse?: (nodeId: string) => void;

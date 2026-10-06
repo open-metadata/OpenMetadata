@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Select, Switch } from 'antd';
+import { Toggle } from '@openmetadata/ui-core-components';
+import { Button, Col, Form, Input, Row, Select } from 'antd';
 import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
@@ -92,10 +93,11 @@ function EmailConfigForm({
         <Row>
           <Col span={8}>{t('label.enable-smtp-server')}</Col>
           <Col span={16}>
-            <Switch
+            <Toggle
               data-testid="smtp-server-input"
-              defaultChecked={emailConfigValues?.enableSmtpServer}
+              defaultSelected={emailConfigValues?.enableSmtpServer}
               id="root/enableSmtpServer"
+              size="sm"
               onChange={(value) =>
                 form.setFieldsValue({ enableSmtpServer: value })
               }

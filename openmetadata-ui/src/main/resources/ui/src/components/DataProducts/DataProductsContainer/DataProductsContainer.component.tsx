@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tag } from 'antd';
+import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -142,9 +142,12 @@ const DataProductsContainer = ({
 
     return dataProducts.map((product) => {
       return (
-        <Tag
-          className="tag-chip tag-chip-content"
+        <Badge
+          className="tag-chip tag-chip-content tw:mr-2 tw:inline-flex"
+          color="gray"
           key={`dp-tags-${product.fullyQualifiedName}`}
+          size="sm"
+          type="color"
           onClick={() => redirectLink(product.fullyQualifiedName ?? '')}>
           <div className="d-flex w-full">
             <div className="d-flex items-center p-x-xs w-full gap-1">
@@ -163,7 +166,7 @@ const DataProductsContainer = ({
               </Typography>
             </div>
           </div>
-        </Tag>
+        </Badge>
       );
     });
   }, [

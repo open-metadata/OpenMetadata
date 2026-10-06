@@ -31,7 +31,7 @@ const test = base.extend<{ adminPage: Page; restrictedUserPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -40,7 +40,7 @@ const test = base.extend<{ adminPage: Page; restrictedUserPage: Page }>({
   restrictedUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await restrictedUser.login(page);
+      await restrictedUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -155,7 +155,11 @@ test('Admin sees every domain and the All Domains option', async ({
 
   await openDomainDropdown(adminPage);
 
-  await expect(adminPage.getByTestId('tree-node-All Domains')).toBeVisible();
+  const allDomainsNode = adminPage.getByTestId('tree-node-All Domains');
+
+  await expect(allDomainsNode).toBeVisible();
+  // Scope is All by default, so that row must read as the active one.
+  await expect(allDomainsNode).toHaveAttribute('data-selected', 'true');
 
   await searchDomainInDropdownTree(adminPage, ownedDomainA);
   await expect(

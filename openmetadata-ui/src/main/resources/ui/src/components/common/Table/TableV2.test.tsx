@@ -218,4 +218,21 @@ describe('TableV2 tree regressions', () => {
     );
     expect(screen.getByText('sibling-value')).toBeInTheDocument();
   });
+
+  it('lets containerClassName override the default container border', () => {
+    const { container } = render(
+      <TableV2
+        columns={columns}
+        containerClassName="tw:border-subtle"
+        dataSource={[sibling]}
+        pagination={false}
+        rowKey="id"
+      />
+    );
+
+    const wrapper = container.querySelector('.table-container');
+
+    expect(wrapper).toHaveClass('tw:border-subtle');
+    expect(wrapper).not.toHaveClass('tw:border-utility-gray-200');
+  });
 });

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCcw01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -36,6 +36,7 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -67,6 +68,7 @@ const IncidentManagerDetailPage = ({
   isVersionPage?: boolean;
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const location = useCustomLocation();
   const originBreadcrumb = (
@@ -145,8 +147,8 @@ const IncidentManagerDetailPage = ({
                     }
                     incidentTask={incidentHeaderData.incidentTask}
                     nextRunTimestamp={nextRunTimestamp}
-                    parameterValues={testCase?.parameterValues}
                     taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                    testCase={testCase}
                     testCaseResult={testCase?.testCaseResult}
                     testCaseStatus={testCase?.testCaseStatus}
                     testCaseStatusData={incidentHeaderData.testCaseStatusData}
@@ -169,9 +171,7 @@ const IncidentManagerDetailPage = ({
       isVersionPage,
       nextRunTimestamp,
       tabs,
-      testCase?.parameterValues,
-      testCase?.testCaseResult,
-      testCase?.testCaseStatus,
+      testCase,
     ]
   );
 
@@ -342,10 +342,10 @@ const IncidentManagerDetailPage = ({
                 className={classNames(
                   'tw:relative tw:size-9 tw:shrink-0',
                   'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                 )}
                 justify="center">
-                <TestCaseIcon className="tw:size-5" />
+                <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
               </Box>
               <TestCaseHeaderTitle
                 displayName={displayName}
@@ -409,7 +409,13 @@ const IncidentManagerDetailPage = ({
               ))}
             </Tabs.List>
             {tabItems.map(({ key, children }) => (
-              <Tabs.Panel id={key} key={key}>
+              <Tabs.Panel
+                className={classNames({
+                  // Classic mode puts tab content on a white panel; AI mode keeps its own surface.
+                  'tw:rounded-xl tw:bg-surface': !isAiMode,
+                })}
+                id={key}
+                key={key}>
                 {children}
               </Tabs.Panel>
             ))}

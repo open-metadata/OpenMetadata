@@ -11,20 +11,22 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Owner } from '@openmetadata/ui-core-components';
+import {
+  Divider,
+  Owner,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
-  Divider,
   Dropdown,
   Form,
   Input,
   MenuProps,
   Row,
-  Skeleton,
   Space,
   Tooltip,
-  Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
@@ -66,7 +68,7 @@ import icTicket from '../../../../assets/svg/ic_ticket.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TaskAvailableTransition,
@@ -280,7 +282,7 @@ const ClampedAssignees = ({ assignees }: { assignees: EntityReference[] }) => {
             <UserPopOverCard userName={assignee.name ?? ''}>
               <ProfilePicture name={assignee.name ?? ''} width="24" />
             </UserPopOverCard>
-            <Typography.Text>{getEntityName(assignee)}</Typography.Text>
+            <Typography>{getEntityName(assignee)}</Typography>
           </div>
         ))}
       </div>
@@ -599,7 +601,7 @@ export const TaskTabNew = ({
       },
       ...TASK_ACTION_COMMON_ITEM,
     ];
-  }, [isTaskTags, suggestedValue]);
+  }, [isTaskTags, suggestedValue, t]);
 
   const latestAction = useMemo(() => {
     const resolutionStatus = last(testCaseResolutionStatus);
@@ -662,9 +664,9 @@ export const TaskTabNew = ({
   const taskColumnName = useMemo(() => {
     if (taskColumnLabel) {
       return (
-        <Typography.Text className="p-r-xss">
+        <Typography className="p-r-xss">
           {taskColumnLabel} {t('label.in-lowercase')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -706,7 +708,7 @@ export const TaskTabNew = ({
             <UserPopOverCard userName={task.createdBy?.name ?? ''}>
               <ProfilePicture name={task.createdBy?.name ?? ''} width="24" />
             </UserPopOverCard>
-            <Typography.Text>{task.createdBy?.name}</Typography.Text>
+            <Typography>{task.createdBy?.name}</Typography>
           </Link>
         ),
       },
@@ -766,11 +768,11 @@ export const TaskTabNew = ({
           : button
       );
 
-  const handleTaskLinkClick = () => {
+  const handleTaskLinkClick = useCallback(() => {
     navigate({
       pathname: getTaskDetailPathFromTask(task),
     });
-  };
+  }, [navigate, task]);
 
   const taskLinkTitleElement = useMemo(
     () =>
@@ -781,21 +783,21 @@ export const TaskTabNew = ({
             data-testid="task-title"
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography.Text>
+            <Typography className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography>
 
-            <Typography.Text className="p-xss task-details">
+            <Typography className="p-xss task-details">
               {t(TASK_ENTITY_TYPES[task.type])}
-            </Typography.Text>
+            </Typography>
 
             {taskColumnName}
 
-            <Typography.Text
+            <Typography
               className="break-all text-sm entity-link header-link whitespace-normal"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
-            </Typography.Text>
+            </Typography>
 
-            <Typography.Text className="p-l-xss entity-type header-link whitespace-normal">{`(${entityType})`}</Typography.Text>
+            <Typography className="p-l-xss entity-type header-link whitespace-normal">{`(${entityType})`}</Typography>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -810,6 +812,14 @@ export const TaskTabNew = ({
       t,
     ]
   );
+
+  const refreshIncidentStatus = async (taskId: string) => {
+    const refreshed = await getListTestCaseIncidentByStateId(taskId);
+    const latest = refreshed?.data?.[0];
+    if (latest) {
+      updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
+    }
+  };
 
   const updateTaskData = async (
     data: { newValue?: string; payload?: TaskPayload; comment?: string },
@@ -837,11 +847,7 @@ export const TaskTabNew = ({
       setActiveTask(updatedTask);
       updateTask(updatedTask);
 
-      const refreshed = await getListTestCaseIncidentByStateId(task.id);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
-      }
+      await refreshIncidentStatus(task.id);
 
       if (taskRemainsOpen) {
         await fetchUpdatedThread(task.id, true);
@@ -920,7 +926,7 @@ export const TaskTabNew = ({
         transition.id
       );
     },
-    [initialTaskPayload, task, taskFormSchema]
+    [initialTaskPayload, task, taskFormSchema, updateTaskData]
   );
 
   const onGlossaryTaskResolve = (status = 'approved') => {
@@ -1140,11 +1146,7 @@ export const TaskTabNew = ({
       });
       setActiveTask(updatedTask);
       updateTask(updatedTask);
-      const refreshed = await getListTestCaseIncidentByStateId(taskId);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
-      }
+      await refreshIncidentStatus(taskId);
       setIsEditAssignee(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -1174,11 +1176,7 @@ export const TaskTabNew = ({
         comment: testCaseFailureComment || undefined,
         payload: testCaseFailureReason ? { testCaseFailureReason } : undefined,
       });
-      const refreshed = await getListTestCaseIncidentByStateId(taskId);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        updateTestCaseIncidentStatus([...testCaseResolutionStatus, latest]);
-      }
+      await refreshIncidentStatus(taskId);
       rest.onAfterClose?.();
       setShowEditTaskModel(false);
     } catch (error) {
@@ -1260,18 +1258,6 @@ export const TaskTabNew = ({
       onTaskClose();
     }
   };
-
-  const renderCommentButton = useMemo(() => {
-    return (
-      <Button
-        data-testid="comment-button"
-        disabled={isEmpty(comment)}
-        type="primary"
-        onClick={onSave}>
-        {t('label.comment')}
-      </Button>
-    );
-  }, [comment, onSave]);
 
   const workflowTransitionActions = useMemo(() => {
     if (!isWorkflowDrivenTask || !task.availableTransitions?.length) {
@@ -1420,11 +1406,11 @@ export const TaskTabNew = ({
     isAssignee,
     isCreator,
     isPartOfAssigneeTeam,
-    renderCommentButton,
     handleGlossaryTaskMenuClick,
     onTaskDropdownClick,
     taskHandler.approvedValue,
     taskHandler.rejectedValue,
+    t,
   ]);
 
   const testCaseResultFlow = useMemo(() => {
@@ -1459,7 +1445,16 @@ export const TaskTabNew = ({
         </Dropdown.Button>
       </div>
     );
-  }, [task, isAssignee, isPartOfAssigneeTeam, taskAction, renderCommentButton]);
+  }, [
+    task,
+    isAssignee,
+    isActionLoading,
+    isCreator,
+    isPartOfAssigneeTeam,
+    onTestCaseTaskDropdownClick,
+    permissions,
+    taskAction,
+  ]);
 
   const actionButtons = useMemo(() => {
     if (isWorkflowDrivenTask) {
@@ -1550,9 +1545,11 @@ export const TaskTabNew = ({
     testCaseResultFlow,
     isTaskTestCaseResult,
     workflowTransitionActions,
-    renderCommentButton,
     handleNoSuggestionMenuItemClick,
     onNoSuggestionTaskDropdownClick,
+    hasEditAccess,
+    noSuggestionTaskMenuOptions,
+    t,
   ]);
 
   const initialFormValue = useMemo(
@@ -1586,7 +1583,7 @@ export const TaskTabNew = ({
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
     setOptions(assigneeOptions);
-  }, [initialAssignees, assigneeOptions]);
+  }, [assigneesForm, initialAssignees, assigneeOptions]);
 
   useEffect(() => {
     setTaskFormSchema(getDefaultTaskFormSchema(task.type, task.category));
@@ -1639,9 +1636,9 @@ export const TaskTabNew = ({
               span={8}
               style={{ paddingLeft: 0 }}>
               <UserIcon height={16} />
-              <Typography.Text className="incident-manager-details-label">
+              <Typography className="incident-manager-details-label">
                 {t('label.created-by')}
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={16} style={{ paddingLeft: '2px' }}>
               <Link
@@ -1656,7 +1653,7 @@ export const TaskTabNew = ({
                   </div>
                 </UserPopOverCard>
 
-                <Typography.Text>{task.createdBy?.name}</Typography.Text>
+                <Typography>{task.createdBy?.name}</Typography>
               </Link>
             </Col>
 
@@ -1715,9 +1712,9 @@ export const TaskTabNew = ({
                   span={8}
                   style={{ paddingLeft: 0 }}>
                   <AssigneesIcon height={16} />
-                  <Typography.Text className="incident-manager-details-label @grey-8">
+                  <Typography className="incident-manager-details-label @grey-8">
                     {t('label.assignee-plural')}
-                  </Typography.Text>
+                  </Typography>
                 </Col>
                 <Col
                   className="flex gap-2"
@@ -1733,9 +1730,9 @@ export const TaskTabNew = ({
                           />
                         </div>
                       </UserPopOverCard>
-                      <Typography.Text className="text-grey-body">
+                      <Typography className="text-grey-body">
                         {getEntityName(task?.assignees[0])}
-                      </Typography.Text>
+                      </Typography>
                       {editAssigneeButton}
                     </div>
                   ) : (
@@ -1778,53 +1775,50 @@ export const TaskTabNew = ({
     return (
       <div className="action-required-card d-flex flex-wrap justify-between items-center">
         <Col>
-          <Typography.Text className="action-required-text">
+          <Typography className="action-required-text">
             {t('label.action-required')}
-          </Typography.Text>
+          </Typography>
         </Col>
         {actionButtons}
       </div>
     );
   };
 
-  const closeFeedEditor = () => {
+  const closeFeedEditor = useCallback(() => {
     setShowFeedEditor(false);
-  };
+  }, []);
 
   const showRejectInEditModal = useMemo(
     () => !isTaskTestCaseResult && !showAddSuggestionButton,
     [isTaskTestCaseResult, showAddSuggestionButton]
   );
 
-  const editTaskModalFooter = useMemo(
-    () => [
-      <Button
-        key="cancel"
-        onClick={() => {
-          form.resetFields();
-          setShowEditTaskModel(false);
-        }}>
-        {t('label.cancel')}
-      </Button>,
-      showRejectInEditModal ? (
-        <Button key="reject" onClick={onTaskReject}>
-          {t('label.reject')}
-        </Button>
-      ) : null,
-      <Button key="submit" type="primary" onClick={() => form.submit()}>
-        {t('label.ok')}
-      </Button>,
-    ],
-    [form, onTaskReject, showRejectInEditModal, t]
-  );
+  const editTaskModalFooter = [
+    <Button
+      key="cancel"
+      onClick={() => {
+        form.resetFields();
+        setShowEditTaskModel(false);
+      }}>
+      {t('label.cancel')}
+    </Button>,
+    showRejectInEditModal ? (
+      <Button key="reject" onClick={onTaskReject}>
+        {t('label.reject')}
+      </Button>
+    ) : null,
+    <Button key="submit" type="primary" onClick={() => form.submit()}>
+      {t('label.ok')}
+    </Button>,
+  ];
 
   const comments = useMemo(() => {
     if (isPostsLoading) {
       return (
         <Space className="m-y-md" direction="vertical" size={16}>
-          <Skeleton active />
-          <Skeleton active />
-          <Skeleton active />
+          <SkeletonParagraph />
+          <SkeletonParagraph />
+          <SkeletonParagraph />
         </Space>
       );
     }
@@ -1884,7 +1878,7 @@ export const TaskTabNew = ({
 
   useEffect(() => {
     closeFeedEditor();
-  }, [task.id]);
+  }, [closeFeedEditor, task.id]);
 
   useEffect(() => {
     setHasAddedComment(false);
@@ -1900,9 +1894,9 @@ export const TaskTabNew = ({
     return (
       <Col span={24}>
         <div className="task-proposed-changes">
-          <Typography.Text className="task-proposed-changes-title">
+          <Typography className="task-proposed-changes-title">
             {t('label.proposed-change-plural')}
-          </Typography.Text>
+          </Typography>
           <div className="task-proposed-changes-fields">
             {Object.entries(proposedChanges).map(
               ([field, { added, removed }]) => {
@@ -1910,9 +1904,9 @@ export const TaskTabNew = ({
 
                 return (
                   <div className="task-proposed-changes-field-row" key={field}>
-                    <Typography.Text className="task-proposed-changes-field-name">
+                    <Typography className="task-proposed-changes-field-name">
                       {startCase(field)}
-                    </Typography.Text>
+                    </Typography>
                     <div className="task-proposed-changes-chips">
                       {removed.map((val) =>
                         getUrl ? (
@@ -2018,12 +2012,14 @@ export const TaskTabNew = ({
     return (
       <Col span={24}>
         <div className="activity-feed-comments-container d-flex flex-col">
-          <Typography.Text className={commentsTitleClassName}>
+          <Typography className={commentsTitleClassName}>
             {t('label.comment-plural')}
-          </Typography.Text>
+          </Typography>
 
           {showFeedEditor ? (
             <ActivityFeedEditorNew
+              // Revealed by a click on its placeholder, so it takes focus.
+              focused
               className={feedEditorClassName}
               onSave={onSave}
               onTextChange={setComment}
@@ -2203,7 +2199,7 @@ export const TaskTabNew = ({
 
         {taskLinkTitleElement}
       </Col>
-      <Divider className="m-0" type="horizontal" />
+      <Divider className="m-0" />
       {!darHeaderRows && <Col span={24}>{taskHeader}</Col>}
       {renderProposedChangesSection()}
       <Col span={24}>

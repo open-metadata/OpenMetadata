@@ -14,13 +14,11 @@ import { isString, omit } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
-import {
-  ResourceEntity,
-  type UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
+import { type UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
+import { ResourceEntity } from '../enums/permissions.enum';
 import type { Tag } from '../generated/entity/classification/tag';
 import type {
   AssetCertification,

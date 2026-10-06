@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, MenuProps, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -26,6 +27,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
+import { QueryVoteType } from '../../../../interface/entity/vote.interface';
 import { deleteQuery } from '../../../../rest/queryAPI';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import queryClassBase from '../../../../utils/QueryClassBase';
@@ -33,7 +35,6 @@ import { getQueryPath } from '../../../../utils/RouterUtils';
 import { pluralize } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
-import { QueryVoteType } from '../TableQueries.interface';
 import './query-card-extra-option.style.less';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
@@ -161,9 +162,9 @@ const QueryCardExtraOption = ({
         <QueryHeaderButton onClickHandler={onExpandClick} />
       )}
 
-      <Tag className="query-lines" data-testid="query-line">
+      <Badge color="gray" data-testid="query-line" size="sm">
         {queryLine}
-      </Tag>
+      </Badge>
 
       <Tooltip title={t('label.up-vote')}>
         <Button

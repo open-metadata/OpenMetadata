@@ -155,7 +155,7 @@ describe('UserProfileIcon', () => {
   });
 
   const openDropdown = () => {
-    const userButton = screen.getByRole('button');
+    const userButton = screen.getByTestId('dropdown-profile');
     fireEvent.click(userButton);
 
     return userButton;
@@ -173,7 +173,7 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByTestId('dropdown-profile')).toBeInTheDocument();
   });
 
   it('should render extra profile menu items provided by the navbar util', () => {

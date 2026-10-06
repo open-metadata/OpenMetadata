@@ -20,6 +20,7 @@ const SliderWithInput = ({
   value,
   onChange,
   className,
+  min = 0,
 }: SliderWithInputProps) => {
   const { t } = useTranslation();
 
@@ -28,11 +29,11 @@ const SliderWithInput = ({
       <Col flex="auto">
         <Slider
           marks={{
-            0: '0%',
+            [min]: `${min}%`,
             100: '100%',
           }}
           max={100}
-          min={0}
+          min={min}
           tooltip={{ open: false }}
           value={value}
           onChange={onChange}
@@ -44,7 +45,7 @@ const SliderWithInput = ({
             data-testid="slider-input"
             formatter={percentageFormatter}
             max={100}
-            min={0}
+            min={min}
             step={1}
             value={value}
             onChange={onChange}

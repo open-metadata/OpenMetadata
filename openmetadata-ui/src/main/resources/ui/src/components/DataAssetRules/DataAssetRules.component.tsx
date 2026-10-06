@@ -12,18 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Form,
-  Input,
-  Modal,
-  Row,
-  Space,
-  Switch,
-  Table,
-  Typography,
-} from 'antd';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Form, Input, Modal, Row, Space, Table } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -350,8 +340,9 @@ export const useSemanticsRuleList = ({
         title: t('label.enabled'),
         dataIndex: 'enabled',
         render: (enabled: boolean, record: SemanticsRule) => (
-          <Switch
-            checked={enabled}
+          <Toggle
+            isSelected={enabled}
+            size="sm"
             onChange={() => {
               handleSave({ ...record, enabled: !enabled });
             }}
@@ -394,11 +385,11 @@ export const useSemanticsRuleList = ({
             height={SIZE.MEDIUM}
             width={SIZE.MEDIUM}
           />
-          <Typography.Text>
+          <Typography>
             {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
               entity: t('label.data-asset-rules'),
             })}
-          </Typography.Text>
+          </Typography>
           <Button
             ghost
             className="add-button"

@@ -175,9 +175,57 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "status": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer"
+      "statusReason": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
+      "supersededBy": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          }
+        }
+      },
+      "disputes": {
+        "properties": {
+          "memory": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              }
+            }
+          },
+          "reason": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "detectedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          }
+        }
       },
       "pinned": {
         "type": "boolean"
@@ -200,6 +248,9 @@
         "normalizer": "lowercase_normalizer"
       },
       "sharedWithIds": {
+        "type": "keyword"
+      },
+      "anchorId": {
         "type": "keyword"
       },
       "primaryEntity": {

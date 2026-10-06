@@ -26,8 +26,11 @@ import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
+import { okJson } from './apiResponse';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
+import { claimFirstBoot } from './storageStateRecovery';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
@@ -293,6 +296,12 @@ export const redirectToHomePage = async (
   // is the only hook that reaches all of them; the call is idempotent.
   await installServerLoadReducers(page.context());
   await disableEtagConditionalReads(page);
+  // Claimed before goto so it cannot miss the boot's auth decision. The
+  // waitForURL below resolves before a signed-out boot redirects to /signin,
+  // and the loader check passes on the login page too, so without this a lost
+  // storageState token surfaces 60s later as an unrelated-looking failure.
+  // Undefined unless this is the context's first navigation.
+  const firstBootRecovery = claimFirstBoot(page, '/my-data');
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
@@ -300,14 +309,21 @@ export const redirectToHomePage = async (
     waitUntil: 'domcontentloaded',
   });
 
+  if (await firstBootRecovery) {
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  }
+
   if (_waitForLoaders) {
     await waitForAllLoadersToDisappear(page);
   }
 };
 
 export const redirectToExplorePage = async (page: Page) => {
-  await page.goto('/explore');
-  await page.waitForURL('**/explore');
+  // `load` (the default) also waits for every image, font and stylesheet; on a
+  // slow runner that alone can exceed the navigation timeout. Callers depend
+  // only on the DOM and the loader wait below.
+  await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL('**/explore', { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -497,11 +513,13 @@ export const toastNotification = async (
   const toast = page
     .getByTestId('alert-bar')
     .filter({ hasText: message })
-    .first();
+    .filter({ visible: true });
 
-  await toast.waitFor({ state: 'visible', timeout });
-
-  await expect(toast.getByTestId('alert-icon')).toBeVisible();
+  // Two saves in quick succession legitimately stack two identical toasts, so
+  // "the toast appeared" is a count assertion, not a single-element one.
+  // Toasts auto-dismiss, so match on the filtered text only — asserting an
+  // internal icon races the toast detaching between resolve and check.
+  await expect(toast).not.toHaveCount(0, { timeout });
 };
 
 /**
@@ -518,11 +536,11 @@ export const waitForToastToDisappear = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page
-    .getByTestId('alert-bar')
-    .filter({ hasText: message })
-    .first()
-    .waitFor({ state: 'detached', timeout });
+  // Identical toasts can stack, so waitFor() would be a strict-mode error here;
+  // "the toast is gone" is a count-0 condition anyway.
+  await expect(
+    page.getByTestId('alert-bar').filter({ hasText: message })
+  ).toHaveCount(0, { timeout });
 };
 
 /**
@@ -629,207 +647,6 @@ export const visitOwnProfilePage = async (page: Page) => {
   await page.getByRole('link', { name: 'View Profile' }).click();
   await userResponse;
   await clickOutside(page);
-};
-
-export const assignDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  checkSelectedDomain = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-
-  await searchDomain;
-
-  // Wait for the tag element to be visible and ensure page is still valid
-  const tagSelector = page.getByTestId(
-    `tree-node-${domain.fullyQualifiedName}`
-  );
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page.getByTestId('update-btn').click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  if (checkSelectedDomain) {
-    const hasMultipleDomains = await page
-      .getByTestId('show-all-domains')
-      .isVisible();
-    if (hasMultipleDomains) {
-      await expect(page.getByTestId('show-all-domains')).toBeVisible();
-    } else {
-      await expect(
-        page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-      ).toContainText(domain.displayName);
-    }
-  }
-};
-
-export const assignSingleSelectDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-
-  await searchDomain;
-
-  // Wait for the tag element to be visible and ensure page is still valid
-  const tagSelector = page.getByTestId(
-    `tree-node-${domain.fullyQualifiedName}`
-  );
-  await tagSelector.waitFor({ state: 'visible' });
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await tagSelector.click();
-
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  // Selecting commits and closes the picker; wait for it to fully detach so a
-  // subsequent reopen (e.g. removeSingleSelectDomain) does not race the close.
-  await page
-    .getByTestId('domain-selectable-tree-search')
-    .waitFor({ state: 'detached' });
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).toContainText(domain.displayName);
-};
-
-export const updateDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  await page.getByTestId('domain-selectable-tree-search').clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page.getByTestId('update-btn').click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  // The header layout shows one chip plus a "+ N More" toggle; expanding it
-  // reveals the newly added domain chip inline.
-  const showMore = page.getByTestId('show-all-domains');
-  await expect(showMore).toBeVisible();
-  await showMore.click();
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).toBeVisible();
-};
-
-export const removeDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  showDashPlaceholder = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  const tagSelector = page.getByTestId(
-    `tree-node-${domain.fullyQualifiedName}`
-  );
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page.getByTestId('update-btn').click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(page.getByTestId('no-domain-text')).toContainText(
-    showDashPlaceholder ? '--' : 'No Domains'
-  );
-};
-
-export const removeSingleSelectDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  showDashPlaceholder = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  await page.getByTestId('domain-selectable-tree-search').clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
-
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  // Deselecting commits and closes the picker; wait for it to fully detach so a
-  // subsequent reopen does not race the close animation.
-  await page
-    .getByTestId('domain-selectable-tree-search')
-    .waitFor({ state: 'detached' });
-
-  await expect(page.getByTestId('no-domain-text')).toContainText(
-    showDashPlaceholder ? '--' : 'No Domains'
-  );
 };
 
 export const assignDataProduct = async (
@@ -1026,7 +843,7 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await waitForAllLoadersToDisappear(page);
   await page
     .getByTestId('glossary-left-panel')
-    .getByRole('menuitem', { name: glossaryName, exact: true })
+    .getByRole('link', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
@@ -1194,7 +1011,10 @@ export const verifyDomainPropagation = async (
   await waitForAllLoadersToDisappear(page);
 
   if (exploreTabName) {
-    await page.getByRole('menuitem', { name: exploreTabName }).click();
+    await page
+      .getByTestId('explore-left-panel')
+      .getByRole('tab', { name: exploreTabName })
+      .click();
     await waitForAllLoadersToDisappear(page);
   }
 
@@ -1532,31 +1352,45 @@ export const fetchCompletedCsvAsyncJobResult = async (
   apiContext: APIRequestContext,
   jobId: string
 ) => {
+  if (!jobId) {
+    throw new Error('CSV export returned no job ID');
+  }
+
+  const jobUrl = `/api/v1/csvAsyncJobs/${encodeURIComponent(jobId)}`;
   await expect
     .poll(
       async () => {
-        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
-
-        if (!response.ok()) {
-          return undefined;
+        const response = await apiContext.get(jobUrl);
+        const job = await okJson<CsvAsyncJob>(response, `CSV export ${jobId}`);
+        if (job.jobId !== jobId) {
+          throw new Error(
+            `CSV export ${jobId}: received a different job ${job.jobId}`
+          );
+        }
+        if (!['QUEUED', 'RUNNING', 'COMPLETED'].includes(job.status)) {
+          throw new Error(
+            `CSV export ${jobId} ended with ${job.status}; expected COMPLETED`
+          );
         }
 
-        const jobs = (await response.json()) as CsvAsyncJob[];
-
-        return jobs.find((job) => job.jobId === jobId)?.status;
+        return job.status;
       },
-      { timeout: 90_000 }
+      {
+        timeout: 90_000,
+        message: `CSV export ${jobId} must complete successfully`,
+      }
     )
     .toBe('COMPLETED');
 
-  const resultResponse = await apiContext.get(
-    `/api/v1/csvAsyncJobs/${jobId}/result`,
-    {
-      headers: { Accept: 'text/csv' },
-    }
-  );
+  const resultResponse = await apiContext.get(`${jobUrl}/result`, {
+    headers: { Accept: 'text/csv' },
+  });
 
-  expect(resultResponse.ok()).toBeTruthy();
+  if (!resultResponse.ok()) {
+    throw new Error(
+      `CSV export ${jobId} result: HTTP ${resultResponse.status()}`
+    );
+  }
 
   return resultResponse.text();
 };
@@ -1880,12 +1714,14 @@ export const testTableSearch = async (
     await waitForSearchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByText(searchTerm).first()).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByText(notVisibleText).first()).not.toBeVisible({
-      timeout: 5_000,
-    });
+    // The term also appears in the search box, so assert on presence/absence
+    // of *visible* matches rather than on a single element.
+    await expect(
+      page.getByText(searchTerm).filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: 5_000 });
+    await expect(
+      page.getByText(notVisibleText).filter({ visible: true })
+    ).toHaveCount(0, { timeout: 5_000 });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 };
 
@@ -1906,16 +1742,120 @@ export const scrollIntoViewAndSettle = async (locator: Locator) => {
   });
 };
 
+/**
+ * Opens a React Aria Select or ComboBox and clicks one of its options, reopening
+ * it if the popover closed first. `open` defaults to a click; a ComboBox that
+ * does not always reopen on click can pass its own.
+ */
 export const selectOptionWithRetry = async (
   trigger: Locator,
-  option: Locator
+  option: Locator,
+  open: () => Promise<void> = () => trigger.click()
 ) => {
   await expect(async () => {
     if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
       await scrollIntoViewAndSettle(trigger);
-      await trigger.click();
+      await open();
     }
 
     await option.click({ timeout: 2000 });
   }).toPass({ timeout: 15000 });
+};
+
+export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
+  await expect(trigger).toBeVisible();
+  const nestedControl = trigger.locator(
+    'input[role="combobox"], button[aria-haspopup="listbox"]'
+  );
+  const control = (await nestedControl.count()) === 1 ? nestedControl : trigger;
+  await control.focus();
+
+  // The listbox popup is a non-modal react-aria popover, and that is exactly
+  // what wires useCloseOnScroll: while it is open, ANY capture-phase scroll
+  // whose target contains the trigger closes it — a drawer body, a scrollable
+  // form panel, the document, or the scroll Playwright performs itself as part
+  // of a click's actionability checks. A one-shot open-then-click therefore
+  // dismisses the popup as often as it selects from it, and nothing reopens
+  // it, so the option click waits out the entire test timeout on a node that
+  // was detached mid-click. Centring the control before opening removes the
+  // actionability scroll that would close it; the retry remains for a popup
+  // dismissed by anything else, with a short option timeout so a detached
+  // option reopens quickly instead of waiting out a long click.
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(control);
+      if ((await control.getAttribute('role')) === 'combobox') {
+        await control.press('ArrowDown');
+      } else {
+        await control.click({ timeout: 5_000 });
+      }
+    }
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    await option.click({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+};
+
+export const dismissHoverPopovers = async (page: Page) => {
+  await page.mouse.move(0, 0);
+  await expect(
+    page.locator('.ant-popover:not(.ant-popover-hidden)')
+  ).toHaveCount(0);
+};
+
+export const dismissToasts = async (page: Page) => {
+  // Re-query between passes: closing one toast re-lays out the stack, and the
+  // handles collected before the click go stale.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const closeIcons = await page.getByTestId('alert-icon-close').all();
+
+    if (closeIcons.length === 0) {
+      return;
+    }
+
+    for (const closeIcon of closeIcons) {
+      await closeIcon.click({ timeout: 2_000 }).catch(() => undefined);
+    }
+  }
+};
+
+export const searchDataProductOptions = async (
+  page: Page,
+  dataProduct: { displayName: string; fullyQualifiedName?: string }
+): Promise<Locator> => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      dataProduct.fullyQualifiedName,
+      'dataProduct'
+    );
+  } finally {
+    await afterAction();
+  }
+  const input = page.locator('[data-testid="data-product-selector"] input');
+  if ((await input.inputValue()) === dataProduct.displayName) {
+    await input.clear();
+  }
+  const responsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'dataProduct' &&
+      url.searchParams.get('q') ===
+        dataProduct.displayName.replaceAll('"', '\\"')
+    );
+  });
+  await input.fill(dataProduct.displayName);
+  expect((await responsePromise).status()).toBe(200);
+  await waitForAllLoadersToDisappear(page);
+  return page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId('tag-' + dataProduct.fullyQualifiedName);
+};
+
+export const waitForAntdModalToSettle = async (page: Page) => {
+  await expect(
+    page.locator('.ant-modal[class*="-appear"], .ant-modal[class*="-enter"]')
+  ).toHaveCount(0);
 };

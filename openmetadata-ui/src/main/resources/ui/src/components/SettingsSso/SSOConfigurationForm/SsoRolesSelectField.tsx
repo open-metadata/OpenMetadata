@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select, Typography } from 'antd';
+import { Col, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
@@ -108,6 +109,7 @@ const SsoRolesSelectField = (props: FieldProps) => {
     <Row className={classNames('field-error', { 'has-error': hasError })}>
       <Col span={24}>
         <Typography
+          as="article"
           className={`array-field-label ${
             props.required ? 'required-field' : ''
           }`}>

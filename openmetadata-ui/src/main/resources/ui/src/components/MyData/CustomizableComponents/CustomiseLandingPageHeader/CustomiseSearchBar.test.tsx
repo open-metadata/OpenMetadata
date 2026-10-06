@@ -18,10 +18,10 @@ import { CurrentTourPageType } from '../../../../enums/tour.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
+import { ExploreSearchIndex } from '../../../../interface/discovery/explore.interface';
 import { TabsInfoData } from '../../../../pages/ExplorePage/ExplorePage.interface';
 import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import { ExploreSearchIndex } from '../../../Explore/ExplorePage.interface';
 import CustomiseSearchBar from './CustomiseSearchBar';
 
 jest.mock('../../../../hooks/useApplicationStore');

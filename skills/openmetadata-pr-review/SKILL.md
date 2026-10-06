@@ -102,7 +102,7 @@ If it says `Fixes #NNNN` / `Closes #NNNN`, read the issue — a PR can be techni
 gh issue view <NNNN> -R "$REPO" --json title,body,state
 ```
 
-**No linked issue** is itself a soft blocker: OpenMetadata's "Validate PR Metadata" check fails without one, so a missing `Fixes #NNNN` means the PR can't merge as-is regardless of code quality — note it in BLOCKERS.
+**No linked issue** is itself a soft blocker: OpenMetadata's "Validate PR Metadata" check fails without one, so a missing `Fixes #NNNN` means the PR can't merge as-is regardless of code quality — note it in BLOCKERS. The exception is a test fix (a PR whose purpose is to fix a failing or flaky test). It needs no issue, and it carries the `skip-pr-checks` label, which that check honors. Flag only a test fix that is missing the label.
 
 For a large diff, don't skim — read the core logic files in full and skim the rest. The damage (botched rebases, vendored deps, accidental deletions) usually hides in the files you'd skip.
 
@@ -227,7 +227,7 @@ Repo-specific gates worth knowing:
 
 | Check | What it actually gates |
 |---|---|
-| `Validate PR Metadata` | a linked issue (`Fixes #NNNN`) **and** its Shipping-project fields. Does not re-run on issue edits — needs a push or manual re-run |
+| `Validate PR Metadata` | a linked issue (`Fixes #NNNN`) **and** its Shipping-project fields. Does not re-run on issue edits — needs a push or manual re-run. Skipped entirely when the PR has the `skip-pr-checks` label (test fixes, which need no issue) |
 | `python / Unit Tests & Static Checks (<ver>)` | ruff **and** basedpyright. Existing violations are grandfathered in `ingestion/.basedpyright/baseline.json`; **any new violation in any file fails**, so a new connector must land type-clean, not baseline-clean |
 | `py-checkstyle` | ruff format only — passes even when static-checks is red |
 | `ui-checkstyle` | ESLint + Prettier + the Apache-2.0 UI header |

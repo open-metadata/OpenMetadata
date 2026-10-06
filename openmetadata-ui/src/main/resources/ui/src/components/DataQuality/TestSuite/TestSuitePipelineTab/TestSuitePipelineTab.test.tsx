@@ -175,6 +175,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
+    Badge: jest.requireActual('@openmetadata/ui-core-components').Badge,
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Skeleton: MockSkeleton,

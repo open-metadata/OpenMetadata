@@ -15,6 +15,7 @@ import { TFunction } from 'i18next';
 import { isEmpty } from 'lodash';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
 import {
+  AlertType,
   ArgumentsInput,
   Effect,
   EventFilterRule,
@@ -27,6 +28,7 @@ import {
   ModifiedDestination,
   ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import {
   AlertAiFormFieldsProps,
@@ -171,52 +173,61 @@ export const getAlertAiSectionVisibility = ({
   shouldRenderSourceSection: !isViewOnly || !isEmpty(selectedSource),
 });
 
-/** Returns a cloned form value with a nested path updated, creating containers as needed. */
+/**
+ * Returns a copy of `source` with `path` set to `nextValue`, cloning only the nodes along the path
+ * and sharing every off-path branch by reference — a cheaper immutable update than deep-cloning the
+ * whole form value on each keystroke. (It does not reduce re-renders: the destination rows are
+ * index-keyed and unmemoized. The functional `updateAlertAiValue` below is the real write fix.)
+ * Missing containers are created as array or object based on the next path segment.
+ */
 export const setValueAtPath = (
   source: AlertAiFormValue,
   path: (string | number)[],
   nextValue: unknown
 ): AlertAiFormValue => {
-  const clone = structuredClone(source);
-  let current: Record<string, unknown> | unknown[] = clone as unknown as Record<
-    string,
+  if (path.length === 0) {
+    return nextValue as AlertAiFormValue;
+  }
+
+  const [head, ...rest] = path;
+  const src = source as unknown;
+  const container = (Array.isArray(src)
+    ? [...src]
+    : { ...(src as Record<string, unknown>) }) as unknown as Record<
+    string | number,
     unknown
   >;
 
-  path.forEach((pathItem, index) => {
-    if (index === path.length - 1) {
-      (current as Record<string | number, unknown>)[pathItem] = nextValue;
+  const currentChild = container[head];
+  const emptyContainer = typeof rest[0] === 'number' ? [] : {};
+  const child =
+    currentChild === undefined || currentChild === null
+      ? emptyContainer
+      : currentChild;
 
-      return;
-    }
+  container[head] =
+    rest.length === 0
+      ? nextValue
+      : setValueAtPath(child as AlertAiFormValue, rest, nextValue);
 
-    const nextPathItem = path[index + 1];
-    const currentValue = (current as Record<string | number, unknown>)[
-      pathItem
-    ];
-
-    if (currentValue === undefined || currentValue === null) {
-      (current as Record<string | number, unknown>)[pathItem] =
-        typeof nextPathItem === 'number' ? [] : {};
-    }
-
-    current = (current as Record<string | number, unknown>)[pathItem] as
-      | Record<string, unknown>
-      | unknown[];
-  });
-
-  return clone;
+  return container as unknown as AlertAiFormValue;
 };
 
-/** Applies an immutable nested update and emits the create-alert form value shape. */
+/**
+ * Applies an immutable nested update via a functional updater so rapid successive writes compose
+ * against the LATEST state instead of a captured render-time snapshot — without this two quick
+ * fills (header key then value) clobber each other and emit an empty header key the backend rejects.
+ * `_value` is retained for call-site compatibility and intentionally unused.
+ */
 export const updateAlertAiValue = (
-  value: AlertAiFormValue,
+  _value: AlertAiFormValue,
   onChange: AlertAiFormFieldsProps['onChange'] | undefined,
   path: (string | number)[],
   nextValue: unknown
 ) => {
   onChange?.(
-    setValueAtPath(value, path, nextValue) as ModifiedCreateEventSubscription
+    (prev) =>
+      setValueAtPath(prev, path, nextValue) as ModifiedCreateEventSubscription
   );
 };
 
@@ -430,19 +441,22 @@ export const getDestinationTypeUpdate = (
   const destinationType = nextDestinationType as
     | SubscriptionCategory
     | SubscriptionType;
+  const configField = getConfigFieldFromDestinationType(nextDestinationType);
   const nextDestination: Omit<ModifiedDestination, 'type'> & {
     type?: SubscriptionType;
   } = {
-    ...destination,
     category: isInternalDestinationType
       ? (nextDestinationType as SubscriptionCategory)
       : SubscriptionCategory.External,
     destinationType,
+    config: configField ? { [configField]: true } : undefined,
+    downstreamDepth: undefined,
+    notifyDownstream: undefined,
   };
 
-  if (!isInternalDestinationType) {
-    nextDestination.type = nextDestinationType as SubscriptionType;
-  }
+  nextDestination.type = isInternalDestinationType
+    ? undefined
+    : (nextDestinationType as SubscriptionType);
 
   return nextDestination as ModifiedDestination;
 };
@@ -458,3 +472,16 @@ export const getDestinationWithNotifyDownstream = (
     : undefined,
   notifyDownstream,
 });
+
+/**
+ * Event types offered by the event-type filter. Only the Settings → Notifications
+ * flow narrows them to the source's supported types (classic
+ * `AddNotificationPage`); the Observability flow always offered every type.
+ */
+export const getRuleEventTypes = (
+  alertType: AlertType | undefined,
+  resource?: ObservabilityFilterResourceDescriptor
+) =>
+  alertType === AlertType.Notification
+    ? resource?.supportedEventTypes
+    : undefined;

@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
-import { User03 } from '@untitledui/icons';
-import { Button, Col, Modal, Row, Typography } from 'antd';
+import {
+  FeaturedIcon,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { User03 } from '@openmetadata/ui-core-components/icons';
+import { Button, Col, Modal, Row } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -34,9 +38,9 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -98,10 +102,6 @@ export const PersonaDetailsPage = () => {
     }
   }, [permissionsError]);
 
-  // AI is always available in OSS — the shell ships in-tree, no
-  // install-gate.
-  const hasNonDefaultMode = true;
-
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
       {
@@ -115,13 +115,9 @@ export const PersonaDetailsPage = () => {
     ];
 
     if (activeCategory) {
-      const category = getCustomizePageCategories()
-        .filter(
-          (item) =>
-            !['app-mode', 'askCollateSidebar'].includes(item.key) ||
-            hasNonDefaultMode
-        )
-        .find((category) => category.key === activeCategory);
+      const category = getCustomizePageCategories().find(
+        (category) => category.key === activeCategory
+      );
 
       if (category) {
         breadcrumbList.push({
@@ -132,7 +128,7 @@ export const PersonaDetailsPage = () => {
     }
 
     return breadcrumbList;
-  }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
+  }, [personaDetails, activeCategory, fqn]);
 
   const fetchPersonaDetails = async () => {
     try {
@@ -441,7 +437,7 @@ export const PersonaDetailsPage = () => {
         }
         onCancel={handleCancelSetAsDefault}
         onOk={handleConfirmDefaultAction}>
-        <Typography.Text>
+        <Typography>
           {personaDetails?.default
             ? t('message.remove-default-persona-confirmation', {
                 persona: getEntityName(personaDetails),
@@ -449,7 +445,7 @@ export const PersonaDetailsPage = () => {
             : t('message.set-default-persona-confirmation', {
                 persona: getEntityName(personaDetails),
               })}
-        </Typography.Text>
+        </Typography>
       </Modal>
     </PageLayoutV1>
   );

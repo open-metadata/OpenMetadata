@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, findByTestId, fireEvent, render } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react';
 import { KeyboardEventHandler } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedEditor } from './FeedEditor';
@@ -28,6 +34,11 @@ interface MentionModule {
     insertItem: (item: unknown) => void
   ) => void;
   renderItem: (item: Record<string, unknown>) => HTMLElement;
+  source: (
+    searchTerm: string,
+    renderList: (matches: unknown[], search: string) => void,
+    mentionChar: string
+  ) => void;
 }
 
 interface CapturedQuillProps {
@@ -96,6 +107,24 @@ jest.mock('react-quill-new', () => ({
 jest.mock('../../../utils/QuillLink/QuillLink', () => {
   return jest.fn();
 });
+
+// Only the search is stubbed: every mention search in this file finds nothing.
+jest.mock('../../../utils/FeedUtils', () => ({
+  ...jest.requireActual('../../../utils/FeedUtils'),
+  suggestions: jest.fn().mockResolvedValue([]),
+}));
+
+// Runs the debounced mention search and returns what it handed quill-mention.
+const searchMentions = async (searchTerm: string) => {
+  const renderList = jest.fn();
+  mentionModule().source(searchTerm, renderList, '@');
+  await act(async () => {
+    jest.advanceTimersByTime(300);
+  });
+  await waitFor(() => expect(renderList).toHaveBeenCalled());
+
+  return renderList.mock.calls[0];
+};
 
 describe('Test FeedEditor Component', () => {
   beforeEach(() => {
@@ -255,5 +284,41 @@ describe('Test FeedEditor Component', () => {
     // The payload must appear as literal text, never as parsed markup.
     expect(wrapper.querySelector('img')).toBeNull();
     expect(wrapper.textContent).toContain(payload);
+  });
+
+  describe('when a mention search finds nothing', () => {
+    beforeEach(() => jest.useFakeTimers());
+
+    afterEach(() => jest.useRealTimers());
+
+    it('shows the empty text as a row that cannot be picked', async () => {
+      render(
+        <FeedEditor
+          {...mockFeedEditorProp}
+          emptyMentionText="No match found"
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      const [matches, searchTerm] = await searchMentions('zz');
+
+      expect(searchTerm).toBe('zz');
+      expect(matches).toEqual([
+        expect.objectContaining({ value: 'No match found', disabled: true }),
+      ]);
+      expect(mentionModule().renderItem(matches[0])).toHaveTextContent(
+        'No match found'
+      );
+    });
+
+    it('closes the list when no empty text is given', async () => {
+      render(<FeedEditor {...mockFeedEditorProp} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const [matches] = await searchMentions('zz');
+
+      expect(matches).toEqual([]);
+    });
   });
 });

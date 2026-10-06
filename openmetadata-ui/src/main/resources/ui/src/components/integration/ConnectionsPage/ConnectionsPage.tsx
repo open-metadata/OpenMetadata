@@ -18,7 +18,11 @@ import {
   Input,
   PageLayout,
 } from '@openmetadata/ui-core-components';
-import { LayoutGrid01, List, SearchLg } from '@untitledui/icons';
+import {
+  LayoutGrid01,
+  List,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -182,7 +186,7 @@ const ConnectionsPage: React.FC = () => {
             <div className="tw:w-[280px]">
               <Input
                 fontSize="sm"
-                icon={SearchLg}
+                icon={Search}
                 iconClassName="tw:size-[18px]!"
                 inputClassName="tw:h-11! tw:py-0! tw:text-[15px]!"
                 inputDataTestId="search-connections-input"
@@ -209,7 +213,7 @@ const ConnectionsPage: React.FC = () => {
             )}
           </div>
         }
-        className="tw:mb-0! tw:px-8! tw:py-[18px]!"
+        className="tw:mb-0!"
         density="comfortable"
         icon={<ConnectorsIcon className="tw:size-12" />}
         subtitle={t('message.connections-subtitle')}
@@ -217,7 +221,7 @@ const ConnectionsPage: React.FC = () => {
         variant="gradient"
       />
 
-      <PageLayout.Content className="tw:relative tw:flex tw:flex-col tw:overflow-hidden! tw:p-0!">
+      <PageLayout.Content className="tw:relative tw:flex tw:flex-col tw:overflow-hidden! tw:px-2! tw:pt-4! tw:pb-0!">
         {/* The browse view owns its own scrolling so the secondary nav, page header and filter row
             stay put; scrolling here would carry all three away with the list. */}
         <div className="tw:relative tw:flex-1 tw:overflow-hidden">

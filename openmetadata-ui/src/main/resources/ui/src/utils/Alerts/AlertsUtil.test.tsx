@@ -65,13 +65,6 @@ import {
   normalizeDestinationConfig,
 } from './AlertsUtilPure';
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: {
-    Button: jest.fn().mockImplementation(() => <div>Skeleton.Button</div>),
-  },
-}));
-
 jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
@@ -951,11 +944,12 @@ describe('getAlertExtraInfo', () => {
   it('should return skeletons when alertEventCountsLoading is true', () => {
     const alertExtraInfo = getAlertExtraInfo(true);
 
-    render(alertExtraInfo);
+    const { container } = render(alertExtraInfo);
 
-    const skeletons = screen.getAllByText('Skeleton.Button');
-
-    expect(skeletons).toHaveLength(3);
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
+    expect(container.querySelectorAll('span[aria-hidden="true"]')).toHaveLength(
+      3
+    );
   });
 
   it('should return correct extra info when alertEventCountsLoading is false', () => {

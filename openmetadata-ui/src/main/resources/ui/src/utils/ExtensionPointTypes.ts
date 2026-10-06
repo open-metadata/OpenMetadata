@@ -12,6 +12,10 @@
  */
 
 import { ComponentType, ReactElement, ReactNode } from 'react';
+import {
+  TaskDetailDescriptor,
+  TaskStatTilesProps,
+} from '../components/discovery/personal-space/InboxPage/taskDetail.types';
 import { PluginRouteProps } from '../components/Settings/Applications/plugins/AppPlugin';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
@@ -309,15 +313,34 @@ export interface AppModeSlotContribution {
 }
 
 /**
- * Task-type-specific overview panel for the inbox (`inbox.task-panels`). When
- * `condition(task)` matches, the inbox renders `component` in place of the
- * generic task overview. The first matching contribution wins.
+ * Task-type-specific detail for the inbox (`inbox.task-panels`). When
+ * `condition(task)` matches, the contribution refines how the task's detail pane
+ * renders. The first matching contribution wins.
+ *
+ * OSS describes its own task types; a plugin contributes only the types it owns
+ * (a Data Access Request's access terms, say) and overrides just the slices it
+ * knows better, leaving the layout to the inbox.
  */
 export interface InboxTaskPanelContribution {
   /** Stable key, unique within the slot. */
   key: string;
   /** True when this panel should render for the given task. */
   condition: (task: Task) => boolean;
-  /** Replaces the generic task overview body for a matching task. */
-  component: ComponentType<{ id: string; task: Task }>;
+  /**
+   * Overrides merged over the descriptor the inbox derives for this task —
+   * summary rows, callout, type chip or action labels.
+   */
+  describe?: (
+    task: Task,
+    t: (key: string, options?: Record<string, unknown>) => string
+  ) => Partial<TaskDetailDescriptor>;
+  /** Replaces the asset card's default stat tiles. */
+  stats?: ComponentType<TaskStatTilesProps>;
+  /**
+   * Replaces the generic summary rows with a bespoke body.
+   *
+   * @deprecated Prefer `describe` (and `stats`), which keep the pane's layout,
+   * spacing and callout consistent across task types.
+   */
+  component?: ComponentType<{ id: string; task: Task }>;
 }

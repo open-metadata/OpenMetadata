@@ -85,6 +85,7 @@ import {
   assignTier,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import {
   glossaryFieldTrigger,
   pickGlossaryTermInField,
@@ -117,6 +118,12 @@ const entitiesWithDataContracts = [
   DatabaseSchemaClass,
 ] as const;
 
+const dataContractEntities = pickEntityMatrix(
+  __filename,
+  entitiesWithDataContracts,
+  [TableClass]
+);
+
 // Helper function to check if entity supports specific features
 const entitySupportsSchema = (entityType: string): boolean => {
   return ['Table', 'Topic', 'DashboardDataModel', 'ApiEndpoint'].includes(
@@ -141,7 +148,7 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
   });
 
-  entitiesWithDataContracts.forEach((EntityClass) => {
+  dataContractEntities.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
     const testDetails = entitySupportsQuality(entityType)
@@ -432,15 +439,20 @@ test.describe('Data Contracts', () => {
             NEW_TABLE_TEST_CASE.value
           );
 
-          await page.click('[data-testid="tags-selector"] input');
-          await page.fill(
-            '[data-testid="tags-selector"] input',
-            testTag.data.name
-          );
-          await page
-            .getByTestId(
-              `tag-option-${testTag.responseData.fullyQualifiedName}`
+          await expect
+            .poll(
+              async () => {
+                await page.getByTestId('tags-input').click();
+
+                return page.getByTestId('search-input').isVisible();
+              },
+              { timeout: 10_000 }
             )
+            .toBe(true);
+          await page.getByTestId('search-input').fill(testTag.data.name);
+          await page
+            .getByTestId('drop-down-menu')
+            .getByTestId(testTag.responseData.fullyQualifiedName ?? '')
             .click();
 
           await page.keyboard.press('Escape');
@@ -2301,7 +2313,7 @@ description:
   });
 });
 
-entitiesWithDataContracts.forEach((EntityClass) => {
+dataContractEntities.forEach((EntityClass) => {
   const adminUser = new UserClass();
   const entity = new EntityClass();
   const entityType = entity.getType();
@@ -2309,7 +2321,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
   const testPersona = base.extend<{ page: Page }>({
     page: async ({ browser }, use) => {
       const adminPage = await browser.newPage();
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await use(adminPage);
       await adminPage.close();
     },
@@ -2464,9 +2476,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               await settingClick(page, GlobalSettingOptions.PERSONA);
               await personaGetResponse;
 
-              await page.locator('.ant-skeleton-content').first().waitFor({
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
 
               // Navigate to persona details
               await navigateToPersonaWithPagination(

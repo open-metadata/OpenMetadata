@@ -22,6 +22,7 @@ import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
 import { UserClass } from '../support/user/UserClass';
+import { deleteFixtureEntity, okJson } from './apiResponse';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { executeSlashCommand } from './KnowledgeCenter';
@@ -308,15 +309,12 @@ export const navigateToArchive = async (page: Page) => {
 // ─── Archive page test helpers ─────────────────────────────────────────────────
 
 export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
-  page
-    .getByRole('treegrid', { name: 'Folders' })
-    .getByRole('row', {
-      name: folderName,
-    })
-    .first();
+  page.getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+    name: folderName,
+  });
 
 export const getFolderExpandBtn = (page: Page, folderName: string): Locator =>
-  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]').first();
+  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]');
 
 /**
  * The sidebar folder tree is paginated (FOLDER_PAGE_SIZE), so a folder
@@ -410,7 +408,9 @@ export const uploadFileViaModal = async (
     name: fileName,
   });
 
-  await expect(modal.getByText(fileName).first()).toBeVisible();
+  await expect(
+    modal.getByText(fileName).filter({ visible: true })
+  ).not.toHaveCount(0);
 
   const uploadResPromise = page.waitForResponse(
     '/api/v1/contextCenter/drive/files/upload'
@@ -461,7 +461,7 @@ export const loginAsUser = async (
   user: UserClass
 ): Promise<Page> => {
   const page = await browser.newPage();
-  await user.login(page);
+  await user.signIn(page);
 
   return page;
 };
@@ -717,19 +717,21 @@ export const deleteArticleByFqn = async (
     `/api/v1/contextCenter/pages/name/${encodeURIComponent(fqn)}?fields=id`
   );
 
-  if (!res.ok()) {
+  if (res.status() === 404) {
     return;
   }
 
-  const data = await res.json();
-
-  if (data.id) {
-    await apiContext
-      .delete(
-        `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
-      )
-      .catch(() => undefined);
+  const data = await okJson<{ id: string }>(
+    res,
+    `Find article ${fqn} for cleanup`
+  );
+  if (!data.id) {
+    throw new Error(`Article ${fqn} cleanup response has no ID`);
   }
+  await deleteFixtureEntity(
+    apiContext,
+    `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
+  );
 };
 
 export const createArticleViaApi = async (
@@ -852,8 +854,8 @@ export const scrollHierarchyToNode = async (
   for (let attempt = 0; attempt < 100 && !(await node.isVisible()); attempt++) {
     await scrollNearestScrollableAncestor(hierarchy);
     await expect(
-      hierarchy.locator('[data-testid^="page-node-"]').first()
-    ).toBeVisible();
+      hierarchy.locator('[data-testid^="page-node-"]').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     let lastNode = await getLastNode();
 
@@ -965,8 +967,10 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
   for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
     await scrollNearestScrollableAncestor(listing);
     await expect(
-      listing.locator('[data-testid^="knowledge-card-"]').first()
-    ).toBeVisible();
+      listing
+        .locator('[data-testid^="knowledge-card-"]')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
 
     let lastCard = await getLastCard();
 

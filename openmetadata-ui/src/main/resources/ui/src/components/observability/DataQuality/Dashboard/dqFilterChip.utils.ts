@@ -23,30 +23,20 @@ import classNames from 'classnames';
  */
 export const chipTriggerClassName = classNames(
   'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center',
-  'tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5',
+  'tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-surface tw:px-3.5 tw:py-2.5',
   'tw:text-sm tw:font-medium tw:text-secondary tw:shadow-xs-skeuomorphic',
   'tw:relative tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
   borderAfter,
   'tw:after:outline-primary',
-  'tw:hover:bg-primary_hover tw:hover:text-secondary_hover'
-);
-
-/** Brand treatment the FilterSelect trigger takes on once a value is picked. */
-export const chipTriggerSelectedClassName = classNames(
-  'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
-  'tw:after:outline-brand'
+  'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover'
 );
 
 /**
- * Chevron colour for a trigger built by hand: `FilterSelect` brands its trigger
- * icon on selection, and these two utilities are the same Tailwind group, so the
- * state has to pick one rather than stack both.
+ * Chevron for a trigger built by hand. `FilterSelect` keeps its trigger neutral
+ * whether or not a value is picked, so this does too.
  */
-export const chipChevronClassName = (hasSelection: boolean) =>
-  classNames(
-    'tw:size-5 tw:shrink-0',
-    hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
-  );
+export const chipChevronClassName =
+  'tw:size-5 tw:shrink-0 tw:text-fg-quaternary';
 
 /** Matches the count badge `FilterSelect` renders on its own trigger. */
 export const chipCountBadgeClassName = classNames(

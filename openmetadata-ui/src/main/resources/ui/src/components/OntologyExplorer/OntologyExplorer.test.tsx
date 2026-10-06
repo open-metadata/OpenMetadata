@@ -26,7 +26,7 @@ import {
 } from './OntologyExplorer.interface';
 import {
   ASSET_BINDING_EDGE_KIND,
-  OBSERVED_LINEAGE_EDGE_KIND,
+  SEMANTIC_PROJECTION_EDGE_KIND,
 } from './utils/graphBuilders';
 
 interface OntologyGraphMockProps {
@@ -343,7 +343,7 @@ describe('OntologyExplorer Studio data controls', () => {
     );
   });
 
-  it('renders observed asset lineage as a solid edge between term clusters', () => {
+  it('draws only the relations between concept clusters, not links between their assets', () => {
     const secondaryAssetNode: OntologyNode = {
       id: 'asset-customers',
       label: 'customers',
@@ -368,18 +368,17 @@ describe('OntologyExplorer Studio data controls', () => {
             to: secondaryTermNode.id,
           },
           {
-            edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
+            edgeKind: SEMANTIC_PROJECTION_EDGE_KIND,
             from: assetNode.id,
-            label: 'observed lineage',
-            relationType: 'lineage',
+            label: 'related to',
+            relationType: 'relatedTo',
             to: secondaryAssetNode.id,
           },
           {
-            edgeKind: OBSERVED_LINEAGE_EDGE_KIND,
-            from: assetNode.id,
-            label: 'observed lineage',
-            relationType: 'lineage',
-            to: secondaryAssetNode.id,
+            from: termNode.id,
+            label: 'related to',
+            relationType: 'relatedTo',
+            to: secondaryTermNode.id,
           },
         ],
         nodes: [termNode, secondaryTermNode, assetNode, secondaryAssetNode],
@@ -389,15 +388,13 @@ describe('OntologyExplorer Studio data controls', () => {
 
     render(<OntologyExplorer scope="global" />);
 
-    const observedEdges = screen.getAllByTestId(
-      'ontology-data-observed-lineage-edge'
+    expect(screen.getAllByTestId('ontology-data-semantic-edge')).toHaveLength(
+      1
     );
-
-    expect(observedEdges).toHaveLength(1);
-    expect(observedEdges[0]).not.toHaveAttribute('stroke-dasharray');
+    expect(screen.getAllByTestId('ontology-data-edge-arrow')).toHaveLength(1);
     expect(
-      screen.queryByTestId('ontology-data-semantic-edge-label')
-    ).not.toBeInTheDocument();
+      screen.getByTestId('ontology-data-semantic-edge-label')
+    ).toHaveTextContent('related to');
   });
 
   it('expands the semantic edge layer when a term card is moved', () => {
@@ -609,14 +606,35 @@ describe('OntologyExplorer Studio data controls', () => {
     expect(state.handleModeChange).not.toHaveBeenCalled();
   });
 
-  it('disables the Data layer while authoring concepts', () => {
+  it('hides the Model and Data switch while authoring concepts', () => {
     const state = createExplorerState();
     mockUseOntologyExplorer.mockReturnValue(state);
 
     render(<OntologyExplorer isAuthoringMode scope="global" />);
-    fireEvent.click(screen.getByRole('tab', { name: 'label.data' }));
 
-    expect(state.handleModeChange).not.toHaveBeenCalledWith('data');
+    expect(
+      screen.queryByTestId('ontology-layer-switch')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('tab', { name: 'label.data' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the metric details panel instead of the concept inspector in authoring mode', () => {
+    const metricNode = {
+      id: 'metric-churn-rate',
+      label: 'Monthly Churn Rate %',
+      type: 'metric',
+    };
+    const state = createExplorerState({ selectedNode: metricNode });
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer isAuthoringMode scope="global" />);
+
+    expect(screen.getByTestId('ontology-entity-panel')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-authoring-inspector')
+    ).not.toBeInTheDocument();
   });
 
   it('opens the concept entity page in a new tab from View Details', () => {

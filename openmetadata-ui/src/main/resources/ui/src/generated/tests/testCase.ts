@@ -330,8 +330,9 @@ export interface EntityReference {
 /**
  * Current status of the test case.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -718,6 +719,14 @@ export interface TestCaseResult {
      */
     dimensionResults?: TestCaseDimensionResult[];
     /**
+     * Wall-clock time the test case run took, in milliseconds.
+     */
+    duration?: number;
+    /**
+     * Structured error details when the run was aborted by an error.
+     */
+    errorDetails?: TestCaseErrorDetails;
+    /**
      * Number of rows that failed.
      */
     failedRows?: number;
@@ -893,6 +902,26 @@ export interface TestResultValue {
      */
     value?: string;
     [property: string]: any;
+}
+
+/**
+ * Structured error details when the run was aborted by an error.
+ *
+ * Structured details of the error that aborted a test case run.
+ */
+export interface TestCaseErrorDetails {
+    /**
+     * Type of the error, e.g. the exception class name.
+     */
+    errorType?: string;
+    /**
+     * Human-readable error message.
+     */
+    message?: string;
+    /**
+     * Formatted stack trace of the error.
+     */
+    stackTrace?: string;
 }
 
 /**

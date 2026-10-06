@@ -26,6 +26,10 @@ import {
   useRef,
 } from 'react';
 import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import {
+  getAuthErrorCode,
+  ReauthRequiredError,
+} from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
 import {
   msalLoginRequest,
@@ -82,6 +86,34 @@ const readTestMsalOverride = (): MsalContextShape | undefined => {
 
   return (window as unknown as { __omTestMsal?: MsalContextShape })
     .__omTestMsal;
+};
+
+// MSAL reports "needs a visit to Entra" either as an
+// InteractionRequiredAuthError (Entra's own answer) or as a BrowserAuthError
+// when the hidden renewal iframe could not run at all (third-party cookies
+// blocked, monitor_window_timeout). Matching on errorCode as well lets the
+// Playwright MSAL mock, which cannot construct MSAL error classes, drive the
+// same branch.
+const MSAL_REAUTH_ERROR_CODES = new Set([
+  'interaction_required',
+  'login_required',
+  'consent_required',
+  'no_account_error',
+  'monitor_window_timeout',
+  'block_iframe_reload',
+]);
+
+const isReauthRequired = (error: unknown): boolean =>
+  error instanceof InteractionRequiredAuthError ||
+  MSAL_REAUTH_ERROR_CODES.has(getAuthErrorCode(error) ?? '');
+
+// The bearer OpenMetadata sees is the ID token, so renewal is scheduled off its
+// expiry; `expiresOn` belongs to the access token, which Entra often issues for
+// longer.
+const readIdTokenExpiresAt = (idTokenClaims: object | undefined) => {
+  const exp = (idTokenClaims as { exp?: unknown } | undefined)?.exp;
+
+  return typeof exp === 'number' ? exp * 1000 : undefined;
 };
 
 const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
@@ -170,6 +202,10 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     // storage as a side effect — the AuthCoordinator owns storage now.
     const getRenewer = useCallback(
       (): Renewer => async () => {
+        // A page load that returns from a redirect must finish processing it
+        // before renewing, or the renewal races it with the stale cache that
+        // sent the user to Entra in the first place. MSAL memoizes this call.
+        await instance.handleRedirectPromise().catch(() => null);
         const tokenRequest = {
           account: account || accounts[0],
           scopes: msalLoginRequest.scopes,
@@ -180,11 +216,16 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         try {
           response = await instance.acquireTokenSilent(tokenRequest);
         } catch (error) {
-          if (error instanceof InteractionRequiredAuthError) {
-            response = await instance.acquireTokenPopup(tokenRequest);
-          } else {
-            throw error;
+          // A popup opened from a timer or a 401 has no user gesture, so
+          // browsers block it; hand over to a top-level redirect instead.
+          if (isReauthRequired(error)) {
+            throw new ReauthRequiredError(
+              'MSAL silent renewal needs an interactive visit to Entra',
+              error
+            );
           }
+
+          throw error;
         }
 
         if (!response?.idToken || !response.expiresOn) {
@@ -193,16 +234,36 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
         return {
           idToken: response.idToken,
-          expiresAt: response.expiresOn.getTime(),
+          expiresAt:
+            readIdTokenExpiresAt(response.idTokenClaims) ??
+            response.expiresOn.getTime(),
         };
       },
       [account, accounts, instance]
     );
 
+    // Entra's SPA refresh tokens have a fixed 24-hour lifetime; past it MSAL
+    // can only renew through a hidden iframe, which third-party cookie
+    // blocking breaks. A top-level redirect carries the Entra session cookie
+    // first-party, and prompt=none keeps it free of any user interaction.
+    const silentReauth = async () => {
+      const currentAccount = account || accounts[0];
+      const request = {
+        scopes: [...msalLoginRequest.scopes],
+        prompt: 'none',
+        redirectStartPage: window.location.href,
+      };
+
+      await (currentAccount
+        ? instance.acquireTokenRedirect({ ...request, account: currentAccount })
+        : instance.loginRedirect(request));
+    };
+
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: renewIdToken,
+      invokeSilentReauth: silentReauth,
     }));
 
     // Register the coordinator renewer directly from this authenticator's

@@ -13,16 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Form,
-  FormProps,
-  Input,
-  Radio,
-  Select,
-  Space,
-  Switch,
-} from 'antd';
+import { Toggle } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Input, Radio, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import {
@@ -138,8 +130,8 @@ const BotFields = ({ isAdminUser }: BotFieldsProps) => {
           label={t('label.allow-impersonation')}
           name="allowImpersonation"
           tooltip={t('message.allow-impersonation-help')}
-          valuePropName="checked">
-          <Switch data-testid="allow-impersonation" />
+          valuePropName="isSelected">
+          <Toggle data-testid="allow-impersonation" />
         </Form.Item>
       )}
     </>
@@ -403,9 +395,9 @@ const AdminOnlyFields = ({
       <Form.Item>
         <Space>
           <span> {t('label.admin')}</span>
-          <Switch
-            checked={isAdmin}
+          <Toggle
             data-testid="admin"
+            isSelected={isAdmin}
             onChange={onToggleAdmin}
           />
         </Space>

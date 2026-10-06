@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Badge, Tooltip } from '@openmetadata/ui-core-components';
+import { Badge, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select, Typography } from 'antd';
+import { Col, Row, Select } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -235,6 +235,7 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
     <Row className={classNames('field-error', { 'has-error': hasError })}>
       <Col span={24}>
         <Typography
+          as="article"
           className={classNames('array-field-label', {
             'required-field': props.required,
             'sso-deprecated-field-label': isDeprecated,

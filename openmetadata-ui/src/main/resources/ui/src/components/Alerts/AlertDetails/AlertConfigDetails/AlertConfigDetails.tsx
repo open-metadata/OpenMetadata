@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Form, Row } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Col, Form, Row } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   NotificationTemplate,
   ProviderType,
@@ -174,7 +173,11 @@ function AlertConfigDetails({
         {!isEmpty(modifiedAlertData.input?.filters) && (
           <>
             <Col>
-              <Divider dashed type="vertical" />
+              <Divider
+                dashed
+                className="tw:mx-2 tw:h-6 tw:border-r"
+                orientation="vertical"
+              />
             </Col>
             <Col span={24}>
               <ObservabilityFormFiltersItem
@@ -189,7 +192,11 @@ function AlertConfigDetails({
         {!isEmpty(modifiedAlertData.input?.actions) && (
           <>
             <Col>
-              <Divider dashed type="vertical" />
+              <Divider
+                dashed
+                className="tw:mx-2 tw:h-6 tw:border-r"
+                orientation="vertical"
+              />
             </Col>
             <Col span={24}>
               <ObservabilityFormTriggerItem
@@ -200,7 +207,11 @@ function AlertConfigDetails({
           </>
         )}
         <Col>
-          <Divider dashed type="vertical" />
+          <Divider
+            dashed
+            className="tw:mx-2 tw:h-6 tw:border-r"
+            orientation="vertical"
+          />
         </Col>
         <Col span={24}>
           <DestinationFormItemFormBridge
@@ -228,7 +239,11 @@ function AlertConfigDetails({
             {Object.entries(extraFormWidgets).map(([name, Widget]) => (
               <Fragment key={name}>
                 <Col>
-                  <Divider dashed type="vertical" />
+                  <Divider
+                    dashed
+                    className="tw:mx-2 tw:h-6 tw:border-r"
+                    orientation="vertical"
+                  />
                 </Col>
                 <Col span={24}>
                   <Widget

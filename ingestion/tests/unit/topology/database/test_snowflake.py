@@ -18,6 +18,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import sqlalchemy.types as sqltypes
+from sqlalchemy import create_engine
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.domain.tags import TagDefinition
@@ -35,6 +36,8 @@ from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.database.snowflake.metadata import MAP, SnowflakeSource
 from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
 from metadata.utils import fqn
+
+SNOWFLAKE_METADATA = "metadata.ingestion.source.database.snowflake.metadata"
 
 SNOWFLAKE_CONFIGURATION = {
     "source": {
@@ -846,14 +849,76 @@ class SnowflakeUnitTest(TestCase):
             source.engine = MagicMock()
             source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
             source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+            source.status.warnings.clear()
 
-            source.set_schema_tags_map("TEST_DATABASE")
-            # Only the tag with a value should be stored
-            self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
+            # Count logged warnings in the run status the way a running workflow step does
+            source._activate_handler()
+            try:
+                source.set_schema_tags_map("TEST_DATABASE")
+                mock_conn.execute.return_value = [
+                    Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="EMPTY_TAG", TAG_VALUE=""),
+                    Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="TEST_TAG", TAG_VALUE="123"),
+                ]
+                source.set_database_tags_map("TEST_DATABASE")
+            finally:
+                source._deactivate_handler()
+
+            # Only the tags with a value are stored, and each skipped one is one run warning
             self.assertEqual(
-                source.schema_tags_map["TEST_SCHEMA"][0],
-                {"tag_name": "TEST_TAG", "tag_value": "123"},
+                source.schema_tags_map["TEST_SCHEMA"],
+                [{"tag_name": "TEST_TAG", "tag_value": "123"}],
             )
+            self.assertEqual(
+                source.database_tags_map["TEST_DATABASE"],
+                [{"tag_name": "TEST_TAG", "tag_value": "123"}],
+            )
+            self.assertEqual(len(source.status.warnings), 3)
+
+    def test_describe_procedure_definition_reads_body_property(self):
+        """DESC PROCEDURE/FUNCTION returns (property, value) rows; the definition is the `body` row's value.
+
+        A real SQLAlchemy result is used so that row access behaves like the Snowflake one.
+        """
+        desc_rows = (
+            "SELECT 'signature' AS \"property\", '()' AS \"value\" "
+            "UNION ALL SELECT 'returns', 'NUMBER' "
+            "UNION ALL SELECT 'body', 'BEGIN RETURN 1; END' "
+            "-- {database_name}{schema_name}{procedure_name}{procedure_signature}"
+        )
+        for procedure_type in ("PROCEDURE", "FUNCTION"):
+            for source in self.sources.values():
+                self._setup_tag_context(source)
+                source.engine = create_engine("sqlite://")
+                stored_procedure = SnowflakeStoredProcedure(
+                    NAME="test_sp",
+                    OWNER="owner",
+                    LANGUAGE="SQL",
+                    SIGNATURE="()",
+                    COMMENT="comment",
+                    PROCEDURE_TYPE=procedure_type,
+                )
+                with (
+                    patch(f"{SNOWFLAKE_METADATA}.SNOWFLAKE_DESC_STORED_PROCEDURE", desc_rows),
+                    patch(f"{SNOWFLAKE_METADATA}.SNOWFLAKE_DESC_FUNCTION", desc_rows),
+                ):
+                    definition = source.describe_procedure_definition(stored_procedure)
+
+                self.assertEqual(definition, "BEGIN RETURN 1; END")
+
+    def test_describe_procedure_definition_without_body_property(self):
+        """A DESC result without a `body` row yields an empty definition rather than an error."""
+        desc_rows = (
+            "SELECT 'signature' AS \"property\", '()' AS \"value\" "
+            "-- {database_name}{schema_name}{procedure_name}{procedure_signature}"
+        )
+        for source in self.sources.values():
+            self._setup_tag_context(source)
+            source.engine = create_engine("sqlite://")
+            stored_procedure = SnowflakeStoredProcedure(
+                NAME="test_sp", OWNER="owner", LANGUAGE="SQL", SIGNATURE="()", COMMENT="comment"
+            )
+            with patch(f"{SNOWFLAKE_METADATA}.SNOWFLAKE_DESC_STORED_PROCEDURE", desc_rows):
+                self.assertEqual(source.describe_procedure_definition(stored_procedure), "")
 
 
 def test_schema_tag_query_quotes_account_usage_identifier():

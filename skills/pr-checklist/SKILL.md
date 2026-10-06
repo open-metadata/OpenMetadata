@@ -27,7 +27,7 @@ Walks through `.github/pull_request_template.md` section by section, gathers evi
 
 Every PR must address each section below. Skip with an explicit "Not applicable — <reason>" rather than leaving blank.
 
-1. **Linked issue** — `Fixes #<issue-number>` (GitHub auto-links). No issue → open one first.
+1. **Linked issue** — `Fixes #<issue-number>` (GitHub auto-links). No issue → open one first. A test fix needs none (see Step 2).
 2. **Type of change** — exactly one box checked.
 3. **High-level design** — required for large PRs (new features, refactors, breaking changes, >5 files); skip for small bug fixes.
 4. **Tests** — use cases covered, unit tests + coverage %, backend integration tests, ingestion integration tests, Playwright (UI) tests, manual test steps.
@@ -61,6 +61,12 @@ gh issue view <issue-number>
 
 If no issue exists, stop and ask the user to open one before continuing.
 
+**Exception: a test fix needs no issue.** Don't file an issue for a PR whose purpose is to fix a failing or flaky test. That holds even when the fix lands in the code the test caught rather than in the test itself. For such a PR:
+
+- Replace the template's `Fixes #<issue-number>` line with the test it fixes, e.g. `Fixes the ChartResourceIT.test_bulkCreateOrUpdate_mixedCreateAndUpdate flake`.
+- Give it a descriptive title with no issue number.
+- Add the `skip-pr-checks` label. "Validate PR Metadata" fails any PR without a linked issue, and this label is the only thing that skips it.
+
 ### Step 3 — Gather test evidence
 
 Run the relevant commands and capture output. Don't fabricate coverage numbers — run the tools.
@@ -91,11 +97,14 @@ cd openmetadata-ui/src/main/resources/ui
 yarn test <ChangedComponent> --coverage
 ```
 
-**Playwright (UI E2E):**
+**Playwright (UI E2E):** PR checks no longer run Playwright (the merge queue runs the full suite),
+so run the impact-mapped specs locally and record the results in the PR body:
 ```bash
-cd openmetadata-ui/src/main/resources/ui
-yarn playwright:run --grep "<feature name>"
+make playwright_affected                          # specs selected from .github/playwright/impact-map.json
+make playwright_affected_run ARGS="--update-pr"   # run them; writes the results block into the PR body
 ```
+Without `gh`, paste `playwright/output/local-pr-results.md` between the
+`local-playwright-results` markers under "Playwright (UI) tests".
 
 For each, note the actual coverage % and test file paths in the PR body.
 
@@ -133,6 +142,8 @@ EOF
 )"
 ```
 
+**New test-fix PR** (no issue): use a descriptive title and add `--label skip-pr-checks`.
+
 **Update existing PR**:
 ```bash
 gh pr edit <number> --body "$(cat <<'EOF'
@@ -147,8 +158,8 @@ Return the PR URL when done.
 
 Refuse to open the PR if any of these are missing — surface them to the user instead:
 
-- [ ] Linked issue exists and is referenced as `Fixes #N`
-- [ ] PR title matches `Fixes <issue-number>: <short explanation>`
+- [ ] Linked issue exists and is referenced as `Fixes #N`, or the PR is a test fix labelled `skip-pr-checks`
+- [ ] PR title matches `Fixes <issue-number>: <short explanation>` (a test fix gets a descriptive title instead)
 - [ ] At least one "Type of change" box is checked
 - [ ] Large PR has a high-level design section filled in (not `N/A`)
 - [ ] Tests section lists actual files and coverage numbers (not placeholders)

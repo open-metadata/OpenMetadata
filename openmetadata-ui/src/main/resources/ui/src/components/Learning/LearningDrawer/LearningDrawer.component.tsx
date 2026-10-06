@@ -12,19 +12,22 @@
  */
 
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
-import { Drawer, Empty, Spin, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Drawer, Empty, Spin } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getLearningResourcesByContext,
   LearningResource,
 } from '../../../rest/learningResourceAPI';
+import {
+  opensInNewTab,
+  openUrlInNewTab,
+} from '../../../utils/platform/learning.utils';
 import { LearningResourceCard } from '../LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../ResourcePlayer/ResourcePlayerModal.component';
 import './learning-drawer.less';
 import { LearningDrawerProps } from './LearningDrawer.interface';
-
-const { Title } = Typography;
 
 export const LearningDrawer: React.FC<LearningDrawerProps> = ({
   open,
@@ -69,6 +72,11 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
 
   const handleResourceClick = useCallback(
     (resource: LearningResource) => {
+      if (opensInNewTab(resource.resourceType)) {
+        openUrlInNewTab(resource.source.url);
+
+        return;
+      }
       setSelectedResource(resource);
       setPlayerOpen(true);
       onClose();
@@ -146,9 +154,13 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         placement="right"
         title={
           <div className="learning-drawer-header">
-            <Title className="learning-drawer-title" level={5}>
+            <Typography
+              as="h5"
+              className="learning-drawer-title"
+              size="text-md"
+              weight="semibold">
               {t('label.entity-resource', { entity: getPageTitle() })}
-            </Title>
+            </Typography>
             <CloseOutlined
               className="learning-drawer-close"
               data-testid="close-drawer"

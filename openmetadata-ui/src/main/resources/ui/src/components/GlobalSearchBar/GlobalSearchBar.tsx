@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Button, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -238,7 +239,10 @@ export const GlobalSearchBar = () => {
             onClick={() => setNLPActive(!isNLPActive)}
           />
         </Tooltip>
-        <Divider className="h-5" type="vertical" />
+        <Divider
+          className="h-5 tw:mx-2 tw:self-center"
+          orientation="vertical"
+        />
       </>
     );
   };
@@ -342,7 +346,10 @@ export const GlobalSearchBar = () => {
       </Popover>
 
       {entitiesSelect}
-      <Divider className="h-5 m-r-md" type="vertical" />
+      <Divider
+        className="h-5 m-r-md tw:ml-2 tw:self-center"
+        orientation="vertical"
+      />
       {renderSearchIcon()}
     </div>
   );

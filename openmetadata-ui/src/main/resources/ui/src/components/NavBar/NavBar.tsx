@@ -36,7 +36,6 @@ import {
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
-import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -46,6 +45,7 @@ import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurre
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
+import { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
 import { getVersion } from '../../rest/miscAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
@@ -490,11 +490,12 @@ const NavBar = () => {
       <DomainSelect
         bordered
         disabled
-        className="tw:self-center tw:[&_button]:h-10"
+        className="tw:self-center"
         data-testid="domain-dropdown"
         label={domainDisplayName}
         restrictedDomains={restrictedDomains}
         selectedDomain={activeDomainEntityRef}
+        triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
         triggerVariant="button"
         onUpdate={handleDomainChange}
       />
@@ -502,13 +503,15 @@ const NavBar = () => {
   ) : (
     <DomainSelect
       bordered
-      className="tw:self-center tw:[&_button]:h-10"
+      className="tw:self-center"
       data-testid="domain-dropdown"
+      isClearable={!isDomainRestricted}
       isOpen={isDomainDropdownOpen}
       label={domainDisplayName}
       restrictedDomains={restrictedDomains}
       selectedDomain={activeDomainEntityRef}
       showAllDomains={!isDomainRestricted}
+      triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
       triggerVariant="button"
       onOpenChange={setIsDomainDropdownOpen}
       onUpdate={handleDomainChange}

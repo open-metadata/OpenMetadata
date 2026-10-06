@@ -13,18 +13,6 @@
 
 @import (reference) '../../../styles/variables.less';
 
-.activity-feed-card-container.ant-btn {
-  height: auto;
-  text-align: left;
-  padding: 0;
-  border: none;
-  transition: var(--om-duration-300) ease-in-out;
-
-  &:hover {
-    color: inherit;
-    background-color: @grey-1;
-  }
-}
 .activity-feed-card-new {
   border-radius: var(--om-radius-xl);
   background: @grey-9;
@@ -58,14 +46,20 @@
     border-right: 1px solid @blue-23;
     height: 100%;
     content: '';
+
+    .dark-mode & {
+      border-right-color: var(--om-color-border-secondary);
+    }
   }
 }
 .activity-feed-card-new-right-panel {
+  // Surface (== bg-primary in light) so the thread blends into the
+  // bg-surface right panel / drawer instead of a black slab in dark.
   &.ant-card {
-    border: 1px solid var(--tw-color-bg-primary);
+    border: 1px solid var(--om-color-bg-surface);
     .ant-card-body {
-      background-color: var(--tw-color-bg-primary);
-      border: 1px solid var(--tw-color-bg-primary);
+      background-color: var(--om-color-bg-surface);
+      border: 1px solid var(--om-color-bg-surface);
     }
   }
 }
@@ -76,24 +70,6 @@
     font-weight: var(--om-font-weight-semibold);
     display: inline;
   }
-}
-.feeds-widget-container {
-  .ant-tabs.ant-tabs-top.h-full
-    .ant-tabs-content.ant-tabs-content-top
-    .ant-tabs-tabpane {
-    display: flex;
-    flex-direction: column;
-  }
-}
-.feed-card-header-v2-timestamp.ant-typography {
-  color: @grey-500;
-}
-.seperator.ant-typography {
-  vertical-align: middle;
-  font-size: var(--om-font-size-lg);
-  font-weight: var(--om-font-weight-extrabold);
-  color: @grey-500;
-  padding-bottom: var(--om-space-2);
 }
 
 .feed-widget-padding {
@@ -115,6 +91,12 @@
     border-radius: var(--om-radius-20);
     background-color: @grey-16;
     border: 1px solid @grey-15;
+
+    // @grey-16 is a fixed hex: a white pill in dark.
+    .dark-mode & {
+      background-color: var(--om-color-bg-surface);
+      color: var(--om-color-text-primary);
+    }
   }
 }
 
@@ -131,6 +113,10 @@
   height: 36px;
   font-size: var(--om-font-size-xs);
   line-height: 14.52px;
+  .dark-mode & {
+    background-color: var(--om-color-bg-surface);
+    color: var(--om-color-text-primary);
+  }
   &::placeholder {
     color: @grey-400;
     font-size: var(--om-font-size-xs);

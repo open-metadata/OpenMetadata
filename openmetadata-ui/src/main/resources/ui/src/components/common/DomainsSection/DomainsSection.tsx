@@ -23,6 +23,7 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import { getDomainsContentKey } from '../../../utils/DomainSyncUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
@@ -68,21 +69,27 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
       }
     }
 
-    setActiveDomains((prev) => {
-      if (
-        prev.length === nextActiveDomains.length &&
-        prev.every((item, index) => item === nextActiveDomains[index])
-      ) {
-        return prev;
-      }
-
-      return nextActiveDomains;
-    });
+    // Shared content key, so this cannot drift from the other domain surfaces.
+    setActiveDomains((prev) =>
+      getDomainsContentKey(prev) === getDomainsContentKey(nextActiveDomains)
+        ? prev
+        : nextActiveDomains
+    );
   }, [domains]);
 
   const updateActiveDomains = (
-    entityDomains: EntityReference | EntityReference[] | Record<string, never>
+    entityDomains:
+      | EntityReference
+      | EntityReference[]
+      | Record<string, never>
+      | undefined
   ) => {
+    if (!entityDomains) {
+      setActiveDomains([]);
+
+      return;
+    }
+
     if (Array.isArray(entityDomains)) {
       setActiveDomains(entityDomains);
 
@@ -96,7 +103,9 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   };
 
   const handleDomainSave = useCallback(
-    async (selectedDomain: EntityReference | EntityReference[]) => {
+    async (selectedDomain: EntityReference | EntityReference[] | undefined) => {
+      // A cleared single-select arrives as `undefined`.
+      const nextDomains = selectedDomain ?? [];
       if (!entityId || !entityType || !entityFqn) {
         showErrorToast(t('message.entity-details-required'));
 
@@ -120,12 +129,12 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         }
 
         let domainsToSave: EntityReference[];
-        if (Array.isArray(selectedDomain)) {
-          domainsToSave = selectedDomain;
-        } else if (isEmpty(selectedDomain)) {
+        if (Array.isArray(nextDomains)) {
+          domainsToSave = nextDomains;
+        } else if (isEmpty(nextDomains)) {
           domainsToSave = [];
         } else {
-          domainsToSave = [selectedDomain];
+          domainsToSave = [nextDomains];
         }
 
         // Create JSON patch
@@ -193,9 +202,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         <DomainSelectableList
           hasPermission={hasPermission}
           multiple={entityRules.canAddMultipleDomains}
-          overlayClassName="domain-popover"
           selectedDomain={activeDomains}
-          wrapInButton={false}
           onUpdate={handleDomainSave}
         />
       )

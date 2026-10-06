@@ -12,17 +12,9 @@
  */
 
 import Icon from '@ant-design/icons';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
-import {
-  Button,
-  Col,
-  Form,
-  FormListFieldData,
-  Input,
-  Row,
-  Switch,
-  Typography,
-} from 'antd';
+import { Button, Col, Form, FormListFieldData, Input, Row } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
@@ -185,12 +177,12 @@ export const ContractSemanticFormTab: React.FC<{
       <Card className="contract-semantic-form-container container bg-grey p-box">
         <div className="d-flex justify-between items-center">
           <div>
-            <Typography.Text className="contract-detail-form-tab-title">
+            <Typography className="contract-detail-form-tab-title">
               {t('label.semantic-plural')}
-            </Typography.Text>
-            <Typography.Text className="contract-detail-form-tab-description">
+            </Typography>
+            <Typography className="contract-detail-form-tab-description">
               {t('message.semantics-description')}
-            </Typography.Text>
+            </Typography>
           </div>
 
           <Button
@@ -232,22 +224,22 @@ export const ContractSemanticFormTab: React.FC<{
                                   {...field}
                                   className="enable-form-item"
                                   name={[field.name, 'enabled']}
-                                  valuePropName="checked">
-                                  <Switch />
+                                  valuePropName="isSelected">
+                                  <Toggle size="md" />
                                 </Form.Item>
 
                                 <div className="d-flex flex-column">
-                                  <Typography.Text className="semantic-form-item-title">
+                                  <Typography className="semantic-form-item-title">
                                     {semanticsFormData?.[field.key]?.name ||
                                       t('label.untitled')}
-                                  </Typography.Text>
-                                  <Typography.Text
+                                  </Typography>
+                                  <Typography
                                     ellipsis
                                     className="semantic-form-item-description">
                                     {semanticsFormData?.[field.key]
                                       ?.description ||
                                       t('label.no-description')}
-                                  </Typography.Text>
+                                  </Typography>
                                 </div>
                               </div>
                               <div className="d-flex items-center gap-2">

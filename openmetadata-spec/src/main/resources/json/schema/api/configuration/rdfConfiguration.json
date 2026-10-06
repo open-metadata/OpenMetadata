@@ -184,10 +184,14 @@
       "type": "boolean",
       "default": true
     },
-    "askCollateEnabled": {
+    "aiEnabled": {
       "description": "Expose optional AI-assisted Ontology flows. Manual authoring remains available when disabled.",
       "type": "boolean",
       "default": false
+    },
+    "askCollateEnabled": {
+      "description": "Deprecated alias of aiEnabled, accepted so existing configuration files keep loading. Either flag enables AI-assisted Ontology flows.",
+      "type": "boolean"
     },
     "federation": {
       "description": "Controls federated SPARQL access (SERVICE clauses) to external endpoints. Federation is disabled by default; SERVICE clauses are rejected unless the target URI is in the allowlist.",

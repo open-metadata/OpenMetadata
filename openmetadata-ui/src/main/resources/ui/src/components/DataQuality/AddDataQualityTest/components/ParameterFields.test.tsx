@@ -28,7 +28,7 @@ import {
 import ParameterFields from './ParameterFields';
 import { FormValues } from './TestCaseFormV1.interface';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Trash01: () => <span data-testid="trash-icon" />,
 }));
 

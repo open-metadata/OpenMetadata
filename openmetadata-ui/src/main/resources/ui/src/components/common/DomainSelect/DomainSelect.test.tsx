@@ -28,6 +28,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
     return <div data-testid="tree-select-mock" />;
   },
+  DomainTag: ({
+    label,
+    'data-testid': dataTestId,
+  }: {
+    label: string;
+    'data-testid'?: string;
+  }) => <span data-testid={dataTestId}>{label}</span>,
 }));
 
 jest.mock('react-i18next', () => ({
@@ -127,7 +134,12 @@ describe('DomainSelect', () => {
 
     const { nodes } = await lastProps().fetchData({});
 
-    expect(mockGetChildren).toHaveBeenCalledWith(undefined, PAGE_SIZE_LARGE);
+    expect(mockGetChildren).toHaveBeenCalledWith(
+      undefined,
+      PAGE_SIZE_LARGE,
+      0,
+      undefined
+    );
     expect(nodes).toHaveLength(1);
     expect(nodes[0].id).toBe('Finance');
     expect(nodes[0].data).toMatchObject({ id: 'd1', type: 'domain' });
@@ -138,7 +150,12 @@ describe('DomainSelect', () => {
 
     await lastProps().fetchData({ parentId: 'Finance' });
 
-    expect(mockGetChildren).toHaveBeenCalledWith('Finance', PAGE_SIZE_LARGE);
+    expect(mockGetChildren).toHaveBeenCalledWith(
+      'Finance',
+      PAGE_SIZE_LARGE,
+      0,
+      undefined
+    );
   });
 
   it('should search domains when a search term is given', async () => {
@@ -193,7 +210,10 @@ describe('DomainSelect', () => {
   });
 
   it('should clear the scope (onUpdate undefined) when "All Domains" is picked', () => {
-    const { onUpdate } = renderSelect({ showAllDomains: true });
+    const { onUpdate } = renderSelect({
+      showAllDomains: true,
+      selectedDomain: financeRef,
+    });
 
     lastProps().onChange({
       id: 'All Domains',
@@ -228,11 +248,33 @@ describe('DomainSelect', () => {
   });
 
   it('should call onUpdate with undefined when cleared and clearing is allowed', () => {
-    const { onUpdate } = renderSelect({ multiple: false, isClearable: true });
+    const { onUpdate } = renderSelect({
+      multiple: false,
+      isClearable: true,
+      selectedDomain: financeRef,
+    });
 
     lastProps().onChange(null);
 
     expect(onUpdate).toHaveBeenCalledWith(undefined);
+  });
+
+  it('should not call onUpdate when the selection is unchanged', async () => {
+    const { onUpdate } = renderSelect({
+      multiple: true,
+      selectedDomain: [financeRef],
+    });
+
+    await lastProps().onChange([
+      {
+        id: financeRef.id,
+        value: financeRef.fullyQualifiedName,
+        label: 'x',
+        data: financeRef,
+      },
+    ]);
+
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it('should not call onUpdate when cleared but clearing is disallowed', () => {
@@ -243,11 +285,81 @@ describe('DomainSelect', () => {
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
-  it('should forward the inline create props', () => {
-    const onCreate = jest.fn();
-    renderSelect({ onCreate, createLabel: 'Add new domain' });
+  describe('renderSelectedItem', () => {
+    // entityReferencesToTreeNodes keys nodes on the FQN, not the entity id.
+    const node = {
+      id: financeRef.fullyQualifiedName,
+      value: financeRef.fullyQualifiedName,
+      label: 'Finance',
+      data: financeRef,
+    } as never;
 
-    expect(lastProps().createLabel).toBe('Add new domain');
-    expect(lastProps().onCreate).toBe(onCreate);
+    it('renders the selection as the shared DomainTag, not plain label text', () => {
+      renderSelect({ selectedDomain: financeRef });
+
+      const chip = lastProps().renderSelectedItem(node);
+      const { getByTestId } = render(chip);
+
+      expect(
+        getByTestId(`domain-tag-${financeRef.fullyQualifiedName}`)
+      ).toBeInTheDocument();
+    });
+
+    it('removes only the clicked chip in multiple mode', async () => {
+      const second = {
+        ...financeRef,
+        id: 'd2',
+        fullyQualifiedName: 'Marketing',
+      };
+      const { onUpdate } = renderSelect({
+        multiple: true,
+        isClearable: true,
+        selectedDomain: [financeRef, second],
+      });
+
+      const chip = lastProps().renderSelectedItem(node);
+
+      await chip.props.onDelete();
+
+      // The other domain survives; only the clicked one is dropped.
+      expect(onUpdate).toHaveBeenCalledWith([
+        expect.objectContaining({ fullyQualifiedName: 'Marketing' }),
+      ]);
+    });
+
+    it('does not offer delete when the picker is disabled or lacks permission', () => {
+      renderSelect({
+        selectedDomain: financeRef,
+        isClearable: true,
+        disabled: true,
+      });
+
+      expect(
+        lastProps().renderSelectedItem(node).props.onDelete
+      ).toBeUndefined();
+      expect(lastProps().renderSelectedItem(node).props.disabled).toBe(true);
+
+      renderSelect({
+        selectedDomain: financeRef,
+        isClearable: true,
+        hasPermission: false,
+      });
+
+      expect(
+        lastProps().renderSelectedItem(node).props.onDelete
+      ).toBeUndefined();
+    });
+
+    it('offers a remove affordance only when clearing is allowed', () => {
+      renderSelect({ selectedDomain: financeRef, isClearable: true });
+      const clearable = lastProps().renderSelectedItem(node);
+
+      expect(clearable.props.onDelete).toBeDefined();
+
+      renderSelect({ selectedDomain: financeRef, isClearable: false });
+      const locked = lastProps().renderSelectedItem(node);
+
+      expect(locked.props.onDelete).toBeUndefined();
+    });
   });
 });

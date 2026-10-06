@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
 import { Fragment } from 'react';
@@ -340,7 +341,7 @@ export const tableConstraintRendererBasedOnType = (
 
   return (
     <div
-      className="d-flex constraint-columns"
+      className="d-flex constraint-columns tw:bg-(--om-legacy-color-f8f8f8) tw:dark:bg-transparent"
       data-testid={`${constraintType}-container`}
       key={constraintType}>
       <Space
@@ -361,9 +362,9 @@ export const tableConstraintRendererBasedOnType = (
 
       <Space direction="vertical" size={16}>
         {columns?.map((column) => (
-          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
+          <Typography ellipsis={{ tooltip: true }} key={column}>
             {column}
-          </Typography.Text>
+          </Typography>
         ))}
       </Space>
     </div>

@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { ENUM_CONFIG_MAX_VISIBLE_VALUES } from '../../../../../../constants/CustomProperty.constants';
 import type { Type } from '../../../../../../generated/entity/type';
 import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -62,12 +63,18 @@ const mockTypeDetail = {
   ],
 };
 
-const mockGetTypeByFQN = jest.fn().mockResolvedValue(mockTypeDetail);
-const mockUpdateType = jest.fn().mockResolvedValue(mockTypeDetail);
+const mockUpdateCustomPropertyByName = jest
+  .fn()
+  .mockResolvedValue(mockTypeDetail);
+
+jest.mock('../../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
 
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
-  updateType: (id: string, patches: unknown) => mockUpdateType(id, patches),
+  updateCustomPropertyByName: (fqn: string, name: string, changes: unknown) =>
+    mockUpdateCustomPropertyByName(fqn, name, changes),
 }));
 
 jest.mock('../../../../../../constants/CustomProperty.constants', () => ({
@@ -75,6 +82,7 @@ jest.mock('../../../../../../constants/CustomProperty.constants', () => ({
     { value: 'table', label: 'Table' },
     { value: 'pipeline', label: 'Pipeline' },
   ],
+  ENUM_CONFIG_MAX_VISIBLE_VALUES: 20,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE: ['entity-reference-list'],
 }));
 
@@ -184,8 +192,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
     HintText: ({ children }: { children?: ReactNode }) => (
       <span data-testid="hint-text">{children}</span>
     ),
-    getField: ({ props }: { props?: { 'data-testid'?: string } }) => (
-      <div data-testid={props?.['data-testid'] ?? 'field'} />
+    getField: ({
+      props,
+    }: {
+      props?: { 'data-testid'?: string; maxVisibleItems?: number };
+    }) => (
+      <div
+        data-max-visible-items={props?.maxVisibleItems}
+        data-testid={props?.['data-testid'] ?? 'field'}
+      />
     ),
     FieldTypes: {
       TEXT: 'TEXT',
@@ -203,8 +218,7 @@ describe('CustomPropertiesEditPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetTypeByFQN.mockResolvedValue(mockTypeDetail);
-    mockUpdateType.mockResolvedValue(mockTypeDetail);
+    mockUpdateCustomPropertyByName.mockResolvedValue(mockTypeDetail);
   });
 
   it('renders the edit page container', () => {
@@ -315,6 +329,24 @@ describe('CustomPropertiesEditPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('caps the enum value tags it renders, so large enums stay responsive', () => {
+    render(
+      <CustomPropertiesEditPage
+        entityType={mockEntityType as unknown as Type}
+        property={mockEnumProperty as unknown as CustomProperty}
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    expect(
+      screen.getByTestId('edit-custom-property-enum-config')
+    ).toHaveAttribute(
+      'data-max-visible-items',
+      String(ENUM_CONFIG_MAX_VISIBLE_VALUES)
+    );
+  });
+
   it('does not render enum config fields for non-enum property type', () => {
     render(
       <CustomPropertiesEditPage
@@ -363,7 +395,7 @@ describe('CustomPropertiesEditPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('calls getTypeByFQN on mount', async () => {
+  const renderAndSubmit = () => {
     render(
       <CustomPropertiesEditPage
         entityType={mockEntityType as unknown as Type}
@@ -372,30 +404,49 @@ describe('CustomPropertiesEditPage', () => {
         onSuccess={mockOnSuccess}
       />
     );
+    fireEvent.submit(screen.getByTestId('edit-custom-property-form'));
+  };
+
+  it('updates only the edited fields of the property, addressed by name', async () => {
+    renderAndSubmit();
 
     await waitFor(() => {
-      expect(mockGetTypeByFQN).toHaveBeenCalledWith(
-        mockEntityType.fullyQualifiedName
+      expect(mockUpdateCustomPropertyByName).toHaveBeenCalledWith(
+        mockEntityType.fullyQualifiedName,
+        mockStringProperty.name,
+        {
+          displayName: mockStringProperty.displayName,
+          description: mockStringProperty.description,
+          customPropertyConfig: undefined,
+        }
       );
     });
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
   });
 
-  it('shows error toast when getTypeByFQN fails', async () => {
-    const mockError = new Error('API Error');
-    mockGetTypeByFQN.mockRejectedValueOnce(mockError);
+  it('shows an error and stays open when the property no longer exists', async () => {
+    mockUpdateCustomPropertyByName.mockResolvedValueOnce(undefined);
 
-    render(
-      <CustomPropertiesEditPage
-        entityType={mockEntityType as unknown as Type}
-        property={mockStringProperty as unknown as CustomProperty}
-        onCancel={mockOnCancel}
-        onSuccess={mockOnSuccess}
-      />
-    );
+    renderAndSubmit();
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith('server.update-entity-error');
+    });
+
+    expect(mockOnSuccess).not.toHaveBeenCalled();
+  });
+
+  it('shows error toast when the update fails', async () => {
+    const mockError = new Error('API Error');
+    mockUpdateCustomPropertyByName.mockRejectedValueOnce(mockError);
+
+    renderAndSubmit();
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
     });
+
+    expect(mockOnSuccess).not.toHaveBeenCalled();
   });
 
   it('does not call onCancel when save button is clicked without submit', () => {

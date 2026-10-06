@@ -18,31 +18,33 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined } from 'lodash';
-import { useCallback, useState } from 'react';
+import { isEmpty, isNil } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
-import {
-  Destination,
-  SubscriptionCategory,
-} from '../../../generated/events/eventSubscription';
+import { Destination } from '../../../generated/events/eventSubscription';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
   getDestinationsWithTestStatus,
   getFormattedDestinations,
 } from '../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { getTestableExternalDestinations } from '../../Alerts/DestinationFormItem/DestinationFormItem.utils';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import {
   ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
   ALERT_AI_FORM_CLASS_NAMES,
   EMPTY_ALERT_AI_DESTINATION,
 } from './AlertAiFormFields.constants';
-import { AlertAiDestinationSectionProps } from './AlertAiFormFields.interface';
+import {
+  AlertAiDestinationSectionProps,
+  AlertAiFormValidationErrors,
+} from './AlertAiFormFields.interface';
 import {
   hasExternalDestinationConfig,
   updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
+import { validateAlertAiDestinationFields } from './AlertAiFormFieldsValidationUtils';
 import AlertAiSection from './AlertAiSection.component';
 
 /** Renders destination timeout fields and the destination list for alert add/edit/view. */
@@ -55,34 +57,47 @@ const AlertAiDestinationSection = ({
 }: AlertAiDestinationSectionProps) => {
   const { t } = useTranslation();
   const destinations = value.destinations ?? [];
-  const destinationError = validationErrors?.destinations;
   const hasExternalDestination = hasExternalDestinationConfig(destinations);
   const [destinationsWithStatus, setDestinationsWithStatus] =
     useState<Destination[]>();
   const [isDestinationStatusLoading, setIsDestinationStatusLoading] =
     useState(false);
+  const [showDestinationErrors, setShowDestinationErrors] = useState(false);
+  // The parent form validates only on submit, so a Test click with nothing
+  // testable has to surface destination errors from here.
+  const destinationValidationErrors = useMemo(() => {
+    if (!showDestinationErrors) {
+      return validationErrors;
+    }
+    const errors: AlertAiFormValidationErrors = {};
+    validateAlertAiDestinationFields({ errors, t, value });
+
+    return { ...errors, ...validationErrors };
+  }, [showDestinationErrors, t, validationErrors, value]);
+  const destinationError = destinationValidationErrors?.destinations;
   const isTestDestinationDisabled =
     isEmpty(selectedSource) || isNil(selectedSource) || !hasExternalDestination;
 
   const handleTestDestination = useCallback(async () => {
     try {
       setIsDestinationStatusLoading(true);
-      const formattedDestinations = getFormattedDestinations(destinations);
+      const externalDestinations = getTestableExternalDestinations(
+        getFormattedDestinations(destinations)
+      );
+      setShowDestinationErrors(isEmpty(externalDestinations));
 
-      if (!isUndefined(formattedDestinations)) {
-        const externalDestinations = formattedDestinations.filter(
-          (destination) =>
-            destination.category === SubscriptionCategory.External &&
-            !isEmpty(destination.config)
-        );
-        const results = await testAlertDestination({
-          destinations: externalDestinations,
-        });
+      if (isEmpty(externalDestinations)) {
+        setDestinationsWithStatus(undefined);
 
-        setDestinationsWithStatus(
-          getDestinationsWithTestStatus(externalDestinations, results)
-        );
+        return;
       }
+      const results = await testAlertDestination({
+        destinations: externalDestinations,
+      });
+
+      setDestinationsWithStatus(
+        getDestinationsWithTestStatus(externalDestinations, results)
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -168,7 +183,7 @@ const AlertAiDestinationSection = ({
                 )
               }
               selectedSource={selectedSource}
-              validationErrors={validationErrors}
+              validationErrors={destinationValidationErrors}
               value={value}
               onChange={onChange}
             />
@@ -186,7 +201,7 @@ const AlertAiDestinationSection = ({
                     value,
                     onChange,
                     ['destinations'],
-                    [...destinations, EMPTY_ALERT_AI_DESTINATION]
+                    [...destinations, { ...EMPTY_ALERT_AI_DESTINATION }]
                   )
                 }>
                 {t('label.add-entity', {

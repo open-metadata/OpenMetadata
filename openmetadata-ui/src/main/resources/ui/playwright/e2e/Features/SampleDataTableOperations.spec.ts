@@ -24,6 +24,7 @@ import {
   navigateToSampleDataTab,
   RESERVED_SAMPLE_COLUMN_NAMES,
 } from '../../utils/sampleData';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 test.describe('Sample Data Tab - Download and Delete Functionality', () => {
@@ -99,25 +100,31 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Verify every reserved column header is rendered in order', async () => {
-      const headers = page.getByTestId('sample-data-table').locator('thead th');
-
-      for (const [
-        index,
-        columnName,
-      ] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
-        await expect(headers.nth(index)).toContainText(columnName);
-      }
+      // A single ordered assertion covers both the contents and the order,
+      // and fails with the whole header row rather than one cell at a time.
+      await expect(
+        page.getByTestId('sample-data-table').locator('thead th')
+      ).toHaveText(
+        RESERVED_SAMPLE_COLUMN_NAMES.map((name) => new RegExp(name))
+      );
     });
 
     await test.step('Verify each cell value sits under its own column', async () => {
-      const rows = page.getByTestId('sample-data-table').locator('tbody tr');
+      const rows = await page
+        .getByTestId('sample-data-table')
+        .locator('tbody tr')
+        .all();
 
-      for (const [columnIndex] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
-        for (const rowIndex of [0, 2]) {
-          await expect(
-            rows.nth(rowIndex).locator('td').nth(columnIndex)
-          ).toContainText(`sample_value_${columnIndex}_${rowIndex}`);
-        }
+      // Assert the row's cells as one ordered list: the point of the check is
+      // that each value sits under its own column, which an ordered
+      // whole-row assertion states directly.
+      for (const rowIndex of [0, 2]) {
+        await expect(rows[rowIndex].locator('td')).toHaveText(
+          RESERVED_SAMPLE_COLUMN_NAMES.map(
+            (_, columnIndex) =>
+              new RegExp(`sample_value_${columnIndex}_${rowIndex}`)
+          )
+        );
       }
     });
   });
@@ -274,26 +281,26 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Type DELETE and confirm deletion', async () => {
-      const deleteResponse = page.waitForResponse(
+      const deleteResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response
             .url()
             .includes(
               `/api/v1/tables/${tableForDelete.entityResponseData.id}/sampleData`
-            ) &&
-          response.request().method() === 'DELETE' &&
-          response.status() === 200
+            ) && response.request().method() === 'DELETE',
+        200
       );
 
-      const refetchResponse = page.waitForResponse(
+      const refetchResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response
             .url()
             .includes(
               `/api/v1/tables/${tableForDelete.entityResponseData.id}/sampleData`
-            ) &&
-          response.request().method() === 'GET' &&
-          response.status() === 200
+            ) && response.request().method() === 'GET',
+        200
       );
 
       await fillDeleteConfirmationIfPresent(page);

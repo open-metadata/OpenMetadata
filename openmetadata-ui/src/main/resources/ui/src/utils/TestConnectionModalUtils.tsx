@@ -26,7 +26,7 @@ import {
   Copy01,
   Lightbulb03,
   RefreshCcw01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useMemo, type Dispatch, type SetStateAction } from 'react';

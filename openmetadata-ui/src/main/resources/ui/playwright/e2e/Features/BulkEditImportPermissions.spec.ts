@@ -62,7 +62,7 @@ const table = new TableClass();
 const test = base.extend<{ bulkEditorPage: Page }>({
   bulkEditorPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editorUser.login(page);
+    await editorUser.signIn(page);
     await use(page);
     await page.close();
   },

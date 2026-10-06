@@ -8759,6 +8759,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -23911,6 +23917,12 @@
                       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
                       "type": "string"
                     },
+                    "includeMetricViews": {
+                      "title": "Include Metric Views",
+                      "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "connectionTimeout": {
                       "title": "Connection Timeout",
                       "description": "The maximum amount of time (in seconds) to wait for a successful connection to the data source. If the connection attempt takes longer than this timeout period, an error will be returned.",
@@ -38898,6 +38910,220 @@
                     "username",
                     "password"
                   ]
+                },
+                {
+                  "title": "TableauPipelineConnection",
+                  "description": "Tableau Pipeline Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.pipeline.TableauPipelineConnection",
+                  "definitions": {
+                    "TableauPipelineType": {
+                      "description": "Service type.",
+                      "type": "string",
+                      "enum": [
+                        "TableauPipeline"
+                      ],
+                      "default": "TableauPipeline"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Service Type",
+                      "description": "Service Type",
+                      "default": "TableauPipeline",
+                      "type": "string",
+                      "enum": [
+                        "TableauPipeline"
+                      ]
+                    },
+                    "hostPort": {
+                      "expose": true,
+                      "title": "Host and Port",
+                      "description": "Tableau Server URL.",
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "authType": {
+                      "mask": true,
+                      "title": "Authentication type for Tableau",
+                      "description": "Types of methods used to authenticate to the tableau instance",
+                      "oneOf": [
+                        {
+                          "title": "BasicAuth",
+                          "description": "Basic Auth Credentials",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.BasicAuth",
+                          "properties": {
+                            "username": {
+                              "title": "Username",
+                              "description": "Username to access the service.",
+                              "type": "string"
+                            },
+                            "password": {
+                              "title": "Password",
+                              "description": "Password to access the service.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "required": [
+                            "username",
+                            "password"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "title": "AccessTokenAuth",
+                          "description": "Access Token Auth Credentials",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.AccessTokenAuth",
+                          "properties": {
+                            "personalAccessTokenName": {
+                              "title": "Personal Access Token",
+                              "description": "Personal Access Token Name.",
+                              "type": "string"
+                            },
+                            "personalAccessTokenSecret": {
+                              "title": "Personal Access Token Secret",
+                              "description": "Personal Access Token Secret.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "required": [
+                            "personalAccessTokenName",
+                            "personalAccessTokenSecret"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "siteName": {
+                      "title": "Site Name",
+                      "description": "Tableau Site Name.",
+                      "type": "string",
+                      "default": null
+                    },
+                    "apiVersion": {
+                      "title": "API Version",
+                      "description": "Tableau API version. If not provided, the version will be used from the tableau server.",
+                      "type": "string",
+                      "default": null
+                    },
+                    "verifySSL": {
+                      "default": "no-ssl",
+                      "title": "Verify SSL",
+                      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+                      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+                      "type": "string",
+                      "enum": [
+                        "no-ssl",
+                        "ignore",
+                        "validate"
+                      ]
+                    },
+                    "sslConfig": {
+                      "title": "SSL Config",
+                      "description": "Client SSL configuration",
+                      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "title": "Validate SSL Client Config",
+                          "description": "OpenMetadata Client configured to validate SSL certificates.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                          "additionalProperties": false,
+                          "properties": {
+                            "caCertificate": {
+                              "title": "CA Certificate",
+                              "description": "The CA certificate used for SSL validation.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslCertificate": {
+                              "title": "SSL Certificate",
+                              "description": "The SSL certificate used for client authentication.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslKey": {
+                              "title": "SSL Key",
+                              "description": "The private key associated with the SSL certificate.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "pipelineFilterPattern": {
+                      "description": "Regex exclude or include pipelines that match the pattern.",
+                      "title": "Default Pipeline Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "numberOfStatus": {
+                      "title": "Number of Status",
+                      "description": "Number of recent runs to fetch per flow or extract refresh.",
+                      "type": "integer",
+                      "default": 10,
+                      "minimum": 1,
+                      "maximum": 100
+                    },
+                    "includeExtractRefreshes": {
+                      "title": "Include Extract Refreshes",
+                      "description": "Ingest the extract refresh tasks of published data sources and workbooks as pipelines, with their refresh jobs as pipeline status. Reading refresh job history requires a site administrator.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort",
+                    "authType"
+                  ]
                 }
               ]
             }
@@ -40581,7 +40807,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -40855,7 +41080,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -41868,59 +42092,6 @@
                         "Sftp"
                       ],
                       "default": "Sftp"
-                    },
-                    "basicAuth": {
-                      "title": "Username/Password Authentication",
-                      "description": "Username and password authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "SFTP password",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "keyAuth": {
-                      "title": "Private Key Authentication",
-                      "description": "SSH private key authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "privateKey": {
-                          "title": "Private Key",
-                          "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
-                          "type": "string",
-                          "format": "password",
-                          "uiFieldType": "fileOrInput"
-                        },
-                        "privateKeyPassphrase": {
-                          "title": "Private Key Passphrase",
-                          "description": "Passphrase for the private key (if encrypted)",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "privateKey"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -41952,6 +42123,7 @@
                           "title": "Username/Password Authentication",
                           "description": "Username and password authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -41975,6 +42147,7 @@
                           "title": "Private Key Authentication",
                           "description": "SSH private key authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -51338,6 +51511,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -66490,6 +66669,12 @@
                       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
                       "type": "string"
                     },
+                    "includeMetricViews": {
+                      "title": "Include Metric Views",
+                      "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "connectionTimeout": {
                       "title": "Connection Timeout",
                       "description": "The maximum amount of time (in seconds) to wait for a successful connection to the data source. If the connection attempt takes longer than this timeout period, an error will be returned.",
@@ -81477,6 +81662,220 @@
                     "username",
                     "password"
                   ]
+                },
+                {
+                  "title": "TableauPipelineConnection",
+                  "description": "Tableau Pipeline Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.pipeline.TableauPipelineConnection",
+                  "definitions": {
+                    "TableauPipelineType": {
+                      "description": "Service type.",
+                      "type": "string",
+                      "enum": [
+                        "TableauPipeline"
+                      ],
+                      "default": "TableauPipeline"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Service Type",
+                      "description": "Service Type",
+                      "default": "TableauPipeline",
+                      "type": "string",
+                      "enum": [
+                        "TableauPipeline"
+                      ]
+                    },
+                    "hostPort": {
+                      "expose": true,
+                      "title": "Host and Port",
+                      "description": "Tableau Server URL.",
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "authType": {
+                      "mask": true,
+                      "title": "Authentication type for Tableau",
+                      "description": "Types of methods used to authenticate to the tableau instance",
+                      "oneOf": [
+                        {
+                          "title": "BasicAuth",
+                          "description": "Basic Auth Credentials",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.BasicAuth",
+                          "properties": {
+                            "username": {
+                              "title": "Username",
+                              "description": "Username to access the service.",
+                              "type": "string"
+                            },
+                            "password": {
+                              "title": "Password",
+                              "description": "Password to access the service.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "required": [
+                            "username",
+                            "password"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "title": "AccessTokenAuth",
+                          "description": "Access Token Auth Credentials",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.AccessTokenAuth",
+                          "properties": {
+                            "personalAccessTokenName": {
+                              "title": "Personal Access Token",
+                              "description": "Personal Access Token Name.",
+                              "type": "string"
+                            },
+                            "personalAccessTokenSecret": {
+                              "title": "Personal Access Token Secret",
+                              "description": "Personal Access Token Secret.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "required": [
+                            "personalAccessTokenName",
+                            "personalAccessTokenSecret"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "siteName": {
+                      "title": "Site Name",
+                      "description": "Tableau Site Name.",
+                      "type": "string",
+                      "default": null
+                    },
+                    "apiVersion": {
+                      "title": "API Version",
+                      "description": "Tableau API version. If not provided, the version will be used from the tableau server.",
+                      "type": "string",
+                      "default": null
+                    },
+                    "verifySSL": {
+                      "default": "no-ssl",
+                      "title": "Verify SSL",
+                      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+                      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+                      "type": "string",
+                      "enum": [
+                        "no-ssl",
+                        "ignore",
+                        "validate"
+                      ]
+                    },
+                    "sslConfig": {
+                      "title": "SSL Config",
+                      "description": "Client SSL configuration",
+                      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "title": "Validate SSL Client Config",
+                          "description": "OpenMetadata Client configured to validate SSL certificates.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                          "additionalProperties": false,
+                          "properties": {
+                            "caCertificate": {
+                              "title": "CA Certificate",
+                              "description": "The CA certificate used for SSL validation.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslCertificate": {
+                              "title": "SSL Certificate",
+                              "description": "The SSL certificate used for client authentication.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslKey": {
+                              "title": "SSL Key",
+                              "description": "The private key associated with the SSL certificate.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "pipelineFilterPattern": {
+                      "description": "Regex exclude or include pipelines that match the pattern.",
+                      "title": "Default Pipeline Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "numberOfStatus": {
+                      "title": "Number of Status",
+                      "description": "Number of recent runs to fetch per flow or extract refresh.",
+                      "type": "integer",
+                      "default": 10,
+                      "minimum": 1,
+                      "maximum": 100
+                    },
+                    "includeExtractRefreshes": {
+                      "title": "Include Extract Refreshes",
+                      "description": "Ingest the extract refresh tasks of published data sources and workbooks as pipelines, with their refresh jobs as pipeline status. Reading refresh job history requires a site administrator.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort",
+                    "authType"
+                  ]
                 }
               ]
             }
@@ -83160,7 +83559,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -83434,7 +83832,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -84447,59 +84844,6 @@
                         "Sftp"
                       ],
                       "default": "Sftp"
-                    },
-                    "basicAuth": {
-                      "title": "Username/Password Authentication",
-                      "description": "Username and password authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "SFTP password",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "keyAuth": {
-                      "title": "Private Key Authentication",
-                      "description": "SSH private key authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "privateKey": {
-                          "title": "Private Key",
-                          "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
-                          "type": "string",
-                          "format": "password",
-                          "uiFieldType": "fileOrInput"
-                        },
-                        "privateKeyPassphrase": {
-                          "title": "Private Key Passphrase",
-                          "description": "Passphrase for the private key (if encrypted)",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "privateKey"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -84531,6 +84875,7 @@
                           "title": "Username/Password Authentication",
                           "description": "Username and password authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -84554,6 +84899,7 @@
                           "title": "Private Key Authentication",
                           "description": "SSH private key authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth",
                           "properties": {
                             "username": {
                               "title": "Username",

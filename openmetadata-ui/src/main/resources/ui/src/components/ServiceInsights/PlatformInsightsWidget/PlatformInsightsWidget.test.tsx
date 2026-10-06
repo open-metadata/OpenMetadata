@@ -161,7 +161,7 @@ describe('PlatformInsightsWidget', () => {
       renderComponent({ isLoading: true });
 
       // Should render 5 skeleton cards for database services (includes HealthyDataAssets)
-      const skeletonCards = document.querySelectorAll('.ant-skeleton');
+      const skeletonCards = document.querySelectorAll('.other-charts-card');
 
       expect(skeletonCards).toHaveLength(5);
     });
@@ -173,7 +173,7 @@ describe('PlatformInsightsWidget', () => {
       renderComponent({ isLoading: true });
 
       // Should render 4 skeleton cards (excludes HealthyDataAssets for non-database services)
-      const skeletonCards = document.querySelectorAll('.ant-skeleton');
+      const skeletonCards = document.querySelectorAll('.other-charts-card');
 
       expect(skeletonCards).toHaveLength(4);
     });

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityReference } from '../../../generated/entity/type';
 import DomainSelectableList from './DomainSelectableList.component';
 
@@ -116,6 +116,56 @@ describe('DomainSelectableList', () => {
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('should open the picker on pointerdown, not on click', () => {
+    // A re-render between mousedown and mouseup replaces the trigger's DOM node,
+    // and the browser then never dispatches the click at all — opening on
+    // pointerdown is what makes the press survive that race.
+    const onOpenChange = jest.fn();
+    render(
+      <DomainSelectableList
+        hasPermission
+        popoverProps={{ onOpenChange }}
+        onUpdate={onUpdate}
+      />
+    );
+
+    fireEvent.pointerDown(screen.getByTestId('add-domain'), { button: 0 });
+
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not toggle again on the click that follows a pointerdown', () => {
+    const onOpenChange = jest.fn();
+    render(
+      <DomainSelectableList
+        hasPermission
+        popoverProps={{ onOpenChange }}
+        onUpdate={onUpdate}
+      />
+    );
+
+    const trigger = screen.getByTestId('add-domain');
+    fireEvent.pointerDown(trigger, { button: 0 });
+    fireEvent.click(trigger, { detail: 1 });
+
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('should open the picker on a keyboard-synthesized click', () => {
+    const onOpenChange = jest.fn();
+    render(
+      <DomainSelectableList
+        hasPermission
+        popoverProps={{ onOpenChange }}
+        onUpdate={onUpdate}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('add-domain'), { detail: 0 });
+
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
   });
 
   it('should not render a default trigger in version view', () => {

@@ -33,13 +33,15 @@ import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/commo
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
+import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.constants';
 import {
   ContextMemory,
   EntityReference,
+  EntityStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { stripMarkdown } from '../../../utils/StringUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
@@ -279,6 +281,49 @@ interface MemoryRowProps {
   isPinningMemoryId?: string;
 }
 
+const EntityStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
+  const { t } = useTranslation();
+  const status = memory.entityStatus;
+
+  if (!status || status === EntityStatus.Approved) {
+    return null;
+  }
+
+  let color: 'error' | 'warning' | 'gray' = 'gray';
+  if (status === EntityStatus.Rejected) {
+    color = 'error';
+  } else if (status === EntityStatus.Deprecated) {
+    color = 'warning';
+  }
+
+  return (
+    <Badge
+      color={color}
+      data-testid={`memory-status-${memory.id}`}
+      size="sm"
+      type="color">
+      {t(MEMORY_STATUS_LABEL_KEYS[status])}
+    </Badge>
+  );
+};
+
+const EntityStatusReason: FC<{ memory: ContextMemory }> = ({ memory }) => {
+  const { t } = useTranslation();
+
+  if (!memory.statusReason || memory.entityStatus === EntityStatus.Approved) {
+    return null;
+  }
+
+  return (
+    <Typography
+      className="tw:text-tertiary tw:line-clamp-2"
+      data-testid={`memory-status-reason-${memory.id}`}
+      size="text-xs">
+      {t('label.reason')}: {memory.statusReason}
+    </Typography>
+  );
+};
+
 const MemoryRow: FC<MemoryRowProps> = ({
   currentUserName,
   isAdminUser,
@@ -353,15 +398,20 @@ const MemoryRow: FC<MemoryRowProps> = ({
             updatedBy={memory.updatedBy}
           />
 
-          <Typography ellipsis weight="medium">
-            {memory.title || memory.name}
-          </Typography>
+          <Box align="center" gap={2} wrap="wrap">
+            <Typography ellipsis weight="medium">
+              {memory.title || memory.name}
+            </Typography>
+            <EntityStatusBadge memory={memory} />
+          </Box>
 
           <Typography
             className="tw:text-tertiary tw:line-clamp-2"
             size="text-xs">
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
+
+          <EntityStatusReason memory={memory} />
 
           <MemoryLinkedEntities
             hiddenLinkedEntitiesCount={hiddenLinkedEntitiesCount}

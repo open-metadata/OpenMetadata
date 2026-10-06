@@ -12,16 +12,16 @@
  */
 
 // Shared by FilterSelect and TreeSelect; not in filter-select.tsx, whose Tree compound would cycle.
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '../../../icons';
 import type { HTMLAttributes, Ref } from 'react';
 import { Button } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
 import { Typography } from '@/components/foundations/typography';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 
-// Narrowed so the icon prop's type doesn't widen to the raw @untitledui/icons FC.
+// Narrowed so the icon prop's type doesn't widen to the raw core-ui icons FC.
 export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
-  <SearchLg aria-hidden="true" {...props} />
+  <Search aria-hidden="true" {...props} />
 );
 
 export const TriggerCountBadge = ({ count }: { count: number }) => (

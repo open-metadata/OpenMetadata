@@ -5,6 +5,7 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
@@ -18,6 +19,7 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -34,6 +36,7 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class DataContractValidationApp extends AbstractNativeApplication {
+  private static final String SYSTEM_USER = "system";
 
   private final Stats stats = new Stats();
   private JobExecutionContext jobExecutionContext;
@@ -109,9 +112,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
       for (DataContract dataContract : contractBatch) {
         try {
           LOG.debug("Validating data contract: {}", dataContract.getFullyQualifiedName());
-          RestUtil.PutResponse<DataContractResult> validationResponse =
-              repository.validateContract(dataContract);
-          DataContractResult validationResult = validationResponse.getEntity();
+          DataContractResult validationResult = validateWithInheritance(repository, dataContract);
 
           LOG.debug(
               "Validation completed for {}: Status = {}",
@@ -158,9 +159,9 @@ public class DataContractValidationApp extends AbstractNativeApplication {
 
       for (DataProduct dataProduct : allDataProducts) {
         try {
-          // Check if this Data Product has a contract
+          // Assets inherit only an approved Data Product contract
           DataContract dpContract = contractRepository.getEntityDataContractSafely(dataProduct);
-          if (dpContract == null) {
+          if (dpContract == null || dpContract.getEntityStatus() != EntityStatus.APPROVED) {
             continue;
           }
 
@@ -198,36 +199,22 @@ public class DataContractValidationApp extends AbstractNativeApplication {
                     Entity.getEntity(
                         assetRef.getType(), assetRef.getId(), "*", Include.NON_DELETED);
 
-                // Check if asset has its own direct (non-inherited) contract
-                DataContract assetContract = contractRepository.getEntityDataContractSafely(asset);
-                if (assetContract != null && !Boolean.TRUE.equals(assetContract.getInherited())) {
-                  // Asset has its own direct contract, skip (it was validated in Phase 1)
+                // An asset with a contract of its own, including one materialized on an earlier
+                // run, was validated with what it inherits in the first phase
+                if (contractRepository.getEntityDataContractSafely(asset) != null) {
                   continue;
                 }
 
-                // Asset only has inherited contract - materialize and validate
-                LOG.debug(
-                    "Materializing inherited contract for asset {} from Data Product {}",
-                    asset.getName(),
-                    dataProduct.getName());
-
-                DataContract materializedContract =
-                    contractRepository.materializeInheritedContract(
-                        asset, dpContract.getName(), "system");
-
-                // Get effective contract for validation (includes inherited rules)
-                DataContract effectiveContract = contractRepository.getEffectiveDataContract(asset);
-
-                // Validate using effective contract, store results in materialized contract
-                RestUtil.PutResponse<DataContractResult> validationResponse =
-                    contractRepository.validateContractWithEffective(
-                        materializedContract, effectiveContract);
-
-                LOG.debug(
-                    "Materialized and validated contract for {}: Status = {}",
-                    asset.getName(),
-                    validationResponse.getEntity().getContractExecutionStatus());
-                totalProcessed++;
+                // The asset only inherits the contract: materialize one to hold the results
+                Optional<RestUtil.PutResponse<DataContractResult>> validationResponse =
+                    contractRepository.validateEntityContract(asset, SYSTEM_USER);
+                validationResponse.ifPresent(
+                    response ->
+                        LOG.debug(
+                            "Materialized and validated contract for {}: Status = {}",
+                            asset.getName(),
+                            response.getEntity().getContractExecutionStatus()));
+                totalProcessed += validationResponse.isPresent() ? 1 : 0;
               } catch (Exception e) {
                 String msg =
                     String.format(
@@ -258,6 +245,21 @@ public class DataContractValidationApp extends AbstractNativeApplication {
     }
 
     return new int[] {totalProcessed, totalErrors};
+  }
+
+  /**
+   * Validates a contract with what its entity inherits from a Data Product, as on-demand validation
+   * does; validating the stored contract alone would skip every inherited rule.
+   */
+  private static DataContractResult validateWithInheritance(
+      DataContractRepository repository, DataContract dataContract) {
+    EntityReference entityRef = dataContract.getEntity();
+    EntityInterface entity =
+        Entity.getEntity(entityRef.getType(), entityRef.getId(), "*", Include.NON_DELETED);
+    return repository
+        .validateEntityContract(entity, SYSTEM_USER)
+        .orElseGet(() -> repository.validateContract(dataContract))
+        .getEntity();
   }
 
   private void setStats(Integer totalRecords, Integer successRecords, Integer failedRecords) {

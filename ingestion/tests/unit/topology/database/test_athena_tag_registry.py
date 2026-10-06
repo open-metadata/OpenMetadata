@@ -144,7 +144,7 @@ def test_system_tags_resolve_at_every_supported_level(source, level):
     assert fqns(labels) == ["PII.Sensitive"]
 
 
-def test_invalid_and_empty_values_do_not_discard_valid_tags_or_columns(source):
+def test_invalid_and_empty_values_do_not_discard_valid_tags_or_columns(source, caplog):
     response(
         source,
         {
@@ -153,7 +153,8 @@ def test_invalid_and_empty_values_do_not_discard_valid_tags_or_columns(source):
         },
     )
     records = table_stage(source)
-    assert len([item for item in records if item.left]) == 1
+    assert [item for item in records if item.left] == []
+    assert "Skipped tag 'bad\"name' in classification 'Class'" in caplog.text
     assert [item.right.tag_request.name.root for item in records if item.right] == ["Valid", "Valid"]
     assert fqns(source.get_tag_labels("table")) == ["Class.Valid"]
     assert fqns(source.get_column_tag_labels("table", {"name": "value"})) == ["ColumnClass.Valid"]

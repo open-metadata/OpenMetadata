@@ -16,18 +16,27 @@ import { describe, expect, it } from 'vitest';
 import { TextAreaBase } from './textarea';
 
 describe('TextAreaBase theme semantics', () => {
-  it('colors the resize handle with the active semantic border token', () => {
+  it('draws the resize grip from the semantic border token', () => {
     render(<TextAreaBase aria-label="Description" />);
 
     const textArea = screen.getByRole('textbox', { name: 'Description' });
 
-    expect(textArea).toHaveClass(
-      'tw:[&::-webkit-resizer]:bg-border-primary',
-      'tw:[&::-webkit-resizer]:mask-(image:--resize-handle-mask)'
+    expect(textArea).toHaveClass('tw:[&::-webkit-resizer]:text-border-primary');
+    expect(textArea.className).toContain(
+      'tw:[&::-webkit-resizer]:bg-[linear-gradient(135deg,'
     );
-    expect(textArea.style.getPropertyValue('--resize-handle-mask')).toContain(
-      'data:image/svg+xml;base64,'
-    );
+    expect(textArea.className).toContain('currentColor');
     expect(textArea.className).not.toContain('tw:dark:');
+  });
+
+  // Chromium and WebKit ignore mask-* on ::-webkit-resizer and paint only its
+  // background, so a masked grip renders as a solid square.
+  it('does not rely on a mask for the resize grip', () => {
+    render(<TextAreaBase aria-label="Description" />);
+
+    const textArea = screen.getByRole('textbox', { name: 'Description' });
+
+    expect(textArea.className).not.toContain('webkit-resizer]:mask');
+    expect(textArea.getAttribute('style') ?? '').not.toContain('--resize');
   });
 });

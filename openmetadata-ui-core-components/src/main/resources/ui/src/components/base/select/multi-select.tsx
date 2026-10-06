@@ -7,7 +7,7 @@ import { type SelectItemType, sizes } from '@/components/base/select/select';
 import { TagCloseX } from '@/components/base/tags/base-components/tag-close-x';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '../../../icons';
 import type {
   FocusEventHandler,
   KeyboardEvent,
@@ -231,7 +231,7 @@ export const MultiSelectTagsValue = ({
   shortcut,
   placeholder,
   shortcutClassName,
-  icon: Icon = SearchLg,
+  icon: Icon = Search,
   // Omit this prop to avoid invalid HTML attribute warning
   isDisabled: _isDisabled,
   ...otherProps
@@ -322,8 +322,27 @@ export const MultiSelectBase = ({
     [selectedItems, onItemCleared]
   );
 
+  // react-aria commits the focused option on blur/Tab, and the listbox focuses
+  // whatever the pointer last passed over — so leaving the field inserted an
+  // option the user never picked. Only a press or Enter adds a value.
+  const isLeavingRef = useRef(false);
+  const suppressCommit = useCallback(() => {
+    isLeavingRef.current = true;
+    queueMicrotask(() => {
+      isLeavingRef.current = false;
+    });
+  }, []);
+  const onKeyDownCapture = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        suppressCommit();
+      }
+    },
+    [suppressCommit]
+  );
+
   const onSelectionChange = (id: Key | null) => {
-    if (!id) {
+    if (!id || isLeavingRef.current) {
       return;
     }
 
@@ -388,7 +407,10 @@ export const MultiSelectBase = ({
         onInputChange={onInputChange}
         onSelectionChange={onSelectionChange}>
         {(state) => (
-          <div className="tw:flex tw:flex-col tw:gap-1.5">
+          <div
+            className="tw:flex tw:flex-col tw:gap-1.5"
+            onBlurCapture={suppressCommit}
+            onKeyDownCapture={onKeyDownCapture}>
             {props.label && (
               <Label isRequired={state.isRequired} tooltip={props.tooltip}>
                 {props.label}

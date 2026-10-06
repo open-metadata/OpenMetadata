@@ -11,9 +11,22 @@
  *  limitations under the License.
  */
 
-import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { isUndefined } from 'lodash';
+import {
+  TestCase,
+  TestCaseResult,
+  TestCaseStatus,
+} from '../../../../generated/tests/testCase';
+import { toFiniteNumber } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { convertMillisecondsToHumanReadableFormat } from '../../../../utils/date-time/DateTimeUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
+import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
+import {
+  formatExpectation,
+  getFoundValue,
+  getRunExpectation,
+} from '../RunDetailsCard/RunDetailsCard.utils';
 import {
   INCIDENT_RUN_STATUSES,
   INCIDENT_STATUS_CONFIG,
@@ -22,18 +35,21 @@ import {
 import type { TestCaseLastRunBannerProps } from './TestCaseLastRunBanner.interface';
 import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
-type TestResultValues = NonNullable<
-  TestCaseLastRunBannerProps['testCaseResult']
->['testResultValue'];
+const getExpectedText = (
+  testCase: TestCase | undefined,
+  testCaseResult: TestCaseResult
+) => {
+  const predicted = toFiniteNumber(
+    testCaseResult.testResultValue?.[0]?.predictedValue
+  );
 
-const formatMetricValue = (value?: string) => {
-  if (!value) {
-    return undefined;
+  if (!isUndefined(predicted)) {
+    return formatNumber(predicted);
   }
 
-  const numericValue = Number(value);
-
-  return Number.isFinite(numericValue) ? numericValue.toLocaleString() : value;
+  return testCase
+    ? formatExpectation(getRunExpectation(testCase, testCaseResult))
+    : NO_VALUE;
 };
 
 export const getRunDescription = (
@@ -49,27 +65,26 @@ export const getIncidentLink = (
   testCaseStatus: TestCaseStatus
 ) => (INCIDENT_RUN_STATUSES.has(testCaseStatus) ? taskLinkInfo : null);
 
+/**
+ * The latest run's RESULT / EXPECTED pair, read through the run details card's
+ * helpers so the two cannot disagree. A result is rarely named like its
+ * parameter (`rowCount` against `value`), so there is no name lookup.
+ */
 export const getMetricSummary = (
-  parameterValues: TestCaseLastRunBannerProps['parameterValues'],
-  testResultValue: TestResultValues,
+  testCase: TestCase | undefined,
+  testCaseResult: TestCaseResult,
   testCaseStatus: TestCaseStatus
 ) => {
-  const metric = testResultValue?.[0];
-  const resultValue = formatMetricValue(metric?.value);
-  const matchingParameter = parameterValues?.find(
-    ({ name }) => name === metric?.name
-  );
-  const expectedValue = formatMetricValue(
-    metric?.predictedValue ?? matchingParameter?.value
-  );
+  const found = getFoundValue(testCaseResult);
+  const expectedValue = getExpectedText(testCase, testCaseResult);
 
   return {
     expectedValue,
-    resultValue,
+    resultValue: isUndefined(found) ? undefined : formatNumber(found),
     show:
       METRIC_RUN_STATUSES.has(testCaseStatus) &&
-      resultValue !== undefined &&
-      expectedValue !== undefined,
+      !isUndefined(found) &&
+      expectedValue !== NO_VALUE,
   };
 };
 

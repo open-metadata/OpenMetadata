@@ -12,12 +12,20 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -27,11 +35,14 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 
 /**
@@ -45,14 +56,17 @@ import org.openmetadata.service.Entity;
 class ContextMemoryRepositoryTest {
 
   private ContextMemoryRepository repository;
+  private CollectionDAO daoCollection;
+  private CollectionDAO.EntityRelationshipDAO relationshipDAO;
 
   @BeforeEach
   void setUp() {
-    CollectionDAO daoCollection = mock(CollectionDAO.class);
+    daoCollection = mock(CollectionDAO.class);
+    relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     when(daoCollection.contextMemoryDAO()).thenReturn(mock(CollectionDAO.ContextMemoryDAO.class));
-    when(daoCollection.relationshipDAO())
-        .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
+    when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
     Entity.setCollectionDAO(daoCollection);
+    Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(daoCollection));
     repository = new ContextMemoryRepository();
   }
 
@@ -137,6 +151,101 @@ class ContextMemoryRepositoryTest {
       assertTrue(Entity.isSearchIndexable(timeSeriesEntity));
     } finally {
       repositories.remove(entityType);
+    }
+  }
+
+  /**
+   * A reused {@link ContextMemory} can legitimately carry more than one {@code MENTIONED_IN} source
+   * edge, while its {@code sourceEntity}/{@code sourceFile} fields are singular {@link
+   * EntityReference} projections over that multi-edge set. Both read paths must therefore apply
+   * the *same* tiebreak, otherwise the plain JDBI list (and the reconciler's {@code applyDerived}
+   * write fed by {@code listExtractedMemories}) can report -- and write -- a different source than
+   * the detail GET, deleting a {@code MENTIONED_IN} edge during reconciliation.
+   *
+   * <p>The single {@code getSourceEntity} path (detail GET, update write-back) inherits the {@code
+   * EntityUtil.compareEntityReference} (entity-name) sort from {@code
+   * EntityRelationshipRepository.getEntityReferences} and returns the name-first source. This test
+   * stubs the bulk {@code findFromBatch} rows in non-name (DB arrival) order and asserts the bulk
+   * {@code batchFetchSources} path now returns the same name-first source instead of the first DB
+   * row, so list vs detail agree and the reconciler's diff is empty.
+   */
+  @Test
+  void batchFetchSources_picksNameFirstSourceLikeSinglePath() throws ReflectiveOperationException {
+    UUID memoryId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    UUID alphaId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    UUID betaId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    ContextMemory memory = new ContextMemory().withId(memoryId).withName("reused-memory");
+    EntityReference alphaSource =
+        new EntityReference().withId(alphaId).withType(Entity.CONTEXT_FILE).withName("Alpha");
+    EntityReference betaSource =
+        new EntityReference().withId(betaId).withType(Entity.CONTEXT_FILE).withName("Beta");
+
+    // Single-path records: findFrom returns both source rows; EntityRelationshipRepository
+    // resolves and name-sorts them, so getSourceEntity returns "Alpha".
+    List<CollectionDAO.EntityRelationshipRecord> singleRecords =
+        List.of(
+            CollectionDAO.EntityRelationshipRecord.builder()
+                .id(alphaId)
+                .type(Entity.CONTEXT_FILE)
+                .build(),
+            CollectionDAO.EntityRelationshipRecord.builder()
+                .id(betaId)
+                .type(Entity.CONTEXT_FILE)
+                .build());
+    // Bulk-path rows deliberately in non-name (DB arrival) order, with Beta first: this is the
+    // order that made the old putIfAbsent bulk path disagree with the name-sorted single path.
+    List<CollectionDAO.EntityRelationshipObject> bulkRecords =
+        List.of(
+            CollectionDAO.EntityRelationshipObject.builder()
+                .fromId(betaId.toString())
+                .toId(memoryId.toString())
+                .fromEntity(Entity.CONTEXT_FILE)
+                .toEntity(Entity.CONTEXT_MEMORY)
+                .build(),
+            CollectionDAO.EntityRelationshipObject.builder()
+                .fromId(alphaId.toString())
+                .toId(memoryId.toString())
+                .fromEntity(Entity.CONTEXT_FILE)
+                .toEntity(Entity.CONTEXT_MEMORY)
+                .build());
+
+    when(relationshipDAO.findFrom(
+            eq(memoryId), eq(Entity.CONTEXT_MEMORY), eq(Relationship.MENTIONED_IN.ordinal())))
+        .thenReturn(singleRecords);
+    when(relationshipDAO.findFromBatch(
+            anyList(), eq(Relationship.MENTIONED_IN.ordinal()), eq(Include.NON_DELETED)))
+        .thenReturn(bulkRecords);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entityMock.when(() -> Entity.hasEntityRepository(eq(Entity.CONTEXT_FILE))).thenReturn(true);
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      eq(Entity.CONTEXT_FILE), anyList(), any(Include.class)))
+          .thenReturn(List.of(alphaSource, betaSource));
+
+      Method getSourceEntity =
+          ContextMemoryRepository.class.getDeclaredMethod("getSourceEntity", ContextMemory.class);
+      getSourceEntity.setAccessible(true);
+      EntityReference single = (EntityReference) getSourceEntity.invoke(repository, memory);
+
+      Method batchFetchSources =
+          ContextMemoryRepository.class.getDeclaredMethod("batchFetchSources", List.class);
+      batchFetchSources.setAccessible(true);
+      Map<UUID, EntityReference> bulk =
+          (Map<UUID, EntityReference>) batchFetchSources.invoke(repository, List.of(memory));
+
+      assertEquals(alphaId, single.getId(), "single path must pick the name-first source (Alpha)");
+      assertTrue(bulk.containsKey(memoryId), "bulk path must resolve a source for the memory");
+      assertEquals(
+          alphaId,
+          bulk.get(memoryId).getId(),
+          "bulk path must pick the name-first source, matching the single path");
+      assertEquals(
+          single.getId(),
+          bulk.get(memoryId).getId(),
+          "list (bulk) and detail (single) must agree on sourceEntity id");
     }
   }
 

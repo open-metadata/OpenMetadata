@@ -42,6 +42,7 @@ import {
   SlotContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
@@ -336,15 +337,21 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
   const activeCategoryConfig = CATEGORY_CONFIGS.find(
     (config) => config.key === category
   );
-  const title =
-    category === 'all'
-      ? t('label.all-connections')
-      : t(activeCategoryConfig?.titleKey ?? 'label.connection-plural');
+  const getTitle = () => {
+    if (category === 'all') {
+      return t('label.all-connections');
+    }
+
+    return activeCategoryConfig
+      ? getServiceCategoryLabel(activeCategoryConfig.key)
+      : t('label.connection-plural');
+  };
+  const title = getTitle();
   const getCategorySubtitle = (config: (typeof CATEGORY_CONFIGS)[number]) =>
     config.descriptionKey
       ? t(config.descriptionKey)
       : t('message.connections-service-type-description', {
-          serviceType: t(config.titleKey),
+          serviceType: getServiceCategoryLabel(config.key),
         });
   const subtitle = activeCategoryConfig
     ? getCategorySubtitle(activeCategoryConfig)
@@ -369,9 +376,6 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
       service.serviceType as string
     );
     const serviceCategory = ENTITY_TYPE_TO_CATEGORY[service.entityType];
-    const categoryTitleKey = CATEGORY_CONFIGS.find(
-      (config) => config.key === serviceCategory
-    )?.titleKey;
 
     return (
       <Table.Row
@@ -417,7 +421,9 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         {isAllTab && (
           <Table.Cell>
             <Typography className="tw:text-secondary">
-              {categoryTitleKey ? t(categoryTitleKey) : t('label.service')}
+              {serviceCategory
+                ? getServiceCategoryLabel(serviceCategory)
+                : t('label.service')}
             </Typography>
           </Table.Cell>
         )}
@@ -547,7 +553,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
     ) : (
       <div
         aria-busy={isRefreshing}
-        className={`tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-xs tw:transition-opacity ${
+        className={`tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-xs tw:transition-opacity ${
           isRefreshing ? 'tw:opacity-60' : ''
         }`}
         data-testid="connections-results">
@@ -688,7 +694,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
         />
       )}
 
-      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:px-8 tw:pt-6">
+      <main className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:pl-4">
         {!isOnboardingActive && (
           <>
             <div className="tw:mb-[18px]">
@@ -702,7 +708,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
                 {isCountReady ? `${title} (${totalRows})` : title}
               </Typography>
               <Typography
-                className="tw:mt-1 tw:text-tertiary"
+                className="tw:mt-1 tw:text-tertiary tw:ml-2"
                 data-testid="connections-page-subtitle"
                 size="text-sm">
                 {subtitle}

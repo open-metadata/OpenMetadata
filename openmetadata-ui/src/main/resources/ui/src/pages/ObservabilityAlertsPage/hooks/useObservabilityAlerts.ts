@@ -18,10 +18,8 @@ import { useNavigate } from 'react-router-dom';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   AlertType,
   EventSubscription,
@@ -29,7 +27,7 @@ import {
 } from '../../../generated/events/eventSubscription';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { getAllAlerts } from '../../../rest/alertsAPI';
+import { getAlertsFromName, getAllAlerts } from '../../../rest/alertsAPI';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -43,7 +41,12 @@ import {
   UseObservabilityAlertsReturn,
 } from '../ObservabilityAlertsPage.interface';
 
+// System alert the classic Notification list always shows on its first page.
+const ACTIVITY_FEED_ALERT_NAME = 'ActivityFeedAlert';
+
 export function useObservabilityAlerts({
+  alertType = AlertType.Observability,
+  includeSystemAlerts = false,
   getAlertDetailsPath = (fqn: string) =>
     observabilityRouterClassBase.getObservabilityAlertDetailsPath(fqn),
   onAddAlert,
@@ -138,15 +141,23 @@ export function useObservabilityAlerts({
             ? { [pagingCursor.cursorType]: pagingCursor.cursorValue }
             : undefined;
         const requestParams = params ?? currentPagingParams;
-        const { data, paging } = await getAllAlerts({
-          after: requestParams?.after,
-          before: requestParams?.before,
-          limit: pageSize,
-          alertType: AlertType.Observability,
-        });
-        const alertsList = data.filter(
-          (d) => d.provider !== ProviderType.System
-        );
+        // Page number, not cursor: Previous back to page 1 carries a `before`
+        // cursor but must still show the system alert.
+        const isFirstPage = currentPage === 1;
+        const [{ data, paging }, systemAlert] = await Promise.all([
+          getAllAlerts({
+            after: requestParams?.after,
+            before: requestParams?.before,
+            limit: pageSize,
+            alertType,
+          }),
+          includeSystemAlerts && isFirstPage
+            ? getAlertsFromName(ACTIVITY_FEED_ALERT_NAME).catch(() => undefined)
+            : undefined,
+        ]);
+        const alertsList = includeSystemAlerts
+          ? [...(systemAlert ? [systemAlert] : []), ...data]
+          : data.filter((d) => d.provider !== ProviderType.System);
 
         setAlerts(alertsList);
         handlePagingChange(paging);
@@ -159,7 +170,16 @@ export function useObservabilityAlerts({
         setLoading(false);
       }
     },
-    [fetchAllAlertsPermission, handlePagingChange, pageSize, pagingCursor, t]
+    [
+      alertType,
+      currentPage,
+      fetchAllAlertsPermission,
+      handlePagingChange,
+      includeSystemAlerts,
+      pageSize,
+      pagingCursor,
+      t,
+    ]
   );
 
   useEffect(() => {

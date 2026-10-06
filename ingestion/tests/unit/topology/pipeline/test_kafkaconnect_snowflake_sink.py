@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Tests for the Confluent Cloud Snowflake Sink dataset resolver."""
 
+import fnmatch
 import json
 import logging
 import os
@@ -43,6 +44,10 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
+    LineageInformation,
+    PipelineServiceMetadataPipeline,
+)
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel, SchemaType
 from metadata.generated.schema.type.schema import Topic as TopicSchema
@@ -69,6 +74,7 @@ from metadata.ingestion.source.pipeline.kafkaconnect.sinks.snowflake import (
     snowflake_table_name,
 )
 from metadata.parsers.avro_parser import parse_avro_schema
+from metadata.utils.fqn import prefix_entity_for_wildcard_search
 
 
 class TestJavaStringHashcode:
@@ -968,8 +974,8 @@ class TestSnowflakeSinksAreNotMatchedByHostname:
     tie-break, and a single Snowflake account is routinely registered as several
     OpenMetadata services (per role, per database, per filter) -- all sharing the one
     `account`. Matching on it would pick between them arbitrarily and silently attach
-    lineage to the wrong service. Resolution is left to dbServiceNames and the
-    cross-service search in `_get_table_entity`, which are at least explicit about it.
+    lineage to the wrong service. The account binds a sink in `target_service_names`
+    instead, which returns every service on it, so the exact table lookup decides.
     """
 
     def test_no_service_type_is_derived_from_a_snowflake_sink_class(self):
@@ -1033,9 +1039,9 @@ def _first_table_fqn_kwargs(dataset, pipeline_details, supports_database=None, m
 
     Both the hostname-matched priority and the ``dbServiceNames`` one funnel through
     ``_lookup_table_in_service``, so the slots are the same either way; which one supplies
-    the service name is what differs. Snowflake sinks resolve no service from their config
-    (see ``TestSnowflakeSinksAreNotMatchedByHostname``), so they arrive here via
-    ``dbServiceNames`` -- ``matched_service`` selects that path when left as None.
+    the service name is what differs. Snowflake sinks resolve no service by hostname (see
+    ``TestSnowflakeSinksAreNotMatchedByHostname``) and are looked up by exact name in the
+    Snowflake service holding their account, which here is ``configured_service``.
 
     ``supports_database`` stands in for the target service's class as
     ``_service_supports_database`` reports it: None when the service cannot be resolved
@@ -1044,6 +1050,13 @@ def _first_table_fqn_kwargs(dataset, pipeline_details, supports_database=None, m
     """
     captured = []
     source = _new_source()
+    source._database_services_cache = [
+        _database_service(
+            "configured_service",
+            DatabaseServiceType.Snowflake,
+            SnowflakeConnection(username="etl_user", account="abc12345", warehouse="COMPUTE_WH"),
+        )
+    ]
     source.metadata = MagicMock()
     # A miss on every lookup keeps all three priorities reachable, so captured[0]
     # is unambiguously the first one.
@@ -1179,6 +1192,7 @@ class TestDatasetFqnConstruction:
 class TestUnresolvableTableDiagnostics:
     def test_warning_names_db_service_names_setting(self, caplog):
         source = _new_source()
+        source._database_services_cache = []
         source.metadata = MagicMock()
         source.metadata.get_by_name.return_value = None
         source.metadata.search_in_any_service.return_value = None
@@ -2300,3 +2314,185 @@ class TestCdcFieldResolutionIsUnchanged:
         topic = _debezium_envelope_topic()
         assert _new_source()._get_topic_field_fqn(topic, "before.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.before.id"
         assert _new_source()._get_topic_field_fqn(topic, "after.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.after.id"
+
+
+class TestSnowflakeSinkTargetIsBoundToItsAccount:
+    """
+    Issue #34357: a Snowflake sink edge lands on the table its config names, in a Snowflake
+    service holding the connector's account, or on nothing.
+
+    The config names database, schema and table exactly, and the account only through
+    snowflake.url.name. Search used to stand in for the account: the first same-named table in
+    any service won, so a target missing from the prod service was linked to the dev account's
+    copy (with or without dbServiceNames), and a table present in both accounts went to
+    whichever was indexed first. Only the REST client is faked, with lookups by name exact and
+    search answering the way the server does, so a result reflects the resolution rule alone.
+    """
+
+    PROD = "sf_prod"
+    PROD_FINANCE = "sf_prod_finance"
+    DEV = "sf_dev"
+    MYSQL = "mysql_orders"
+    PROD_ORDERS = "sf_prod.ANALYTICS.RAW.ORDERS"
+    DEV_ORDERS = "sf_dev.ANALYTICS.RAW.ORDERS"
+    FINANCE_ORDERS = "sf_prod_finance.ANALYTICS.RAW.ORDERS"
+    LOCATOR_URL = "xy12345.us-east-1.snowflakecomputing.com"
+    CONFIG = {  # noqa: RUF012
+        "connector.class": "com.snowflake.kafka.connector.SnowflakeSinkConnector",
+        "name": "orders-to-snowflake",
+        "topics": "orders",
+        "snowflake.url.name": "acme-prod.snowflakecomputing.com:443",
+        "snowflake.database.name": "analytics",
+        "snowflake.schema.name": "raw",
+    }
+
+    @staticmethod
+    def _snowflake(name: str, account: str) -> DatabaseService:
+        return _database_service(
+            name,
+            DatabaseServiceType.Snowflake,
+            SnowflakeConnection(username="reader", account=account, warehouse="COMPUTE_WH"),
+        )
+
+    def _services(self, *extra: DatabaseService) -> list[DatabaseService]:
+        mysql = MysqlConnection(
+            username="reader", authType=BasicAuth(password="pwd"), hostPort="mysql.example.com:3306"
+        )
+        return [
+            self._snowflake(self.PROD, "ACME-PROD"),
+            self._snowflake(self.DEV, "acme-dev"),
+            _database_service(self.MYSQL, DatabaseServiceType.Mysql, mysql),
+            *extra,
+        ]
+
+    @staticmethod
+    def _table(table_fqn: str) -> Table:
+        return Table(
+            id=uuid.uuid4(),
+            name=table_fqn.rsplit(".", 1)[-1],
+            fullyQualifiedName=FullyQualifiedEntityName(table_fqn),
+            columns=[Column(name="RECORD_CONTENT", dataType=DataType.VARIANT)],
+            databaseSchema={"id": uuid.uuid4(), "type": "databaseSchema"},
+        )
+
+    @staticmethod
+    def _fake_rest_client(tables: dict) -> MagicMock:
+        """
+        By-name lookups are exact, as the server hashes every FQN part. Search matches FQN
+        wildcards case-insensitively and returns hits in index order, which is what let the
+        first-hit rule land on whichever same-named table was stored first.
+        """
+
+        def es_search_from_fqn(entity_type=None, fqn_search_string="", **_kwargs):
+            pattern = fqn_search_string.lower()
+            return [
+                table for table_fqn, table in tables.items() if fnmatch.fnmatchcase(table_fqn.lower(), pattern)
+            ] or None
+
+        def search_in_any_service(entity_type=None, fqn_search_string="", **_kwargs):
+            hits = es_search_from_fqn(fqn_search_string=prefix_entity_for_wildcard_search(Table, fqn_search_string))
+            return hits[0] if hits else None
+
+        client = MagicMock()
+        client.get_by_name.side_effect = lambda **kwargs: tables.get(kwargs["fqn"])
+        client.es_search_from_fqn.side_effect = es_search_from_fqn
+        client.search_in_any_service.side_effect = search_in_any_service
+        return client
+
+    def _resolve(self, stored, *, pinned=(), services=None, config=None) -> str | None:
+        """Resolve the sink's one table the way the workflow does, `stored` listed in index order."""
+        source = _source_with_services(services or self._services())
+        source.source_config = PipelineServiceMetadataPipeline(
+            lineageInformation=LineageInformation(dbServiceNames=list(pinned))
+        )
+        source.metadata = self._fake_rest_client({table_fqn: self._table(table_fqn) for table_fqn in stored})
+        details = KafkaConnectPipelineDetails(name="orders-to-snowflake", type="sink", config=config or self.CONFIG)
+        [dataset] = source._resolver_for(details).resolve_datasets(details.config, None)
+        table = source.get_dataset_entity(pipeline_details=details, dataset_details=dataset)
+        return model_str(table.fullyQualifiedName) if table else None
+
+    @staticmethod
+    def _warnings(caplog) -> str:
+        return " ".join(record.getMessage() for record in caplog.records if record.levelno >= logging.WARNING)
+
+    def test_a_lowercase_database_and_schema_resolve_exactly(self):
+        """The connector hands both to Snowflake unquoted, so `analytics` is ANALYTICS, which is
+        how the database connector stores it."""
+        assert self._resolve([self.PROD_ORDERS]) == self.PROD_ORDERS
+
+    def test_quoted_database_and_schema_keep_their_case(self):
+        config = dict(self.CONFIG, **{"snowflake.database.name": '"Analytics"', "snowflake.schema.name": '"Raw"'})
+        assert self._resolve(["sf_prod.Analytics.Raw.ORDERS"], config=config) == "sf_prod.Analytics.Raw.ORDERS"
+
+    def test_a_target_missing_from_its_account_is_not_linked_to_another_accounts_table(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            assert self._resolve([self.DEV_ORDERS]) is None
+        assert "ANALYTICS.RAW.ORDERS" in self._warnings(caplog)
+        assert self.PROD in self._warnings(caplog)
+
+    def test_pinning_the_accounts_service_does_not_fall_through_to_another_account(self):
+        assert self._resolve([self.DEV_ORDERS], pinned=[self.PROD]) is None
+
+    def test_a_table_in_two_accounts_resolves_to_the_connectors_account_whatever_the_index_order(self):
+        assert self._resolve([self.DEV_ORDERS, self.PROD_ORDERS]) == self.PROD_ORDERS
+
+    def test_a_table_in_two_services_of_one_account_is_ambiguous_and_warns(self, caplog):
+        services = self._services(self._snowflake(self.PROD_FINANCE, "acme-prod"))
+        with caplog.at_level(logging.WARNING):
+            assert self._resolve([self.PROD_ORDERS, self.FINANCE_ORDERS], services=services) is None
+        assert self.PROD_ORDERS in self._warnings(caplog)
+        assert self.FINANCE_ORDERS in self._warnings(caplog)
+        assert "dbServiceNames" in self._warnings(caplog)
+
+    def test_db_service_names_picks_among_services_of_one_account(self):
+        services = self._services(self._snowflake(self.PROD_FINANCE, "acme-prod"))
+        stored = [self.PROD_ORDERS, self.FINANCE_ORDERS]
+        assert self._resolve(stored, services=services, pinned=[self.PROD_FINANCE]) == self.FINANCE_ORDERS
+
+    def test_a_pin_naming_only_other_service_types_does_not_block_the_account(self):
+        """A pipeline service often pins only the databases its CDC sources read."""
+        assert self._resolve([self.PROD_ORDERS], pinned=[self.MYSQL]) == self.PROD_ORDERS
+
+    def test_an_account_no_service_matches_falls_back_to_the_pinned_snowflake_service(self):
+        """A locator and an organization-account name can identify one account without being
+        comparable, so the pin is the binding that is left."""
+        config = dict(self.CONFIG, **{"snowflake.url.name": self.LOCATOR_URL})
+        assert self._resolve([self.PROD_ORDERS], pinned=[self.PROD], config=config) == self.PROD_ORDERS
+
+    def test_an_account_no_service_matches_gets_no_edge_without_a_pin(self, caplog):
+        config = dict(self.CONFIG, **{"snowflake.url.name": self.LOCATOR_URL})
+        with caplog.at_level(logging.INFO):
+            assert self._resolve([self.PROD_ORDERS], config=config) is None
+        assert "xy12345.us-east-1" in caplog.text
+        assert "ANALYTICS.RAW.ORDERS" in self._warnings(caplog)
+        assert "dbServiceNames" in self._warnings(caplog)
+
+    @pytest.mark.parametrize(
+        ("url", "account"),
+        [
+            ("acme-prod.snowflakecomputing.com:443", "ACME-PROD"),
+            ("https://acme-prod.snowflakecomputing.com/", "acme-prod"),
+            (" acme-prod.snowflakecomputing.com", "acme-prod"),
+            ("acme-prod.privatelink.snowflakecomputing.com", "acme-prod"),
+            ("myorg-my-account.snowflakecomputing.com", "MYORG-MY_ACCOUNT"),
+            ("xy12345.us-east-1.gcp.snowflakecomputing.com", "xy12345.us-east-1.gcp"),
+        ],
+    )
+    def test_a_url_and_an_account_naming_one_account_match(self, url, account):
+        """The service's `account` is documented as the URL host without its domain. Snowflake
+        identifiers ignore case, and a URL spells an account name's underscores as hyphens."""
+        from metadata.ingestion.source.pipeline.kafkaconnect.sinks.snowflake import snowflake_account_identifier
+
+        assert snowflake_account_identifier(url) == snowflake_account_identifier(account)
+
+    @pytest.mark.parametrize(
+        ("url", "account"),
+        [
+            ("acme-prod.snowflakecomputing.com", "acme-dev"),
+            (LOCATOR_URL, "acme-prod"),
+        ],
+    )
+    def test_different_accounts_do_not_match(self, url, account):
+        from metadata.ingestion.source.pipeline.kafkaconnect.sinks.snowflake import snowflake_account_identifier
+
+        assert snowflake_account_identifier(url) != snowflake_account_identifier(account)

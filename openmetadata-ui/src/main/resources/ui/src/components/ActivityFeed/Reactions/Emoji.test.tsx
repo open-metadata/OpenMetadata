@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import { User } from '../../../generated/entity/teams/user';
 import { ReactionType } from '../../../generated/type/reaction';
 import Emoji from './Emoji';
@@ -98,5 +98,7 @@ describe('Test Emoji Component', () => {
     fireEvent.click(emojiButton);
 
     expect(onReactionSelect).toHaveBeenCalledWith(mockProps.reaction, 'remove');
+
+    await waitFor(() => expect(emojiButton).toBeEnabled());
   });
 });

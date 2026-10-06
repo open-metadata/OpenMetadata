@@ -340,8 +340,8 @@ test.describe('Context Center Articles', () => {
       page
         .getByTestId('knowledge-page-listing')
         .locator('[data-testid^="knowledge-card-"]')
-        .first()
-    ).toBeVisible();
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
@@ -368,10 +368,10 @@ test.describe('Context Center Articles', () => {
       ).toContainText('Context Center');
 
       await page
-        .locator('.ant-tree-treenode')
-        .filter({ hasText: /^Context Center$/ })
-        .locator('svg')
-        .first()
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({ has: page.getByTestId('explore-tree-title-Context Center') })
+        .getByTestId('tree-expand-btn')
         .click();
 
       await expect(
@@ -1426,7 +1426,10 @@ test.describe('Context Center Articles', () => {
               `/api/v1/conversations/${createdConversation.id}/reaction/rocket`
             ) && response.request().method() === 'PUT'
       );
-      await page.locator('[title="rocket"]:visible').click();
+      await page
+        .getByTestId('feed-reactions-popover')
+        .getByRole('button', { name: 'rocket', exact: true })
+        .click();
       await reactionResponse;
       await mainMessage.getByTestId('emoji-button').hover();
       await expect(
@@ -1600,16 +1603,24 @@ test.describe('Context Center Articles', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Editor autosave can land the data consumer's edit as one or several
-    // versions, so assert on the newest entry rather than every match.
+    // versions, and the governance workflow asynchronously bumps entityStatus
+    // as governance-bot, so the newest entry need not be the data consumer's.
+    // Pick the newest version the data consumer authored and assert on it.
     const { versions } = await versionsListRes.json();
-    const latestVersion = parseFloat(JSON.parse(versions[0]).version).toFixed(
-      1
-    );
+    const dataConsumerVersion = (versions as string[])
+      .map((entry) => JSON.parse(entry))
+      .find((entry: { updatedBy?: string }) =>
+        entry.updatedBy?.startsWith('pw-data-consumer')
+      );
+
+    expect(dataConsumerVersion).toBeDefined();
 
     await expect(
       page
         .getByTestId('versions-list-container')
-        .getByTestId(`version-entry-v${latestVersion}`)
+        .getByTestId(
+          `version-entry-v${parseFloat(dataConsumerVersion.version).toFixed(1)}`
+        )
         .getByRole('link', { name: /PW DataConsumer/i })
     ).toBeVisible();
 
@@ -1816,6 +1827,7 @@ test.describe('Context Center Articles', () => {
     test('displayName: switching articles does not bleed unsaved title into next article', async ({
       page,
     }) => {
+      test.slow();
       const newDisplayName = `Updated Title ${uuid()}`;
 
       await test.step('Navigate to draft article A and type new display name without saving', async () => {

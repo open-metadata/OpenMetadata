@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
@@ -31,7 +32,7 @@ export const EntityStatusBadge = ({
 
   return (
     <Space>
-      {showDivider && <Divider className="m-x-xs h-6" type="vertical" />}
+      {showDivider && <Divider className="m-x-xs h-6" orientation="vertical" />}
       <StatusBadge label={status} status={getEntityStatusClass(status)} />
     </Space>
   );

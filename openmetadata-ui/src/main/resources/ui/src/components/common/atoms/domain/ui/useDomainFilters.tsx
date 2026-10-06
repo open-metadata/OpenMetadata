@@ -12,11 +12,11 @@
  */
 
 import { useMemo } from 'react';
-import { AssetsOfEntity } from '../../../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
   DOMAIN_FILTERS,
   SUB_DOMAIN_FILTERS,
 } from '../../../../../constants/Domain.constants';
+import { AssetsOfEntity } from '../../../../../enums/Assets.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Aggregations } from '../../../../../interface/search.interface';
 import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';

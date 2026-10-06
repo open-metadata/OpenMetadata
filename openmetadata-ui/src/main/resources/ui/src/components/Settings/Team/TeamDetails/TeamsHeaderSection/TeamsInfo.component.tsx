@@ -15,8 +15,8 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Form, Input, Space, Tooltip } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -278,7 +278,7 @@ const TeamsInfo = ({
 
     return (
       <>
-        <Divider className="vertical-divider" type="vertical" />
+        <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
         <Space align="start" className="d-flex flex-col gap-2">
           <div className="d-flex  gap-2">
             <Typography className="text-primary" weight="medium">
@@ -350,7 +350,7 @@ const TeamsInfo = ({
 
     return (
       <>
-        <Divider className="vertical-divider" type="vertical" />
+        <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
         <Space align="start" className="d-flex flex-col gap-2">
           <div className="d-flex gap-2">
             <Typography className="text-primary" weight="medium">
@@ -407,7 +407,7 @@ const TeamsInfo = ({
         entityType={EntityType.TEAM}
         hasPermission={hasEditPermission}
       />
-      <Divider className="vertical-divider" type="vertical" />
+      <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
       <Owner
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
@@ -424,10 +424,10 @@ const TeamsInfo = ({
           />
         }
       />
-      <Divider className="vertical-divider" type="vertical" />
+      <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
       {emailRender}
 
-      <Divider className="vertical-divider" type="vertical" />
+      <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
       <TeamsSubscription
         hasEditPermission={hasEditSubscriptionPermission}
         subscription={currentTeam.profile?.subscription}
@@ -437,7 +437,7 @@ const TeamsInfo = ({
 
       {personaRender}
 
-      <Divider className="vertical-divider" type="vertical" />
+      <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
 
       <Space align="start" className="d-flex flex-col gap-2">
         <Typography

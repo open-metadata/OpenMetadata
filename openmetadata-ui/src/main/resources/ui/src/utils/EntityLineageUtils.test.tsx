@@ -12,15 +12,15 @@
  */
 
 import { Edge, Node } from 'reactflow';
-import {
-  EdgeDetails,
-  LineageData,
-  LineageNodeType,
-} from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
+import {
+  EdgeDetails,
+  LineageData,
+  LineageNodeType,
+} from '../interface/lineage.interface';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {

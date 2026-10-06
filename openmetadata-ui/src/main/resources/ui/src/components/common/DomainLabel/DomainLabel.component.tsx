@@ -10,24 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
+import { Card, Divider, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
-import { get, isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  getAPIfromSource,
-  getEntityAPIfromSource,
-} from '../../../utils/Assets/AssetsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+  getDomainsContentKey,
+  saveDomainViaApi,
+  saveDomainViaOnUpdate,
+} from '../../../utils/DomainSyncUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import DomainSelect from '../DomainSelect/DomainSelect';
+import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import DomainTags from '../DomainTags/DomainTags';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../WidgetCard/WidgetCard';
 import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
 
@@ -41,9 +46,12 @@ export const DomainLabel = ({
   entityFqn,
   entityId,
   textClassName,
+  labelClassName,
   showDomainHeading = false,
   multiple = false,
   headerLayout = false,
+  isClearable,
+  variant = 'default',
   onUpdate,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
@@ -55,61 +63,52 @@ export const DomainLabel = ({
       : t('label.no-entity', { entity: t('label.domain-plural') });
   }, [showDashPlaceholder]);
 
+  const widgetTitle = useMemo(
+    () => (multiple ? t('label.domain-plural') : t('label.domain')),
+    [multiple, t]
+  );
+
   const handleDomainSave = useCallback(
-    async (selectedDomain: EntityReference | EntityReference[]) => {
-      const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
-        entityFqn,
-        { fields: 'domains' }
-      );
+    async (selectedDomain: EntityReference | EntityReference[] | undefined) => {
+      // A cleared single-select arrives as `undefined`; normalise so callers
+      // and the PATCH see an empty list rather than `[undefined]`.
+      const next = selectedDomain ?? [];
+      if (onUpdate) {
+        await saveDomainViaOnUpdate(next, onUpdate, setActiveDomain);
 
-      try {
-        const entityDetailsResponse = await entityDetails;
-        if (entityDetailsResponse) {
-          let domains: EntityReference[];
-          if (Array.isArray(selectedDomain)) {
-            domains = selectedDomain;
-          } else if (isEmpty(selectedDomain)) {
-            domains = [];
-          } else {
-            domains = [selectedDomain];
-          }
-          const jsonPatch = compare(entityDetailsResponse, {
-            ...entityDetailsResponse,
-            domains,
-          });
-
-          const api = getAPIfromSource(entityType as AssetsUnion);
-          const res = await api(entityId, jsonPatch);
-
-          const entityDomains = get(res, 'domains', {});
-          if (Array.isArray(entityDomains)) {
-            setActiveDomain(entityDomains);
-          } else {
-            // update the domain details here
-            setActiveDomain(isEmpty(entityDomains) ? [] : [entityDomains]);
-          }
-          !isUndefined(afterDomainUpdateAction) &&
-            afterDomainUpdateAction(res as DataAssetWithDomains);
-        }
-      } catch (err) {
-        // Handle errors as needed
-        showErrorToast(err as AxiosError);
+        return;
       }
+
+      await saveDomainViaApi(
+        next,
+        entityType as AssetsUnion,
+        entityFqn,
+        entityId,
+        setActiveDomain,
+        afterDomainUpdateAction
+      );
     },
-    [entityType, entityId, entityFqn, afterDomainUpdateAction, onUpdate]
+    [entityType, entityId, entityFqn, onUpdate, afterDomainUpdateAction]
   );
 
   useEffect(() => {
-    if (domains) {
-      if (Array.isArray(domains)) {
-        setActiveDomain(domains);
-      } else {
-        setActiveDomain([domains]);
-      }
-    } else {
-      // note: this is to handle the case where the domain is not set
-      setActiveDomain([]);
+    let nextDomains: EntityReference[] = [];
+    if (Array.isArray(domains)) {
+      nextDomains = domains;
+    } else if (domains) {
+      nextDomains = [domains];
     }
+
+    // `domains` arrives as a fresh array reference on every context re-render.
+    // Setting state unconditionally churns `activeDomain`'s identity, remounting
+    // the DomainSelectableList subtree and collapsing an open picker
+    // mid-interaction. Only commit when the referenced domains actually changed;
+    // return the previous reference otherwise so React bails out of the update.
+    setActiveDomain((prev) =>
+      getDomainsContentKey(prev) === getDomainsContentKey(nextDomains)
+        ? prev
+        : nextDomains
+    );
   }, [domains]);
 
   const domainLink = useMemo(() => {
@@ -153,14 +152,115 @@ export const DomainLabel = ({
           hasPermission={Boolean(hasPermission)}
           multiple={multiple}
           selectedDomain={activeDomain}
-          wrapInButton={false}
-          onUpdate={onUpdate ?? handleDomainSave}
+          onUpdate={handleDomainSave}
         />
       )
     );
-  }, [hasPermission, activeDomain, handleDomainSave, multiple, onUpdate]);
+  }, [hasPermission, activeDomain, handleDomainSave, multiple]);
+
+  // The widget chrome drives the picker from its own plus/edit button, so it
+  // uses DomainSelect directly rather than DomainSelectableList's wrapper.
+  const widgetEditor = useMemo(() => {
+    if (!hasPermission) {
+      return null;
+    }
+
+    const renderTrigger = ({ toggle }: { toggle: () => void }) => (
+      <DomainSelectTrigger toggle={toggle}>
+        {isEmpty(activeDomain) ? (
+          <WidgetPlusButton
+            data-testid="add-domain"
+            title={t('label.add-entity', { entity: widgetTitle })}
+          />
+        ) : (
+          <WidgetEditButton
+            data-testid="edit-domain"
+            title={t('label.edit-entity', { entity: widgetTitle })}
+          />
+        )}
+      </DomainSelectTrigger>
+    );
+
+    return (
+      <DomainSelect
+        hasPermission
+        data-testid="domain-selectable-tree"
+        isClearable={isClearable}
+        multiple={multiple}
+        renderTrigger={renderTrigger}
+        selectedDomain={activeDomain}
+        triggerVariant="button"
+        onUpdate={
+          handleDomainSave as (
+            domain: EntityReference | EntityReference[] | undefined
+          ) => Promise<void>
+        }
+      />
+    );
+  }, [
+    hasPermission,
+    activeDomain,
+    handleDomainSave,
+    isClearable,
+    multiple,
+    widgetTitle,
+    t,
+  ]);
 
   const label = useMemo(() => {
+    if (variant === 'widget') {
+      const chips = <DomainTags domains={activeDomain} />;
+
+      if (showDomainHeading) {
+        return (
+          <WidgetCard
+            headerExtra={widgetEditor}
+            isExpandDisabled={isEmpty(activeDomain)}
+            title={widgetTitle}>
+            {!isEmpty(activeDomain) && chips}
+          </WidgetCard>
+        );
+      }
+
+      return (
+        <Card
+          className="d-flex items-center gap-1 flex-wrap"
+          data-testid="header-domain-container">
+          {chips}
+          {widgetEditor}
+        </Card>
+      );
+    }
+
+    if (variant === 'card') {
+      return (
+        <div className="d-flex flex-col mb-4 w-full p-[20px] user-profile-card">
+          <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
+            <div style={{ width: '16px' }}>
+              <DomainIcon height={16} style={{ marginLeft: '2px' }} />
+            </div>
+
+            <div className="d-flex justify-between w-full">
+              <Typography className="text-sm font-medium p-l-xss">
+                {t('label.domain-plural')}
+              </Typography>
+              {selectableList}
+            </div>
+          </div>
+          <div className="user-profile-card-body d-flex justify-start gap-2">
+            <div className="user-page-icon d-flex-center">
+              <Divider className="tw:h-full" orientation="vertical" />
+            </div>
+            <div
+              className="d-flex flex-col items-start gap-1 flex-wrap justify-center"
+              data-testid="header-domain-container">
+              {domainLink}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (showDomainHeading) {
       return (
         <>
@@ -172,7 +272,12 @@ export const DomainLabel = ({
                 {t('label.domain-plural')}
               </Typography>
             ) : (
-              <Typography className="domain-link right-panel-label m-r-xss">
+              <Typography
+                as="span"
+                className={classNames(
+                  'domain-link right-panel-label m-r-xss',
+                  labelClassName
+                )}>
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
                   : defaultDomainText}
@@ -194,7 +299,12 @@ export const DomainLabel = ({
           <div
             className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
-            <Typography className="domain-link right-panel-label m-r-xss">
+            <Typography
+              as="span"
+              className={classNames(
+                'domain-link right-panel-label m-r-xss',
+                labelClassName
+              )}>
               {t('label.domain-plural')}
             </Typography>
             {selectableList}
@@ -209,7 +319,18 @@ export const DomainLabel = ({
         </div>
       </div>
     );
-  }, [activeDomain, hasPermission, selectableList]);
+  }, [
+    activeDomain,
+    hasPermission,
+    selectableList,
+    labelClassName,
+    variant,
+    domainLink,
+    widgetEditor,
+    widgetTitle,
+    showDomainHeading,
+    t,
+  ]);
 
   return label;
 };

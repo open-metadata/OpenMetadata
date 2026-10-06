@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { Domain } from '../support/domain/Domain';
@@ -31,7 +31,11 @@ import {
   redirectToHomePage,
   uuid,
 } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
@@ -74,9 +78,7 @@ export const visitClassificationPage = async (
       .or(tagsContainer.getByText('Add the first tag'))
   ).toBeVisible();
 
-  await expect(
-    tagsContainer.locator('.table-container').getByTestId('loader')
-  ).toHaveCount(0, { timeout: 30000 });
+  await waitForAllLoadersToDisappear(tagsContainer.locator('.table-container'));
 
   await expect(tagsContainer.getByTestId('header')).toContainText(
     classificationDisplayName
@@ -95,10 +97,7 @@ export const addAssetsToTag = async (
 
   await tag.visitPage(page);
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -154,7 +153,8 @@ export const addAssetsToTag = async (
     await searchRes;
 
     await assetSelectionModal
-      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
       .check();
 
     await expect(
@@ -190,15 +190,42 @@ export const removeAssetsFromTag = async (
   await tag.visitPage(page);
   await res;
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `removeAssetsFromTag: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // Narrow to this card so the tag's asset tab (which under SharedInfra
+    // can list every table/topic/dashboard on the shard) stays stable
+    // while we toggle checkboxes one at a time. The tab wraps the search
+    // value into `*<value>*`, so `q=<name>` alone won't appear — check
+    // the name is anywhere in the URL instead.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    // Response arrives before the list re-renders from N cards to 1;
+    // wait for loaders to settle so .check() doesn't retry through
+    // a repositioning target.
+    await waitForAllLoadersToDisappear(page);
+
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
@@ -207,10 +234,7 @@ export const removeAssetsFromTag = async (
   await assetsRemoveRes;
 
   await page.reload();
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
   await checkAssetsCount(page, 0);
 };
 
@@ -325,23 +349,29 @@ export const addTagToTableColumn = async (
     rowName: string;
   }
 ) => {
-  await page.click(
+  const trigger: Locator = page.locator(
     `[data-testid="classification-tags-${columnNumber}"] [data-testid="entity-tags"] [data-testid="add-tag"]`
   );
-  await page.fill('[data-testid="tag-selector"] input', tagName);
-  await page.click(`[data-testid="tag-${tagFqn}"]`);
 
-  await expect(
-    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-  ).toContainText(tagDisplayName);
+  await openClassificationTagPicker(page, trigger);
 
+  const searchTagResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tagName)
+    )}*`
+  );
+  await page.getByTestId('classification-tag-picker-search').fill(tagName);
+  await searchTagResponse;
+
+  await page.getByTestId(`tree-node-${tagFqn}`).click();
+
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
   const saveAssociatedTag = page.waitForResponse(`/api/v1/columns/name/**`);
-  await page.click('[data-testid="saveAssociatedTag"]');
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
   await saveAssociatedTag;
 
-  await page.locator('.ant-select-dropdown').first().waitFor({
-    state: 'detached',
-  });
+  await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
   await expect(
     page.getByRole('row', { name: rowName }).getByTestId('tags-container')
@@ -363,10 +393,7 @@ export const verifyTagPageUI = async (
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
@@ -403,10 +430,7 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   const updatedDescription = `This is updated test description for tag ${tag.data.name}.`;
 
@@ -431,10 +455,7 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   );
   await page.getByTestId('save').click();
   await editDescription;
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
   await expect(page.getByRole('dialog')).not.toBeVisible();
 
   await expect(page.getByTestId('viewer-container')).toContainText(
@@ -561,6 +582,13 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
 
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
+
+  // The autocomplete keeps its listbox open on a pick and re-queries, so the
+  // drawer footer never settles for submitForm. Click the heading to dismiss.
+  await adminPage.getByTestId('drawer-heading').click();
+
+  await expect(adminPage.getByRole('listbox')).toBeHidden();
+  await expect(adminPage.getByTestId('tags-form')).toBeVisible();
 };
 
 export const setTagDisabled = async (
@@ -626,13 +654,47 @@ export const verifyEntityTypeFilterInTagAssets = async (
   await page.getByTestId('update-btn').click();
   await filterResponse;
 
-  // Check that items are visible after applying filter
+  // Narrow the list to one specific asset per iteration before checking it —
+  // the picker's search shows every table/topic/dashboard on the shard, and
+  // toggling one checkbox reflows the list enough that the next target
+  // scrolls under the pointer and `.check()` retries until the test times
+  // out. Mirrors `addAssetsToDataProduct` in utils/domain.ts.
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `verifyEntityTypeFilterInTagAssets: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // The asset tab wraps the search value into `*<value>*` (see
+    // AssetsTabs.component.tsx line ~538), so `q=<name>` alone won't
+    // appear in the URL — check the name is anywhere in the URL instead.
+    // Unique per fixture (uuid-based), no false positives.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    // Response arrives before the list re-renders from N to 1 card;
+    // wait for loaders so .check() doesn't retry through a
+    // repositioning target.
+    await waitForAllLoadersToDisappear(page);
+
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');
+  await page.getByTestId('searchbar').clear();
   await page.getByText('Clear').click();
   await clearResponse;
 };
@@ -642,14 +704,13 @@ export const selectTagInTagSuggestion = async (
   {
     searchTerm,
     tagFqn,
+    triggerTestId = 'tags-input',
   }: {
     searchTerm: string;
     tagFqn: string;
+    triggerTestId?: string;
   }
 ) => {
-  const tagInput = page.getByRole('combobox', { name: 'Tags' });
-  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
-
   const tagSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
     return (
@@ -659,11 +720,10 @@ export const selectTagInTagSuggestion = async (
     );
   });
 
-  await tagInput.click();
-  await tagInput.fill(searchTerm);
+  await page.getByTestId(triggerTestId).click();
+  await page.getByTestId('search-input').fill(searchTerm);
   await tagSearchResponse;
 
-  await tagOption.click();
+  await page.getByTestId(tagFqn).click();
   await page.keyboard.press('Escape');
-  await tagOption.waitFor({ state: 'hidden' });
 };

@@ -11,6 +11,51 @@ OpenMetadata supports RDF (Resource Description Framework) for knowledge graph c
 - JSON-LD serialization of entities
 - Semantic search and graph exploration
 
+## Standards Compatibility
+
+The RDF stack runs Apache Jena and Fuseki 6.2.0. RDF 1.2 terms survive the whole round trip —
+import, storage, query, and result serialization:
+
+- **Triple terms**, including `rdf:reifies` statements and nested blank nodes, and **directional
+  language-tagged literals** such as `"قطة"@ar--rtl`.
+- **Storage.** Entities reach Fuseki as RDF Thrift and land in TDB2 named graphs; both carry triple
+  terms and preserve the `rdf:dirLangString` datatype. Fuseki's Lucene text index (`text:query`)
+  indexes directional literals like any other string.
+- **SPARQL 1.2.** `VERSION "1.2"` declarations, `TRIPLE()`/`LANGDIR()` expressions, and `<<( s p o )>>`
+  patterns all execute. Both the administrator (`/v1/rdf/sparql`) and agent query paths return them;
+  the agent path keeps its existing SELECT-only and graph-access restrictions.
+- **Results JSON.** A triple binding is `type: "triple"` with recursive `subject`, `predicate`, and
+  `object` terms; directional literals carry `its:dir`. Both `sparqlResponse.json` and
+  `agentSparqlResponse.json` model this, so typed clients and the SPARQL playground render a triple
+  term as `<<( <urn:s> <urn:p> "قطة"@ar--rtl )>>` rather than failing on it.
+- **SHACL.** The bundled shapes accept plain, language-tagged, and directional strings wherever they
+  constrain free text, so a conforming RDF 1.2 graph validates against them.
+
+### Choosing a serialization
+
+| Format | RDF 1.2 triple terms | Notes |
+|---|---|---|
+| Turtle, N-Triples | yes | The portable choice; N-Quads and TriG cover datasets. |
+| RDF/XML | yes, via Jena | Written as `rdf:parseType="Triple"`. Jena reads back what it writes; interoperability with other RDF/XML toolchains is not verified — prefer Turtle when the consumer is not Jena. |
+| JSON-LD | **no** | JSON-LD 1.1 has no triple-term syntax. Asking for `jsonld` on a result that contains one is rejected with a message naming the formats that work, rather than failing mid-write. Directional literals *are* written, as the JSON-LD 1.1 `i18n` datatype (`"@type": "https://www.w3.org/ns/i18n#ar_rtl"`), which does not read back as an `rdf:dirLangString` — so do not round-trip RDF 1.2 text through JSON-LD. |
+
+### Scope
+
+OpenMetadata does not itself emit RDF 1.2 terms: entity RDF is derived from JSON-LD contexts
+(`JsonLdTranslator`), so the graph the platform writes for its own entities is RDF 1.1. RDF 1.2
+terms enter through imported ontologies and user-authored SPARQL, and the guarantees above are about
+carrying those through unchanged.
+
+For example, both query paths accept this read query:
+
+```sparql
+VERSION "1.2"
+SELECT (TRIPLE(<https://example.com/subject>,
+               <https://example.com/predicate>,
+               "قطة"@ar--rtl) AS ?statement)
+WHERE {}
+```
+
 ## Architecture
 
 ```
@@ -158,7 +203,7 @@ rdf:
   shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
   dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
   strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
-  askCollateEnabled: ${RDF_ASK_COLLATE_ENABLED:-false}
+  aiEnabled: ${RDF_AI_ENABLED:-false}
 ```
 
 ### Environment Variables
@@ -186,7 +231,16 @@ rdf:
 | `RDF_SHACL_VALIDATION_MODE` | Import validation policy | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | Enable authenticated LOD redirects | `false` |
 | `RDF_STRICT_OWL_PROFILE` | Enforce supported OWL profile rules | `true` |
-| `RDF_ASK_COLLATE_ENABLED` | Enable Ontology Studio AI | `false` |
+| `RDF_AI_ENABLED` | Enable Ontology Studio AI | `false` |
+| `LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED` | Allow memory-derived ontology draft jobs when RDF AI and LLM completion are enabled | `false` |
+
+Memory-derived glossary drafts require `RDF_AI_ENABLED=true`, `LLM_ENABLED=true`, and
+`LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED=true`. With all three on, creating or publishing an Entity or
+Public memory queues a derivation job automatically; memories extracted from the same file or page
+share one job, which starts about 30 seconds after the first of them. A proposal can also be
+requested through `POST /api/v1/ontology/ai/memories/jobs`; Private and Shared memories need their
+owner to request it. `RDF_ASK_COLLATE_ENABLED` is still read as a deprecated alias of
+`RDF_AI_ENABLED`.
 
 ### Docker Compose Configuration
 
@@ -255,12 +309,18 @@ Content-Type: application/json
 ```
 
 Unlike the admin endpoint above, this is a permissioned read surface for agent tools:
-it requires the `ExecuteSparqlQuery` operation on the `rdf` resource (granted by a policy
-that names it — wildcard `All`/`All` policies do not grant it). Only `SELECT` queries run,
+it requires the `ExecuteSparqlQuery` operation on the `rdf` resource. The seeded Data Consumer
+policy grants it through `DataConsumerPolicy-ExecuteSparqlQuery-Rule`, so every user inherits it
+by default; delete that rule to opt out, or add a role with a deny rule to remove it for specific
+users. Outside that rule, only a policy that names the operation grants it — wildcard `All`/`All`
+policies do not. Only `SELECT` queries run,
 with no `FROM`, `GRAPH`, or `SERVICE` clauses; inference is disabled; results carry a
 completeness status relative to the submitted query. Queries evaluate over the
 server-configured dataset without persona filtering and without asset-level
-authorization — callers must already be entitled to see the whole projected graph.
+authorization — callers must already be entitled to see the whole projected graph. If you
+restrict what users can view through custom policies, also remove
+`DataConsumerPolicy-ExecuteSparqlQuery-Rule`, or those users can query assets they cannot
+otherwise see.
 
 ### Get Glossary Term Relationship Graph
 ```bash

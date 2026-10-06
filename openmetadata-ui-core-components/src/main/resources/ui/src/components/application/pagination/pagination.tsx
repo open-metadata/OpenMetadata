@@ -12,7 +12,7 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-} from '@untitledui/icons';
+} from '../../../icons';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { PaginationRootProps } from './pagination-base';

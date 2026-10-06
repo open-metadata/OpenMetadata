@@ -79,12 +79,14 @@ test.describe('Task Assignee Management', () => {
   test('admin can reassign an existing metadata task from the task details page', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
     await page.getByTestId('activity_feed').click();
     await waitForAllLoadersToDisappear(page);
 
-    const tasksMenuItem = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksMenuItem = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     await expect(tasksMenuItem).toBeVisible();
     await tasksMenuItem.click();
     await waitForAllLoadersToDisappear(page);

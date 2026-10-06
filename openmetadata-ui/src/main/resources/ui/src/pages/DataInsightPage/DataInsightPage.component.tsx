@@ -20,9 +20,9 @@ import ResizableLeftPanels from '../../components/common/ResizablePanels/Resizab
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SystemChartType } from '../../enums/DataInsight.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';

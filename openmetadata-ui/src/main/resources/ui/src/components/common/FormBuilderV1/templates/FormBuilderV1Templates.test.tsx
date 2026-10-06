@@ -154,7 +154,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span aria-hidden="true">chevron-down-icon</span>,
   Hexagon01: (props: React.HTMLAttributes<HTMLSpanElement>) => (
     <span {...props}>hexagon-icon</span>

@@ -41,6 +41,22 @@ jest.mock('../../../rest/queries/topicQuery', () => ({
   prefetchTopic: (...args: unknown[]) => mockPrefetchTopic(...args),
 }));
 
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+
+  return {
+    ...actual,
+    Link: jest.fn(({ children, to, state, ...rest }) => (
+      <a
+        {...rest}
+        data-state={JSON.stringify(state)}
+        href={typeof to === 'string' ? to : to?.pathname}>
+        {children}
+      </a>
+    )),
+  };
+});
+
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
 }));
@@ -89,8 +105,23 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
-jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
-  DomainDisplay: jest
+jest.mock('../../common/CertificationTag/CertificationTag', () =>
+  jest.fn(({ certification }) => (
+    <div data-testid={`certification-${certification.tagLabel.tagFQN}`} />
+  ))
+);
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest
+    .fn()
+    .mockImplementation(({ markdown }) => (
+      <span data-testid="previewer">{markdown}</span>
+    ))
+);
+
+jest.mock('../../common/DomainTags/DomainTags', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockReturnValue(<div data-testid="domain-display">Domain Display</div>),
 }));
@@ -99,6 +130,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
 
   return {
+    // StatusBadge renders the core Badge; keep the real one (a plain span).
+    Badge: actual.Badge,
+    Divider: actual.Divider,
     Breadcrumbs: jest.fn(({ items = [] }) => (
       <nav data-testid="breadcrumbs">
         {items.map(
@@ -124,10 +158,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )}
       </nav>
     )),
+    Button: actual.Button,
     Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+    Checkbox: actual.Checkbox,
     Owner: jest.fn().mockReturnValue(null),
     toOwnerRef: actual.toOwnerRef,
     toOwnerRefs: actual.toOwnerRefs,
+    Typography: actual.Typography,
   };
 });
 
@@ -176,7 +213,7 @@ describe('ExploreSearchCard - Domain section', () => {
     jest.clearAllMocks();
   });
 
-  it('renders  DomainDisplay component', () => {
+  it('renders the domain chips', () => {
     renderCard({
       domains: [{ id: '1', fullyQualifiedName: 'domain.test', type: 'domain' }],
     });
@@ -204,6 +241,38 @@ describe('ExploreSearchCard - Domain section', () => {
     renderCard({ domains: [] });
 
     expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - navigation breadcrumb state', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('passes the full breadcrumb trail including the current entity, without dropping any crumb', () => {
+    const fullTrail = [
+      { name: 'svc', url: '/service/svc' },
+      { name: 'db', url: '/database/db' },
+      { name: 'schema', url: '/schema/schema' },
+      { name: 'table', url: '' },
+    ];
+    (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue(
+      fullTrail
+    );
+
+    renderCard({ fullyQualifiedName: 'svc.db.schema.table' });
+
+    expect(searchClassBase.getEntityBreadcrumbs).toHaveBeenCalledWith(
+      expect.anything(),
+      'table',
+      true
+    );
+
+    const state = JSON.parse(
+      screen.getByTestId('entity-link').getAttribute('data-state') ?? '{}'
+    );
+
+    expect(state.breadcrumbData).toEqual(fullTrail);
   });
 });
 
@@ -473,6 +542,29 @@ describe('ExploreSearchCard - Entity type tags', () => {
   });
 });
 
+describe('ExploreSearchCard - Certification badge', () => {
+  const certification = { tagLabel: { tagFQN: 'Certification.Gold' } };
+
+  it('renders the certification badge for a certified table', () => {
+    renderCard({ certification } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.getByTestId('certification-Certification.Gold')
+    ).toBeInTheDocument();
+  });
+
+  it('does not render the table certification inherited by a column', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      certification,
+    } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.queryByTestId('certification-Certification.Gold')
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('ExploreSearchCard - Entity icon', () => {
   it('renders glossary term custom icon URL when provided', () => {
     renderCard(
@@ -552,7 +644,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         displayName: 'Test Table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -578,7 +671,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         name: 'test-table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -606,7 +700,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         description: 'This is a test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -635,7 +730,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'name',
         displayName: 'Display Name',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -669,7 +765,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         displayName: 'Highlighted Display',
         description: 'Highlighted description text',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -695,7 +792,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         description: 'Test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -733,6 +831,53 @@ describe('ExploreSearchCard - Highlight functionality', () => {
     );
 
     expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ExploreSearchCard - Description markdown stripping', () => {
+  it('strips markdown syntax from description before rendering', () => {
+    renderCard({
+      description: '**bold text** and `code` and [link](http://example.com)',
+    });
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('bold text and code and link');
+    expect(body).not.toHaveTextContent('**bold text**');
+    expect(body).not.toHaveTextContent('`code`');
+  });
+
+  it('renders plain text description as-is', () => {
+    renderCard({ description: 'Simple plain text description' });
+
+    expect(screen.getByTestId('table-body')).toHaveTextContent(
+      'Simple plain text description'
+    );
+  });
+
+  it('preserves search highlight spans after stripping markdown', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={{
+            description: [
+              'bold text and <span class="text-highlighter">code</span> and link',
+            ],
+          }}
+          source={{
+            ...baseSource,
+            description:
+              '**bold text** and `code` and [link](http://example.com)',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('code');
+    expect(body).not.toHaveTextContent('**bold text**');
   });
 });
 

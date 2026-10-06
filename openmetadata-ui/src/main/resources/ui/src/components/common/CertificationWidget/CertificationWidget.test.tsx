@@ -11,15 +11,26 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import CertificationWidget from './CertificationWidget';
+
+const mockOnUpdate = jest.fn();
 
 const mockUseGenericContextResult = {
   data: { name: 'domain' } as Domain,
   permissions: {} as OperationPermission,
-  onUpdate: jest.fn(),
+  onUpdate: mockOnUpdate,
   isVersionView: false,
 };
 
@@ -28,8 +39,26 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
 }));
 
 jest.mock('../../Certification/Certification.component', () =>
-  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        onCertificationUpdate,
+      }: {
+        onCertificationUpdate?: (tag?: Tag) => Promise<void>;
+      }) => (
+        <button
+          data-testid="trigger-cert-update"
+          onClick={() => onCertificationUpdate?.({} as Tag)}>
+          Save
+        </button>
+      )
+    )
 );
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 jest.mock('../CertificationTag/CertificationTag', () =>
   jest.fn().mockReturnValue(<div>CertificationTag</div>)
@@ -91,5 +120,68 @@ describe('CertificationWidget permissions', () => {
     render(<CertificationWidget />);
 
     expect(screen.queryByTestId('add-certification')).not.toBeInTheDocument();
+  });
+});
+
+const axiosError = {
+  message: 'Request failed with status code 403',
+  response: { status: 403, data: { message: 'Forbidden' } },
+} as AxiosError;
+
+// The widget swallows a failed save without toasting, because the pages that
+// render it (Domain, DataProduct) toast in their own onUpdate before rethrowing.
+describe('CertificationWidget failed save', () => {
+  beforeEach(() => {
+    mockOnUpdate.mockReset();
+    (showErrorToast as jest.Mock).mockClear();
+    mockUseGenericContextResult.permissions = {
+      EditCertification: true,
+    } as unknown as OperationPermission;
+  });
+
+  it('should toast once when the page updater toasts and rethrows', async () => {
+    mockOnUpdate.mockImplementation(async () => {
+      showErrorToast(axiosError);
+
+      throw axiosError;
+    });
+
+    render(<CertificationWidget />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('trigger-cert-update'));
+    });
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledTimes(1));
+  });
+
+  it('should toast once when the page updater toasts and swallows', async () => {
+    mockOnUpdate.mockImplementation(async () => {
+      showErrorToast(axiosError);
+    });
+
+    render(<CertificationWidget />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('trigger-cert-update'));
+    });
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not toast on a successful save', async () => {
+    mockOnUpdate.mockResolvedValue(undefined);
+
+    render(<CertificationWidget />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('trigger-cert-update'));
+    });
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });

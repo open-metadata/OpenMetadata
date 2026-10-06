@@ -44,7 +44,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import { CSVImportAsyncResponse } from '../interface/entity/csv.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
@@ -254,10 +254,22 @@ export const addTestCaseToLogicalTestSuite = async (
   return response.data;
 };
 
+export type AddTestCaseListFilter = {
+  q?: string;
+  testCaseStatus?: string;
+  testCaseType?: string;
+  entityLink?: string;
+  includeAllTests?: boolean;
+  columnName?: string;
+};
+
 export type AddTestCaseListSubmitPayload = {
   selectAll: boolean;
   includeIds: string[];
   excludeIds: string[];
+  // Active search/filter carried with a `selectAll` request so the backend
+  // resolves "all" to the filtered subset shown in the UI, not every test case.
+  filter?: AddTestCaseListFilter;
 };
 
 export const addTestCasesToLogicalTestSuiteBulk = async (
@@ -270,7 +282,7 @@ export const addTestCasesToLogicalTestSuiteBulk = async (
       ? BundleSuiteBulkAddMode.All
       : BundleSuiteBulkAddMode.IDS,
     selection: payload.selectAll
-      ? { filter: { excludeIds: payload.excludeIds } }
+      ? { filter: { excludeIds: payload.excludeIds, ...payload.filter } }
       : { ids: payload.includeIds },
   };
   const response = await APIClient.put<

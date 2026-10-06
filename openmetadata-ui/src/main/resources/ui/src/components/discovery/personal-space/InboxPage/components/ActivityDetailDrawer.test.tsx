@@ -198,7 +198,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Dialog: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   X: () => <span />,
   Maximize02: () => <span />,
   Minimize02: () => <span />,

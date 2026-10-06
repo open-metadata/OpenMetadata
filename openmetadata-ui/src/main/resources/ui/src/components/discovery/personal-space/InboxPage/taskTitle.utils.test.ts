@@ -13,7 +13,7 @@
 
 import { TFunction } from 'i18next';
 import { Task } from '../../../../generated/entity/tasks/task';
-import { getTaskTitle } from './taskTitle.utils';
+import { getTaskTitle, getTaskTitleParts } from './taskTitle.utils';
 
 const TASK_ID = 'TASK-19665';
 
@@ -22,6 +22,8 @@ const TASK_ID = 'TASK-19665';
 const MESSAGES: Record<string, string> = {
   'message.request-approval-message': 'Approval request for',
   'message.data-access-request-message': 'Data access request for',
+  'message.request-test-case-failure-resolution-message':
+    'Request TestCase Failure Resolution for',
 };
 const t = ((key: string) => MESSAGES[key] ?? key) as unknown as TFunction;
 
@@ -82,6 +84,51 @@ describe('getTaskTitle', () => {
     ).toBe('Data access request for orders');
   });
 
+  // The server writes incident titles itself, from a test case display name
+  // that is usually unset ("Test Case Incident - null").
+  it('composes an incident title instead of the server-written one', () => {
+    expect(
+      getTaskTitle(
+        task({
+          type: 'TestCaseResolution',
+          category: 'Incident',
+          displayName: 'Test Case Incident - null',
+          about: { id: 't1', type: 'testCase', name: 'orders_rows' },
+        } as Partial<Task>),
+        t
+      )
+    ).toBe('Request TestCase Failure Resolution for orders_rows');
+  });
+
+  it('names the test case of an incident that has no about entity', () => {
+    expect(
+      getTaskTitle(
+        task({
+          type: 'TestCaseResolution',
+          category: 'Incident',
+          about: undefined,
+          description:
+            'New incident for test case: svc.db.sch.orders.orders_rows',
+        } as Partial<Task>),
+        t
+      )
+    ).toBe('Request TestCase Failure Resolution for orders_rows');
+  });
+
+  // The asset type is drawn as a badge beside a composed title, not in it.
+  it('returns the asset type of a composed title apart from its text', () => {
+    expect(getTaskTitleParts(task(), t)).toEqual({
+      title: 'Approval request for CRM Customers',
+      entityType: 'table',
+    });
+  });
+
+  it('carries no asset type for a title someone wrote', () => {
+    expect(
+      getTaskTitleParts(task({ displayName: 'Access to Sales Table' }), t)
+    ).toEqual({ title: 'Access to Sales Table' });
+  });
+
   it('falls back to the description when the task has no about entity', () => {
     expect(getTaskTitle(task({ about: undefined }), t)).toBe(
       'Approval required for crm_customers'
@@ -92,6 +139,33 @@ describe('getTaskTitle', () => {
     expect(getTaskTitle(task({ type: 'TierUpdate' } as Partial<Task>), t)).toBe(
       'Approval required for crm_customers'
     );
+  });
+
+  // A workflow's first save runs the description through the server's HTML
+  // sanitizer, which stores "yesterday's" as "yesterday&#39;s".
+  it('shows a description title as text, decoding what the server encoded', () => {
+    expect(
+      getTaskTitle(
+        task({
+          about: undefined,
+          description:
+            '<p>Dashboards show yesterday&#39;s numbers &amp; totals</p>',
+        }),
+        t
+      )
+    ).toBe("Dashboards show yesterday's numbers & totals");
+  });
+
+  it('joins a multi-paragraph description into one title line', () => {
+    expect(
+      getTaskTitle(
+        task({
+          about: undefined,
+          description: '<p>Need access for Q3.</p><p>Owner approved.</p>',
+        }),
+        t
+      )
+    ).toBe('Need access for Q3. Owner approved.');
   });
 
   it('falls back to the task id when nothing else is available', () => {

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space, Typography } from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toString } from 'lodash';
@@ -87,17 +87,22 @@ const SpreadsheetVersion = ({
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const handleTabChange = (activeKey: string) => {
     navigate(
@@ -145,7 +150,9 @@ const SpreadsheetVersion = ({
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {getEntityName(record)}
+          </Typography>
         ),
       },
       ...descriptionTableObject(),
@@ -288,6 +295,7 @@ const SpreadsheetVersion = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.SPREADSHEET}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

@@ -18,6 +18,10 @@ import {
   domainsToTreeNodes,
   domainToTreeNode,
   entityReferencesToTreeNodes,
+  fetchAllDomainChildren,
+  getSelectedAncestorKeys,
+  isSameDomainSelection,
+  MAX_DOMAIN_NODES,
   treeNodesToEntityReferences,
 } from './DomainSelect.utils';
 
@@ -171,5 +175,102 @@ describe('DomainSelect.utils', () => {
     it('should return an empty string for an empty term', () => {
       expect(buildDomainSearchQuery('')).toBe('');
     });
+  });
+});
+
+describe('fetchAllDomainChildren', () => {
+  const domain = (n: number) =>
+    ({ id: `d${n}`, name: `d${n}`, fullyQualifiedName: `d${n}` } as never);
+
+  it('stops once a short page comes back', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [domain(1), domain(2)] })
+      .mockResolvedValueOnce({ data: [domain(3)] });
+
+    const result = await fetchAllDomainChildren(fetchPage, 2);
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    expect(fetchPage).toHaveBeenNthCalledWith(1, 0, 2);
+    expect(fetchPage).toHaveBeenNthCalledWith(2, 2, 2);
+    expect(result).toHaveLength(3);
+  });
+
+  it('pages past the first page so nothing beyond it is hidden', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [domain(1)], paging: { total: 2 } })
+      .mockResolvedValueOnce({ data: [domain(2)], paging: { total: 2 } });
+
+    const result = await fetchAllDomainChildren(fetchPage, 1);
+
+    expect(result.map((d) => (d as { id: string }).id)).toEqual(['d1', 'd2']);
+  });
+
+  it('stops at the bound so a huge catalogue cannot stall the dropdown', async () => {
+    const page = Array.from({ length: 100 }, (_, i) => domain(i));
+    const fetchPage = jest.fn().mockResolvedValue({ data: page });
+
+    const result = await fetchAllDomainChildren(fetchPage, 100);
+
+    expect(result).toHaveLength(MAX_DOMAIN_NODES);
+  });
+});
+
+describe('isSameDomainSelection', () => {
+  const ref = (fqn: string) => ({ fullyQualifiedName: fqn } as never);
+
+  it('is true for the same FQNs in any order', () => {
+    expect(
+      isSameDomainSelection([ref('a'), ref('b')], [ref('b'), ref('a')])
+    ).toBe(true);
+  });
+
+  it('is false when the contents differ', () => {
+    expect(isSameDomainSelection([ref('a')], [ref('b')])).toBe(false);
+    expect(isSameDomainSelection([ref('a')], [])).toBe(false);
+  });
+
+  it('is true for two empty selections', () => {
+    expect(isSameDomainSelection([], [])).toBe(true);
+  });
+});
+
+describe('getSelectedAncestorKeys', () => {
+  const ref = (fqn: string) => ({ fullyQualifiedName: fqn } as never);
+
+  it('returns every ancestor of a nested selection, but not the node itself', () => {
+    expect(getSelectedAncestorKeys([ref('a.b.c')])).toEqual(['a', 'a.b']);
+  });
+
+  it('returns nothing for a root-level selection', () => {
+    expect(getSelectedAncestorKeys([ref('a')])).toEqual([]);
+  });
+
+  it('de-duplicates shared ancestors', () => {
+    expect(getSelectedAncestorKeys([ref('a.b.c'), ref('a.b.d')])).toEqual([
+      'a',
+      'a.b',
+    ]);
+  });
+
+  it('ignores entries with no fqn', () => {
+    expect(getSelectedAncestorKeys([{} as never])).toEqual([]);
+  });
+});
+
+describe('getSelectedAncestorKeys with dotted domain names', () => {
+  const ref = (fqn: string) => ({ fullyQualifiedName: fqn } as never);
+
+  it('keeps a quoted segment intact instead of splitting on its dot', () => {
+    // `"a.b".child` is one domain named `a.b` with a child — not three levels.
+    expect(getSelectedAncestorKeys([ref('"a.b".child')])).toEqual(['"a.b"']);
+  });
+
+  it('handles a quoted segment nested deeper', () => {
+    expect(getSelectedAncestorKeys([ref('root."a.b".leaf')])).toEqual([
+      'root',
+      'root."a.b"',
+    ]);
   });
 });

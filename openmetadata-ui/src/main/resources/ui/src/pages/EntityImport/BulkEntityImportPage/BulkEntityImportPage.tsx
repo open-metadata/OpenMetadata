@@ -32,7 +32,7 @@ import {
   RefreshCw01,
   StopCircle,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import type { RcFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, startCase } from 'lodash';
@@ -80,6 +80,7 @@ import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
+import { CSVImportAsyncResponse } from '../../../interface/entity/csv.interface';
 import {
   cancelCsvAsyncJob,
   CsvAsyncJob,
@@ -129,7 +130,6 @@ import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface
 import './bulk-entity-import-page.less';
 import {
   BulkEntityImportLocationState,
-  CSVImportAsyncResponse,
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
 } from './BulkEntityImportPage.interface';
@@ -1329,6 +1329,7 @@ const BulkEntityImportPage = () => {
             >[]
           }
           rowHeight={getEditableRowHeight}
+          rowTestId={(row) => (row.id ? `rdg-row-${row.id}` : undefined)}
           rows={editableDataSource}
           onCopy={handleCopy}
           onPaste={handlePaste}

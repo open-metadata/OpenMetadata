@@ -19,7 +19,7 @@ import {
   Operators,
   SelectFieldSettings,
 } from '@react-awesome-query-builder/ui';
-import { get, sortBy, toLower } from 'lodash';
+import { get, sortBy } from 'lodash';
 import {
   LIST_VALUE_OPERATORS,
   MULTISELECT_FIELD_OPERATORS,
@@ -50,7 +50,7 @@ import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
 import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
-import { toTagSelectOptions } from './SearchPureUtils';
+import { matchesTagSelectOption, toTagSelectOptions } from './SearchPureUtils';
 
 // The value format RAQB's `date` widget stores and the native `<input type="date">` renders.
 const DATE_WIDGET_VALUE_FORMAT = 'YYYY-MM-DD';
@@ -692,7 +692,7 @@ class JSONLogicSearchClassBase {
       values: !search
         ? resolvedTierOptions
         : resolvedTierOptions.filter((tier: ListItem) =>
-            tier.title?.toLowerCase()?.includes(toLower(search))
+            matchesTagSelectOption(tier, search)
           ),
       hasMore: false,
     } as AsyncFetchListValuesResult;

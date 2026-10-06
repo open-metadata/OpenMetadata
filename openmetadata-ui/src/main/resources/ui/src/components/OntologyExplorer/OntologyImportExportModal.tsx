@@ -26,7 +26,7 @@ import {
   Download01,
   File02,
   InfoCircle,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';

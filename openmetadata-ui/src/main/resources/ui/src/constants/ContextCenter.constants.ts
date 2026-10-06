@@ -14,6 +14,7 @@
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import {
+  EntityStatus,
   MemoryType,
   ShareVisibility,
 } from '../generated/entity/context/contextMemory';
@@ -103,6 +104,13 @@ export const MEMORY_TYPE_OPTIONS = [
 
 export const VISIBILITY_OPTIONS = [
   {
+    id: ShareVisibility.Public,
+    labelKey: 'label.visibility-public',
+    descriptionKey: 'message.visible-to-everyone-in-workspace',
+    badgeColor: 'blue' as const,
+    iconName: 'Share07' as const,
+  },
+  {
     id: ShareVisibility.Shared,
     labelKey: 'label.shared',
     descriptionKey: 'message.visible-to-specific-people',
@@ -127,9 +135,22 @@ export const VISIBILITY_OPTIONS = [
 
 export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
-  'owners,tags,domains,primaryEntity,relatedEntities,sourceEntity';
+  'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
+
+export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
+  [EntityStatus.Approved]: 'label.approved',
+  [EntityStatus.Archived]: 'label.archived',
+  [EntityStatus.Draft]: 'label.draft',
+  [EntityStatus.Deprecated]: 'label.deprecated',
+  [EntityStatus.Rejected]: 'label.rejected',
+};
 
 export const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
   { id: 'created-by-me', label: 'label.created-by-me' },
 ] as const;
+
+// utility-gray-blue-50 resolves to gray-blue-950 in dark, which reads as a
+// black hole on a gray-800 card, so dark swaps to the translucent active fill.
+export const PANEL_ICON_BOX_CLASS =
+  'tw:rounded-lg tw:leading-0 tw:bg-utility-gray-blue-50 tw:dark:bg-active';

@@ -291,6 +291,16 @@ public class DatabaseRepository extends EntityRepository<Database> {
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
 
+  @Override
+  protected void hydrateHistoryEntities(List<Database> databases) {
+    for (Database database : databases) {
+      if (database.getService() == null) {
+        throw EntityNotFoundException.byMessage(
+            "Database " + database.getId() + " has no service relationship");
+      }
+    }
+  }
+
   private void fetchAndSetDatabaseSpecificFields(List<Database> databases, Fields fields) {
     if (databases == null || databases.isEmpty()) {
       return;

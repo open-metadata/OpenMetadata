@@ -26,6 +26,9 @@ export * from './utils';
 // Types (kept at root for convenience)
 export * from './types';
 
+// Chart tooltips, without loading echarts (the charts live in `/charts`)
+export { hideChartTooltips } from './charts/tooltip-events';
+
 // i18n
 export * from './locale';
 export * from './i18n/useCoreTranslation';

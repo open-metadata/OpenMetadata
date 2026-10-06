@@ -20,7 +20,7 @@ import {
   type ListValues,
   type SelectFieldSettings,
 } from '@react-awesome-query-builder/ui';
-import { debounce, isEmpty, sortBy, toLower } from 'lodash';
+import { debounce, isEmpty, sortBy } from 'lodash';
 import {
   SearchOutputType,
   type CustomPropertyEnumConfig,
@@ -52,7 +52,7 @@ import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
-import { parseBucketsData } from './SearchPureUtils';
+import { matchesTagSelectOption, parseBucketsData } from './SearchPureUtils';
 
 const CLASSIFICATION_NAME_KEYWORD = 'classification.name.keyword';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
@@ -237,9 +237,10 @@ class AdvancedSearchClassBase {
     let pendingResolve: ((result: AsyncFetchListValuesResult) => void) | null =
       null;
     const debouncedFetch = debounce((search: string) => {
-      // An in-flight response must settle its own search, even if a newer search is queued.
+      // Started requests own their resolvers; only queued searches share this slot.
       const resolve = pendingResolve;
       pendingResolve = null;
+
       getAggregateFieldOptions(
         searchIndex,
         entityField,
@@ -759,14 +760,12 @@ class AdvancedSearchClassBase {
     return async (search) => {
       const resolvedTierOptions = (await tierOptions) as ListItem[];
 
+      const query = Array.isArray(search) ? search.join(',') : search;
+
       return {
-        values: search
+        values: query
           ? resolvedTierOptions.filter((tier) =>
-              tier.title
-                ?.toLowerCase()
-                ?.includes(
-                  toLower(Array.isArray(search) ? search.join(',') : search)
-                )
+              matchesTagSelectOption(tier, query)
             )
           : resolvedTierOptions,
         hasMore: false,

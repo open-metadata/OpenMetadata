@@ -11,18 +11,23 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Affix, Button, Card, Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button, Card, Col, Row } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
-import { ReactComponent as RocketIcon } from '../../../../assets/svg/rocket.svg';
 import { VERSION } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
+import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import { isLandingPagePath } from '../../../../utils/RouterUtils';
-import { getVersionedStorageKey } from '../../../../utils/Version/Version';
+import {
+  getSimplifiedVersion,
+  getVersionedStorageKey,
+  getVersionReleaseTimestamp,
+} from '../../../../utils/Version/Version';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
 import './WhatsNewAlert.less';
 
@@ -40,12 +45,24 @@ const WhatsNewAlert = () => {
     return appVersion ? getVersionedStorageKey(VERSION, appVersion) : null;
   }, [appVersion]);
 
-  const { releaseLink, blogLink, isMajorRelease } = useMemo(() => {
+  const {
+    releaseLink,
+    blogLink,
+    isMajorRelease,
+    simplifiedVersion,
+    releaseDate,
+  } = useMemo(() => {
+    const releaseTimestamp = getVersionReleaseTimestamp(appVersion);
+
     return {
       // If the version ends with .0, it is a major release
       isMajorRelease: appVersion?.endsWith('.0'),
       releaseLink: brandClassBase.getReleaseLink(appVersion ?? ''),
       blogLink: brandClassBase.getBlogLink(appVersion ?? ''),
+      simplifiedVersion: getSimplifiedVersion(appVersion),
+      releaseDate: releaseTimestamp
+        ? formatDateTimeLong(releaseTimestamp, 'dd MMM yyyy')
+        : undefined,
     };
   }, [appVersion]);
 
@@ -89,21 +106,44 @@ const WhatsNewAlert = () => {
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
             <Row gutter={0} wrap={false}>
-              <Col className="whats-new-alert-left" flex="210px">
-                <RocketIcon className="whats-new-alert-rocket-icon" />
-                <Typography.Text className="whats-new-alert-version">
-                  {t('label.version-number', {
-                    version: appVersion ?? '',
-                  })}
-                </Typography.Text>
+              <Col
+                className={`whats-new-alert-left${
+                  releaseDate ? '' : ' whats-new-alert-left--centered'
+                }`}
+                flex="220px">
+                <div className="whats-new-alert-version-block">
+                  <div className="whats-new-alert-meta">
+                    <Typography className="whats-new-alert-meta-label">
+                      {t('label.version')}
+                    </Typography>
+                    <Typography className="whats-new-alert-version">
+                      {simplifiedVersion}
+                    </Typography>
+                  </div>
+                  {releaseDate && (
+                    <>
+                      <div className="whats-new-alert-divider" />
+                      <div className="whats-new-alert-meta">
+                        <Typography className="whats-new-alert-meta-label">
+                          {t('label.released')}
+                        </Typography>
+                        <Typography className="whats-new-alert-released-date">
+                          {releaseDate}
+                        </Typography>
+                      </div>
+                    </>
+                  )}
+                </div>
               </Col>
               <Col className="whats-new-alert-right" flex="auto">
-                <Typography.Text className="text-md font-semibold">
+                <Typography className="text-md font-semibold">
                   {t('label.new-update-announcement')}
-                </Typography.Text>
-                <Typography.Paragraph className="whats-new-alert-subtext">
+                </Typography>
+                <Typography
+                  as="p"
+                  className="whats-new-alert-subtext tw:mb-3.5!">
                   {t('label.to-learn-more-please-check-out')}
-                </Typography.Paragraph>
+                </Typography>
                 <div className="whats-new-alert-links">
                   <Button
                     className="p-0"

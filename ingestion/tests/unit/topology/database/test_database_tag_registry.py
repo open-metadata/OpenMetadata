@@ -19,6 +19,7 @@ import pytest
 from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.entity.classification.classification import Classification
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import SnowflakeConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.topology import TopologyContextManager
@@ -28,6 +29,7 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import I
 from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
 from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
+from metadata.utils.logger import StatusWarningHandler
 
 
 @pytest.fixture
@@ -45,6 +47,20 @@ def source():
     return instance
 
 
+@pytest.fixture
+def status(source):
+    # Counts logged warnings in the run status, the way a running workflow step does.
+    source.status = Status()
+    source._warning_handler = StatusWarningHandler(source.status)
+    source._activate_handler()
+    yield source.status
+    source._deactivate_handler()
+
+
+def _warning_messages(status: Status) -> list[str]:
+    return [message for warning in status.warnings for message in warning.values()]
+
+
 def test_snowflake_stage_emits_and_attaches_without_tag_context(source):
     source.database_tags_map = {"db": [{"tag_name": "Class", "tag_value": "Value"}]}
     stage = source.topology.database.stages[0]
@@ -60,7 +76,7 @@ def test_snowflake_stage_emits_and_attaches_without_tag_context(source):
     assert source.get_database_tag_labels("db") is None
 
 
-def test_snowflake_stage_reports_bad_definition_and_emits_valid_one(source):
+def test_snowflake_stage_skips_unnameable_value_and_emits_valid_one(source, status):
     source.database_tags_map = {
         "db": [
             {"tag_name": "Class", "tag_value": '{"invalid": "name"}'},
@@ -68,12 +84,11 @@ def test_snowflake_stage_reports_bad_definition_and_emits_valid_one(source):
         ]
     }
     records = list(source._process_stage(source.topology.database.stages[0], "db"))
-    failures = [record.left for record in records if record.left]
     definitions = [record.right for record in records if record.right]
-    assert len(failures) == 1
-    assert "Invalid name" in failures[0].error
+    assert [record.left for record in records if record.left] == []
     assert [record.tag_request.name.root for record in definitions] == ["Valid"]
     assert [label.tagFQN.root for label in source.get_database_tag_labels("db")] == ["Class.Valid"]
+    assert [message.split(":")[0] for message in _warning_messages(status)] == ["svc.db"]
 
 
 def test_disabled_tags_do_not_register_or_emit(source):
@@ -263,3 +278,95 @@ def test_default_stages_emit_registered_definitions_and_preserve_labels(default_
     list(source.clear_database_tag_scope())
     assert source.get_tag_by_fqn(entity_fqn) is None
     assert source.tags_registry.stats()["live_entities"] == 0
+
+
+# Issue #30536: a source tag whose name or value breaks the entityName rule (no '"', '>', '::' or control
+# characters) is not created as a Classification or Tag. It is skipped with a warning counted in the run status
+# instead of a failure, so that many such tags, such as the JSON values Snowflake ML Feature Store sets, cannot
+# fail the run.
+@pytest.mark.parametrize(
+    ("classification_name", "tag_name"),
+    [
+        ("SNOWML_FEATURE_STORE_OBJECT", '{"type": "EXTERNAL_FEATURE_VIEW", "pkg_version": "1.16.0"}'),
+        ("Class", "line one\nline two"),
+        ("Class", "gold\n"),
+        ("Class", "a > b"),
+        ("Class", "a::b"),
+        ("Class", "x" * 257),
+        ('BAD"CLASS', "Valid"),
+        ("", "Valid"),
+    ],
+)
+def test_unnameable_tag_is_skipped_with_a_warning(source, status, classification_name, tag_name):
+    tag = source.define_tag(
+        classification_name=classification_name,
+        tag_name=tag_name,
+        classification_description="",
+        tag_description="",
+        entity_fqn="svc.db.schema.table",
+    )
+    assert tag is None
+    assert source.tags_registry.stats()["pending"] == 0
+    assert status.failures == []
+    [message] = _warning_messages(status)
+    assert message.startswith("svc.db.schema.table: ")
+    assert "\n" not in message
+    assert repr(tag_name) in message
+
+
+@pytest.mark.parametrize(
+    ("tag_name", "tag_fqn"), [("tier.gold", 'Class."tier.gold"'), ("COL_A,COL_B", "Class.COL_A,COL_B")]
+)
+def test_nameable_tag_with_punctuation_is_defined(source, status, tag_name, tag_fqn):
+    tag = source.define_tag(
+        classification_name="Class",
+        tag_name=tag_name,
+        classification_description="",
+        tag_description="",
+        entity_fqn="svc.db.schema.table",
+    )
+    source.attach_tag(entity_fqn="svc.db.schema.table", tag=tag)
+    assert [label.tagFQN.root for label in source.get_tag_by_fqn("svc.db.schema.table")] == [tag_fqn]
+    assert status.warnings == []
+
+
+def test_snowflake_schema_stage_skips_feature_store_json_tags(source, status):
+    source.service_connection = SnowflakeConnection(username="user", account="account", warehouse="warehouse")
+    feature_view = "SOME_FEATURES$v1"
+    object_json = '{"type": "EXTERNAL_FEATURE_VIEW", "pkg_version": "1.16.0"}'
+    metadata_json = '{"entities": ["MY_ENTITY"], "timestamp_col": "NULL"}'
+    connection = MagicMock()
+    # TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME, as TAG_REFERENCES returns them
+    connection.execute.return_value = [
+        ("SNOWML_FEATURE_STORE_ENTITY_MY_ENTITY", "COL_A,COL_B", "db", "schema", feature_view, None),
+        ("SNOWML_FEATURE_STORE_OBJECT", object_json, "db", "schema", feature_view, None),
+        ("SNOWML_FEATURE_VIEW_METADATA", metadata_json, "db", "schema", feature_view, None),
+        ("SNOWML_FEATURE_VIEW_METADATA", '{"col": "COL_A"}', "db", "schema", "SRC", "COL_A"),
+        ("PLAIN_TAG", "gold", "db", "schema", "SRC", "COL_B"),
+    ]
+    source._connection_map = {source.context.get_current_thread_id(): connection}
+    source.schema_tags_map = {
+        "schema": [
+            {"tag_name": "SNOWML_FEATURE_STORE_OBJECT", "tag_value": '{"type": "FEATURE_STORE"}'},
+            {"tag_name": "PLAIN_TAG", "tag_value": "silver"},
+        ]
+    }
+
+    records = list(source._process_stage(source.topology.databaseSchema.stages[0], "schema"))
+
+    assert [record.left for record in records if record.left] == []
+    assert sorted(
+        f"{record.right.classification_request.name.root}.{record.right.tag_request.name.root}"
+        for record in records
+        if record.right
+    ) == ["PLAIN_TAG.gold", "PLAIN_TAG.silver", "SNOWML_FEATURE_STORE_ENTITY_MY_ENTITY.COL_A,COL_B"]
+    assert [label.tagFQN.root for label in source.get_tag_by_fqn(f"svc.db.schema.{feature_view}")] == [
+        "SNOWML_FEATURE_STORE_ENTITY_MY_ENTITY.COL_A,COL_B"
+    ]
+    assert status.failures == []
+    assert sorted(message.split(": ")[0] for message in _warning_messages(status)) == [
+        "svc.db.schema",
+        f"svc.db.schema.{feature_view}",
+        f"svc.db.schema.{feature_view}",
+        "svc.db.schema.SRC.COL_A",
+    ]

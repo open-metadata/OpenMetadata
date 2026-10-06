@@ -8,7 +8,6 @@
     "type": "object",
     "properties": {
         "certificates": {
-            "type":"object",
             "title": "SSL Certificates",
             "description": "SSL Certificates",
             "oneOf": [

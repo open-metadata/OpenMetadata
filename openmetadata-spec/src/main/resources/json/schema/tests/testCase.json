@@ -190,8 +190,7 @@
     },
     "entityStatus": {
       "description": "Current status of the test case.",
-      "$ref": "../type/status.json",
-      "default": "Approved"
+      "$ref": "../type/status.json"
     },
     "reviewers": {
       "description": "List of reviewers for this entity.",

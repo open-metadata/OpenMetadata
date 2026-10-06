@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
+import { Badge, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Popover, Space } from 'antd';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -143,22 +144,23 @@ export const IngestionRecentRuns = <
   const handleModalCancel = () => setSelectedStatus(undefined);
 
   if (isAppRunsLoading || loading) {
-    return <Skeleton.Input active size="small" />;
+    return <Skeleton height={24} variant="rounded" width={120} />;
   }
 
   return (
     <Space className={classNames} size={5}>
       {isEmpty(recentRunStatus) ? (
-        <Typography.Text data-testid="pipeline-status">
+        <Typography data-testid="pipeline-status">
           {NO_DATA_PLACEHOLDER}
-        </Typography.Text>
+        </Typography>
       ) : (
         recentRunStatus.map((r, i) => {
           const { pipelineState, runId, startDate, endDate } =
             getRunFieldValues(r);
 
           const status = (
-            <Tag
+            <Badge
+              bordered={false}
               className={classNamesFunc(
                 'ingestion-run-badge',
                 pipelineState ?? '',
@@ -166,13 +168,16 @@ export const IngestionRecentRuns = <
                   latest: i === recentRunStatus.length - 1,
                 }
               )}
+              color="gray"
               data-testid="pipeline-status"
               key={`${runId}-status`}
+              size="sm"
+              type="color"
               onClick={() => handleRunStatusClick(r)}>
               {i === recentRunStatus.length - 1
                 ? upperFirst(pipelineState)
                 : ''}
-            </Tag>
+            </Badge>
           );
 
           const showTooltip =

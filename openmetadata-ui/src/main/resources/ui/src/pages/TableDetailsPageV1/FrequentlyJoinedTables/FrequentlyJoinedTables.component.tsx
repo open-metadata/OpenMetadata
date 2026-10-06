@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,11 +70,11 @@ export const FrequentlyJoinedTables = ({
         key={table.name}>
         <Link
           to={getEntityDetailsPath(EntityType.TABLE, table.fullyQualifiedName)}>
-          <Typography.Text
+          <Typography
             className="frequently-joint-name"
             ellipsis={{ tooltip: true }}>
             {table.name}
-          </Typography.Text>
+          </Typography>
         </Link>
         {getCountBadge(table.joinCount, '', false)}
       </div>

@@ -83,8 +83,8 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
 );
 
 jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () =>
-  jest.fn(({ onSave, onTextChange }) => (
-    <div data-testid="reply-editor">
+  jest.fn(({ focused, onSave, onTextChange }) => (
+    <div data-focused={String(Boolean(focused))} data-testid="reply-editor">
       <input
         aria-label="edit"
         data-testid="reply-editor-input"
@@ -138,7 +138,9 @@ jest.mock('../../../utils/SearchClassBase', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   __esModule: true,
-  default: { getEntityLink: () => '/table/service.table' },
+  default: {
+    getEntityLink: jest.fn((type: string, fqn: string) => `/${type}/${fqn}`),
+  },
 }));
 
 const conversation: Conversation = {
@@ -207,6 +209,23 @@ describe('ActivityFeedCardNew', () => {
     expect(screen.getByTestId('feed-actions')).toBeVisible();
   });
 
+  // FeedEditor no longer focuses itself on mount, so an editor revealed by a
+  // click must ask for focus, or the user clicks twice before typing.
+  it('focuses the comment editor its placeholder reveals', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('comments-input-field'));
+
+    expect(await screen.findByTestId('reply-editor')).toHaveAttribute(
+      'data-focused',
+      'true'
+    );
+  });
+
   it('keeps the root actions a direct child of the card body', () => {
     render(
       <MemoryRouter>
@@ -224,6 +243,23 @@ describe('ActivityFeedCardNew', () => {
 
     expect(body).toHaveClass('ant-card-body');
     expect(body?.parentElement).toHaveClass('activity-feed-card-new');
+  });
+
+  it('falls back to the activity entity when the event carries no about link', () => {
+    // `about` is optional on an activity event, and the EntityLink accessors
+    // answer '' for a missing link rather than undefined. Reading them with
+    // `??` would keep that '' and never reach `activity.entity`, leaving the
+    // header pointing at `//` with no entity name.
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer activity={activity} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
   });
 
   it('renders activity replies in the open side panel', () => {

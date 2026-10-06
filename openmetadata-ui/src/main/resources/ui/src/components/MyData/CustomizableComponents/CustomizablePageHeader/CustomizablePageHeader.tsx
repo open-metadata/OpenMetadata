@@ -16,7 +16,8 @@ import {
   RedoOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Space } from 'antd';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +61,7 @@ export const CustomizablePageHeader = ({
     currentPageType === PageType.LandingPage ||
     currentPageType === PersonaCustomizePageFqn.Homepage;
   const isNavigationPage = pageFqn === PersonaCustomizePageFqn.Navigation;
-  const isAppModePage = pageFqn === PersonaCustomizePageFqn.AppMode;
+  const isAppLayoutPage = pageFqn === PersonaCustomizePageFqn.AppLayout;
 
   // Navigate to an explicit URL (not navigate(-1)) so the parent's
   // NavigationBlocker can intercept the pushState and reliably land on the
@@ -103,14 +104,14 @@ export const CustomizablePageHeader = ({
   const subTitle = useMemo(() => {
     if (isNavigationPage) {
       return 'message.customize-your-navigation-subheader';
-    } else if (isAppModePage) {
-      return 'message.customize-your-app-mode-subheader';
+    } else if (isAppLayoutPage) {
+      return 'message.customize-your-app-layout-subheader';
     } else if (isLandingPage) {
       return 'message.customize-home-page-page-header-for-persona';
     }
 
     return 'message.customize-entity-landing-page-header-for-persona';
-  }, [isNavigationPage, isAppModePage, isLandingPage]);
+  }, [isNavigationPage, isAppLayoutPage, isLandingPage]);
 
   return (
     <Card
@@ -118,23 +119,25 @@ export const CustomizablePageHeader = ({
       data-testid="customize-landing-page-header">
       <div className="d-flex items-center justify-between">
         <div>
-          <Typography.Title
+          <Typography
+            as="h5"
             className="m-0"
             data-testid="customize-page-title"
-            level={5}>
+            size="text-md"
+            weight="semibold">
             {t('label.customize-entity', {
               entity: isLandingPage
                 ? t('label.home-page')
                 : t(`label.${kebabCase(currentPageType as string)}`),
             })}
-          </Typography.Title>
-          <Typography.Paragraph className="m-0">
+          </Typography>
+          <Typography as="p" className="m-0">
             <Transi18next
               i18nKey={subTitle}
               renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
               values={i18Values}
             />
-          </Typography.Paragraph>
+          </Typography>
         </div>
         <Space>
           {showWidgetActions && (

@@ -39,6 +39,7 @@ interface ListAlertsRequestParams {
   after?: string;
   include?: string;
   limit?: number;
+  fields?: string;
 }
 
 export const getAlertsFromId = async (
@@ -60,7 +61,7 @@ export const getAlertsFromId = async (
 
 export const getAlertsFromName = async (
   name: string,
-  params?: Pick<ListAlertsRequestParams, 'include'>
+  params?: Pick<ListAlertsRequestParams, 'include' | 'fields'>
 ) => {
   const response = await axiosClient.get<EventSubscription>(
     `${BASE_URL}/name/${getEncodedFqn(name)}`,

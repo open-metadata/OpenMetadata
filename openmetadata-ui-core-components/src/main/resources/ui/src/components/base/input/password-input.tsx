@@ -3,7 +3,7 @@ import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { TextAreaBase } from '@/components/base/textarea/textarea';
 import { cx } from '@/utils/cx';
-import { Eye, EyeOff, UploadCloud01 } from '@untitledui/icons';
+import { Eye, EyeOff, UploadCloud01 } from '../../../icons';
 import { useState } from 'react';
 import { FileTrigger } from 'react-aria-components';
 import { InputBase, TextField, type InputBaseProps } from './input';
@@ -62,7 +62,7 @@ export const PasswordInput = ({
   const revealButton = (
     <button
       className={cx(
-        'tw:flex tw:cursor-pointer tw:items-center tw:text-fg-quaternary tw:transition-colors tw:duration-200 hover:tw:text-fg-quaternary_hover tw:border-0 tw:bg-transparent tw:p-0',
+        'tw:flex tw:cursor-pointer tw:items-center tw:text-fg-quaternary tw:transition-colors tw:duration-200 tw:hover:text-fg-quaternary_hover tw:border-0 tw:bg-transparent tw:p-0',
         multiline ? 'tw:absolute tw:right-2 tw:top-2' : 'tw:absolute tw:right-3'
       )}
       tabIndex={-1}

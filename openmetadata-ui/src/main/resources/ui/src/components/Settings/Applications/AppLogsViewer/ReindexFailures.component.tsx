@@ -11,15 +11,24 @@
  *  limitations under the License.
  */
 
-import { Drawer, Select, Space, Tooltip, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Drawer, Select, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { RDF_INDEX_APP_NAME } from '../../../../constants/Applications.constant';
 import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
 import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import {
@@ -28,6 +37,41 @@ import {
 } from './ReindexFailures.interface';
 
 const PAGE_SIZE = 20;
+
+const ErrorMessage = ({ text }: { text: string }) => {
+  const { t } = useTranslation();
+  const textRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+
+  useLayoutEffect(() => {
+    const clampEl = textRef.current?.querySelector('p');
+    if (clampEl && !isExpanded) {
+      setIsClamped(clampEl.scrollHeight > clampEl.clientHeight);
+    }
+  }, [text, isExpanded]);
+
+  return (
+    <div className="tw:flex tw:items-start tw:gap-1">
+      <div className="tw:min-w-0 tw:flex-1" ref={textRef}>
+        <Typography as="p" ellipsis={isExpanded ? false : { rows: 2 }}>
+          {text}
+        </Typography>
+        {(isClamped || isExpanded) && (
+          <Button
+            noTextPadding
+            color="link-color"
+            data-testid="error-message-toggle"
+            size="sm"
+            onClick={() => setIsExpanded((expanded) => !expanded)}>
+            {t(isExpanded ? 'label.less-lowercase' : 'label.more-lowercase')}
+          </Button>
+        )}
+      </div>
+      <CopyToClipboardButton copyText={text} />
+    </div>
+  );
+};
 
 const ReindexFailures = ({
   visible,
@@ -123,7 +167,9 @@ const ReindexFailures = ({
         key: 'entityType',
         width: 120,
         render: (text: string) => (
-          <Typography.Text className="font-medium">{text}</Typography.Text>
+          <Typography className="tw:text-primary" weight="medium">
+            {text}
+          </Typography>
         ),
       },
       {
@@ -133,9 +179,10 @@ const ReindexFailures = ({
         width: 150,
         ellipsis: true,
         render: (text: string) => (
-          <Typography.Text copyable={Boolean(text)}>
-            {text || '-'}
-          </Typography.Text>
+          <span className="tw:inline-flex tw:items-center tw:gap-1">
+            <Typography className="tw:text-primary">{text || '-'}</Typography>
+            {text && <CopyToClipboardButton copyText={text} />}
+          </span>
         ),
       },
       {
@@ -144,7 +191,7 @@ const ReindexFailures = ({
         key: 'failureStage',
         width: 100,
         render: (text: string) => (
-          <Typography.Text>{text || '-'}</Typography.Text>
+          <Typography className="tw:text-primary">{text || '-'}</Typography>
         ),
       },
       {
@@ -158,12 +205,7 @@ const ReindexFailures = ({
               overlayStyle={{ maxWidth: 500 }}
               placement="topLeft"
               title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}>
-              <Typography.Paragraph
-                copyable
-                className="m-b-0"
-                ellipsis={{ rows: 2, expandable: true, symbol: 'more' }}>
-                {text}
-              </Typography.Paragraph>
+              <ErrorMessage text={text} />
             </Tooltip>
           ) : (
             '-'
@@ -190,7 +232,7 @@ const ReindexFailures = ({
       onClose={onClose}>
       <Space className="w-full m-b-md" direction="vertical" size="small">
         <Space>
-          <Typography.Text>{t('label.filter-by-entity-type')}:</Typography.Text>
+          <Typography>{t('label.filter-by-entity-type')}:</Typography>
           <Select
             allowClear
             placeholder={t('label.all')}
@@ -205,9 +247,9 @@ const ReindexFailures = ({
           </Select>
         </Space>
         {total > 0 && (
-          <Typography.Text className="text-grey-muted">
+          <Typography color="secondary">
             {t('label.showing-total-failure-plural', { total })}
-          </Typography.Text>
+          </Typography>
         )}
       </Space>
 

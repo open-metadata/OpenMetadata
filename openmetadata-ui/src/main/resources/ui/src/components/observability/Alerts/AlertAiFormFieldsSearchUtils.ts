@@ -16,10 +16,14 @@ import { AxiosError } from 'axios';
 import { isEmpty, uniqBy } from 'lodash';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { UUID_REGEX } from '../../../constants/regex.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ObservabilityFilterResourceDescriptor } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { searchEntity } from '../../../utils/Alerts/AlertsUtil';
+import {
+  getDataContractSuggestions,
+  searchEntity,
+} from '../../../utils/Alerts/AlertsUtil';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import {
   getEntityName,
@@ -249,6 +253,14 @@ export const searchAlertAiArgumentOptions = async ({
   selectedSource?: string;
 }): Promise<SelectItemType[]> => {
   const trimmedSearchText = searchText.trim();
+
+  // Data contracts are not in the search-index mapping; classic lists them via the contracts API.
+  if (argument === 'fqnList' && selectedSource === EntityType.DATA_CONTRACT) {
+    const contracts = await getDataContractSuggestions(trimmedSearchText);
+
+    return contracts.map(({ value }) => ({ id: value, label: value }));
+  }
+
   const buildConfig = ALERT_AI_ARGUMENT_CONFIG_BUILDERS[argument];
 
   if (!buildConfig) {

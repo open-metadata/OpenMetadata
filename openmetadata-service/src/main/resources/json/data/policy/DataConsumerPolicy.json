@@ -34,6 +34,13 @@
       "resources" : ["all"],
       "operations": ["CreateTask", "EditTask"],
       "effect": "allow"
+    },
+    {
+      "name": "DataConsumerPolicy-ExecuteSparqlQuery-Rule",
+      "description" : "Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.",
+      "resources" : ["all"],
+      "operations": ["ExecuteSparqlQuery"],
+      "effect": "allow"
     }
   ]
 }

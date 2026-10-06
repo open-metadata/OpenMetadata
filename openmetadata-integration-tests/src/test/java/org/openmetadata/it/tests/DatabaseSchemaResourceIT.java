@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -41,6 +42,7 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for DatabaseSchema entity operations.
@@ -56,6 +58,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
 
   {
     supportsImportExport = true;
+    supportsCreationAudit = true;
     supportsBatchImport = true;
     supportsRecursiveImport = true; // DatabaseSchema supports recursive import with nested entities
     supportsLifeCycle = true;
@@ -1374,8 +1377,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     org.openmetadata.schema.entity.data.Glossary glossary =
         client.glossaries().create(createGlossary);
 
-    // Create an IN_REVIEW glossary term by creating it first, then patching the status
-    // (You cannot create a term with IN_REVIEW status directly)
+    // Create a glossary term with a reviewer
     org.openmetadata.schema.type.EntityReference reviewerRef =
         org.openmetadata.it.factories.UserTestFactory.createUser(ns, "reviewer1")
             .getEntityReference();
@@ -1388,21 +1390,12 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     org.openmetadata.schema.entity.data.GlossaryTerm inReviewTerm =
         client.glossaryTerms().create(createInReviewTerm);
 
-    // Now update the term to set it to IN_REVIEW status
-    inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
-    inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
-
-    // Wait for the term to be updated to IN_REVIEW status
-    final UUID termId = inReviewTerm.getId();
-    org.awaitility.Awaitility.await()
-        .atMost(10, java.util.concurrent.TimeUnit.SECONDS)
-        .pollInterval(500, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .until(
-            () -> {
-              org.openmetadata.schema.entity.data.GlossaryTerm term =
-                  client.glossaryTerms().get(termId.toString());
-              return term.getEntityStatus() == org.openmetadata.schema.type.EntityStatus.IN_REVIEW;
-            });
+    // The approval workflow puts a new term with reviewers in review and owns its stage, so move
+    // the term there the way the workflow does
+    GovernanceWorkflowActions.moveToStage(
+        Entity.GLOSSARY_TERM,
+        inReviewTerm.getId(),
+        org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
 
     log.info("TEST: Creating CSV for unapproved glossary term import");
     log.info("TEST: IN_REVIEW term FQN: {}", inReviewTerm.getFullyQualifiedName());

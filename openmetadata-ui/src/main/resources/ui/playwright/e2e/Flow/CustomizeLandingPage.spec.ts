@@ -96,7 +96,7 @@ const test = base.extend<LandingPageTestFixtures>({
     void persona;
 
     const adminPage = await browser.newPage();
-    await testUser.login(adminPage);
+    await testUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -180,9 +180,7 @@ test.describe(
 
         await openAddCustomizeWidgetModal(adminPage);
 
-        await adminPage.locator('[data-testid="loader"]').first().waitFor({
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(adminPage);
 
         // Check if 'check' icon is present for existing widgets
         await expect(

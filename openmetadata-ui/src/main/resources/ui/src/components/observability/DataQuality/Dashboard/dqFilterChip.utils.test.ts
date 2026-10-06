@@ -14,7 +14,6 @@ import {
   chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from './dqFilterChip.utils';
 
 describe('dqFilterChip utils', () => {
@@ -25,7 +24,7 @@ describe('dqFilterChip utils', () => {
       // against.
       expect(chipTriggerClassName).toContain('tw:shadow-xs-skeuomorphic');
       expect(chipTriggerClassName).toContain('tw:after:outline-primary');
-      expect(chipTriggerClassName).toContain('tw:bg-primary');
+      expect(chipTriggerClassName).toContain('tw:bg-surface');
       expect(chipTriggerClassName).toContain('tw:px-3.5');
     });
 
@@ -35,22 +34,10 @@ describe('dqFilterChip utils', () => {
     });
   });
 
-  describe('chipTriggerSelectedClassName', () => {
-    it('should brand the trigger the way FilterSelect does', () => {
-      expect(chipTriggerSelectedClassName).toContain(
-        'tw:text-fg-brand-primary'
-      );
-      expect(chipTriggerSelectedClassName).toContain('tw:after:outline-brand');
-    });
-  });
-
   describe('chipChevronClassName', () => {
-    it('should brand the chevron once a value is picked, like FilterSelect does', () => {
-      // A chevron left grey beside a branded label is the drift this guards
-      // against; the two colours are one Tailwind group, so it is either/or.
-      expect(chipChevronClassName(true)).toContain('tw:text-fg-brand-primary');
-      expect(chipChevronClassName(true)).not.toContain('tw:text-fg-quaternary');
-      expect(chipChevronClassName(false)).toContain('tw:text-fg-quaternary');
+    it('should stay neutral like the FilterSelect trigger chevron', () => {
+      expect(chipChevronClassName).toContain('tw:text-fg-quaternary');
+      expect(chipChevronClassName).not.toContain('brand');
     });
   });
 

@@ -30,6 +30,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { clickUntilVisible } from '../../utils/waitHelpers';
 
 const persona = new PersonaClass();
 const adminUser = new AdminClass();
@@ -41,13 +42,13 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
   },
 });
@@ -184,13 +185,11 @@ test.describe('Data Product Persona customization', () => {
       await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
       await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
 
-      const addWidgetButton = adminPage.getByTestId('add-widget-button');
-      await addWidgetButton.waitFor({ state: 'visible' });
-      await addWidgetButton.click();
-
-      await adminPage
-        .getByTestId('widget-info-tabs')
-        .waitFor({ state: 'visible' });
+      // Closing the antd modal re-measures the grid, shifting the placeholder.
+      await clickUntilVisible(
+        adminPage.getByTestId('add-widget-button'),
+        adminPage.getByTestId('widget-info-tabs')
+      );
 
       await adminPage.getByTestId('Description-widget').click();
       await adminPage

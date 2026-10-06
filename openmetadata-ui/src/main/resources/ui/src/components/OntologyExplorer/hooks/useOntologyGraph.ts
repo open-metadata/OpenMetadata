@@ -69,6 +69,7 @@ import {
   ONTOLOGY_EDIT_CANCEL_EVENT,
   ONTOLOGY_EDIT_NODE_CLICK_EVENT,
 } from '../PortOverlay.interface';
+import { METRIC_NODE_TYPE } from '../utils/graphBuilders';
 import {
   adaptiveSpacing,
   getLayoutConfig,
@@ -81,9 +82,11 @@ import {
   buildDataModeAssetNodeStyle,
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
+  buildStudioMetricNodeStyle,
   CARDINALITY_AWARE_LINE_EDGE_TYPE,
   CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE,
   getCanvasColor,
+  StudioMetricNodeStyle,
   STUDIO_EDIT_PORT_CLASS_NAME,
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
@@ -499,25 +502,38 @@ function buildDataModeTermStyle(
   };
 }
 
+function getStudioNodeKindStyle(
+  ontNode: OntologyNode | undefined
+): Partial<StudioMetricNodeStyle> & Pick<StudioMetricNodeStyle, 'stroke'> {
+  if (ontNode?.type === METRIC_NODE_TYPE) {
+    return buildStudioMetricNodeStyle(getCanvasColor);
+  }
+
+  return {
+    stroke: ontNode?.type === 'glossaryTermIsolated' ? '#FEDF89' : '#E9EAEB',
+  };
+}
+
 function buildStudioNodeStyle(
   datum: NodeData,
   d: GraphNodeMeta,
   ontNode: OntologyNode | undefined
 ): Record<string, unknown> {
   const isIsolated = ontNode?.type === 'glossaryTermIsolated';
+  const kindStyle = getStudioNodeKindStyle(ontNode);
   const accentColor = isIsolated ? '#F79009' : d.studioAccentColor ?? '#84CAFF';
-  const borderColor = isIsolated ? '#FEDF89' : '#E9EAEB';
   const size = (datum.style?.size as [number, number] | undefined) ?? [150, 36];
   const label = d?.label ?? datum.id;
 
   return {
     ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
+    ...kindStyle,
     label: false,
     studioLabelText: label,
     studioAccentColor: accentColor,
     zIndex: 2,
     opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    stroke: d?.isSelected ? NODE_SELECTED_STROKE : borderColor,
+    stroke: d?.isSelected ? NODE_SELECTED_STROKE : kindStyle.stroke,
     lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : NODE_LINE_WIDTH,
     ...(d?.isSelected && {
       haloStroke: NODE_SELECTED_STROKE,

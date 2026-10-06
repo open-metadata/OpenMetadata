@@ -24,16 +24,14 @@ import classNames from 'classnames';
 import { DateTime } from 'luxon';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/ic_storylane.svg';
-import { ReactComponent as VideoIcon } from '../../../assets/svg/ic_video.svg';
 import {
   CATEGORY_BADGE_COLORS,
   DESCRIPTION_VIEW_MORE_THRESHOLD,
-  ICON_COLOR_CLASS,
   MAX_VISIBLE_CATEGORIES_IN_CARD,
-  ResourceType,
 } from '../../../constants/Learning.constants';
+import { getDurationUnitLabelKey } from '../../../utils/platform/learning.utils';
 import { LEARNING_CATEGORIES, ResourceCategory } from '../Learning.interface';
+import { ResourceTypeIcon } from '../ResourceTypeIcon/ResourceTypeIcon';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
 
 const getCategoryTags = (
@@ -61,18 +59,10 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
     resource.description &&
     resource.description.length > DESCRIPTION_VIEW_MORE_THRESHOLD;
 
-  const iconColorClass =
-    ICON_COLOR_CLASS[resource.resourceType.toLowerCase()] ??
-    ICON_COLOR_CLASS.video;
-  const resourceTypeIcon =
-    resource.resourceType === ResourceType.Storylane ? (
-      <StoryLaneIcon className={iconColorClass} height={24} width={24} />
-    ) : (
-      <VideoIcon className={iconColorClass} height={24} width={24} />
-    );
-
   const formattedDuration = resource.estimatedDuration
-    ? `${Math.floor(resource.estimatedDuration / 60)} ${t('label.min-watch')}`
+    ? `${Math.floor(resource.estimatedDuration / 60)} ${t(
+        getDurationUnitLabelKey(resource.resourceType)
+      )}`
     : null;
 
   const formattedDate = resource.updatedAt
@@ -207,7 +197,9 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
       gap={3}
       onClick={() => onClick?.(resource)}>
       <Box align="start" className="tw:min-w-0 tw:min-h-10" gap={3}>
-        <Box className="tw:shrink-0 tw:mt-0.5">{resourceTypeIcon}</Box>
+        <Box className="tw:shrink-0 tw:mt-0.5">
+          <ResourceTypeIcon resourceType={resource.resourceType} />
+        </Box>
         <Typography
           as="span"
           className="tw:flex-1 tw:min-w-0 tw:text-primary"

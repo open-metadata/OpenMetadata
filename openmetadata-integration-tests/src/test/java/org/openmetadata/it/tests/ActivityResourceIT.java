@@ -10,8 +10,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Metrics;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
@@ -52,6 +55,7 @@ import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.jdbi.OMSqlLogger;
 
 /**
  * Integration tests for the Activity Stream API (/v1/activity).
@@ -69,6 +73,8 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ActivityResourceIT {
+  private static final Set<String> REPLY_STATEMENTS =
+      Set.of("ConversationDAO.insertIfAbsent", "ConversationDAO.findByIdForUpdate");
 
   private static final String ACTIVITY_PATH = "/v1/activity";
   private static final String CONVERSATIONS_PATH = "/v1/conversations";
@@ -166,6 +172,7 @@ public class ActivityResourceIT {
         createTestActivityEventWithAbout(
             table, "<#E::table::" + table.getFullyQualifiedName() + ">");
     int replyCount = 10;
+    double deadlocksBefore = conversationDeadlocks();
     List<CompletableFuture<ConversationReply>> writes =
         IntStream.range(0, replyCount)
             .mapToObj(
@@ -189,6 +196,18 @@ public class ActivityResourceIT {
     assertEquals(replyCount, replies.getPaging().getTotal());
     assertEquals(
         replyCount, replies.getData().stream().map(ConversationReply::getId).distinct().count());
+    assertEquals(
+        deadlocksBefore,
+        conversationDeadlocks(),
+        "concurrent replies must queue on the conversation row, not deadlock and retry");
+  }
+
+  private static double conversationDeadlocks() {
+    return Metrics.globalRegistry.find(OMSqlLogger.DEADLOCK_METRIC).counters().stream()
+        .filter(
+            counter -> REPLY_STATEMENTS.contains(counter.getId().getTag(OMSqlLogger.STATEMENT_TAG)))
+        .mapToDouble(Counter::count)
+        .sum();
   }
 
   @Test

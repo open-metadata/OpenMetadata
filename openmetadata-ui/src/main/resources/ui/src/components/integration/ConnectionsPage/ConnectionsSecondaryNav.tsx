@@ -21,15 +21,15 @@ import {
   HardDrive,
   LayersThree01,
   MessageSquare01,
-  SearchLg,
-  SearchMd,
+  Search,
   Server01,
   Shield01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import {
   CATEGORY_CONFIGS,
   ConnectionsServiceCategory,
@@ -47,7 +47,7 @@ const CATEGORY_ICONS: Record<ConnectionsServiceCategory, NavigationIcon> = {
   [ServiceCategory.ML_MODEL_SERVICES]: Cube01,
   [ServiceCategory.PIPELINE_SERVICES]: Dataflow03,
   [ServiceCategory.STORAGE_SERVICES]: Server01,
-  [ServiceCategory.SEARCH_SERVICES]: SearchMd,
+  [ServiceCategory.SEARCH_SERVICES]: Search,
   [ServiceCategory.DRIVE_SERVICES]: HardDrive,
   [ServiceCategory.SECURITY_SERVICES]: Shield01,
 };
@@ -107,7 +107,7 @@ const NavigationItem = ({
       <Badge
         bordered={false}
         className={classNames('tw:min-w-7 tw:justify-center tw:font-semibold', {
-          'tw:bg-brand-secondary': isActive, // Need to change bg color from default brand since the container bg is also brand
+          'tw:bg-brand-secondary tw:dark:text-white': isActive, // Need to change bg color from default brand since the container bg is also brand
         })}
         color={isActive ? 'brand' : 'gray'}
         size="sm">
@@ -128,12 +128,12 @@ const ConnectionsSecondaryNav = ({
 
   return (
     <aside
-      className="tw:w-[264px] tw:shrink-0 tw:self-stretch tw:overflow-y-auto tw:border-r tw:border-secondary tw:bg-primary tw:px-3.5 tw:pb-48 tw:pt-5"
+      className="tw:w-[264px] tw:shrink-0 tw:self-stretch tw:overflow-y-auto tw:border-r tw:border-secondary tw:bg-surface tw:px-3.5 tw:pb-48 tw:pt-5"
       data-testid="connections-secondary-nav">
       <nav aria-label={t('label.connection-plural')}>
         <NavigationItem
           count={total}
-          icon={SearchLg}
+          icon={Search}
           isActive={category === 'all'}
           isLoading={category === 'all' && isCountLoading}
           label={t('label.all-connections')}
@@ -142,7 +142,7 @@ const ConnectionsSecondaryNav = ({
         />
 
         <div className="tw:mb-2 tw:mt-5 tw:px-3 tw:text-xs tw:font-semibold tw:leading-[18px] tw:tracking-[0.04em] tw:text-utility-gray-400 tw:uppercase">
-          {t('label.browse-by-service-type')}
+          {t('label.browse-by-service-category')}
         </div>
 
         {CATEGORY_CONFIGS.map((config) => (
@@ -152,7 +152,7 @@ const ConnectionsSecondaryNav = ({
             isActive={category === config.key}
             isLoading={category === config.key && isCountLoading}
             key={config.key}
-            label={t(config.titleKey)}
+            label={getServiceCategoryLabel(config.key)}
             testId={`connections-nav-${config.key}`}
             onClick={() => onCategoryChange(config.key)}
           />

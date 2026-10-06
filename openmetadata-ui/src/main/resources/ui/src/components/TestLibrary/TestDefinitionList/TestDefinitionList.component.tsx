@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Input } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Typography } from 'antd';
+import { Input, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -116,17 +116,21 @@ const TestDefinitionList = () => {
             <Row justify="space-between">
               <Col>
                 <div className="flex gap-2 items-center m-b-xss">
-                  <Typography.Title className="m-b-0" level={5}>
+                  <Typography
+                    as="h5"
+                    className="m-b-0"
+                    size="text-md"
+                    weight="semibold">
                     {t('label.data-quality-rule-plural')}
-                  </Typography.Title>
+                  </Typography>
                   <LearningIcon
                     pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
                     title={t('label.data-quality-rule-plural')}
                   />
                 </div>
-                <Typography.Text type="secondary">
+                <Typography color="secondary">
                   {t('message.page-sub-header-for-test-definitions')}
-                </Typography.Text>
+                </Typography>
               </Col>
               {createPermission && (
                 <Col>

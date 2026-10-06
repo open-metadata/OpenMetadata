@@ -268,7 +268,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   @Override
   public EntityRepository<SearchIndex>.EntityUpdater getUpdater(
       SearchIndex original, SearchIndex updated, Operation operation, ChangeSource changeSource) {
-    return new SearchIndexUpdater(original, updated, operation);
+    return new SearchIndexUpdater(original, updated, operation, changeSource);
   }
 
   public SearchIndex getSampleData(UUID searchIndexId, boolean authorizePII) {
@@ -424,8 +424,9 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public class SearchIndexUpdater extends EntityUpdater {
     public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
 
-    public SearchIndexUpdater(SearchIndex original, SearchIndex updated, Operation operation) {
-      super(original, updated, operation);
+    public SearchIndexUpdater(
+        SearchIndex original, SearchIndex updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction

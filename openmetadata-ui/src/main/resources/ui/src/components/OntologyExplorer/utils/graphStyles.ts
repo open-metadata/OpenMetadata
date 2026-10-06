@@ -95,6 +95,13 @@ import {
   EDGE_LABEL_FONT_WEIGHT,
   EDGE_LABEL_LETTER_SPACING,
   LABEL_TEXT_ALIGN_LEFT,
+  METRIC_NODE_FILL,
+  METRIC_NODE_FILL_FALLBACK,
+  METRIC_NODE_LINE_DASH,
+  METRIC_NODE_MUTED_COLOR,
+  METRIC_NODE_MUTED_COLOR_FALLBACK,
+  METRIC_NODE_STROKE,
+  METRIC_NODE_STROKE_FALLBACK,
   NODE_BORDER_COLOR,
   NODE_BORDER_RADIUS,
   NODE_FILL_DEFAULT,
@@ -110,6 +117,7 @@ import {
   NODE_SHADOW_COLOR_FALLBACK,
   NODE_SHADOW_OFFSET_Y,
   RELATION_META,
+  STUDIO_METRIC_NODE_KIND,
   TERM_LABEL_BG_PADDING,
 } from '../OntologyExplorer.constants';
 import { computeCardinalityLabelAttrs } from './cardinalityLabelUtils';
@@ -197,6 +205,40 @@ export const getCanvasColor = resolveCssColor;
 export const STUDIO_EDIT_PORT_KEY = 'ontology-edit';
 export const STUDIO_EDIT_PORT_CLASS_NAME = `port-${STUDIO_EDIT_PORT_KEY}`;
 
+export interface StudioMetricNodeStyle {
+  fill: string;
+  lineDash: number[];
+  stroke: string;
+  studioEditMode: false;
+  studioMutedColor: string;
+  studioNodeKind: typeof STUDIO_METRIC_NODE_KIND;
+}
+
+// Metrics have no typed relationships to author, so they get no edit handle.
+export function buildStudioMetricNodeStyle(
+  getColor: (cssVar: string, fallback: string) => string
+): StudioMetricNodeStyle {
+  return {
+    fill: getColor(METRIC_NODE_FILL, METRIC_NODE_FILL_FALLBACK),
+    lineDash: METRIC_NODE_LINE_DASH,
+    stroke: getColor(METRIC_NODE_STROKE, METRIC_NODE_STROKE_FALLBACK),
+    studioEditMode: false,
+    studioMutedColor: getColor(
+      METRIC_NODE_MUTED_COLOR,
+      METRIC_NODE_MUTED_COLOR_FALLBACK
+    ),
+    studioNodeKind: STUDIO_METRIC_NODE_KIND,
+  };
+}
+
+// Bar-chart glyph drawn in place of the accent dot: [x offset, bar height].
+const METRIC_GLYPH_BARS: ReadonlyArray<[number, number]> = [
+  [-3.5, 4],
+  [0, 7],
+  [3.5, 10],
+];
+const METRIC_GLYPH_BASELINE_OFFSET = 5;
+
 class StudioTermNode extends RectNode {
   override render(
     attributes: Required<RectStyleProps>,
@@ -211,22 +253,16 @@ class StudioTermNode extends RectNode {
     }
 
     const centerY = (bounds.min[1] + bounds.max[1]) / 2;
-    const dotCenterX = bounds.min[0] + 15.5;
     const labelX = bounds.min[0] + 26;
-    const accentColor =
-      typeof attrs.studioAccentColor === 'string'
-        ? getCanvasColor(attrs.studioAccentColor, '#84CAFF')
-        : '#84CAFF';
+    const mutedColor =
+      typeof attrs.studioMutedColor === 'string'
+        ? attrs.studioMutedColor
+        : undefined;
 
-    this.upsert(
-      'studio-dot',
-      GCircle,
-      {
-        cx: dotCenterX,
-        cy: centerY,
-        r: 3.5,
-        fill: accentColor,
-      },
+    this.renderMarker(
+      attrs,
+      [bounds.min[0] + 15.5, centerY],
+      mutedColor,
       container
     );
     this.upsert(
@@ -236,7 +272,9 @@ class StudioTermNode extends RectNode {
         x: labelX,
         y: centerY,
         text: String(attrs.studioLabelText ?? ''),
-        fill: getCanvasColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
+        fill:
+          mutedColor ??
+          getCanvasColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
         fontFamily: 'Inter',
         fontSize: NODE_LABEL_FONT_SIZE,
         fontWeight: NODE_LABEL_FONT_WEIGHT,
@@ -273,6 +311,48 @@ class StudioTermNode extends RectNode {
       attrs.studioEditMode === true ? plusLineStyles[1] : false,
       container
     );
+  }
+
+  // A metric shows a bar-chart glyph where a concept shows its accent dot.
+  private renderMarker(
+    attrs: Record<string, unknown>,
+    [centerX, centerY]: [number, number],
+    mutedColor: string | undefined,
+    container: Group
+  ): void {
+    const isMetric = attrs.studioNodeKind === STUDIO_METRIC_NODE_KIND;
+    const accentColor =
+      typeof attrs.studioAccentColor === 'string'
+        ? getCanvasColor(attrs.studioAccentColor, '#84CAFF')
+        : '#84CAFF';
+    const baselineY = centerY + METRIC_GLYPH_BASELINE_OFFSET;
+
+    this.upsert(
+      'studio-dot',
+      GCircle,
+      isMetric
+        ? false
+        : { cx: centerX, cy: centerY, r: 3.5, fill: accentColor },
+      container
+    );
+    METRIC_GLYPH_BARS.forEach(([offsetX, height], index) => {
+      this.upsert(
+        `studio-metric-bar-${index}`,
+        GLine,
+        isMetric
+          ? {
+              x1: centerX + offsetX,
+              y1: baselineY,
+              x2: centerX + offsetX,
+              y2: baselineY - height,
+              stroke: mutedColor,
+              lineWidth: 2,
+              lineCap: 'round',
+            }
+          : false,
+        container
+      );
+    });
   }
 }
 register(ExtensionCategory.NODE, 'studio-term', StudioTermNode);

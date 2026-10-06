@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Form, Input, Row } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Col, Form, Input, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,7 +82,11 @@ function ObservabilityAlertFormFields({
           {shouldShowFiltersSection && (
             <>
               <Col>
-                <Divider dashed type="vertical" />
+                <Divider
+                  dashed
+                  className="tw:mx-2 tw:h-6 tw:border-r"
+                  orientation="vertical"
+                />
               </Col>
               <Col span={24}>
                 <ObservabilityFormFiltersItem
@@ -94,7 +99,11 @@ function ObservabilityAlertFormFields({
           {shouldShowActionsSection && (
             <>
               <Col>
-                <Divider dashed type="vertical" />
+                <Divider
+                  dashed
+                  className="tw:mx-2 tw:h-6 tw:border-r"
+                  orientation="vertical"
+                />
               </Col>
               <Col span={24}>
                 <ObservabilityFormTriggerItem
@@ -104,7 +113,11 @@ function ObservabilityAlertFormFields({
             </>
           )}
           <Col>
-            <Divider dashed type="vertical" />
+            <Divider
+              dashed
+              className="tw:mx-2 tw:h-6 tw:border-r"
+              orientation="vertical"
+            />
           </Col>
           <Col span={24}>
             <DestinationFormItemFormBridge
@@ -133,7 +146,11 @@ function ObservabilityAlertFormFields({
               {Object.entries(extraFormWidgets).map(([name, Widget]) => (
                 <Fragment key={name}>
                   <Col>
-                    <Divider dashed type="vertical" />
+                    <Divider
+                      dashed
+                      className="tw:mx-2 tw:h-6 tw:border-r"
+                      orientation="vertical"
+                    />
                   </Col>
                   <Col span={24}>
                     <Widget

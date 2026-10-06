@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -144,7 +144,7 @@ const AnnouncementCardV1Content = ({
           {entityIcon}
         </span>
         {entityFQN && entityType ? (
-          <Typography.Text
+          <Typography
             ellipsis={{
               tooltip: (
                 <div className="announcement-entity-name-tooltip">
@@ -168,9 +168,9 @@ const AnnouncementCardV1Content = ({
               onClick={handleEntityClick}>
               {entityName}
             </Link>
-          </Typography.Text>
+          </Typography>
         ) : (
-          <Typography.Text
+          <Typography
             className={classNames(
               'announcement-entity-name',
               variantConfig.entityName
@@ -180,15 +180,15 @@ const AnnouncementCardV1Content = ({
               color: currentBackgroundColor ?? 'inherit',
             }}>
             {entityName}
-          </Typography.Text>
+          </Typography>
         )}
       </div>
     ) : (
-      <Typography.Text
+      <Typography
         className="announcement-header"
         style={announcementTitleStyle}>
         {title}
-      </Typography.Text>
+      </Typography>
     );
 
   return (
@@ -202,23 +202,24 @@ const AnnouncementCardV1Content = ({
           )}
           style={announcementTitleSectionStyle}>
           {renderHeaderContent()}
-          <Typography.Text className="timestamp" style={timeStampStyle}>
+          <Typography className="timestamp" style={timeStampStyle}>
             {getShortRelativeTime(timestamp)}
-          </Typography.Text>
+          </Typography>
         </div>
       </div>
 
       {(userName || entityName) && title && (
-        <Typography.Paragraph
+        <Typography
+          as="p"
           className={classNames('announcement-title', variantConfig.title)}
           ellipsis={{ tooltip: true, rows: 2 }}>
           {title}
           {columnName && (
-            <Typography.Text>
+            <Typography>
               {`${t('label.column-name')}: ${columnName}`}
-            </Typography.Text>
+            </Typography>
           )}
-        </Typography.Paragraph>
+        </Typography>
       )}
 
       {description && (

@@ -19,9 +19,19 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
+import { testAlertDestination } from '../../../rest/alertsAPI';
 import DestinationFormItemFormBridge, {
   DestinationFormFields,
 } from './DestinationFormItemFormBridge';
+
+jest.mock('../../../rest/alertsAPI', () => ({
+  ...jest.requireActual('../../../rest/alertsAPI'),
+  testAlertDestination: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 const OAUTH_DESTINATION_VALUES: Partial<DestinationFormFields> = {
   destinations: [
@@ -108,6 +118,21 @@ function ParentFormFocusHarness() {
 function ParentFormDestinationChangeHarness() {
   const [values, setValues] = useState<Partial<DestinationFormFields>>({
     destinations: OAUTH_DESTINATION_VALUES.destinations,
+    resources: ['table'],
+  });
+
+  return <DestinationFormItemFormBridge values={values} onChange={setValues} />;
+}
+
+function UnconfiguredEmailDestinationHarness() {
+  const [values, setValues] = useState<Partial<DestinationFormFields>>({
+    destinations: [
+      {
+        category: SubscriptionCategory.External,
+        destinationType: SubscriptionType.Email,
+        type: SubscriptionType.Email,
+      },
+    ],
     resources: ['table'],
   });
 
@@ -255,5 +280,16 @@ describe('DestinationFormItem validation', () => {
         )
       ).toHaveValue('')
     );
+  });
+
+  it('shows required errors instead of testing an unconfigured destination', async () => {
+    render(<UnconfiguredEmailDestinationHarness />);
+
+    fireEvent.click(await screen.findByTestId('test-destination-button'));
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(testAlertDestination).not.toHaveBeenCalled();
   });
 });

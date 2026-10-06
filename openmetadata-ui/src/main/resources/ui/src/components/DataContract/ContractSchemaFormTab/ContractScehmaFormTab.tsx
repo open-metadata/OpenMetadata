@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Card, Tag, Typography } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -378,12 +379,15 @@ export const ContractSchemaFormTab: React.FC<{
     }
 
     return (
-      <Tag
-        className="cursor-pointer custom-tag"
+      <Badge
+        bordered={false}
+        className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium tw:cursor-pointer"
         color="purple"
-        title={displayValue}>
+        size="sm"
+        title={displayValue}
+        type="color">
         {highlightSearchArrayElement(dataTypeDisplay, '')}
-      </Tag>
+      </Badge>
     );
   };
 
@@ -395,12 +399,15 @@ export const ContractSchemaFormTab: React.FC<{
     }
 
     return (
-      <Tag
-        className="cursor-pointer custom-tag"
+      <Badge
+        bordered={false}
+        className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium tw:cursor-pointer"
         color="blue"
-        title={constraint}>
+        size="sm"
+        title={constraint}
+        type="color">
         {constraint}
-      </Tag>
+      </Badge>
     );
   };
 
@@ -411,9 +418,9 @@ export const ContractSchemaFormTab: React.FC<{
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         render: (_, record: Column) => (
-          <Typography.Text className="schema-table-name">
+          <Typography className="schema-table-name tw:text-primary">
             {getEntityName(record)}
-          </Typography.Text>
+          </Typography>
         ),
       },
       {
@@ -532,12 +539,12 @@ export const ContractSchemaFormTab: React.FC<{
     <>
       <Card className="container bg-grey p-box">
         <div className="m-b-sm">
-          <Typography.Text className="contract-detail-form-tab-title">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.schema')}
-          </Typography.Text>
-          <Typography.Paragraph className="contract-detail-form-tab-description">
+          </Typography>
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-schema-description')}
-          </Typography.Paragraph>
+          </Typography>
         </div>
         <AntTable
           columns={columns}

@@ -41,8 +41,8 @@ import {
 } from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../../generated/tests/testSuite';
@@ -66,6 +66,7 @@ import {
   TEST_SUITE_TEST_CASE_FIELDS,
 } from '../../../rest/queries/testSuiteQuery';
 import {
+  AddTestCaseListSubmitPayload,
   addTestCasesToLogicalTestSuiteBulk,
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
@@ -499,11 +500,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   );
 
   const handleAddTestCaseSubmit = useCallback(
-    async (payload: {
-      selectAll: boolean;
-      includeIds: string[];
-      excludeIds: string[];
-    }) => {
+    async (payload: AddTestCaseListSubmitPayload) => {
       if (!testSuiteId) {
         return;
       }

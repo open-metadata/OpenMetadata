@@ -156,7 +156,7 @@ def violation_sentence(
     )
 
 
-def _bounds_phrase(min_bound: float | None, max_bound: float | None, lead: bool = True) -> str:
+def bounds_phrase(min_bound: float | None, max_bound: float | None, lead: bool = True) -> str:
     """ "between 90 and 110", "at least 90", "at most 110" -- whichever bounds are set
 
     `lead` drops the "between" so the phrase can follow one that already introduced the window,
@@ -196,13 +196,13 @@ def statistic_sentence(
         str: e.g. "Mean of `amount` is 87.4. Expected between 90 and 110, widened by a 5%
              tolerance to 85.5 and 115.5, so this test passed."
     """
-    expected = f"Expected {_bounds_phrase(*configured_bounds)}"
+    expected = f"Expected {bounds_phrase(*configured_bounds)}"
 
     if not threshold.value:
         tolerance = ", with no tolerance applied"
     elif effective_bounds != configured_bounds:
         tolerance = (
-            f", widened by a {format_threshold(threshold)} tolerance to {_bounds_phrase(*effective_bounds, lead=False)}"
+            f", widened by a {format_threshold(threshold)} tolerance to {bounds_phrase(*effective_bounds, lead=False)}"
         )
     else:
         # A threshold that widened nothing: no finite bound to widen, or bounds a numeric

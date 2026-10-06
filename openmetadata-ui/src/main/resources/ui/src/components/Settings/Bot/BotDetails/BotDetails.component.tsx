@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Tag, Tooltip, Typography } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -171,15 +172,20 @@ const BotDetails: FC<BotsDetailProps> = ({
                   ) : (
                     <>
                       {displayName ? (
-                        <Typography.Title ellipsis className="m-0" level={5}>
+                        <Typography
+                          ellipsis
+                          as="h5"
+                          className="m-0"
+                          size="text-md"
+                          weight="semibold">
                           {displayName}
-                        </Typography.Title>
+                        </Typography>
                       ) : (
-                        <Typography.Text className="text-grey-muted">
+                        <Typography color="secondary">
                           {t('label.add-entity', {
                             entity: t('label.display-name'),
                           })}
-                        </Typography.Text>
+                        </Typography>
                       )}
                       {canEditDisplayName && (
                         <div>
@@ -198,14 +204,15 @@ const BotDetails: FC<BotsDetailProps> = ({
                   )}
                 </div>
                 {botUserData.allowImpersonation && (
-                  <Tooltip title={t('message.allow-impersonation-help')}>
-                    <Tag
-                      className="w-fit-content"
-                      color="blue"
-                      data-testid="impersonation-enabled-badge">
-                      {t('label.impersonation-enabled')}
-                    </Tag>
-                  </Tooltip>
+                  <Badge
+                    className="tw:mr-2"
+                    color="blue"
+                    data-testid="impersonation-enabled-badge"
+                    size="sm"
+                    tooltip={t('message.allow-impersonation-help')}
+                    type="color">
+                    {t('label.impersonation-enabled')}
+                  </Badge>
                 )}
                 <Description
                   description={botData.description}
@@ -278,12 +285,12 @@ const BotDetails: FC<BotsDetailProps> = ({
       rightPanel={
         <Card className="h-full m-b-box" data-testid="right-panel">
           <div className="d-flex flex-col">
-            <Typography.Text className="mb-2 text-lg">
+            <Typography className="mb-2 text-lg">
               {t('label.token-security')}
-            </Typography.Text>
-            <Typography.Text className="mb-2">
+            </Typography>
+            <Typography className="mb-2">
               {t('message.token-security-description')}
-            </Typography.Text>
+            </Typography>
           </div>
         </Card>
       }

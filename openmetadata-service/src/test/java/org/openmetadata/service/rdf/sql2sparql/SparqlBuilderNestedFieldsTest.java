@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.exception.BadRequestException;
 
 @DisplayName("SPARQL Builder Tests for Nested/Structured Fields")
 class SparqlBuilderNestedFieldsTest {
@@ -22,70 +23,11 @@ class SparqlBuilderNestedFieldsTest {
   class MappingContextTests {
 
     @Test
-    @DisplayName("Tables should have votes nested mapping")
-    void testTablesHasVotesMapping() {
-      var tableMapping = mappingContext.getTableMapping("tables");
-
-      assertTrue(tableMapping.isPresent());
-      var nestedMapping = tableMapping.get().getNestedMapping("votes");
-      assertTrue(nestedMapping.isPresent());
-      assertEquals("om:hasVotes", nestedMapping.get().getParentProperty());
-      assertEquals("om:Votes", nestedMapping.get().getNestedClass());
-    }
-
-    @Test
-    @DisplayName("Votes nested mapping should have upVotes field")
-    void testVotesHasUpVotesField() {
-      var tableMapping = mappingContext.getTableMapping("tables");
-      assertTrue(tableMapping.isPresent());
-
-      var nestedMapping = tableMapping.get().getNestedMapping("votes");
-      assertTrue(nestedMapping.isPresent());
-
-      var upVotesField = nestedMapping.get().getField("upVotes");
-      assertTrue(upVotesField.isPresent());
-      assertEquals("om:upVotes", upVotesField.get().getRdfProperty());
-      assertEquals("xsd:integer", upVotesField.get().getDataType());
-    }
-
-    @Test
-    @DisplayName("Votes nested mapping should have downVotes field")
-    void testVotesHasDownVotesField() {
-      var tableMapping = mappingContext.getTableMapping("tables");
-      assertTrue(tableMapping.isPresent());
-
-      var nestedMapping = tableMapping.get().getNestedMapping("votes");
-      assertTrue(nestedMapping.isPresent());
-
-      var downVotesField = nestedMapping.get().getField("downVotes");
-      assertTrue(downVotesField.isPresent());
-      assertEquals("om:downVotes", downVotesField.get().getRdfProperty());
-    }
-
-    @Test
-    @DisplayName("Tables should have changeDescription nested mapping")
-    void testTablesHasChangeDescriptionMapping() {
-      var tableMapping = mappingContext.getTableMapping("tables");
-
-      assertTrue(tableMapping.isPresent());
-      var nestedMapping = tableMapping.get().getNestedMapping("changeDescription");
-      assertTrue(nestedMapping.isPresent());
-      assertEquals("om:hasChangeDescription", nestedMapping.get().getParentProperty());
-      assertEquals("om:ChangeDescription", nestedMapping.get().getNestedClass());
-    }
-
-    @Test
-    @DisplayName("ChangeDescription should have previousVersion field")
-    void testChangeDescriptionHasPreviousVersionField() {
-      var tableMapping = mappingContext.getTableMapping("tables");
-      assertTrue(tableMapping.isPresent());
-
-      var nestedMapping = tableMapping.get().getNestedMapping("changeDescription");
-      assertTrue(nestedMapping.isPresent());
-
-      var field = nestedMapping.get().getField("previousVersion");
-      assertTrue(field.isPresent());
-      assertEquals("om:previousVersion", field.get().getRdfProperty());
+    @DisplayName("Votes and change descriptions are unavailable in the graph")
+    void testExcludedNestedMappings() {
+      var tableMapping = mappingContext.getTableMapping("tables").orElseThrow();
+      assertTrue(tableMapping.getNestedMapping("votes").isEmpty());
+      assertTrue(tableMapping.getNestedMapping("changeDescription").isEmpty());
     }
 
     @Test
@@ -228,27 +170,14 @@ class SparqlBuilderNestedFieldsTest {
   class NestedFieldDetectionTests {
 
     @Test
-    @DisplayName("hasNestedField should detect votes")
-    void testHasNestedFieldVotes() {
+    @DisplayName("hasNestedField should reject excluded fields")
+    void testHasNestedFieldExclusions() {
       var tableMapping = mappingContext.getTableMapping("tables");
       assertTrue(tableMapping.isPresent());
-      assertTrue(tableMapping.get().hasNestedField("votes"));
-    }
-
-    @Test
-    @DisplayName("hasNestedField should detect changeDescription")
-    void testHasNestedFieldChangeDescription() {
-      var tableMapping = mappingContext.getTableMapping("tables");
-      assertTrue(tableMapping.isPresent());
-      assertTrue(tableMapping.get().hasNestedField("changeDescription"));
-    }
-
-    @Test
-    @DisplayName("hasNestedField should detect votes.upVotes path")
-    void testHasNestedFieldVotesUpVotes() {
-      var tableMapping = mappingContext.getTableMapping("tables");
-      assertTrue(tableMapping.isPresent());
-      assertTrue(tableMapping.get().hasNestedField("votes.upVotes"));
+      assertFalse(tableMapping.get().hasNestedField("votes"));
+      assertFalse(tableMapping.get().hasNestedField("votes.upVotes"));
+      assertFalse(tableMapping.get().hasNestedField("changeDescription"));
+      assertFalse(tableMapping.get().hasNestedField("changeDescription.fieldsUpdated"));
     }
 
     @Test
@@ -319,6 +248,26 @@ class SparqlBuilderNestedFieldsTest {
     void testUnknownTable() {
       String sql = "SELECT * FROM unknown_table";
       assertThrows(Exception.class, () -> translator.translate(sql));
+    }
+
+    @Test
+    @DisplayName("Excluded nested projections are rejected")
+    void testExcludedNestedProjections() {
+      // Unqualified field names resolve against the FROM table, so these reach the
+      // nested-mapping lookup (dotted table qualifiers such as votes.upVotes resolve
+      // as unknown tables before nested validation and cannot exercise this path).
+      BadRequestException votesParent =
+          assertThrows(
+              BadRequestException.class, () -> translator.translate("SELECT votes FROM tables"));
+      assertTrue(votesParent.getMessage().contains("Unknown column"));
+      assertFalse(votesParent.getMessage().contains("Unknown table"));
+
+      BadRequestException changeParent =
+          assertThrows(
+              BadRequestException.class,
+              () -> translator.translate("SELECT changeDescription FROM tables"));
+      assertTrue(changeParent.getMessage().contains("Unknown column"));
+      assertFalse(changeParent.getMessage().contains("Unknown table"));
     }
   }
 

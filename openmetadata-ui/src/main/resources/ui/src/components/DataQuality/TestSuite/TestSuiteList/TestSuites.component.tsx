@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Col, Form, Row, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';

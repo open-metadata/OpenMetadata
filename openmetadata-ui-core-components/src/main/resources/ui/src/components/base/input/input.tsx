@@ -3,7 +3,7 @@ import { Label } from '@/components/base/input/label';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 import { fontSizeClass } from '@/utils/tailwindClasses';
-import { HelpCircle, InfoCircle } from '@untitledui/icons';
+import { HelpCircle, InfoCircle } from '../../../icons';
 import {
   type ComponentType,
   type HTMLAttributes,

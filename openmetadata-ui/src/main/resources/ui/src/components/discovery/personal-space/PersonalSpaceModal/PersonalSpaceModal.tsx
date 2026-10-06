@@ -12,12 +12,23 @@
  */
 
 import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
+import {
+  useSettingsHash,
+  useSettingsHashSync,
+} from '../../../../hooks/useSettingsHash';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import PersonalSpaceGate from '../PersonalSpaceGate/PersonalSpaceGate';
 import ProfilePage from '../Profile/ProfilePage';
 import './personal-space-modal.less';
+
+// The modal is mounted with the app shell, so My Data loads only when opened.
+const MyData = withSuspenseFallback(
+  React.lazy(() => import('../MyData/MyData'))
+);
 
 // Near-fullscreen sizing lives in `personal-space-modal.less` — it overrides
 // the Dialog's content box (which otherwise sizes to content) into a full-height
@@ -25,21 +36,31 @@ import './personal-space-modal.less';
 const DIALOG_CLASS = 'ai-personal-space__dialog';
 
 /**
- * Single always-mounted overlay that hosts the personal-space Profile surface.
- * Which panel shows is driven by {@link usePersonalSpaceStore}; the sidebar /
- * user-menu triggers set it. Rendering the page inside the modal keeps the
- * current app-mode page untouched behind it (no route change). Inbox and My
- * Data are routed pages now, so `profile` is the only panel this modal hosts.
+ * Single always-mounted overlay that hosts the personal-space Profile and My
+ * Data surfaces. Which panel shows is driven by {@link usePersonalSpaceStore};
+ * the user-menu items set it. Rendering the page inside the modal keeps the
+ * current app-mode page untouched behind it (no route change). The Inbox is a
+ * routed page, so it is not hosted here.
  */
 const PersonalSpaceModal: React.FC = () => {
+  const { t } = useTranslation();
   const activePanel = usePersonalSpaceStore((state) => state.activePanel);
+  const open = usePersonalSpaceStore((state) => state.open);
   const close = usePersonalSpaceStore((state) => state.close);
   const { pathname } = useLocation();
 
-  // Opening the modal never changes the route, so a pathname change while it is
-  // open means a link inside it (e.g. a team/role/domain link in Permissions)
-  // navigated away — close the overlay so it doesn't linger over the new page.
-  // The first-render guard avoids a spurious close on mount.
+  const isOpen = activePanel !== null;
+
+  const openProfile = useCallback((panel: 'profile') => open(panel), [open]);
+
+  const { state: hashState } = useSettingsHash();
+
+  useSettingsHashSync(openProfile, isOpen);
+
+  // A pathname change while the modal is open means a link inside it navigated
+  // away — close the overlay so it doesn't linger over the new page.
+  // Skip if a settings hash is driving the modal — pathname changes during
+  // initial routing or SPA navigation should not kill the hash-driven overlay.
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
@@ -47,21 +68,32 @@ const PersonalSpaceModal: React.FC = () => {
 
       return;
     }
+    if (hashState.tab) {
+      return;
+    }
     close();
-  }, [pathname, close]);
+  }, [pathname, close, hashState.tab]);
 
   return (
     <ModalOverlay
-      isOpen={activePanel !== null}
+      isKeyboardDismissDisabled
+      isOpen={isOpen}
       onOpenChange={(isOpen) => !isOpen && close()}>
       <Modal>
         <Dialog
           showCloseButton
           className={DIALOG_CLASS}
+          // Profile draws its own header; My Data has none of its own.
+          title={activePanel === 'my-data' ? t('label.my-data') : undefined}
           width={1600}
           onClose={close}>
           <PersonalSpaceGate>
             {activePanel === 'profile' && <ProfilePage />}
+            {activePanel === 'my-data' && (
+              <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:p-4">
+                <MyData />
+              </div>
+            )}
           </PersonalSpaceGate>
         </Dialog>
       </Modal>

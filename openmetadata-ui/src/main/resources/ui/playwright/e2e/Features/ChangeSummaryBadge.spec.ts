@@ -33,7 +33,9 @@ const waitForChangeSummarySource = async (
           `/api/v1/changeSummary/table/${tableId}`
         );
         if (!response.ok()) {
-          return null;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
         const data = await response.json();
 
@@ -171,7 +173,9 @@ test.describe(
           .getByTestId('description')
           .getByTestId('ai-suggested-badge');
 
-        await expect(descriptionCells.first()).toBeVisible();
+        await expect(
+          descriptionCells.filter({ visible: true })
+        ).not.toHaveCount(0);
       });
 
       await test.step('Verify AI badge on column description in Explore summary panel', async () => {
@@ -276,7 +280,7 @@ test.describe(
           .getByTestId('description')
           .getByTestId('automated-badge');
 
-        await expect(columnBadge.first()).toBeVisible();
+        await expect(columnBadge.filter({ visible: true })).not.toHaveCount(0);
       });
     });
 

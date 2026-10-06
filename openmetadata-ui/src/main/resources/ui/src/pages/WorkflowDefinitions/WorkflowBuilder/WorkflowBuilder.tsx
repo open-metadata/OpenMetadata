@@ -58,6 +58,10 @@ import {
 } from '../../../hooks/useWorkflowLogic';
 import { useWorkflowNavigationBlock } from '../../../hooks/useWorkflowNavigationBlock';
 import {
+  getWorkflowTriggerFields,
+  WorkflowTriggerFieldsConfig,
+} from '../../../rest/metadataTypeAPI';
+import {
   patchWorkflowDefinition,
   triggerWorkflow,
 } from '../../../rest/workflowDefinitionsAPI';
@@ -168,6 +172,18 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     nodes: Node[];
   } | null>(null);
   const [hasNodeConfigSaved, setHasNodeConfigSaved] = useState(false);
+
+  // The workflow trigger-fields registry is a static, entity-agnostic config. Fetch it once at the
+  // page level and pass it down so opening the start node's config panel triggers no per-open
+  // request.
+  const [triggerFieldsConfig, setTriggerFieldsConfig] =
+    useState<WorkflowTriggerFieldsConfig>({ common: [], entitySpecific: {} });
+
+  useEffect(() => {
+    getWorkflowTriggerFields()
+      .then(setTriggerFieldsConfig)
+      .catch((error) => showErrorToast(error as AxiosError));
+  }, []);
 
   const handleUndo = () => {
     const previousState = undo();
@@ -449,7 +465,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   const sidebarClassName = classNames(
     'tw:absolute tw:top-8.5 tw:left-5 tw:bottom-5 tw:w-72 tw:z-10',
     'tw:flex tw:flex-col tw:min-h-0',
-    'tw:rounded-lg tw:bg-primary tw:border tw:border-border-secondary tw:shadow-sm',
+    'tw:rounded-lg tw:bg-canvas tw:border tw:border-border-secondary tw:shadow-sm',
     'tw:overflow-y-auto tw:transition-opacity tw:duration-300',
     {
       'tw:opacity-30': focusedConnection || isConnectionModalOpen,
@@ -535,6 +551,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         node={selectedNode}
         setEdges={setEdges}
         setNodes={setNodes}
+        triggerFieldsConfig={triggerFieldsConfig}
         workflowDefinition={workflowDefinition || undefined}
         workflowMetadata={workflowMetadata || undefined}
         onClose={handleConfigSidebarClose}
@@ -593,7 +610,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
       <div
         className={classNames(
           'tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden',
-          { 'tw:bg-gray-50': !isAiMode }
+          { 'tw:bg-secondary': !isAiMode }
         )}>
         {renderTitleBreadcrumb()}
         <div className="tw:shrink-0">

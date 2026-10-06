@@ -55,6 +55,11 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
     supportsSearch = true;
+    // Registration drives an AI asset's stage: AIAssetStatusSync derives it from the registration
+    // status when there is one, and the AI governance endpoints move it. Without one the asset
+    // starts in Draft, which sits outside the registration approval flow, so saving it records no
+    // approval.
+    workflowsOwnEntityStatus = false;
   }
 
   @Override

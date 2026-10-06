@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Col, Row, Tag, Typography } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, startCase } from 'lodash';
 import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
@@ -34,13 +35,13 @@ import { t } from './i18next/LocalUtil';
 export const renderNameField =
   (searchText?: string) => (_: string, record: IngestionPipeline) =>
     (
-      <Typography.Text
+      <Typography
         className="m-b-0 d-block break-word"
         data-testid="pipeline-name">
         {renderHighlightedText(
           highlightSearchText(getEntityName(record), searchText)
         )}
-      </Typography.Text>
+      </Typography>
     );
 
 export const renderTypeField =
@@ -51,11 +52,11 @@ export const renderTypeField =
         : startCase(record.pipelineType);
 
     return (
-      <Typography.Text
+      <Typography
         className="m-b-0 d-block break-word"
         data-testid="pipeline-type">
         {renderHighlightedText(highlightSearchText(typeText, searchText))}
-      </Typography.Text>
+      </Typography>
     );
   };
 
@@ -63,15 +64,18 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => {
   const statusIcon = record.enabled ? ActiveIcon : PausedIcon;
 
   return (
-    <Tag
+    <Badge
+      bordered={false}
       className={classNames(
         'ingestion-run-badge latest pipeline-status',
         record.enabled ? 'success' : 'paused'
       )}
-      data-testid="pipeline-active-status">
+      data-testid="pipeline-active-status"
+      size="sm"
+      type="color">
       <Icon component={statusIcon} />
       {record.enabled ? t('label.active') : t('label.paused')}
-    </Tag>
+    </Badge>
   );
 };
 
@@ -91,20 +95,21 @@ const ScheduleFieldCell = ({
       <Col className="tw:min-w-0" flex="auto">
         <Row className="line-height-16">
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="font-medium"
               data-testid="schedule-primary-details"
               ellipsis={{ tooltip: descriptionFirstPart }}>
               {descriptionFirstPart}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
-            <Typography.Text
-              className="text-xs text-grey-muted"
+            <Typography
+              className="text-xs"
+              color="secondary"
               data-testid="schedule-secondary-details"
               ellipsis={{ tooltip: descriptionSecondPart }}>
               {descriptionSecondPart}
-            </Typography.Text>
+            </Typography>
           </Col>
         </Row>
       </Col>
@@ -115,9 +120,9 @@ const ScheduleFieldCell = ({
 export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   if (isUndefined(record.airflowConfig?.scheduleInterval)) {
     return (
-      <Typography.Text data-testid="scheduler-no-data">
+      <Typography data-testid="scheduler-no-data">
         {NO_DATA_PLACEHOLDER}
-      </Typography.Text>
+      </Typography>
     );
   }
 

@@ -116,7 +116,9 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.TokenValidityResolver;
+import org.openmetadata.service.security.auth.LdapDirectoryValidation;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.validator.Auth0Validator;
 import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
 import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
@@ -147,6 +149,7 @@ public class SystemRepository {
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
+  private static final String LDAP_VALIDATION_KEY = "LDAP";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
 
@@ -156,6 +159,7 @@ public class SystemRepository {
     PIPELINE_SERVICE_CLIENT("Validate that the pipeline service client is available."),
     JWT_TOKEN("Validate that the ingestion-bot JWT token can be properly decoded."),
     MIGRATION("Validate that all the necessary migrations have been properly executed."),
+    LDAP("Validate that the login LDAP directory is reachable and accepts the lookup account."),
     SEARCH_REINDEX(
         "Validate that every deployed search index was built from the current index mapping "
             + "(i.e. no reindex is pending).");
@@ -483,6 +487,10 @@ public class SystemRepository {
     if (settingsType == SettingsType.LOGIN_CONFIGURATION) {
       LoginAttemptCache.updateLoginConfiguration();
     }
+
+    if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
+      Entity.getSearchRepository().reconcileColumnIndex();
+    }
   }
 
   public void updateSetting(Settings setting) {
@@ -735,6 +743,8 @@ public class SystemRepository {
       validation.setLogStorage(logStorageValidation);
     }
 
+    addLdapValidation(validation, SecurityConfigurationManager.getCurrentAuthConfig());
+
     if (Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
       validation.setAdditionalProperty(
           "Semantic Search", getEmbeddingsValidation(applicationConfig));
@@ -873,6 +883,20 @@ public class SystemRepository {
 
   public void addExtraValidations(
       OpenMetadataApplicationConfig applicationConfig, ValidationResponse validation) {}
+
+  /** Only an LDAP login depends on the directory, so only then does the status report on it. */
+  @VisibleForTesting
+  static void addLdapValidation(
+      ValidationResponse validation, AuthenticationConfiguration authConfig) {
+    if (authConfig != null
+        && authConfig.getProvider() == AuthProvider.LDAP
+        && authConfig.getLdapConfiguration() != null) {
+      validation.setAdditionalProperty(
+          LDAP_VALIDATION_KEY,
+          LdapDirectoryValidation.validate(authConfig.getLdapConfiguration())
+              .withDescription(ValidationStepDescription.LDAP.key));
+    }
+  }
 
   @VisibleForTesting
   StepValidation getEmbeddingsValidation(OpenMetadataApplicationConfig applicationConfig) {
@@ -1303,7 +1327,8 @@ public class SystemRepository {
     try {
       Map<String, IndexMapping> indexMap = searchRepository.getEntityIndexMap();
       for (Map.Entry<String, IndexMapping> entry : indexMap.entrySet()) {
-        if (!semanticSearchEnabled && VECTOR_EMBEDDING_INDEX_KEY.equals(entry.getKey())) {
+        if ((!semanticSearchEnabled && VECTOR_EMBEDDING_INDEX_KEY.equals(entry.getKey()))
+            || searchRepository.isIndexDisabled(entry.getKey())) {
           continue;
         }
         if (!searchRepository.indexExists(entry.getValue())) {
@@ -1378,6 +1403,8 @@ public class SystemRepository {
     if (!searchRepository.isVectorEmbeddingEnabled()) {
       existingIndexes.remove(VECTOR_EMBEDDING_INDEX_KEY);
     }
+    // A turned-off index is absent, so comparing its stored mapping hash would report false drift.
+    existingIndexes.removeIf(searchRepository::isIndexDisabled);
     return existingIndexes;
   }
 

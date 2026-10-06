@@ -17,6 +17,7 @@ import { RolesClass } from '../../../support/access-control/RolesClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { setupUserWithPolicy } from '../../../utils/permission';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import {
   expandAiSubPanel,
   redirectToAiModeHomePage,
@@ -46,9 +47,9 @@ const viewOnlyRole = new RolesClass();
 const test = base.extend<{ viewOnlyPage: Page }>({
   viewOnlyPage: async ({ browser }, use) => {
     // `storageState: undefined` is load-bearing: browser.newContext()
-    // otherwise inherits the spec-level admin storageState (test.use), so
-    // /signin would treat this context as already authenticated, never
-    // render the login form, and hang on input#email.
+    // otherwise inherits the spec-level admin storageState (test.use), and
+    // these assertions are about what the *view-only* user may see — an
+    // inherited admin session is the one thing that would make them vacuous.
     const context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
     try {
@@ -59,18 +60,16 @@ const test = base.extend<{ viewOnlyPage: Page }>({
       // assertions below cannot pass merely because permissions had not landed
       // yet — a permission-loading regression fails the suite instead.
       //
-      // Hoisted above `login()`, which is the navigation that boots the app and
+      // Hoisted above `signIn()`, whose trailing navigation boots the app and
       // issues the fetch; a listener registered afterwards would miss it.
-      const permissionsResolved = page.waitForResponse(
+      const permissionsResolved = waitForResponseWithStatus(
+        page,
         (response) =>
-          new URL(response.url()).pathname.endsWith('/api/v1/permissions') &&
-          response.ok()
+          new URL(response.url()).pathname.endsWith('/api/v1/permissions'),
+        'ok'
       );
 
-      // Log in BEFORE seeding AI mode — enableAiAppMode installs an init
-      // script on every navigation, and the signin page rendered in AI mode
-      // doesn't expose the email input the login helper looks for.
-      await viewOnlyUser.login(page);
+      await viewOnlyUser.signIn(page);
       await permissionsResolved;
 
       await use(page);

@@ -1,5 +1,5 @@
 import { Time } from '@internationalized/date';
-import { Clock } from '@untitledui/icons';
+import { Clock } from '../../../icons';
 import type { Ref } from 'react';
 import type {
   TimeFieldProps as AriaTimeFieldProps,
@@ -24,6 +24,8 @@ const sizes = {
 export interface TimePickerValue {
   hour: number;
   minute: number;
+  /** Only emitted when `granularity="second"`. */
+  second?: number;
 }
 
 export interface TimePickerProps
@@ -60,10 +62,21 @@ export const TimePicker = ({
   hourCycle = 12,
   ...props
 }: TimePickerProps) => {
-  const ariaValue = value ? new Time(value.hour, value.minute) : null;
+  const ariaValue = value
+    ? new Time(value.hour, value.minute, value.second)
+    : null;
+  const withSeconds = props.granularity === 'second';
 
   const handleChange = (time: TimeValue | null) => {
-    onChange?.(time ? { hour: time.hour, minute: time.minute } : null);
+    onChange?.(
+      time
+        ? {
+            hour: time.hour,
+            minute: time.minute,
+            ...(withSeconds && { second: time.second }),
+          }
+        : null
+    );
   };
 
   return (

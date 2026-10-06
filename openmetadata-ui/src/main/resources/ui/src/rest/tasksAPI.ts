@@ -75,6 +75,8 @@ interface TaskScopedListParams {
   status?: TaskStatus;
   statusGroup?: TaskStatusGroup;
   domain?: string;
+  /** Free-text search across the task name, request reason and about-entity. */
+  q?: string;
   limit?: number;
   before?: string;
   after?: string;

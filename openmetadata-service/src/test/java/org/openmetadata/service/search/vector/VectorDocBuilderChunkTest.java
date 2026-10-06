@@ -35,11 +35,14 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
 /**
  * Unit test for the #4789 fix: {@link VectorDocBuilder#fromEntity} must emit one standalone
@@ -341,11 +344,28 @@ class VectorDocBuilderChunkTest {
 
     assertTrue(docs.size() > 1, "fixture must span multiple chunks to catch chunk-0-only stamping");
     for (Map<String, Object> doc : docs) {
+      assertEquals(ContextMemoryIndex.UNANCHORED, doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
       assertEquals(MemoryVisibility.SHARED.value(), doc.get("visibility"));
       assertEquals(List.of(sharedPrincipal.toString()), doc.get("sharedWithIds"));
       List<Map<String, Object>> owners = (List<Map<String, Object>>) doc.get("owners");
       assertEquals(ownerId.toString(), owners.get(0).get("id"), "the filter matches on owners.id");
       assertEquals("alice", owners.get(0).get("name"));
+    }
+  }
+
+  @Test
+  void chunkDocs_markAnchoredMemoriesOnEveryChunk() {
+    UUID anchorId = UUID.randomUUID();
+    ContextMemory memory =
+        memory(MemoryVisibility.ENTITY)
+            .withPrimaryEntity(new EntityReference().withId(anchorId).withType("table"))
+            .withDescription("revenue ".repeat(900));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1);
+    for (Map<String, Object> doc : docs) {
+      assertEquals(anchorId.toString(), doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
     }
   }
 
@@ -368,6 +388,39 @@ class VectorDocBuilderChunkTest {
             memory(MemoryVisibility.SHARED, first, second)),
         VectorDocBuilder.computeFingerprintForEntity(
             memory(MemoryVisibility.SHARED, second, first)));
+  }
+
+  @Test
+  void chunkDocs_carryTheMemoryStatusOnEveryChunk() {
+    ContextMemory memory =
+        memory(MemoryVisibility.ENTITY).withEntityStatus(EntityStatus.DEPRECATED);
+    memory.withDescription("revenue ".repeat(900));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1);
+    for (Map<String, Object> doc : docs) {
+      assertEquals(EntityStatus.DEPRECATED.value(), doc.get("entityStatus"));
+    }
+  }
+
+  @Test
+  void contentFingerprint_ignoresLifecycleAndAnchorFilters() {
+    ContextMemory memory = memory(MemoryVisibility.ENTITY);
+    String entityType = memory.getEntityReference().getType();
+    String preLifecycle =
+        TextChunkManager.computeFingerprint(
+            VectorDocBuilder.buildMetaLightText(memory, entityType)
+                + "|"
+                + VectorDocBuilder.buildBodyText(memory, entityType)
+                + "|"
+                + MemoryVisibility.ENTITY.value()
+                + "|");
+
+    assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
+    memory.setEntityStatus(EntityStatus.DEPRECATED);
+    memory.setPrimaryEntity(new EntityReference().withId(UUID.randomUUID()).withType("table"));
+    assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
   }
 
   /**

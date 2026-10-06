@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Row, Skeleton } from 'antd';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Button, Col, Dropdown, Row } from 'antd';
 import { AxiosError } from 'axios';
 import {
   forwardRef,
@@ -187,7 +188,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             <Row gutter={[16, 16]}>
               {[1, 2, 3].map((key) => (
                 <Col key={key} span={24}>
-                  <Skeleton active paragraph={{ rows: 2 }} />
+                  <SkeletonParagraph rows={2} />
                 </Col>
               ))}
             </Row>

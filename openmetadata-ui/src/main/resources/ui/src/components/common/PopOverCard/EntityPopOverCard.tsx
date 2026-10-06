@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Popover } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import {
@@ -123,13 +124,11 @@ export const PopoverContent: React.FC<{
   }
 
   if (isForbidden) {
-    return (
-      <Typography.Text>{t('message.no-permission-to-view')}</Typography.Text>
-    );
+    return <Typography>{t('message.no-permission-to-view')}</Typography>;
   }
 
   if (isUndefined(entityData)) {
-    return <Typography.Text>{t('label.no-data-found')}</Typography.Text>;
+    return <Typography>{t('label.no-data-found')}</Typography>;
   }
 
   return (

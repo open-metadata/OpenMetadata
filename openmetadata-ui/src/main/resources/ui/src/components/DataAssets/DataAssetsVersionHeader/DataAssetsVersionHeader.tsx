@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Owner } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,13 +21,10 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityType } from '../../../enums/entity.enum';
-import { ChangeDescription } from '../../../generated/entity/services/databaseService';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
-import { getDomainDiff } from '../../../utils/EntityVersionUtilsPure';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import './data-asset-version-header.less';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
 
@@ -44,24 +41,13 @@ function DataAssetsVersionHeader({
   entityType,
   serviceName,
   domainDisplayName,
+  domains,
 }: DataAssetsVersionHeaderProps) {
   const { t } = useTranslation();
 
   const extraInfo = useMemo(
     () => getDataAssetsVersionHeaderInfo(entityType, currentVersionData),
     [entityType, currentVersionData]
-  );
-
-  // Include added AND deleted domains, aligned 1:1 with `domainDisplayName`, so
-  // the DomainTag chips render the deleted-domain diff too. `currentVersionData`
-  // only carries the post-change domains, which drops the deleted chip.
-  const versionDomains = useMemo(
-    () =>
-      getDomainDiff(
-        (currentVersionData as EntitiesWithDomainField).domains ?? [],
-        get(currentVersionData, 'changeDescription') as ChangeDescription
-      ).domains,
-    [currentVersionData]
   );
 
   const icon = useMemo(() => {
@@ -104,13 +90,16 @@ function DataAssetsVersionHeader({
                   <DomainLabel
                     multiple
                     domainDisplayName={domainDisplayName}
-                    domains={versionDomains}
+                    domains={domains}
                     entityFqn={currentVersionData.fullyQualifiedName ?? ''}
                     entityId={currentVersionData.id ?? ''}
                     entityType={entityType}
                     hasPermission={false}
                   />
-                  <Divider className="self-center m-x-sm" type="vertical" />
+                  <Divider
+                    className="self-center m-x-sm tw:h-[0.9em]"
+                    orientation="vertical"
+                  />
                 </>
               )}
               <Owner
@@ -119,7 +108,10 @@ function DataAssetsVersionHeader({
                 owners={currentVersionData?.owners ?? ownerRef}
                 showLabel={false}
               />
-              <Divider className="self-center m-x-sm" type="vertical" />
+              <Divider
+                className="self-center m-x-sm tw:h-[0.9em]"
+                orientation="vertical"
+              />
 
               <Space>
                 {tierDisplayName ? (
@@ -148,7 +140,7 @@ function DataAssetsVersionHeader({
                 data-testid="version-button"
                 icon={<Icon component={VersionIcon} />}
                 onClick={onVersionClick}>
-                <Typography.Text>{version}</Typography.Text>
+                <Typography>{version}</Typography>
               </Button>
             </Tooltip>
           </Col>
