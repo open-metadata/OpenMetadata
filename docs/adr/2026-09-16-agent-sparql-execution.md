@@ -566,7 +566,8 @@ Local runs on 2026-10-01 against Postgres, Elasticsearch and the supported Fusek
   a real `RdfIndexApp` run, is found by the same query and resolves to the target table. The target
   table has a struct column, and the same run materializes its `om:hasChildColumn` link (readable
   with no inference), although the ontology labels that predicate `InferenceOnly`.
-- **Existing endpoint**: `AgentSparqlResourceIT` passes 22 of 22 with the shared service factory.
+- **Existing endpoint**: `AgentSparqlResourceIT` passes 22 of 22 with the shared service factory
+  (rerun on 2026-10-06, after #34253 merged and added three cases to that class).
 - **Without RDF** (`McpRdfNotEnabledIT`, default lane, 4 of 4): the withheld tools are not offered,
   a direct call is refused, and describing a resource answers "not enabled".
 - **Unit coverage**: line coverage of the changed classes is 89 to 100 percent.
