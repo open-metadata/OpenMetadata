@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -199,7 +200,7 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
   const spiralTable = new TableClass();
 
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const { page, apiContext } = await createApiContext(browser);
     await spiralGlossary.create(apiContext);
     await spiralTerm.create(apiContext);

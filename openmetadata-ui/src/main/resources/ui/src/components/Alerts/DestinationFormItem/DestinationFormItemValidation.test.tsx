@@ -292,4 +292,135 @@ describe('DestinationFormItem validation', () => {
     ).toBeInTheDocument();
     expect(testAlertDestination).not.toHaveBeenCalled();
   });
+
+  it('keeps nested destination errors visible after adding a destination row (Test path)', async () => {
+    render(<UnconfiguredEmailDestinationHarness />);
+
+    fireEvent.click(await screen.findByTestId('test-destination-button'));
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(testAlertDestination).not.toHaveBeenCalled();
+
+    // Adding an unrelated empty sibling row must not wipe the existing row's
+    // nested field errors surfaced by `trigger('destinations')`.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+
+    expect(testAlertDestination).not.toHaveBeenCalled();
+  });
+
+  it('keeps nested destination errors visible after adding a destination row (Save path)', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              destinationType: SubscriptionType.Email,
+              type: SubscriptionType.Email,
+            },
+          ],
+          resources: ['table'],
+        }}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('parent-form-blocked');
+
+    expect(
+      screen.getByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+
+    // Adding an unrelated empty sibling row must not wipe the existing row's
+    // nested field errors surfaced by the bridge's full `trigger()`.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('keeps nested destination errors visible after removing a sibling destination row (Save path)', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              destinationType: SubscriptionType.Email,
+              type: SubscriptionType.Email,
+            },
+          ],
+          resources: ['table'],
+        }}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('parent-form-blocked');
+
+    expect(
+      screen.getByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+
+    // Add an unrelated empty sibling row (preserves the existing error), then
+    // remove that sibling. Neither mutation may wipe the invalid row's error.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+    await waitFor(() =>
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('remove-destination-1'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('clears the stale minimum destination count error when a destination is added', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{ resources: ['table'] }}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('message.length-validator-error')
+    ).toHaveClass('tw:text-error-primary');
+
+    // Adding a destination addresses the missing-destination error; the
+    // `clearErrors` effect must still remove that stale array-root error
+    // (now stored under the `root.*` sentinel) without waiting for re-Save.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('message.length-validator-error')
+      ).not.toBeInTheDocument();
+    });
+  });
 });
