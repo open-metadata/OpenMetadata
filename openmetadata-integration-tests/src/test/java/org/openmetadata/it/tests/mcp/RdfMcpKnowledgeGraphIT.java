@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.io.StringWriter;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpClient;
@@ -92,6 +94,11 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
   private static final int INSERT_BATCH_CHARS = 60_000;
   private static final int PAGE_SIZE = 250;
   private static final String FORBIDDEN_STATUS = "403";
+  private static final int NOT_FOUND_STATUS = 404;
+  private static final Set<AppRunRecord.Status> FAILED_RUN_STATUSES =
+      EnumSet.of(AppRunRecord.Status.FAILED, AppRunRecord.Status.ACTIVE_ERROR);
+  private static final Set<AppRunRecord.Status> FINISHED_RUN_STATUSES =
+      EnumSet.of(AppRunRecord.Status.COMPLETED, AppRunRecord.Status.SUCCESS);
   private static final String APP_NAME = "RdfIndexApp";
   private static final Pattern COLUMN_LINEAGE_TEMPLATE =
       Pattern.compile("SELECT DISTINCT \\?column.*?LIMIT 250 OFFSET 0");
@@ -603,11 +610,10 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
         httpClient.execute(
             HttpMethod.GET, "/v1/apps/name/" + APP_NAME + "/runs/latest", null, AppRunRecord.class);
     final boolean isNew = previousStart == null || run.getStartTime() > previousStart;
-    final String status = run.getStatus().value();
-    if (isNew && ("failed".equalsIgnoreCase(status) || "activeError".equalsIgnoreCase(status))) {
+    if (isNew && FAILED_RUN_STATUSES.contains(run.getStatus())) {
       throw new AssertionError("RDF reindex failed: " + run);
     }
-    return isNew && ("completed".equalsIgnoreCase(status) || "success".equalsIgnoreCase(status));
+    return isNew && FINISHED_RUN_STATUSES.contains(run.getStatus());
   }
 
   private static Long latestRunStart(final HttpClient httpClient) {
@@ -619,8 +625,11 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
               null,
               AppRunRecord.class);
       return latest == null ? null : latest.getStartTime();
-    } catch (RuntimeException noRunYet) {
-      return null;
+    } catch (ApiException failure) {
+      if (failure.getStatusCode() == NOT_FOUND_STATUS) {
+        return null;
+      }
+      throw failure;
     }
   }
 
