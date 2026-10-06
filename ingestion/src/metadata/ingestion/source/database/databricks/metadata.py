@@ -855,7 +855,10 @@ def _get_schema_table_info(
             table_info = {row[0]: _TableInfo(table_type=row[1], data_source_format=row[2]) for row in rows}
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(
-                f"Bulk table-type fetch failed for {database}.{schema}, falling back to per-table DESCRIBE: {err}"
+                "Bulk table-type fetch failed for %s.%s, falling back to per-table DESCRIBE: %s",
+                database,
+                schema,
+                err,
             )
     # Size-1: replace, don't accumulate — the previous schema's map is dead.
     connection.info[_TABLE_INFO_CACHE_KEY] = {cache_key: table_info}
