@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../../../assets/svg/ic-suggestions.svg';
 import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
@@ -88,7 +89,7 @@ function ConfigurationSql({ value }: Readonly<{ value: string }>) {
  * which cannot shrink below max-content, so the row overflowed and the card's
  * `overflow-hidden` clipped it — and it made a non-interactive value focusable.
  */
-function ConfigurationValue({ value }: Readonly<{ value: string }>) {
+function ConfigurationValue({ value }: Readonly<{ value: ReactNode }>) {
   return (
     <span className="tw:min-w-0 tw:break-words tw:text-right tw:font-mono tw:text-xs tw:font-semibold tw:text-primary">
       {value}
@@ -118,11 +119,7 @@ function ParameterRows({
             className="tw:shrink-0 tw:text-xs tw:text-tertiary">
             {row.label}
           </Typography>
-          {typeof row.value === 'string' ? (
-            <ConfigurationValue value={row.value} />
-          ) : (
-            row.value
-          )}
+          <ConfigurationValue value={row.value} />
         </Box>
       ))}
     </div>
@@ -240,13 +237,13 @@ const TestCaseConfigurationCard = ({
         </div>
 
         <div className="tw:flex tw:flex-col tw:gap-2.5">
+          {hasParameterRows && <ParameterRows rows={parameterRows} />}
+          {isDynamicAssertion && <DynamicAssertionCallout />}
           {hasVersionDiff && (
             <div data-testid="configuration-version-diff">
               {versionParameterDiff}
             </div>
           )}
-          {hasParameterRows && <ParameterRows rows={parameterRows} />}
-          {isDynamicAssertion && <DynamicAssertionCallout />}
           {hasSql &&
             withSqlParams.map((param) => (
               <ConfigurationSql key={param.name} value={param.value ?? ''} />

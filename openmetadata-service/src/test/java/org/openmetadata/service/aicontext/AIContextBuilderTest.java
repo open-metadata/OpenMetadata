@@ -278,10 +278,7 @@ class AIContextBuilderTest {
   }
 
   @Test
-  void isActivePill_gatesNonActiveStatusesButTreatsMissingStatusAsActive() {
-    assertTrue(
-        AIContextBuilder.isActivePill(new ContextMemory()),
-        "pre-lifecycle memories (no status) stay visible");
+  void isActivePill_admitsOnlyApprovedMemories() {
     assertTrue(
         AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.APPROVED)));
     assertFalse(
@@ -290,6 +287,41 @@ class AIContextBuilderTest {
     assertFalse(
         AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.ARCHIVED)),
         "Archived memories must not reach agents as current context");
+    assertFalse(
+        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.REJECTED)),
+        "Rejected memories were found to be wrong");
+  }
+
+  @Test
+  void pillsForContext_dropsRetiredAndHiddenPillsBeforeTheCap() {
+    List<ContextMemory> attached = new ArrayList<>();
+    for (int i = 0; i < 20; i++) {
+      attached.add(pill("retired-" + i, EntityStatus.REJECTED));
+    }
+    ContextMemory hidden = pill("hidden", EntityStatus.APPROVED);
+    ContextMemory usable = pill("usable", EntityStatus.APPROVED);
+    attached.add(hidden);
+    attached.add(usable);
+
+    List<ContextMemory> selected =
+        AIContextBuilder.pillsForContext(
+            attached, pills -> pills.stream().filter(pill -> pill != hidden).toList());
+
+    assertEquals(List.of(usable), selected);
+  }
+
+  @Test
+  void pillsForContext_capsTheUsablePills() {
+    List<ContextMemory> attached = new ArrayList<>();
+    for (int i = 0; i < 25; i++) {
+      attached.add(pill("approved-" + i, EntityStatus.APPROVED));
+    }
+
+    assertEquals(20, AIContextBuilder.pillsForContext(attached, pills -> pills).size());
+  }
+
+  private static ContextMemory pill(String name, EntityStatus status) {
+    return new ContextMemory().withId(UUID.randomUUID()).withName(name).withEntityStatus(status);
   }
 
   @Test

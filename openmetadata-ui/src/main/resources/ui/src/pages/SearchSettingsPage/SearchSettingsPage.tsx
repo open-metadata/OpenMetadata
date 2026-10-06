@@ -181,6 +181,10 @@ const SearchBoostsSection = ({
   );
 };
 
+// Installs that predate the setting have no stored value, and they index columns.
+const isColumnIndexingEnabled = (searchConfig?: SearchSettings) =>
+  searchConfig?.globalSettings?.enableColumnIndexing ?? true;
+
 const SearchSettingsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -201,6 +205,8 @@ const SearchSettingsPage = () => {
   const [hybridWeightsChanged, setHybridWeightsChanged] =
     useState<boolean>(false);
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
+  const [showDisableColumnIndexingModal, setShowDisableColumnIndexingModal] =
+    useState<boolean>(false);
 
   const settingCategoryData = useMemo(
     () => getSearchSettingCategories(permissions, isAdminUser ?? false),
@@ -253,6 +259,7 @@ const SearchSettingsPage = () => {
     enabled,
     field,
     value,
+    successMessage,
   }: UpdateConfigParams = {}) => {
     try {
       setIsUpdating(true);
@@ -287,15 +294,37 @@ const SearchSettingsPage = () => {
       }
 
       showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t('label.search-setting-plural'),
-        })
+        successMessage ??
+          t('server.update-entity-success', {
+            entity: t('label.search-setting-plural'),
+          })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // Turning column indexing off deletes the column index, so it waits for a confirmation.
+  const handleColumnIndexingToggle = () => {
+    if (isColumnIndexingEnabled(searchConfig)) {
+      setShowDisableColumnIndexingModal(true);
+    } else {
+      void handleUpdateSearchConfig({
+        enabled: true,
+        field: 'enableColumnIndexing',
+        successMessage: t('message.column-indexing-enabled-reindex'),
+      });
+    }
+  };
+
+  const handleDisableColumnIndexing = async () => {
+    await handleUpdateSearchConfig({
+      enabled: false,
+      field: 'enableColumnIndexing',
+    });
+    setShowDisableColumnIndexingModal(false);
   };
 
   const handleResetToDefault = async () => {
@@ -549,6 +578,23 @@ const SearchSettingsPage = () => {
                 }
               />
             </Col>
+            <Col className="global-setting-card">
+              <Typography className="global-setting-card__content">
+                {t('label.enable-entity', {
+                  entity: t('label.column-indexing'),
+                })}
+              </Typography>
+              <Toggle
+                aria-label={t('label.enable-entity', {
+                  entity: t('label.column-indexing'),
+                })}
+                className="global-setting-card__action tw:ml-12"
+                data-testid="enable-column-indexing-switch"
+                isDisabled={isUpdating}
+                isSelected={isColumnIndexingEnabled(searchConfig)}
+                onChange={handleColumnIndexingToggle}
+              />
+            </Col>
             {globalSettings.map(({ key, label, max, min }) => (
               <Col className="global-setting-card" key={key}>
                 <GlobalSettingItem
@@ -685,6 +731,16 @@ const SearchSettingsPage = () => {
           onConfirm={handleResetToDefault}
         />
       )}
+      <ConfirmationModal
+        bodyText={t('message.disable-column-indexing-confirmation')}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.disable')}
+        header={t('label.column-indexing')}
+        isLoading={isUpdating}
+        visible={showDisableColumnIndexingModal}
+        onCancel={() => setShowDisableColumnIndexingModal(false)}
+        onConfirm={handleDisableColumnIndexing}
+      />
     </PageLayoutV1>
   );
 };

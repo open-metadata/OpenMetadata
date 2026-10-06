@@ -1762,11 +1762,7 @@ public class LineageRepository {
 
   @Transaction
   public void updateColumnLineage(
-      UUID tableId,
-      Map<String, String> renamed,
-      List<String> deleted,
-      String schemaDefinition,
-      String updatedBy) {
+      UUID tableId, Map<String, String> renamed, List<String> deleted, String updatedBy) {
     if ((renamed == null || renamed.isEmpty()) && (deleted == null || deleted.isEmpty())) {
       return;
     }
@@ -1777,10 +1773,10 @@ public class LineageRepository {
     List<CollectionDAO.EntityRelationshipObject> lineageRows = new ArrayList<>();
     List<String> tableIdList = List.of(tableId.toString());
 
-    // Table is upstream
+    // Table is downstream
     lineageRows.addAll(
         dao.relationshipDAO().findFromBatch(tableIdList, Relationship.UPSTREAM.ordinal()));
-    // Table is downstream
+    // Table is upstream
     lineageRows.addAll(
         dao.relationshipDAO()
             .findToBatch(tableIdList, Relationship.UPSTREAM.ordinal(), Entity.TABLE, Entity.TABLE));
@@ -1790,7 +1786,6 @@ public class LineageRepository {
         LineageDetails details = JsonUtils.readValue(row.getJson(), LineageDetails.class);
         boolean rowModified = rewriteColumnMappings(details, fqnRenameMap, deletedFqns);
         if (rowModified) {
-          details.setSqlQuery(schemaDefinition);
           details.setUpdatedAt(System.currentTimeMillis());
           details.setUpdatedBy(updatedBy);
           // UPSERT the updated lineage JSON back into the relationship table
