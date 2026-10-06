@@ -30,6 +30,7 @@ import {
   getIncidentTitle,
   getMetricSummary,
   getNextRunLabel,
+  getNotRunMessageKey,
   getRunDescription,
 } from './TestCaseLastRunBanner.utils';
 
@@ -54,7 +55,7 @@ const TestCaseLastRunBanner = ({
         config={NO_RUN_CONFIG}
         description={
           <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-xs tw:leading-normal tw:text-secondary">
-            {t('message.test-case-not-run-yet')}
+            {t(getNotRunMessageKey(nextRunTimestamp))}
           </p>
         }
         rightSection={

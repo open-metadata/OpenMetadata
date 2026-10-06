@@ -21,7 +21,7 @@
   },
   "playwright/e2e/Features/ActivityFeed.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 12
+      "count": 11
     }
   },
   "playwright/e2e/Features/ActivityStream.spec.ts": {
@@ -304,7 +304,7 @@
   },
   "playwright/e2e/Features/SearchExport.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts": {
