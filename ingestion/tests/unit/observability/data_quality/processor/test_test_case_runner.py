@@ -23,6 +23,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.status import Status
 
 
 def create_test_definition(
@@ -315,7 +316,7 @@ class TestAbortedTestCasesAreCounted:
         result = runner._run_test_case(test_case, suite_runner)
 
         assert result is not None, "the aborted result still goes to the sink"
-        runner.status.scanned.assert_called_once()
+        runner.status.scanned.assert_not_called()
         runner.status.failed.assert_called_once()
         assert "Login failed" in runner.status.failed.call_args[0][0].error
 
@@ -340,4 +341,43 @@ class TestAbortedTestCasesAreCounted:
 
         runner._run_test_case(test_case, suite_runner)
 
+        runner.status.scanned.assert_called_once()
         runner.status.failed.assert_not_called()
+
+
+class TestAbortedCasesDoNotInflateTheSuccessRate:
+    """The ratio itself, on a real Status rather than a mock.
+
+    ``calculate_success`` divides the scanned records by themselves plus the
+    failures, so an aborted case counted as both lands on each side and pulls the
+    percentage up. These assert the number a run actually reports.
+    """
+
+    @staticmethod
+    def _run(statuses: list[TestCaseStatus]) -> Status:
+        runner = TestCaseRunner.__new__(TestCaseRunner)
+        runner.status = Status()
+        suite_runner = Mock()
+        suite_runner.run_and_handle.side_effect = [_result(status) for status in statuses]
+
+        for index in range(len(statuses)):
+            test_case = create_test_case(f"case_{index}", UUID(int=index))
+            test_case.fullyQualifiedName = Mock(root=f"svc.db.schema.table.case_{index}")
+            runner._run_test_case(test_case, suite_runner)
+
+        return runner.status
+
+    def test_half_aborted_reports_half_success(self):
+        status = self._run([TestCaseStatus.Aborted] * 5 + [TestCaseStatus.Success] * 5)
+
+        assert len(status.records) == 5
+        assert len(status.failures) == 5
+        assert status.calculate_success() == 50.0
+
+    def test_a_failed_test_case_is_not_a_step_failure(self):
+        """A Failed test case is a data problem: it ran, so the step still succeeded."""
+        status = self._run([TestCaseStatus.Failed] * 4)
+
+        assert len(status.records) == 4
+        assert status.failures == []
+        assert status.calculate_success() == 100.0

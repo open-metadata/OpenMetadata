@@ -262,23 +262,28 @@ class TestCaseRunner(Processor):
 
         return om_test_cases
 
-    def _record_if_aborted(self, test_case: TestCase, test_result: TestCaseResultResponse | None) -> None:
+    def _record_if_aborted(self, test_case: TestCase, test_result: TestCaseResultResponse | None) -> bool:
         """Count a test that could not be evaluated as a failure of this step.
 
         A validation does not raise when it cannot run. It catches the error and
         returns a result carrying ``TestCaseStatus.Aborted`` - a connection that
         failed, a metric that could not be computed, an unsupported dialect. That
-        result is still worth sending to the server, so it stays a scanned record
-        and reaches the sink.
+        result is still worth sending to the server, so it reaches the sink; it is
+        only kept out of the scanned records, because ``Status.calculate_success``
+        divides those by themselves plus the failures. Counting an aborted case on
+        both sides of that ratio reports 10 cases with 5 aborted as 66.67% rather
+        than 50%, which is enough to end a failed run in ``partialSuccess``.
 
         Without this, the step only ever sees successes: a run in which not one
         test could execute reports ``Errors: 0`` and ``Success %: 100.0``, and the
         pipeline ends in ``PipelineState.success``. A scheduled suite whose
         credentials expire then reports success indefinitely.
+
+        Returns whether the result was aborted.
         """
         result = test_result.testCaseResult if test_result else None
         if result is None or result.testCaseStatus is not TestCaseStatus.Aborted:
-            return
+            return False
         error = result.result or f"Test case {test_case.name.root} was aborted"
         logger.warning(f"Test case {test_case.name.root} was aborted: {error}")
         self.status.failed(
@@ -287,13 +292,14 @@ class TestCaseRunner(Processor):
                 error=error,
             )
         )
+        return True
 
     def _run_test_case(self, test_case: TestCase, test_suite_runner: DataTestsRunner) -> TestCaseResultResponse | None:
         """Execute the test case and return the result, if any"""
         try:
             test_result = test_suite_runner.run_and_handle(test_case)
-            self.status.scanned(test_case.fullyQualifiedName.root)
-            self._record_if_aborted(test_case, test_result)
+            if not self._record_if_aborted(test_case, test_result):
+                self.status.scanned(test_case.fullyQualifiedName.root)
             return test_result  # noqa: TRY300
         except Exception as exc:
             error = f"Could not run test case {test_case.name.root}: {exc}"
