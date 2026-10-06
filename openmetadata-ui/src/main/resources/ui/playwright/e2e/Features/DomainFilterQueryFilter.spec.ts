@@ -104,13 +104,7 @@ const expectQueryVisibleForDomain = async (
 };
 
 test.describe('Domain Filter - User Behavior Tests', () => {
-  // Every test here builds its own fixture through the API -- three or four
-  // tables, each of which is a service + database + schema + table -- before it
-  // touches the UI at all, and then waits for those documents to be searchable.
-  // That is real work the 60s default never had headroom for, which is how a
-  // healthy run still produced bare "Test timeout of 60000ms exceeded" failures
-  // with no failing assertion attached. The waits below are all event-driven, so
-  // this ceiling is headroom for a loaded runner, not a sleep budget.
+  // API fixture build needs more than the 60s default.
   test.describe.configure({ timeout: 120_000 });
 
   test('Assets from selected domain should be visible in explore page', async ({
@@ -176,9 +170,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       const query = await okJson<Query>(response, 'create multi-table query');
       queryId = query.id;
 
-      // Domain inheritance is resolved when the query document is built, so
-      // both inherited domains have to be on the indexed document before the
-      // UI can be asked about either of them.
+      // Wait for both inherited domains to land on the query document.
       for (const domain of [firstDomain, secondDomain]) {
         await waitForSearchIndexed(
           apiContext,
@@ -391,8 +383,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
-      // The server-side domain search returns sub-domains too, so selecting one
-      // needs no manual parent-tree expansion.
+      // Domain search returns sub-domains; no tree expansion needed.
       await selectDomainFromNavbar(page, subDomain.responseData);
 
       await searchAndExpectEntityVisible(page, subDomainTable);
@@ -816,9 +807,7 @@ const HIERARCHY_TABLES: Record<
 
 const HIERARCHY_TABLE_KEYS = Object.keys(HIERARCHY_TABLES) as HierarchyTable[];
 
-// Bound every filter interaction. Unbounded clicks inherit the test timeout,
-// which turns one missed locator into a two-minute hang reported as a bare
-// "Test timeout exceeded" with no indication of which click never landed.
+// Bound filter clicks so a missed locator fails instead of hanging.
 const FILTER_ACTION_TIMEOUT = 30_000;
 
 // The open dropdown is capped at 10 buckets ordered by key, so a crowded facet hides the option; typing re-queries for it.
@@ -831,18 +820,7 @@ const searchInDropdown = async (page: Page, searchText: string) => {
   await aggregation;
 };
 
-/**
- * Opens the assets-tab filter menu and picks a facet.
- *
- * Targeted by test id, not by position: the filter trigger is not rendered at
- * all until the tab reports a non-zero asset count, so `.filters-row button`
- * + `.first()` resolved to whatever other button the row happened to hold
- * before the list settled, clicked that, and left the menu closed. The
- * follow-up click then waited on a `menuitem` that was never going to appear,
- * and because an unbounded click inherits the *test* timeout that surfaced as
- * a bare "Test timeout of 120000ms exceeded" pointing at the wrong line. The
- * explicit timeouts keep a miss here a legible locator failure.
- */
+/** Opens the assets-tab filter menu and picks a facet. */
 const openAssetFilterMenu = async (page: Page, menuItem: RegExp) => {
   await page
     .locator('.filters-row')
@@ -1039,8 +1017,7 @@ const HIERARCHY_SCENARIOS: {
 ];
 
 test.describe('Domain Filter - Multi-nested domain hierarchy', () => {
-  // `beforeAll` builds six tables with domains and tags and blocks on all of
-  // them being searchable; the per-scenario tests are short by comparison.
+  // Six tagged tables, each waited on until searchable.
   test.describe.configure({ timeout: 120_000 });
 
   let rootDomain: Domain;
@@ -1081,8 +1058,7 @@ test.describe('Domain Filter - Multi-nested domain hierarchy', () => {
           })),
         });
 
-        // Every scenario below filters on these tags, so the tagged revision --
-        // not just the domain-carrying one -- has to be the indexed one.
+        // Wait for the tagged revision to be the indexed one.
         await waitForSearchIndexed(
           apiContext,
           entity.fullyQualifiedName,
