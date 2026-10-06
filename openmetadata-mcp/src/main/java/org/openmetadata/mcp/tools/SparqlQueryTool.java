@@ -58,6 +58,8 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
 
   private static final int HARD_MAX_BYTES = RdfBody.MAX_BYTES;
   private static final int MIN_MAX_BYTES = RdfBody.MIN_BYTES;
+  private static final String FORMAT_PARAMETER = "format";
+  private static final String INFERENCE_LEVEL_PARAMETER = "inferenceLevel";
   private static final String JSON_FORMAT = "json";
   private static final String NO_INFERENCE = "none";
   private static final String SELECT_QUERY_TYPE = "SELECT";
@@ -155,14 +157,16 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
       final String sparql) {
     RdfSparqlService.ReadQuery query = RdfSparqlService.ReadQuery.parse(sparql);
     RdfRepository repository = repository();
-    String inferenceLevel = parameters.optionalString("inferenceLevel");
+    String inferenceLevel = parameters.optionalString(INFERENCE_LEVEL_PARAMETER);
     int maxBytes = maxBytes(parameters);
     RdfSparqlService sparqlService =
         new RdfSparqlService(repository, new SparqlFederationGuard(repository.getConfig()));
     RdfSparqlService.QueryResult queryResult =
         guardedQueryExecutor.execute(
             CommonUtils.principal(securityContext),
-            () -> sparqlService.query(query, parameters.optionalString("format"), inferenceLevel));
+            () ->
+                sparqlService.query(
+                    query, parameters.optionalString(FORMAT_PARAMETER), inferenceLevel));
     RdfBody.Bounded body = RdfBody.bound(queryResult.body(), maxBytes);
 
     return new Result(
@@ -218,8 +222,8 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
   }
 
   private static void requireAgentProfileOptions(final McpToolParameters parameters) {
-    requireOption(parameters, "format", JSON_FORMAT);
-    requireOption(parameters, "inferenceLevel", NO_INFERENCE);
+    requireOption(parameters, FORMAT_PARAMETER, JSON_FORMAT);
+    requireOption(parameters, INFERENCE_LEVEL_PARAMETER, NO_INFERENCE);
   }
 
   private static void requireOption(

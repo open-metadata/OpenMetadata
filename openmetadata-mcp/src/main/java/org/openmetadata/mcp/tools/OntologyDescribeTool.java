@@ -27,6 +27,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Returns the canonical ontology or a focused description of one ontology resource. */
 public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result> {
+  private static final String RESOURCE_PARAMETER = "resource";
 
   public OntologyDescribeTool() {
     super();
@@ -64,7 +65,8 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
       final Authorizer authorizer,
       final CatalogSecurityContext securityContext,
       final Map<String, Object> params) {
-    if (!McpToolParameters.isBlank(McpToolParameters.from(params).optionalString("resource"))) {
+    if (!McpToolParameters.isBlank(
+        McpToolParameters.from(params).optionalString(RESOURCE_PARAMETER))) {
       super.authorize(authorizer, securityContext, params);
     }
   }
@@ -74,7 +76,7 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
       final CatalogSecurityContext securityContext, final Map<String, Object> params)
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
-    String resource = parameters.optionalString("resource");
+    String resource = parameters.optionalString(RESOURCE_PARAMETER);
     RdfSerializationFormat format =
         RdfSerializationFormat.parse(parameters.optionalString("format"));
 
