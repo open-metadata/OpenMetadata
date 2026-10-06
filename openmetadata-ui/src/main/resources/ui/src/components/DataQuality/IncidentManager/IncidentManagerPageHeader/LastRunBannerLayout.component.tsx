@@ -26,7 +26,7 @@ const LastRunBannerLayout = ({
   return (
     <div
       aria-live="polite"
-      className={`tw:min-w-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-l-4 tw:font-sans ${config.containerClassName}`}
+      className={`tw:min-w-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-l-4 ${config.containerClassName}`}
       data-testid={config.testId}
       role="status">
       <div

@@ -115,7 +115,8 @@ describe('TestCaseLastRunBanner', () => {
 
       expect(await screen.findByText(result)).toBeInTheDocument();
       expect(screen.getAllByTestId(bannerTestId)).toHaveLength(1);
-      expect(screen.getByTestId(bannerTestId)).toHaveClass('tw:font-sans');
+      // Inherits the page's Inter: tw:font-sans is the system UI font.
+      expect(screen.getByTestId(bannerTestId)).not.toHaveClass('tw:font-sans');
       expect(screen.getByTestId(bannerTestId)).toHaveTextContent(
         `label.last-run label.${testCaseStatus.toLowerCase()}`
       );
