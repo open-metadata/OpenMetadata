@@ -14,7 +14,6 @@
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import {
   buildSectionCards,
-  findNotificationMenuItem,
   getNotificationMenuItems,
   hashSubPathToView,
   isNotificationMenuItemVisible,
@@ -213,18 +212,6 @@ describe('toSectionKey', () => {
 
   it('leaves a key without the prefix unchanged', () => {
     expect(toSectionKey('templates')).toBe('templates');
-  });
-});
-
-describe('findNotificationMenuItem', () => {
-  it('finds the menu item for a section key', () => {
-    expect(findNotificationMenuItem(MENU_ITEMS, 'templates')?.category).toBe(
-      'Templates'
-    );
-  });
-
-  it('returns undefined for an unknown key', () => {
-    expect(findNotificationMenuItem(MENU_ITEMS, 'missing')).toBeUndefined();
   });
 });
 

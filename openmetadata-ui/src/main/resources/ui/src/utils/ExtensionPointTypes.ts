@@ -197,20 +197,11 @@ export interface TabContribution {
 }
 
 /**
- * Notification landing section contribution
+ * Props passed to a contributed `NotificationSectionContribution.component`.
  *
- * A downstream build contributes a self-contained section component that the
- * profile Notification panel renders as its own view. The card for it comes
- * from the global-settings Notifications menu (matched by `key`), so the key
- * MUST equal that menu option's suffix (e.g. `weekly-emails`).
- *
- * @example
- * ```typescript
- * registry.contribute<NotificationSectionContribution>({
- *   extensionPointId: EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS,
- *   data: { key: 'weekly-emails', component: WeeklyEmailSettingsPage },
- * });
- * ```
+ * A section is expected to clear what it pushed via `onSetHeaderActions` /
+ * `onSetSubTitle` on unmount (e.g. an effect cleanup), the same way the native
+ * alert detail panel does — the panel does not reset this for you.
  */
 export interface NotificationSectionProps {
   /**
@@ -247,6 +238,22 @@ export interface NotificationSectionProps {
   onSetSubTitle?: (title: string | null) => void;
 }
 
+/**
+ * Notification landing section contribution
+ *
+ * A downstream build contributes a self-contained section component that the
+ * profile Notification panel renders as its own view. The card for it comes
+ * from the global-settings Notifications menu (matched by `key`), so the key
+ * MUST equal that menu option's suffix (e.g. `weekly-emails`).
+ *
+ * @example
+ * ```typescript
+ * registry.contribute<NotificationSectionContribution>({
+ *   extensionPointId: EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS,
+ *   data: { key: 'weekly-emails', component: WeeklyEmailSettingsPage },
+ * });
+ * ```
+ */
 export interface NotificationSectionContribution {
   /** Settings option suffix this section renders for (e.g. `weekly-emails`). */
   key: string;

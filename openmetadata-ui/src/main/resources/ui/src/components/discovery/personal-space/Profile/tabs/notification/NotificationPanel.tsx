@@ -41,12 +41,11 @@ import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import Loader from '../../../../../common/Loader/Loader';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
-import type { NotificationIcon, NotificationView } from './Notification.types';
+import type { NotificationView } from './Notification.types';
 import {
-  findNotificationMenuItem,
+  buildSectionCards,
   getNotificationMenuItems,
   hashSubPathToView,
-  isNotificationMenuItemVisible,
   splitSectionPath,
   viewToSubPath,
 } from './Notification.utils';
@@ -61,11 +60,37 @@ interface NotificationPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
+/** The section body while nothing is resolved yet, or resolves to nothing. */
+const NotificationSectionPlaceholder: FC<{
+  isLoading: boolean;
+  isDenied: boolean;
+}> = ({ isLoading, isDenied }) => {
+  const { t } = useTranslation();
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  return (
+    <Box className="tw:relative tw:min-h-60">
+      <EmptyPlaceholder
+        icon={isDenied ? <Lock className="tw:text-secondary" /> : undefined}
+        title={t(isDenied ? 'label.access-denied' : 'label.no-data')}
+        variant="blank"
+      />
+    </Box>
+  );
+};
+
 const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-  const { extensionRegistry, contributionsVersion } = useApplicationsProvider();
+  const {
+    extensionRegistry,
+    contributionsVersion,
+    isLoading: isApplicationsLoading,
+  } = useApplicationsProvider();
   const { state: hashState, setHash } = useSettingsHash();
 
   const view = useMemo<NotificationView>(
@@ -97,17 +122,16 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
 
   const viewFqn = 'fqn' in view ? view.fqn : undefined;
 
-  // Keyed on `contributionsVersion` too: the registry is mutated in place when
-  // plugins contribute, so its identity alone would never trigger a recompute.
-  // contributionsVersion is the only signal that plugins have registered their
-  // sections (the registry is mutated in place); removing it as "unnecessary"
-  // leaves a deep-linked section with nothing to render.
   const sectionContributions = useMemo(
     () =>
       extensionRegistry.getContributions<NotificationSectionContribution>(
         EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+    // `contributionsVersion` is not read above, but the registry is mutated in
+    // place when a plugin contributes, so its identity never changes — this
+    // dep is the only signal that forces the recompute once contributions
+    // land (same pattern as AppModeRoutes). react-hooks/exhaustive-deps calls
+    // it unnecessary; it is required at runtime.
     [extensionRegistry, contributionsVersion]
   );
 
@@ -134,24 +158,25 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     ? sectionHeader.subTitle
     : undefined;
 
-  const setSectionHeaderActions = useCallback(
-    (actions: React.ReactNode | null) =>
+  const patchSectionHeader = useCallback(
+    (patch: { actions?: React.ReactNode | null; subTitle?: string | null }) =>
       setSectionHeader((prev) => ({
         ...(prev.key === viewSectionKey ? prev : {}),
         key: viewSectionKey,
-        actions: actions ?? undefined,
+        ...('actions' in patch && { actions: patch.actions ?? undefined }),
+        ...('subTitle' in patch && { subTitle: patch.subTitle ?? undefined }),
       })),
     [viewSectionKey]
   );
 
+  const setSectionHeaderActions = useCallback(
+    (actions: React.ReactNode | null) => patchSectionHeader({ actions }),
+    [patchSectionHeader]
+  );
+
   const setSectionSubTitle = useCallback(
-    (subTitle: string | null) =>
-      setSectionHeader((prev) => ({
-        ...(prev.key === viewSectionKey ? prev : {}),
-        key: viewSectionKey,
-        subTitle: subTitle ?? undefined,
-      })),
-    [viewSectionKey]
+    (subTitle: string | null) => patchSectionHeader({ subTitle }),
+    [patchSectionHeader]
   );
 
   const onSectionNavigate = useCallback(
@@ -167,10 +192,10 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     [viewSectionKey, setHash]
   );
 
-  // Resolve the contributed section component + its menu label for the active
-  // `section` view. Both come from the same sources NotificationLanding uses:
-  // the component from the extension registry, the label from the global
-  // settings Notifications menu (keyed by option suffix).
+  // Resolve the contributed section component + its card (label/description/
+  // icon) for the active `section` view, from the same sources
+  // `NotificationLanding` builds its cards from — so header and card always
+  // agree, and a card hidden from this user cannot be reached by URL either.
   const section = useMemo(() => {
     if (!viewSectionKey) {
       return undefined;
@@ -179,71 +204,41 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     const contribution = sectionContributions.find(
       (item: NotificationSectionContribution) => item.key === viewSectionKey
     );
-    const menuItem = findNotificationMenuItem(
+    const card = buildSectionCards(
       getNotificationMenuItems(permissions, Boolean(isAdminUser)),
-      viewSectionKey
-    );
-    // Same rule as the landing cards, so a hidden card cannot be reached by URL.
-    const isAllowed = isNotificationMenuItemVisible(menuItem);
+      sectionContributions
+    ).find((item) => item.id === viewSectionKey);
 
     return {
-      Component: isAllowed ? contribution?.component : undefined,
-      isDenied: Boolean(contribution) && !isAllowed,
-      label: menuItem?.category ?? menuItem?.label ?? viewSectionKey,
-      description: menuItem?.description,
-      // Same resolution as the landing card, so header and card match.
-      icon: (contribution?.icon ?? menuItem?.icon) as
-        | NotificationIcon
-        | undefined,
+      Component: card ? contribution?.component : undefined,
+      isDenied: Boolean(contribution) && !card,
+      label: card?.title ?? t('label.notification'),
+      description: card?.description,
+      icon: card?.icon,
     };
-  }, [viewSectionKey, sectionContributions, permissions, isAdminUser]);
+  }, [viewSectionKey, sectionContributions, permissions, isAdminUser, t]);
 
-  const sectionContent = useMemo(() => {
-    const SectionComponent = section?.Component;
+  // Plugins contribute sections after `/apps/installed` resolves (see
+  // AppModeRoutes), later than this render; until permissions load every
+  // gated item also looks hidden. Either way, wait instead of resolving a
+  // deep link against an incomplete registry/permission set.
+  const sectionLoading = isApplicationsLoading || isEmpty(permissions);
 
-    // Until permissions load every gated item looks hidden; wait rather than
-    // flash Access Denied on a deep link.
-    if (!SectionComponent && isEmpty(permissions)) {
-      return <Loader />;
-    }
-
-    if (!SectionComponent) {
-      return (
-        <Box className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder
-            icon={
-              section?.isDenied ? (
-                <Lock className="tw:text-secondary" />
-              ) : undefined
-            }
-            title={t(
-              section?.isDenied ? 'label.access-denied' : 'label.no-data'
-            )}
-            variant="blank"
-          />
-        </Box>
-      );
-    }
-
-    return (
-      <SectionComponent
+  const sectionContent =
+    section?.Component && !sectionLoading ? (
+      <section.Component
         subPath={sectionSubPath}
         onClose={() => onNavigate({ type: 'landing' })}
         onNavigate={onSectionNavigate}
         onSetHeaderActions={setSectionHeaderActions}
         onSetSubTitle={setSectionSubTitle}
       />
+    ) : (
+      <NotificationSectionPlaceholder
+        isDenied={Boolean(section?.isDenied) && !sectionLoading}
+        isLoading={sectionLoading}
+      />
     );
-  }, [
-    section,
-    permissions,
-    t,
-    onNavigate,
-    sectionSubPath,
-    onSectionNavigate,
-    setSectionHeaderActions,
-    setSectionSubTitle,
-  ]);
 
   // Clear detail header state when navigating away.
   useEffect(() => {

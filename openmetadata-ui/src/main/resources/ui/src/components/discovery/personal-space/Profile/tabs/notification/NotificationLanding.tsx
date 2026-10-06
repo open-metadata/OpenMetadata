@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -21,7 +22,6 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { ALERTS_LANDING_CARD } from './Notification.constants';
 import type {
   NotificationLandingCard,
   NotificationLandingProps,
@@ -35,17 +35,15 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-  // `contributionsVersion` changes once plugins have contributed; the registry's
-  // identity never does, so memoizing on it alone would miss late sections.
   const { extensionRegistry, contributionsVersion } = useApplicationsProvider();
 
   const cards = useMemo<NotificationLandingCard[]>(() => {
     const alertsCard: NotificationLandingCard = {
-      id: ALERTS_LANDING_CARD.id,
-      icon: ALERTS_LANDING_CARD.icon,
-      title: t(ALERTS_LANDING_CARD.titleKey),
-      description: t(ALERTS_LANDING_CARD.descriptionKey),
-      view: ALERTS_LANDING_CARD.view,
+      id: 'alerts',
+      icon: Bell01,
+      title: t('label.alert-plural'),
+      description: t('message.alerts-description'),
+      view: { type: 'list' },
     };
 
     // Downstream builds (e.g. Collate) contribute extra Notification sections;
@@ -66,9 +64,11 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
         contributions
       ),
     ];
-    // contributionsVersion is the only signal that plugins have registered their
-    // sections; removing it as "unnecessary" hides the downstream cards.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+    // `contributionsVersion` is not read above, but the registry is mutated in
+    // place when a plugin contributes, so its identity never changes — this
+    // dep is the only signal that forces the recompute once contributions
+    // land (same pattern as AppModeRoutes). react-hooks/exhaustive-deps calls
+    // it unnecessary; it is required at runtime.
   }, [extensionRegistry, contributionsVersion, permissions, isAdminUser, t]);
 
   return (
@@ -105,12 +105,19 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                   <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
-                  <Typography
-                    className="tw:text-primary"
-                    size="text-sm"
-                    weight="semibold">
-                    {card.title}
-                  </Typography>
+                  <Box align="center" direction="row" gap={2}>
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-sm"
+                      weight="semibold">
+                      {card.title}
+                    </Typography>
+                    {card.isBeta && (
+                      <Badge color="gray" size="sm" type="pill-color">
+                        {t('label.beta')}
+                      </Badge>
+                    )}
+                  </Box>
                   <Typography
                     className="tw:text-tertiary tw:line-clamp-2"
                     size="text-sm"

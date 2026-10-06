@@ -59,13 +59,6 @@ export const isNotificationMenuItemVisible = (
   item?: SettingMenuItem
 ): item is SettingMenuItem => Boolean(item) && item?.isProtected !== false;
 
-/** The Notifications menu item for a section key, if any. */
-export const findNotificationMenuItem = (
-  items: SettingMenuItem[],
-  sectionKey: string
-): SettingMenuItem | undefined =>
-  items.find((item) => toSectionKey(item.key) === sectionKey);
-
 /**
  * Landing cards for contributed sections: one per Notifications menu item the
  * user may see that has a registered section to render into. The card icon is
@@ -141,9 +134,7 @@ export function viewToSubPath(view: NotificationView): string | undefined {
     case 'detail':
       return `alerts/${view.fqn}`;
     case 'section':
-      return view.subPath
-        ? `section/${view.key}/${view.subPath}`
-        : `section/${view.key}`;
+      return `section/${[view.key, view.subPath].filter(Boolean).join('/')}`;
     default:
       return undefined;
   }

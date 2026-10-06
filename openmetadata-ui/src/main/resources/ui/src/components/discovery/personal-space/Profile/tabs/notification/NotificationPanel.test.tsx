@@ -75,12 +75,14 @@ jest.mock(
 );
 
 const mockGetContributions = jest.fn().mockReturnValue([]);
+let mockIsApplicationsLoading = false;
 
 jest.mock(
   '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => ({
     useApplicationsProvider: () => ({
       extensionRegistry: { getContributions: mockGetContributions },
+      isLoading: mockIsApplicationsLoading,
     }),
   })
 );
@@ -133,6 +135,23 @@ jest.mock('./NotificationAlertDetail', () =>
   jest.fn(() => <div data-testid="notification-alert-detail" />)
 );
 
+// Pushes a Create action from its mount effect, like a real section does.
+const TemplatesSectionWithCreateAction = ({
+  onSetHeaderActions,
+}: {
+  onSetHeaderActions?: (node: React.ReactNode) => void;
+}) => {
+  React.useEffect(() => {
+    onSetHeaderActions?.(
+      <button data-testid="section-create" type="button">
+        Create
+      </button>
+    );
+  }, [onSetHeaderActions]);
+
+  return <div data-testid="templates-section" />;
+};
+
 describe('NotificationPanel', () => {
   const mockOnHeaderChange = jest.fn();
 
@@ -142,6 +161,7 @@ describe('NotificationPanel', () => {
     mockGetContributions.mockReturnValue([]);
     mockGetGlobalSettingsMenu.mockReturnValue(VISIBLE_SECTIONS_MENU);
     mockIsAdminUser = true;
+    mockIsApplicationsLoading = false;
   });
 
   it('should render NotificationLanding by default', () => {
@@ -270,23 +290,8 @@ describe('NotificationPanel', () => {
     // Child effects run before the panel's own effects, so this guards against
     // the panel wiping what the section just pushed on mount.
     mockSubPath = 'section/templates';
-    const TemplatesSection = ({
-      onSetHeaderActions,
-    }: {
-      onSetHeaderActions?: (node: React.ReactNode) => void;
-    }) => {
-      React.useEffect(() => {
-        onSetHeaderActions?.(
-          <button data-testid="section-create" type="button">
-            Create
-          </button>
-        );
-      }, [onSetHeaderActions]);
-
-      return <div data-testid="templates-section" />;
-    };
     mockGetContributions.mockReturnValue([
-      { key: 'templates', component: TemplatesSection },
+      { key: 'templates', component: TemplatesSectionWithCreateAction },
     ]);
 
     render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
@@ -296,7 +301,37 @@ describe('NotificationPanel', () => {
         mockOnHeaderChange.mock.calls.length - 1
       ][0];
 
-    expect(lastCall.actions).toBeDefined();
+    render(lastCall.actions);
+
+    expect(screen.getByTestId('section-create')).toHaveTextContent('Create');
+  });
+
+  it("should not leak one section's header actions into another", () => {
+    // The guard for this is tagging sectionHeader with the owning key: a
+    // header push from section A's mount effect must not survive navigating
+    // to section B, which never pushed anything of its own.
+    mockSubPath = 'section/templates';
+    const WeeklyEmailsSection = () => (
+      <div data-testid="weekly-emails-section" />
+    );
+    mockGetContributions.mockReturnValue([
+      { key: 'templates', component: TemplatesSectionWithCreateAction },
+      { key: 'weekly-emails', component: WeeklyEmailsSection },
+    ]);
+
+    const { rerender } = render(
+      <NotificationPanel onHeaderChange={mockOnHeaderChange} />
+    );
+
+    mockSubPath = 'section/weekly-emails';
+    rerender(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    const lastCall =
+      mockOnHeaderChange.mock.calls[
+        mockOnHeaderChange.mock.calls.length - 1
+      ][0];
+
+    expect(lastCall.actions).toBeUndefined();
   });
 
   it('should pass the sub-path and show a section sub-title in the header', () => {
@@ -353,6 +388,43 @@ describe('NotificationPanel', () => {
     expect(
       screen.queryByTestId('weekly-emails-section')
     ).not.toBeInTheDocument();
+  });
+
+  it('should wait for plugins to load before resolving a deep-linked section', () => {
+    // Plugins contribute sections after `/apps/installed` resolves, later
+    // than this render; a deep link must wait rather than briefly resolve
+    // against an incomplete registry.
+    mockIsApplicationsLoading = true;
+    mockSubPath = 'section/weekly-emails';
+    mockGetContributions.mockReturnValue([
+      {
+        key: 'weekly-emails',
+        component: () => <div data-testid="weekly-emails-section" />,
+      },
+    ]);
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    expect(
+      screen.queryByTestId('weekly-emails-section')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('label.no-data')).not.toBeInTheDocument();
+  });
+
+  it('should fall back to a translated label for an unknown section key', () => {
+    mockSubPath = 'section/not-a-real-section';
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    const lastCall =
+      mockOnHeaderChange.mock.calls[
+        mockOnHeaderChange.mock.calls.length - 1
+      ][0];
+
+    expect(lastCall.title).toBe('label.notification');
+    expect(lastCall.breadcrumbs[lastCall.breadcrumbs.length - 1].label).toBe(
+      'label.notification'
+    );
   });
 
   it('should deny a deep-linked section whose menu item the user may not see', () => {

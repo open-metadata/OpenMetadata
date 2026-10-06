@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import NotificationLanding from './NotificationLanding';
 
@@ -280,6 +280,46 @@ describe('NotificationLanding', () => {
 
     expect(
       screen.queryByTestId('notification-card-weekly-emails')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a beta badge only for a card whose menu item is marked beta', () => {
+    mockGetContributions.mockReturnValue([
+      { key: 'weekly-emails', component: () => <span /> },
+      { key: 'templates', component: () => <span /> },
+    ]);
+    mockGetGlobalSettingsMenu.mockReturnValue([
+      {
+        key: GlobalSettingsMenuCategory.NOTIFICATIONS,
+        items: [
+          {
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.weekly-emails`,
+            category: 'Weekly emails',
+            description: 'desc',
+            icon: () => <span />,
+            isBeta: true,
+          },
+          {
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.templates`,
+            category: 'Templates',
+            description: 'desc',
+            icon: () => <span />,
+          },
+        ],
+      },
+    ]);
+
+    render(<NotificationLanding onNavigate={mockOnNavigate} />);
+
+    expect(
+      within(screen.getByTestId('notification-card-weekly-emails')).getByText(
+        'label.beta'
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('notification-card-templates')).queryByText(
+        'label.beta'
+      )
     ).not.toBeInTheDocument();
   });
 
