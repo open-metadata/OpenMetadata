@@ -211,9 +211,7 @@ test.describe('Context Center - Documents Page', () => {
     page,
   }) => {
     await navigateToDocuments(page);
-    await page.getByTestId('document-row-skeleton').first().waitFor({
-      state: 'detached',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
     const view = page.getByTestId('documents-view');
     const rows = view.locator('[data-testid^="document-row-"]');
     const countBefore = await rows.count();
@@ -238,9 +236,7 @@ test.describe('Context Center - Documents Page', () => {
     const loadMoreRes = await loadMoreResPromise;
     expect(loadMoreRes.status()).toBe(200);
 
-    await page.getByTestId('document-row-skeleton').last().waitFor({
-      state: 'hidden',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
 
     const countAfter = await rows.count();
     expect(countAfter).toBeGreaterThan(countBefore);
@@ -507,7 +503,7 @@ test.describe('Context Center - Documents Page', () => {
 
       // If the seed document was indexed, it appears; otherwise the empty state shows
       if (count > 0) {
-        await expect(rows.first()).toBeVisible();
+        await expect(rows.filter({ visible: true })).not.toHaveCount(0);
       } else {
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
           timeout: 8000,
@@ -570,8 +566,8 @@ test.describe('Context Center - Documents Page', () => {
         page
           .getByTestId('documents-view')
           .locator('[data-testid^="document-row-"]')
-          .first()
-      ).toBeVisible();
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
     });
   });
 
@@ -703,7 +699,7 @@ test.describe('Context Center - Documents Page', () => {
     const hint = modal.locator('[class*="hint"], p').filter({
       hasText: /supports all file types/i,
     });
-    await expect(hint.first()).toBeVisible();
+    await expect(hint.filter({ visible: true })).not.toHaveCount(0);
 
     const attachBtn = modal.getByRole('button', { name: /attach/i });
     await expect(attachBtn).toBeVisible();
@@ -732,7 +728,9 @@ test.describe('Context Center - Documents Page', () => {
       buffer: Buffer.from('context center upload test file'),
     });
 
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(
+      modal.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const uploadResPromise = page.waitForResponse(
       '/api/v1/contextCenter/drive/files/upload'
@@ -744,7 +742,9 @@ test.describe('Context Center - Documents Page', () => {
     contextFileIdsToCleanup.add(uploadedDocument.id);
 
     await expect(modal).not.toBeVisible();
-    await expect(page.getByText(fileName).first()).toBeVisible();
+    await expect(
+      page.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   // ─── Req 1: All card details (name, size, updatedBy, updatedAt, folder) ──
@@ -988,7 +988,9 @@ test.describe('Context Center - Documents Page', () => {
 
     const currentFolderItem = page.getByTestId(`move-to-folder-${folder.id}`);
     await expect(currentFolderItem).toBeVisible();
-    await expect(currentFolderItem.locator('svg').last()).toBeVisible();
+    await expect(
+      currentFolderItem.locator('svg').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const removeResPromise = page.waitForResponse(
       (res) =>
@@ -1481,7 +1483,9 @@ test.describe('Context Center - Documents Page', () => {
     const dupRes = await dupResPromise;
     expect(dupRes.status()).toBe(400);
 
-    await expect(modal.getByText(/try again|failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/try again|failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
 
     await modal.getByRole('button', { name: /cancel/i }).click();
@@ -1592,7 +1596,9 @@ test.describe('Context Center - Documents Page', () => {
 
     expect(duplicateUploadRes.status(), duplicateUploadBody).toBe(400);
     expect(duplicateUploadBody).toContain(lowerCaseDuplicateName);
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
   });
 
@@ -1655,7 +1661,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: fileName,
     });
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(
+      modal.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Trigger the first (failing) upload.
     const failedResPromise = page.waitForResponse(
@@ -1666,7 +1674,9 @@ test.describe('Context Center - Documents Page', () => {
     expect(failedRes.status()).toBe(500);
 
     // File row should show "Failed" with a "Try again" button.
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     const tryAgainBtn = modal.getByRole('button', { name: /try again/i });
     await expect(tryAgainBtn).toBeVisible();
 
@@ -1804,7 +1814,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: errorFile,
     });
-    await expect(modal.getByText(errorFile).first()).toBeVisible();
+    await expect(
+      modal.getByText(errorFile).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const firstFailRes = page.waitForResponse(
       '**/api/v1/contextCenter/drive/files/upload'
@@ -1813,7 +1825,9 @@ test.describe('Context Center - Documents Page', () => {
     await firstFailRes;
 
     // First file is now in error state; Attach button is disabled.
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
 
     // Add a second, valid file.
@@ -1823,7 +1837,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: newFile,
     });
-    await expect(modal.getByText(newFile).first()).toBeVisible();
+    await expect(
+      modal.getByText(newFile).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Upload the new file — it succeeds.
     const secondSuccessRes = waitForResponseWithStatus(
@@ -1840,7 +1856,11 @@ test.describe('Context Center - Documents Page', () => {
 
     // Modal must stay open because the first file is still in error state.
     await expect(modal).toBeVisible();
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
-    await expect(modal.getByText(/complete/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
+    await expect(
+      modal.getByText(/complete/i).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 });

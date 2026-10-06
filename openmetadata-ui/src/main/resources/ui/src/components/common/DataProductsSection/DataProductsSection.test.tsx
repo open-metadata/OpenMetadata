@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -755,6 +756,98 @@ describe('DataProductsSection', () => {
       rerender(<DataProductsSection {...defaultProps} />);
 
       expect(getLastMultiSelect()).toBe(true);
+    });
+  });
+
+  describe('Outside-click dismiss (onOpenChange(false))', () => {
+    const getLastPopoverOnOpenChange = ():
+      | ((open: boolean) => void)
+      | undefined => {
+      const { DataProductsSelectListV1 } = jest.requireMock(
+        '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1'
+      );
+
+      return (DataProductsSelectListV1 as jest.Mock).mock.calls.at(-1)?.[0]
+        ?.popoverProps?.onOpenChange;
+    };
+
+    it('returns to the read-only data products list when the popover is dismissed without saving', () => {
+      render(<DataProductsSection {...defaultProps} />);
+
+      expect(screen.getByTestId('data-products-list')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      expect(
+        screen.queryByTestId('data-products-list')
+      ).not.toBeInTheDocument();
+
+      act(() => {
+        getLastPopoverOnOpenChange()?.(false);
+      });
+
+      expect(screen.getByTestId('data-products-list')).toBeInTheDocument();
+    });
+
+    it('returns to the no-data placeholder when the empty section popover is dismissed', () => {
+      const placeholder = () =>
+        screen.queryByText(
+          'label.no-entity-assigned - {"entity":"label.data-product-plural"}'
+        );
+
+      render(<DataProductsSection {...defaultProps} dataProducts={[]} />);
+
+      expect(placeholder()).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      expect(placeholder()).not.toBeInTheDocument();
+
+      act(() => {
+        getLastPopoverOnOpenChange()?.(false);
+      });
+
+      expect(placeholder()).toBeInTheDocument();
+    });
+
+    it('removes the data-product-edit-wrapper after the popover is dismissed', () => {
+      const { container } = render(<DataProductsSection {...defaultProps} />);
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      expect(
+        container.querySelector('.data-product-edit-wrapper')
+      ).toBeInTheDocument();
+
+      act(() => {
+        getLastPopoverOnOpenChange()?.(false);
+      });
+
+      expect(
+        container.querySelector('.data-product-edit-wrapper')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('data-products-list')).toBeInTheDocument();
+    });
+
+    it('keeps the edit button visible and re-opens the editor after a dismiss', () => {
+      render(<DataProductsSection {...defaultProps} />);
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      act(() => {
+        getLastPopoverOnOpenChange()?.(false);
+      });
+
+      expect(screen.getByTestId('edit-data-products')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('data-products-select-list')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      expect(
+        screen.getByTestId('data-products-select-list')
+      ).toBeInTheDocument();
     });
   });
 });

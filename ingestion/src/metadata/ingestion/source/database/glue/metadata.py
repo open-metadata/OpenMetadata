@@ -358,10 +358,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         database_name = self.context.get().database
         schema_name = self.context.get().database_schema
         if storage_descriptor.Location:
-            # s3a doesn't occur as a path in containers, so it needs to be replaced for lineage to work
-            self.external_location_map[(database_name, schema_name, table_name)] = storage_descriptor.Location.replace(
-                "s3a://", "s3://"
-            )
+            self.external_location_map[(database_name, schema_name, table_name)] = storage_descriptor.Location
         try:
             columns = self.get_columns(storage_descriptor)
             # An Iceberg view is typed Iceberg rather than View, so keying off the Glue type

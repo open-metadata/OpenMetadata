@@ -176,4 +176,18 @@ class SystemRepositoryReindexStatusTest {
 
     assertTrue(existing.contains("vectorEmbedding"));
   }
+
+  @Test
+  void columnIndexIsExcludedFromDriftWhileColumnIndexingIsOff() {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    IndexMapping mapping = mock(IndexMapping.class);
+    when(searchRepository.getEntityIndexMap())
+        .thenReturn(Map.of("table", mapping, "tableColumn", mapping));
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.isIndexDisabled("tableColumn")).thenReturn(true);
+
+    Set<String> existing = SystemRepository.existingTrackedIndexes(searchRepository, List.of());
+
+    assertEquals(Set.of("table"), existing);
+  }
 }

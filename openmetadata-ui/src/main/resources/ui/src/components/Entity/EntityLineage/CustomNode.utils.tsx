@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Button, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@openmetadata/ui-core-components/icons';
-import { Skeleton } from 'antd';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -186,7 +185,7 @@ const getColumnNameContent = (
   isLoading: boolean
 ) => {
   if (isLoading) {
-    return <Skeleton.Button active data-tesid="loader" size="small" />;
+    return <Skeleton height={32} variant="rounded" width={72} />;
   }
 
   return (

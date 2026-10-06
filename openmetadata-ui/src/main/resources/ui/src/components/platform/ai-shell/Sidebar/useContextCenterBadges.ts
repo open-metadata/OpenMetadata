@@ -13,6 +13,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { EntityStatus } from '../../../../generated/entity/context/contextMemory';
 import { Include } from '../../../../generated/type/include';
 import { listContextFiles } from '../../../../rest/assetAPI';
 import { getListContextMemories } from '../../../../rest/contextMemoryAPI';
@@ -61,12 +62,14 @@ export function useContextCenterBadges(enabled: boolean): ContextCenterBadges {
     enabled,
   });
 
+  // Matches the Context Center's default view: Approved memories the caller can see.
   const { data: memories } = useQuery({
     queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
     queryFn: () =>
-      getListContextMemories({ limit: COUNT_LIMIT }).then(
-        (res) => res.paging.total
-      ),
+      getListContextMemories({
+        limit: COUNT_LIMIT,
+        statuses: EntityStatus.Approved,
+      }).then((res) => res.paging.total),
     enabled,
   });
 

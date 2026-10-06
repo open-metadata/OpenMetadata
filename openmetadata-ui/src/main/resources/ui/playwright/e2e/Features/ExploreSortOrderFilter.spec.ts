@@ -16,6 +16,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickUpdateButtonIfVisible,
   selectSortOrder,
@@ -39,10 +40,7 @@ test.describe(
         await sidebarClick(page, SidebarItem.EXPLORE);
 
         await page.getByTestId('search-dropdown-Data Assets').click();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+        await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
         const dataAssetDropdownRequest = page.waitForResponse(
           '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'

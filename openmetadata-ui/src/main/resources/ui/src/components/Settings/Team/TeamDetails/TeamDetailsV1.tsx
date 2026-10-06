@@ -12,8 +12,13 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Avatar, Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import {
+  Box,
+  Tabs,
+  ToggleBase,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Avatar, Button, Col, Modal, Row, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -75,6 +80,10 @@ import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../../../common/EntityDescription/Description';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -108,6 +117,16 @@ const EntitySummaryPanel = withSuspenseFallback(
       import('../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
   )
 );
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
 
 const TeamDetailsV1 = ({
   assetsCount,
@@ -221,7 +240,12 @@ const TeamDetailsV1 = ({
   // contract — the owner, TeamsPage.tsx, is out of this batch's scope so the interface can't
   // be migrated to DerivedPermissionFlags here — and derive named flags internally instead of
   // reading raw `.EditAll` at each call site.
-  const { canEditAll, canEditDescription } = useMemo(
+  const {
+    canEditAll,
+    canEditDescription,
+    canEditCustomFields,
+    canViewCustomFields,
+  } = useMemo(
     () => getDerivedPermissionFlags(entityPermissions, isTeamDeleted),
     [entityPermissions, isTeamDeleted]
   );
@@ -638,7 +662,8 @@ const TeamDetailsV1 = ({
                       </Col>
 
                       <Col span={3}>
-                        <Switch checked={currentTeam.isJoinable} size="small" />
+                        {/* Visual only: Toggle swallows the click the menu item's onClick needs. */}
+                        <ToggleBase isSelected={currentTeam.isJoinable} />
                       </Col>
                     </Row>
                   }
@@ -1109,11 +1134,40 @@ const TeamDetailsV1 = ({
     ]
   );
 
+  // updateTeamHandler's second parameter is `fetchTeam`, not the generic context's
+  // `key`, so the extension update is forwarded through a one-argument wrapper.
+  const onTeamExtensionUpdate = useCallback(
+    async (updatedTeam: Team) => {
+      await updateTeamHandler(updatedTeam);
+    },
+    [updateTeamHandler]
+  );
+
+  const customPropertiesTabRender = useMemo(
+    () => (
+      <CustomPropertyTable<EntityType.TEAM>
+        entityDetails={currentTeam}
+        entityType={EntityType.TEAM}
+        hasEditAccess={canEditCustomFields}
+        hasPermission={canViewCustomFields}
+        onEntityUpdate={onTeamExtensionUpdate}
+      />
+    ),
+    [
+      currentTeam,
+      canEditCustomFields,
+      canViewCustomFields,
+      onTeamExtensionUpdate,
+    ]
+  );
+
   const getTabChildren = useCallback(
     (key: TeamsPageTab) => {
       switch (key) {
         case TeamsPageTab.ASSETS:
           return assetTabRender;
+        case TeamsPageTab.CUSTOM_PROPERTIES:
+          return customPropertiesTabRender;
         case TeamsPageTab.POLICIES:
           return policiesTabRender;
         case TeamsPageTab.ROLES:
@@ -1126,6 +1180,7 @@ const TeamDetailsV1 = ({
     },
     [
       assetTabRender,
+      customPropertiesTabRender,
       policiesTabRender,
       rolesTabRender,
       teamsTableRender,

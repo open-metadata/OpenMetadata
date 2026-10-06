@@ -23,6 +23,7 @@ import {
   getDescriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForPageLoaded } from '../../utils/polling';
 import {
   waitForTaskCreateResponse,
@@ -39,7 +40,11 @@ import {
 const adminFile = 'playwright/.auth/admin.json';
 test.use({ storageState: adminFile });
 
-const entityClasses = [TableClass, DashboardClass, TopicClass, PipelineClass];
+const entityClasses = pickEntityMatrix(
+  __filename,
+  [TableClass, DashboardClass, TopicClass, PipelineClass],
+  [TableClass]
+);
 
 let entities: InstanceType<(typeof entityClasses)[number]>[] = [];
 

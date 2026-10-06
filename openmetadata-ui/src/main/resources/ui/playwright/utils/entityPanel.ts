@@ -173,7 +173,7 @@ export const openEntitySummaryPanel = async ({
 
       const tab = page
         .getByTestId('explore-left-panel')
-        .getByRole('menuitem', { name: exploreTab });
+        .getByRole('tab', { name: exploreTab });
       await tab.waitFor({ state: 'visible' });
       await tab.click();
       await waitForAllLoadersToDisappear(page);
@@ -251,10 +251,7 @@ export async function navigateToExploreAndSelectTable(
   const summaryPanel = page.getByTestId('entity-summary-panel-container');
   await summaryPanel.waitFor({ state: 'visible' });
 
-  // Wait for the loader elements count to become 0
-  await expect(summaryPanel.getByTestId('loader')).toHaveCount(0, {
-    timeout: 30000,
-  });
+  await waitForAllLoadersToDisappear(summaryPanel);
 }
 
 export const waitForPatchResponse = async (page: Page) => {
@@ -273,7 +270,7 @@ export const waitForPatchResponse = async (page: Page) => {
 
 export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
-  const tab = summaryPanel.getByRole('menuitem', {
+  const tab = summaryPanel.getByRole('tab', {
     name: new RegExp(tabName, 'i'),
   });
 

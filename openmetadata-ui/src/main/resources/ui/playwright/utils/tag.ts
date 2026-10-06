@@ -78,9 +78,7 @@ export const visitClassificationPage = async (
       .or(tagsContainer.getByText('Add the first tag'))
   ).toBeVisible();
 
-  await expect(
-    tagsContainer.locator('.table-container').getByTestId('loader')
-  ).toHaveCount(0, { timeout: 30000 });
+  await waitForAllLoadersToDisappear(tagsContainer.locator('.table-container'));
 
   await expect(tagsContainer.getByTestId('header')).toContainText(
     classificationDisplayName
@@ -99,10 +97,7 @@ export const addAssetsToTag = async (
 
   await tag.visitPage(page);
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -158,7 +153,8 @@ export const addAssetsToTag = async (
     await searchRes;
 
     await assetSelectionModal
-      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
       .check();
 
     await expect(
@@ -194,10 +190,7 @@ export const removeAssetsFromTag = async (
   await tag.visitPage(page);
   await res;
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
@@ -229,7 +222,10 @@ export const removeAssetsFromTag = async (
     // a repositioning target.
     await waitForAllLoadersToDisappear(page);
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
@@ -238,10 +234,7 @@ export const removeAssetsFromTag = async (
   await assetsRemoveRes;
 
   await page.reload();
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
   await checkAssetsCount(page, 0);
 };
 
@@ -400,10 +393,7 @@ export const verifyTagPageUI = async (
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
@@ -440,10 +430,7 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   const updatedDescription = `This is updated test description for tag ${tag.data.name}.`;
 
@@ -468,10 +455,7 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   );
   await page.getByTestId('save').click();
   await editDescription;
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
   await expect(page.getByRole('dialog')).not.toBeVisible();
 
   await expect(page.getByTestId('viewer-container')).toContainText(
@@ -598,6 +582,13 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
 
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
+
+  // The autocomplete keeps its listbox open on a pick and re-queries, so the
+  // drawer footer never settles for submitForm. Click the heading to dismiss.
+  await adminPage.getByTestId('drawer-heading').click();
+
+  await expect(adminPage.getByRole('listbox')).toBeHidden();
+  await expect(adminPage.getByTestId('tags-form')).toBeVisible();
 };
 
 export const setTagDisabled = async (
@@ -696,7 +687,10 @@ export const verifyEntityTypeFilterInTagAssets = async (
     // repositioning target.
     await waitForAllLoadersToDisappear(page);
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');

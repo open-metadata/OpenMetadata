@@ -209,10 +209,12 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ).toBeVisible();
 
       await page
-        .locator('.ant-tree-treenode', {
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({
           has: page.getByTestId('explore-tree-title-Governance'),
         })
-        .locator('.ant-tree-switcher')
+        .getByTestId('tree-expand-btn')
         .click();
     });
 
@@ -427,14 +429,14 @@ test.describe('Explore page', () => {
 
   test('Check the listing of tags', async ({ page }) => {
     await page
-      .locator('div')
-      .filter({ hasText: /^Governance$/ })
-      .locator('svg')
-      .first()
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({ has: page.getByTestId('explore-tree-title-Governance') })
+      .getByTestId('tree-expand-btn')
       .click();
 
-    await expect(page.getByRole('tree')).toContainText('Glossaries');
-    await expect(page.getByRole('tree')).toContainText('Tags');
+    await expect(page.getByRole('treegrid')).toContainText('Glossaries');
+    await expect(page.getByRole('treegrid')).toContainText('Tags');
 
     // The tree fires size=0 count queries on the dataAsset index alongside the
     // main results query; match the results query (non-zero size) so the hits
@@ -483,20 +485,24 @@ test.describe('Explore page', () => {
     await dashboardNodeClickResponse;
 
     await page
-      .locator('.ant-tree-treenode', {
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({
         has: page.getByTestId('explore-tree-title-Dashboards'),
       })
-      .locator('.ant-tree-switcher')
+      .getByTestId('tree-expand-btn')
       .click();
 
     const supersetNode = page.getByTestId('explore-tree-title-superset');
     await expect(supersetNode).toBeVisible();
 
     await page
-      .locator('.ant-tree-treenode', {
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({
         has: page.getByTestId('explore-tree-title-superset'),
       })
-      .locator('.ant-tree-switcher')
+      .getByTestId('tree-expand-btn')
       .click();
 
     const dashboardServiceNode = page.getByTestId(
@@ -505,10 +511,12 @@ test.describe('Explore page', () => {
     await expect(dashboardServiceNode).toBeVisible();
 
     await page
-      .locator('.ant-tree-treenode', {
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({
         has: page.getByTestId(`explore-tree-title-${serviceName}`),
       })
-      .locator('.ant-tree-switcher')
+      .getByTestId('tree-expand-btn')
       .click();
 
     const chartsNode = page.getByTestId('explore-tree-title-chart');
@@ -547,6 +555,7 @@ test.describe('Explore page', () => {
       page,
       buttonTestId: 'copy-field-link-button',
       containerTestId: 'search-index-fields-table',
+      rowName: searchIndex.children[0].name,
       expectedUrlPath: '/searchIndex/',
       entityFqn: searchIndex.entityResponseData?.['fullyQualifiedName'] ?? '',
     });
@@ -563,6 +572,7 @@ test.describe('Explore page', () => {
       page,
       buttonTestId: 'copy-field-link-button',
       containerTestId: 'schema-fields-table',
+      rowName: apiEndpoint.children[0].name,
       expectedUrlPath: '/apiEndpoint/',
       entityFqn: apiEndpoint.entityResponseData?.['fullyQualifiedName'] ?? '',
     });
@@ -668,9 +678,10 @@ test.describe('Explore page', () => {
       '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
     );
     await page
-      .locator('.ant-tree-treenode')
+      .getByTestId('explore-tree')
+      .getByRole('row')
       .filter({ hasText: schemaName })
-      .locator('.ant-tree-switcher svg')
+      .getByTestId('tree-expand-btn')
       .click();
     await schemaRes;
 
@@ -701,9 +712,10 @@ test.describe('Explore page', () => {
       '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
     );
     await page
-      .locator('.ant-tree-treenode')
+      .getByTestId('explore-tree')
+      .getByRole('row')
       .filter({ hasText: schemaName })
-      .locator('.ant-tree-switcher svg')
+      .getByTestId('tree-expand-btn')
       .click();
     await schemaRes;
 

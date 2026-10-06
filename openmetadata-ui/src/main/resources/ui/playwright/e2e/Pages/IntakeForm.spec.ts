@@ -405,7 +405,11 @@ test.describe(
         });
 
         await test.step('New row renders in the list', async () => {
-          await expect(page.getByText(scenario.label).first()).toBeVisible();
+          // The label text also appears in the page sub-heading, so address the
+          // listing row by the entity type it is keyed on.
+          await expect(
+            page.getByTestId(`row-${scenario.entityType}`)
+          ).toBeVisible();
           for (const propertyName of scenario.customPropertyNames) {
             await expect(
               page.getByText(`extension.${propertyName}`)
@@ -1080,7 +1084,9 @@ test.describe(
         const adminOption = listbox
           .getByRole('option')
           .filter({ hasText: /admin/i });
-        await expect(adminOption.first()).toBeVisible({ timeout: 15000 });
+        await expect(adminOption.filter({ visible: true })).not.toHaveCount(0, {
+          timeout: 15000,
+        });
         await adminOption.first().click();
 
         // Selecting the option collapses the Steward picker's input into a

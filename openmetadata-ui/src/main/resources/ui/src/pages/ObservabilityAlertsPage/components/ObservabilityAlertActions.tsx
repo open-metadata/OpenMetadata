@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Skeleton, Tooltip } from 'antd';
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -36,7 +36,11 @@ function ObservabilityAlertActions({
   const { t } = useTranslation();
 
   if (loading) {
-    return <Skeleton active className="p-r-lg" paragraph={false} />;
+    return (
+      <div className="p-r-lg">
+        <Skeleton height={16} />
+      </div>
+    );
   }
 
   if (
