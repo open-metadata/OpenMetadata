@@ -31,7 +31,7 @@ import {
   NodeConfig,
   NodeConfigSidebarProps,
 } from '../../../interface/workflow-builder-components.interface';
-import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import {
   convertDisplayToBackendTriggerType,
   getInitialNodeConfig,
@@ -41,8 +41,8 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   buildEntityFieldGroups,
+  getCustomPropertyFieldNames,
   validateWorkflowConfig,
-  withExtensionPrefix,
 } from '../../../utils/WorkflowConfigUtils';
 import {
   reconcileDataAssetFilters,
@@ -156,13 +156,12 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       return;
     }
 
-    Promise.all(assets.map((asset) => getCustomPropertiesByEntityType(asset)))
-      .then((results) => {
-        const names = [
-          ...new Set(results.flat().map((p) => withExtensionPrefix(p.name))),
-        ];
-        setCustomPropertyFields(names);
-      })
+    getAllCustomProperties()
+      .then((propertiesByType) =>
+        setCustomPropertyFields(
+          getCustomPropertyFieldNames(propertiesByType, assets)
+        )
+      )
       .catch(() => setCustomPropertyFields([]));
   }, [effectiveConfig.dataAssets]);
 

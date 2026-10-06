@@ -41,18 +41,6 @@ jest.mock('../../../../rest/DataInsightAPI', () => ({
 }));
 
 jest.mock('../../../../rest/KpiAPI', () => ({
-  getLatestKpiResult: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      timestamp: 1724760319723,
-      kpiFqn: 'description-percentage',
-      targetResult: [
-        {
-          value: '23.52941176470588',
-          targetMet: false,
-        },
-      ],
-    })
-  ),
   getListKpiResult: jest.fn().mockImplementation(() =>
     Promise.resolve({
       results: [
@@ -135,7 +123,31 @@ describe('KPIWidget', () => {
       render(<KPIWidget {...widgetProps} />);
     });
 
-    expect(getListKPIs).toHaveBeenCalledWith({ fields: 'dataInsightChart' });
+    expect(getListKPIs).toHaveBeenCalledWith({
+      fields: 'dataInsightChart,kpiResult',
+    });
+  });
+
+  it('shows the legend from the latest results that come with the KPI list', async () => {
+    (getListKPIs as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_KPI_LIST_RESPONSE,
+      data: MOCK_KPI_LIST_RESPONSE.data.map((kpi) => ({
+        ...kpi,
+        kpiResult: {
+          kpiFqn: kpi.fullyQualifiedName,
+          timestamp: 1724760319723,
+          targetResult: [
+            { name: 'fraction', value: '23.52941176470588', targetMet: false },
+          ],
+        },
+      })),
+    });
+
+    await act(async () => {
+      render(<KPIWidget {...widgetProps} />);
+    });
+
+    expect(await screen.findByText('KPILegend.Component')).toBeInTheDocument();
   });
 
   it('should render charts and data if present', async () => {

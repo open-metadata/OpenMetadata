@@ -30,7 +30,6 @@ import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
-import { getClassifications } from '../../utils/TagsUtils';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagsPage from './TagsPage';
 import {
@@ -38,7 +37,6 @@ import {
   MOCK_DELETE_CLASSIFICATION,
   MOCK_DELETE_TAG,
   MOCK_TAGS,
-  MOCK_TAGS_CATEGORY,
 } from './TagsPage.mock';
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
@@ -103,109 +101,6 @@ const mockProps = {
   pageTitle: 'tags',
 };
 
-const mockCategory = [
-  {
-    id: '93285c04-d8b6-4833-997e-56dc5f973427',
-    name: 'PersonalData',
-    description: 'description',
-    version: 0.1,
-    updatedAt: 1649665563400,
-    updatedBy: 'admin',
-    owners: [],
-    href: 'http://localhost:8585/api/v1/tags/PersonalData',
-    usageCount: 0,
-    children: [
-      {
-        id: '8a218558-7b8f-446f-ace7-29b031c856b3',
-        name: 'Personal',
-        fullyQualifiedName: 'PersonalData.Personal',
-        description:
-          'Data that can be used to directly or indirectly identify a person.',
-        version: 0.1,
-        updatedAt: 1649665563400,
-        updatedBy: 'admin',
-        href: 'http://localhost:8585/api/v1/tags/PersonalData/Personal',
-        usageCount: 0,
-        deprecated: false,
-        deleted: false,
-        associatedTags: [],
-      },
-      {
-        id: '4a2d7e47-9129-4cfe-91e8-e4f4df15f41d',
-        name: 'SpecialCategory',
-        fullyQualifiedName: 'PersonalData.SpecialCategory',
-        description: 'description',
-        version: 0.1,
-        updatedAt: 1649665563400,
-        updatedBy: 'admin',
-        href: 'http://localhost:8585/api/v1/tags/PersonalData/SpecialCategory',
-        usageCount: 0,
-        deprecated: false,
-        deleted: false,
-        associatedTags: [],
-      },
-    ],
-    deleted: false,
-  },
-  {
-    id: '3ee52f19-6d39-41ab-8398-36adbf66c168',
-    name: 'PII',
-    description: 'description',
-    version: 0.1,
-    updatedAt: 1649665563410,
-    updatedBy: 'admin',
-    provider: 'user',
-    owners: [],
-    href: 'http://localhost:8585/api/v1/tags/PII',
-    usageCount: 0,
-    children: [
-      {
-        id: '976af6dc-1cd1-481c-8d2f-2d38bbfe05fe',
-        name: 'None',
-        fullyQualifiedName: 'PII.None',
-        description: 'Non PII',
-        version: 0.1,
-        updatedAt: 1649665563410,
-        updatedBy: 'admin',
-        href: 'http://localhost:8585/api/v1/tags/PII/None',
-        usageCount: 0,
-        deprecated: false,
-        deleted: false,
-        associatedTags: [],
-      },
-      {
-        id: '4840c344-fc15-4434-925d-779b32284a0d',
-        name: 'NonSensitive',
-        fullyQualifiedName: 'PII.NonSensitive',
-        description: 'description',
-        version: 0.1,
-        updatedAt: 1649665563410,
-        updatedBy: 'admin',
-        href: 'http://localhost:8585/api/v1/tags/PII/NonSensitive',
-        usageCount: 0,
-        deprecated: false,
-        deleted: false,
-        associatedTags: [],
-      },
-      {
-        id: 'ec1f8f8d-0519-45fb-a8d3-a32b4067a8be',
-        name: 'Sensitive',
-        fullyQualifiedName: 'PII.Sensitive',
-        description: 'description',
-        version: 0.1,
-        updatedAt: 1649665563410,
-        updatedBy: 'admin',
-        href: 'http://localhost:8585/api/v1/tags/PII/Sensitive',
-        usageCount: 0,
-        deprecated: false,
-        deleted: false,
-        associatedTags: [],
-      },
-    ],
-    deleted: false,
-  },
-];
-
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
@@ -266,10 +161,6 @@ jest.mock('../../rest/tagAPI', () => ({
 }));
 
 jest.mock('../../utils/TagsUtils', () => ({
-  getClassifications: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: MOCK_TAGS_CATEGORY })),
-  getTaglist: jest.fn().mockReturnValue(['tag 1', 'tag 2']),
   getDeleteIcon: jest.fn().mockImplementation(() => <div>Icon</div>),
   getUsageCountLink: jest
     .fn()
@@ -795,9 +686,6 @@ describe('Test TagsPage page', () => {
   });
 
   it('User classification should be renamed', async () => {
-    (getClassifications as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: [mockCategory[1]] })
-    );
     render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 

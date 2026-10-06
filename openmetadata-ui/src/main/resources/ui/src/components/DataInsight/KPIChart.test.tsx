@@ -31,13 +31,6 @@ jest.mock('../../rest/KpiAPI', () => ({
     .mockImplementation(() =>
       Promise.resolve({ results: [{ day: 1, count: 40 }] })
     ),
-  getLatestKpiResult: jest.fn().mockImplementation((fqn: string) =>
-    Promise.resolve({
-      kpiFqn: fqn,
-      timestamp: 1,
-      targetResult: [{ name: 'fraction', value: '0.4', targetMet: false }],
-    })
-  ),
 }));
 
 jest.mock('./EmptyGraphPlaceholder', () => ({
@@ -162,5 +155,26 @@ describe('Test KPIChart Component', () => {
 
     expect(screen.getByText('40%')).toBeInTheDocument();
     expect(screen.getByText('40')).toBeInTheDocument();
+  });
+
+  it('shows the latest results that come with the KPI list', async () => {
+    const kpiWithResult = {
+      ...KPI_LIST[0],
+      kpiResult: {
+        kpiFqn: KPI_LIST[0].fullyQualifiedName,
+        timestamp: 1,
+        targetResult: [{ name: 'fraction', value: '40', targetMet: false }],
+      },
+    };
+
+    await act(async () => {
+      render(<KPIChart {...mockProps} kpiList={[kpiWithResult]} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      screen.getByTestId('kpi-latest-result-container')
+    ).toBeInTheDocument();
   });
 });
