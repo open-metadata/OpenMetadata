@@ -77,7 +77,6 @@ List the user-visible scenarios this PR exercises. Example:
 - [ ] I ran the integration tests covering my changed files locally (PR CI runs only unit tests; the merge queue runs `tests/integration/`).
 - [ ] Not applicable (no ingestion changes).
 - Files added/updated:
-- Command + result:
 -->
 
 #### Playwright (UI) tests
