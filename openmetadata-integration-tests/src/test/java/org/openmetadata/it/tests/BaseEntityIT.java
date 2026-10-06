@@ -62,6 +62,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.policies.PolicyService;
@@ -3025,7 +3026,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(
         supportsEntityStatus && supportsPatch, getEntityType() + " stage cannot be patched");
     Assumptions.assumeFalse(
-        stageWorkflows().isEmpty(), "no active workflow owns the " + getEntityType() + " stage");
+        stageWorkflowsOwningEveryEntity().isEmpty(),
+        "no active workflow owns the stage of every " + getEntityType());
     T created = createEntity(createMinimalRequest(ns));
     T entity = getEntity(created.getId().toString());
     EntityStatus stage = entity.getEntityStatus();
@@ -3099,6 +3101,44 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   /** Active workflows that own this entity type's stage, as the server reports them. */
   private List<String> stageWorkflows() {
     return entityTypeLifecycle().map(EntityTypeLifecycle::getStageWorkflows).orElse(List.of());
+  }
+
+  // A workflow's trigger filter can leave an entity outside the stage the workflow owns, so only a
+  // workflow without one is sure to own the stage of an entity the test creates.
+  private List<String> stageWorkflowsOwningEveryEntity() {
+    return stageWorkflows().stream().filter(BaseEntityIT::hasNoTriggerFilter).toList();
+  }
+
+  private static boolean hasNoTriggerFilter(String workflowName) {
+    boolean unfiltered = false;
+    try {
+      JsonNode filter =
+          JsonUtils.valueToTree(
+                  SdkClients.adminClient()
+                      .workflowDefinitions()
+                      .getByName(workflowName)
+                      .getTrigger())
+              .path("config")
+              .path("filter");
+      unfiltered = isBlankFilter(filter);
+    } catch (OpenMetadataException removed) {
+      // A workflow another test deleted after the server listed it owns nothing.
+    }
+    return unfiltered;
+  }
+
+  // A trigger filter is a JSON Logic string, or an object of them keyed by entity type.
+  private static boolean isBlankFilter(JsonNode filter) {
+    boolean blank = filter.isMissingNode() || filter.isNull();
+    if (filter.isTextual()) {
+      blank = filter.asText().isBlank() || "{}".equals(filter.asText().strip());
+    } else if (filter.isObject()) {
+      blank = true;
+      for (JsonNode logic : filter) {
+        blank = blank && isBlankFilter(logic);
+      }
+    }
+    return blank;
   }
 
   private Optional<EntityTypeLifecycle> entityTypeLifecycle() {

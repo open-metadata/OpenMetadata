@@ -792,18 +792,32 @@ public class WorkflowHandler {
    * reported as a failure the caller can retry.
    */
   public void triggerWithRequiredSignal(String signal, Map<String, Object> variables) {
-    long listeners =
-        processEngine
-            .getRuntimeService()
-            .createEventSubscriptionQuery()
-            .eventType("signal")
-            .eventName(signal)
-            .count();
-    if (listeners == 0) {
-      throw new IllegalStateException(
-          "No deployed workflow listens for signal %s".formatted(signal));
+    if (activeSignalListeners(signal) == 0) {
+      throw new IllegalStateException("No active workflow listens for signal %s".formatted(signal));
     }
     triggerWithSignal(signal, variables);
+  }
+
+  // A suspended workflow keeps its start subscription but starts nothing from it, so only
+  // subscriptions of active process definitions can take the signal.
+  private long activeSignalListeners(String signal) {
+    RepositoryService repositoryService = processEngine.getRepositoryService();
+    return processEngine
+        .getRuntimeService()
+        .createEventSubscriptionQuery()
+        .eventType("signal")
+        .eventName(signal)
+        .list()
+        .stream()
+        .filter(
+            subscription ->
+                repositoryService
+                        .createProcessDefinitionQuery()
+                        .processDefinitionId(subscription.getProcessDefinitionId())
+                        .active()
+                        .count()
+                    > 0)
+        .count();
   }
 
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
