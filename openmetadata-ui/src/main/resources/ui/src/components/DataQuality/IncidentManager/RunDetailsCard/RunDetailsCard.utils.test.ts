@@ -265,12 +265,19 @@ describe('RunDetailsCard utils', () => {
   });
 
   it.each([
-    ['TimeoutError', true],
-    ['QueryTimedOut', true],
-    ['QueryCanceled', true],
-    ['OperationalError', false],
-    [undefined, false],
-  ])('treats %s as a timeout: %s', (errorType, expected) => {
-    expect(isTimeoutError(errorType)).toBe(expected);
+    ['TimeoutError', undefined, true],
+    ['QueryTimedOut', undefined, true],
+    ['QueryCanceled', undefined, true],
+    // A driver's catch-all: a timeout only when its message says so.
+    ['OperationalError', undefined, false],
+    ['OperationalError', 'relation "orders" does not exist', false],
+    [
+      'OperationalError',
+      'Snowflake connection timed out after 300 seconds',
+      true,
+    ],
+    [undefined, undefined, false],
+  ])('treats %s (%s) as a timeout: %s', (errorType, message, expected) => {
+    expect(isTimeoutError(errorType, message)).toBe(expected);
   });
 });

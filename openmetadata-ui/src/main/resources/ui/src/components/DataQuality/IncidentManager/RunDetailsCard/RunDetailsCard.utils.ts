@@ -218,6 +218,11 @@ export const formatRunDuration = (milliseconds: number) => {
       );
 };
 
-export const isTimeoutError = (errorType?: string) =>
+/**
+ * A driver can raise a timeout under its catch-all type (SQLAlchemy's
+ * `OperationalError`, say), so the message counts too.
+ */
+export const isTimeoutError = (errorType?: string, message?: string) =>
   TIMEOUT_ERROR_TYPES.has(errorType ?? '') ||
-  TIMEOUT_ERROR.test(errorType ?? '');
+  TIMEOUT_ERROR.test(errorType ?? '') ||
+  TIMEOUT_ERROR.test(message ?? '');

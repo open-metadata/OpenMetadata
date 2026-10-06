@@ -50,10 +50,10 @@ interface RunDetailsCardProps {
 
 const RunDuration = ({
   duration,
-  errorType,
+  errorDetails,
 }: {
   duration: number;
-  errorType?: string;
+  errorDetails?: TestCaseErrorDetails;
 }) => {
   const { t } = useTranslation();
   const text = formatRunDuration(duration);
@@ -66,7 +66,7 @@ const RunDuration = ({
       gap={1}>
       <Clock aria-hidden className="tw:size-3.5" />
       <Typography size="text-xs">
-        {isTimeoutError(errorType)
+        {isTimeoutError(errorDetails?.errorType, errorDetails?.message)
           ? t('label.duration-with-timeout', { duration: text })
           : text}
       </Typography>
@@ -233,10 +233,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           {formatDateTime(result.timestamp)}
         </Typography>
         {!isUndefined(duration) && (
-          <RunDuration
-            duration={duration}
-            errorType={errorDetails?.errorType}
-          />
+          <RunDuration duration={duration} errorDetails={errorDetails} />
         )}
       </Box>
       <Box
