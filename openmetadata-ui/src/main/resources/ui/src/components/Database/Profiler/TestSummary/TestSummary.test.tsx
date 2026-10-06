@@ -406,6 +406,47 @@ describe('TestSummary component', () => {
     expect(mockGetListTestCaseResults).toHaveBeenCalledTimes(1);
   });
 
+  describe('when no result is in the range', () => {
+    const neverRun = { ...mockProps.data, testCaseResult: undefined };
+
+    it('should say no runs are recorded, in place of the chart, tiles and run card, when the test has never run', async () => {
+      render(<TestSummary data={neverRun} />);
+
+      const placeholder = await screen.findByTestId('test-summary-never-run');
+
+      expect(placeholder).toHaveTextContent('No runs recorded yet');
+      expect(placeholder).toHaveTextContent(
+        "This test hasn't run yet. Results will be plotted here after its first run."
+      );
+      expect(screen.getByText('Result history')).toBeInTheDocument();
+      expect(screen.getByText('DqDateRangeFilter')).toBeInTheDocument();
+      expect(screen.queryByText('TestSummaryGraph')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('run-summary-tiles')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('run-details-card')).not.toBeInTheDocument();
+    });
+
+    it('should keep the chart and tiles when the latest run is outside the range', async () => {
+      render(<TestSummary {...mockProps} />);
+
+      expect(await screen.findByText('TestSummaryGraph')).toBeInTheDocument();
+      expect(screen.getByTestId('run-summary-tiles')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-summary-never-run')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should keep the chart and tiles on the version page, whose snapshot has no latest result', async () => {
+      mockUseRequiredParams.mockReturnValue({ version: '0.1' });
+      render(<TestSummary data={neverRun} />);
+
+      expect(await screen.findByText('TestSummaryGraph')).toBeInTheDocument();
+      expect(screen.getByTestId('run-summary-tiles')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-summary-never-run')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   const shape = (
     definition: string,
     parameters: Record<string, string>,

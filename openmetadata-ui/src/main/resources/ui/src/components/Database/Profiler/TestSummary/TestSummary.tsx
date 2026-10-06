@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { LineChartUp01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEqual, pick } from 'lodash';
+import { isEqual, isUndefined, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,12 +42,18 @@ import DqDateRangeFilter from '../../../observability/DataQuality/Dashboard/DqDa
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import RunSummaryTiles from './RunSummaryTiles/RunSummaryTiles';
 import './test-summary.less';
-import { getResultHistoryCaption } from './TestSummary.utils';
+import {
+  getResultHistoryCaption,
+  hasTestCaseNeverRun,
+} from './TestSummary.utils';
 import TestSummaryGraph from './TestSummaryGraph';
 
 const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const { t } = useTranslation();
-  const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
+  const { dimensionKey, version } = useRequiredParams<{
+    dimensionKey?: string;
+    version?: string;
+  }>();
   const [results, setResults] = useState<
     TestCaseResult[] | TestCaseDimensionResult[]
   >([]);
@@ -164,6 +175,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     return <Loader />;
   }
 
+  const hasNeverRun = hasTestCaseNeverRun(data, results, !isUndefined(version));
+  const showResults = !isGraphLoading && !hasNeverRun;
+
   return (
     <Box data-testid="test-summary-container" direction="col" gap={4}>
       <Box align="start" gap={4} justify="between">
@@ -189,12 +203,24 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         />
       </Box>
       <div data-testid="graph-container">
-        {isGraphLoading ? (
-          <Loader />
-        ) : (
+        {isGraphLoading && <Loader />}
+        {!isGraphLoading && hasNeverRun && (
+          <Box
+            className="tw:relative tw:min-h-56 tw:w-full tw:rounded-xl tw:border tw:border-dashed tw:border-secondary"
+            data-testid="test-summary-never-run">
+            <EmptyPlaceholder
+              className="tw:px-5"
+              description={t('message.test-case-results-after-first-run')}
+              icon={LineChartUp01}
+              title={t('message.no-runs-recorded-yet')}
+              width="100%"
+            />
+          </Box>
+        )}
+        {showResults && (
           <TestSummaryGraph
             selectedTimeRange={selectedTimeRange}
-            testCaseFqn={data.fullyQualifiedName ?? ''}
+            testCaseFqn={testCaseFqn}
             testCaseName={data.name}
             testCaseParameterValue={data.parameterValues}
             testCaseResults={results}
@@ -202,7 +228,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
           />
         )}
       </div>
-      {!isGraphLoading && (
+      {showResults && (
         <>
           <RunSummaryTiles results={results} />
           <RunDetailsCard results={results} testCase={data} />
