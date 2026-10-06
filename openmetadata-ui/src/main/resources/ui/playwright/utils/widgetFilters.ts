@@ -266,18 +266,31 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   );
 };
 
+/**
+ * Every My Tasks filter must request the open bucket. The backend applies no
+ * status filter at all when `statusGroup` is absent, so a filter that omits it
+ * silently lists closed tasks — which is what the widget used to do on load,
+ * and what the Mentions branch used to do even after that was fixed. Asserting
+ * the param per filter is what keeps either from regressing independently.
+ */
 export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const taskFilterMatcher =
     (predicate: (url: URL) => boolean): ResponseMatcher =>
     (response) => {
       const url = new URL(response.url());
 
-      return response.request().method() === 'GET' && predicate(url);
+      return (
+        response.request().method() === 'GET' &&
+        url.searchParams.get('statusGroup') === 'open' &&
+        predicate(url)
+      );
     };
 
   const widget = await getWidgetForFilters(page, widgetKey);
 
-  await expect(widget.getByTestId('task-feed-card').first()).toBeVisible();
+  await expect(
+    widget.getByTestId('task-feed-card').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await selectWidgetSortOption(
     page,

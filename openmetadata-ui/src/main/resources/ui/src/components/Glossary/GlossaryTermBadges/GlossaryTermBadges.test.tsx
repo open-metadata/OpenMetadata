@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import { ReferenceBadge } from './GlossaryTermBadges';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ReferenceBadge, SynonymBadge } from './GlossaryTermBadges';
 
 describe('ReferenceBadge', () => {
   it.each(['https://example.com/docs', 'http://example.com'])(
@@ -38,5 +39,46 @@ describe('ReferenceBadge', () => {
 
     expect(link).not.toHaveAttribute('href');
     expect(screen.getByText('docs')).toBeInTheDocument();
+  });
+});
+
+describe('SynonymBadge', () => {
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+  const hoverSynonym = async (text: string) => {
+    // react-aria ignores hover until a pointer modality is established.
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByText(text));
+    jest.advanceTimersByTime(500);
+  };
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('shows the full synonym in a tooltip when it is truncated', async () => {
+    jest
+      .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+      .mockReturnValue(200);
+    jest.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(96);
+    render(<SynonymBadge synonym="gross sales adjusted" />);
+
+    expect(screen.getByTestId('gross sales adjusted')).not.toHaveAttribute(
+      'title'
+    );
+
+    await hoverSynonym('gross sales adjusted');
+
+    await waitFor(() =>
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'gross sales adjusted'
+      )
+    );
+  });
+
+  it('shows no tooltip when the synonym fits', async () => {
+    render(<SynonymBadge synonym="tax" />);
+
+    await hoverSynonym('tax');
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 });

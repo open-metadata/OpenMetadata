@@ -1084,7 +1084,9 @@ test.describe(
         const adminOption = listbox
           .getByRole('option')
           .filter({ hasText: /admin/i });
-        await expect(adminOption.first()).toBeVisible({ timeout: 15000 });
+        await expect(adminOption.filter({ visible: true })).not.toHaveCount(0, {
+          timeout: 15000,
+        });
         await adminOption.first().click();
 
         // Selecting the option collapses the Steward picker's input into a

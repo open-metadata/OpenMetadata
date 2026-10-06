@@ -57,6 +57,7 @@ jest.mock('../../../../utils/WhatsNewModal.util', () => ({
 }));
 
 jest.mock('../../../../utils/Version/Version', () => ({
+  ...jest.requireActual('../../../../utils/Version/Version'),
   getVersionedStorageKey: jest.fn().mockImplementation(() => 'whats-new-1.2.0'),
 }));
 
@@ -83,6 +84,8 @@ jest.mock('react-i18next', () => ({
     t: (key: string, options?: { version?: string | number }) => {
       const translations: Record<string, string> = {
         'label.version-number': `Version ${options?.version || ''}`,
+        'label.version': 'Version',
+        'label.released': 'Released',
         'label.new-update-announcement': 'New Update Announcement',
         'label.release-notes': 'Release Notes',
         'label.blog': 'Blog',
@@ -147,14 +150,15 @@ describe('WhatsNewAlert', () => {
     expect(queryByTestId('whats-new-alert-card')).not.toBeInTheDocument();
   });
 
-  it('should display correct version number', () => {
+  it('should display the simplified version number', () => {
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
       pathname: '/my-data',
     }));
 
     const { getByText } = render(<WhatsNewAlert />);
 
-    expect(getByText('Version 1.2.0')).toBeInTheDocument();
+    expect(getByText('Version')).toBeInTheDocument();
+    expect(getByText('1.2.0')).toBeInTheDocument();
   });
 
   it('should display release notes link with correct href', () => {
@@ -258,7 +262,8 @@ describe('WhatsNewAlert', () => {
     const leftColumn = columns[0];
 
     expect(leftColumn).toHaveClass('whats-new-alert-left');
-    expect(leftColumn).toHaveTextContent('Version 1.2.0');
+    expect(leftColumn).toHaveTextContent('Version');
+    expect(leftColumn).toHaveTextContent('1.2');
 
     // Check right column has announcement text and links
     const rightColumn = columns[1];
@@ -275,5 +280,19 @@ describe('WhatsNewAlert', () => {
     expect(
       closeColumn.querySelector('.whats-new-alert-close')
     ).toBeInTheDocument();
+  });
+
+  it('should display the released date for a build-stamped version', () => {
+    (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
+      appVersion: '1.13.202609250000',
+    }));
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      pathname: '/my-data',
+    }));
+
+    const { getByText } = render(<WhatsNewAlert />);
+
+    expect(getByText('Released')).toBeInTheDocument();
+    expect(getByText('25 Sep 2026')).toBeInTheDocument();
   });
 });

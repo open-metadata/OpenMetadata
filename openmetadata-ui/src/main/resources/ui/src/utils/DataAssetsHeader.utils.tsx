@@ -677,6 +677,16 @@ const getTableHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
             />
           </>
         )}
+        {tableDetails?.lifeCycle?.created?.timestamp !== undefined && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              dataTestId="table-created-time"
+              label={t('label.created-time')}
+              value={formatDateTime(tableDetails.lifeCycle.created.timestamp)}
+            />
+          </>
+        )}
       </>
     ),
   };

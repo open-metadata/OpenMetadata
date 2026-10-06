@@ -106,6 +106,7 @@ const KnowledgePageSummary = ({
               <Col span={24}>
                 <Link
                   className="text-primary"
+                  rel="noopener noreferrer"
                   target="_blank"
                   to={getSafeHttpUrl(quickLinkData.url) ?? '#'}>
                   {quickLinkData.url}

@@ -251,8 +251,8 @@ test.describe(
         await expect(
           userPage
             .locator(`[data-testid="app-bar-item-${SidebarItem.GLOSSARY}"]`)
-            .first()
-        ).toBeVisible();
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
 
         // Tags is in saved nav with isHidden: true — must not be visible
         await expect(

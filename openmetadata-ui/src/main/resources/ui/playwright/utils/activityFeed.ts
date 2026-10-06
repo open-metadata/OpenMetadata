@@ -114,21 +114,21 @@ export const waitForReactionResponse = (page: Page, reaction: string) =>
 /**
  * Click a reaction inside the feed-reactions popover.
  *
- * rc-motion plays the popover's zoom-big entry over several frames, and
- * Playwright's two-frame stability check can land inside a lull in that
- * transform: it then presses coordinates the popover has already moved on
- * from, the press hits dead space, and no reaction request is ever sent — so
- * the caller's hoisted waitForResponse waits out the whole test. rc-motion
- * strips the `-appear`/`-enter` classes on `animationend`, which makes their
- * absence the deterministic "the popover has settled" signal.
+ * The popover animates in over several frames, and Playwright's two-frame
+ * stability check can land inside a lull in that transform: it then presses
+ * coordinates the popover has already moved on from, the press hits dead
+ * space, and no reaction request is ever sent — so the caller's hoisted
+ * waitForResponse waits out the whole test. react-aria removes
+ * `data-entering` once the entry animation ends, which makes its absence the
+ * deterministic "the popover has settled" signal.
  */
 export const clickFeedReaction = async (page: Page, reaction: string) => {
-  const popup = page.locator('.ant-popover-feed-reactions:visible');
+  const popup = page.getByTestId('feed-reactions-popover');
   await expect(popup).toBeVisible();
-  await expect(popup).not.toHaveClass(/ant-zoom-big-(appear|enter|leave)/);
+  await expect(popup).not.toHaveAttribute('data-entering');
 
   await popup
-    .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
+    .locator(`[data-testid="reaction-button"][aria-label="${reaction}"]`)
     .click();
 };
 
@@ -149,9 +149,9 @@ export const reactOnFeedCard = async (page: Page, message: Locator) => {
 
     await addReactionButton.click();
 
-    const popup = page.locator('.ant-popover-feed-reactions:visible');
+    const popup = page.getByTestId('feed-reactions-popover');
     await expect(popup).toBeVisible();
-    await expect(popup).not.toHaveClass(/ant-zoom-big-(appear|enter|leave)/);
+    await expect(popup).not.toHaveAttribute('data-entering');
 
     const reactionResponse = waitForReactionResponse(page, reaction);
     await popup.getByRole('button', { name: reaction, exact: true }).click();

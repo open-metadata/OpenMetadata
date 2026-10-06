@@ -633,13 +633,18 @@ public class ContainerRepository extends EntityRepository<Container> {
    * </ul>
    *
    * <p>The FQN-depth approach asks the right question — "which rows have an FQN that is
-   * exactly one level below this prefix?" — and answers it with a single indexed range
-   * scan against {@code idx_storage_container_entity_fqnhash_pattern}. The parent UUID is
+   * exactly one level below this prefix?" — and answers it as an equality against the
+   * generated {@code parentFqnHash} column (the row's own fqnHash minus its last segment),
+   * served by {@code idx_storage_container_entity_parent_children}. The parent UUID is
    * never needed; the parent doesn't even have to exist for its descendants to be
-   * discoverable. Because each FQN segment hashes to a fixed-width MD5, "exactly one
-   * segment below" is expressible as {@code fqnHash LIKE :parentHash AND fqnHash NOT LIKE
-   * :parentHashChild}, where {@code :parentHash} is {@code <hash>.%} and
-   * {@code :parentHashChild} is {@code <hash>.%.%}.
+   * discoverable.
+   *
+   * <p>The depth test used to be spelled {@code fqnHash LIKE '<hash>.%' AND fqnHash NOT
+   * LIKE '<hash>.%.%'}. That selects the same rows but gives the planner no indexable
+   * equality, so the {@code ORDER BY name, id LIMIT n} below won on cost and both engines
+   * scanned container rows until the page filled — O(containers in the deployment) per
+   * listing, worst exactly where it hurts most: a container near the root of a deep tree,
+   * with a large subtree but few direct children (#22530).
    *
    * <p>{@code search} narrows the page to children whose name contains the given substring
    * (case-insensitive). Empty / null disables the filter — the caller passes the raw text
@@ -672,9 +677,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     // latency budget in prod we can tell which step (depth query / count / service
     // restore) was responsible. The parent-lookup phase from the previous
     // entity_relationship-based implementation is gone — the FQN is enough.
-    String parentHashRaw = FullyQualifiedName.buildHash(parentFQN);
-    String parentHash = parentHashRaw + Entity.SEPARATOR + "%";
-    String parentHashChild = parentHashRaw + Entity.SEPARATOR + "%" + Entity.SEPARATOR + "%";
+    String parentHash = FullyQualifiedName.buildHash(parentFQN);
     String includeBind = includeToBindString(safeInclude);
     CollectionDAO.ContainerDAO containerDAO = (CollectionDAO.ContainerDAO) dao;
 
@@ -683,14 +686,12 @@ public class ContainerRepository extends EntityRepository<Container> {
       try (var ignored = RequestLatencyContext.phase("listChildrenPage")) {
         children =
             containerDAO.listDirectChildSummariesByParentHash(
-                parentHash, parentHashChild, nameLike, includeBind, safeLimit, safeOffset);
+                parentHash, nameLike, includeBind, safeLimit, safeOffset);
       }
 
       int total;
       try (var ignored = RequestLatencyContext.phase("listChildrenCount")) {
-        total =
-            containerDAO.countDirectChildrenByParentHash(
-                parentHash, parentHashChild, nameLike, includeBind);
+        total = containerDAO.countDirectChildrenByParentHash(parentHash, nameLike, includeBind);
       }
 
       if (children.isEmpty()) {
@@ -751,9 +752,10 @@ public class ContainerRepository extends EntityRepository<Container> {
    * deleted predicate on this bind via a three-branch OR chain
    * ({@code :includeDeleted = 'ALL' OR (:includeDeleted = 'DELETED' AND deleted = TRUE)
    * OR (:includeDeleted = 'NON_DELETED' AND deleted = FALSE)}) rather than three
-   * separate query templates — the underlying access path is identical, the index range
-   * scan on {@code fqnHash} runs once, and the per-row deleted predicate is evaluated
-   * post-index in all three modes.
+   * separate query templates — the underlying access path is identical in all three modes:
+   * the {@code parentFqnHash} equality drives the index, and {@code deleted} is the index's
+   * next column, so NON_DELETED and DELETED narrow the same lookup while ALL reads the
+   * parent's whole entry range.
    */
   private static String includeToBindString(Include include) {
     return switch (include) {

@@ -391,7 +391,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         // Index columns asynchronously when processing table entities. Each submission is gated by
         // a semaphore so a fast reader cannot pin an unbounded number of Table entities in the
         // shared doc-build queue (see submitColumnIndexTask).
-        if (Entity.TABLE.equals(entityType)) {
+        if (Entity.TABLE.equals(entityType) && searchRepository.isColumnIndexingEnabled()) {
           for (EntityInterface entity : entityInterfaces) {
             submitColumnIndexTask(entity, reindexContext);
           }

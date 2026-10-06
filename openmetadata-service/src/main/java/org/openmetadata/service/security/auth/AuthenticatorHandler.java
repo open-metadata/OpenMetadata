@@ -38,6 +38,9 @@ public interface AuthenticatorHandler {
     init(config);
   }
 
+  /** Releases what {@link #init} acquired, once a security reload has replaced this handler. */
+  default void close() {}
+
   JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException;
 
   void checkIfLoginBlocked(String userName);

@@ -377,7 +377,9 @@ test.describe.serial(
       await runDots.first().click();
 
       await expect(page.getByTestId('run-history-drawer')).toBeVisible();
-      await expect(page.getByTestId('run-history-item').first()).toBeVisible();
+      await expect(
+        page.getByTestId('run-history-item').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       expect(
         await page.getByTestId('run-history-item').count()

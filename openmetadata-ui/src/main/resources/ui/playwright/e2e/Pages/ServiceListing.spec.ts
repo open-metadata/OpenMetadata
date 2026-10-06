@@ -234,7 +234,9 @@ test.describe('Service Listing', () => {
     await page.getByTestId('searchbar').fill(serviceDisplayName);
     const searchRequest = await searchResponse;
     expect(searchRequest.status()).toBe(200);
-    await expect(serviceCell(page, serviceDisplayName).first()).toBeVisible();
+    await expect(
+      serviceCell(page, serviceDisplayName).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('service listing pages should use the correct search index for search', async ({
