@@ -30,6 +30,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onItemCleared,
       onOpenChange,
       onPopoverScroll,
+      popoverHeader,
+      popoverFooter,
     }: {
       items: MockItem[];
       selectedItems: MockItem[];
@@ -39,6 +41,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onItemCleared: (key: string) => void;
       onOpenChange: (isOpen: boolean) => void;
       onPopoverScroll: (e: UIEvent<HTMLElement>) => void;
+      popoverHeader?: ReactNode;
+      popoverFooter?: ReactNode;
     }) => (
       <div data-testid="asset-select-list">
         <span data-testid="placeholder">{placeholder}</span>
@@ -55,6 +59,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
             {item.label}
           </button>
         ))}
+        {popoverHeader}
         <div data-testid="listbox" onScroll={onPopoverScroll}>
           {items.map((item) => (
             <button key={item.id} onClick={() => onItemInserted(item.id)}>
@@ -62,6 +67,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
             </button>
           ))}
         </div>
+        {popoverFooter}
       </div>
     ),
     {
@@ -78,6 +84,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
+jest.mock('../DataAssetSelectList/DataAssetPickerRow', () =>
+  jest.fn(({ option }: { option: { id: string; displayName?: string } }) => (
+    <div data-testid={`option-${option.id}`}>{option.displayName}</div>
+  ))
+);
+jest.mock('../DataAssetSelectList/DataAssetPickerCountBar', () =>
+  jest.fn(({ count, total }: { count: number; total: number }) => (
+    <div data-testid="count-bar">{`${count} of ${total}`}</div>
+  ))
+);
+jest.mock('../DataAssetSelectList/DataAssetPickerFooter', () =>
+  jest.fn(() => <div data-testid="picker-footer" />)
+);
 jest.mock('../../../rest/searchAPI');
 jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIconWithBg: jest.fn().mockReturnValue(null),
@@ -153,6 +172,15 @@ describe('DataAssetAsyncSelectList', () => {
       screen.queryByTestId('option-svc.db.orders')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('option-svc.db.users')).toBeInTheDocument();
+  });
+
+  it('frames the list with the picker count bar and keyboard hints', async () => {
+    mockSearchQuery.mockResolvedValue(searchResponse(TABLES, 20));
+    render(<DataAssetAsyncSelectList />);
+    await open();
+
+    expect(screen.getByTestId('count-bar')).toHaveTextContent('2 of 20');
+    expect(screen.getByTestId('picker-footer')).toBeInTheDocument();
   });
 
   it('renders a profile picture for user options', async () => {

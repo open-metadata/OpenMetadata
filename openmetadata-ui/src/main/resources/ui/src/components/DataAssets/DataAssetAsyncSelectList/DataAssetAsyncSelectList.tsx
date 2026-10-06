@@ -15,9 +15,10 @@ import { castArray, isString } from 'lodash';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityIconSize } from '../../../utils/EntityIconUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import DataAssetPickerCountBar from '../DataAssetSelectList/DataAssetPickerCountBar';
+import DataAssetPickerFooter from '../DataAssetSelectList/DataAssetPickerFooter';
+import DataAssetPickerRow from '../DataAssetSelectList/DataAssetPickerRow';
 import { useAsyncDataAssetOptions } from '../DataAssetSelectList/useAsyncDataAssetOptions';
 import {
   DataAssetAsyncSelectListProps,
@@ -58,7 +59,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<DataAssetOption[]>([]);
 
-  const { options, loadOptions, handleSearchChange, handleScroll } =
+  const { options, totalCount, loadOptions, handleSearchChange, handleScroll } =
     useAsyncDataAssetOptions({
       isOpen,
       searchIndex,
@@ -150,16 +151,15 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     }
 
     return (
-      <Autocomplete.Item
-        data-testid={`option-${item.id}`}
-        icon={searchClassBase.getEntityIconWithBg(
-          type ?? '',
-          EntityIconSize.Size14
-        )}
-        id={item.id}
+      <DataAssetPickerRow
         key={item.id}
-        label={item.label}
-        supportingText={type}
+        option={{
+          id: item.id,
+          label: item.label ?? '',
+          displayName: option?.displayName,
+          name: option?.name,
+          type,
+        }}
       />
     );
   };
@@ -175,6 +175,10 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       multiple={multiple}
       placeholder={placeholder}
       popoverClassName={popoverClassName}
+      popoverFooter={<DataAssetPickerFooter />}
+      popoverHeader={
+        <DataAssetPickerCountBar count={items.length} total={totalCount} />
+      }
       selectedItems={selectedItems}
       onItemCleared={handleItemCleared}
       onItemInserted={handleItemInserted}
