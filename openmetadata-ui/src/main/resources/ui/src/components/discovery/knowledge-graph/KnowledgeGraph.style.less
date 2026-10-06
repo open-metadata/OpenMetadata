@@ -35,9 +35,12 @@
     min-width: 0;
   }
 
+  // Canvas row uses `minmax(0, 1fr)` (not min-content) so the canvas yields
+  // first when the viewport is short and the drawer below sits at its clamped
+  // height instead of pushing the whole stage past the window.
   .kg-stage {
     display: grid;
-    grid-template-rows: minmax(calc(var(--om-space-40) * 8), 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto;
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
     min-width: 0;
@@ -45,7 +48,7 @@
   }
 
   &.kg-details-open .kg-stage {
-    grid-template-rows: minmax(calc(var(--om-space-40) * 4), 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto;
   }
 
   .kg-toolbar-header > div {
@@ -353,11 +356,11 @@
   inset: 0;
   padding: var(--om-space-16);
   background: var(--tw-background-color-primary);
-  // `overflow: hidden` keeps the fullscreen fixed to the viewport so the inner
-  // drawer scrolls instead of pushing the whole page past the window; combined
-  // with `flex: 1 1 0` on the container the canvas can shrink to let the drawer
-  // sit at its clamped height.
-  overflow: hidden;
+  // Keep `overflow: auto` as a short-viewport safety net: once the toolbar +
+  // canvas floor + drawer min stack past the viewport, the page can still
+  // scroll to reach the drawer footer. The canvas row uses `minmax(0, 1fr)`
+  // so this fallback only kicks in on genuinely tight viewports.
+  overflow: auto;
   z-index: var(--om-z-900);
 
   .knowledge-graph-container {
