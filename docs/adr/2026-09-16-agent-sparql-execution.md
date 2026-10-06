@@ -499,6 +499,9 @@ configuration.
   rebuilding projection. The cost is that telemetry counts them under `RATE_LIMIT`; a distinct
   unavailable status and category would change the `McpToolCallUsage` schema and is left to a
   follow-up if the split is needed.
+  The classification is by exception name in `DefaultToolContext`, so it applies to every MCP
+  tool: a `QueryCapacityException` from any tool, including the administrator path of
+  `sparql_query`, is now a 429 where it previously fell through to a 500.
 - On a deployment without RDF the server withholds `sparql_query`, `entity_neighborhood`,
   `find_by_tag` and `shacl_validate` from `tools/list` and refuses a direct call. That is existing
   behavior, kept deliberately so clients are never offered a tool that cannot run, and this
