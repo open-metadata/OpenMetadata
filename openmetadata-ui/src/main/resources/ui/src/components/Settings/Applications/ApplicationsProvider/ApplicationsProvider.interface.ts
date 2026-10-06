@@ -44,7 +44,7 @@ export type ApplicationsContextType = {
    * application list itself.
    */
   contributionsReady: boolean;
-    /**
+  /**
    * Stable wrapper around `extensionRegistry.getContributions` whose
    * reference changes exactly when `contributionsVersion` does — i.e. once
    * after plugins have registered their contributions. Prefer this over
