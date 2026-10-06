@@ -116,6 +116,14 @@ export const Disabled: StoryObj = {
   ),
 };
 
+export const DisabledWithValue: StoryObj = {
+  render: () => (
+    <div style={{ width: 320 }}>
+      <Input isDisabled label="Service name" size="sm" value="mysql_sample" />
+    </div>
+  ),
+};
+
 export const Required: StoryObj = {
   render: () => (
     <div style={{ width: 320 }}>
@@ -163,6 +171,19 @@ export const TextAreaInvalid: StoryObj = {
         label="Description"
         placeholder="Enter description..."
         rows={4}
+      />
+    </div>
+  ),
+};
+
+export const TextAreaAutoSize: StoryObj = {
+  render: () => (
+    <div style={{ width: 380 }}>
+      <TextArea
+        autoSize={{ minRows: 1, maxRows: 6 }}
+        hint="Grows from one line up to six, then scrolls."
+        label="Prompt"
+        placeholder="Ask anything..."
       />
     </div>
   ),

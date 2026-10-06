@@ -334,9 +334,10 @@ export const Input = forwardRef<HTMLInputElement, Omit<InputProps, 'ref'>>(
             <InputBase
               ref={ref}
               {...{
-                // The group only restyles the outline; the input text and
-                // leading icon read their disabled colour from this prop.
+                // The group only restyles the outline; the input text, leading
+                // icon and trailing invalid marker read the field state here.
                 isDisabled,
+                isInvalid,
                 groupRef,
                 size,
                 fontSize,

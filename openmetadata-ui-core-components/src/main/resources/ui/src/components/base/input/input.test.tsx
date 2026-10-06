@@ -25,6 +25,17 @@ describe('Input', () => {
     );
   });
 
+  it('marks an invalid field on the input and shows the invalid icon', () => {
+    const { container } = render(<Input isInvalid label="Display name" />);
+
+    expect(
+      screen.getByRole('textbox', { name: /Display name/ })
+    ).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      container.querySelector('.tw\\:text-fg-error-secondary')
+    ).not.toBeNull();
+  });
+
   it('forwards its ref to the native input', () => {
     const ref = createRef<HTMLInputElement>();
     render(<Input label="Display name" ref={ref} />);
