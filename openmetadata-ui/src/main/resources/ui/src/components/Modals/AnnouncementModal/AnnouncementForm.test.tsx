@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CalendarDate, getLocalTimeZone } from '@internationalized/date';
 import {
   act,
   fireEvent,
@@ -19,7 +20,6 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { CalendarDate, getLocalTimeZone } from '@internationalized/date';
 import { DateTime } from 'luxon';
 import { useForm } from 'react-hook-form';
 import {
@@ -51,7 +51,7 @@ const triggerLabel = (timestamp: number): string => {
  * field, so the cell is looked up at document level; the clickable node is a
  * `role="button"` inside the grid cell, not the cell itself.
  */
-const pickDay = async (testId: string, day: string) => {
+const openAndPickDay = async (testId: string, day: string) => {
   await act(async () => {
     // `hidden` because the surrounding modal marks its subtree inaccessible to
     // the role query, which would otherwise match nothing.
@@ -72,15 +72,22 @@ const pickDay = async (testId: string, day: string) => {
   await act(async () => {
     fireEvent.click(target);
   });
+};
+
+/** Dismiss the open popover through one of its two footer buttons. */
+const dismissPopover = async (label: 'Apply' | 'Cancel') => {
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { hidden: true, name: label }));
+  });
+};
+
+const pickDay = async (testId: string, day: string) => {
+  await openAndPickDay(testId, day);
 
   // The picker keeps its popover open after a selection, so it has to be
   // dismissed before the next field is touched -- otherwise this grid is still
   // mounted and would shadow the next one's cells.
-  await act(async () => {
-    fireEvent.click(
-      screen.getByRole('button', { hidden: true, name: 'Apply' })
-    );
-  });
+  await dismissPopover('Apply');
 };
 
 jest.mock('react-i18next', () => ({
@@ -417,5 +424,79 @@ describe('AnnouncementForm', () => {
     expect(
       screen.getByRole('radio', { name: 'label.color-purple' })
     ).toBeChecked();
+  });
+
+  it('should discard a mis-picked day when the popover is cancelled', async () => {
+    const october = DateTime.fromISO('2026-10-10').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await openAndPickDay('startTime', '12');
+
+    // The pick is already committed while the popover is open -- core's
+    // DatePicker has no draft state of its own.
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(DateTime.fromISO('2026-10-12').toMillis())
+    );
+
+    await dismissPopover('Cancel');
+
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(october)
+    );
+  });
+
+  it('should keep a day that was confirmed with Apply', async () => {
+    const october = DateTime.fromISO('2026-10-10').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await pickDay('startTime', '12');
+
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(DateTime.fromISO('2026-10-12').toMillis())
+    );
+  });
+
+  it('should reject an end date that lands before the start, in place', async () => {
+    const onSubmit = jest.fn();
+    const october = DateTime.fromISO('2026-10-20').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await pickDay('endTime', '12');
+
+    // Named on the field the user can fix, rather than only surfacing as a
+    // toast once the create request has already been attempted.
+    await waitFor(() =>
+      expect(screen.getByTestId('endTime-error')).toHaveTextContent(
+        'message.announcement-invalid-start-time'
+      )
+    );
+
+    expect(screen.getByTestId('announcement-submit')).toBeDisabled();
+
+    // Moving the start back under the end clears it: the end is re-judged when
+    // the start changes, not only when the end is touched again.
+    await pickDay('startTime', '5');
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('endTime-error')).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('announcement-submit')).toBeEnabled();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

@@ -27,6 +27,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
+import { useRef } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
@@ -54,44 +55,6 @@ interface AnnouncementFormProps {
 }
 
 /**
- * The design system's `DatePicker`: a button trigger showing the selected day,
- * opening a popover with a calendar, a typable date field and a Today preset.
- * It carries its own calendar icon, so the field only supplies the label.
- *
- * The epoch-millis <-> `DateValue` bridge is the shared one the data-quality
- * date filters already use, so the conversion is not hand-rolled per form.
- * `tsconfig.json` pins the react-aria packages to this app's copy, without
- * which `DateValue` has two type identities and no value typechecks here.
- */
-const DateField = ({
-  boundary = 'start',
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  /** `end` anchors the value to 23:59:59.999 so the chosen day is included. */
-  boundary?: 'start' | 'end';
-  id: string;
-  label: string;
-  value?: number | null;
-  onChange: (value: number | null) => void;
-}) => (
-  <Box className="tw:min-w-0 tw:flex-1 tw:gap-1.5" direction="col">
-    <Label isRequired htmlFor={id}>
-      {label}
-    </Label>
-    <DatePicker
-      aria-label={label}
-      data-testid={id}
-      id={id}
-      value={millisToDateValue(value ?? undefined)}
-      onChange={(selected) => onChange(fromCalendarValue(selected, boundary))}
-    />
-  </Box>
-);
-
-/**
  * The error line under a field that is not an `Input` — an `Input` takes the
  * message as its own `hint`, which also wires `aria-describedby` to it. Core's
  * `HintText` is the same element either way, so the two read alike.
@@ -108,6 +71,61 @@ const FieldError = ({
       {message}
     </HintText>
   ) : null;
+
+/**
+ * The design system's `DatePicker`: a button trigger showing the selected day,
+ * opening a popover with a calendar, a typable date field and a Today preset.
+ * It carries its own calendar icon, so the field only supplies the label.
+ *
+ * The epoch-millis <-> `DateValue` bridge is the shared one the data-quality
+ * date filters already use, so the conversion is not hand-rolled per form.
+ * `tsconfig.json` pins the react-aria packages to this app's copy, without
+ * which `DateValue` has two type identities and no value typechecks here.
+ */
+const DateField = ({
+  boundary = 'start',
+  error,
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  /** `end` anchors the value to 23:59:59.999 so the chosen day is included. */
+  boundary?: 'start' | 'end';
+  error?: string;
+  id: string;
+  label: string;
+  value?: number | null;
+  onChange: (value: number | null) => void;
+}) => {
+  // What the field held when the popover opened. Core's `DatePicker` commits
+  // every day click straight through `onChange`, and its Cancel button only
+  // closes the popover — so without restoring this, cancelling out of a
+  // mis-click keeps the wrong day and submits it.
+  const valueOnOpen = useRef<number | null>(value ?? null);
+
+  return (
+    <Box className="tw:min-w-0 tw:flex-1 tw:gap-1.5" direction="col">
+      <Label isRequired htmlFor={id}>
+        {label}
+      </Label>
+      <DatePicker
+        aria-label={label}
+        data-testid={id}
+        id={id}
+        value={millisToDateValue(value ?? undefined)}
+        onCancel={() => onChange(valueOnOpen.current)}
+        onChange={(selected) => onChange(fromCalendarValue(selected, boundary))}
+        onOpenChange={(isOpen) => {
+          if (isOpen) {
+            valueOnOpen.current = value ?? null;
+          }
+        }}
+      />
+      <FieldError message={error} testId={`${id}-error`} />
+    </Box>
+  );
+};
 
 const TITLE_MIN_LENGTH = 5;
 const TITLE_MAX_LENGTH = 124;
@@ -288,11 +306,16 @@ const AnnouncementForm = ({
                   control={form.control}
                   name="startTime"
                   rules={{
+                    // Moving the start can invalidate an end that was fine
+                    // against the old one, so the other field is re-judged
+                    // here rather than only on the next submit.
+                    deps: ['endTime'],
                     validate: (value) =>
                       value != null || requiredMessage(t('label.start-date')),
                   }}>
-                  {({ field }) => (
+                  {({ field, fieldState }) => (
                     <DateField
+                      error={fieldState.error?.message}
                       id="startTime"
                       label={t('label.start-date')}
                       value={field.value}
@@ -305,12 +328,26 @@ const AnnouncementForm = ({
                   control={form.control}
                   name="endTime"
                   rules={{
-                    validate: (value) =>
-                      value != null || requiredMessage(t('label.end-date')),
+                    // The ordering rule lives on the field the user can fix.
+                    // Both modals still refuse an inverted window on submit,
+                    // but that arrives as a toast after the fact; stated here
+                    // it keeps submit disabled and names the problem in place.
+                    validate: (value, { startTime }) => {
+                      if (value == null) {
+                        return requiredMessage(t('label.end-date'));
+                      }
+
+                      return (
+                        startTime == null ||
+                        value > startTime ||
+                        t('message.announcement-invalid-start-time')
+                      );
+                    },
                   }}>
-                  {({ field }) => (
+                  {({ field, fieldState }) => (
                     <DateField
                       boundary="end"
+                      error={fieldState.error?.message}
                       id="endTime"
                       label={t('label.end-date')}
                       value={field.value}

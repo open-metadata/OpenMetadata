@@ -43,9 +43,9 @@ interface AnnouncementColorSelectProps {
 }
 
 // The chips stay neutral whatever the type: the choice is shown by fill, not by
-// colour, so a Critical chip does not shout while the form is still a draft.
+// the type's own colour, so a Critical chip does not shout while the form is
+// still a draft.
 const CHIP_CLASS = 'tw:cursor-pointer';
-const SELECTED_CHIP_CLASS = 'tw:bg-tertiary tw:text-primary';
 
 /**
  * One of five mutually exclusive types, so a radio group rather than a row of
@@ -68,10 +68,13 @@ export const AnnouncementTypeSelect = ({
       onChange={(next) => onChange(next as AnnouncementType)}>
       {ANNOUNCEMENT_TYPE_ORDER.map((type) => {
         const { icon, labelKey } = ANNOUNCEMENT_TYPE_CONFIG[type];
-        const className = classNames(
-          CHIP_CLASS,
-          value === type && SELECTED_CHIP_CLASS
-        );
+        // Selection is the badge's own `color`, not a class laid over a
+        // `modern` chip: `color` and `modern` share the same `rounded-md`
+        // shape, so a brand fill against the resting grey reads as selected
+        // without changing the chip's size or outline weight. The previous
+        // `bg-tertiary` overlay was a grey on a white surface — a difference
+        // too small to see which of the five was chosen.
+        const chipColor = value === type ? 'brand' : 'gray';
 
         return (
           <RadioButton
@@ -94,19 +97,19 @@ export const AnnouncementTypeSelect = ({
                  still to be picked — so it takes a dot, as the frame draws it. */
               type === AnnouncementType.Custom ? (
                 <BadgeWithDot
-                  className={className}
-                  color="gray"
+                  className={CHIP_CLASS}
+                  color={chipColor}
                   size="sm"
-                  type="modern">
+                  type="color">
                   {t(labelKey)}
                 </BadgeWithDot>
               ) : (
                 <BadgeWithIcon
-                  className={className}
-                  color="gray"
+                  className={CHIP_CLASS}
+                  color={chipColor}
                   iconLeading={icon}
                   size="sm"
-                  type="modern">
+                  type="color">
                   {t(labelKey)}
                 </BadgeWithIcon>
               )

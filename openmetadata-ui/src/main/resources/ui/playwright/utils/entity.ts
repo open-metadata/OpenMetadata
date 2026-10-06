@@ -44,6 +44,7 @@ import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForFutureDays,
+  pickDateInCorePicker,
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import {
@@ -1588,21 +1589,27 @@ const announcementForm = async (
 ) => {
   await page.fill('#title', data.title);
 
-  // `fill` alone is enough for a native `<input type="date">`. The old
-  // click-then-Enter dance is left over from the antd DatePicker and is now
-  // actively harmful: the picker indicator is stretched across the whole
-  // control so a click opens the native picker, and the Enter then commits
-  // whatever date that picker has highlighted — today — silently overwriting
-  // the end date that was just filled.
-  await page.fill('#startTime', data.startDate);
-  await page.fill('#endTime', data.endDate);
-
   // Scoped to the announcement dialog, not the page: this form opens over an
   // entity page that has description editors of its own, and an unscoped
   // `descriptionBox` matches those too.
   const announcementDialog = page
     .locator('[role="dialog"]')
     .filter({ has: page.locator('#announcement-submit') });
+
+  // Both dates are the design system's DatePicker — a button opening a
+  // calendar, not a text input — so each is driven through the shared picker
+  // helper rather than filled.
+  await pickDateInCorePicker(
+    page,
+    announcementDialog.getByTestId('startTime').getByRole('button'),
+    data.startDate
+  );
+  await pickDateInCorePicker(
+    page,
+    announcementDialog.getByTestId('endTime').getByRole('button'),
+    data.endDate
+  );
+
   const announcementDescription = announcementDialog.locator(descriptionBox);
 
   await expect(announcementDescription).toHaveCount(1);
