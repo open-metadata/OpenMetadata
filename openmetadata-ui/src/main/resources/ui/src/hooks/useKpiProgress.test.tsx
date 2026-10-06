@@ -138,6 +138,39 @@ describe('useKpiProgress', () => {
     expect(result.current.atRiskCount).toBe(1);
   });
 
+  // The projection is null whenever the series holds a single point, and a
+  // closed window used to read that as a miss -- so a finished KPI that had
+  // already beaten its target was reported missed and counted as at risk.
+  it('calls a closed window on track when a lone result already met the target', async () => {
+    mockGetListKPIs.mockResolvedValue(kpiList(kpi(NOW - DAY_MS)));
+    mockGetListKpiResult.mockResolvedValue(
+      kpiResults({ count: 120, day: DAY_TWO })
+    );
+
+    const { result } = renderHook(() => useKpiProgress(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.kpis[0].daysLeft).toBe(0);
+    expect(result.current.kpis[0].projected).toBeNull();
+    expect(result.current.kpis[0].status).toBe('onTrack');
+    expect(result.current.atRiskCount).toBe(0);
+  });
+
+  it('still calls a closed window missed when the observed value fell short', async () => {
+    mockGetListKPIs.mockResolvedValue(kpiList(kpi(NOW - DAY_MS)));
+    mockGetListKpiResult.mockResolvedValue(
+      kpiResults({ count: 40, day: DAY_TWO })
+    );
+
+    const { result } = renderHook(() => useKpiProgress(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.kpis[0].status).toBe('missed');
+    expect(result.current.atRiskCount).toBe(1);
+  });
+
   it('keeps the derived arrays referentially stable across re-renders', async () => {
     mockGetListKPIs.mockResolvedValue(kpiList(kpi(NOW + 10 * DAY_MS)));
     mockGetListKpiResult.mockResolvedValue(

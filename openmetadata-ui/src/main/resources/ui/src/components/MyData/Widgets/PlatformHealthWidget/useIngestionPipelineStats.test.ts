@@ -138,6 +138,56 @@ describe('useIngestionPipelineStats cache integration', () => {
     expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(1);
   });
 
+  // A single capped read left every pipeline past the first page unseen, so
+  // the services owning them fell into "not run yet" whatever state they were
+  // actually in -- wrong on exactly the large installs that lean on this card.
+  it('follows the paging cursor so late pipelines are not miscounted', async () => {
+    mockServices([{ id: 'svc-1' }, { id: 'svc-2' }]);
+    mockGetIngestionPipelines
+      .mockResolvedValueOnce({
+        data: [pipeline(PipelineState.Success, 'svc-1')],
+        paging: { after: 'page-2' },
+      } as never)
+      .mockResolvedValueOnce({
+        data: [pipeline(PipelineState.Failed, 'svc-2')],
+        paging: {},
+      } as never);
+
+    const { result } = renderHook(() => useIngestionPipelineStats(), {
+      wrapper: withQueryClient,
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(2);
+    expect(mockGetIngestionPipelines).toHaveBeenLastCalledWith(
+      expect.objectContaining({ paging: { after: 'page-2' } })
+    );
+    // svc-2's only pipeline is on the second page: unpaged it was "not run
+    // yet" rather than failing.
+    expect(result.current).toMatchObject({
+      failedServices: 1,
+      healthyServices: 1,
+      pendingServices: 0,
+    });
+  });
+
+  it('stops paging once the cursor clears', async () => {
+    mockServices([{ id: 'svc-1' }]);
+    mockGetIngestionPipelines.mockResolvedValue({
+      data: [pipeline(PipelineState.Success, 'svc-1')],
+      paging: {},
+    } as never);
+
+    const { result } = renderHook(() => useIngestionPipelineStats(), {
+      wrapper: withQueryClient,
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(1);
+  });
+
   it('counts every configured service, not just ones with pipelines', async () => {
     // Connections page shows every configured service regardless of whether
     // it has ever run a pipeline -- svc-5 has no pipeline at all and must

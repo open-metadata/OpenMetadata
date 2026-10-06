@@ -267,17 +267,53 @@ const sortFailingServices = (services: FailingService[]): FailingService[] =>
     return byState !== 0 ? byState : (b.lastRunTs ?? 0) - (a.lastRunTs ?? 0);
   });
 
-const fetchPipelineStats = async (): Promise<IngestionPipelineStatsData> => {
-  const [services, pipelinesRes] = await Promise.all([
-    fetchConnectionServices(),
-    getIngestionPipelines({
+const PIPELINE_PAGE_SIZE = 1000;
+
+/**
+ * Hard stop on the paging loop. A cursor the server never clears would
+ * otherwise spin forever; twenty pages is already far past any real install.
+ */
+const MAX_PIPELINE_PAGES = 20;
+
+/**
+ * Every ingestion pipeline, followed page by page.
+ *
+ * A single capped read left every pipeline beyond the first page out of
+ * `pipelinesByServiceId`, so the services owning them fell into "not run yet"
+ * whatever state they were actually in -- wrong precisely on the large
+ * deployments whose admins lean on this card hardest.
+ */
+const fetchAllIngestionPipelines = async (): Promise<IngestionPipeline[]> => {
+  const pipelines: IngestionPipeline[] = [];
+  let after: string | undefined;
+  let pages = 0;
+
+  do {
+    // Sequential by necessity: the next cursor is only known once the current
+    // page lands.
+    // eslint-disable-next-line no-await-in-loop
+    const response = await getIngestionPipelines({
       arrQueryFields: ['pipelineStatuses'],
-      limit: 1000,
-    }),
+      limit: PIPELINE_PAGE_SIZE,
+      ...(after ? { paging: { after } } : {}),
+    });
+
+    pipelines.push(...(response.data ?? []));
+    after = response.paging?.after;
+    pages += 1;
+  } while (after && pages < MAX_PIPELINE_PAGES);
+
+  return pipelines;
+};
+
+const fetchPipelineStats = async (): Promise<IngestionPipelineStatsData> => {
+  const [services, pipelines] = await Promise.all([
+    fetchConnectionServices(),
+    fetchAllIngestionPipelines(),
   ]);
 
   const pipelinesByServiceId = new Map<string, IngestionPipeline[]>();
-  (pipelinesRes.data ?? []).forEach((p) => {
+  pipelines.forEach((p) => {
     const serviceId = p.service?.id;
     if (!serviceId) {
       return;

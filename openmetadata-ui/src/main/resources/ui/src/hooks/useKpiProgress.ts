@@ -89,11 +89,15 @@ export const projectValue = (
 export const resolveStatus = (
   projected: number | null,
   target: number,
-  daysLeft: number
+  daysLeft: number,
+  current: number
 ): KpiStatus => {
-  // The window has closed: the KPI either made its target or it did not.
+  // The window has closed, so judge the KPI on what it actually reached. The
+  // projection is null whenever the series holds a single point, and reading
+  // that as a miss reported a finished KPI that had already beaten its target
+  // as missed -- and counted it in `atRiskCount`.
   if (daysLeft <= 0) {
-    return projected !== null && projected >= target ? 'onTrack' : 'missed';
+    return current >= target ? 'onTrack' : 'missed';
   }
 
   // No trend yet, so there is nothing to call at risk.
@@ -204,7 +208,7 @@ export const useKpiProgress = (
           name: kpi.displayName ?? kpi.name,
           projected,
           series,
-          status: resolveStatus(projected, kpi.targetValue, daysLeft),
+          status: resolveStatus(projected, kpi.targetValue, daysLeft, current),
           target: kpi.targetValue,
           windowEnd: end,
           windowStart: start,
