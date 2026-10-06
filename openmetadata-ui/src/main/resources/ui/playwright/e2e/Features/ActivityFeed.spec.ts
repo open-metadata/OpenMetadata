@@ -244,22 +244,26 @@ test.describe('FeedWidget on landing page', () => {
 
     await expect(sortDropdown).toBeVisible();
 
-    // Test dropdown options
+    // The menu renders inside the trigger, so it is scoped to this widget.
+    const sortMenu = widget.getByRole('menu');
+
     await sortDropdown.click();
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
 
     await expect(
-      page.getByRole('menuitem', { name: 'All Activity' })
+      sortMenu.getByRole('menuitem', { name: 'All Activity' })
     ).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'My Data' })).toBeVisible();
     await expect(
-      page.getByRole('menuitem', { name: 'Following' })
+      sortMenu.getByRole('menuitem', { name: 'My Data' })
+    ).toBeVisible();
+    await expect(
+      sortMenu.getByRole('menuitem', { name: 'Following' })
     ).toBeVisible();
 
-    // Close dropdown by clicking outside
-    await widget.click();
+    // Escape rather than a click on the widget: the click can land on a feed
+    // card, which opens the activity drawer.
+    await page.keyboard.press('Escape');
 
-    await expect(page.locator('.ant-dropdown')).not.toBeVisible();
+    await expect(sortMenu).toBeHidden();
   });
 
   test('clicking title navigates to explore page', async ({ page }) => {
@@ -422,11 +426,11 @@ test.describe('FeedWidget on landing page', () => {
     );
 
     // Pin the card by its marker: the list re-renders after every reaction, so
-    // an index would not resolve to the same card on the toggle-off pass.
-    const seededCard = widget
-      .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker })
-      .first();
+    // an index would not resolve to the same card on the toggle-off pass. The
+    // newest event is always on the widget's first page.
+    const seededCard = widget.getByTestId('message-container').filter({
+      hasText: `${ownedActivityMarker} ${SEEDED_OWNED_ACTIVITY_COUNT - 1}`,
+    });
 
     await expect(seededCard).toBeVisible();
 
