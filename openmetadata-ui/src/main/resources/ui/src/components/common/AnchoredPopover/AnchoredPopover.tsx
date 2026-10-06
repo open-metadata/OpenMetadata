@@ -40,7 +40,9 @@ interface AnchoredPopoverProps {
  * react-aria pressable child, but these pickers take whatever the caller
  * renders (a pill, a table cell, a core Button), so the popover is anchored
  * to a wrapper instead and opened from its click — which a nested button's
- * keyboard activation also dispatches.
+ * keyboard activation also dispatches. The click is caught in the capture
+ * phase because react-aria pressables (e.g. a `TooltipTrigger` around the
+ * trigger) stop it from bubbling.
  */
 const AnchoredPopover = ({
   children,
@@ -55,12 +57,11 @@ const AnchoredPopover = ({
 
   return (
     <>
-      {/* The trigger inside is the interactive element; its keyboard activation bubbles here as a click. */}
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      {/* The trigger inside is the interactive element; its keyboard activation reaches here as a click. */}
       <span
         className="tw:inline-flex tw:max-w-full"
         ref={anchorRef}
-        onClick={() => onOpenChange(true)}>
+        onClickCapture={() => onOpenChange(true)}>
         {children}
       </span>
       <Popover

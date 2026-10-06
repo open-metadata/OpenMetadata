@@ -751,7 +751,7 @@ const AssetsTabs = forwardRef(
       [getRemovalWarningContent]
     );
 
-    const items: ManageMenuItem[] = [
+    const getCardMenuItems = (source: SourceType): ManageMenuItem[] => [
       {
         label: (
           <ManageButtonItemLabel
@@ -764,11 +764,7 @@ const AssetsTabs = forwardRef(
           />
         ),
         key: 'delete-button',
-        onClick: () => {
-          if (selectedCard) {
-            onExploreCardDelete(selectedCard);
-          }
-        },
+        onClick: () => onExploreCardDelete(source),
       },
     ];
 
@@ -1026,7 +1022,7 @@ const AssetsTabs = forwardRef(
                   isRemovable && canEditAll ? (
                     <ManageMenu
                       data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                      items={items}
+                      items={getCardMenuItems(_source)}
                       label={t('label.manage-entity', {
                         entity: t('label.asset'),
                       })}
@@ -1079,6 +1075,7 @@ const AssetsTabs = forwardRef(
         assetErrorPlaceHolder,
         selectedItems,
         setSelectedCard,
+        onExploreCardDelete,
         handlePageChange,
         handlePageSizeChange,
         handleCheckboxChange,
