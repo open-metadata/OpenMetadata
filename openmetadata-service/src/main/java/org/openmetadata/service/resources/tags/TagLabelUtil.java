@@ -458,15 +458,18 @@ public class TagLabelUtil {
   }
 
   /**
-   * Mutual-exclusivity applies to labels a user actually applied, never to projections. A field now
-   * reads back its parent's glossary terms as PROPAGATED, so a GET → PUT round trip would otherwise
-   * present the parent's term and the field's own term together and reject a table that saved fine
-   * before. Projections are already excluded from {@code tag_usage}; exclude them here for the same
-   * reason.
+   * Mutual-exclusivity applies to the labels a user applied and the classification tags their
+   * glossary terms imply, never to projections. A field reads back its parent's glossary terms as
+   * PROPAGATED, along with the DERIVED tags those terms imply, so a GET → PUT round trip would
+   * otherwise present the parent's labels next to the field's own and reject a table that saved
+   * fine before. A DERIVED label on the list does not say which term it came from, so the implied
+   * tags are re-derived here from the user-applied terms alone.
    */
   public static void checkMutuallyExclusiveForUserAppliedTags(List<TagLabel> tagLabels) {
+    List<TagLabel> userApplied =
+        listOrEmpty(tagLabels).stream().filter(tag -> !isSystemGenerated(tag)).toList();
     checkMutuallyExclusive(
-        listOrEmpty(tagLabels).stream().filter(tag -> !isSystemGenerated(tag)).toList());
+        addDerivedTagsWithPreFetched(userApplied, batchFetchDerivedTags(userApplied)));
   }
 
   public static void checkMutuallyExclusive(List<TagLabel> tagLabels) {

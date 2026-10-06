@@ -6,12 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -24,6 +28,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 class TagLabelUtilTest {
 
@@ -254,14 +259,16 @@ class TagLabelUtilTest {
             glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
             glossaryLabel("Finance.Cost", TagLabel.LabelType.PROPAGATED));
 
-    assertDoesNotThrow(
-        () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(roundTrippedColumnTags));
-    assertDoesNotThrow(
-        () ->
-            TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(
-                List.of(
-                    glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
-                    glossaryLabel("Finance.Cost", TagLabel.LabelType.DERIVED))));
+    try (MockedStatic<Entity> entityMock = derivedTagsInTagUsage(Map.of())) {
+      assertDoesNotThrow(
+          () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(roundTrippedColumnTags));
+      assertDoesNotThrow(
+          () ->
+              TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(
+                  List.of(
+                      glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
+                      glossaryLabel("Finance.Cost", TagLabel.LabelType.DERIVED))));
+    }
   }
 
   @Test
@@ -271,8 +278,9 @@ class TagLabelUtilTest {
             glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
             glossaryLabel("Finance.Cost", TagLabel.LabelType.MANUAL));
 
-    try (MockedStatic<TagLabelUtil> utilMock =
-        mockStatic(TagLabelUtil.class, Mockito.CALLS_REAL_METHODS)) {
+    try (MockedStatic<Entity> entityMock = derivedTagsInTagUsage(Map.of());
+        MockedStatic<TagLabelUtil> utilMock =
+            mockStatic(TagLabelUtil.class, Mockito.CALLS_REAL_METHODS)) {
       utilMock.when(() -> TagLabelUtil.mutuallyExclusive(any(TagLabel.class))).thenReturn(true);
 
       assertThrows(
@@ -281,7 +289,80 @@ class TagLabelUtilTest {
     }
   }
 
+  /**
+   * The classification tags a field's own glossary term implies are still checked: a term carrying
+   * {@code PII.Sensitive} next to a manual {@code PII.NonSensitive} is rejected, as it was before
+   * inherited labels were exempted.
+   */
+  @Test
+  void derivedTagOfTheFieldsOwnTermStillConflictsWithAManualTag() {
+    List<TagLabel> columnTags =
+        List.of(
+            glossaryLabel("Finance.Revenue", TagLabel.LabelType.MANUAL),
+            classificationLabel("PII.NonSensitive", TagLabel.LabelType.MANUAL));
+    Map<String, List<TagLabel>> revenueImpliesSensitive =
+        Map.of(
+            "Finance.Revenue",
+            List.of(classificationLabel("PII.Sensitive", TagLabel.LabelType.DERIVED)));
+
+    try (MockedStatic<Entity> entityMock = derivedTagsInTagUsage(revenueImpliesSensitive);
+        MockedStatic<TagLabelUtil> utilMock =
+            mockStatic(TagLabelUtil.class, Mockito.CALLS_REAL_METHODS)) {
+      utilMock.when(() -> TagLabelUtil.mutuallyExclusive(any(TagLabel.class))).thenReturn(true);
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(columnTags));
+    }
+  }
+
+  /**
+   * A term inherited from the parent and the classification tag it implies are both projections. A
+   * GET → PUT round trip carries them back next to the column's own {@code PII.NonSensitive}, and
+   * neither may block the write. That is why the exemption covers DERIVED labels and not only
+   * PROPAGATED ones.
+   */
+  @Test
+  void derivedTagOfAnInheritedTermDoesNotConflictWithAManualTag() {
+    List<TagLabel> roundTrippedColumnTags =
+        List.of(
+            classificationLabel("PII.NonSensitive", TagLabel.LabelType.MANUAL),
+            glossaryLabel("Finance.Revenue", TagLabel.LabelType.PROPAGATED),
+            classificationLabel("PII.Sensitive", TagLabel.LabelType.DERIVED));
+
+    try (MockedStatic<TagLabelUtil> utilMock =
+        mockStatic(TagLabelUtil.class, Mockito.CALLS_REAL_METHODS)) {
+      utilMock.when(() -> TagLabelUtil.mutuallyExclusive(any(TagLabel.class))).thenReturn(true);
+
+      assertDoesNotThrow(
+          () -> TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(roundTrippedColumnTags));
+    }
+  }
+
+  /** Stands in for tag_usage: the classification tags each glossary term carries. */
+  private static MockedStatic<Entity> derivedTagsInTagUsage(
+      Map<String, List<TagLabel>> derivedTagsByTermFqn) {
+    Map<String, List<TagLabel>> derivedTagsByTermHash = new HashMap<>();
+    derivedTagsByTermFqn.forEach(
+        (termFqn, derivedTags) ->
+            derivedTagsByTermHash.put(FullyQualifiedName.buildHash(termFqn), derivedTags));
+    CollectionDAO.TagUsageDAO tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
+    when(tagUsageDAO.getDerivedTagsBatch(anyList())).thenReturn(derivedTagsByTermHash);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(collectionDAO.tagUsageDAO()).thenReturn(tagUsageDAO);
+    MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+    entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+    return entityMock;
+  }
+
   private static TagLabel glossaryLabel(String fqn, TagLabel.LabelType labelType) {
     return new TagLabel().withTagFQN(fqn).withSource(TagSource.GLOSSARY).withLabelType(labelType);
+  }
+
+  private static TagLabel classificationLabel(String fqn, TagLabel.LabelType labelType) {
+    return new TagLabel()
+        .withTagFQN(fqn)
+        .withSource(TagSource.CLASSIFICATION)
+        .withLabelType(labelType);
   }
 }
