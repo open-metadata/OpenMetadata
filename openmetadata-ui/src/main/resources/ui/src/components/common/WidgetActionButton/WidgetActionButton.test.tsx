@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   WidgetCommentButton,
   WidgetEditButton,
@@ -37,4 +38,27 @@ describe('WidgetActionButton', () => {
       );
     }
   );
+
+  it('keeps a disabled action to one tab stop, named by its title, that does nothing', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onClick = jest.fn();
+    render(
+      <WidgetPlusButton disabled title="Select a domain" onClick={onClick} />
+    );
+
+    await user.tab();
+    const button = screen.getByRole('button', { name: 'Select a domain' });
+
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+
+    await user.keyboard('{Enter}');
+    await user.click(button);
+
+    expect(onClick).not.toHaveBeenCalled();
+
+    await user.tab();
+
+    expect(document.body).toHaveFocus();
+  });
 });
