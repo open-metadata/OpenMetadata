@@ -96,10 +96,6 @@ _TRUTHY_LOOKML_FLAGS = {"yes", "true"}
 # through the type map the column builder already uses so the two never disagree.
 _TIME_DATA_TYPES = {DataType.DATE, DataType.TIME, DataType.DATETIME, DataType.TIMESTAMP}
 
-# `${TABLE}.col`, where the identifier may be delimited and the delimiter is dialect specific:
-# Snowflake uses ", Databricks/BigQuery `, MSSQL []. Kept in sync with the equivalent pattern in
-# `metadata.py::_extract_column_lineage`.
-_TABLE_COLUMN_PATTERN = re.compile(r'\$\{TABLE\}\.(?:"([^"]+)"|`([^`]+)`|\[([^\]]+)\]|([a-zA-Z_][a-zA-Z0-9_]*))')
 _FIELD_REFERENCE_PATTERN = re.compile(r"\$\{(?!TABLE\})([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
 
@@ -164,29 +160,6 @@ def measure_references(sql: str | None) -> list[str]:
     for reference in _FIELD_REFERENCE_PATTERN.findall(sql or ""):
         seen.setdefault(reference, None)
     return list(seen)
-
-
-def table_column_references(sql: str | None, field_sql: dict[str, str | None]) -> set[str]:
-    """Source columns a SQL body reads, resolving ``${field}`` references transitively.
-
-    A measure rarely names its columns directly -- ``${total_revenue} / ${count}`` reaches the
-    underlying columns only through two other fields. ``field_sql`` maps every field of the view
-    to its SQL so the walk can follow them. Cycles terminate: LookML does not forbid a field
-    referencing itself through another, and one malformed view must not hang the run.
-    """
-
-    def resolve(body: str | None, visited: set[str]) -> set[str]:
-        columns = {
-            next(group for group in match.groups() if group) for match in _TABLE_COLUMN_PATTERN.finditer(body or "")
-        }
-        for reference in _FIELD_REFERENCE_PATTERN.findall(body or ""):
-            if reference in visited or reference not in field_sql:
-                continue
-            visited.add(reference)
-            columns.update(resolve(field_sql[reference], visited))
-        return columns
-
-    return resolve(sql, set())
 
 
 def _render_lookml_filter(field: str | None, value: str | None) -> str | None:
