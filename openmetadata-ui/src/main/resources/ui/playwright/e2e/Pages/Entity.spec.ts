@@ -62,6 +62,7 @@ import {
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
 import {
   applyGlossaryPicker,
@@ -130,7 +131,13 @@ test.afterAll('Cleanup shared entities', async () => {
   await afterAction();
 });
 
-Object.entries(entities).forEach(([key, EntityClass]) => {
+const entityEntries = Object.entries(entities);
+
+pickEntityMatrix(
+  __filename,
+  entityEntries,
+  entityEntries.filter(([, EntityClass]) => EntityClass === TableClass)
+).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   // For tables, softDeleteEntity counts and clicks the deleted table in its
   // schema's listing, so that table must be alone in its own schema.
@@ -915,7 +922,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             // Should have at least one nested column link
-            await expect(nestedColumnLinks.first()).toBeVisible({
+            await expect(
+              nestedColumnLinks.filter({ visible: true })
+            ).not.toHaveCount(0, {
               timeout: 5000,
             });
 
@@ -1211,7 +1220,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             if ((await nestedColumnLinks.count()) > 0) {
-              await expect(nestedColumnLinks.first()).toBeVisible();
+              await expect(
+                nestedColumnLinks.filter({ visible: true })
+              ).not.toHaveCount(0);
 
               const linkCount = await nestedColumnLinks.count();
 
@@ -1539,8 +1550,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
 
           // Verify Overview tab is active by default
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Update description via panel
@@ -1581,15 +1593,17 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           if (entity.type === 'Table') {
             await page.getByTestId('data-quality-tab').click();
 
-            await expect(page.getByTestId('data-quality-tab')).toHaveClass(
-              /ant-menu-item-selected/
+            await expect(page.getByTestId('data-quality-tab')).toHaveAttribute(
+              'aria-selected',
+              'true'
             );
           }
 
           await page.getByTestId('overview-tab').click();
 
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /ant-menu-item-selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Test column navigation with arrow buttons and verify nested column counting
@@ -1873,12 +1887,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 testCaseCardsSection.locator('.test-case-card');
 
               await expect(failedCards).toHaveCount(1);
-
-              const failedCard = failedCards.first();
-
-              await expect(failedCard.locator('.test-case-name')).toContainText(
-                testCase2Name
-              );
+              await expect(
+                failedCards.locator('.test-case-name')
+              ).toContainText(testCase2Name);
             });
 
             await test.step('Filter by success and verify test case card', async () => {

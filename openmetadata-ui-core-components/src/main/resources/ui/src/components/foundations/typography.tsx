@@ -77,6 +77,13 @@ type TypographyEllipsis =
   | {
       rows?: EllipsisRows;
       tooltip?: ReactNode;
+      /**
+       * Render the tooltip trigger as a plain span instead of a `<button>`.
+       * Set it when the text sits inside a link, button or other interactive
+       * element: a nested button is invalid HTML and adds a second tab stop.
+       * Hover still opens the tooltip; keyboard focus belongs to the ancestor.
+       */
+      excludeTriggerFromTabOrder?: boolean;
     };
 
 interface TypographyProps extends HTMLAttributes<HTMLElement> {
@@ -283,6 +290,7 @@ export const Typography = (props: TypographyProps) => {
   if (ellipsisTooltip) {
     return (
       <Tooltip
+        excludeTriggerFromTabOrder={ellipsisConfig?.excludeTriggerFromTabOrder}
         isOpen={isEllipsisTooltipOpen}
         title={ellipsisTooltip}
         triggerClassName={cx(

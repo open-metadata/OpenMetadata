@@ -13,7 +13,7 @@
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Form,
@@ -21,7 +21,6 @@ import {
   Input,
   InputNumber,
   Select,
-  Switch,
   Tooltip,
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
@@ -491,10 +490,10 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         />
       );
     } else if (data.dataType === TestDataType.Boolean) {
-      Field = <Switch />;
+      Field = <Toggle size="sm" />;
       internalFormItemProps = {
         ...internalFormItemProps,
-        valuePropName: 'checked',
+        valuePropName: 'isSelected',
       };
     } else if (
       data.dataType === TestDataType.Array ||

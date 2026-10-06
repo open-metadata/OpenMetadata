@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import {
   CheckCircleTwoTone,
   ClockCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Avatar, Button, Card, Collapse, Divider, Space } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Avatar, Button, Card, Collapse, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -43,9 +42,11 @@ const AppInstallVerifyCard = ({
     <div className="flex-center flex-col">
       <Space className="p-t-lg">
         <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
-        <Divider dashed className="w-44 app-card-divider">
-          <CheckCircleTwoTone twoToneColor={LIGHT_GREEN_COLOR} />
-        </Divider>
+        <Divider
+          dashed
+          className="tw:w-44 tw:gap-0 app-card-divider"
+          label={<CheckCircleTwoTone twoToneColor={LIGHT_GREEN_COLOR} />}
+        />
         <Avatar
           className="app-marketplace-avatar flex-center bg-white border"
           icon={
@@ -107,7 +108,7 @@ const AppInstallVerifyCard = ({
           />
         </Collapse>
 
-        <Divider />
+        <Divider className="tw:my-6" />
         <div className="d-flex justify-end gap-2">
           <Button block data-testid="cancel" onClick={onCancel}>
             {t('label.cancel')}

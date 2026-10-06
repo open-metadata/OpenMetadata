@@ -465,7 +465,9 @@ test.describe('Filter persistence after bug fixes', () => {
     });
 
     await test.step('Verify the Databases node is marked as selected', async () => {
-      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+      await expect(
+        page.getByTestId('explore-tree').getByRole('row', { selected: true })
+      ).toBeVisible();
     });
 
     await test.step('Apply Tag filter from top dropdown', async () => {
@@ -487,7 +489,9 @@ test.describe('Filter persistence after bug fixes', () => {
     });
 
     await test.step('Verify Databases node selection is still preserved after filter change', async () => {
-      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+      await expect(
+        page.getByTestId('explore-tree').getByRole('row', { selected: true })
+      ).toBeVisible();
     });
   });
 
@@ -783,7 +787,9 @@ test.describe('Metric search result highlight', () => {
       const highlightedSpan = displayNameHeader.locator(
         'span.text-highlighter'
       );
-      await expect(highlightedSpan.first()).toBeVisible();
+      await expect(highlightedSpan.filter({ visible: true })).not.toHaveCount(
+        0
+      );
 
       const fullText = await displayNameHeader.textContent();
       expect(fullText?.trim()).toBe(metric.entity.name);

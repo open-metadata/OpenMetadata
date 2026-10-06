@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Input, Space } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Input, Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -215,7 +215,7 @@ const AuthMechanism: FC<Props> = ({
           )}
         </Space>
       </Space>
-      <Divider className={isSCIMBot ? 'scim-divider' : ''} />
+      <Divider className="tw:my-6" />
 
       {!isSCIMBot && <Typography as="p">{t('message.jwt-token')}</Typography>}
       {isSCIMBot && (

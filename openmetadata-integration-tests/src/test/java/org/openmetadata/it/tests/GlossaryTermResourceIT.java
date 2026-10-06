@@ -25,6 +25,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
@@ -82,7 +83,6 @@ import org.openmetadata.sdk.network.RequestOptions;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlossaryTerm> {
-
   // Disable tests that don't apply to GlossaryTerm
   {
     supportsFollowers = false; // GlossaryTerm doesn't support followers directly
@@ -98,6 +98,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
+
+  // Without reviewers the minimal entity has nobody to review it, so it starts approved.
+  @Override
+  protected EntityStatus expectedInitialEntityStatus() {
+    return EntityStatus.APPROVED;
+  }
 
   @Override
   protected CreateGlossaryTerm createMinimalRequest(TestNamespace ns) {
@@ -1585,8 +1591,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
   @Test
   void test_glossaryTermStatusTransitions(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     // Create term
     CreateGlossaryTerm request =
@@ -1597,18 +1602,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     GlossaryTerm term = createEntity(request);
     assertNotNull(term.getEntityStatus());
-
-    // Update status to Deprecated
-    term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
+    term.setEntityStatus(EntityStatus.DEPRECATED);
     GlossaryTerm updated = patchEntity(term.getId().toString(), term);
-    assertEquals(org.openmetadata.schema.type.EntityStatus.DEPRECATED, updated.getEntityStatus());
+    assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus());
   }
 
   @Test
   void test_glossaryTermStatusTransitionUpdatesSearchIndex(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     ObjectMapper mapper = new ObjectMapper();
-    Glossary glossary = getOrCreateGlossary(ns);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -1617,8 +1620,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term for search status propagation");
 
     GlossaryTerm term = createEntity(request);
-    term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
+    term.setEntityStatus(EntityStatus.DEPRECATED);
     GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus());
 
     Awaitility.await("Glossary term status should be reflected in search")
         .atMost(java.time.Duration.ofSeconds(30))
@@ -2964,12 +2968,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   void test_listGlossaryTermsWithEntityStatusFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create a dedicated glossary for this test
-    CreateGlossary createGlossary =
-        new CreateGlossary()
-            .withName(ns.prefix("status_list_glossary"))
-            .withDescription("Glossary for entityStatus list filter test");
-    Glossary glossary = client.glossaries().create(createGlossary);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     // Create two terms - both start as APPROVED (default status when no reviewers)
     CreateGlossaryTerm request1 =
@@ -2988,9 +2987,8 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm draftTerm = createEntity(request2);
     assertEquals(EntityStatus.APPROVED, draftTerm.getEntityStatus());
 
-    // Update second term to DRAFT status
     draftTerm.setEntityStatus(EntityStatus.DRAFT);
-    GlossaryTerm updatedDraftTerm = client.glossaryTerms().update(draftTerm.getId(), draftTerm);
+    GlossaryTerm updatedDraftTerm = patchEntity(draftTerm.getId().toString(), draftTerm);
     assertEquals(EntityStatus.DRAFT, updatedDraftTerm.getEntityStatus());
 
     // List with APPROVED status filter - only approved term should be returned
@@ -3057,12 +3055,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   void test_glossaryTermEntityStatusFiltering(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Step 1: Create a dedicated glossary for this test to avoid interference
-    CreateGlossary createGlossary =
-        new CreateGlossary()
-            .withName(ns.prefix("status_filter_glossary"))
-            .withDescription("Glossary for entityStatus filtering test");
-    Glossary glossary = client.glossaries().create(createGlossary);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     // Step 2: Create two terms - both should start as APPROVED (default status when no reviewers)
     CreateGlossaryTerm request1 =
@@ -3081,9 +3074,8 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     GlossaryTerm reviewTerm = client.glossaryTerms().create(request2);
     assertEquals(EntityStatus.APPROVED, reviewTerm.getEntityStatus());
 
-    // Step 3: Update the second term to IN_REVIEW status
     reviewTerm.setEntityStatus(EntityStatus.IN_REVIEW);
-    GlossaryTerm updatedReviewTerm = client.glossaryTerms().update(reviewTerm.getId(), reviewTerm);
+    GlossaryTerm updatedReviewTerm = patchEntity(reviewTerm.getId().toString(), reviewTerm);
     assertEquals(EntityStatus.IN_REVIEW, updatedReviewTerm.getEntityStatus());
 
     // Step 4: Search without entityStatus filter - both terms should be returned

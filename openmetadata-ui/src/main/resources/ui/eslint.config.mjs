@@ -57,6 +57,12 @@ export default [
     ],
   },
 
+  // A disable directive that suppresses nothing silently hides whatever is added
+  // under it later, so fail lint and make the fix that left it stale delete it too.
+  {
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+  },
+
   // Base config for JavaScript and TypeScript files
   {
     files: ['src/**/*.{js,jsx,ts,tsx}'],
@@ -268,29 +274,6 @@ export default [
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
 
-      // Design-system import discipline — warn while existing violations are
-      // migrated; promote to error once the backlog reaches zero.
-      //
-      // Safety: no-restricted-imports carries no auto-fixer, so 'warn' here
-      // does not trigger the eslint --fix footgun in ui-checkstyle.
-      'no-restricted-imports': [
-        'warn',
-        {
-          patterns: [
-            {
-              group: ['@untitledui/icons', '@untitledui/icons/*'],
-              message:
-                'Import icons from @openmetadata/ui-core-components/icons, not directly from @untitledui/icons.',
-            },
-            {
-              group: ['**/assets/**/*.svg'],
-              message:
-                'Do not import SVG icons directly from assets/ paths; use the designated abstraction instead.',
-            },
-          ],
-        },
-      ],
-
       // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
       // had never been registered, so none of it ran.
       //
@@ -364,6 +347,9 @@ export default [
       // per-area, then promote to 'error' (and re-add a shade-restricted
       // fixer). See docs/colors.md + the dark-mode guidelines.
       'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
+      // A Typography ellipsis tooltip inside a link/button renders a nested
+      // <button> (#30779). Report-only, so `eslint --fix` never edits it.
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -450,6 +436,36 @@ export default [
     },
   },
 
+  {
+    // Charts go through @openmetadata/ui-core-components/charts; recharts and
+    // raw echarts imports are banned. Placed before the Metric block, which
+    // replaces this rule for Metric files (no charts there).
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['recharts', 'recharts/*'],
+              message:
+                'Use @openmetadata/ui-core-components/charts; recharts was removed.',
+            },
+            {
+              group: [
+                'echarts',
+                'echarts/*',
+                'echarts-for-react',
+                'echarts-for-react/*',
+              ],
+              message:
+                'Import charts and chart types from @openmetadata/ui-core-components/charts.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   {
     files: [
       'src/components/Metric/**/*.{js,jsx,ts,tsx}',
@@ -804,6 +820,19 @@ export default [
     ],
     rules: {
       'openmetadata-ui-patterns/no-raw-title-attribute': 'off',
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
+    },
+  },
+
+  // Classic-mode-only surfaces left out of the #30779 fix, which targeted the
+  // AI-mode UI. Remove an entry once that file is fixed.
+  {
+    files: [
+      'src/components/Settings/Users/UserProfileIcon/UserProfileIcon.component.tsx',
+      'src/utils/EntitySummaryPanelUtils.tsx',
+    ],
+    rules: {
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
     },
   },
 

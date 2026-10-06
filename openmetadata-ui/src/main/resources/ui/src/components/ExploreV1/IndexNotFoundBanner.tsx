@@ -10,56 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert } from 'antd';
-
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { Alert, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { SEARCH_INDEXING_APPLICATION } from '../../constants/explore.constants';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 
 export const IndexNotFoundBanner = () => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   return (
     <Alert
       closable
       data-testid="index-not-found-banner"
-      description={
-        <div className="d-flex items-start gap-3">
-          <ExclamationCircleOutlined
-            style={{
-              color: theme.errorColor,
-              fontSize: '16px',
-            }}
-          />
-          <div className="d-flex flex-col gap-2">
-            <Typography className="font-semibold text-xs">
-              {t('server.indexing-error')}
-            </Typography>
-            <Typography as="p" className="m-b-0 text-xs">
-              <Transi18next
-                i18nKey="message.configure-search-re-index"
-                renderElement={
-                  <Link
-                    className="alert-link"
-                    to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
-                  />
-                }
-                values={{
-                  settings: t('label.search-index-setting-plural'),
-                }}
-              />
-            </Typography>
-          </div>
-        </div>
-      }
-      type="error"
-    />
+      title={t('server.indexing-error')}
+      variant="error">
+      <Typography as="p" className="tw:m-0" size="text-xs">
+        <Transi18next
+          i18nKey="message.configure-search-re-index"
+          renderElement={
+            <Link
+              className="alert-link"
+              to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
+            />
+          }
+          values={{
+            settings: t('label.search-index-setting-plural'),
+          }}
+        />
+      </Typography>
+    </Alert>
   );
 };

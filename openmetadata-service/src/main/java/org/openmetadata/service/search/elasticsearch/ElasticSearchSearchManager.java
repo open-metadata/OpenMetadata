@@ -26,7 +26,6 @@ import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import es.co.elastic.clients.elasticsearch._types.mapping.Property;
-import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -68,6 +67,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
@@ -404,7 +404,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       SearchSortFilter searchSortFilter,
       String q,
       String queryString,
-      SubjectContext subjectContext)
+      SubjectContext subjectContext,
+      List<EntityStatus> statuses)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -435,7 +436,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       applySearchFilter(filter, requestBuilder);
     }
 
-    applyRbacCondition(subjectContext, requestBuilder);
+    applyRbacCondition(subjectContext, requestBuilder, statuses);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -630,6 +631,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
   private void applyRbacCondition(
       SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+    applyRbacCondition(
+        subjectContext, requestBuilder, ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+  }
+
+  private void applyRbacCondition(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      List<EntityStatus> statuses) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -651,7 +660,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
-    applyContextMemoryVisibility(subjectContext, requestBuilder);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses);
   }
 
   /**
@@ -676,14 +685,22 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
    */
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+    applyContextMemoryVisibility(
+        subjectContext, requestBuilder, ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      List<EntityStatus> statuses) {
     OMQueryBuilder visibilityBuilder =
-        contextMemoryVisibility.buildVisibilityFilter(subjectContext);
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses);
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
-    // Admins get no filter but are still resolved. An unidentifiable subject is NOT resolved, so
-    // ElasticSearchRequestBuilder#build falls back to its org-wide-only default instead of running
-    // the search unfiltered.
+    // Admins skip visibility but keep the status filter. An unidentifiable subject is NOT
+    // resolved, so ElasticSearchRequestBuilder#build falls back to its org-wide-only default
+    // instead of running the search unfiltered.
     if (contextMemoryVisibility.isSubjectResolvable(subjectContext)) {
       requestBuilder.contextMemoryVisibilityResolved();
     }
@@ -1899,70 +1916,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   /**
-   * Fallback to basic query_string search when NLQ transformation fails or is unavailable.
-   * Uses the new Java API client for query execution.
+   * Answers an NLQ request that could not be translated with the regular keyword search, so it gets
+   * the configured fields, boosts, filters and clause budget of /search/query.
    */
   private Response fallbackToBasicSearch(
       org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext) {
     try {
-      LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
-
-      ElasticSearchRequestBuilder requestBuilder = new ElasticSearchRequestBuilder();
-
-      // Build basic query_string query using new API
-      Query queryStringQuery =
-          Query.of(
-              q -> q.queryString(qs -> qs.query(request.getQuery()).defaultOperator(Operator.And)));
-
-      requestBuilder.query(queryStringQuery);
-      requestBuilder.from(request.getFrom());
-      requestBuilder.size(request.getSize());
-
-      // Apply RBAC constraints using new API
-      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-        if (rbacQueryBuilder != null) {
-          Query rbacQuery =
-              ((org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder)
-                      rbacQueryBuilder)
-                  .buildV2();
-          Query existingQuery = requestBuilder.query();
-          if (existingQuery != null) {
-            Query combinedQuery =
-                Query.of(
-                    qb ->
-                        qb.bool(
-                            b -> {
-                              b.must(existingQuery);
-                              b.filter(rbacQuery);
-                              return b;
-                            }));
-            requestBuilder.query(combinedQuery);
-          } else {
-            requestBuilder.query(rbacQuery);
-          }
-        }
-      }
-
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
-
-      // Add aggregations for fallback NLQ search
-      addAggregationsToNLQQuery(requestBuilder, request.getIndex());
-
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
-      SearchResponse<JsonData> searchResponse;
-      try {
-        searchResponse = client.search(searchRequest, JsonData.class);
-      } finally {
-        if (searchTimerSample != null) {
-          RequestLatencyContext.endSearchOperation(searchTimerSample);
-        }
-      }
-
-      return Response.status(Response.Status.OK)
-          .entity(serializeSearchResponse(searchResponse))
-          .build();
+      LOG.debug("Falling back to keyword search for NLQ: {}", request.getQuery());
+      return search(request, subjectContext);
     } catch (Exception e) {
       LOG.error("Error in fallback search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

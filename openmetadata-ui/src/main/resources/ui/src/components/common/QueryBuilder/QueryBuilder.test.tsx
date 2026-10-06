@@ -392,7 +392,7 @@ describe('QueryBuilder – with a complete rule', () => {
           id: 'r1',
           properties: {
             field: 'description',
-            operator: 'like',
+            operator: 'match_phrase',
             value: [value],
             valueSrc: ['value'],
           },
@@ -493,7 +493,7 @@ describe('QueryBuilder – defaults', () => {
                 id: 'r1',
                 properties: {
                   field: 'description',
-                  operator: 'like',
+                  operator: 'match_phrase',
                   value: ['sales'],
                   valueSrc: ['value'],
                 },
@@ -757,7 +757,7 @@ describe('QueryBuilder – a count left over from a cleared filter', () => {
         id: 'r1',
         properties: {
           field: 'description',
-          operator: 'like',
+          operator: 'match_phrase',
           value: ['sales'],
           valueSrc: ['value'],
         },

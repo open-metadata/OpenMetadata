@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Divider, Space, Tooltip as AntDTooltip } from 'antd';
+import { Space, Tooltip as AntDTooltip } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
@@ -165,7 +165,7 @@ export const renderDomainLink = (
         {trimLink ? (
           <Typography
             className="domain-link-name"
-            ellipsis={{ tooltip: false }}>
+            ellipsis={{ tooltip: false, excludeTriggerFromTabOrder: true }}>
             {displayName}
           </Typography>
         ) : (

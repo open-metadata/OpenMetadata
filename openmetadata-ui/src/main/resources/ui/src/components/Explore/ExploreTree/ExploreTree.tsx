@@ -10,21 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import type { Selection } from '@openmetadata/ui-core-components';
 import {
-  ChevronDown,
-  ChevronRight,
-} from '@openmetadata/ui-core-components/icons';
-import { Tooltip, Tree, TreeProps } from 'antd';
-import { DataNode } from 'antd/es/tree';
+  Badge,
+  Tooltip,
+  Tree,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { get, isEmpty, isString, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import {
-  Key,
   MutableRefObject,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -41,11 +40,11 @@ import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { postAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   buildTreeCountQueryFilter,
+  findTreeNodeByKey,
   findTreeNodeKeyByBrowsePath,
   getAggregations,
   getDisabledExploreTreeKeys,
@@ -73,7 +72,6 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
-import './explore-tree.less';
 import {
   ExploreTreeNode,
   ExploreTreeProps,
@@ -85,43 +83,68 @@ const SERVICE_ICON_CLASS = 'service-icon w-4 h-4';
 const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
 const SERVICE_STYLE_TOP_HITS_SIZE = 1;
 
-const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
+// Out of the tab order: a button trigger inside a tree row would swallow the
+// row press, so clicking the label would no longer select the node.
+const ExploreTreeTitle = ({
+  node,
+  isSelected,
+}: {
+  node: ExploreTreeNode;
+  isSelected: boolean;
+}) => {
   const tooltipText = node.tooltip ?? node.title;
 
   return (
     <Tooltip
+      excludeTriggerFromTabOrder
       title={
-        <Typography className="text-white">
+        <>
           {tooltipText}
           {node.type && (
             <span className="text-grey-400">{` (${node.type})`}</span>
           )}
-        </Typography>
-      }>
-      <div
-        className={classNames('d-flex justify-between', {
-          'tw:opacity-50': node.disabled,
-        })}>
-        <Typography
-          className={classNames({
-            'm-l-xss': node.data?.isRoot,
-          })}
+        </>
+      }
+      triggerClassName="tw:flex tw:min-w-0 tw:flex-1">
+      <span className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:justify-between tw:gap-2">
+        <span
+          className="tw:min-w-0 tw:truncate"
           data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
           {node.title}
-        </Typography>
+        </span>
         {!isUndefined(node.count) && (
-          <span className="explore-node-count">
-            {getCountBadge(node.count)}
-          </span>
+          <Badge
+            className="explore-node-count tw:shrink-0"
+            color={isSelected ? 'brand' : 'gray'}
+            size="sm"
+            type="pill-color">
+            {node.count}
+          </Badge>
         )}
-      </div>
+      </span>
     </Tooltip>
   );
 };
 
-const renderExploreTreeTitle = (node: DataNode) => (
-  <ExploreTreeTitle node={node as ExploreTreeNode} />
-);
+// antd treated a loaded node with no children as a leaf; mirror that so the
+// chevron only shows while children are unknown or present.
+const hasExpandableChildren = (node: ExploreTreeNode) =>
+  !node.isLeaf && (isUndefined(node.children) || node.children.length > 0);
+
+// Re-clicking the selected node toggles it off (empty set). antd still reported
+// that click, so treat it as a re-select of the current node: e.g. it re-applies
+// an entity-type leaf's filter after its chip was removed.
+const resolveSelectedNode = (
+  treeData: ExploreTreeNode[],
+  keys: Selection,
+  currentKey?: string
+) =>
+  keys === 'all'
+    ? undefined
+    : findTreeNodeByKey(treeData, String(Array.from(keys)[0] ?? currentKey));
+
+const getNodeTextValue = (node: ExploreTreeNode) =>
+  isString(node.title) ? node.title : node.tooltip ?? node.key;
 
 // Category visibility tracks the whole estate, not the filtered view, so it is
 // derived from an unfiltered aggregation cached per text query. Kept out of
@@ -189,12 +212,9 @@ const getBucketTypeAndLogo = (
   bucket: Bucket,
   isEntityType: boolean,
   isServiceType: boolean,
-  // Typed loosely: the caller passes antd's TreeProps node icon (rc-tree's
-  // IconType), which is structurally incompatible with ExploreTreeNode['icon']
-  // even though both ultimately render fine as a tree node icon.
-  fallbackIcon: unknown,
+  fallbackIcon: ExploreTreeNode['icon'],
   t: (key: string) => string
-): { type: string | null; logo: unknown } => {
+): { type: string | null; logo: ExploreTreeNode['icon'] } => {
   if (isEntityType) {
     return {
       type: null,
@@ -324,6 +344,11 @@ const ExploreTree = ({
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [loadingKeys, setLoadingKeys] = useState<Set<string>>(new Set());
+  // Nodes whose children were already requested, so the expand effect never
+  // re-fires a lazy load (antd kept the same bookkeeping as loadedKeys). Cleared
+  // when the tree rebuilds, since rebuilt roots carry no children.
+  const requestedKeysRef = useRef<Set<string>>(new Set());
   // Latest selection for the browse-path sync effect to read without taking a
   // dependency on it — that would re-run the effect on every click and fight
   // the highlight the click handler just set. Mirrored during render (not in an
@@ -337,7 +362,8 @@ const ExploreTree = ({
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
   }, [tab]);
 
-  const [expandedKeys, setExpandedKeys] = useState<Key[]>(defaultExpandedKeys);
+  const [expandedKeys, setExpandedKeys] =
+    useState<string[]>(defaultExpandedKeys);
 
   const [parsedSearch, searchQueryParam, defaultServiceType] = useMemo(() => {
     const parsedSearch = Qs.parse(
@@ -355,24 +381,35 @@ const ExploreTree = ({
     return [parsedSearch, searchQueryParam, defaultServiceType];
   }, [location.search]);
 
-  const onLoadData: TreeProps['loadData'] = useCallback(
-    async (treeNode: Parameters<NonNullable<TreeProps['loadData']>>[0]) => {
-      try {
-        if (
-          isTourOpen ||
-          treeNode.children ||
-          (treeNode as ExploreTreeNode).disabled
-        ) {
-          return;
-        }
+  // A skipped or failed load must not stay marked as requested, or the node
+  // could never load again. Collapse it too, so the retry happens on the next
+  // expand rather than in a tight effect loop on a failing request.
+  const forgetLoadRequest = useCallback((key: string) => {
+    requestedKeysRef.current.delete(key);
+    setExpandedKeys((prev) =>
+      prev.filter((expandedKey) => expandedKey !== key)
+    );
+  }, []);
 
+  const onLoadData = useCallback(
+    async (treeNode: ExploreTreeNode) => {
+      if (treeNode.children || treeNode.disabled) {
+        return;
+      }
+      if (isTourOpen) {
+        forgetLoadRequest(treeNode.key);
+
+        return;
+      }
+      setLoadingKeys((prev) => new Set(prev).add(treeNode.key));
+      try {
         const {
           isRoot = false,
           currentBucketKey,
           currentBucketValue,
           filterField = [],
           rootIndex,
-        } = (treeNode as ExploreTreeNode)?.data as TreeNodeData;
+        } = treeNode.data as TreeNodeData;
 
         const { bucket: bucketToFind, queryFilter } =
           searchQueryParam !== ''
@@ -384,7 +421,7 @@ const ExploreTree = ({
               }
             : getSubLevelHierarchyKey(
                 rootIndex === SearchIndex.DATABASE,
-                (treeNode as ExploreTreeNode)?.data?.filterField,
+                treeNode.data?.filterField,
                 currentBucketKey as EntityFields,
                 currentBucketValue
               );
@@ -396,8 +433,7 @@ const ExploreTree = ({
         const countQueryFilter = buildTreeCountQueryFilter({
           baseQueryFilter: queryFilter,
           isRoot,
-          childEntities:
-            (treeNode as ExploreTreeNode).data?.childEntities ?? [],
+          childEntities: treeNode.data?.childEntities ?? [],
           activeQuickFilter: parsedSearch.quickFilter,
           activeBrowsePath: isEmpty(filterField)
             ? parsedSearch.browsePath
@@ -472,9 +508,7 @@ const ExploreTree = ({
                 getQuickFilterObject(bucketToFind, bucket.key),
               ],
               isRoot: false,
-              rootIndex: isRoot
-                ? treeNode.key
-                : (treeNode as ExploreTreeNode).data?.rootIndex,
+              rootIndex: isRoot ? treeNode.key : treeNode.data?.rootIndex,
               dataId: bucket.key,
             },
           };
@@ -484,11 +518,20 @@ const ExploreTree = ({
           updateTreeData(origin, treeNode.key, children as ExploreTreeNode[])
         );
       } catch (error) {
+        forgetLoadRequest(treeNode.key);
         showErrorToast(error as AxiosError);
+      } finally {
+        setLoadingKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(treeNode.key);
+
+          return next;
+        });
       }
     },
     [
       isTourOpen,
+      forgetLoadRequest,
       updateTreeData,
       searchQueryParam,
       defaultServiceType,
@@ -499,20 +542,16 @@ const ExploreTree = ({
     ]
   );
 
-  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
-    return expanded ? (
-      <ChevronDown className="tw:text-fg-tertiary!" />
-    ) : (
-      <ChevronRight className="tw:text-fg-tertiary!" />
-    );
-  }, []);
-
-  const onNodeSelect: TreeProps<DataNode>['onSelect'] = useCallback(
-    (
-      _selectedKeys: Key[],
-      info: Parameters<NonNullable<TreeProps['onSelect']>>[1]
-    ) => {
-      const node = info.node as ExploreTreeNode;
+  const onNodeSelect = useCallback(
+    (keys: Selection) => {
+      const node = resolveSelectedNode(
+        treeData,
+        keys,
+        selectedKeysRef.current[0]
+      );
+      if (!node) {
+        return;
+      }
       // Arm the "keep the expanded subtree" flag only when the click moves the
       // highlight to a different node — a new selection always drives a
       // navigation and thus the count refresh that consumes the flag. Re-clicking
@@ -558,7 +597,7 @@ const ExploreTree = ({
 
       setSelectedKeys([node.key]);
     },
-    [onFieldValueSelect, onTreeSelect]
+    [onFieldValueSelect, onTreeSelect, treeData]
   );
 
   const fetchEntityCounts = useCallback(async () => {
@@ -628,6 +667,13 @@ const ExploreTree = ({
         key: presenceCacheKey,
         buckets: presenceBuckets,
       };
+      // Cleared only now, alongside the rebuild: clearing when the fetch starts
+      // lets the lazy-load effect of that same commit (isLoading not yet true)
+      // re-mark the still-loaded roots as requested, so the rebuilt, childless
+      // roots would never re-fetch on their existing expansion.
+      if (!preserveExpandedTree) {
+        requestedKeysRef.current.clear();
+      }
 
       // Rebuild the root set from the present static roots so a category an
       // earlier text query dropped can reappear and its counts re-scope to the
@@ -777,9 +823,52 @@ const ExploreTree = ({
   // Disabled categories also collapse — an expanded Databases subtree makes
   // no sense once the selected asset type rules the whole category out.
   const visibleExpandedKeys = useMemo(
-    () => expandedKeys.filter((key) => !disabledRootKeys.has(String(key))),
+    () => expandedKeys.filter((key) => !disabledRootKeys.has(key)),
     [expandedKeys, disabledRootKeys]
   );
+
+  // Lazy-load every expanded node whose children are still unknown — covers a
+  // user expand, the default-expanded category and re-expansion after a rebuild.
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    visibleExpandedKeys.forEach((key) => {
+      const node = findTreeNodeByKey(displayTreeData, key);
+      if (
+        node &&
+        hasExpandableChildren(node) &&
+        !requestedKeysRef.current.has(key)
+      ) {
+        requestedKeysRef.current.add(key);
+        onLoadData(node);
+      }
+    });
+  }, [isLoading, visibleExpandedKeys, displayTreeData, onLoadData]);
+
+  const renderTreeItems = (nodes: ExploreTreeNode[]): ReactNode =>
+    nodes.map((node) => (
+      <Tree.Item
+        hasChildItems={hasExpandableChildren(node)}
+        id={node.key}
+        key={node.key}
+        textValue={getNodeTextValue(node)}>
+        <Tree.ItemContent hasChildItems={hasExpandableChildren(node)}>
+          {({ isSelected }) => (
+            <>
+              {node.icon && (
+                <span className="tw:flex tw:shrink-0 tw:items-center tw:[&_svg]:size-4">
+                  {node.icon as ReactNode}
+                </span>
+              )}
+              <ExploreTreeTitle isSelected={isSelected} node={node} />
+            </>
+          )}
+        </Tree.ItemContent>
+        {node.children && renderTreeItems(node.children)}
+        {loadingKeys.has(node.key) && <Tree.LoadMoreItem isLoading />}
+      </Tree.Item>
+    ));
 
   if (isLoading) {
     return <Loader />;
@@ -791,16 +880,13 @@ const ExploreTree = ({
         className="h-min-80 d-flex flex-col justify-center border-none"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography
-          as="p"
-          className="font-medium"
-          style={{ marginBottom: '0' }}>
+        <Typography as="p" className="tw:m-0 tw:font-medium">
           {t('message.no-data-yet')}
         </Typography>
-        <Typography as="p" style={{ marginBottom: '0' }}>
+        <Typography as="p" className="tw:m-0">
           {t('message.add-service-and-data-assets')}
         </Typography>
-        <Typography as="p">
+        <Typography as="p" className="tw:mt-0 tw:mb-[1em]">
           <Transi18next
             i18nKey="message.need-help-message"
             renderElement={
@@ -823,19 +909,16 @@ const ExploreTree = ({
 
   return (
     <Tree
-      blockNode
-      showIcon
-      className="explore-tree"
+      aria-label={t('label.browse-estate')}
       data-testid="explore-tree"
-      expandedKeys={visibleExpandedKeys}
-      loadData={onLoadData}
-      selectedKeys={selectedKeys}
-      switcherIcon={switcherIcon}
-      titleRender={renderExploreTreeTitle}
-      treeData={displayTreeData as DataNode[]}
-      onExpand={(keys) => setExpandedKeys(keys)}
-      onSelect={onNodeSelect}
-    />
+      disabledKeys={disabledRootKeys}
+      expandedKeys={new Set(visibleExpandedKeys)}
+      selectedKeys={new Set(selectedKeys)}
+      selectionMode="single"
+      onExpandedChange={(keys) => setExpandedKeys(Array.from(keys, String))}
+      onSelectionChange={onNodeSelect}>
+      {renderTreeItems(displayTreeData)}
+    </Tree>
   );
 };
 

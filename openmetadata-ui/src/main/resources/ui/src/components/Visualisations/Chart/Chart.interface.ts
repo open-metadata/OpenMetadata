@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { ReactNode } from 'react';
 import { ColumnProfile } from '../../../generated/entity/data/table';
 import { MetricChartType } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -18,6 +19,8 @@ import { MetricChartType } from '../../Database/Profiler/ProfilerDashboard/profi
 export interface CustomBarChartProps {
   chartCollection: MetricChartType;
   name: string;
+  /** Accessible name of the chart, e.g. the card title. Translated by the caller. */
+  ariaLabel: string;
   tickFormatter?: string;
   noDataPlaceholderText?: ReactNode;
 }
@@ -33,10 +36,13 @@ export interface DataDistributionHistogramProps {
 export type CustomPieChartData = {
   name: string;
   value: number;
-  color: string;
+  /** Colour that carries meaning; otherwise the next palette colour. */
+  status?: ChartStatus;
 };
 export interface CustomPieChartProps {
   name: string;
+  /** Accessible name of the chart, e.g. the card title. Translated by the caller. */
+  ariaLabel: string;
   data: CustomPieChartData[];
   label?: React.ReactNode;
   /** Minimum slice angle in degrees, used to keep small non-zero values visible. */
@@ -57,7 +63,10 @@ export type AreaChartColorScheme = {
 export interface CustomAreaChartProps {
   data: CustomAreaChartData[];
   name: string;
+  /** Accessible name and series label, e.g. the card title. Translated by the caller. */
+  ariaLabel: string;
   height?: number;
   valueFormatter?: (value: number) => string;
-  colorScheme?: AreaChartColorScheme;
+  /** Colour that carries meaning. Defaults to `info` (brand blue). */
+  status?: ChartStatus;
 }

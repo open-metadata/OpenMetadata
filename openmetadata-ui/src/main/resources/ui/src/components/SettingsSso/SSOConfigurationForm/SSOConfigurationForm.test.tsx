@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -22,6 +28,8 @@ import {
   ClientType,
 } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
+import { Status as TestLoginStatus } from '../../../generated/system/testLoginResult';
+import { Protocol } from '../../../generated/system/testLoginSession';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { ApplicationStore } from '../../../interface/store.interface';
 import {
@@ -34,10 +42,12 @@ import {
   patchSecurityConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
+  startTestLogin,
+  submitTestLoginCredentials,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showWarningToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import SSOConfigurationFormRJSF from './SSOConfigurationForm';
 import { SSOConfigurationFormProps } from './SSOConfigurationForm.interface';
@@ -46,6 +56,7 @@ import { SSOConfigurationFormProps } from './SSOConfigurationForm.interface';
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
+  showWarningToast: jest.fn(),
 }));
 
 // Mock SSOUtils - use actual implementations where needed
@@ -205,6 +216,13 @@ const mockGetSecurityConfiguration =
   getSecurityConfiguration as jest.MockedFunction<
     typeof getSecurityConfiguration
   >;
+const mockStartTestLogin = startTestLogin as jest.MockedFunction<
+  typeof startTestLogin
+>;
+const mockSubmitTestLoginCredentials =
+  submitTestLoginCredentials as jest.MockedFunction<
+    typeof submitTestLoginCredentials
+  >;
 
 const mockFetchAuthenticationConfig =
   fetchAuthenticationConfig as jest.MockedFunction<
@@ -292,6 +310,11 @@ describe('SSOConfigurationForm', () => {
       </MemoryRouter>
     );
   };
+
+  // A new configuration is held until Test Login passes; tests of the save itself take the
+  // explicit override.
+  const saveAnyway = async () =>
+    fireEvent.click(await screen.findByTestId('save-anyway-sso-configuration'));
 
   describe('Provider Selection', () => {
     beforeEach(() => {
@@ -470,14 +493,7 @@ describe('SSOConfigurationForm', () => {
       const googleButton = screen.getByText('Select Google');
       fireEvent.click(googleButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
@@ -513,14 +529,7 @@ describe('SSOConfigurationForm', () => {
       const googleButton = screen.getByText('Select Google');
       fireEvent.click(googleButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
@@ -577,14 +586,7 @@ describe('SSOConfigurationForm', () => {
       const googleButton = screen.getByText('Select Google');
       fireEvent.click(googleButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(window.sessionStorage.clear).toHaveBeenCalled();
@@ -594,103 +596,263 @@ describe('SSOConfigurationForm', () => {
     });
   });
 
-  describe('Test Configuration', () => {
-    const selectGoogleProvider = async () => {
-      renderComponent();
+  describe('Test Login', () => {
+    const existingGoogleConfig = {
+      authenticationConfiguration: {
+        provider: AuthProvider.Google,
+        authority: 'https://accounts.google.com',
+        callbackUrl: 'https://app.example.com/callback',
+        clientId: 'google-client-id',
+        clientType: ClientType.Public,
+        providerName: 'Google',
+        jwtPrincipalClaims: ['email'],
+        publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+      } as AuthenticationConfiguration,
+      authorizerConfiguration: {
+        adminPrincipals: ['admin'],
+        className: 'org.openmetadata.service.security.DefaultAuthorizer',
+        containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+        enableSecureSocketConnection: false,
+        enforcePrincipalDomain: false,
+        principalDomain: '',
+      } as AuthorizerConfiguration,
+    } as SecurityConfiguration;
 
-      await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
-      });
-
-      fireEvent.click(screen.getByText('Select Google'));
-
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('test-sso-configuration')
-        ).toBeInTheDocument();
-      });
+    const editField = (container: HTMLElement, path: string, value: string) => {
+      const input = container.querySelector(`[id="root/${path}"]`);
+      if (!input) {
+        throw new Error(`No form field rendered for ${path}`);
+      }
+      fireEvent.change(input, { target: { value } });
     };
 
-    beforeEach(() => {
+    const selectNewLdapConfiguration = async () => {
       mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
-    });
+      const view = renderComponent();
+      fireEvent.click(await screen.findByText('Select LDAP'));
+      await screen.findByTestId('save-anyway-sso-configuration');
 
-    it('should render the test configuration button in edit mode', async () => {
-      await selectGoogleProvider();
+      return view;
+    };
 
-      expect(screen.getByTestId('test-sso-configuration')).toBeInTheDocument();
-    });
+    const signInThroughTestLogin = async () => {
+      fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
+      const form = await screen.findByTestId('sso-test-login-credentials-form');
+      fireEvent.change(
+        within(screen.getByTestId('sso-test-login-email')).getByRole('textbox'),
+        { target: { value: 'admin@example.com' } }
+      );
+      fireEvent.change(
+        screen
+          .getByTestId('sso-test-login-password')
+          .querySelector('input') as HTMLInputElement,
+        { target: { value: 's3cret' } }
+      );
+      fireEvent.click(
+        within(form).getByTestId('sso-test-login-submit-credentials')
+      );
+    };
 
-    it('should show a lockout warning for a new configuration', async () => {
-      await selectGoogleProvider();
-
-      expect(
-        screen.getByText('message.sso-new-config-save-warning')
-      ).toBeInTheDocument();
-    });
-
-    it('should validate the configuration without saving when tested', async () => {
+    const validationPasses = () =>
       mockValidateSecurityConfiguration.mockResolvedValue(
         createAxiosResponse({
           status: VALIDATION_STATUS.SUCCESS,
         } as SecurityValidationResponse)
       );
 
-      await selectGoogleProvider();
+    // jsdom has no Element.scrollTo, and the form scrolls to the first field in error.
+    const { scrollTo } = Element.prototype;
 
-      fireEvent.click(screen.getByTestId('test-sso-configuration'));
+    beforeAll(() => {
+      Element.prototype.scrollTo = jest.fn();
+    });
 
-      await waitFor(() => {
-        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
-      });
+    afterAll(() => {
+      Element.prototype.scrollTo = scrollTo;
+    });
 
-      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
+    beforeEach(() => {
+      validationPasses();
+      mockStartTestLogin.mockResolvedValue(
+        createAxiosResponse({
+          testSessionId: 'test-session',
+          protocol: Protocol.LDAP,
+          requiresCredentials: true,
+        })
+      );
+    });
+
+    it('should offer one Test Login button, which replaces Test Configuration', async () => {
+      await selectNewLdapConfiguration();
+
       expect(
-        await screen.findByText('message.sso-configuration-test-success')
+        screen.getByTestId('test-login-sso-configuration')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-sso-configuration')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText('message.sso-new-config-save-warning')
       ).toBeInTheDocument();
     });
 
-    it('should surface validation errors when the test fails', async () => {
+    it('should run the configuration check before signing in', async () => {
+      await selectNewLdapConfiguration();
+
+      fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
+
+      expect(
+        await screen.findByTestId('sso-test-login-credentials-form')
+      ).toBeInTheDocument();
+      expect(
+        mockValidateSecurityConfiguration.mock.invocationCallOrder[0]
+      ).toBeLessThan(mockStartTestLogin.mock.invocationCallOrder[0]);
+      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
+    });
+
+    it('should stop at the configuration check and show its problems', async () => {
       mockValidateSecurityConfiguration.mockResolvedValue(
         createAxiosResponse({
           status: VALIDATION_STATUS.FAILED,
           errors: [
             {
-              field: 'authenticationConfiguration.clientId',
-              error: 'Client ID is required',
+              field: 'authenticationConfiguration.ldapConfiguration.host',
+              error: 'The LDAP server is not reachable',
             },
           ],
         } as SecurityValidationResponse)
       );
+      await selectNewLdapConfiguration();
 
-      await selectGoogleProvider();
+      fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
 
-      fireEvent.click(screen.getByTestId('test-sso-configuration'));
+      const modal = await screen.findByTestId('sso-test-login-modal');
 
-      await waitFor(() => {
-        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
-      });
-
-      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
       expect(
-        await screen.findByText(
-          'message.sso-configuration-test-failed-with-count'
-        )
+        await within(modal).findByText('The LDAP server is not reachable')
       ).toBeInTheDocument();
+      expect(
+        within(modal).getByText('message.sso-test-login-configuration-invalid')
+      ).toBeInTheDocument();
+      // The same problem is marked on the field it belongs to, behind the modal.
+      expect(
+        screen.getAllByText('The LDAP server is not reachable').length
+      ).toBeGreaterThan(1);
+      expect(
+        screen.getByTestId('sso-test-login-stage-configuration')
+      ).toBeInTheDocument();
+      expect(mockStartTestLogin).not.toHaveBeenCalled();
+      expect(screen.getByTestId('save-sso-configuration')).toBeDisabled();
     });
 
-    it('should show an error toast when the test request throws', async () => {
+    it('should stop when the configuration check itself cannot run', async () => {
       mockValidateSecurityConfiguration.mockRejectedValue(
         new Error('Network error') as AxiosError
       );
+      await selectNewLdapConfiguration();
 
-      await selectGoogleProvider();
+      fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
 
-      fireEvent.click(screen.getByTestId('test-sso-configuration'));
+      expect(
+        await screen.findByText('message.sso-test-login-configuration-invalid')
+      ).toBeInTheDocument();
+      expect(mockStartTestLogin).not.toHaveBeenCalled();
+    });
+
+    it('should hold a new configuration until Test Login passes', async () => {
+      await selectNewLdapConfiguration();
+
+      expect(screen.getByTestId('save-sso-configuration')).toBeDisabled();
+      expect(
+        screen.getByText('message.sso-test-login-required-before-save')
+      ).toBeInTheDocument();
+    });
+
+    it('should lift the gate only for the configuration that signed in', async () => {
+      mockSubmitTestLoginCredentials.mockResolvedValue(
+        createAxiosResponse({ status: TestLoginStatus.Success, stages: [] })
+      );
+      const { container } = await selectNewLdapConfiguration();
+
+      await signInThroughTestLogin();
 
       await waitFor(() => {
-        expect(mockShowErrorToast).toHaveBeenCalled();
+        expect(screen.getByTestId('save-sso-configuration')).toBeEnabled();
       });
+
+      expect(
+        screen.queryByTestId('save-anyway-sso-configuration')
+      ).not.toBeInTheDocument();
+      expect(mockSubmitTestLoginCredentials).toHaveBeenCalledWith({
+        testSessionId: 'test-session',
+        email: 'admin@example.com',
+        password: 's3cret',
+      });
+
+      fireEvent.click(screen.getByTestId('sso-test-login-close'));
+
+      // Closing the modal abandons the test, but not the pass it already recorded.
+      expect(screen.getByTestId('save-sso-configuration')).toBeEnabled();
+
+      editField(
+        container,
+        'authenticationConfiguration/ldapConfiguration/host',
+        'other-ldap.example.com'
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('save-sso-configuration')).toBeDisabled();
+      });
+    });
+
+    it('should keep the gate when Test Login fails', async () => {
+      mockSubmitTestLoginCredentials.mockResolvedValue(
+        createAxiosResponse({
+          status: TestLoginStatus.Failed,
+          errors: ['Invalid credentials'],
+          stages: [],
+        })
+      );
+      await selectNewLdapConfiguration();
+
+      await signInThroughTestLogin();
+
+      expect(
+        (await screen.findAllByText('Invalid credentials')).length
+      ).toBeGreaterThan(0);
+      expect(screen.getByTestId('save-sso-configuration')).toBeDisabled();
+      expect(
+        screen.getByTestId('save-anyway-sso-configuration')
+      ).toBeInTheDocument();
+    });
+
+    it('should gate an edit only when it changes how users sign in', async () => {
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse(existingGoogleConfig)
+      );
+      const { container } = renderComponent({ forceEditMode: true });
+      const saveButton = await screen.findByTestId('save-sso-configuration');
+
+      editField(container, 'authenticationConfiguration/sessionExpiry', '7200');
+
+      expect(saveButton).toBeEnabled();
+      expect(
+        screen.queryByTestId('save-anyway-sso-configuration')
+      ).not.toBeInTheDocument();
+
+      editField(
+        container,
+        'authenticationConfiguration/clientId',
+        'another-client-id'
+      );
+
+      await waitFor(() => {
+        expect(saveButton).toBeDisabled();
+      });
+
+      expect(
+        screen.getByText('message.sso-test-login-required-for-edit')
+      ).toBeInTheDocument();
     });
   });
 
@@ -849,14 +1011,7 @@ describe('SSOConfigurationForm', () => {
       const googleButton = screen.getByText('Select Google');
       fireEvent.click(googleButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(mockError);
@@ -944,14 +1099,7 @@ describe('SSOConfigurationForm', () => {
       const samlButton = screen.getByText('Select SAML');
       fireEvent.click(samlButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockApplySecurityConfiguration).toHaveBeenCalledWith(
@@ -1001,15 +1149,8 @@ describe('SSOConfigurationForm', () => {
       const googleButton = screen.getByText('Select Google');
       fireEvent.click(googleButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
       // Try to save without filling required fields
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
@@ -1188,6 +1329,13 @@ describe('SSOConfigurationForm', () => {
       });
 
       const saveButton = screen.getByTestId('save-sso-configuration');
+
+      // Nothing changed, so there is nothing for a Test Login to prove.
+      expect(saveButton).toBeEnabled();
+      expect(
+        screen.queryByTestId('save-anyway-sso-configuration')
+      ).not.toBeInTheDocument();
+
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -1203,7 +1351,7 @@ describe('SSOConfigurationForm', () => {
       mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
     });
 
-    it('should handle Save and Exit from modal for new config', async () => {
+    it('should not let Save and Exit bypass the Test Login gate for a new config', async () => {
       const mockValidationData = {
         status: VALIDATION_STATUS.SUCCESS,
         message: 'Validation successful',
@@ -1243,8 +1391,16 @@ describe('SSOConfigurationForm', () => {
       fireEvent.click(saveModalButton);
 
       await waitFor(() => {
-        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
+        expect(showWarningToast).toHaveBeenCalledWith(
+          'message.sso-test-login-required-before-save'
+        );
       });
+
+      expect(
+        screen.queryByTestId('unsaved-changes-modal')
+      ).not.toBeInTheDocument();
+      expect(mockValidateSecurityConfiguration).not.toHaveBeenCalled();
+      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
     });
 
     it('should handle Save and Exit from modal for existing config', async () => {
@@ -1371,14 +1527,7 @@ describe('SSOConfigurationForm', () => {
       const googleButton = screen.getByText('Select Google');
       fireEvent.click(googleButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
@@ -1415,14 +1564,7 @@ describe('SSOConfigurationForm', () => {
       const googleButton = screen.getByText('Select Google');
       fireEvent.click(googleButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
@@ -1460,14 +1602,7 @@ describe('SSOConfigurationForm', () => {
       const googleButton = screen.getByText('Select Google');
       fireEvent.click(googleButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(
@@ -1694,14 +1829,7 @@ describe('SSOConfigurationForm', () => {
 
       renderComponent({ selectedProvider: AuthProvider.Google });
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(networkError);
@@ -1735,14 +1863,7 @@ describe('SSOConfigurationForm', () => {
 
       renderComponent({ selectedProvider: AuthProvider.Google });
 
-      await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-      });
-
-      const saveButton = screen.getByTestId('save-sso-configuration');
-      fireEvent.click(saveButton);
+      await saveAnyway();
 
       await waitFor(() => {
         expect(mockApplySecurityConfiguration).toHaveBeenCalled();
