@@ -561,10 +561,22 @@ const FilterSelect = ({
       return;
     }
     const closeOnOutsidePointerDown = (event: Event) => {
-      const target = event.target as Node;
+      const target = event.target as Element;
+      // React Aria's MenuTrigger only ever *opens* on press start, so pressing
+      // the trigger of an open filter must close it here — and the press must
+      // not reach the trigger, or it reopens in the same gesture. Matched on
+      // the trigger button (`aria-expanded`) so chip remove buttons inside the
+      // chips field keep the popover open.
+      const isTriggerPress = Boolean(
+        triggerWrapRef.current?.contains(target.closest('[aria-expanded]'))
+      );
+      if (isTriggerPress) {
+        event.stopPropagation();
+      }
       if (
-        triggerWrapRef.current?.contains(target) ||
-        popoverContentRef.current?.contains(target)
+        !isTriggerPress &&
+        (triggerWrapRef.current?.contains(target) ||
+          popoverContentRef.current?.contains(target))
       ) {
         return;
       }

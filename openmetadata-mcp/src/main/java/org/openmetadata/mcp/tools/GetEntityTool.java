@@ -400,23 +400,35 @@ public class GetEntityTool implements McpTool {
 
   private static Object knowledgeContent(IncludeContext ctx) {
     String query = ctx.options().query();
+    List<String> found =
+        query != null && !query.isBlank() && vectorSearchEnabled()
+            ? passages(ctx, query)
+            : List.of();
     Object rendered;
-    if (query != null && !query.isBlank() && vectorSearchEnabled()) {
-      rendered = passages(ctx, query);
-    } else {
+    if (found.isEmpty()) {
       String body = AIContextBuilder.fullContentOf(ctx.entity());
       rendered = renderText(ctx, body == null ? "" : body);
+    } else {
+      rendered =
+          ctx.options().asJson()
+              ? Map.of("passages", found)
+              : renderText(ctx, String.join("\n\n---\n\n", found));
     }
     return rendered;
   }
 
-  private static Object passages(IncludeContext ctx, String query) {
-    List<String> found =
-        OpenSearchVectorService.getInstance()
-            .searchChunksByParent(ctx.entity().getId().toString(), query, ctx.options().passages());
-    return ctx.options().asJson()
-        ? Map.of("passages", found)
-        : renderText(ctx, String.join("\n\n---\n\n", found));
+  /**
+   * The entity read is already authorized, so its chunks are searched as the caller. Search can
+   * still withhold every chunk (an anchored or retired memory, or a body not chunked yet); the
+   * caller then gets the full body rather than nothing.
+   */
+  private static List<String> passages(IncludeContext ctx, String query) {
+    return OpenSearchVectorService.getInstance()
+        .searchChunksByParent(
+            ctx.entity().getId().toString(),
+            query,
+            ctx.options().passages(),
+            getSubjectContext(ctx.securityContext()));
   }
 
   private static Object renderText(IncludeContext ctx, String text) {

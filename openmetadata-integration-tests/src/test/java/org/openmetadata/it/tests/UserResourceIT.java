@@ -94,6 +94,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     // The actual export is /v1/teams/name/{teamName}/export which exports users in that team
     supportsEntityStatus = false;
     supportsImportExport = false;
+    supportsCreationAudit = true;
   }
 
   private static final Profile PROFILE =

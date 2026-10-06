@@ -27,6 +27,15 @@ export interface User {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * The domain the user selects in the navbar to scope list views. Persisted so the global
      * (navbar) domain filter is applied from the start of the session; it narrows lists only
      * and never restricts access.
