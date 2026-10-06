@@ -18,7 +18,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
-import { useMemo } from 'react';
+import classNames from 'classnames';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TestCase,
@@ -44,6 +45,60 @@ const TRACEBACK_CLASS_NAME = [
   // Geist Mono's ligatures draw `!=` as `≠` and run `<>` into the character before it.
   'tw:[font-variant-ligatures:none]',
 ].join(' ');
+
+/**
+ * The message, clamped to three lines: the trace below it is capped at 320px,
+ * and a 2,000-character message otherwise made the card 1,014px tall.
+ */
+const RunErrorMessage = ({ message }: { message: string }) => {
+  const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const messageRef = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    const element = messageRef.current;
+
+    if (!element || isExpanded) {
+      return;
+    }
+
+    const measure = () =>
+      setIsClamped(element.scrollHeight > element.clientHeight);
+    const observer = globalThis.ResizeObserver
+      ? new ResizeObserver(measure)
+      : undefined;
+
+    measure();
+    observer?.observe(element);
+
+    return () => observer?.disconnect();
+  }, [message, isExpanded]);
+
+  return (
+    <Box align="start" direction="col" gap={1}>
+      <p
+        className={classNames(
+          'tw:m-0 tw:break-words tw:text-sm tw:text-secondary',
+          { 'tw:line-clamp-3': !isExpanded }
+        )}
+        data-testid="run-execution-error-message"
+        ref={messageRef}>
+        {message}
+      </p>
+      {(isClamped || isExpanded) && (
+        <Button
+          aria-expanded={isExpanded}
+          className="tw:h-auto tw:p-0"
+          color="link-color"
+          size="sm"
+          onPress={() => setIsExpanded((expanded) => !expanded)}>
+          {t(isExpanded ? 'label.less-lowercase' : 'label.more-lowercase')}
+        </Button>
+      )}
+    </Box>
+  );
+};
 
 interface RunExecutionErrorProps {
   errorDetails?: TestCaseErrorDetails;
@@ -97,15 +152,7 @@ const RunExecutionError = ({
           </Badge>
         )}
       </Box>
-      {message && (
-        <Typography
-          className="tw:break-words"
-          color="secondary"
-          data-testid="run-execution-error-message"
-          size="text-sm">
-          {message}
-        </Typography>
-      )}
+      {message && <RunErrorMessage message={message} />}
       {tracebackLines.length > 0 && (
         <Card
           aria-label={t('label.traceback')}
