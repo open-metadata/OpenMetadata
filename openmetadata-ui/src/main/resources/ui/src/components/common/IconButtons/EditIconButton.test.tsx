@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { CardExpandCollapseIconButton, EditIconButton } from './EditIconButton';
+import {
+  CardExpandCollapseIconButton,
+  CommentIconButton,
+  EditIconButton,
+  RequestIconButton,
+} from './EditIconButton';
 
 describe('EditIconButton', () => {
   it.each([true, false])(
@@ -24,6 +29,17 @@ describe('EditIconButton', () => {
       ).toBeInTheDocument();
     }
   );
+
+  it.each([
+    ['request', RequestIconButton],
+    ['comment', CommentIconButton],
+  ])('names the bordered %s button by its title', (_, IconButton) => {
+    render(<IconButton newLook title="Request Description" />);
+
+    expect(
+      screen.getByRole('button', { name: 'Request Description' })
+    ).toBeInTheDocument();
+  });
 
   it('names the expand / collapse button by its title', () => {
     render(<CardExpandCollapseIconButton title="Collapse" />);
