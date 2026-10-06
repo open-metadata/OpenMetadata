@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { get } from 'lodash';
 import { TestCase } from '../../../../generated/tests/testCase';
 import enUS from '../../../../locale/languages/en-us.json';
@@ -18,6 +24,7 @@ import {
   MOCK_SQL_TEST_CASE,
   MOCK_TEST_CASE,
 } from '../../../../mocks/TestSuite.mock';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { getPastDaysRange } from '../../../observability/DataQuality/Dashboard/calendarDate.utils';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummary from './TestSummary';
@@ -192,15 +199,39 @@ describe('TestSummary component', () => {
     });
   });
 
-  it('should handle error when fetching test results', async () => {
-    const error = new Error('API Error');
-    mockGetListTestCaseResults.mockRejectedValueOnce(error);
+  it('should say the results failed to load, with a retry, in place of the chart, tiles and run card', async () => {
+    mockGetListTestCaseResults.mockRejectedValueOnce(new Error('API Error'));
+    // Never run as well: the error, not the missing runs, is what to say.
+    render(
+      <TestSummary data={{ ...mockProps.data, testCaseResult: undefined }} />
+    );
 
+    const loadError = await screen.findByTestId('test-summary-load-error');
+
+    expect(loadError).toHaveTextContent(
+      'Error while fetching Test Case Results'
+    );
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('TestSummaryGraph')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('run-summary-tiles')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('test-summary-never-run')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should load the results again on retry', async () => {
+    mockGetListTestCaseResults.mockRejectedValueOnce(new Error('API Error'));
     render(<TestSummary {...mockProps} />);
 
-    await waitFor(() => {
-      expect(mockGetListTestCaseResults).toHaveBeenCalled();
-    });
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByText('TestSummaryGraph')).toBeInTheDocument();
+    expect(screen.getByTestId('run-summary-tiles')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('test-summary-load-error')
+    ).not.toBeInTheDocument();
+    expect(mockGetListTestCaseResults).toHaveBeenCalledTimes(2);
   });
 
   it('should not fetch data when data prop is empty', async () => {
