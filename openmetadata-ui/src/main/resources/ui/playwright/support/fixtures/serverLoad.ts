@@ -386,7 +386,10 @@ const serveStaticAsset = async (route: Route) => {
  * propagates — a cache that is broken for a real reason must not be
  * silent.
  */
-const ignoreClosedTarget = async (route: Route, serve: () => Promise<void>) => {
+export const ignoreClosedTarget = async (
+  route: Route,
+  serve: () => Promise<void>
+) => {
   try {
     await serve();
   } catch (error) {

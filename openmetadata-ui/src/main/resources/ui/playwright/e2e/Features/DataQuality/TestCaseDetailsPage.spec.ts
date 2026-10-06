@@ -15,6 +15,7 @@ import { expect } from '@playwright/test';
 import { escapeRegExp, isUndefined } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { ignoreClosedTarget } from '../../../support/fixtures/serverLoad';
 import { performAdminLogin } from '../../../utils/admin';
 import { selectOptionWithRetry } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
@@ -972,15 +973,11 @@ test.describe(
       // Every results read fails until Retry, however many the page makes
       // (a dev build mounts its effects twice).
       let failResults = true;
-      await page.route(isResultsList, async (route) => {
-        try {
-          await (failResults ? route.fulfill(serverError) : route.continue());
-        } catch (error) {
-          if (!/has been closed|Route is already handled/.test(String(error))) {
-            throw error;
-          }
-        }
-      });
+      await page.route(isResultsList, (route) =>
+        ignoreClosedTarget(route, () =>
+          failResults ? route.fulfill(serverError) : route.continue()
+        )
+      );
       await enableAiAppMode(page);
       await openTestCaseDetailsPage(page, ranFqn);
 
@@ -1018,18 +1015,8 @@ test.describe(
         (url) =>
           url.pathname.endsWith('/api/v1/services/ingestionPipelines') &&
           url.searchParams.get('pipelineType') === 'TestSuite',
-        async (route) => {
-          try {
-            await route.fulfill(serverError);
-          } catch (error) {
-            // A poll can still be in flight when the page closes.
-            if (
-              !/has been closed|Route is already handled/.test(String(error))
-            ) {
-              throw error;
-            }
-          }
-        }
+        // A poll can still be in flight when the page closes.
+        (route) => ignoreClosedTarget(route, () => route.fulfill(serverError))
       );
       await enableAiAppMode(page);
       await openTestCaseDetailsPage(page, ranFqn);
