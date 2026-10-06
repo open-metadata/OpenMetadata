@@ -25,8 +25,80 @@ from metadata.generated.schema.type.tagLabel import LabelType, State
 
 
 @pytest.fixture
-def registry() -> TagRegistry:
-    return TagRegistry()
+def registry(tag_metadata) -> TagRegistry:
+    return TagRegistry(metadata=tag_metadata)
+
+
+@pytest.mark.parametrize("present", [True, False])
+def test_existence_results_are_shared_across_assets_until_eviction(tag_metadata, existing_tag_lookup, present):
+    reads = []
+
+    def lookup(**kwargs):
+        reads.append(kwargs["fqn"])
+        return existing_tag_lookup(**kwargs) if len(reads) > 1 or present else None
+
+    tag_metadata.get_by_name.side_effect = lookup
+    registry = TagRegistry(metadata=tag_metadata, cache_size=2)
+    tag = TagDefinition("Class", "Shared", "", "")
+    for index in range(100):
+        registry.attach(entity_fqn=f"svc.db.table_{index}", tag=tag)
+        labels = registry.labels_for(f"svc.db.table_{index}")
+        assert [label.tagFQN.root for label in labels] == (["Class.Shared"] if present else [])
+    assert reads == ["Class.Shared"]
+
+    for name in ("Other", "Another"):
+        registry.attach(entity_fqn=f"svc.db.{name}", tag=TagDefinition("Class", name, "", ""))
+        assert registry.labels_for(f"svc.db.{name}")
+    assert [label.tagFQN.root for label in registry.labels_for("svc.db.table_0")] == ["Class.Shared"]
+    assert reads == ["Class.Shared", "Class.Other", "Class.Another", "Class.Shared"]
+
+
+def test_lookup_errors_are_cached_without_discarding_other_labels(tag_metadata, existing_tag_lookup, caplog):
+    reads = []
+
+    def lookup(**kwargs):
+        reads.append(kwargs["fqn"])
+        if kwargs["fqn"] == "Class.Unavailable":
+            raise ConnectionError("Backend unavailable")
+        return existing_tag_lookup(**kwargs)
+
+    tag_metadata.get_by_name.side_effect = lookup
+    registry = TagRegistry(metadata=tag_metadata)
+    for name in ("Unavailable", "Present"):
+        registry.attach(entity_fqn="svc.db.table", tag=TagDefinition("Class", name, "", ""))
+    for _ in range(100):
+        assert [label.tagFQN.root for label in registry.labels_for("svc.db.table")] == ["Class.Present"]
+    assert reads == ["Class.Unavailable", "Class.Present"]
+    assert caplog.text.count("Unable to verify tag Class.Unavailable") == 1
+
+
+@pytest.mark.parametrize("present", [True, False])
+def test_lookup_before_drain_does_not_suppress_definition_or_lose_result(tag_metadata, present):
+    if not present:
+        tag_metadata.get_by_name.return_value = None
+        tag_metadata.get_by_name.side_effect = None
+    registry = TagRegistry(metadata=tag_metadata)
+    tag = TagDefinition("Class", "Shared", "", "")
+    registry.attach(entity_fqn="svc.db.table", tag=tag)
+    expected = ["Class.Shared"] if present else []
+    assert [label.tagFQN.root for label in registry.labels_for("svc.db.table")] == expected
+    registry.define(tag)
+    assert [record.tag_request.name.root for record in registry.drain()] == ["Shared"]
+    registry.define(tag)
+    assert list(registry.drain()) == []
+    assert [label.tagFQN.root for label in registry.labels_for("svc.db.table")] == expected
+    assert tag_metadata.get_by_name.call_count == 1
+
+
+def test_existence_checks_preserve_case_distinct_tags(tag_metadata, existing_tag_lookup):
+    def lookup(**kwargs):
+        return existing_tag_lookup(**kwargs) if kwargs["fqn"] == "Class.Shared" else None
+
+    tag_metadata.get_by_name.side_effect = lookup
+    registry = TagRegistry(metadata=tag_metadata)
+    for name in ("Shared", "shared"):
+        registry.attach(entity_fqn="svc.db.table", tag=TagDefinition("Class", name, "", ""))
+    assert [label.tagFQN.root for label in registry.labels_for("svc.db.table")] == ["Class.Shared"]
 
 
 def _attach_kwargs(
@@ -91,8 +163,8 @@ class TestDrain:
         assert registry.stats()["pending"] == 0
         assert list(registry.drain()) == []
 
-    def test_discovery_continues_during_drain_without_duplicate_pending_definitions(self):
-        registry = TagRegistry(cache_size=1)
+    def test_discovery_continues_during_drain_without_duplicate_pending_definitions(self, tag_metadata):
+        registry = TagRegistry(metadata=tag_metadata, cache_size=1)
         first, second, third = [TagDefinition("Class", name, "", "") for name in ("First", "Second", "Third")]
         registry.define(first)
         registry.define(second)
@@ -288,7 +360,7 @@ class TestStats:
         s = registry.stats()
         assert s["live_entities"] == 1
         assert s["live_labels"] == 1
-        assert s["known_tag_fqns"] == 0
+        assert s["known_tag_fqns"] == 1
         assert s["pending"] == 1
 
     def test_drain_decreases_pending_only(self, registry: TagRegistry):
@@ -373,8 +445,8 @@ class TestInterning:
         assert label_first is label_second, "intern cache should survive clear_scope"
 
 
-def test_pending_definitions_survive_history_eviction():
-    registry = TagRegistry(cache_size=2)
+def test_pending_definitions_survive_history_eviction(tag_metadata):
+    registry = TagRegistry(metadata=tag_metadata, cache_size=2)
     for tag in ("A", "B", "C", "A"):
         registry.attach(**_attach_kwargs(registry, f"svc.db.{tag}", tag=tag))
     assert registry.stats()["pending"] == 3
@@ -384,8 +456,8 @@ def test_pending_definitions_survive_history_eviction():
     assert [label.tagFQN.root for label in registry.labels_for("svc.db.A")] == ["TestClass.A", "TestClass.A"]
 
 
-def test_evicted_definition_is_reemitted_without_losing_live_labels():
-    registry = TagRegistry(cache_size=2)
+def test_evicted_definition_is_reemitted_without_losing_live_labels(tag_metadata):
+    registry = TagRegistry(metadata=tag_metadata, cache_size=2)
     for tag in ("A", "B", "C"):
         registry.attach(**_attach_kwargs(registry, f"svc.db.{tag}", tag=tag))
         assert [record.tag_request.name.root for record in registry.drain()] == [tag]
@@ -395,15 +467,15 @@ def test_evicted_definition_is_reemitted_without_losing_live_labels():
         assert [label.tagFQN.root for label in registry.labels_for(f"svc.db.{tag}")] == [f"TestClass.{tag}"]
 
 
-def test_recently_used_definition_is_retained():
-    registry = TagRegistry(cache_size=2)
+def test_recently_used_definition_is_retained(tag_metadata):
+    registry = TagRegistry(metadata=tag_metadata, cache_size=2)
     for tag, expected in (("A", ["A"]), ("B", ["B"]), ("A", []), ("C", ["C"]), ("A", []), ("B", ["B"])):
         registry.attach(**_attach_kwargs(registry, "svc.db.table", tag=tag))
         assert [record.tag_request.name.root for record in registry.drain()] == expected
 
 
-def test_recently_used_label_stays_interned_after_eviction():
-    registry = TagRegistry(cache_size=2)
+def test_recently_used_label_stays_interned_after_eviction(tag_metadata):
+    registry = TagRegistry(metadata=tag_metadata, cache_size=2)
     for index, name in enumerate(("First", "Second", "First", "Third", "First", "Second")):
         registry.attach(**_attach_kwargs(registry, f"svc.db.schema.table_{index}", tag=name))
 
@@ -432,8 +504,8 @@ def test_schema_clear_preserves_parent_and_sibling(registry):
     assert registry.stats()["live_labels"] == 0
 
 
-def test_completed_scopes_release_labels():
-    registry = TagRegistry(cache_size=2)
+def test_completed_scopes_release_labels(tag_metadata):
+    registry = TagRegistry(metadata=tag_metadata, cache_size=2)
     references = []
     for number in range(30):
         entity_fqn = f"svc.db.schema_{number}"
@@ -457,9 +529,9 @@ def test_scope_cleanup_preserves_pending_definition(registry):
 
 
 @pytest.mark.parametrize("cache_size", [0, -1])
-def test_registry_rejects_invalid_capacity(cache_size):
+def test_registry_rejects_invalid_capacity(cache_size, tag_metadata):
     with pytest.raises(ValueError, match="positive"):
-        TagRegistry(cache_size=cache_size)
+        TagRegistry(metadata=tag_metadata, cache_size=cache_size)
 
 
 def test_definition_without_entity_is_emitted(registry):
@@ -484,8 +556,8 @@ def test_attachment_does_not_queue_a_definition(registry):
     assert registry.labels_for("svc.db.schema.table") == []
 
 
-def test_standalone_definitions_survive_history_eviction():
-    registry = TagRegistry(cache_size=2)
+def test_standalone_definitions_survive_history_eviction(tag_metadata):
+    registry = TagRegistry(metadata=tag_metadata, cache_size=2)
     for name in ("A", "B", "C", "D"):
         registry.define(TagDefinition("Class", name, "", ""))
     assert [record.tag_request.name.root for record in registry.drain()] == ["A", "B", "C", "D"]

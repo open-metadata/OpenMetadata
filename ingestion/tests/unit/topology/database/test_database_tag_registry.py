@@ -33,7 +33,7 @@ from metadata.utils.logger import StatusWarningHandler
 
 
 @pytest.fixture
-def source():
+def source(existing_tag_lookup):
     # These tests exercise source stages without opening an external database connection.
     instance = object.__new__(SnowflakeSource)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
@@ -43,7 +43,7 @@ def source():
     instance.context.get().upsert("database_schema", "schema")
     instance.metadata = MagicMock()
     instance.metadata.es_search_from_fqn.return_value = []
-    instance.metadata.get_by_name.side_effect = AssertionError("Entity tag lookup must not access the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     return instance
 
 
@@ -251,8 +251,9 @@ def test_default_sources_emit_no_tags_and_keep_empty_lookups(default_source, inc
 
 
 @pytest.mark.parametrize("level", ["database", "schema", "table"])
-def test_default_stages_emit_registered_definitions_and_preserve_labels(default_source, level):
+def test_default_stages_emit_registered_definitions_and_preserve_labels(default_source, level, existing_tag_lookup):
     source = default_source
+    source.metadata.get_by_name.side_effect = existing_tag_lookup
     source.metadata.es_search_from_fqn.side_effect = None
     source.metadata.es_search_from_fqn.return_value = []
     node, item, entity_fqn = {

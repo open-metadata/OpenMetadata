@@ -33,7 +33,7 @@ from metadata.ingestion.source.storage.s3.models import S3ContainerDetails
 
 
 @pytest.fixture
-def source() -> S3Source:
+def source(existing_tag_lookup) -> S3Source:
     instance = object.__new__(S3Source)
     instance.source_config = StorageServiceMetadataPipeline(includeTags=True)
     instance.status = Status.model_validate({})
@@ -42,7 +42,7 @@ def source() -> S3Source:
     instance.container_source_state = set()
     instance.metadata = MagicMock()
     instance.metadata.es_search_from_fqn.return_value = []
-    instance.metadata.get_by_name.side_effect = AssertionError("Labels must not fetch tags from the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.metadata.get_by_id.return_value = Container.model_construct(
         fullyQualifiedName=FullyQualifiedEntityName("demo_service.my_bucket")
     )

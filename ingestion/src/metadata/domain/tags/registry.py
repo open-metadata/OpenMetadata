@@ -23,7 +23,8 @@ Safe for concurrent use across the topology's parallel schema workers.
 
 import threading
 from collections.abc import Generator
-from typing import NamedTuple, cast
+from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 from cachetools import LRUCache
 
@@ -49,7 +50,16 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
 logger = ingestion_logger()
+
+
+@dataclass(frozen=True)
+class _TagState:
+    emitted: bool = False
+    exists: bool | None = None
 
 
 class _TagLabelKey(NamedTuple):
@@ -64,10 +74,11 @@ class _TagLabelKey(NamedTuple):
 class TagRegistry:
     """Registry for Tag and Classification ingestion bookkeeping."""
 
-    def __init__(self, cache_size: int = 1000) -> None:
+    def __init__(self, cache_size: int = 1000, *, metadata: "OpenMetadata") -> None:
         if cache_size < 1:
             raise ValueError("cache_size must be positive")
-        self._known_tag_fqns: LRUCache[str, bool] = LRUCache(maxsize=cache_size)
+        self._metadata = metadata
+        self._known_tag_fqns: LRUCache[str, _TagState] = LRUCache(maxsize=cache_size)
         self._tag_label_cache: LRUCache[_TagLabelKey, TagLabel] = LRUCache(maxsize=cache_size)
         self._pending: dict[str, OMetaTagAndClassification] = {}
         self._labels_by_entity: dict[str, list[TagLabel]] = {}
@@ -99,7 +110,8 @@ class TagRegistry:
             return
         tag_fqn = cast("str", fqn.build(None, Tag, classification_name=tag.classification_name, tag_name=tag.tag_name))
         with self._lock:
-            if self._known_tag_fqns.get(tag_fqn, False):
+            known = self._known_tag_fqns.get(tag_fqn)
+            if known is not None and known.emitted:
                 return
             if tag_fqn not in self._pending:
                 self._pending[tag_fqn] = self._build_pending_record(
@@ -132,9 +144,28 @@ class TagRegistry:
             self._labels_by_entity.setdefault(entity_fqn, []).append(tag_label)
 
     def labels_for(self, entity_fqn: str) -> list[TagLabel]:
-        """Return tag labels attached to ``entity_fqn`` (idempotent; returns a copy)."""
+        """Return existing tag labels attached to ``entity_fqn`` as a copy."""
         with self._lock:
-            return list(self._labels_by_entity.get(entity_fqn, []))
+            labels = list(self._labels_by_entity.get(entity_fqn, []))
+        return [label for label in labels if self._exists(label.tagFQN.root)]
+
+    def _exists(self, tag_fqn: str) -> bool:
+        with self._lock:
+            known = self._known_tag_fqns.get(tag_fqn)
+            if known is not None and known.exists is not None:
+                return known.exists
+        try:
+            exists = self._metadata.get_by_name(entity=Tag, fqn=tag_fqn) is not None
+        except Exception as exc:
+            logger.warning("Unable to verify tag %s; omitting its labels: %s", tag_fqn, exc)
+            exists = False
+        else:
+            if not exists:
+                logger.warning("Tag %s does not exist in OpenMetadata; omitting its labels", tag_fqn)
+        with self._lock:
+            known = self._known_tag_fqns.get(tag_fqn, _TagState())
+            self._known_tag_fqns[tag_fqn] = replace(known, exists=exists)
+        return exists
 
     def drain(self) -> Generator[OMetaTagAndClassification, None, None]:
         """Yield pending definitions; publish each before advancing and close on interruption."""
@@ -147,7 +178,8 @@ class TagRegistry:
                 # Resuming confirms publication to the workflow queue, not successful persistence.
                 with self._lock:
                     del self._pending[tag_fqn]
-                    self._known_tag_fqns[tag_fqn] = True
+                    known = self._known_tag_fqns.get(tag_fqn, _TagState())
+                    self._known_tag_fqns[tag_fqn] = replace(known, emitted=True)
 
             if pending:
                 logger.debug("TagRegistry: drained %d pending tag payloads.", len(pending))

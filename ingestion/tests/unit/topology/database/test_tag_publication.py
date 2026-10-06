@@ -13,17 +13,20 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
-from urllib.parse import urlsplit
+from unittest.mock import MagicMock
+from urllib.parse import unquote, urlsplit
 from uuid import UUID
 
 import pytest
 from requests import Response
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
+from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import StorageServiceMetadataPipeline
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -32,12 +35,32 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
 from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.mysql.metadata import MysqlSource
+from metadata.ingestion.source.storage.s3.metadata import S3Source
+from metadata.ingestion.source.storage.s3.models import S3ContainerDetails
+from metadata.utils.fqn import split
 
 
 class CatalogHTTP:
-    def __init__(self):
+    def __init__(self, fail_definition=None):
         self.tags = set()
         self.tables = {}
+        self.containers = {}
+        self.tag_reads = []
+        self.definition_writes = []
+        self.fail_definition = fail_definition
+
+    def get_tag(self, tag_fqn):
+        self.tag_reads.append(tag_fqn)
+        if tag_fqn not in self.tags:
+            return 404, {"message": "Tag not found"}
+        classification, name = split(tag_fqn)
+        return 200, {
+            "id": str(UUID(int=2)),
+            "name": name,
+            "description": "Native tag",
+            "fullyQualifiedName": tag_fqn,
+            "classification": {"id": str(UUID(int=1)), "type": "classification", "name": classification},
+        }
 
     def request(self, method, url, **kwargs):
         path = urlsplit(url).path
@@ -48,15 +71,40 @@ class CatalogHTTP:
 
         if method.upper() == "GET" and path.endswith("/search/fieldQuery"):
             body = {"hits": {"hits": [], "total": {"value": 0}}}
+        elif method.upper() == "GET" and "/tags/name/" in path:
+            status, body = self.get_tag(unquote(path.split("/tags/name/", 1)[1]))
         elif path.endswith("/classifications"):
-            body = {**payload, "id": str(UUID(int=1))}
+            self.definition_writes.append("classification")
+            if self.fail_definition == "classification":
+                status, body = 403, {"message": "Classification write denied"}
+            else:
+                body = {**payload, "id": str(UUID(int=1))}
         elif path.endswith("/tags"):
-            self.tags.add(f"{payload['classification']}.{payload['name']}")
-            body = {
-                **payload,
-                "id": str(UUID(int=2)),
-                "classification": {"id": str(UUID(int=1)), "type": "classification", "name": payload["classification"]},
-            }
+            self.definition_writes.append("tag")
+            if self.fail_definition == "tag":
+                status, body = 403, {"message": "Tag write denied"}
+            else:
+                self.tags.add(f"{payload['classification']}.{payload['name']}")
+                body = {
+                    **payload,
+                    "id": str(UUID(int=2)),
+                    "classification": {
+                        "id": str(UUID(int=1)),
+                        "type": "classification",
+                        "name": payload["classification"],
+                    },
+                }
+        elif path.endswith("/containers"):
+            missing = {label["tagFQN"] for label in payload.get("tags", [])} - self.tags
+            if missing:
+                status, body = 400, {"message": f"Unknown tags: {sorted(missing)}"}
+            else:
+                self.containers[f"{payload['service']}.{payload['name']}"] = payload
+                body = {
+                    **payload,
+                    "id": str(UUID(int=3)),
+                    "service": {"id": str(UUID(int=4)), "type": "storageService", "name": payload["service"]},
+                }
         elif path.endswith("/bulk"):
             missing = {label["tagFQN"] for entity in payload for label in entity.get("tags", [])} - self.tags
             if missing:
@@ -163,6 +211,7 @@ class TaggedDatabaseSource(MysqlSource):
 @pytest.mark.parametrize("fail_publication", [False, True])
 def test_parallel_schema_tables_reach_sink_after_their_definitions(monkeypatch, shared_tag, fail_publication):
     catalog = CatalogHTTP()
+    catalog.tags = {"Class.Shared"} if shared_tag else {"Class.A", "Class.B"}
     monkeypatch.setattr("requests.Session.request", lambda _, *args, **kwargs: catalog.request(*args, **kwargs))
     metadata = OpenMetadata(
         OpenMetadataConnection(
@@ -217,8 +266,116 @@ def test_parallel_schema_tables_reach_sink_after_their_definitions(monkeypatch, 
             fqn: [label["tagFQN"] for label in table["tags"]] for fqn, table in catalog.tables.items()
         } == expected_tables
         assert catalog.tags == set(expected)
+        assert catalog.definition_writes.count("tag") == len(set(expected))
         assert source.tags_registry.stats()["pending"] == 0
         assert source.tags_registry.stats()["live_entities"] == int(fail_publication)
         assert len(source.context.contexts) == 1
+    finally:
+        metadata.close()
+
+
+@pytest.mark.parametrize("family", ["database", "storage"])
+@pytest.mark.parametrize("fail_definition", [None, "classification", "tag"])
+@pytest.mark.parametrize("already_present", [True, False])
+def test_assets_survive_definition_failures_with_only_existing_labels(
+    monkeypatch, family, fail_definition, already_present
+):
+    catalog = CatalogHTTP(fail_definition=fail_definition)
+    if already_present:
+        catalog.tags.add("Class.Shared")
+    monkeypatch.setattr("requests.Session.request", lambda _, *args, **kwargs: catalog.request(*args, **kwargs))
+    metadata = OpenMetadata(
+        OpenMetadataConnection(
+            hostPort="http://localhost:8585/api",
+            authProvider="basic",
+            securityConfig={"jwtToken": "test-token"},
+            enableVersionValidation=False,
+        ),
+        additional_client_config_arguments={"retry": 0, "retry_wait": 0},
+    )
+    sink = MetadataRestSink(MetadataRestSinkConfig(bulk_sink_batch_size=1), metadata)
+    try:
+        if family == "database":
+            source = TaggedDatabaseSource(metadata, shared_tag=True, fail_publication=False)
+            source.context = TopologyContextManager(source.topology)
+            for key, value in (("database_service", "svc"), ("database", "db"), ("database_schema", "schema_a")):
+                source.context.get().upsert(key, value)
+            for record in source.yield_database_schema_tag_details("schema_a"):
+                sink.run(record.right)
+            source.attach_tag(entity_fqn="svc.db.schema_a.other_table", tag=TagDefinition("Class", "Shared", "", ""))
+            for name in ("my_table", "other_table"):
+                for record in source.yield_table((name, TableType.Regular)):
+                    sink.run(record.right)
+            assets = catalog.tables
+        else:
+            source = object.__new__(S3Source)
+            source.metadata = metadata
+            source.source_config = StorageServiceMetadataPipeline(includeTags=True)
+            source.context = TopologyContextManager(source.topology)
+            source.context.get().upsert("objectstore_service", "svc")
+            source.container_source_state = set()
+            source.s3_client = MagicMock()
+            source.s3_client.get_bucket_tagging.return_value = {"TagSet": [{"Key": "Class", "Value": "Shared"}]}
+            for name in ("my_bucket", "other_bucket"):
+                details = S3ContainerDetails(
+                    name=name, prefix="/", container_fqn=f"svc.{name}", fullPath=f"s3://{name}"
+                )
+                for record in source.yield_tag_details(details):
+                    sink.run(record.right)
+                for record in source.yield_container_details(details):
+                    sink.run(record.right)
+            assets = catalog.containers
+
+        assert len(assets) == 2
+        expected = ["Class.Shared"] if already_present or fail_definition is None else []
+        assert [[label["tagFQN"] for label in asset.get("tags", [])] for asset in assets.values()] == [
+            expected,
+            expected,
+        ]
+        assert catalog.tag_reads == ["Class.Shared"]
+        assert catalog.definition_writes.count("classification") == 1
+        assert catalog.definition_writes.count("tag") == int(fail_definition != "classification")
+        assert len(sink.status.failures) == int(fail_definition is not None)
+    finally:
+        metadata.close()
+
+
+def test_worker_cached_miss_survives_later_definition_persistence(monkeypatch):
+    catalog = CatalogHTTP()
+    monkeypatch.setattr("requests.Session.request", lambda _, *args, **kwargs: catalog.request(*args, **kwargs))
+    metadata = OpenMetadata(
+        OpenMetadataConnection(
+            hostPort="http://localhost:8585/api",
+            authProvider="basic",
+            securityConfig={"jwtToken": "test-token"},
+            enableVersionValidation=False,
+        ),
+        additional_client_config_arguments={"retry": 0, "retry_wait": 0},
+    )
+    sink = MetadataRestSink(MetadataRestSinkConfig(bulk_sink_batch_size=1), metadata)
+    source = TaggedDatabaseSource(metadata, shared_tag=True, fail_publication=False)
+    source.context = TopologyContextManager(source.topology)
+    for key, value in (("database_service", "svc"), ("database", "db"), ("database_schema", "schema_a")):
+        source.context.get().upsert(key, value)
+
+    def produce():
+        source.context.copy_from(source.context.main_thread)
+        try:
+            definitions = list(source.yield_database_schema_tag_details("schema_a"))
+            assets = list(source.yield_table(("my_table", TableType.Regular)))
+            return definitions + assets
+        finally:
+            source.context.pop()
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            records = pool.submit(produce).result(timeout=10)
+        for record in records:
+            sink.run(record.right)
+        assert catalog.tags == {"Class.Shared"}
+        assert [label["tagFQN"] for label in catalog.tables["svc.db.schema_a.my_table"].get("tags", [])] == []
+        assert source.get_tag_labels("my_table") is None
+        assert catalog.tag_reads == ["Class.Shared"]
+        assert sink.status.failures == []
     finally:
         metadata.close()

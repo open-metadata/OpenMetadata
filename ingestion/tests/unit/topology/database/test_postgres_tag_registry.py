@@ -25,7 +25,7 @@ from metadata.ingestion.source.database.timescale.metadata import TimescaleSourc
 
 
 @pytest.fixture(params=[PostgresSource, TimescaleSource])
-def source(request):
+def source(request, existing_tag_lookup):
     instance = object.__new__(request.param)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
     instance.service_connection = PostgresConnection(username="user", hostPort="localhost:5432", database="db")
@@ -34,7 +34,7 @@ def source(request):
         instance.context.get().upsert(key, value)
     instance.metadata = MagicMock()
     instance.metadata.es_search_from_fqn.return_value = []
-    instance.metadata.get_by_name.side_effect = AssertionError("Tag label lookup must not access the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.engine = MagicMock()
     return instance
 
