@@ -41,6 +41,8 @@ const TRACEBACK_LINE_CLASS: Record<TracebackLineKind, string> = {
 const TRACEBACK_CLASS_NAME = [
   'tw:max-h-80 tw:max-w-full tw:overflow-auto tw:rounded-lg tw:p-3',
   'tw:border tw:border-secondary tw:bg-secondary tw:focus-visible:outline-focus-ring',
+  // Geist Mono's ligatures draw `!=` as `≠` and run `<>` into the character before it.
+  'tw:[font-variant-ligatures:none]',
 ].join(' ');
 
 interface RunExecutionErrorProps {

@@ -26,8 +26,9 @@ import {
   toSqlLines,
 } from './TestCaseConfigurationCard.utils';
 
+// No ligatures: Geist Mono draws `>=` as `≥`, so the query would read as something it is not.
 const SQL_BLOCK_CLASS_NAME =
-  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5 tw:focus-visible:outline-focus-ring';
+  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5 tw:focus-visible:outline-focus-ring tw:[font-variant-ligatures:none]';
 
 /**
  * The prototype's read-only, line-numbered SQL block. Deliberately not
