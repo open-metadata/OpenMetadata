@@ -63,6 +63,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -182,6 +183,7 @@ import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
 @Slf4j
 public class SearchRepository {
@@ -2932,8 +2934,9 @@ public class SearchRepository {
    * columns, nothing rebuilds their docs from the parent, so a term removed through the glossary
    * Assets tab used to linger on them and keep them listed under the term.
    *
-   * <p>Failures are queued for retry rather than thrown: the caller has already committed the
-   * {@code tag_usage} change, so the search index is what needs to catch up.
+   * <p>Search failures are queued for retry rather than thrown: the caller has already committed
+   * the {@code tag_usage} change, so the search index is what needs to catch up. Any other failure
+   * is a bug in building the update, which a retry would only repeat, so it propagates.
    */
   public void propagateTagChangeToChildren(
       EntityInterface entity, List<TagLabel> addedTags, List<TagLabel> deletedTags) {
@@ -2952,7 +2955,7 @@ public class SearchRepository {
           changeDescription,
           entityIndexMap.get(entityType),
           entity);
-    } catch (Exception e) {
+    } catch (IOException | ElasticsearchException | OpenSearchException e) {
       SearchIndexRetryQueue.enqueueWithPropagation(
           entity, changeDescription, "propagateTagChangeToChildren", e);
     }

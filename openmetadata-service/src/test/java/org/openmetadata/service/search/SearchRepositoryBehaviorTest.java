@@ -31,6 +31,9 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorCause;
+import es.co.elastic.clients.elasticsearch._types.ErrorResponse;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -1220,6 +1223,75 @@ class SearchRepositoryBehaviorTest {
                   eq("propagateTagChangeToChildren"),
                   eq(failure)));
     }
+  }
+
+  /**
+   * A server-side search failure is queued, not thrown: the bulk asset API has already committed
+   * tag_usage, so failing the request would leave the term applied with no search update pending.
+   */
+  @Test
+  void propagateTagChangeToChildrenQueuesASearchServerFailureForRetry() throws IOException {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    ElasticsearchException unavailable =
+        new ElasticsearchException(
+            "es/update_by_query",
+            ErrorResponse.of(
+                response ->
+                    response
+                        .status(503)
+                        .error(
+                            ErrorCause.of(
+                                cause ->
+                                    cause
+                                        .type("unavailable_shards_exception")
+                                        .reason("primary shard is not active")))));
+    doThrow(unavailable)
+        .when(searchClient)
+        .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.propagateTagChangeToChildren(table, List.of(glossaryTermLabel()), List.of());
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  eq(table),
+                  any(ChangeDescription.class),
+                  eq("propagateTagChangeToChildren"),
+                  eq(unavailable)));
+    }
+  }
+
+  /**
+   * A failure that does not come from the search engine is a bug in building the update. Queueing
+   * it would only repeat the same failure up to the retry ceiling, so it surfaces instead.
+   */
+  @Test
+  void propagateTagChangeToChildrenSurfacesAFailureThatIsNotTheSearchEngines() throws IOException {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    IllegalStateException bug = new IllegalStateException("malformed tag delta");
+    doThrow(bug)
+        .when(searchClient)
+        .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      IllegalStateException thrown =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  repository.propagateTagChangeToChildren(
+                      table, List.of(glossaryTermLabel()), List.of()));
+
+      assertSame(bug, thrown);
+      retryQueue.verifyNoInteractions();
+    }
+  }
+
+  private static TagLabel glossaryTermLabel() {
+    return new TagLabel()
+        .withTagFQN("Glossary.Term")
+        .withSource(TagLabel.TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.MANUAL);
   }
 
   @Test
