@@ -31,8 +31,8 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  ARTICLES_URL,
   ARTICLE_DESCRIPTION,
+  ARTICLES_URL,
   assertArticleEditorSaved,
   cleanupCurrentArticle,
   createArticleFromButton,
@@ -52,6 +52,7 @@ import {
   verifyArticleSearch,
   waitForArticleInFollows,
   waitForDraftPersisted,
+  waitForRecentlyViewed
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
@@ -857,7 +858,11 @@ test.describe('Context Center Articles', () => {
     const viewedCard = page
       .getByTestId('knowledge-page-listing')
       .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
-    await expect(viewedCard).toBeVisible();
+    await expect(viewedCard.getByTestId('knowledge-card-title')).toBeVisible();
+    await expect(
+      viewedCard.getByTestId('knowledge-card-description')
+    ).toBeVisible();
+    await expect(viewedCard.getByTestId('updated-at')).toBeVisible();
 
     await viewedCard.getByTestId('knowledge-page-link').first().click();
     await page.waitForURL((url) =>
@@ -964,7 +969,29 @@ test.describe('Context Center Articles', () => {
       name: `Expand ${parent.displayName}`,
     });
     await expect(ExpandIcon).toBeVisible();
+    // Expanding lazy-loads the parent's children via a separate
+    // /search/hierarchy fetch; the child node only enters the DOM once it
+    // resolves. Hoist the listener before the click so scrollHierarchyToNode
+    // below does not race (and conclude end-of-list against) an empty tree.
+    const childrenLoaded = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/search/hierarchy') &&
+        resp
+          .url()
+          .includes(
+            `parent=${encodeURIComponent(parent.fullyQualifiedName)}`
+          ) &&
+        resp.request().method() === 'GET'
+    );
     await ExpandIcon.click();
+    const childrenResponse = await childrenLoaded;
+
+    expect(childrenResponse.status()).toBe(200);
+    // Scroll to the child as well, not just the parent. The hierarchy is an
+    // infinite-scroll list, so expanding a node does not guarantee its child
+    // is inside the rendered window -- and the more articles the Context
+    // Center holds, the further down it lands.
+    await scrollHierarchyToNode(page, child.displayName);
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
