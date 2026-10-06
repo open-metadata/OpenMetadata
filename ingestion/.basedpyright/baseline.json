@@ -68404,24 +68404,8 @@
             {
                 "code": "reportAttributeAccessIssue",
                 "range": {
-                    "startColumn": 55,
-                    "endColumn": 59,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAttributeAccessIssue",
-                "range": {
                     "startColumn": 64,
                     "endColumn": 83,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 37,
-                    "endColumn": 68,
                     "lineCount": 1
                 }
             },
@@ -83618,30 +83602,6 @@
                 "range": {
                     "startColumn": 47,
                     "endColumn": 55,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportMissingParameterType",
-                "range": {
-                    "startColumn": 51,
-                    "endColumn": 62,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportMissingParameterType",
-                "range": {
-                    "startColumn": 64,
-                    "endColumn": 76,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportMissingParameterType",
-                "range": {
-                    "startColumn": 78,
-                    "endColumn": 88,
                     "lineCount": 1
                 }
             },

@@ -129,7 +129,10 @@ const KnowledgePages: FC = () => {
                 }>
                 <Typography
                   className="article-header"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getEntityName(knowledgePage)}
                 </Typography>
               </Link>
