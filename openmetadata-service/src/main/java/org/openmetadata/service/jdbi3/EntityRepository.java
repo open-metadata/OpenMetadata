@@ -9360,16 +9360,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateOwners() {
-      // A bot whose policy denies EditOwners (e.g. the ingestion bot via DefaultBotPolicy /
-      // IngestionBotPolicy) must not clobber user-curated owners. A PUT or bulk update authorizes
-      // with the coarse EDIT_ALL operation, which does not intersect that field-level deny, so
-      // re-apply it here. Bots the policy allows fall through and update owners as before. A bulk
-      // force-sync (overrideMetadata=true) also bypasses this guard.
+      // A bot PUT only fills owners on an entity that has none: owners sent by ingestion
+      // (ownerConfig, includeOwners) must not replace the ones a user assigned, as includeOwners
+      // documents. This can't be left to the bot policy - no shipped bot policy denies EditOwners,
+      // so a policy check never fired. A PATCH, or a bulk run with overrideMetadata=true, still
+      // reassigns them.
       boolean preserveUserOwners =
-          updatedByBot()
-              && !nullOrEmpty(original.getOwners())
-              && !overrideMetadata
-              && updatingBotDeniedOperation(MetadataOperation.EDIT_OWNERS);
+          operation.isPut()
+              && updatedByBot()
+              && !nullOrEmpty(getEntityReferences(original.getOwners()))
+              && !overrideMetadata;
       if (preserveUserOwners) {
         updated.setOwners(original.getOwners());
         return;
@@ -9856,6 +9856,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
         recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
       }
+    }
+
+    /**
+     * Updates a field only users set and no connector sends, such as retentionPeriod. A bot PUT
+     * always omits it, so - override or not - that absence keeps the stored value instead of
+     * blanking it.
+     */
+    protected final <V> void updateUserOnlyField(
+        String fieldName, V origValue, V updatedValue, Consumer<V> setUpdated) {
+      if (operation.isPut() && updatedByBot() && updatedValue == null && origValue != null) {
+        setUpdated.accept(origValue);
+        return;
+      }
+      recordChange(fieldName, origValue, updatedValue);
     }
 
     private void updateLifeCycle() {
