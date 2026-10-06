@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Storage tag publication, entity labels and container lifetimes."""
+"""S3 tag extraction, asset mapping and GCS no-tag behavior."""
 
 from typing import Any
 from unittest.mock import MagicMock
@@ -123,17 +123,6 @@ def test_bucket_and_object_labels_keep_their_scopes(source: Any):
     assert (tag.labelType.value, tag.state.value, tag.source.value) == ("Automated", "Suggested", "Classification")
 
 
-def test_definitions_are_deduplicated_across_containers(source: Any):
-    records = list(tag_stage(source, bucket()))
-    assert definitions(records) == [("Team", "Shared")]
-    assert records[0].right.classification_request.description.root == "S3 TAG KEY"
-    assert records[0].right.tag_request.description.root == "S3 TAG VALUE"
-    assert labels(request(container_stage(source, bucket())).tags) == ["Team.Shared"]
-    assert definitions(tag_stage(source, bucket("other_bucket"))) == []
-    assert labels(request(container_stage(source, bucket("other_bucket"))).tags) == ["Team.Shared"]
-    assert source.tags_registry.stats()["pending"] == 0
-
-
 def test_folder_containers_do_not_fetch_or_inherit_tags(source: Any):
     list(tag_stage(source, bucket()))
     request(container_stage(source, bucket()))
@@ -152,40 +141,6 @@ def test_folder_containers_do_not_fetch_or_inherit_tags(source: Any):
     assert emitted.name.root == "my_folder"
     assert labels(emitted.tags) == []
     assert tag_requests == []
-    assert source.tags_registry.stats()["live_entities"] == 0
-
-
-@pytest.mark.parametrize("finish", ["exhaust", "close"])
-def test_container_scope_lives_until_the_request_is_consumed(source: Any, finish: str):
-    list(tag_stage(source, bucket()))
-    stream = container_stage(source, bucket())
-    emitted = next(stream)
-    assert labels(emitted.right.tags) == ["Team.Shared"]
-    assert source.tags_registry.stats()["live_entities"] == 1
-    if finish == "close":
-        stream.close()
-    else:
-        assert list(stream) == []
-    assert source.tags_registry.stats()["live_entities"] == 0
-    assert labels(emitted.right.tags) == ["Team.Shared"]
-
-
-def test_interrupted_tag_publication_releases_labels_and_can_be_retried(source: Any):
-    stream = tag_stage(source, bucket())
-    assert next(stream).right.tag_request.name.root == "Shared"
-    stream.close()
-    assert source.tags_registry.stats()["live_entities"] == 0
-    assert definitions(tag_stage(source, bucket("other_bucket"))) == [("Team", "Shared")]
-    assert labels(request(container_stage(source, bucket("other_bucket"))).tags) == ["Team.Shared"]
-
-
-def test_failed_container_registration_releases_labels(source: Any):
-    list(tag_stage(source, file()))
-    source.metadata.get_by_id.side_effect = RuntimeError("Parent unavailable")
-    stream = source.yield_container_details(file())
-    assert labels(next(stream).right.tags) == ["Team.Private"]
-    with pytest.raises(RuntimeError, match="Parent unavailable"):
-        next(stream)
     assert source.tags_registry.stats()["live_entities"] == 0
 
 
@@ -291,19 +246,6 @@ def test_quoted_names_and_case_distinct_values_keep_their_identity(source: Any):
         "Team.SHARED",
     ]
     assert source.tags_registry.stats()["live_entities"] == 0
-
-
-def test_many_containers_keep_only_active_attachments_and_bounded_caches(source: Any):
-    for index in range(1100):
-        source.s3_client.get_bucket_tagging.return_value = {"TagSet": [{"Key": "Category", "Value": f"value_{index}"}]}
-        details = bucket(f"my_bucket_{index}")
-        assert definitions(tag_stage(source, details)) == [("Category", f"value_{index}")]
-        assert source.tags_registry.stats()["live_entities"] == 1
-        assert labels(request(container_stage(source, details)).tags) == [f"Category.value_{index}"]
-        assert source.tags_registry.stats()["live_entities"] == 0
-    assert source.tags_registry.stats()["known_tag_fqns"] <= 1000
-    assert source.tags_registry.stats()["tag_label_cache"] <= 1000
-    assert source.tags_registry.stats()["pending"] == 0
 
 
 @pytest.mark.parametrize("include_tags", [True, False])

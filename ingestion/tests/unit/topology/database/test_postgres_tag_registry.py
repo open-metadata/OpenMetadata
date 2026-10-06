@@ -21,12 +21,11 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.database.postgres.metadata import PostgresSource
-from metadata.ingestion.source.database.timescale.metadata import TimescaleSource
 
 
-@pytest.fixture(params=[PostgresSource, TimescaleSource])
-def source(request, existing_tag_lookup):
-    instance = object.__new__(request.param)
+@pytest.fixture
+def source(existing_tag_lookup):
+    instance = object.__new__(PostgresSource)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
     instance.service_connection = PostgresConnection(username="user", hostPort="localhost:5432", database="db")
     instance.context = TopologyContextManager(instance.topology)

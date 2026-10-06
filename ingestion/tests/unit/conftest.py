@@ -1,6 +1,5 @@
 import math
-from unittest.mock import MagicMock, patch
-from uuid import UUID
+from unittest.mock import patch
 
 import sqlalchemy as sqa
 from pytest import fixture
@@ -11,9 +10,6 @@ from pytest import fixture
 # workers whose first collected test only imports sub-modules may never trigger
 # __init__.py, causing @inject-decorated functions to raise DependencyNotFoundError.
 import metadata  # noqa: F401
-from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.fqn import split
 
 # Prevent unit tests from connecting to the OpenMetadata server.
 # Three code paths trigger HTTP calls to localhost:8585:
@@ -31,29 +27,6 @@ _mock_log_server_version.start()
 
 _mock_health = patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.health_check")
 _mock_health.start()
-
-
-@fixture
-def existing_tag_lookup():
-    def lookup(*, entity, fqn):
-        assert entity is Tag
-        classification, name = split(fqn)
-        return Tag(
-            id=UUID(int=2),
-            name=name,
-            fullyQualifiedName=fqn,
-            description="Native tag",
-            classification={"id": str(UUID(int=1)), "type": "classification", "name": classification},
-        )
-
-    return lookup
-
-
-@fixture
-def tag_metadata(existing_tag_lookup):
-    client = MagicMock(spec=OpenMetadata)
-    client.get_by_name.side_effect = existing_tag_lookup
-    return client
 
 
 @fixture(scope="session")

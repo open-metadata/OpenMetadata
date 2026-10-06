@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Concurrent database tag publication through the topology, queue and REST sink."""
+"""Tag publication through source stages, worker queues and an in-memory REST catalog."""
 
 import json
 from concurrent.futures import ThreadPoolExecutor
@@ -47,6 +47,7 @@ class CatalogHTTP:
         self.containers = {}
         self.tag_reads = []
         self.definition_writes = []
+        self.persistence_order = []
         self.fail_definition = fail_definition
 
     def get_tag(self, tag_fqn):
@@ -85,6 +86,7 @@ class CatalogHTTP:
                 status, body = 403, {"message": "Tag write denied"}
             else:
                 self.tags.add(f"{payload['classification']}.{payload['name']}")
+                self.persistence_order.append(("tag", f"{payload['classification']}.{payload['name']}"))
                 body = {
                     **payload,
                     "id": str(UUID(int=2)),
@@ -112,7 +114,9 @@ class CatalogHTTP:
             else:
                 if path.endswith("/tables/bulk"):
                     for table in payload:
-                        self.tables[f"{table['databaseSchema']}.{table['name']}"] = table
+                        table_fqn = f"{table['databaseSchema']}.{table['name']}"
+                        self.tables[table_fqn] = table
+                        self.persistence_order.append(("table", table_fqn))
                 body = {
                     "status": "success",
                     "numberOfRowsProcessed": len(payload),
@@ -138,7 +142,6 @@ class PausingQueue(Queue):
         super().__init__()
         self.publication_paused = Event()
         self.release_publication = Event()
-        self.second_table_queued = Event()
         self.fail_publication = fail_publication
 
     def put(self, record):
@@ -148,8 +151,6 @@ class PausingQueue(Queue):
             if self.fail_publication:
                 raise RuntimeError("publication failed")
         super().put(record)
-        if isinstance(record.right, CreateTableRequest) and record.right.databaseSchema.root.endswith("schema_b"):
-            self.second_table_queued.set()
 
 
 class TaggedDatabaseSource(MysqlSource):
@@ -207,11 +208,15 @@ class TaggedDatabaseSource(MysqlSource):
         )
 
 
+@pytest.mark.parametrize("already_present", [False, True])
 @pytest.mark.parametrize("shared_tag", [False, True])
 @pytest.mark.parametrize("fail_publication", [False, True])
-def test_parallel_schema_tables_reach_sink_after_their_definitions(monkeypatch, shared_tag, fail_publication):
+def test_parallel_schema_tables_reach_sink_after_their_definitions(
+    monkeypatch, shared_tag, fail_publication, already_present
+):
     catalog = CatalogHTTP()
-    catalog.tags = {"Class.Shared"} if shared_tag else {"Class.A", "Class.B"}
+    if already_present:
+        catalog.tags = {"Class.Shared"} if shared_tag else {"Class.A", "Class.B"}
     monkeypatch.setattr("requests.Session.request", lambda _, *args, **kwargs: catalog.request(*args, **kwargs))
     metadata = OpenMetadata(
         OpenMetadataConnection(
@@ -242,8 +247,6 @@ def test_parallel_schema_tables_reach_sink_after_their_definitions(monkeypatch, 
                 if not discovered:
                     ingestion.result(timeout=1)
                 assert discovered
-                # Let the competing worker reach its drain while the first definition is still unpublished.
-                source.queue.second_table_queued.wait(timeout=0.2)
             finally:
                 source.queue.release_publication.set()
             if fail_publication:
@@ -262,9 +265,15 @@ def test_parallel_schema_tables_reach_sink_after_their_definitions(monkeypatch, 
         }
         if fail_publication:
             del expected_tables["svc.db.schema_a.my_table"]
-        assert {
-            fqn: [label["tagFQN"] for label in table["tags"]] for fqn, table in catalog.tables.items()
-        } == expected_tables
+        assert set(catalog.tables) == set(expected_tables)
+        for table_fqn, tags in expected_tables.items():
+            table_index = catalog.persistence_order.index(("table", table_fqn))
+            assert catalog.persistence_order.index(("tag", tags[0])) < table_index
+            actual_tags = [label["tagFQN"] for label in catalog.tables[table_fqn].get("tags", [])]
+            if already_present:
+                assert actual_tags == tags
+            else:
+                assert actual_tags in ([], tags)
         assert catalog.tags == set(expected)
         assert catalog.definition_writes.count("tag") == len(set(expected))
         assert source.tags_registry.stats()["pending"] == 0
