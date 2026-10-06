@@ -244,9 +244,8 @@ test.describe('FeedWidget on landing page', () => {
 
     await expect(sortDropdown).toBeVisible();
 
-    // The menu renders inside the trigger, so it is scoped to this widget.
-    const sortMenu = widget.getByRole('menu');
-
+    // Core popovers render outside the widget; use the selected sort label.
+    const sortMenu = page.getByRole('menu', { name: 'All Activity' });
     await sortDropdown.click();
 
     await expect(

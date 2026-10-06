@@ -7191,8 +7191,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryTerms/tabs/AssetsTabs.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
@@ -7200,14 +7198,10 @@
         "playwright/e2e/Features/MetricAssets.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/SchemaSearch.spec.ts",
-        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
-        "playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/GlossaryImportExport.spec.ts",
-        "playwright/e2e/Pages/InputOutputPorts.spec.ts",
-        "playwright/e2e/Pages/Tag.spec.ts"
+        "playwright/e2e/Pages/InputOutputPorts.spec.ts"
       ]
     },
     {
@@ -9460,6 +9454,14 @@
       "specs": [
         "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/PopOverCard/UserPopOverCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
     {

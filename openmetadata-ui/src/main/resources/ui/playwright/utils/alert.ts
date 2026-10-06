@@ -37,7 +37,6 @@ import {
   getDescriptionBox,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
 } from './common';
 import {
   getEntityDisplayName,
@@ -964,7 +963,6 @@ export const inputBasicAlertInformation = async ({
   const sourceTrigger = page.getByTestId('add-source-button');
   await sourceTrigger.click();
   await expect(sourceOption).toBeVisible();
-  await waitForAntdPopupToSettle(page);
   await sourceOption.click();
 
   await expect(sourceSelect).toHaveText(sourceDisplayName);
@@ -1250,9 +1248,10 @@ export const checkRecentEventDetails = async ({
 
   await page.getByTestId('filter-button').click();
 
-  await page
-    .locator('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]')
-    .waitFor();
+  const failedFilterOption = page.getByRole('menuitemradio', {
+    name: 'Failed',
+  });
+  await failedFilterOption.waitFor();
 
   const getFailedEvents = waitForResponseWithStatus(
     page,
@@ -1265,7 +1264,7 @@ export const checkRecentEventDetails = async ({
     200
   );
 
-  await page.click('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]');
+  await failedFilterOption.click();
 
   await getFailedEvents.then(async (response) => {
     const failedEvents: EventDetails[] = (await response.json()).data;

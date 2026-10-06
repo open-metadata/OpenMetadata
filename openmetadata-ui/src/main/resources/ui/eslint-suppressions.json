@@ -450,11 +450,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Pages/AuditLogs.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Pages/DataContractInheritance.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
