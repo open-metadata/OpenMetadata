@@ -429,7 +429,50 @@ describe('TestSummaryGraph', () => {
 
     expect(getChartProps().yAxis).toEqual(
       expect.objectContaining({
-        axisLabel: { showMinLabel: false, showMaxLabel: false },
+        axisLabel: expect.objectContaining({
+          showMinLabel: false,
+          showMaxLabel: false,
+        }),
+      })
+    );
+  });
+
+  it("should set the axes in the mock's type: 11px, the values in Geist Mono", () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const { xAxis, yAxis } = getChartProps();
+
+    expect(xAxis?.axisLabel).toEqual(expect.objectContaining({ fontSize: 11 }));
+    expect((yAxis as { axisLabel: Record<string, unknown> }).axisLabel).toEqual(
+      expect.objectContaining({
+        fontFamily: expect.stringContaining('Geist Mono'),
+        fontSize: 11,
+        fontWeight: 500,
+      })
+    );
+  });
+
+  it('should draw the expectation as the mock does: 1.5px, dashed 5 4, a 10.5px semibold label', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(getReferenceLine('y')).toEqual(
+      expect.objectContaining({
+        lineType: [5, 4],
+        width: 1.5,
+        labelStyle: { fontSize: 10.5, fontWeight: 600 },
+      })
+    );
+  });
+
+  it('should wash a single series in 5% brand blue, under a 2px line', () => {
+    render(
+      <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
+    );
+
+    expect(getSeries('value').seriesOption).toEqual(
+      expect.objectContaining({
+        areaStyle: { color: '#0000a0@0.05' },
+        lineStyle: { width: 2 },
       })
     );
   });
@@ -461,12 +504,14 @@ describe('TestSummaryGraph', () => {
       />
     );
 
-    expect(getReferenceLine('y')).toEqual({
-      axis: 'y',
-      value: 10000,
-      label: `label.expected-value ${(10000).toLocaleString()}`,
-      labelPosition: 'start',
-    });
+    expect(getReferenceLine('y')).toEqual(
+      expect.objectContaining({
+        axis: 'y',
+        value: 10000,
+        label: `label.expected-value ${(10000).toLocaleString()}`,
+        labelPosition: 'start',
+      })
+    );
   });
 
   it('should fall back to the learned bound when no parameter asserts a number', () => {
@@ -540,7 +585,15 @@ describe('TestSummaryGraph', () => {
         },
         0
       )
-    ).toEqual({ status: 'warning', hollow: true, selected: false });
+    ).toEqual(
+      expect.objectContaining({
+        status: 'warning',
+        hollow: true,
+        selected: false,
+        // An aborted run's ring, as in the mock.
+        ringWidth: 1.5,
+      })
+    );
   });
 
   // An aborted run has no value: drawn on the line, it read as a measured
@@ -560,11 +613,13 @@ describe('TestSummaryGraph', () => {
       expect.objectContaining({ connectNulls: true })
     );
     expect(markers.name).toBe('value');
-    expect(markers.pointStyle?.(aborted, 1)).toEqual({
-      status: 'warning',
-      hollow: true,
-      selected: false,
-    });
+    expect(markers.pointStyle?.(aborted, 1)).toEqual(
+      expect.objectContaining({
+        status: 'warning',
+        hollow: true,
+        selected: false,
+      })
+    );
   });
 
   it('should still list an aborted run kept off the line for screen readers', () => {
@@ -587,7 +642,14 @@ describe('TestSummaryGraph', () => {
         },
         0
       )
-    ).toEqual({ status: 'success', hollow: false, selected: false });
+    ).toEqual({
+      status: 'success',
+      hollow: false,
+      selected: false,
+      // The mock's r3.4 dot in a 1.6px ring.
+      size: 6.8,
+      ringWidth: 1.6,
+    });
   });
 
   it('should mark only the active run as selected', () => {

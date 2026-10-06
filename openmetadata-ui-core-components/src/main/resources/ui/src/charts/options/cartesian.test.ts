@@ -339,6 +339,38 @@ describe('buildLineOption', () => {
     expect(wed).toEqual({ value: 4, symbol: 'none' });
   });
 
+  it('sizes, rings and colours a point as its pointStyle asks', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        series: [
+          {
+            key: 'passed',
+            name: 'Passed',
+            pointStyle: () => ({
+              status: 'failed',
+              color: '#d92d20',
+              size: 6.8,
+              ringWidth: 1.6,
+            }),
+          },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option)[0].data as Array<{
+      symbolSize: number;
+      itemStyle: Record<string, unknown>;
+    }>;
+
+    expect(first.symbolSize).toBe(6.8);
+    expect(first.itemStyle).toEqual({
+      color: '#d92d20',
+      borderColor: LIGHT_CHART_THEME.segmentBorder,
+      borderWidth: 1.6,
+    });
+  });
+
   it('gives a selected point a halo in its own colour', () => {
     const option = buildLineOption(
       {
@@ -593,6 +625,51 @@ describe('buildLineOption', () => {
       'insideEndTop',
       'insideStartTop',
     ]);
+  });
+
+  it("draws a reference line in its own colour, dash and width, with its label's size, when asked", () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        referenceLines: [
+          { axis: 'y', value: 80, label: 'Target' },
+          {
+            axis: 'y',
+            value: 60,
+            label: 'Expected',
+            color: '#475467',
+            lineType: [5, 4],
+            width: 1.5,
+            labelStyle: { fontSize: 10.5, fontWeight: 600 },
+          },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const all = seriesOf(option);
+    const {
+      data: [plain, styled],
+    } = all[all.length - 1].markLine as {
+      data: Array<{
+        label: Record<string, unknown>;
+        lineStyle: Record<string, unknown>;
+      }>;
+    };
+
+    // Unchanged without the options.
+    expect(plain.lineStyle).toEqual({
+      color: LIGHT_CHART_THEME.axisText,
+      type: 'dashed',
+      width: 1,
+    });
+    expect(styled.lineStyle).toEqual({
+      color: '#475467',
+      type: [5, 4],
+      width: 1.5,
+    });
+    expect(styled.label).toEqual(
+      expect.objectContaining({ fontSize: 10.5, fontWeight: 600 })
+    );
   });
 
   it('measures reference lines against the first value axis in a composed chart', () => {

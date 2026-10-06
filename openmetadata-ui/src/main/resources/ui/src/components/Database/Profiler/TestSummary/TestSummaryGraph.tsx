@@ -20,7 +20,11 @@ import type {
   ChartXAxisProps,
   ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
-import { ComposedChart } from '@openmetadata/ui-core-components/charts';
+import {
+  ComposedChart,
+  hexToRgba,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { useQueries } from '@tanstack/react-query';
 import { isEmpty, isNumber, isUndefined } from 'lodash';
 import {
@@ -90,9 +94,34 @@ const SINGLE_INSTANT_X_PADDING = 12 * 60 * 60 * 1000;
 const Y_AXIS_EDGE_SHARE = 0.04;
 const FLAT_SERIES_SHARE = 0.1;
 const FLAT_SERIES_MIN_PADDING = 1;
+// The mock's chart type: both axes at 11px, the values in Geist Mono.
+const AXIS_LABEL_FONT_SIZE = 11;
+const CHART_MONO_FONT = 'Geist Mono, ui-monospace, monospace';
 // The padded extremes are padding, not data: a label there printed values like
 // "10.58K" on top of the "10K" tick.
-const Y_AXIS_LABEL = { showMinLabel: false, showMaxLabel: false };
+const Y_AXIS_LABEL = {
+  showMinLabel: false,
+  showMaxLabel: false,
+  fontFamily: CHART_MONO_FONT,
+  fontSize: AXIS_LABEL_FONT_SIZE,
+  fontWeight: 500,
+};
+// The mock's dots: r3.4 in a 1.6px ring, an aborted run's ring 1.5px.
+const POINT_SIZE = 6.8;
+const POINT_RING_WIDTH = 1.6;
+const HOLLOW_POINT_RING_WIDTH = 1.5;
+// The mock's expectation line and its label.
+const EXPECTATION_LINE: Pick<
+  ChartReferenceLine,
+  'lineType' | 'width' | 'labelStyle'
+> = {
+  lineType: [5, 4],
+  width: 1.5,
+  labelStyle: { fontSize: 10.5, fontWeight: 600 },
+};
+// One series reads as data under a 2px line and a faint brand wash.
+const SINGLE_SERIES_LINE_WIDTH = 2;
+const SINGLE_SERIES_WASH = 0.05;
 
 interface AxisExtent {
   min: number;
@@ -183,6 +212,7 @@ function TestSummaryGraph({
   testDefinitionName,
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
+  const palette = useChartPalette();
   const {
     setShowAILearningBanner,
     selectedRunTimestamp,
@@ -390,6 +420,11 @@ function TestSummaryGraph({
             status: getStatusChartStatus(point.status as TestCaseStatus),
             hollow: point.status === POINT_STATUS_HOLLOW,
             selected: point.name === activeRunTimestamp,
+            size: POINT_SIZE,
+            ringWidth:
+              point.status === POINT_STATUS_HOLLOW
+                ? HOLLOW_POINT_RING_WIDTH
+                : POINT_RING_WIDTH,
           };
     const lines = seriesLabels.map<ChartSeries>((label) => ({
       key: label,
@@ -407,7 +442,14 @@ function TestSummaryGraph({
         connectNulls: true,
         // Focusing the hovered series fades the others, and with them the
         // band and the expectation label; only worth it when there are others.
-        ...(isSingleSeries ? {} : MULTI_SERIES_EMPHASIS),
+        ...(isSingleSeries
+          ? {
+              areaStyle: {
+                color: hexToRgba(palette.status.info, SINGLE_SERIES_WASH),
+              },
+              lineStyle: { width: SINGLE_SERIES_LINE_WIDTH },
+            }
+          : MULTI_SERIES_EMPHASIS),
       },
     }));
     // Aborted and queued runs as dots alone, after the lines so no line's
@@ -430,7 +472,14 @@ function TestSummaryGraph({
     }, []);
 
     return [...band, ...lines, ...placed];
-  }, [plottedData, seriesLabels, isSingleSeries, activeRunTimestamp, t]);
+  }, [
+    plottedData,
+    seriesLabels,
+    isSingleSeries,
+    activeRunTimestamp,
+    palette,
+    t,
+  ]);
 
   const referenceLines = useMemo<ChartReferenceLine[]>(
     () => [
@@ -444,6 +493,7 @@ function TestSummaryGraph({
               }),
               // The selection guide opens on the newest run, at the right end.
               labelPosition: 'start' as const,
+              ...EXPECTATION_LINE,
             },
           ]
         : []),
@@ -473,7 +523,11 @@ function TestSummaryGraph({
     return {
       type: 'time',
       formatter: (value) => formatRunTime(Number(value)),
-      axisLabel: { rotate: 45, customValues: tickValues },
+      axisLabel: {
+        rotate: 45,
+        customValues: tickValues,
+        fontSize: AXIS_LABEL_FONT_SIZE,
+      },
       boundaryGap: X_AXIS_EDGE_GAP,
       ...(instants.length === 1 && {
         min: instants[0] - SINGLE_INSTANT_X_PADDING,

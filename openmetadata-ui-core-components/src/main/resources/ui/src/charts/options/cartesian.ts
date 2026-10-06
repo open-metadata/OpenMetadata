@@ -160,18 +160,18 @@ const pointItem = <T extends object>(
   if (!style) {
     return { value, symbol: 'none' };
   }
-  const pointColor = style.status
-    ? ctx.theme.palette.status[style.status]
-    : color;
+  const pointColor =
+    style.color ??
+    (style.status ? ctx.theme.palette.status[style.status] : color);
 
   return {
     value,
     symbol: 'circle',
-    symbolSize: POINT_SIZE,
+    symbolSize: style.size ?? POINT_SIZE,
     itemStyle: {
       color: style.hollow ? 'transparent' : pointColor,
       borderColor: style.hollow ? pointColor : ctx.theme.segmentBorder,
-      borderWidth: style.hollow ? POINT_RING_WIDTH : 1,
+      borderWidth: style.ringWidth ?? (style.hollow ? POINT_RING_WIDTH : 1),
       ...(style.selected
         ? { shadowBlur: POINT_HALO_BLUR, shadowColor: pointColor }
         : {}),

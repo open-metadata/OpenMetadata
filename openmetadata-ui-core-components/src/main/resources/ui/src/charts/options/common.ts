@@ -321,11 +321,14 @@ export const referenceLinesToMarkLine = (
       position:
         line.labelPosition === 'start' ? 'insideStartTop' : 'insideEndTop',
       color: theme.axisText,
+      ...line.labelStyle,
     },
     lineStyle: {
-      color: line.status ? theme.palette.status[line.status] : theme.axisText,
-      type: 'dashed',
-      width: 1,
+      color:
+        line.color ??
+        (line.status ? theme.palette.status[line.status] : theme.axisText),
+      type: line.lineType ?? 'dashed',
+      width: line.width ?? 1,
     },
   })),
 });
