@@ -35,7 +35,7 @@ import { ConfigurationParameterRow } from './TestCaseConfigurationCard/TestCaseC
 import { TestCaseSidePanelProps } from './TestCaseResultTab.interface';
 import {
   canEditTestCaseParameters,
-  getSidePanelColSpanClass,
+  getResultTabGridClass,
   hasAdditionalComponents,
   resolveIsSidePanelVisible,
   shouldRenderTestSummary,
@@ -69,7 +69,7 @@ function TestCaseSidePanel({
 }: Readonly<TestCaseSidePanelProps>) {
   return (
     <div
-      className="transition-all-200ms tw:col-span-4"
+      className="transition-all-200ms tw:min-w-0"
       data-testid="test-case-rail">
       <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
         <div className="tw:w-full">
@@ -246,80 +246,88 @@ const TestCaseResultTab = ({
   ]);
 
   return (
-    <div
-      className="p-md test-case-result-tab tw:grid tw:w-full tw:grid-cols-12 tw:gap-2.5"
-      data-testid="test-case-result-tab-container">
+    <div className="tw:@container">
       <div
-        className={`transition-all-200ms ${getSidePanelColSpanClass(
+        className={`p-md test-case-result-tab tw:grid tw:w-full tw:gap-2.5 ${getResultTabGridClass(
           isSidePanelVisible
-        )}`}>
-        <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
-          {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
-            AlertComponent && (
-              <div className="tw:w-full">
-                <AlertComponent />
+        )}`}
+        data-testid="test-case-result-tab-container">
+        <div className="transition-all-200ms tw:min-w-0">
+          <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+            {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
+              AlertComponent && (
+                <div className="tw:w-full">
+                  <AlertComponent />
+                </div>
+              )}
+            {shouldRenderTestSummary(
+              testCaseData,
+              shouldRenderDefaultGraph
+            ) && (
+              // AI mode sets the result history straight on the page, as the mock
+              // does: the tiles carry the only borders in that section.
+              <div
+                className={
+                  isAiMode
+                    ? 'tw:w-full'
+                    : 'test-case-result-tab-graph tw:w-full'
+                }
+                data-testid="test-case-result-tab-graph">
+                <TestSummary data={testCaseData} />
               </div>
             )}
-          {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
-            // AI mode sets the result history straight on the page, as the mock
-            // does: the tiles carry the only borders in that section.
-            <div
-              className={
-                isAiMode ? 'tw:w-full' : 'test-case-result-tab-graph tw:w-full'
-              }
-              data-testid="test-case-result-tab-graph">
-              <TestSummary data={testCaseData} />
-            </div>
-          )}
 
-          {hasAdditionalComponents(additionalComponents) &&
-            additionalComponents.map(({ Component, id }) => (
-              <Component key={id} testCaseData={testCaseData} />
-            ))}
+            {hasAdditionalComponents(additionalComponents) &&
+              additionalComponents.map(({ Component, id }) => (
+                <Component key={id} testCaseData={testCaseData} />
+              ))}
 
-          {testCaseData &&
-            canEditTestCaseParameters(hasEditPermission, isParameterEdit) && (
-              <TestCaseFormDrawer
-                showOnlyParameter
-                open={isParameterEdit}
-                showDocPanel={false}
-                testCase={testCaseData}
-                variant={editVariant}
-                onClose={handleCancelParameter}
-                onUpdate={setTestCase}
-              />
-            )}
+            {testCaseData &&
+              canEditTestCaseParameters(hasEditPermission, isParameterEdit) && (
+                <TestCaseFormDrawer
+                  showOnlyParameter
+                  open={isParameterEdit}
+                  showDocPanel={false}
+                  testCase={testCaseData}
+                  variant={editVariant}
+                  onClose={handleCancelParameter}
+                  onUpdate={setTestCase}
+                />
+              )}
+          </div>
         </div>
+        {isSidePanelVisible && (
+          <TestCaseSidePanel
+            description={description}
+            descriptionChangeSummaryEntry={descriptionChangeSummaryEntry}
+            handleDataProductsSave={handleDataProductsSave}
+            handleDescriptionChange={handleDescriptionChange}
+            handleTagSelection={handleTagSelection}
+            hasEditDescriptionPermission={hasEditDescriptionPermission}
+            hasEditGlossaryTermsPermission={hasEditGlossaryTermsPermission}
+            hasEditPermission={hasEditPermission}
+            hasEditTagsPermission={hasEditTagsPermission}
+            isRulesLoaded={isRulesLoaded}
+            isVersionPage={isVersionPage}
+            parameterRows={parameterRows}
+            requireDomainForDataProduct={
+              entityRules.requireDomainForDataProduct
+            }
+            showEditParameterButton={shouldShowEditParameterButton(
+              hasEditPermission,
+              testCaseData,
+              showComputeRowCount,
+              Boolean(testCaseData?.dataQualityDimension)
+            )}
+            testCaseData={testCaseData}
+            testDefinition={testDefinition}
+            updatedTags={updatedTags}
+            versionParameterDiff={versionDiff?.sqlDiff}
+            withSqlParams={withSqlParams}
+            onEditParameter={() => setIsParameterEdit(true)}
+          />
+        )}
       </div>
-      {isSidePanelVisible && (
-        <TestCaseSidePanel
-          description={description}
-          descriptionChangeSummaryEntry={descriptionChangeSummaryEntry}
-          handleDataProductsSave={handleDataProductsSave}
-          handleDescriptionChange={handleDescriptionChange}
-          handleTagSelection={handleTagSelection}
-          hasEditDescriptionPermission={hasEditDescriptionPermission}
-          hasEditGlossaryTermsPermission={hasEditGlossaryTermsPermission}
-          hasEditPermission={hasEditPermission}
-          hasEditTagsPermission={hasEditTagsPermission}
-          isRulesLoaded={isRulesLoaded}
-          isVersionPage={isVersionPage}
-          parameterRows={parameterRows}
-          requireDomainForDataProduct={entityRules.requireDomainForDataProduct}
-          showEditParameterButton={shouldShowEditParameterButton(
-            hasEditPermission,
-            testCaseData,
-            showComputeRowCount,
-            Boolean(testCaseData?.dataQualityDimension)
-          )}
-          testCaseData={testCaseData}
-          testDefinition={testDefinition}
-          updatedTags={updatedTags}
-          versionParameterDiff={versionDiff?.sqlDiff}
-          withSqlParams={withSqlParams}
-          onEditParameter={() => setIsParameterEdit(true)}
-        />
-      )}
     </div>
   );
 };

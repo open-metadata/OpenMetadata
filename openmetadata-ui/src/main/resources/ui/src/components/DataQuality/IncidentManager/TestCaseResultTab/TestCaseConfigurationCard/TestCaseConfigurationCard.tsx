@@ -91,7 +91,7 @@ function ConfigurationSql({ value }: Readonly<{ value: string }>) {
  */
 function ConfigurationValue({ value }: Readonly<{ value: ReactNode }>) {
   return (
-    <span className="tw:min-w-0 tw:break-words tw:text-right tw:font-mono tw:text-xs tw:font-semibold tw:text-primary">
+    <span className="tw:max-w-[65%] tw:shrink-0 tw:break-words tw:text-right tw:font-mono tw:text-xs tw:font-semibold tw:text-primary">
       {value}
     </span>
   );
@@ -114,9 +114,10 @@ function ParameterRows({
           gap={2}
           justify="between"
           key={row.label}>
+          {/* The label gives way, so a narrow rail wraps it, not the value. */}
           <Typography
             as="span"
-            className="tw:shrink-0 tw:text-xs tw:text-tertiary">
+            className="tw:min-w-0 tw:text-xs tw:text-tertiary">
             {row.label}
           </Typography>
           <ConfigurationValue value={row.value} />
