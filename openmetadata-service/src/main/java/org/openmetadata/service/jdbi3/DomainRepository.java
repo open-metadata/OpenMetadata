@@ -309,8 +309,9 @@ public class DomainRepository extends EntityRepository<Domain> {
     BulkOperationResult result =
         AssetEditService.apply(
             new AssetEditService.Request(request.getAssets(), false, actor), edit);
-    if (!nullOrEmpty(request.getAssets()) && ApiStatus.SUCCESS.equals(result.getStatus())) {
-      recordBulkAssetsChange(DOMAIN, domain.getId(), isAdd, request.getAssets(), actor.userName());
+    List<EntityReference> changed = AssetEditService.succeededAssets(result);
+    if (!changed.isEmpty()) {
+      recordBulkAssetsChange(DOMAIN, domain.getId(), isAdd, changed, actor.userName());
     }
     return result;
   }

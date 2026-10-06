@@ -358,7 +358,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     DataProduct dataProduct = getByName(null, name, getFields("id"));
     BulkOperationResult result = editAssets(dataProduct, request, false, actor);
     if (!Boolean.TRUE.equals(request.getDryRun())) {
-      for (EntityReference ref : succeededAssets(result)) {
+      for (EntityReference ref : AssetEditService.succeededAssets(result)) {
         deleteRelationship(
             dataProduct.getId(),
             DATA_PRODUCT,
@@ -378,19 +378,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     BulkOperationResult result =
         AssetEditService.apply(
             new AssetEditService.Request(request.getAssets(), dryRun, actor), edit);
-    List<EntityReference> changed = succeededAssets(result);
+    List<EntityReference> changed = AssetEditService.succeededAssets(result);
     if (!dryRun && !changed.isEmpty()) {
       recordBulkAssetsChange(DATA_PRODUCT, dataProduct.getId(), isAdd, changed, actor.userName());
     }
     return result;
-  }
-
-  private static List<EntityReference> succeededAssets(BulkOperationResult result) {
-    return listOrEmpty(result.getSuccessRequest()).stream()
-        .map(BulkResponse::getRequest)
-        .filter(EntityReference.class::isInstance)
-        .map(EntityReference.class::cast)
-        .toList();
   }
 
   private static AssetEdit attach(EntityReference dataProduct) {

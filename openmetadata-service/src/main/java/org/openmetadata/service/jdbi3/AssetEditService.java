@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
@@ -75,6 +76,15 @@ public final class AssetEditService {
     }
     EntityUtil.populateEntityReferences(request.assets());
     return new AssetEditService(request, edit).run(result);
+  }
+
+  /** The selected assets the change was applied to. */
+  public static List<EntityReference> succeededAssets(BulkOperationResult result) {
+    return listOrEmpty(result.getSuccessRequest()).stream()
+        .map(BulkResponse::getRequest)
+        .filter(EntityReference.class::isInstance)
+        .map(EntityReference.class::cast)
+        .toList();
   }
 
   private BulkOperationResult run(BulkOperationResult result) {

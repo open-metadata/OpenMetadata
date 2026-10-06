@@ -131,6 +131,7 @@ public class AssetsTabVersioningIT {
   private static final String OTHER_COLUMN = "name";
   private static final String DOMAINS_FIELD = "domains";
   private static final String DATA_PRODUCTS_FIELD = "dataProducts";
+  private static final String ASSETS_FIELD = "assets";
   private static final String TAGS_FIELD = "tags";
   private static final String COLUMN_TAGS_FIELD = "columns." + COLUMN + ".tags";
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
@@ -570,6 +571,24 @@ public class AssetsTabVersioningIT {
     assertEquals(ACTING_USER, updated.getUpdatedBy());
     assertFalse(holds(updated.getDomains(), domain.getId()));
     assertUpdateEvent(Entity.TABLE, table.getId(), since, ACTING_USER, false, DOMAINS_FIELD);
+  }
+
+  @Test
+  void aDomainMoveThatPartlyFails_recordsTheMovedAssetsOnTheDomain(TestNamespace ns)
+      throws Exception {
+    Domain domain = createDomain(ns, "part");
+    DatabaseSchema schema = createSchema(ns, null);
+    Table moved = createTable(ns, schema, "moved", null, null);
+    Table other = createTable(ns, schema, "other", null, null);
+    long since = System.currentTimeMillis();
+
+    BulkOperationResult result =
+        putDomainAssets(
+            domain, "add", List.of(moved.getEntityReference(), columnRef(other, COLUMN)), false);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertTrue(holdsOwn(fetchTable(moved, DOMAINS_FIELD).getDomains(), domain.getId()));
+    assertUpdateEvent(Entity.DOMAIN, domain.getId(), since, ACTING_USER, true, ASSETS_FIELD);
   }
 
   @Test
