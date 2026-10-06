@@ -82,7 +82,7 @@ const POINT_STATUS_HOLLOW = TestCaseStatus.Aborted;
 
 const hasArea = ({ height, width }: TooltipSize) => height > 0 && width > 0;
 
-// Room past the newest and oldest runs, so their dots and the selection halo
+// Room past the newest and oldest runs, so their dots and the selection ring
 // are not cut at the plot edge.
 const X_AXIS_EDGE_GAP: [string, string] = ['2%', '2%'];
 // Runs at a single instant have no span, and ECharts stretches the time axis
@@ -106,10 +106,15 @@ const Y_AXIS_LABEL = {
   fontSize: AXIS_LABEL_FONT_SIZE,
   fontWeight: 500,
 };
-// The mock's dots: r3.4 in a 1.6px ring, an aborted run's ring 1.5px.
+// The mock's dots: r3.4 in a 1.6px ring, the newest run's r5.4 in a 2.4px
+// one, an aborted run's ring 1.5px.
 const POINT_SIZE = 6.8;
 const POINT_RING_WIDTH = 1.6;
+const NEWEST_POINT_SIZE = 10.8;
+const NEWEST_POINT_RING_WIDTH = 2.4;
 const HOLLOW_POINT_RING_WIDTH = 1.5;
+// The mock's guide to the selected run, drawn in the run's status colour.
+const SELECTION_GUIDE = { lineType: 'solid', width: 1.5 } as const;
 // The mock's expectation line and its label.
 const EXPECTATION_LINE: Pick<
   ChartReferenceLine,
@@ -122,6 +127,14 @@ const EXPECTATION_LINE: Pick<
 // One series reads as data under a 2px line and a faint brand wash.
 const SINGLE_SERIES_LINE_WIDTH = 2;
 const SINGLE_SERIES_WASH = 0.05;
+
+const pointRingWidth = (isHollow: boolean, isNewest: boolean) => {
+  if (isHollow) {
+    return HOLLOW_POINT_RING_WIDTH;
+  }
+
+  return isNewest ? NEWEST_POINT_RING_WIDTH : POINT_RING_WIDTH;
+};
 
 interface AxisExtent {
   min: number;
@@ -381,18 +394,20 @@ function TestSummaryGraph({
   // the refetched data no longer holds falls back to the newest run as well.
   // A point's `name` is typed as the union of every field the tooltip reads,
   // so it is narrowed back to its timestamp.
-  const activeRunTimestamp = useMemo(() => {
-    if (
-      !isUndefined(selectedRunTimestamp) &&
-      plottedData.some((point) => point.name === selectedRunTimestamp)
-    ) {
-      return selectedRunTimestamp;
-    }
-
+  const newestRunTimestamp = useMemo(() => {
     const latestPointName = plottedData[plottedData.length - 1]?.name;
 
     return isNumber(latestPointName) ? latestPointName : undefined;
-  }, [plottedData, selectedRunTimestamp]);
+  }, [plottedData]);
+
+  const activeRunTimestamp = useMemo(
+    () =>
+      !isUndefined(selectedRunTimestamp) &&
+      plottedData.some((point) => point.name === selectedRunTimestamp)
+        ? selectedRunTimestamp
+        : newestRunTimestamp,
+    [plottedData, selectedRunTimestamp, newestRunTimestamp]
+  );
 
   const handleRunSelect = useCallback(
     (timestamp: number) => setSelectedRunTimestamp(timestamp),
@@ -413,19 +428,21 @@ function TestSummaryGraph({
       : [];
     // A row a series holds no value for - a run that produced nothing, or one
     // whose value was placed off the line - draws no dot.
-    const pointStyleOf = (key: string) => (point: Record<string, unknown>) =>
-      isUndefined(point[key])
-        ? undefined
-        : {
-            status: getStatusChartStatus(point.status as TestCaseStatus),
-            hollow: point.status === POINT_STATUS_HOLLOW,
-            selected: point.name === activeRunTimestamp,
-            size: POINT_SIZE,
-            ringWidth:
-              point.status === POINT_STATUS_HOLLOW
-                ? HOLLOW_POINT_RING_WIDTH
-                : POINT_RING_WIDTH,
-          };
+    const pointStyleOf = (key: string) => (point: Record<string, unknown>) => {
+      if (isUndefined(point[key])) {
+        return undefined;
+      }
+      const isHollow = point.status === POINT_STATUS_HOLLOW;
+      const isNewest = point.name === newestRunTimestamp;
+
+      return {
+        status: getStatusChartStatus(point.status as TestCaseStatus),
+        hollow: isHollow,
+        selected: point.name === activeRunTimestamp,
+        size: isNewest ? NEWEST_POINT_SIZE : POINT_SIZE,
+        ringWidth: pointRingWidth(isHollow, isNewest),
+      };
+    };
     const lines = seriesLabels.map<ChartSeries>((label) => ({
       key: label,
       name: label,
@@ -477,6 +494,7 @@ function TestSummaryGraph({
     seriesLabels,
     isSingleSeries,
     activeRunTimestamp,
+    newestRunTimestamp,
     palette,
     t,
   ]);
@@ -497,12 +515,21 @@ function TestSummaryGraph({
             },
           ]
         : []),
-      // The default (neutral) line: a red guide would read as a failed run.
       ...(isUndefined(activeRunTimestamp)
         ? []
-        : [{ axis: 'x' as const, value: activeRunTimestamp }]),
+        : [
+            {
+              axis: 'x' as const,
+              value: activeRunTimestamp,
+              status: getStatusChartStatus(
+                plottedData.find((point) => point.name === activeRunTimestamp)
+                  ?.status as TestCaseStatus
+              ),
+              ...SELECTION_GUIDE,
+            },
+          ]),
     ],
-    [thresholdReference, activeRunTimestamp, t]
+    [thresholdReference, activeRunTimestamp, plottedData, t]
   );
 
   const xAxis = useMemo<ChartXAxisProps>(() => {
@@ -644,6 +671,9 @@ function TestSummaryGraph({
       />
       <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:px-4 tw:pb-2">
         <TestSummaryStatusKey statuses={plottedStatuses} />
+        <span className="tw:ml-auto tw:text-xs tw:text-quaternary">
+          {t('message.click-a-point-for-run-details')}
+        </span>
       </div>
     </Box>
   );

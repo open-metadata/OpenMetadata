@@ -19,6 +19,7 @@ import {
   GridComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkPointComponent,
   TooltipComponent,
   VisualMapComponent,
 } from 'echarts/components';
@@ -48,6 +49,7 @@ echarts.use([
   LegendComponent,
   DataZoomComponent,
   MarkLineComponent,
+  MarkPointComponent,
   AriaComponent,
   MapChart,
   PieChart,
@@ -106,6 +108,38 @@ const modelOf = (chart: echarts.ECharts) => chart.getOption() as Model;
 
 afterEach(() => {
   charts.splice(0).forEach((chart) => chart.dispose());
+});
+
+describe('the selection ring on a real chart', () => {
+  const ringed = (day?: string) =>
+    buildLineOption(
+      input({
+        series: [
+          {
+            key: 'a',
+            name: 'A',
+            pointStyle: (row) => ({ selected: row.day === day }),
+          },
+        ],
+      }),
+      LIGHT_CHART_THEME
+    );
+  const ringsIn = (chart: echarts.ECharts) =>
+    chart.renderToSVGString().match(/stroke-opacity="0\.3"/g)?.length ?? 0;
+
+  it('moves with the selection and goes when it is cleared', () => {
+    const chart = mount(ringed('d3'));
+
+    expect(ringsIn(chart)).toBe(1);
+
+    chart.setOption(ringed('d7'), MERGE);
+
+    expect(ringsIn(chart)).toBe(1);
+
+    chart.setOption(ringed(), MERGE);
+
+    expect(ringsIn(chart)).toBe(0);
+  });
 });
 
 describe('reference lines on a real chart', () => {

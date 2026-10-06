@@ -113,7 +113,7 @@ export interface ChartPointStyle {
   status?: ChartStatus;
   /** A ring instead of a filled dot, e.g. for a run that produced no value. */
   hollow?: boolean;
-  /** A soft halo around the dot, e.g. for the selected point. */
+  /** A faint ring around the dot, e.g. for the selected point. */
   selected?: boolean;
   /** Colour of the dot, over its status colour, e.g. to match the page. */
   color?: string;

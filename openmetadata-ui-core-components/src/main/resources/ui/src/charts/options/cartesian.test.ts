@@ -371,7 +371,7 @@ describe('buildLineOption', () => {
     });
   });
 
-  it('gives a selected point a halo in its own colour', () => {
+  it('rings a selected point in its own colour, 5px out from its dot', () => {
     const option = buildLineOption(
       {
         ...base,
@@ -380,23 +380,92 @@ describe('buildLineOption', () => {
             key: 'passed',
             name: 'Passed',
             status: 'info',
-            pointStyle: () => ({ selected: true }),
+            pointStyle: (row) => ({
+              selected: (row as unknown as Row).day === 'Tue',
+              size: 6.8,
+            }),
           },
         ],
       },
       LIGHT_CHART_THEME
     );
-    const [first] = seriesOf(option)[0].data as Array<{
-      itemStyle: Record<string, unknown>;
-    }>;
+    const [line] = seriesOf(option);
 
-    expect(first.itemStyle).toEqual(
-      expect.objectContaining({
-        color: LIGHT_CHART_PALETTE.status.info,
-        shadowBlur: 8,
-        shadowColor: LIGHT_CHART_PALETTE.status.info,
-      })
+    expect(line.markPoint).toEqual({
+      silent: true,
+      animation: false,
+      symbol: 'circle',
+      label: { show: false },
+      itemStyle: { color: 'transparent', borderWidth: 2, opacity: 0.3 },
+      data: [
+        {
+          coord: [1, 5],
+          symbolSize: 16.8,
+          itemStyle: { borderColor: LIGHT_CHART_PALETTE.status.info },
+        },
+      ],
+    });
+    expect(
+      (line.data as Array<{ itemStyle: object }>)[1].itemStyle
+    ).not.toHaveProperty('shadowBlur');
+  });
+
+  it('rings a selected point on a time axis at its time and value', () => {
+    const option = buildLineOption(
+      {
+        data: [
+          { ts: 1000, value: 1 },
+          { ts: 2000, value: 3 },
+        ],
+        xKey: 'ts',
+        ariaLabel: 'Runtime',
+        series: [
+          {
+            key: 'value',
+            name: 'Value',
+            pointStyle: (row) => ({ selected: row.ts === 2000 }),
+          },
+        ],
+        xAxis: { type: 'time' },
+      },
+      LIGHT_CHART_THEME
     );
+    const { data } = seriesOf(option)[0].markPoint as {
+      data: Array<{ coord: unknown; symbolSize: number }>;
+    };
+
+    expect(data).toEqual([
+      expect.objectContaining({ coord: [2000, 3], symbolSize: 18 }),
+    ]);
+  });
+
+  it('rings no point that has no value, and keeps the key when none is', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        series: [
+          {
+            key: 'failed',
+            name: 'Failed',
+            pointStyle: () => ({ selected: true }),
+          },
+          { key: 'passed', name: 'Passed', pointStyle: () => ({}) },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [failed, passed] = seriesOf(option);
+
+    expect(
+      (failed.markPoint as { data: Array<{ coord: unknown }> }).data.map(
+        (ring) => ring.coord
+      )
+    ).toEqual([
+      [0, 1],
+      [2, 2],
+    ]);
+    // Set though empty, so a re-render that drops the selection clears it.
+    expect(passed).toHaveProperty('markPoint', undefined);
   });
 
   it('shows the legend only when there is more than one series', () => {

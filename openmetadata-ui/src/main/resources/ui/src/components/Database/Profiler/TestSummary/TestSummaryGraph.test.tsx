@@ -559,11 +559,32 @@ describe('TestSummaryGraph', () => {
   it('should guide to the newest run until one is selected', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
-    // No status: the palette's red would read the guide as a failed run.
+    // The mock's guide: solid, 1.5px, in the selected run's status colour.
     expect(getReferenceLine('x')).toEqual({
       axis: 'x',
       value: NEWEST_RUN_TIMESTAMP,
+      status: 'success',
+      lineType: 'solid',
+      width: 1.5,
     });
+  });
+
+  it('should colour the guide by the status of the run it marks', () => {
+    mockSelectedRunTimestamp = OLDER_RUN_TIMESTAMP;
+
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseResults={[
+          twoRunResults[0],
+          { ...twoRunResults[1], testCaseStatus: TestCaseStatus.Failed },
+        ]}
+      />
+    );
+
+    expect(getReferenceLine('x')).toEqual(
+      expect.objectContaining({ value: OLDER_RUN_TIMESTAMP, status: 'failed' })
+    );
   });
 
   it('should guide to the selected run once the store holds one', () => {
@@ -664,6 +685,34 @@ describe('TestSummaryGraph', () => {
     });
   });
 
+  // The newest run is the one the banner above reports on.
+  it('should draw the newest run larger, as the mock does', () => {
+    render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
+
+    const { pointStyle } = getSeries('min');
+
+    expect(
+      pointStyle?.(
+        { name: NEWEST_RUN_TIMESTAMP, status: TestCaseStatus.Success, min: 1 },
+        1
+      )
+    ).toEqual(expect.objectContaining({ size: 10.8, ringWidth: 2.4 }));
+    expect(
+      pointStyle?.(
+        { name: NEWEST_RUN_TIMESTAMP, status: TestCaseStatus.Aborted, min: 1 },
+        1
+      )
+    ).toEqual(expect.objectContaining({ size: 10.8, ringWidth: 1.5 }));
+  });
+
+  it('should tell the reader a point opens its run', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(
+      screen.getByText('message.click-a-point-for-run-details')
+    ).toBeInTheDocument();
+  });
+
   it('should mark only the active run as selected', () => {
     render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
 
@@ -683,7 +732,7 @@ describe('TestSummaryGraph', () => {
     ).toBe(false);
   });
 
-  it('should move the selected halo to the run the store holds', () => {
+  it('should move the selected ring to the run the store holds', () => {
     mockSelectedRunTimestamp = OLDER_RUN_TIMESTAMP;
     render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
 
