@@ -48,6 +48,8 @@ const ACKNOWLEDGE_BUTTON_TEST_ID = 'acknowledge-incident-button';
 const TEST_CASE_RESULT_TIMESTAMP = 1_786_001_601_000;
 const TOP_ALIGNED_CLASS = 'tw:self-start';
 const TEXT_XS_CLASS = 'tw:text-xs';
+// The reason and the incident's title, as the mock sets them.
+const BANNER_TEXT_CLASS = 'tw:text-[13px]';
 const INCIDENT_PATH =
   '/test-case/sample_data.ecommerce_db.shopify.dim_address.table_column_count_between/issues';
 
@@ -134,8 +136,8 @@ describe('TestCaseLastRunBanner', () => {
         'tw:text-base'
       );
       expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
-        'tw:size-10',
-        'tw:rounded-lg',
+        'tw:size-11',
+        'tw:rounded-[11px]',
         TOP_ALIGNED_CLASS
       );
       expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
@@ -152,7 +154,7 @@ describe('TestCaseLastRunBanner', () => {
       expect(
         screen.getByTestId('test-case-last-run-right-section')
       ).toHaveClass('tw:justify-end', 'tw:lg:min-w-80');
-      expect(screen.getByText(result)).toHaveClass(TEXT_XS_CLASS);
+      expect(screen.getByText(result)).toHaveClass(BANNER_TEXT_CLASS);
       expect(
         screen.getByTestId('test-case-run-description')
       ).toBeInTheDocument();
@@ -173,12 +175,12 @@ describe('TestCaseLastRunBanner', () => {
           'label.result / label.expected'
         );
         expect(screen.getByText('label.result / label.expected')).toHaveClass(
-          'tw:text-secondary'
+          'tw:text-tertiary'
         );
         expect(screen.getByTestId('test-case-result-value')).toHaveTextContent(
           '5 / 1,000'
         );
-        expect(screen.getByText('/ 1,000')).toHaveClass('tw:text-secondary');
+        expect(screen.getByText('/ 1,000')).toHaveClass('tw:text-tertiary');
       }
 
       if (
@@ -220,7 +222,7 @@ describe('TestCaseLastRunBanner', () => {
         );
         expect(
           screen.getByTestId('test-case-incident-description')
-        ).toHaveClass(TEXT_XS_CLASS);
+        ).toHaveClass(BANNER_TEXT_CLASS);
         expect(
           screen.getByTestId('test-case-incident-description')
         ).not.toContainElement(screen.getByTestId(INCIDENT_ID_TEST_ID));
@@ -245,6 +247,35 @@ describe('TestCaseLastRunBanner', () => {
       }
     }
   );
+
+  it('gives the result more weight than what it is measured against, as the mock does', () => {
+    renderBanner({
+      testCaseResult: {
+        testCaseStatus: TestCaseStatus.Failed,
+        result: 'Found 110 rows',
+        testResultValue: [{ name: 'rowCount', value: '110' }],
+        timestamp: TEST_CASE_RESULT_TIMESTAMP,
+      },
+      testCaseStatus: TestCaseStatus.Failed,
+    });
+
+    const value = screen.getByTestId('test-case-result-value');
+    const [result, expected] = Array.from(value.children);
+
+    expect(value).toHaveClass('tw:font-mono', 'tw:text-[15px]');
+    expect(result).toHaveClass('tw:font-bold', 'tw:text-utility-error-700');
+    // Tertiary, not the mock's lighter grey: that one is 2.2:1 on the tint.
+    expect(expected).toHaveClass('tw:text-tertiary');
+    expect(
+      screen.getByText('label.result / label.expected', { exact: false })
+    ).toHaveClass('tw:text-[11px]', 'tw:font-semibold');
+    expect(screen.getByTestId('test-case-run-description')).toHaveClass(
+      'tw:text-[13px]'
+    );
+    expect(screen.getByTestId('test-case-last-run-icon')).toHaveClass(
+      'tw:size-11'
+    );
+  });
 
   it('uses the authoritative test case status when the embedded result is stale', () => {
     renderBanner({
@@ -405,15 +436,15 @@ describe('TestCaseLastRunBanner', () => {
       'tw:text-base'
     );
     expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
-      'tw:size-10',
-      'tw:rounded-lg',
+      'tw:size-11',
+      'tw:rounded-[11px]',
       TOP_ALIGNED_CLASS
     );
     expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
       'tw:py-3.5'
     );
     expect(screen.getByText('message.test-case-not-run-yet')).toHaveClass(
-      TEXT_XS_CLASS
+      BANNER_TEXT_CLASS
     );
   });
 

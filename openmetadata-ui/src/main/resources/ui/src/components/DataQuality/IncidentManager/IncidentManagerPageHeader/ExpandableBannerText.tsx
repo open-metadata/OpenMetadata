@@ -62,14 +62,14 @@ const ExpandableBannerText = ({
   return (
     <p
       className={classNames(
-        'tw:!mb-0 tw:min-w-0 tw:break-all tw:text-xs tw:leading-normal tw:text-secondary',
+        'tw:!mb-0 tw:min-w-0 tw:break-all tw:text-[13px] tw:leading-normal tw:text-tertiary',
         expanded ? 'tw:block' : 'tw:flex tw:items-baseline tw:gap-1',
         className
       )}
       data-testid={dataTestId}>
       <span
         className={classNames(
-          'tw:text-xs tw:leading-normal tw:text-secondary',
+          'tw:text-[13px] tw:leading-normal tw:text-tertiary',
           {
             'tw:min-w-0 tw:flex-1 tw:truncate': !expanded,
           }
@@ -80,7 +80,7 @@ const ExpandableBannerText = ({
       </span>
       {!expanded && hasOverflow && (
         <Button
-          className="tw:inline-flex tw:h-auto tw:shrink-0 tw:p-0 tw:align-baseline tw:text-xs"
+          className="tw:inline-flex tw:h-auto tw:shrink-0 tw:p-0 tw:align-baseline tw:text-[13px]"
           color="link-color"
           data-testid={`${dataTestId}-more-button`}
           onPress={() => setExpanded(true)}>
@@ -89,7 +89,7 @@ const ExpandableBannerText = ({
       )}
       {expanded && hasOverflow && (
         <Button
-          className="tw:ml-1 tw:inline-flex tw:h-auto tw:p-0 tw:align-baseline tw:text-xs"
+          className="tw:ml-1 tw:inline-flex tw:h-auto tw:p-0 tw:align-baseline tw:text-[13px]"
           color="link-color"
           data-testid={`${dataTestId}-less-button`}
           onPress={() => setExpanded(false)}>
