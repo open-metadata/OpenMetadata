@@ -111,6 +111,7 @@
         "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/Markdown.spec.ts",
         "playwright/e2e/Features/MetricAssets.spec.ts",
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
@@ -718,6 +719,7 @@
         "playwright/e2e/Features/ContextCenterArticlesFilters.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
@@ -1747,6 +1749,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/TaskClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Pages/Tasks.spec.ts"
@@ -2301,6 +2304,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/taskActivity.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/userPages.ts"
       ],
       "specs": [
@@ -2813,6 +2824,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts"
       ]
@@ -3233,6 +3245,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CronValidations.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
@@ -3336,6 +3349,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/LanguageOverride.spec.ts",
         "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
         "playwright/e2e/Features/LineagePipelineAnnotator.spec.ts",
@@ -3599,6 +3613,7 @@
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
@@ -3815,6 +3830,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CronValidations.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
@@ -3885,6 +3901,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/MetricAssets.spec.ts",
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
         "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
@@ -4939,6 +4956,7 @@
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermInverseRelation.spec.ts",
@@ -5499,6 +5517,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts"
       ]
     },
@@ -10772,6 +10791,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CronValidations.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
@@ -10880,6 +10900,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/MyTaskWidgetStatus.spec.ts",
         "playwright/e2e/Features/LanguageOverride.spec.ts",
         "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
         "playwright/e2e/Features/LineagePipelineAnnotator.spec.ts",
@@ -11137,6 +11158,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
@@ -11576,6 +11598,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemoryLifecycle.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts"
       ]
     },

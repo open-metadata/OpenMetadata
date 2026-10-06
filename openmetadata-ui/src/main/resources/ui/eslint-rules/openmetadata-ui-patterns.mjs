@@ -233,9 +233,105 @@ const noNonAdaptivePalette = {
   },
 };
 
+/**
+ * Rule: no-nested-ellipsis-tooltip-trigger
+ * Core Typography's `ellipsis={{ tooltip }}` renders its tooltip trigger as a
+ * <button>. Inside a link, button or other pressable that nests a button in an
+ * interactive element: invalid HTML and a second tab stop for one target.
+ * Flag it unless the ellipsis opts into `excludeTriggerFromTabOrder: true`,
+ * which renders the trigger as a plain span.
+ *
+ * Only JSX ancestors in the same file are visible to the rule, so a Typography
+ * rendered by a child component that a caller wraps in a link is not caught.
+ */
+const INTERACTIVE_ANCESTORS = new Set([
+  'a',
+  'button',
+  'Link',
+  'NavLink',
+  'Button',
+  'ButtonUtility',
+  'Pressable',
+  'AriaButton',
+]);
+const INTERACTIVE_ROLES = new Set(['button', 'link', 'menuitem', 'tab']);
+
+const jsxName = (nameNode) =>
+  nameNode?.type === 'JSXIdentifier' ? nameNode.name : null;
+
+const staticRole = (opening) => {
+  const role = opening.attributes.find(
+    (attr) => attr.type === 'JSXAttribute' && attr.name?.name === 'role'
+  );
+
+  return role?.value?.type === 'Literal' ? role.value.value : null;
+};
+
+const isInteractiveElement = (opening) =>
+  INTERACTIVE_ANCESTORS.has(jsxName(opening.name)) ||
+  INTERACTIVE_ROLES.has(staticRole(opening));
+
+const noNestedEllipsisTooltipTrigger = {
+  meta: {
+    messages: {
+      nestedTrigger:
+        'Typography ellipsis tooltip inside <{{ancestor}}> renders a nested <button>. Add `excludeTriggerFromTabOrder: true` to the ellipsis config.',
+    },
+    schema: [],
+    type: 'problem',
+  },
+  create(context) {
+    return {
+      JSXAttribute(node) {
+        if (
+          node.name.name !== 'ellipsis' ||
+          node.value?.type !== 'JSXExpressionContainer' ||
+          node.value.expression.type !== 'ObjectExpression'
+        ) {
+          return;
+        }
+        const keys = new Map(
+          node.value.expression.properties
+            .filter((prop) => prop.type === 'Property')
+            .map((prop) => [prop.key.name ?? prop.key.value, prop.value])
+        );
+        const excluded = keys.get('excludeTriggerFromTabOrder');
+        const isExcluded =
+          excluded &&
+          !(excluded.type === 'Literal' && excluded.value === false);
+        if (!keys.has('tooltip') || isExcluded) {
+          return;
+        }
+        // node.parent is the Typography opening element; its parent is the
+        // JSXElement, whose ancestors are what can make the trigger nested.
+        let current = node.parent.parent?.parent;
+        while (current) {
+          if (
+            current.type === 'JSXElement' &&
+            isInteractiveElement(current.openingElement)
+          ) {
+            context.report({
+              node,
+              messageId: 'nestedTrigger',
+              data: {
+                ancestor:
+                  jsxName(current.openingElement.name) ?? 'interactive element',
+              },
+            });
+
+            return;
+          }
+          current = current.parent;
+        }
+      },
+    };
+  },
+};
+
 export default {
   rules: {
     'no-raw-title-attribute': noRawTitleAttribute,
     'no-non-adaptive-palette': noNonAdaptivePalette,
+    'no-nested-ellipsis-tooltip-trigger': noNestedEllipsisTooltipTrigger,
   },
 };

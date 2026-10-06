@@ -60,6 +60,10 @@ export interface User {
      */
     email: string;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * External identifier from identity provider (used for SCIM).
      */
     externalId?: string;

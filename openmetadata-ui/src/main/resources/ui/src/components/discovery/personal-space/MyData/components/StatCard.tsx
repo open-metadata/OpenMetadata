@@ -96,13 +96,18 @@ const StatCard: React.FC<StatCardProps> = ({
           {subtitle && (
             <Typography
               className="tw:block tw:max-w-full tw:truncate tw:text-utility-gray-700"
+              data-testid={testId ? `${testId}-subtitle` : undefined}
               size="text-xs">
               {subtitle}
             </Typography>
           )}
 
           {hasBreakdown && (
-            <Box align="center" className="tw:flex-wrap" gap={1}>
+            <Box
+              align="center"
+              className="tw:flex-wrap"
+              data-testid={testId ? `${testId}-breakdown` : undefined}
+              gap={1}>
               {breakdown.map((item, idx) => (
                 <Box align="center" gap={1} key={item.label}>
                   {idx > 0 && (
