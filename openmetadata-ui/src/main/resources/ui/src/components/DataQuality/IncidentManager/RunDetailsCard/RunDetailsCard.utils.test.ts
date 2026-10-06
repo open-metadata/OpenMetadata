@@ -238,7 +238,10 @@ describe('RunDetailsCard utils', () => {
   });
 
   it.each([
-    [0.4, '1ms'],
+    // Under a millisecond, neither "0ms" nor "1ms" would be true.
+    [0, '<1ms'],
+    [0.4, '<1ms'],
+    [1, '1ms'],
     [2.31, '2ms'],
     [999.6, '1.0s'],
     [2600, '2.6s'],
@@ -249,6 +252,10 @@ describe('RunDetailsCard utils', () => {
     [95000, '1m 35s'],
   ])('formats a %dms duration as %s', (milliseconds, text) => {
     expect(formatRunDuration(milliseconds)).toBe(text);
+  });
+
+  it('shows no duration for a negative one, which only clock skew produces', () => {
+    expect(formatRunDuration(-500)).toBe('—');
   });
 
   it.each([
