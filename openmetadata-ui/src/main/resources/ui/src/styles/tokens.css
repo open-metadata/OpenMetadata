@@ -178,6 +178,7 @@
 
   --om-color-bg: var(--color-bg-primary, #ffffff);
   --om-color-bg-primary: var(--color-bg-primary, #ffffff);
+  --om-color-bg-primary-hover: var(--color-bg-primary_hover, #fafafa);
   --om-color-bg-secondary: var(--color-bg-secondary, #fafafa);
   --om-color-bg-secondary-hover: var(--color-bg-secondary_hover, #f5f5f5);
   --om-color-bg-tertiary: var(--color-bg-tertiary, #f5f5f5);

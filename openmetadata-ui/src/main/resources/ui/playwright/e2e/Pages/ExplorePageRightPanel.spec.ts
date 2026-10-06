@@ -44,6 +44,7 @@ import {
   openColumnDetailPanel,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
@@ -178,18 +179,22 @@ test.describe('Right Panel Test Suite', () => {
 
   test.describe('Explore page right panel tests', () => {
     test.describe('Overview panel CRUD and Removal operations', () => {
-      const crudEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const crudEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
@@ -418,18 +423,22 @@ test.describe('Right Panel Test Suite', () => {
     });
 
     test.describe('Entity validation with shared read-only entities', () => {
-      const entityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const entityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
@@ -1076,18 +1085,22 @@ test.describe('Right Panel Test Suite', () => {
     test.describe('Overview panel - Deleted entity verification', () => {
       test.describe.configure({ mode: 'default' });
 
-      const deletedEntityVerificationEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const deletedEntityVerificationEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1292,18 +1305,22 @@ test.describe('Right Panel Test Suite', () => {
     });
 
     test.describe('Data Steward User - Permission Verification', () => {
-      const dataStewardEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const dataStewardEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1538,18 +1555,22 @@ test.describe('Right Panel Test Suite', () => {
     });
 
     test.describe('Data Consumer User - Permission Verification', () => {
-      const dataConsumerEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const dataConsumerEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
@@ -2065,18 +2086,22 @@ test.describe('Right Panel Test Suite', () => {
     });
 
     test.describe('Overview panel - Description removal', () => {
-      const descriptionRemovalEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const descriptionRemovalEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);

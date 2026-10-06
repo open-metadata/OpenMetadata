@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import AnnouncementDrawer from './AnnouncementDrawer';
 
 jest.mock('../../../../utils/EntityPureUtils', () => ({
@@ -27,9 +27,16 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../Announcement/AnnouncementThreadBody.component', () => {
-  return jest.fn().mockReturnValue(<div>AnnouncementThreadBody</div>);
-});
+jest.mock('../../../Announcement/AnnouncementThreadBody.component', () =>
+  jest
+    .fn()
+    .mockImplementation(({ statusFilter }: { statusFilter?: string }) => (
+      <div>
+        AnnouncementThreadBody
+        <span data-testid="status-filter">{statusFilter ?? 'none'}</span>
+      </div>
+    ))
+);
 
 jest.mock('../../../Modals/AnnouncementModal/AddAnnouncementModal', () => {
   return jest.fn().mockReturnValue(<div>AddAnnouncementModal</div>);
@@ -66,6 +73,36 @@ describe('Test Announcement drawer component', () => {
     const addButton = screen.getByTestId('add-announcement');
 
     expect(addButton).toBeDisabled();
+  });
+
+  it('Should expose the status filters as a tab list', async () => {
+    render(<AnnouncementDrawer {...mockProps} />);
+
+    const tabs = screen.getByRole('tablist');
+
+    // A tab list, not four independent toggles: core's Tabs gives the group a
+    // single tab stop and arrow-key navigation, which `aria-pressed` buttons
+    // do not.
+    expect(within(tabs).getAllByRole('tab')).toHaveLength(4);
+    expect(screen.getByTestId('announcement-status-all')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+  });
+
+  it('Should filter the body by the selected status', async () => {
+    render(<AnnouncementDrawer {...mockProps} />);
+
+    // "All" passes no filter through at all, so the body lists every status.
+    expect(screen.getByTestId('status-filter')).toHaveTextContent('none');
+
+    fireEvent.click(screen.getByTestId('announcement-status-Scheduled'));
+
+    expect(screen.getByTestId('status-filter')).toHaveTextContent('Scheduled');
+    expect(screen.getByTestId('announcement-status-Scheduled')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
   });
 
   it('Should open modal on click of add button', async () => {

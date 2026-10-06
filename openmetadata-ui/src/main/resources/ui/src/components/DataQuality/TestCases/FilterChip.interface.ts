@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../generated/entity/type';
 
 /** Render-agnostic control kinds a single filter can use. */
-export type FilterControlType = 'select' | 'multiselect' | 'date' | 'user';
+export type FilterControlType = 'select' | 'multiselect' | 'date';
 
 /** Value shape for a date-range control. */
 export type FilterDateValue = { startTs?: number; endTs?: number };
@@ -44,7 +43,4 @@ export interface FilterDescriptor {
   onGetInitialOptions: () => void;
   onSearch?: (query: string) => void;
   onChange: (value?: FilterValue) => void;
-  /** For `controlType: 'user'` — the selected user/team owner(s) and handler. */
-  selectedOwners?: EntityReference[];
-  onOwnerChange?: (owners?: EntityReference[]) => void;
 }

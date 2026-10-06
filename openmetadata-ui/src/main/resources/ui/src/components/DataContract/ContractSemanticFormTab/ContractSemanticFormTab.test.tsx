@@ -412,7 +412,7 @@ describe('ContractSemanticFormTab', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-      const switchElement = document.querySelector('.ant-switch');
+      const switchElement = screen.getByRole('switch');
 
       expect(switchElement).toBeInTheDocument();
     });

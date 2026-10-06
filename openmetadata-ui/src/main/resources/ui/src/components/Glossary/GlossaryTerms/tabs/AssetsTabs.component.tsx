@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Alert,
   Button,
@@ -21,7 +23,6 @@ import {
   MenuProps,
   notification,
   Row,
-  Skeleton,
   Space,
   Tooltip,
 } from 'antd';
@@ -1270,9 +1271,9 @@ const AssetsTabs = forwardRef(
                   data-testid="loader"
                   direction="vertical"
                   size={16}>
-                  <Skeleton />
-                  <Skeleton />
-                  <Skeleton />
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
                 </Space>
               </Col>
             ) : (
