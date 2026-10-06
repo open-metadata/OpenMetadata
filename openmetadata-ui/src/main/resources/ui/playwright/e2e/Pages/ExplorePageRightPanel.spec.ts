@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { APIRequestContext } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -31,7 +32,8 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { okJson } from '../../utils/apiResponse';
+import { getApiContext, uuid } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   getEntityDisplayName,
@@ -50,6 +52,19 @@ import {
   RIGHT_PANEL_TAB,
 } from '../PageObject/Explore/RightPanelPageObject';
 import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
+
+// Each entity class creates its own service and deletes it with
+// recursive=true&hardDelete=true. Ten of those cascades at once per worker
+// made the server drop connections ("socket hang up"), and the error was
+// charged to whichever test ran last in the describe, forcing a retry.
+const deleteEntitiesSequentially = async (
+  apiContext: APIRequestContext,
+  entities: Array<{ delete: (apiContext: APIRequestContext) => unknown }>
+) => {
+  for (const entity of entities) {
+    await entity.delete(apiContext);
+  }
+};
 
 const domainEntity = new Domain();
 const user1 = new UserClass();
@@ -183,10 +198,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(crudEntityMap).map((e) => e.delete(apiContext))
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(crudEntityMap)
           );
         } finally {
           await afterAction();
@@ -384,10 +402,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(entityMap).map((e) => e.delete(apiContext))
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(entityMap)
           );
         } finally {
           await afterAction();
@@ -1031,12 +1052,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(deletedEntityVerificationEntityMap).map((e) =>
-              e.delete(apiContext)
-            )
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(deletedEntityVerificationEntityMap)
           );
         } finally {
           await afterAction();
@@ -1216,10 +1238,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(dataStewardEntityMap).map((e) => e.delete(apiContext))
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(dataStewardEntityMap)
           );
         } finally {
           await afterAction();
@@ -1462,12 +1487,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(dataConsumerEntityMap).map((e) =>
-              e.delete(apiContext)
-            )
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(dataConsumerEntityMap)
           );
         } finally {
           await afterAction();
@@ -1986,12 +2012,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(descriptionRemovalEntityMap).map((e) =>
-              e.delete(apiContext)
-            )
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(descriptionRemovalEntityMap)
           );
         } finally {
           await afterAction();
@@ -2002,52 +2029,45 @@ test.describe('Right Panel Test Suite', () => {
         ([entityType, entityInstance]) => {
           test(`Should clear description for ${entityType}`, async ({
             adminPage,
+            rightPanel,
+            overview,
           }) => {
-            const { page: authenticatedPage, afterAction } =
-              await performAdminLogin(adminPage.context().browser()!, {
-                navigate: true,
-              });
-            const rightPanel = new RightPanelPageObject(authenticatedPage);
-            const localOverview = new OverviewPageObject(rightPanel);
+            const fqn = getEntityFqn(entityInstance);
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await rightPanel.waitForPanelVisible();
+            rightPanel.setEntityConfig(entityInstance);
 
-            // Use the shared entity instance from entityMap which is already created in beforeAll
+            const descriptionText = `Description to remove - ${uuid()}`;
+            await overview.editDescription(descriptionText);
+            await overview.shouldShowDescriptionWithText(descriptionText);
+
+            await overview.editDescription('');
+
+            const descriptionSection = rightPanel
+              .getSummaryPanel()
+              .locator('.description-section');
+            await expect(descriptionSection).toBeVisible();
+            await expect(descriptionSection).not.toContainText(descriptionText);
+
+            // Read persistence from the entity GET, which is immediately
+            // consistent. A second Explore round trip (page load plus a
+            // search) pushed this test past its 60 s budget on CI.
+            const { apiContext, afterAction } = await getApiContext(adminPage);
             try {
-              const fqn = getEntityFqn(entityInstance);
-              await navigateToExploreAndSelectEntity({
-                page: authenticatedPage,
-                entityName: getEntityDisplayName(entityInstance.entity),
-                endpoint: entityInstance.endpoint,
-                fullyQualifiedName: fqn,
-              });
-              await rightPanel.waitForPanelVisible();
-              rightPanel.setEntityConfig(entityInstance);
-
-              // First, ensure there is a description
-              const descriptionText = `Description to remove - ${uuid()}`;
-              await localOverview.editDescription(descriptionText);
-              await localOverview.shouldShowDescriptionWithText(
+              const persisted = await okJson<{ description?: string }>(
+                await apiContext.get(
+                  `/api/v1/${entityInstance.endpoint}/${entityInstance.entityResponseData.id}`
+                ),
+                'Read cleared description'
+              );
+              expect(persisted.description ?? '').not.toContain(
                 descriptionText
               );
-
-              // Clear the description
-              await localOverview.editDescription('');
-
-              // Reload the entity panel and verify description is gone.
-              // waitForPanelLoaded waits for panel loaders to finish, ensuring the
-              // entity data (description) has been fetched from the server before asserting.
-              await navigateToExploreAndSelectEntity({
-                page: authenticatedPage,
-                entityName: getEntityDisplayName(entityInstance.entity),
-                endpoint: entityInstance.endpoint,
-                fullyQualifiedName: fqn,
-              });
-              await rightPanel.waitForPanelLoaded();
-
-              // The description text should no longer be present
-              const descElement = authenticatedPage
-                .locator('.description-section')
-                .getByText(descriptionText);
-              await expect(descElement).not.toBeVisible();
             } finally {
               await afterAction();
             }
