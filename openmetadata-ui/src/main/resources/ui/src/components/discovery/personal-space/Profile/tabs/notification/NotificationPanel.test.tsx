@@ -81,7 +81,7 @@ jest.mock(
   '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => ({
     useApplicationsProvider: () => ({
-      extensionRegistry: { getContributions: mockGetContributions },
+      getContributions: mockGetContributions,
       contributionsReady: mockContributionsReady,
     }),
   })

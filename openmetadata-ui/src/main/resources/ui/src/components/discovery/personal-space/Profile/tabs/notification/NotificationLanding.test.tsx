@@ -21,17 +21,14 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-const mockGetContributions = jest.fn().mockReturnValue([]);
-// One stable registry object, as in the app; only the version changes.
-const mockRegistry = { getContributions: mockGetContributions };
-let mockContributionsVersion = 0;
+ 
+let mockGetContributions = jest.fn().mockReturnValue([]);
 
 jest.mock(
   '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => ({
     useApplicationsProvider: () => ({
-      extensionRegistry: mockRegistry,
-      contributionsVersion: mockContributionsVersion,
+      getContributions: mockGetContributions,
     }),
   })
 );
@@ -102,7 +99,7 @@ describe('NotificationLanding', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetContributions.mockReturnValue([]);
+    mockGetContributions = jest.fn().mockReturnValue([]);
     mockGetGlobalSettingsMenu.mockReturnValue([]);
     mockIsAdminUser = true;
   });
@@ -195,7 +192,6 @@ describe('NotificationLanding', () => {
   });
 
   it('should show sections contributed after the landing first rendered', () => {
-    mockContributionsVersion = 0;
     mockGetGlobalSettingsMenu.mockReturnValue([
       {
         key: GlobalSettingsMenuCategory.NOTIFICATIONS,
@@ -217,11 +213,11 @@ describe('NotificationLanding', () => {
       screen.queryByTestId('notification-card-weekly-emails')
     ).not.toBeInTheDocument();
 
-    // The plugin contributes into the same registry and bumps the version.
-    mockGetContributions.mockReturnValue([
-      { key: 'weekly-emails', component: () => <span /> },
-    ]);
-    mockContributionsVersion = 1;
+    // Simulate a new getContributions reference (what the provider produces
+    // after plugins' contributeExtensions runs), now returning a contribution.
+    mockGetContributions = jest
+      .fn()
+      .mockReturnValue([{ key: 'weekly-emails', component: () => <span /> }]);
     rerender(<NotificationLanding onNavigate={mockOnNavigate} />);
 
     expect(
