@@ -87,9 +87,14 @@ const X_AXIS_EDGE_GAP: [string, string] = ['2%', '2%'];
 // to two years around them; a day centred on them keeps the axis readable.
 const SINGLE_INSTANT_X_PADDING = 12 * 60 * 60 * 1000;
 // Share of the data span left above and below the extremes, for the same
-// reason; a flat series gets a fixed step instead.
+// reason. A flat series has no span, so it gets a share of its value instead:
+// a fixed step of 1 on 10,000 made every compact tick read "10K".
 const Y_AXIS_EDGE_SHARE = 0.04;
-const FLAT_SERIES_PADDING = 1;
+const FLAT_SERIES_SHARE = 0.1;
+const FLAT_SERIES_MIN_PADDING = 1;
+// The padded extremes are padding, not data: a label there printed values like
+// "10.58K" on top of the "10K" tick.
+const Y_AXIS_LABEL = { showMinLabel: false, showMaxLabel: false };
 
 interface AxisExtent {
   min: number;
@@ -97,7 +102,9 @@ interface AxisExtent {
 }
 
 const yAxisPadding = ({ min, max }: AxisExtent) =>
-  max === min ? FLAT_SERIES_PADDING : (max - min) * Y_AXIS_EDGE_SHARE;
+  max === min
+    ? Math.max(Math.abs(max) * FLAT_SERIES_SHARE, FLAT_SERIES_MIN_PADDING)
+    : (max - min) * Y_AXIS_EDGE_SHARE;
 const paddedYAxisMin = (extent: AxisExtent) =>
   extent.min - yAxisPadding(extent);
 const paddedYAxisMax = (extent: AxisExtent) =>
@@ -437,6 +444,8 @@ function TestSummaryGraph({
               label: t(thresholdReference.labelKey, {
                 value: thresholdReference.labelValue,
               }),
+              // The selection guide opens on the newest run, at the right end.
+              labelPosition: 'start' as const,
             },
           ]
         : []),
@@ -471,6 +480,7 @@ function TestSummaryGraph({
         paddedYAxisMin(includeInExtent(extent, thresholdReference?.y)),
       max: (extent: AxisExtent) =>
         paddedYAxisMax(includeInExtent(extent, thresholdReference?.y)),
+      axisLabel: Y_AXIS_LABEL,
       formatter: (value) => formatYAxis(Number(value)),
     }),
     [formatYAxis, thresholdReference]
