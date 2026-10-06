@@ -332,13 +332,13 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
 
   /**
    * An announcement with no entityLink is a system announcement: it is shown to every user rather than on one
-   * asset, so writing one is admin-only on top of the usual policy check. The repository keeps
+   * asset, so writing one is limited to admins and bots on top of the usual policy check. The repository keeps
    * entityLink fixed after creation, so an update can't turn an entity announcement into one.
    */
   private void authorizeSystemAnnouncementWrite(
       SecurityContext securityContext, Announcement announcement) {
     if (announcement != null && nullOrEmpty(announcement.getEntityLink())) {
-      authorizer.authorizeAdmin(securityContext);
+      authorizer.authorizeAdminOrBot(securityContext);
     }
   }
 

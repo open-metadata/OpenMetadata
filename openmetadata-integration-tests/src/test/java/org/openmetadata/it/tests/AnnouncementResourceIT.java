@@ -876,6 +876,35 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
 
     SdkClients.adminClient().announcements().delete(systemId);
     assertThrows(ForbiddenException.class, () -> writer.announcements().restore(systemId));
+
+    // PUT is create-or-update: no new system announcement, and no overwriting an admin's one by
+    // name
+    // (the body carries an entityLink, so only the existing-announcement check can stop it).
+    assertThrows(
+        ForbiddenException.class,
+        () -> writer.announcements().createOrUpdate(windowed(ns.prefix("writer-put"), now)));
+    SdkClients.adminClient().announcements().restore(systemId);
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            writer
+                .announcements()
+                .createOrUpdate(
+                    windowed(systemAnnouncement.getName(), now)
+                        .withEntityLink(entityLink)
+                        .withDescription("overwritten")));
+    assertEquals(systemAnnouncement.getDescription(), getEntity(systemId).getDescription());
+  }
+
+  /** Bots with announcement write access (e.g. ingestion, applications) keep posting them. */
+  @Test
+  void testBotCanWriteSystemAnnouncements(TestNamespace ns) {
+    Announcement posted =
+        SdkClients.ingestionBotClient()
+            .announcements()
+            .create(windowed(ns.prefix("bot-system"), System.currentTimeMillis()));
+
+    assertNull(posted.getEntityLink());
   }
 
   @Test
@@ -920,6 +949,15 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
     assertThrows(
         InvalidRequestException.class,
         () -> admin.announcements().patch(id, patchOp("remove", "/entityLink", null)));
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            admin
+                .announcements()
+                .patch(
+                    id,
+                    JsonUtils.readTree(
+                        "[{\"op\":\"copy\",\"from\":\"/description\",\"path\":\"/entityLink\"}]")));
     assertEquals(entityLink, getEntity(id).getEntityLink());
   }
 
