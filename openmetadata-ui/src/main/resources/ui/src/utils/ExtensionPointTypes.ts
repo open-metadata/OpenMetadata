@@ -16,6 +16,7 @@ import {
   TaskDetailDescriptor,
   TaskStatTilesProps,
 } from '../components/discovery/personal-space/InboxPage/taskDetail.types';
+import { ProfileHeaderOverride } from '../components/discovery/personal-space/Profile/profileNavConfig';
 import { PluginRouteProps } from '../components/Settings/Applications/plugins/AppPlugin';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
@@ -23,7 +24,6 @@ import { Task } from '../generated/entity/tasks/task';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import { ServicesType } from '../interface/service.interface';
-import { ProfileHeaderOverride } from '../components/discovery/personal-space/Profile/profileNavConfig';
 
 /**
  * Extension Point Type Definitions

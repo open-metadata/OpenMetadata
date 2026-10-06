@@ -248,9 +248,11 @@ const ProfilePage: React.FC = () => {
           description: tab.description ?? '',
           icon: (tab.icon ?? Link01) as FC<{ className?: string }>,
           selfContainedLayout: tab.selfContainedLayout,
-          render: ({ onHeaderChange }: { onHeaderChange?: (override: ProfileHeaderOverride | null) => void }) => (
-            <TabComponent {...context} onHeaderChange={onHeaderChange} />
-          ),
+          render: ({
+            onHeaderChange,
+          }: {
+            onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
+          }) => <TabComponent {...context} onHeaderChange={onHeaderChange} />,
         };
       });
 
