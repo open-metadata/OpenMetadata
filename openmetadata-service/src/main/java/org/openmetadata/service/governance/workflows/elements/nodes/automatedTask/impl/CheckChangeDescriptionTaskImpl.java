@@ -64,7 +64,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
             varHandler.getNamespacedVariable(
                 inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
 
-    boolean result = checkChangeDescription(execution, entityLinkStr);
+    boolean result = checkChangeDescription(changeRules(execution), entityLinkStr);
     varHandler.setNodeVariable(RESULT_VARIABLE, result);
   }
 
@@ -73,17 +73,33 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       WorkflowVariableHandler varHandler,
       InputNamespaces inputNamespaces,
       List<String> entityLinks) {
+    ChangeRules changeRules = changeRules(execution);
     BatchEntities.ConditionOutcome outcome =
         BatchEntities.evaluate(
             execution.getCurrentActivityId(),
             entityLinks,
             BatchEntities.continuingOutcome(batchContinuingOutcomeExpr, execution),
-            entityLink -> checkChangeDescription(execution, entityLink));
+            entityLink -> checkChangeDescription(changeRules, entityLink));
     outcome.record(varHandler, inputNamespaces, entityLinks);
     varHandler.setNodeVariable(RESULT_VARIABLE, outcome.result());
   }
 
-  private boolean checkChangeDescription(DelegateExecution execution, String entityLinkStr) {
+  /** The node's condition and rules, read from the execution on the job thread. */
+  private record ChangeRules(String condition, Map<String, List<String>> rules) {}
+
+  private ChangeRules changeRules(DelegateExecution execution) {
+    String condition = "OR"; // default
+    if (conditionExpr != null && conditionExpr.getValue(execution) != null) {
+      condition = (String) conditionExpr.getValue(execution);
+    }
+    Map<String, List<String>> rules = null;
+    if (rulesExpr != null && rulesExpr.getValue(execution) != null) {
+      rules = JsonUtils.readOrConvertValue(rulesExpr.getValue(execution), Map.class);
+    }
+    return new ChangeRules(condition, rules);
+  }
+
+  private boolean checkChangeDescription(ChangeRules changeRules, String entityLinkStr) {
     // Parse entity
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
@@ -95,16 +111,8 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       return true;
     }
 
-    // Parse config
-    String condition = "OR"; // default
-    if (conditionExpr != null && conditionExpr.getValue(execution) != null) {
-      condition = (String) conditionExpr.getValue(execution);
-    }
-
-    Map<String, List<String>> rules = null;
-    if (rulesExpr != null && rulesExpr.getValue(execution) != null) {
-      rules = JsonUtils.readOrConvertValue(rulesExpr.getValue(execution), Map.class);
-    }
+    String condition = changeRules.condition();
+    Map<String, List<String>> rules = changeRules.rules();
 
     // If no rules specified, return true
     if (rules == null || rules.isEmpty()) {

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.core.JsonPointer;
+import jakarta.json.Json;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,6 +41,7 @@ class WorkflowDefinitionMaskerTest {
   private static final String STORED_CIPHERTEXT = "fernet:storedForThisNode";
   private static final String PASTED_CIPHERTEXT = "fernet:copiedFromAnotherWorkflow";
   private static final String ENCRYPTED_REJECTION = "encrypted values cannot be supplied";
+  private static final String GIT_TOKEN_PATH = "/nodes/1/config/sinkConfig/credentials/token";
   private static final String EDGES_JSON = "[{\"from\":\"start\",\"to\":\"gitSink\"}]";
 
   @Test
@@ -289,6 +291,90 @@ class WorkflowDefinitionMaskerTest {
             () -> WorkflowDefinitionMasker.requireStoredEncryptedSecrets(stored, incoming));
 
     assertTrue(rejected.getMessage().contains("/authentication/token"), rejected.getMessage());
+  }
+
+  @Test
+  void aPatchCopyingTheTokenToTheDescriptionIsRejected() {
+    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
+    WorkflowDefinition patched =
+        JsonUtils.applyPatch(
+            stored,
+            Json.createPatchBuilder().copy("/description", GIT_TOKEN_PATH).build(),
+            WorkflowDefinition.class);
+
+    assertSecretOutsideItsFieldRejected(stored, patched, "'/description'");
+  }
+
+  @Test
+  void aPatchMovingTheTokenToTheDescriptionIsRejected() {
+    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
+    WorkflowDefinition patched =
+        JsonUtils.applyPatch(
+            stored,
+            Json.createPatchBuilder().move("/description", GIT_TOKEN_PATH).build(),
+            WorkflowDefinition.class);
+
+    assertSecretOutsideItsFieldRejected(stored, patched, "'/description'");
+  }
+
+  @Test
+  void aPatchCopyingTheCredentialsObjectIntoTheSinkConfigIsRejected() {
+    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
+    WorkflowDefinition patched =
+        JsonUtils.applyPatch(
+            stored,
+            Json.createPatchBuilder()
+                .copy("/nodes/1/config/sinkConfig/backup", "/nodes/1/config/sinkConfig/credentials")
+                .build(),
+            WorkflowDefinition.class);
+
+    assertSecretOutsideItsFieldRejected(
+        stored, patched, "'/nodes/1/config/sinkConfig/backup/token'");
+  }
+
+  @Test
+  void aPatchCopyingANonSecretFieldOrAWholeSinkNodeIsAccepted() {
+    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
+    WorkflowDefinition patched =
+        JsonUtils.applyPatch(
+            stored,
+            Json.createPatchBuilder()
+                .copy("/description", "/nodes/1/config/sinkConfig/repositoryUrl")
+                .copy("/nodes/-", "/nodes/1")
+                .build(),
+            WorkflowDefinition.class);
+
+    assertDoesNotThrow(
+        () -> WorkflowDefinitionMasker.requireSecretsOnlyInSecretFields(stored, patched));
+    assertEquals("https://github.com/org/repo.git", patched.getDescription());
+  }
+
+  @Test
+  void aSecretRecordedInAnEarlierChangeDescriptionDoesNotBlockUpdates() {
+    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
+    stored.setChangeDescription(
+        new ChangeDescription()
+            .withFieldsAdded(List.of())
+            .withFieldsUpdated(
+                List.of(new FieldChange().withName("description").withNewValue(STORED_CIPHERTEXT)))
+            .withFieldsDeleted(List.of()));
+    WorkflowDefinition patched =
+        JsonUtils.applyPatch(
+            stored,
+            Json.createPatchBuilder().add("/description", "cleaned up").build(),
+            WorkflowDefinition.class);
+
+    assertDoesNotThrow(
+        () -> WorkflowDefinitionMasker.requireSecretsOnlyInSecretFields(stored, patched));
+  }
+
+  private static void assertSecretOutsideItsFieldRejected(
+      WorkflowDefinition stored, WorkflowDefinition patched, String location) {
+    BadRequestException rejected =
+        assertThrows(
+            BadRequestException.class,
+            () -> WorkflowDefinitionMasker.requireSecretsOnlyInSecretFields(stored, patched));
+    assertTrue(rejected.getMessage().contains(location), rejected.getMessage());
   }
 
   @Test

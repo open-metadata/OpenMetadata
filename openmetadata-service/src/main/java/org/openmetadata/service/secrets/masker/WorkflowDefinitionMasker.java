@@ -25,10 +25,12 @@ import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -88,6 +90,9 @@ public final class WorkflowDefinitionMasker {
       Workflow node '%s' has an encrypted secret ('%s'); encrypted values cannot be supplied, \
       provide the actual value\
       """;
+
+  private static final String COPIED_SECRET_MESSAGE =
+      "A sink secret cannot be copied or moved out of its field; it was found at '%s'";
 
   private WorkflowDefinitionMasker() {}
 
@@ -230,6 +235,70 @@ public final class WorkflowDefinitionMasker {
               throw new BadRequestException(
                   ENCRYPTED_SECRET_MESSAGE.formatted(sinkTask.getName(), pointer));
             });
+  }
+
+  /**
+   * Rejects {@code updated} when a sink secret stored in {@code original} appears anywhere but a
+   * sink secret field, as a JSON Patch {@code copy} or {@code move} from a secret location leaves
+   * it. Masking covers only the secret fields, so a secret anywhere else would be served as stored.
+   */
+  public static void requireSecretsOnlyInSecretFields(
+      WorkflowDefinition original, WorkflowDefinition updated) {
+    Set<String> storedSecrets = storedSecrets(original);
+    if (!storedSecrets.isEmpty()) {
+      JsonNode withoutSecretFields = callerSetFields(updated);
+      transformSecrets(withoutSecretFields, secret -> "");
+      findText(withoutSecretFields, JsonPointer.empty(), storedSecrets)
+          .ifPresent(
+              pointer -> {
+                throw new BadRequestException(COPIED_SECRET_MESSAGE.formatted(pointer));
+              });
+    }
+  }
+
+  /**
+   * The JSON of {@code definition} without its change descriptions: the server writes those and
+   * replaces them on every update, and an earlier one may still record a secret.
+   */
+  private static JsonNode callerSetFields(WorkflowDefinition definition) {
+    JsonNode json = JsonUtils.valueToTree(definition);
+    // A WorkflowDefinition always serializes to a JSON object.
+    if (json instanceof ObjectNode definitionJson) {
+      definitionJson.remove(CHANGE_DESCRIPTION_FIELDS);
+    }
+    return json;
+  }
+
+  private static Set<String> storedSecrets(WorkflowDefinition original) {
+    Set<String> secrets = new HashSet<>();
+    transformSecrets(
+        JsonUtils.valueToTree(original),
+        secret -> {
+          secrets.add(secret);
+          return secret;
+        });
+    secrets.removeIf(secret -> secret.isBlank() || PASSWORD_MASK.equals(secret));
+    return secrets;
+  }
+
+  /** The location of the first text value under {@code node} that contains one of {@code values}. */
+  private static Optional<JsonPointer> findText(
+      JsonNode node, JsonPointer pointer, Set<String> values) {
+    Optional<JsonPointer> found = Optional.empty();
+    if (node.isTextual()) {
+      String text = node.textValue();
+      found = values.stream().anyMatch(text::contains) ? Optional.of(pointer) : found;
+    } else if (node.isArray()) {
+      for (int i = 0; i < node.size() && found.isEmpty(); i++) {
+        found = findText(node.get(i), pointer.appendIndex(i), values);
+      }
+    } else {
+      for (var fields = node.properties().iterator(); fields.hasNext() && found.isEmpty(); ) {
+        var field = fields.next();
+        found = findText(field.getValue(), pointer.appendProperty(field.getKey()), values);
+      }
+    }
+    return found;
   }
 
   /** The stored sink config of {@code stored}, or a missing node when there is none. */

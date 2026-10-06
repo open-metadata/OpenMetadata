@@ -78,26 +78,53 @@ final class BatchEntities {
    * stays. The result takes the continuing outcome when at least one entity matched it and the
    * other value otherwise, so the batch leaves on the continuing branch only when it is not empty.
    * A continuing outcome other than {@code true} reads as {@code false}, as the edge expression
-   * coerces it.
+   * coerces it. The entities are evaluated on {@link BatchParallelism}'s pool and recorded here, on
+   * the calling thread, in batch order.
    */
   static ConditionOutcome evaluate(
       String nodeName,
       List<String> entityLinks,
       String continuingOutcome,
       Predicate<String> condition) {
+    return evaluate(
+        nodeName,
+        continuingOutcome,
+        entityLinks,
+        BatchParallelism.run(nodeName, entityLinks, condition::test));
+  }
+
+  static ConditionOutcome evaluate(
+      String nodeName,
+      List<String> entityLinks,
+      String continuingOutcome,
+      Predicate<String> condition,
+      BatchParallelism.Budget budget) {
+    return evaluate(
+        nodeName,
+        continuingOutcome,
+        entityLinks,
+        BatchParallelism.run(nodeName, entityLinks, condition::test, budget));
+  }
+
+  private static ConditionOutcome evaluate(
+      String nodeName,
+      String continuingOutcome,
+      List<String> entityLinks,
+      List<BatchParallelism.Outcome<Boolean>> outcomes) {
     boolean continuingValue = continuingOutcome == null || Boolean.parseBoolean(continuingOutcome);
     Failures failures = new Failures(nodeName, entityLinks.size());
     List<String> evaluated = new ArrayList<>();
     List<String> matched = new ArrayList<>();
-    for (String entityLink : entityLinks) {
-      try {
-        boolean value = condition.test(entityLink);
+    for (int i = 0; i < entityLinks.size(); i++) {
+      String entityLink = entityLinks.get(i);
+      BatchParallelism.Outcome<Boolean> outcome = outcomes.get(i);
+      if (outcome.failed()) {
+        failures.add(entityLink, outcome.failure());
+      } else {
         evaluated.add(entityLink);
-        if (value == continuingValue) {
+        if (outcome.value() == continuingValue) {
           matched.add(entityLink);
         }
-      } catch (RuntimeException exception) {
-        failures.add(entityLink, exception);
       }
     }
     boolean result = matched.isEmpty() ? !continuingValue : continuingValue;
@@ -105,16 +132,44 @@ final class BatchEntities {
     return new ConditionOutcome(result, continuing, failures);
   }
 
-  /** Applies an action to every entity of the batch, each on its own. */
+  /**
+   * Applies an action to every entity of the batch, each on its own, on {@link
+   * BatchParallelism}'s pool; the outcomes are recorded here, on the calling thread, in batch order.
+   */
   static ActionOutcome apply(String nodeName, List<String> entityLinks, Consumer<String> action) {
+    return applied(
+        nodeName,
+        entityLinks,
+        BatchParallelism.run(nodeName, entityLinks, entityLink -> run(action, entityLink)));
+  }
+
+  static ActionOutcome apply(
+      String nodeName,
+      List<String> entityLinks,
+      Consumer<String> action,
+      BatchParallelism.Budget budget) {
+    return applied(
+        nodeName,
+        entityLinks,
+        BatchParallelism.run(nodeName, entityLinks, entityLink -> run(action, entityLink), budget));
+  }
+
+  private static Boolean run(Consumer<String> action, String entityLink) {
+    action.accept(entityLink);
+    return Boolean.TRUE;
+  }
+
+  private static ActionOutcome applied(
+      String nodeName, List<String> entityLinks, List<BatchParallelism.Outcome<Boolean>> outcomes) {
     Failures failures = new Failures(nodeName, entityLinks.size());
     List<String> applied = new ArrayList<>();
-    for (String entityLink : entityLinks) {
-      try {
-        action.accept(entityLink);
+    for (int i = 0; i < entityLinks.size(); i++) {
+      String entityLink = entityLinks.get(i);
+      BatchParallelism.Outcome<Boolean> outcome = outcomes.get(i);
+      if (outcome.failed()) {
+        failures.add(entityLink, outcome.failure());
+      } else {
         applied.add(entityLink);
-      } catch (RuntimeException exception) {
-        failures.add(entityLink, exception);
       }
     }
     return new ActionOutcome(applied, failures);
