@@ -21,7 +21,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
- 
 let mockGetContributions = jest.fn().mockReturnValue([]);
 
 jest.mock(
