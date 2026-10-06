@@ -728,9 +728,6 @@ def shipped_pii_tags() -> tuple[Classification, list[Tag]]:
         (ClassificationLanguage.en, "iban", ["gb82 west 1234 5698 7654 32"], "IBAN_CODE"),
         (ClassificationLanguage.es, "nif", ["12345678z"], "ES_NIF"),
         (ClassificationLanguage.es, "nie", ["x1234567l"], "ES_NIE"),
-        (ClassificationLanguage.en, "uen", ["t15lp0010d"], "SG_UEN"),
-        (ClassificationLanguage.en, "abn", ["51-824-753-556"], "AU_ABN"),
-        (ClassificationLanguage.it, "partita_iva", ["IT 12345678903"], "IT_VAT_CODE"),
         (ClassificationLanguage.en, "sg_nric", ["S1234567D", "S1234567E"], "SG_NRIC_FIN"),
     ],
 )
@@ -786,7 +783,7 @@ def test_shipped_acn_recognizer_retains_evidence_without_default_pii_tag(
     analysis = TagAnalyzer(
         sensitive, column, load_nlp_engine(classification_language=ClassificationLanguage.en), ClassificationLanguage.en
     ).analyze(["004-085-616"])
-    assert all(result.entity_type != "AU_ACN" for result in analysis.recognizer_results)
+    assert any(result.entity_type == "AU_ACN" for result in analysis.recognizer_results)
 
     config = Mock(spec=OpenMetadataWorkflowConfig)
     config.source = Mock(spec=SourceConfig)
@@ -801,14 +798,24 @@ def test_shipped_acn_recognizer_retains_evidence_without_default_pii_tag(
 
     custom = legacy_default.model_copy(update={"isSystemDefault": False})
     sensitive.recognizers = [custom]
-    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, ["004-085-616"])] == [
+    custom_processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    assert [label.tagFQN.root for label in custom_processor.create_column_tag_labels(column, ["004-085-616"])] == [
         "PII.Sensitive"
     ]
 
     configured_default = legacy_default.model_copy(deep=True)
     configured_default.recognizerConfig.root.context = ["acn"]
     sensitive.recognizers = [configured_default]
-    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, ["004-085-616"])] == [
+    configured_processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    assert [label.tagFQN.root for label in configured_processor.create_column_tag_labels(column, ["004-085-616"])] == [
         "PII.Sensitive"
     ]
 
@@ -829,18 +836,221 @@ def test_shipped_acn_recognizer_retains_evidence_without_default_pii_tag(
 
 
 @pytest.mark.parametrize(
+    "language,column_name,value,expected",
+    [
+        (ClassificationLanguage.en, "abn", "51-824-753-556", True),
+        (ClassificationLanguage.en, "AustralianBusinessNumber", "51 824 753 556", True),
+        (ClassificationLanguage.en, "reference", "51-824-753-556", False),
+        (ClassificationLanguage.en, "company_number", "51-824-753-556", False),
+        (ClassificationLanguage.en, "sku", "51-824-753-556", False),
+        (ClassificationLanguage.en, "sku", "ABN 51-824-753-556", False),
+        (ClassificationLanguage.it, "partita_iva", "12345678903", True),
+        (ClassificationLanguage.it, "VATNumber", "12345678903", True),
+        (ClassificationLanguage.it, "reference", "12345678903", False),
+        (ClassificationLanguage.it, "sku", "IT 12345678903", True),
+        (ClassificationLanguage.it, "reference", "it12345678903", True),
+        (ClassificationLanguage.en, "uen", "T15LP0010D", True),
+        (ClassificationLanguage.en, "sg_uen", "t15lp0010d", True),
+        (ClassificationLanguage.en, "company_reference", "T15LP0010D", False),
+        (ClassificationLanguage.en, "number", "T15LP0010D", False),
+        (ClassificationLanguage.en, "reference", "UEN T15LP0010D", False),
+    ],
+)
+def test_shipped_business_identifiers_require_family_evidence_for_non_sensitive(
+    shipped_pii_tags: tuple[Classification, list[Tag]], language, column_name, value, expected
+):
+    classification, tags = shipped_pii_tags
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=language)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    labels = processor.create_column_tag_labels(column, [value])
+    assert [label.tagFQN.root for label in labels] == (["PII.NonSensitive"] if expected else [])
+
+
+@pytest.mark.parametrize(
+    "language,column_name,value,entity",
+    [
+        (ClassificationLanguage.en, "abn", "51 824 753 556", "AU_ABN"),
+        (ClassificationLanguage.it, "partita_iva", "12345678903", "IT_VAT_CODE"),
+        (ClassificationLanguage.it, "reference", "it 12345678903", "IT_VAT_CODE"),
+        (ClassificationLanguage.en, "uen", "t15lp0010d", "SG_UEN"),
+    ],
+)
+def test_business_default_keeps_original_validated_span(
+    shipped_pii_tags: tuple[Classification, list[Tag]], language, column_name, value, entity
+):
+    _, tags = shipped_pii_tags
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    non_sensitive = next(tag for tag in tags if tag.name.root == "NonSensitive")
+    text = f"Supplier: {value}; active"
+    analysis = TagAnalyzer(non_sensitive, column, load_nlp_engine(classification_language=language), language).analyze(
+        [text]
+    )
+    intended = [result for result in analysis.recognizer_results if result.entity_type == entity]
+    assert [(result.score, result.start, result.end, text[result.start : result.end]) for result in intended] == [
+        (1.0, len("Supplier: "), len("Supplier: ") + len(value), value)
+    ]
+
+
+@pytest.mark.parametrize(
+    "language,column_name,valid,wrong,enclosed",
+    [
+        (ClassificationLanguage.en, "abn", "51-824-753-556", "51-824-753-557", "X51-824-753-556"),
+        (ClassificationLanguage.it, "partita_iva", "12345678903", "12345678904", "XIt 12345678903"),
+        (ClassificationLanguage.en, "uen", "T15LP0010D", "T15LP0010X", "XT15LP0010D"),
+    ],
+)
+def test_business_default_rejects_wrong_and_enclosed_but_accepts_duplicate_and_mixed_samples(
+    shipped_pii_tags: tuple[Classification, list[Tag]], language, column_name, valid, wrong, enclosed
+):
+    classification, tags = shipped_pii_tags
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=language)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    for rejected in (wrong, enclosed):
+        assert processor.create_column_tag_labels(column, [rejected]) == []
+    for values in ([valid] * 10, [wrong, valid]):
+        assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, values)] == [
+            "PII.NonSensitive"
+        ]
+
+
+@pytest.mark.parametrize(
+    "family,language,column_name,value",
+    [
+        (Name.AuAbnRecognizer, ClassificationLanguage.en, "abn", "51-824-753-556"),
+        (Name.ItVatCodeRecognizer, ClassificationLanguage.it, "partita_iva", "12345678903"),
+        (Name.SgUenRecognizer, ClassificationLanguage.en, "uen", "T15LP0010D"),
+    ],
+)
+def test_unchanged_stored_sensitive_business_default_moves_to_non_sensitive_without_mutating_storage(
+    shipped_pii_tags: tuple[Classification, list[Tag]], family, language, column_name, value
+):
+    classification, seeded = shipped_pii_tags
+    tags = [tag.model_copy(deep=True) for tag in seeded]
+    sensitive = next(tag for tag in tags if tag.name.root == "Sensitive")
+    non_sensitive = next(tag for tag in tags if tag.name.root == "NonSensitive")
+    current = next(rec for rec in non_sensitive.recognizers if rec.name.root == family.value)
+    non_sensitive.recognizers = [rec for rec in non_sensitive.recognizers if rec is not current]
+    legacy = current.model_copy(deep=True)
+    legacy.confidenceThreshold = 0.6
+    sensitive.recognizers.append(legacy)
+
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=language)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    column = Column(
+        name=column_name, fullyQualifiedName=f"database.schema.table.{column_name}", dataType=DataType.VARCHAR
+    )
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == ["PII.NonSensitive"]
+    neutral = Column(name="reference", fullyQualifiedName="database.schema.table.reference", dataType=DataType.VARCHAR)
+    assert processor.create_column_tag_labels(neutral, [value]) == []
+    assert legacy in sensitive.recognizers
+    assert all(rec.name.root != family.value for rec in non_sensitive.recognizers)
+
+
+def test_modified_stored_business_default_keeps_custom_sensitive_assignment(
+    shipped_pii_tags: tuple[Classification, list[Tag]],
+):
+    classification, seeded = shipped_pii_tags
+    tags = [tag.model_copy(deep=True) for tag in seeded]
+    sensitive = next(tag for tag in tags if tag.name.root == "Sensitive")
+    non_sensitive = next(tag for tag in tags if tag.name.root == "NonSensitive")
+    current = next(rec for rec in non_sensitive.recognizers if rec.name.root == "SgUenRecognizer")
+    non_sensitive.recognizers = [rec for rec in non_sensitive.recognizers if rec is not current]
+    customized = current.model_copy(deep=True)
+    customized.confidenceThreshold = 0.6
+    customized.recognizerConfig.root.context = ["uen"]
+    sensitive.recognizers.append(customized)
+
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    column = Column(name="uen", fullyQualifiedName="database.schema.table.uen", dataType=DataType.VARCHAR)
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, ["T15LP0010D"])] == [
+        "PII.Sensitive"
+    ]
+
+
+@pytest.mark.parametrize(
+    "family,language,value",
+    [
+        (Name.AuAbnRecognizer, ClassificationLanguage.en, "51-824-753-556"),
+        (Name.ItVatCodeRecognizer, ClassificationLanguage.it, "12345678903"),
+        (Name.SgUenRecognizer, ClassificationLanguage.en, "T15LP0010D"),
+    ],
+)
+def test_business_adapter_remains_usable_for_custom_general_tag(family, language, value):
+    classification = ClassificationFactory.create(
+        fqn="Operations",
+        mutuallyExclusive=False,
+        autoClassificationConfig__enabled=True,
+        autoClassificationConfig__minimumConfidence=0.8,
+    )
+    entry = Recognizer.model_validate(
+        {
+            "name": family.value,
+            "enabled": True,
+            "isSystemDefault": False,
+            "target": "content",
+            "confidenceThreshold": 0.6,
+            "recognizerConfig": {"type": "predefined", "name": family.value, "supportedLanguage": language.value},
+        }
+    )
+    tag = TagFactory.create(tag_name="Identifier", tag_classification=classification, recognizers=[entry])
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=language)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, [tag])),
+        classification_filter=["Operations"],
+    )
+    column = Column(name="reference", fullyQualifiedName="database.schema.table.reference", dataType=DataType.VARCHAR)
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == [
+        "Operations.Identifier"
+    ]
+
+
+@pytest.mark.parametrize(
     "language,column_name,valid,wrong,entity,recognizer_name",
     [
         (ClassificationLanguage.es, "invoice_ref", "12345678Z", "12345678A", "ES_NIF", "EsNifRecognizer"),
         (ClassificationLanguage.es, "batch_ref", "X1234567L", "X1234567A", "ES_NIE", "EsNieRecognizer"),
-        (
-            ClassificationLanguage.it,
-            "supplier_reference",
-            "12345678903",
-            "12345678904",
-            "IT_VAT_CODE",
-            "ItVatCodeRecognizer",
-        ),
     ],
 )
 def test_operational_lookalikes_are_separated_from_checksum_evidence(

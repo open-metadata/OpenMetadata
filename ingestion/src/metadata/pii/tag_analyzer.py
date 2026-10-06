@@ -19,8 +19,8 @@ from metadata.generated.schema.type import recognizer, tagLabelRecognizerMetadat
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
-from metadata.generated.schema.type.predefinedRecognizer import Name, PredefinedRecognizer
-from metadata.generated.schema.type.recognizer import Recognizer, RecognizerException
+from metadata.generated.schema.type.predefinedRecognizer import Name
+from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_patches import (
@@ -35,6 +35,10 @@ from metadata.pii.algorithms.presidio_recognizer_factory import (
 from metadata.pii.algorithms.presidio_utils import (
     explain_recognition_results,
     load_nlp_engine,
+)
+from metadata.pii.default_identifier_policy import (
+    default_non_sensitive_family,
+    qualifies_for_default_non_sensitive,
 )
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
@@ -70,23 +74,6 @@ def _normalized_match(evidence: _RecognitionEvidence) -> str:
     if not 0 <= result.start < result.end <= len(evidence.value):
         return ""
     return " ".join(evidence.value[result.start : result.end].casefold().split())
-
-
-def _is_legacy_default_acn_sensitive(tag: Tag, entry: Recognizer) -> bool:
-    """Retire the untouched stored PII default while honoring configured ACN recognizers."""
-    config = entry.recognizerConfig.root
-    return (
-        tag.fullyQualifiedName == "PII.Sensitive"
-        and entry.isSystemDefault is True
-        and entry.name.root == "AuAcnRecognizer"
-        and entry.confidenceThreshold == 0.6
-        and entry.target is recognizer.Target.content
-        and isinstance(config, PredefinedRecognizer)
-        and config.name is Name.AuAcnRecognizer
-        and config.supportedLanguage is ClassificationLanguage.en
-        and not config.context
-        and not config.supportedEntities
-    )
 
 
 def _corroborated_content_results(evidence: Sequence[_RecognitionEvidence]) -> list[RecognizerResult]:
@@ -149,6 +136,7 @@ class TagAnalyzer:
         self._column = column
         self._nlp_engine = nlp_engine
         self._language = language
+        self._default_business_by_recognizer_id: dict[str, Name] = {}
 
     def should_skip_recognizer(self, exception_list: list[RecognizerException]):
         blacklisted_entities = {ex.entityLink.root for ex in exception_list}
@@ -180,12 +168,13 @@ class TagAnalyzer:
                 recognizer.target is not target
                 or recognizer.enabled is False
                 or self.should_skip_recognizer(recognizer.exceptionList or [])
-                or _is_legacy_default_acn_sensitive(self.tag, recognizer)
             ):
                 continue
 
             created = PresidioRecognizerFactory.create_recognizer(recognizer)
             if created is not None and self._supports_language(created):
+                if family := default_non_sensitive_family(self.tag, recognizer):
+                    self._default_business_by_recognizer_id[created.id] = family
                 recognizers.append(created)
 
         return recognizers
@@ -305,7 +294,22 @@ class TagAnalyzer:
                     context=context,
                     result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
                 )
-                content_results = _corroborated_content_results(content_evidence)
+                eligible_evidence: list[_RecognitionEvidence] = []
+                for item in content_evidence:
+                    recognizer_id = (item.result.recognition_metadata or {}).get(
+                        presidio_constants.RECOGNIZER_METADATA_IDENTIFIER
+                    )
+                    family = (
+                        self._default_business_by_recognizer_id.get(recognizer_id)
+                        if isinstance(recognizer_id, str)
+                        else None
+                    )
+                    if family is not None and not qualifies_for_default_non_sensitive(
+                        family, self._column_name, item.value, item.result.start, item.result.end
+                    ):
+                        continue
+                    eligible_evidence.append(item)
+                content_results = _corroborated_content_results(eligible_evidence)
                 # Use the maximum individual recogniser score rather than the average over all
                 # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
                 # number among 50 sampled rows would score 0.85 / 50 = 0.017 — far below any
