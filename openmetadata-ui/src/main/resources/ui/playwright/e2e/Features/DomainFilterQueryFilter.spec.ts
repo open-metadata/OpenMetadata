@@ -534,6 +534,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
   test('Quick filters should persist when domain filter is applied and cleared', async ({
     page,
   }) => {
+    // Measured 53-65s idle -- the longest test here, and it exceeded the
+    // describe's budget on a loaded runner.
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainTable1 = new TableClass();
@@ -592,10 +595,13 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       // Step 3: Clear domain filter by selecting "All Domains"
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('domain-dropdown-search').waitFor({
-        state: 'visible',
-      });
-      await page.getByTestId('tree-node-All Domains').click();
+      const domainSearch = page.getByTestId('domain-dropdown-search');
+      await domainSearch.waitFor({ state: 'visible' });
+      // Step 2 left its search term in the box, which filters "All Domains" out of the tree.
+      await domainSearch.clear();
+      const allDomainsNode = page.getByTestId('tree-node-All Domains');
+      await expect(allDomainsNode).toBeVisible();
+      await allDomainsNode.click({ timeout: ACTION_TIMEOUT });
       await waitForAllLoadersToDisappear(page);
 
       await verifyActiveDomainIsDefault(page);
