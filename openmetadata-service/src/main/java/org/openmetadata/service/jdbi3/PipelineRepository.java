@@ -24,7 +24,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -900,7 +900,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     for (Task task : listOrEmpty(entity.getTasks())) {
       validateTags(task.getTags());
       task.setTags(addDerivedTags(task.getTags()));
-      checkMutuallyExclusive(task.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(task.getTags());
     }
   }
 
