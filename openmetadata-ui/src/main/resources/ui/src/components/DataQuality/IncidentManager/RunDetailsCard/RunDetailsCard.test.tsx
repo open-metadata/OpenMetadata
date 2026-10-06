@@ -101,6 +101,22 @@ describe('RunDetailsCard', () => {
     );
   });
 
+  it('sets the four values in equal columns, in the weight the mock gives them', () => {
+    renderCard([FAILED_RUN]);
+
+    const found = screen.getByTestId('run-details-found');
+
+    expect(found).toHaveClass('tw:text-[13px]', 'tw:font-semibold');
+    expect(screen.getByTestId('run-details-definition')).toHaveClass(
+      'tw:text-[13px]',
+      'tw:font-medium'
+    );
+    expect(found.closest('.tw\\:grid')).toHaveClass(
+      'tw:@lg:grid-cols-4',
+      'tw:gap-x-3'
+    );
+  });
+
   it('shows a successful run with its note', () => {
     renderCard([
       {

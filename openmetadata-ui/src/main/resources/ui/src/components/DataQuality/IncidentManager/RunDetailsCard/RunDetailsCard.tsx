@@ -176,6 +176,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
     {
       // A camel-case name may break anywhere; numbers below only between words.
       className: 'tw:break-words tw:font-medium tw:text-primary',
+      weight: 'medium' as const,
       labelKey: 'label.test-definition-sentence',
       testId: 'run-details-definition',
       value: testCase.testDefinition?.name ?? NO_VALUE,
@@ -240,8 +241,9 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
         className="tw:@container tw:bg-surface tw:p-4"
         direction="col"
         gap={4}>
-        <div className="tw:grid tw:grid-cols-2 tw:gap-3 tw:@lg:grid-cols-[max-content_repeat(3,minmax(min-content,1fr))]">
-          {details.map(({ className, labelKey, testId, value }) => (
+        {/* Four equal columns, as the mock sets them; two in a narrow card. */}
+        <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:@lg:grid-cols-4">
+          {details.map(({ className, labelKey, testId, value, weight }) => (
             <Box className="tw:min-w-0" direction="col" gap={1} key={labelKey}>
               <Typography
                 className="tw:text-quaternary"
@@ -250,9 +252,9 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
                 {t(labelKey)}
               </Typography>
               <Typography
-                className={classNames('tw:font-mono', className)}
+                className={classNames('tw:font-mono tw:text-[13px]', className)}
                 data-testid={testId}
-                size="text-sm">
+                weight={weight ?? 'semibold'}>
                 {value}
               </Typography>
             </Box>
