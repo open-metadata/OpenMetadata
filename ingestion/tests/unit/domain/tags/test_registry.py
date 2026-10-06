@@ -17,6 +17,7 @@ including concurrent registration.
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
+from threading import Event
 
 import pytest
 
@@ -70,6 +71,48 @@ def test_lookup_errors_are_cached_without_discarding_other_labels(tag_metadata, 
         assert [label.tagFQN.root for label in registry.labels_for("svc.db.table")] == ["Class.Present"]
     assert reads == ["Class.Unavailable", "Class.Present"]
     assert caplog.text.count("Unable to verify tag Class.Unavailable") == 1
+
+
+@pytest.mark.parametrize("delayed_exists", [True, False])
+@pytest.mark.parametrize("lookup_error", [True, False])
+def test_concurrent_lookup_preserves_positive_result(tag_metadata, existing_tag_lookup, delayed_exists, lookup_error):
+    started, release = Event(), Event()
+    reads = []
+
+    def lookup(**kwargs):
+        reads.append(kwargs["fqn"])
+        if not started.is_set():
+            started.set()
+            assert release.wait(timeout=5)
+            exists = delayed_exists
+        else:
+            exists = not delayed_exists
+        if not exists and lookup_error:
+            raise ConnectionError("Backend unavailable")
+        return existing_tag_lookup(**kwargs) if exists else None
+
+    tag_metadata.get_by_name.side_effect = lookup
+    registry = TagRegistry(metadata=tag_metadata)
+    tag = TagDefinition("Class", "Shared", "", "")
+    registry.define(tag)
+    assert [record.tag_request.name.root for record in registry.drain()] == ["Shared"]
+    registry.attach(entity_fqn="svc.db.table", tag=tag)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        delayed = pool.submit(registry.labels_for, "svc.db.table")
+        try:
+            assert started.wait(timeout=5)
+            labels = registry.labels_for("svc.db.table")
+            assert [label.tagFQN.root for label in labels] == ([] if delayed_exists else ["Class.Shared"])
+        finally:
+            release.set()
+        assert [label.tagFQN.root for label in delayed.result(timeout=5)] == ["Class.Shared"]
+
+    registry.attach(entity_fqn="svc.db.next_table", tag=tag)
+    assert [label.tagFQN.root for label in registry.labels_for("svc.db.next_table")] == ["Class.Shared"]
+    assert reads == ["Class.Shared", "Class.Shared"]
+    registry.define(tag)
+    assert list(registry.drain()) == []
 
 
 @pytest.mark.parametrize("present", [True, False])

@@ -164,6 +164,7 @@ class TagRegistry:
                 logger.warning("Tag %s does not exist in OpenMetadata; omitting its labels", tag_fqn)
         with self._lock:
             known = self._known_tag_fqns.get(tag_fqn, _TagState())
+            exists = known.exists is True or exists
             self._known_tag_fqns[tag_fqn] = replace(known, exists=exists)
         return exists
 
