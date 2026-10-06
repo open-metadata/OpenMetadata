@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
@@ -485,6 +486,22 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         new ContextMemoryService(SdkClients.user1Client().getHttpClient());
 
     assertEquals(memory.getId(), otherUserService.get(memory.getId().toString()).getId());
+  }
+
+  @Test
+  void versions_ofAnotherUsersPrivateMemory_areForbidden(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "private-history", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService owner = new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+    ContextMemoryService other = new ContextMemoryService(SdkClients.user2Client().getHttpClient());
+    String id = memory.getId().toString();
+
+    assertFalse(owner.getVersionList(memory.getId()).getVersions().isEmpty());
+    assertEquals(memory.getId(), owner.getVersion(id, memory.getVersion()).getId());
+    assertThrows(ForbiddenException.class, () -> other.getVersionList(memory.getId()));
+    assertThrows(ForbiddenException.class, () -> other.getVersion(id, memory.getVersion()));
   }
 
   /**
