@@ -15,10 +15,10 @@ be connected to and are read from the cross-database catalog views instead.
 """
 
 import threading
-import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_redshift.dialect import RedshiftDialect
@@ -127,14 +127,16 @@ COLUMNS_BY_SCHEMA = {
 class RedshiftSourceFixture:
     """A Redshift source whose only connection answers the catalog views."""
 
-    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def setUp(self, mock_test_connection):
-        mock_test_connection.return_value = False
+    def __init__(self):
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_redshift_config)
-        self.redshift_source = RedshiftSource.create(
-            mock_redshift_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection",
+            return_value=False,
+        ):
+            self.redshift_source = RedshiftSource.create(
+                mock_redshift_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
         self.redshift_source.context.get().__dict__["database_service"] = "local_redshift"
         self.redshift_source.context.get().__dict__["database"] = SHARED_DATABASE
         self.redshift_source.context.get().__dict__["database_schema"] = "public"
@@ -145,7 +147,7 @@ class RedshiftSourceFixture:
         self.show_databases_error = None
         self.svv_databases_error = None
         self.schema_rows = SCHEMA_ROWS
-        self._svv_all_columns_queries = []
+        self.svv_all_columns_queries = []
         self.connected_databases = []
 
     def _execute(self, statement, params=None):
@@ -162,22 +164,22 @@ class RedshiftSourceFixture:
                 raise self.svv_databases_error
             return MagicMock(fetchall=lambda: DATABASE_ROWS)
         if "SVV_ALL_SCHEMAS" in query:
-            self.assertEqual(params["database"], SHARED_DATABASE)
+            assert params["database"] == SHARED_DATABASE
             if isinstance(self.schema_rows, Exception):
                 raise self.schema_rows
             return self.schema_rows
         if "SVV_ALL_TABLES" in query:
-            self.assertEqual(params["database"], SHARED_DATABASE)
+            assert params["database"] == SHARED_DATABASE
             return TABLE_ROWS
         if "SVV_ALL_COLUMNS" in query:
-            self.assertEqual(params["database"], SHARED_DATABASE)
-            self._svv_all_columns_queries.append(params["schema"])
+            assert params["database"] == SHARED_DATABASE
+            self.svv_all_columns_queries.append(params["schema"])
             return COLUMNS_BY_SCHEMA[params["schema"]]
         if "PG_PROC_INFO" in query:
             return MagicMock(all=lambda: STORED_PROCEDURE_ROWS)
         raise AssertionError(f"Unexpected query on the local connection: {statement}")
 
-    def _database_names(self, unreachable_databases, databases=None):
+    def database_names(self, unreachable_databases, databases=None):
         """Walk the databases, failing to connect to the given ones"""
         databases = databases or [LOCAL_DATABASE, SHARED_DATABASE]
 
@@ -194,188 +196,21 @@ class RedshiftSourceFixture:
         ):
             return list(self.redshift_source.get_database_names())
 
-    def _enter_datashare_mode(self):
+    def enter_datashare_mode(self):
         """Walk the databases so that the datashare strategy is chosen the way a
         real run chooses it, rather than by assigning it here."""
-        self._database_names({SHARED_DATABASE})
-        self.assertIsInstance(self.redshift_source.strategy, DatashareStrategy)
+        self.database_names({SHARED_DATABASE})
+        assert isinstance(self.redshift_source.strategy, DatashareStrategy)
 
-    def assertDatashareStrategy(self, database_name):  # noqa: N802
+    def expect_datashare_strategy(self, database_name):
         strategy = self.redshift_source.strategy
-        self.assertIsInstance(strategy, DatashareStrategy)
-        self.assertEqual(strategy.database_name, database_name)
+        assert isinstance(strategy, DatashareStrategy)
+        assert strategy.database_name == database_name
 
-    def assertBaseStrategy(self):  # noqa: N802
-        self.assertIsInstance(self.redshift_source.strategy, BaseStrategy)
+    def expect_base_strategy(self):
+        assert isinstance(self.redshift_source.strategy, BaseStrategy)
 
-
-class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
-    """Datashare databases are read from SVV_ALL_* instead of a connection"""
-
-    def test_a_non_local_database_is_ingested_without_being_connected_to(self):
-        """A database the cluster reports as non-local is read from the catalog
-        views whether or not it would accept a connection - so one that refuses is
-        still ingested, and no failed connection is attempted to find that out."""
-        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
-        self.assertDatashareStrategy(SHARED_DATABASE)
-        self.assertNotIn(SHARED_DATABASE, self.connected_databases)
-
-    def test_a_non_local_database_that_connects_is_still_read_from_the_catalog(self):
-        """The case a refused-connection trigger misses entirely.
-
-        A datashare database accepts the connection, and its `pg_catalog` is empty
-        once inside - measured on a real consumer. Waiting for a refusal would
-        reflect nothing and register the database with no tables at all.
-        """
-        self.assertEqual(self._database_names(set()), [LOCAL_DATABASE, SHARED_DATABASE])
-        self.assertDatashareStrategy(SHARED_DATABASE)
-
-    def test_a_local_database_is_never_read_from_the_catalog(self):
-        """Reflection stays the path for everything the cluster holds locally"""
-        self.assertEqual(self._database_names(set(), databases=[LOCAL_DATABASE]), [LOCAL_DATABASE])
-        self.assertBaseStrategy()
-        self.assertIn(LOCAL_DATABASE, self.connected_databases)
-
-    def test_a_local_database_failing_after_connecting_is_not_downgraded(self):
-        """A failure *after* the connection opens - a missing grant on a
-        per-database query, say - stays a reported failure rather than sending a
-        perfectly usable connection down the catalog path."""
-
-        def failing_location_map(database_name: str):
-            raise RuntimeError(f"permission denied for relation svv_external_tables ({database_name})")
-
-        with (
-            patch.object(RedshiftSource, "get_database_names_raw", return_value=[LOCAL_DATABASE]),
-            patch.object(RedshiftSource, "set_inspector"),
-            patch.object(RedshiftSource, "_set_incremental_table_processor"),
-            patch.object(RedshiftSource, "set_external_location_map", side_effect=failing_location_map),
-        ):
-            self.assertEqual(list(self.redshift_source.get_database_names()), [])
-        self.assertBaseStrategy()
-        # Only the classification probe ran; no catalog view was consulted
-        self.assertEqual(self.connection.execute.call_count, 1)
-
-    def test_an_unreachable_local_database_is_reported(self):
-        """A local database that cannot be connected to keeps failing as it does
-        today - the catalog views are not an alternative source for one."""
-        self.assertEqual(self._database_names({LOCAL_DATABASE}, databases=[LOCAL_DATABASE]), [])
-        self.assertBaseStrategy()
-
-    def test_nothing_is_read_when_the_configured_database_is_unreachable(self):
-        """The cross-database views run over the connection to the configured
-        database, so if that one is down there is nowhere left to read from."""
-        self.assertEqual(self._database_names({LOCAL_DATABASE}), [])
-
-    def test_database_without_a_reported_type_is_treated_as_local(self):
-        """An empty `database_type` must not read as non-local"""
-        global DATABASE_ROWS  # noqa: PLW0603
-        original = DATABASE_ROWS
-        DATABASE_ROWS = [
-            SimpleNamespace(database_name=name, database_type=None) for name in (LOCAL_DATABASE, SHARED_DATABASE)
-        ]
-        try:
-            self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE])
-            self.assertBaseStrategy()
-        finally:
-            DATABASE_ROWS = original
-
-    def test_falls_back_to_svv_when_show_databases_is_unavailable(self):
-        """Clusters predating SHOW DATABASES still classify through the SVV view"""
-        self.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
-        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
-        self.assertDatashareStrategy(SHARED_DATABASE)
-
-    def test_a_failing_catalog_read_does_not_abort_the_walk(self):
-        """The catalog read runs inside the walk's `except` branch, so an
-        exception there escapes the producer and every later database is lost."""
-        self.schema_rows = RuntimeError("permission denied for view svv_all_schemas")
-        # The datashare database sits between two reachable ones
-        walked = self._database_names(
-            {SHARED_DATABASE},
-            databases=[LOCAL_DATABASE, SHARED_DATABASE, "another_db"],
-        )
-        self.assertEqual(walked, [LOCAL_DATABASE, "another_db"])
-
-    def test_shared_database_with_no_readable_schemas_is_skipped(self):
-        """A database the catalog cannot see into is skipped, not registered empty.
-
-        A catalog database mounted from Glue needs an IAM-authenticated session;
-        under password auth the catalog views report nothing for it.
-        """
-        self.schema_rows = []
-        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE])
-        self.assertBaseStrategy()
-
-    def test_no_classification_source_keeps_current_behaviour(self):
-        """With neither source readable, no database is classified as shared"""
-        self.show_databases_error = RuntimeError("permission denied")
-        self.svv_databases_error = RuntimeError("permission denied for view svv_redshift_databases")
-        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE])
-        self.assertBaseStrategy()
-
-    def test_schema_names_come_from_the_catalog(self):
-        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
-        self.assertEqual(list(self.redshift_source.get_raw_database_schema_names()), ["public", "sales"])
-
-    def test_table_names_and_types_come_from_the_catalog(self):
-        self._enter_datashare_mode()
-        self.redshift_source.source_config.includeViews = True
-        tables = self.redshift_source.query_table_names_and_types("public")
-        self.assertEqual(
-            [(table.name, table.type_) for table in tables],
-            [("orders", TableType.Regular), ("orders_view", TableType.View)],
-        )
-        # Constraints are not readable across databases, so none are carried over
-        self.assertEqual(self.redshift_source._get_columns_with_constraints("public", "orders"), ([], [], []))
-
-    def test_views_are_skipped_when_not_requested(self):
-        self._enter_datashare_mode()
-        self.redshift_source.source_config.includeViews = False
-        tables = self.redshift_source.query_table_names_and_types("public")
-        self.assertEqual([table.name for table in tables], ["orders"])
-
-    def test_table_description_comes_from_the_catalog(self):
-        self._enter_datashare_mode()
-        self.redshift_source.query_table_names_and_types("public")
-        self.assertEqual(
-            self.redshift_source.get_table_description("public", "orders", MagicMock()),
-            "Shared orders",
-        )
-
-    def test_a_large_schema_keeps_every_table_description(self):
-        """Remarks arrive a whole schema at a time and are read back one table at
-        a time. A cache that caps *tables* evicts the front of a big schema before
-        anything reads it, so every table past the cap silently loses its
-        description."""
-        self._enter_datashare_mode()
-        strategy = self.redshift_source.strategy
-        wide = [
-            RedshiftDatashareTable(name=f"t{i}", table_type=TableType.Regular, remarks=f"remark {i}")
-            for i in range(1500)
-        ]
-        with patch.object(strategy.catalog, "get_tables", return_value=wide):
-            strategy.table_names_and_types("public")
-        # the first table, which a table-capped cache would have evicted long ago
-        self.assertEqual(
-            self.redshift_source.get_table_description("public", "t0", MagicMock()),
-            "remark 0",
-        )
-        self.assertEqual(
-            self.redshift_source.get_table_description("public", "t1499", MagicMock()),
-            "remark 1499",
-        )
-
-    def test_table_descriptions_of_two_schemas_do_not_overwrite_each_other(self):
-        """Remarks are keyed by schema, so schemas walked in parallel keep their own"""
-        self._enter_datashare_mode()
-        self.redshift_source.query_table_names_and_types("public")
-        self.redshift_source.query_table_names_and_types("sales")
-        self.assertEqual(
-            self.redshift_source.get_table_description("public", "orders", MagicMock()),
-            "Shared orders",
-        )
-
-    def _catalog_columns(self):
+    def catalog_columns(self):
         inspector = MagicMock()
         # Only the dialect is used, and it must be the real one: the merged path
         # builds columns exactly as reflection does.
@@ -389,39 +224,200 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
             table_type=TableType.Regular,
         )
 
-    def test_columns_are_built_from_the_catalog(self):
-        self._enter_datashare_mode()
-        columns, constraints, foreign_columns = self._catalog_columns()
-        self.assertEqual(constraints, [])
-        self.assertEqual(foreign_columns, [])
-        self.assertEqual([column.name.root for column in columns], ["order_id", "customer", "payload"])
-        self.assertEqual(columns[0].dataType, DataType.INT)
-        self.assertEqual(columns[0].dataTypeDisplay, "integer")
-        self.assertEqual(columns[0].ordinalPosition, 1)
-        self.assertEqual(columns[1].dataType, DataType.VARCHAR)
-        self.assertEqual(columns[1].dataLength, 64)
-        self.assertEqual(columns[1].dataTypeDisplay, "character varying(64)")
-        self.assertEqual(columns[1].description.root, "Customer name")
 
-    def test_a_type_the_dialect_cannot_resolve_keeps_its_source_spelling(self):
+@pytest.fixture
+def env():
+    """A Redshift source whose only connection answers the catalog views."""
+    return RedshiftSourceFixture()
+
+
+class TestDatashareDatabases:
+    """Datashare databases are read from SVV_ALL_* instead of a connection"""
+
+    def test_a_non_local_database_is_ingested_without_being_connected_to(self, env):
+        """A database the cluster reports as non-local is read from the catalog
+        views whether or not it would accept a connection - so one that refuses is
+        still ingested, and no failed connection is attempted to find that out."""
+        assert env.database_names({SHARED_DATABASE}) == [LOCAL_DATABASE, SHARED_DATABASE]
+        env.expect_datashare_strategy(SHARED_DATABASE)
+        assert SHARED_DATABASE not in env.connected_databases
+
+    def test_a_non_local_database_that_connects_is_still_read_from_the_catalog(self, env):
+        """The case a refused-connection trigger misses entirely.
+
+        A datashare database accepts the connection, and its `pg_catalog` is empty
+        once inside - measured on a real consumer. Waiting for a refusal would
+        reflect nothing and register the database with no tables at all.
+        """
+        assert env.database_names(set()) == [LOCAL_DATABASE, SHARED_DATABASE]
+        env.expect_datashare_strategy(SHARED_DATABASE)
+
+    def test_a_local_database_is_never_read_from_the_catalog(self, env):
+        """Reflection stays the path for everything the cluster holds locally"""
+        assert env.database_names(set(), databases=[LOCAL_DATABASE]) == [LOCAL_DATABASE]
+        env.expect_base_strategy()
+        assert LOCAL_DATABASE in env.connected_databases
+
+    def test_a_local_database_failing_after_connecting_is_not_downgraded(self, env):
+        """A failure *after* the connection opens - a missing grant on a
+        per-database query, say - stays a reported failure rather than sending a
+        perfectly usable connection down the catalog path."""
+
+        def failing_location_map(database_name: str):
+            raise RuntimeError(f"permission denied for relation svv_external_tables ({database_name})")
+
+        with (
+            patch.object(RedshiftSource, "get_database_names_raw", return_value=[LOCAL_DATABASE]),
+            patch.object(RedshiftSource, "set_inspector"),
+            patch.object(RedshiftSource, "_set_incremental_table_processor"),
+            patch.object(RedshiftSource, "set_external_location_map", side_effect=failing_location_map),
+        ):
+            assert list(env.redshift_source.get_database_names()) == []
+        env.expect_base_strategy()
+        # Only the classification probe ran; no catalog view was consulted
+        assert env.connection.execute.call_count == 1
+
+    def test_an_unreachable_local_database_is_reported(self, env):
+        """A local database that cannot be connected to keeps failing as it does
+        today - the catalog views are not an alternative source for one."""
+        assert env.database_names({LOCAL_DATABASE}, databases=[LOCAL_DATABASE]) == []
+        env.expect_base_strategy()
+
+    def test_nothing_is_read_when_the_configured_database_is_unreachable(self, env):
+        """The cross-database views run over the connection to the configured
+        database, so if that one is down there is nowhere left to read from."""
+        assert env.database_names({LOCAL_DATABASE}) == []
+
+    def test_database_without_a_reported_type_is_treated_as_local(self, env):
+        """An empty `database_type` must not read as non-local"""
+        global DATABASE_ROWS  # noqa: PLW0603
+        original = DATABASE_ROWS
+        DATABASE_ROWS = [
+            SimpleNamespace(database_name=name, database_type=None) for name in (LOCAL_DATABASE, SHARED_DATABASE)
+        ]
+        try:
+            assert env.database_names({SHARED_DATABASE}) == [LOCAL_DATABASE]
+            env.expect_base_strategy()
+        finally:
+            DATABASE_ROWS = original
+
+    def test_falls_back_to_svv_when_show_databases_is_unavailable(self, env):
+        """Clusters predating SHOW DATABASES still classify through the SVV view"""
+        env.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
+        assert env.database_names({SHARED_DATABASE}) == [LOCAL_DATABASE, SHARED_DATABASE]
+        env.expect_datashare_strategy(SHARED_DATABASE)
+
+    def test_a_failing_catalog_read_does_not_abort_the_walk(self, env):
+        """The catalog read runs inside the walk's `except` branch, so an
+        exception there escapes the producer and every later database is lost."""
+        env.schema_rows = RuntimeError("permission denied for view svv_all_schemas")
+        # The datashare database sits between two reachable ones
+        walked = env.database_names(
+            {SHARED_DATABASE},
+            databases=[LOCAL_DATABASE, SHARED_DATABASE, "another_db"],
+        )
+        assert walked == [LOCAL_DATABASE, "another_db"]
+
+    def test_shared_database_with_no_readable_schemas_is_skipped(self, env):
+        """A database the catalog cannot see into is skipped, not registered empty.
+
+        A catalog database mounted from Glue needs an IAM-authenticated session;
+        under password auth the catalog views report nothing for it.
+        """
+        env.schema_rows = []
+        assert env.database_names({SHARED_DATABASE}) == [LOCAL_DATABASE]
+        env.expect_base_strategy()
+
+    def test_no_classification_source_keeps_current_behaviour(self, env):
+        """With neither source readable, no database is classified as shared"""
+        env.show_databases_error = RuntimeError("permission denied")
+        env.svv_databases_error = RuntimeError("permission denied for view svv_redshift_databases")
+        assert env.database_names({SHARED_DATABASE}) == [LOCAL_DATABASE]
+        env.expect_base_strategy()
+
+    def test_schema_names_come_from_the_catalog(self, env):
+        assert env.database_names({SHARED_DATABASE}) == [LOCAL_DATABASE, SHARED_DATABASE]
+        assert list(env.redshift_source.get_raw_database_schema_names()) == ["public", "sales"]
+
+    def test_table_names_and_types_come_from_the_catalog(self, env):
+        env.enter_datashare_mode()
+        env.redshift_source.source_config.includeViews = True
+        tables = env.redshift_source.query_table_names_and_types("public")
+        assert [(table.name, table.type_) for table in tables] == [
+            ("orders", TableType.Regular),
+            ("orders_view", TableType.View),
+        ]
+        # Constraints are not readable across databases, so none are carried over
+        assert env.redshift_source._get_columns_with_constraints("public", "orders") == ([], [], [])
+
+    def test_views_are_skipped_when_not_requested(self, env):
+        env.enter_datashare_mode()
+        env.redshift_source.source_config.includeViews = False
+        tables = env.redshift_source.query_table_names_and_types("public")
+        assert [table.name for table in tables] == ["orders"]
+
+    def test_table_description_comes_from_the_catalog(self, env):
+        env.enter_datashare_mode()
+        env.redshift_source.query_table_names_and_types("public")
+        assert env.redshift_source.get_table_description("public", "orders", MagicMock()) == "Shared orders"
+
+    def test_a_large_schema_keeps_every_table_description(self, env):
+        """Remarks arrive a whole schema at a time and are read back one table at
+        a time. A cache that caps *tables* evicts the front of a big schema before
+        anything reads it, so every table past the cap silently loses its
+        description."""
+        env.enter_datashare_mode()
+        strategy = env.redshift_source.strategy
+        wide = [
+            RedshiftDatashareTable(name=f"t{i}", table_type=TableType.Regular, remarks=f"remark {i}")
+            for i in range(1500)
+        ]
+        with patch.object(strategy.catalog, "get_tables", return_value=wide):
+            strategy.table_names_and_types("public")
+        # the first table, which a table-capped cache would have evicted long ago
+        assert env.redshift_source.get_table_description("public", "t0", MagicMock()) == "remark 0"
+        assert env.redshift_source.get_table_description("public", "t1499", MagicMock()) == "remark 1499"
+
+    def test_table_descriptions_of_two_schemas_do_not_overwrite_each_other(self, env):
+        """Remarks are keyed by schema, so schemas walked in parallel keep their own"""
+        env.enter_datashare_mode()
+        env.redshift_source.query_table_names_and_types("public")
+        env.redshift_source.query_table_names_and_types("sales")
+        assert env.redshift_source.get_table_description("public", "orders", MagicMock()) == "Shared orders"
+
+    def test_columns_are_built_from_the_catalog(self, env):
+        env.enter_datashare_mode()
+        columns, constraints, foreign_columns = env.catalog_columns()
+        assert constraints == []
+        assert foreign_columns == []
+        assert [column.name.root for column in columns] == ["order_id", "customer", "payload"]
+        assert columns[0].dataType == DataType.INT
+        assert columns[0].dataTypeDisplay == "integer"
+        assert columns[0].ordinalPosition == 1
+        assert columns[1].dataType == DataType.VARCHAR
+        assert columns[1].dataLength == 64
+        assert columns[1].dataTypeDisplay == "character varying(64)"
+        assert columns[1].description.root == "Customer name"
+
+    def test_a_type_the_dialect_cannot_resolve_keeps_its_source_spelling(self, env):
         """`array<struct<...>>` has no SQLAlchemy type. The dialect hands back an
         unusable class for it, so the raw spelling has to survive or the column
         degrades to UNKNOWN."""
-        self._enter_datashare_mode()
-        columns, _, _ = self._catalog_columns()
+        env.enter_datashare_mode()
+        columns, _, _ = env.catalog_columns()
         payload = columns[2]
-        self.assertEqual(payload.dataType, DataType.ARRAY)
-        self.assertEqual(payload.dataTypeDisplay, "array<struct<a:string>>")
+        assert payload.dataType == DataType.ARRAY
+        assert payload.dataTypeDisplay == "array<struct<a:string>>"
 
-    def test_each_thread_keeps_its_own_schema_cache(self):
+    def test_each_thread_keeps_its_own_schema_cache(self, env):
         """The databaseSchema node runs threaded. With one shared cache slot the
         two schemas evict each other, so every re-read becomes a fresh
         cross-database query - the per-table cost this change removed."""
-        self._enter_datashare_mode()
-        catalog = self.redshift_source.datashare
+        env.enter_datashare_mode()
+        catalog = env.redshift_source.datashare
         # The source keys its connection by thread; these threads have none, and
         # the connection is not what is under test here.
-        catalog._connection_provider = lambda: self.connection
+        catalog._connection_provider = lambda: env.connection
         both_cached = threading.Barrier(2)
         results = {}
 
@@ -439,12 +435,12 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         for thread in threads:
             thread.join(timeout=5)
 
-        self.assertEqual(results["public"], (["glue_events", "orders"], ["glue_events", "orders"]))
-        self.assertEqual(results["sales"], (["refunds"], ["refunds"]))
+        assert results["public"] == (["glue_events", "orders"], ["glue_events", "orders"])
+        assert results["sales"] == (["refunds"], ["refunds"])
         # One query per schema. A shared slot would make it four.
-        self.assertEqual(len(self._svv_all_columns_queries), 2)
+        assert len(env.svv_all_columns_queries) == 2
 
-    def test_an_unresolved_type_survives_another_connector_patching_the_dialect(self):
+    def test_an_unresolved_type_survives_another_connector_patching_the_dialect(self, env):
         """`PGDialect._get_column_info` is monkey-patched at import by redshift,
         postgres and greenplum alike, so whichever was imported last decides what
         an unresolved type comes back as - redshift yields a class, postgres
@@ -453,89 +449,88 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         """
         from metadata.ingestion.source.database.postgres.utils import get_column_info
 
-        self._enter_datashare_mode()
+        env.enter_datashare_mode()
         with patch.object(PGDialect, "_get_column_info", get_column_info):
-            columns, _, _ = self._catalog_columns()
+            columns, _, _ = env.catalog_columns()
         payload = columns[2]
-        self.assertEqual(payload.dataType, DataType.ARRAY)
-        self.assertEqual(payload.dataTypeDisplay, "array<struct<a:string>>")
+        assert payload.dataType == DataType.ARRAY
+        assert payload.dataTypeDisplay == "array<struct<a:string>>"
 
-    def test_columns_are_read_once_per_schema_not_once_per_table(self):
+    def test_columns_are_read_once_per_schema_not_once_per_table(self, env):
         """The rows cross a database boundary, so the per-table query this
         replaced was an N+1."""
-        self._enter_datashare_mode()
-        before = len(self._svv_all_columns_queries)
-        self._catalog_columns()
-        self._catalog_columns()
-        self.assertEqual(len(self._svv_all_columns_queries) - before, 1)
+        env.enter_datashare_mode()
+        before = len(env.svv_all_columns_queries)
+        env.catalog_columns()
+        env.catalog_columns()
+        assert len(env.svv_all_columns_queries) - before == 1
 
-    def test_stored_procedures_are_not_read_from_the_local_database(self):
+    def test_stored_procedures_are_not_read_from_the_local_database(self, env):
         """The catalog views carry none, and the local connection's would be wrong"""
-        self._enter_datashare_mode()
-        self.redshift_source.source_config.includeStoredProcedures = True
-        self.assertEqual(list(self.redshift_source.get_stored_procedures()), [])
+        env.enter_datashare_mode()
+        env.redshift_source.source_config.includeStoredProcedures = True
+        assert list(env.redshift_source.get_stored_procedures()) == []
 
-    def test_schema_definition_is_not_read_from_the_local_database(self):
-        self._enter_datashare_mode()
-        self.assertIsNone(
-            self.redshift_source.get_schema_definition(TableType.View, "orders_view", "public", MagicMock())
-        )
+    def test_schema_definition_is_not_read_from_the_local_database(self, env):
+        env.enter_datashare_mode()
+        assert env.redshift_source.get_schema_definition(TableType.View, "orders_view", "public", MagicMock()) is None
 
 
-class RedshiftDatabaseListingTest(RedshiftSourceFixture, unittest.TestCase):
+class TestDatabaseListing:
     """One SHOW DATABASES replaces the pg_database listing plus the classifier"""
 
-    def test_databases_come_from_show_databases(self):
-        self.assertEqual(
-            list(self.redshift_source.get_database_names_raw()),
-            [LOCAL_DATABASE, SHARED_DATABASE],
-        )
+    def test_databases_come_from_show_databases(self, env):
+        assert list(env.redshift_source.get_database_names_raw()) == [LOCAL_DATABASE, SHARED_DATABASE]
 
-    def test_system_databases_are_not_walked(self):
+    def test_system_databases_are_not_walked(self, env):
         """pg_database reports template0 / padb_harvest, which the walk then tries
         to connect to. SHOW DATABASES omits them."""
-        listed = list(self.redshift_source.get_database_names_raw())
-        self.assertNotIn("template0", listed)
-        self.assertNotIn("padb_harvest", listed)
+        listed = list(env.redshift_source.get_database_names_raw())
+        assert "template0" not in listed
+        assert "padb_harvest" not in listed
 
-    def test_listing_and_classification_share_one_round_trip(self):
-        list(self.redshift_source.get_database_names_raw())
-        self.redshift_source.datashare.shared_database_names  # noqa: B018
-        self.assertEqual(self.connection.execute.call_count, 1)
+    def test_listing_and_classification_share_one_round_trip(self, env):
+        list(env.redshift_source.get_database_names_raw())
+        env.redshift_source.datashare.shared_database_names  # noqa: B018
+        assert env.connection.execute.call_count == 1
 
-    def test_a_failed_probe_rolls_back_before_the_next_one(self):
+    def test_a_failed_probe_rolls_back_before_the_next_one(self, env):
         """A failed statement aborts the transaction. Without a rollback the
         fallback - and every later query on this connection - dies with
         "current transaction is aborted" instead of anything self-explanatory."""
-        self.show_databases_error = RuntimeError('unrecognized configuration parameter "databases"')
-        self.assertEqual(self.redshift_source.datashare.shared_database_names, {SHARED_DATABASE})
-        self.connection.rollback.assert_called_once()
+        env.show_databases_error = RuntimeError('unrecognized configuration parameter "databases"')
+        assert env.redshift_source.datashare.shared_database_names == {SHARED_DATABASE}
+        env.connection.rollback.assert_called_once()
 
-    def test_the_classifier_never_becomes_the_database_listing(self):
+    def test_the_classifier_never_becomes_the_database_listing(self, env):
         """SVV_REDSHIFT_DATABASES answers "which are shared", not "which exist" -
         it is scoped to what the user can access and omits a Glue catalog. Walking
         it would drop databases, and `markDeletedDatabases` would then mark those
         live databases and their contents deleted."""
-        self.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
+        env.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
         # The listing still comes from pg_database, system databases and all
-        self.assertEqual(
-            list(self.redshift_source.get_database_names_raw()),
-            [LOCAL_DATABASE, SHARED_DATABASE, "template0", "padb_harvest"],
-        )
+        assert list(env.redshift_source.get_database_names_raw()) == [
+            LOCAL_DATABASE,
+            SHARED_DATABASE,
+            "template0",
+            "padb_harvest",
+        ]
         # ...while SVV still does the job it is good for
-        self.assertEqual(self.redshift_source.datashare.shared_database_names, {SHARED_DATABASE})
+        assert env.redshift_source.datashare.shared_database_names == {SHARED_DATABASE}
 
-    def test_falls_back_to_pg_database_when_show_is_unavailable(self):
+    def test_falls_back_to_pg_database_when_show_is_unavailable(self, env):
         """A cluster or role that cannot run either classifier keeps the old listing"""
-        self.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
-        self.svv_databases_error = RuntimeError("permission denied")
-        self.assertEqual(
-            list(self.redshift_source.get_database_names_raw()),
-            [LOCAL_DATABASE, SHARED_DATABASE, "template0", "padb_harvest"],
-        )
+        env.show_databases_error = RuntimeError('syntax error at or near "DATABASES"')
+        env.svv_databases_error = RuntimeError("permission denied")
+        assert list(env.redshift_source.get_database_names_raw()) == [
+            LOCAL_DATABASE,
+            SHARED_DATABASE,
+            "template0",
+            "padb_harvest",
+        ]
 
 
-class RedshiftBaseStrategyTest(RedshiftSourceFixture, unittest.TestCase):
+class TestConnectedDatabases:
     """A connectable database keeps being read through reflection.
 
     The datashare work moved these reads behind a strategy, so each one needs a
@@ -543,59 +538,51 @@ class RedshiftBaseStrategyTest(RedshiftSourceFixture, unittest.TestCase):
     a catalog view.
     """
 
-    def test_a_connectable_local_database_keeps_the_base_strategy(self):
-        self._database_names(set(), databases=[LOCAL_DATABASE])
-        self.assertBaseStrategy()
+    def test_a_connectable_local_database_keeps_the_base_strategy(self, env):
+        env.database_names(set(), databases=[LOCAL_DATABASE])
+        env.expect_base_strategy()
 
-    def test_schema_names_come_from_the_inspector(self):
+    def test_schema_names_come_from_the_inspector(self, env):
         inspector = MagicMock()
         inspector.get_schema_names.return_value = ["public", "staging"]
-        self.redshift_source._inspector_map[self.redshift_source.context.get_current_thread_id()] = inspector
-        self.assertEqual(list(self.redshift_source.get_raw_database_schema_names()), ["public", "staging"])
+        env.redshift_source._inspector_map[env.redshift_source.context.get_current_thread_id()] = inspector
+        assert list(env.redshift_source.get_raw_database_schema_names()) == ["public", "staging"]
 
-    def test_table_description_comes_from_the_inspector(self):
+    def test_table_description_comes_from_the_inspector(self, env):
         inspector = MagicMock()
         inspector.get_table_comment.return_value = {"text": "Reflected comment"}
-        self.assertEqual(
-            self.redshift_source.get_table_description("public", "orders", inspector),
-            "Reflected comment",
-        )
+        assert env.redshift_source.get_table_description("public", "orders", inspector) == "Reflected comment"
         inspector.get_table_comment.assert_called_once_with("orders", "public")
 
-    def test_schema_definition_comes_from_the_inspector(self):
+    def test_schema_definition_comes_from_the_inspector(self, env):
         inspector = MagicMock()
         inspector.get_view_definition.return_value = "SELECT 1"
-        self.assertEqual(
-            self.redshift_source.get_schema_definition(TableType.View, "orders_view", "public", inspector),
-            "SELECT 1",
+        assert (
+            env.redshift_source.get_schema_definition(TableType.View, "orders_view", "public", inspector) == "SELECT 1"
         )
         inspector.get_view_definition.assert_called_once_with("orders_view", "public")
 
-    def test_columns_come_from_the_inspector(self):
+    def test_columns_come_from_the_inspector(self, env):
         inspector = MagicMock()
         inspector.get_columns.return_value = [{"name": "order_id", "type": sqltypes.INTEGER()}]
-        columns = self.redshift_source._get_columns_internal(
+        columns = env.redshift_source._get_columns_internal(
             "public", "orders", LOCAL_DATABASE, inspector, TableType.Regular
         )
-        self.assertEqual([column["name"] for column in columns], ["order_id"])
+        assert [column["name"] for column in columns] == ["order_id"]
 
-    def test_stored_procedures_are_read_from_a_connectable_database(self):
-        self.redshift_source.source_config.includeStoredProcedures = True
-        procedures = list(self.redshift_source.get_stored_procedures())
-        self.assertEqual([procedure.name for procedure in procedures], ["refresh_orders"])
+    def test_stored_procedures_are_read_from_a_connectable_database(self, env):
+        env.redshift_source.source_config.includeStoredProcedures = True
+        procedures = list(env.redshift_source.get_stored_procedures())
+        assert [procedure.name for procedure in procedures] == ["refresh_orders"]
 
 
-class RedshiftDatashareHelpersTest(unittest.TestCase):
+class TestTableTypeSpelling:
     """SVV_ALL_TABLES reports free-form table type names"""
 
-    def test_table_type(self):
-        self.assertEqual(_table_type("TABLE"), TableType.Regular)
-        self.assertEqual(_table_type("base table"), TableType.Regular)
-        self.assertEqual(_table_type("SHARED TABLE"), TableType.Regular)
-        self.assertEqual(_table_type("view"), TableType.View)
-        self.assertEqual(_table_type("EXTERNAL TABLE"), TableType.External)
-        self.assertEqual(_table_type(None), TableType.Regular)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_table_type(self, env):
+        assert _table_type("TABLE") == TableType.Regular
+        assert _table_type("base table") == TableType.Regular
+        assert _table_type("SHARED TABLE") == TableType.Regular
+        assert _table_type("view") == TableType.View
+        assert _table_type("EXTERNAL TABLE") == TableType.External
+        assert _table_type(None) == TableType.Regular
