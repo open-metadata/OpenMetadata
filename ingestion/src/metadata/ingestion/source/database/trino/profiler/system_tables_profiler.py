@@ -34,6 +34,7 @@ from metadata.utils.dependency_injector.dependency_injector import (
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.ssl_manager import get_ssl_connection
+from trino.sqlalchemy.dialect import TrinoDialect
 
 logger = profiler_logger()
 
@@ -143,7 +144,12 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
         return stats
 
     def _get_db_stats(self, schema, table) -> TableStats:
-        rows = self.session.execute(text(f'SHOW STATS FOR "{schema}"."{table}"'))
+        # Schema and table names come from Trino, so they are untrusted. The dialect is
+        # taken directly rather than off self.session: SQAProfilerInterface.__init__
+        # (profiler_interface.py:125) re-assigns that to a Session, which has no
+        # .dialect, despite the Engine annotation above.
+        quote = TrinoDialect().identifier_preparer.quote_identifier
+        rows = self.session.execute(text(f"SHOW STATS FOR {quote(schema)}.{quote(table)}"))
         table_rows, column_rows = map(
             list,
             partition(lambda row: row.get("column_name"), (r._asdict() for r in rows)),

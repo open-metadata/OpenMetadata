@@ -154,7 +154,10 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     """
     Gets the view definition
     """
-    full_view_name = f"`{view_name}`" if not schema else f"`{schema}`.`{view_name}`"
+    # Names come from the metastore, so they are untrusted. ImpalaDialect's preparer
+    # leaves escape_quote at '"', so quote_identifier would not escape the backtick.
+    view = view_name.replace("`", "``")
+    full_view_name = f"`{view}`" if not schema else f"`{schema.replace('`', '``')}`.`{view}`"
     res = connection.execute(text(f"SHOW CREATE VIEW {full_view_name}")).fetchall()
     if res:
         return "\n".join(i[0] for i in res)
