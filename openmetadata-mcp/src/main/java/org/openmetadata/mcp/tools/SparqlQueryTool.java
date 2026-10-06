@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.openmetadata.schema.api.rdf.AgentSparqlCompleteness;
+import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -177,9 +178,9 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
       final CatalogSecurityContext securityContext,
       final McpToolParameters parameters,
       final String sparql) {
-    requireAgentProfileOptions(parameters);
     RdfRepository repository = repository();
-    AgentSparqlResult result = runAgentQuery(repository, requirePrincipal(securityContext), sparql);
+    AgentSparqlResult result =
+        runAgentQuery(repository, requirePrincipal(securityContext), parameters, sparql);
     RdfBody.Bounded body =
         RdfBody.bound(new String(result.body(), StandardCharsets.UTF_8), maxBytes(parameters));
 
@@ -193,13 +194,24 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
         Completeness.of(result.completeness()));
   }
 
+  /**
+   * The option check runs inside the audited call, so a permitted caller whose options are refused
+   * leaves the same {@code agent_sparql_query} event as any other outcome.
+   */
   private AgentSparqlResult runAgentQuery(
-      final RdfRepository repository, final String principal, final String sparql) {
+      final RdfRepository repository,
+      final String principal,
+      final McpToolParameters parameters,
+      final String sparql) {
     AgentSparqlService service =
         AgentSparqlService.forRepository(() -> repository, projectionStateSupplier);
     try {
       return AgentSparqlAudit.record(
-          AgentSparqlCaller.of(principal, null), () -> service.execute(principal, sparql));
+          AgentSparqlCaller.of(principal, null),
+          () -> {
+            requireAgentProfileOptions(parameters);
+            return service.execute(principal, sparql);
+          });
     } catch (AgentSparqlException failure) {
       throw AgentSparqlToolErrors.toToolException(failure);
     }
@@ -215,7 +227,8 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
     String requested = parameters.optionalString(name);
     if (!McpToolParameters.isBlank(requested)
         && !allowed.equals(requested.toLowerCase(Locale.ROOT))) {
-      throw new IllegalArgumentException(
+      throw new AgentSparqlException(
+          AgentSparqlErrorCode.QUERY_INVALID,
           "'%s' must be '%s' unless you are an administrator; got '%s'"
               .formatted(name, allowed, requested));
     }

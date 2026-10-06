@@ -26,6 +26,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -37,10 +40,12 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.rdf.agent.AgentSparqlAudit;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.slf4j.LoggerFactory;
 
 /** What a caller who holds only {@code ExecuteSparqlQuery} gets from {@code sparql_query}. */
 class SparqlQueryToolAgentProfileTest {
@@ -162,6 +167,26 @@ class SparqlQueryToolAgentProfileTest {
     assertTrue(inference.getMessage().contains("'inferenceLevel' must be 'none'"));
     assertTrue(format.getMessage().contains("'format' must be 'json'"));
     verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
+  }
+
+  @Test
+  void aRefusedOptionIsAuditedLikeAnyOtherOutcomeOfAPermittedCall() {
+    final RdfRepository repository = repositoryReturning(EMPTY_SELECT_RESULT);
+    final Logger auditLogger = (Logger) LoggerFactory.getLogger(AgentSparqlAudit.class);
+    final ListAppender<ILoggingEvent> events = new ListAppender<>();
+    events.start();
+    auditLogger.addAppender(events);
+    try {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> run(repository, Map.of("query", SELECT_ALL, "inferenceLevel", "rdfs")));
+
+      final String event = events.list.get(0).getFormattedMessage();
+      assertTrue(event.contains("effectiveUser=agent-profile-user"), event);
+      assertTrue(event.contains("outcome=QUERY_INVALID"), event);
+    } finally {
+      auditLogger.detachAppender(events);
+    }
   }
 
   @Test
