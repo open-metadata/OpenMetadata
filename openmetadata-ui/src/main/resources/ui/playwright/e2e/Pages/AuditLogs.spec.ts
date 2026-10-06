@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
@@ -775,7 +776,7 @@ test.describe(
       // job, so the download must not depend on it arriving.
       await test.step('Export completes and downloads the result', async () => {
         const download = await page.waitForEvent('download', {
-          timeout: 120_000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         expect(download.suggestedFilename()).toContain('audit_logs_');

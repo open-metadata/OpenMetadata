@@ -13,6 +13,7 @@
 import { expect, Locator, Page, type Response } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   BIG_ENTITY_DELETE_TIMEOUT,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
@@ -65,7 +66,7 @@ import { clickUntilVisible } from './waitHelpers';
 export const waitForAllLoadersToDisappear = async (
   scope: Page | Locator,
   dataTestId = 'loader',
-  timeout = 30000
+  timeout = ACTION_TIMEOUT
 ) => {
   const loaders = scope.locator(`[data-testid="${dataTestId}"]`);
 
@@ -84,7 +85,10 @@ export const waitForAllLoadersToDisappear = async (
  * — `request-entity-tags`, for one — is simply absent until this clears, so the
  * click waits out the whole test timeout rather than racing by a few frames.
  */
-export const waitForWidgetsToRender = async (page: Page, timeout = 30000) => {
+export const waitForWidgetsToRender = async (
+  page: Page,
+  timeout = ACTION_TIMEOUT
+) => {
   await expect(
     page.locator('[data-testid="entity-detail-widget-skeleton"]')
   ).toHaveCount(0, { timeout });
@@ -159,7 +163,7 @@ export const visitEntityPage = async (data: {
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
       response.url().includes('exclude_source_fields'),
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await searchResponse;
@@ -692,7 +696,7 @@ export const assignTier = async (
   // saw 18 resolutions to the previous value across the 15 s default,
   // then passed on retry #1. 30 s covers the observed p99.
   await expect(page.getByTestId('Tier')).toContainText(tier, {
-    timeout: 30_000,
+    timeout: ACTION_TIMEOUT,
   });
 };
 
@@ -1494,7 +1498,7 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
     await expect(page.getByTestId('entity-follow-button')).toContainText(
       expectedText,
-      { timeout: 30_000 }
+      { timeout: ACTION_TIMEOUT }
     );
   }
 };
@@ -2597,7 +2601,7 @@ export const checkExploreSearchFilter = async (
         );
       }
     },
-    { timeout: 30_000 }
+    { timeout: ACTION_TIMEOUT }
   );
 
   // Arm the wait before selecting: immediate-apply fires the query on the
