@@ -11,6 +11,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
+import org.openmetadata.service.resources.drive.ContextFileVisibility;
 
 /**
  * {@link ContextProcessingEngine} for ContextFile sources. The source text is the current content
@@ -51,9 +52,12 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
     if (loadStats(fileId) != null) {
       return null;
     }
+    // Reused memories stay anchored to the prior file, so a restricted prior would hide them from
+    // readers of this one.
     for (ContextFile prior : fileRepository.listByExtractedSourceHash(source.hash(), fileId)) {
       if (prior.getProcessingStatus() != ProcessingStatus.Processed
-          || prior.getExtractionStats() == null) {
+          || prior.getExtractionStats() == null
+          || !ContextFileVisibility.isOrgWide(prior)) {
         continue;
       }
       ContextMemoryReconciler.ReconcileResult reused =

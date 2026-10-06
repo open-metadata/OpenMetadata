@@ -15,6 +15,7 @@ import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import { useTestCaseStore } from '../../components/DataQuality/IncidentManager/useTestCase.store';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -22,10 +23,14 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { TableType } from '../../generated/entity/data/table';
+import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import tableClassBase from '../../utils/TableClassBase';
 // Mocked globally in src/setupTests.js — imported here only to assert on it.
 import { showErrorToast } from '../../utils/ToastUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
@@ -104,6 +109,25 @@ jest.mock('../../rest/tableAPI', () => ({
   updateTablesVotes: jest.fn(),
 }));
 
+jest.mock('../../rest/testAPI', () => ({
+  ...jest.requireActual('../../rest/testAPI'),
+  getListTestCaseBySearch: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+}));
+
+jest.mock('../../rest/incidentManagerAPI', () => ({
+  ...jest.requireActual('../../rest/incidentManagerAPI'),
+  getListTestCaseIncidentStatus: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+}));
+
+jest.mock('../../rest/lineageAPI', () => ({
+  ...jest.requireActual('../../rest/lineageAPI'),
+  getDataQualityLineage: jest.fn().mockResolvedValue({ nodes: [], edges: [] }),
+}));
+
 jest.mock('../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
@@ -178,14 +202,17 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
-    DataAssetsHeader: jest.fn().mockImplementation(({ breadcrumbData }) => (
-      <div>
-        testDataAssetsHeader
-        <span data-testid="header-breadcrumb-data">
-          {JSON.stringify(breadcrumbData)}
-        </span>
-      </div>
-    )),
+    DataAssetsHeader: jest
+      .fn()
+      .mockImplementation(({ badge, breadcrumbData }) => (
+        <div>
+          testDataAssetsHeader
+          {badge}
+          <span data-testid="header-breadcrumb-data">
+            {JSON.stringify(breadcrumbData)}
+          </span>
+        </div>
+      )),
   })
 );
 
@@ -905,5 +932,154 @@ describe('TestDetailsPageV1 component', () => {
         )
       );
     });
+  });
+});
+
+describe('TableDetailsPageV1 data quality indicator', () => {
+  let alertGate: jest.SpyInstance;
+
+  const renderPage = async () => {
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+  };
+
+  const openCard = () => {
+    // Establish pointer modality so react-aria accepts hover events.
+    fireEvent.mouseMove(document);
+    fireEvent.mouseEnter(
+      screen.getByTestId('dq-indicator').parentElement as HTMLElement,
+      { pointerType: 'mouse' }
+    );
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+  };
+
+  const incidentOn = (testCaseId: string) => ({
+    testCaseReference: { id: testCaseId, type: 'testCase' },
+  });
+
+  beforeEach(() => {
+    setMockPermissions({ ViewAll: true });
+    alertGate = jest
+      .spyOn(tableClassBase, 'getAlertEnableStatus')
+      .mockReturnValue(true);
+    (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
+      name: 'test',
+      id: '123',
+      columns: [],
+      fullyQualifiedName: 'fqn',
+    });
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    (getDataQualityLineage as jest.Mock).mockResolvedValue({
+      nodes: [],
+      edges: [],
+    });
+    useTestCaseStore.getState().setDqLineageData(undefined);
+  });
+
+  afterEach(() => {
+    alertGate.mockRestore();
+  });
+
+  it('counts failing tests from paging.total, not the returned page', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'failing-1' }],
+      paging: { total: 3 },
+    });
+
+    await renderPage();
+
+    expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+      'data-level',
+      'failing'
+    );
+
+    openCard();
+
+    expect(
+      screen.getByText('message.dq-failing-tests-description-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('does not count an open incident on a currently failing test again', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'failing-1' }],
+      paging: { total: 1 },
+    });
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [incidentOn('failing-1')],
+      paging: { total: 1 },
+    });
+
+    await renderPage();
+
+    const indicator = await screen.findByTestId('dq-indicator');
+
+    expect(indicator).toHaveAttribute('data-level', 'failing');
+    expect(indicator).toHaveAttribute(
+      'aria-label',
+      'label.data-quality-test-failing'
+    );
+  });
+
+  it('stays amber for an open incident when the other calls fail', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockRejectedValue(
+      new Error('search failed')
+    );
+    (getDataQualityLineage as jest.Mock).mockRejectedValue(
+      new Error('lineage failed')
+    );
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [incidentOn('passing-1')],
+      paging: { total: 1 },
+    });
+
+    await renderPage();
+
+    expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+      'data-level',
+      'incident'
+    );
+    expect(useTestCaseStore.getState().dqLineageData).toBeUndefined();
+  });
+
+  it('shows the upstream state and stores the lineage response', async () => {
+    const lineage = {
+      nodes: [{ fullyQualifiedName: 'fqn' }, { fullyQualifiedName: 'raw' }],
+      edges: [],
+    };
+    (getDataQualityLineage as jest.Mock).mockResolvedValue(lineage);
+
+    await renderPage();
+
+    expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+      'data-level',
+      'upstream'
+    );
+    expect(useTestCaseStore.getState().dqLineageData).toEqual(lineage);
+  });
+
+  it('renders no indicator and skips the requests when alerts are disabled', async () => {
+    alertGate.mockReturnValue(false);
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    await renderPage();
+
+    expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
+    expect(screen.queryByTestId('dq-indicator')).not.toBeInTheDocument();
+    expect(getListTestCaseBySearch).not.toHaveBeenCalled();
   });
 });

@@ -69,6 +69,7 @@ import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonObject;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
@@ -209,6 +210,17 @@ public class SearchRepository {
   private static final int REFERENCE_REINDEX_BATCH_SIZE = 100;
   // Bounds one custom-property cleanup request; more holders are split across requests.
   private static final int MAX_HOLDER_IDS_PER_CLEANUP_REQUEST = 10_000;
+
+  /**
+   * What the engine answers for a missing index it was told to ignore, plus an empty {@code
+   * aggregations} object, because the UI quick filters read {@code aggregations[key]} unguarded.
+   */
+  private static final String EMPTY_SEARCH_RESPONSE =
+      """
+      {"took":0,"timed_out":false,\
+      "_shards":{"total":0,"successful":0,"skipped":0,"failed":0},\
+      "hits":{"total":{"value":0,"relation":"eq"},"max_score":null,"hits":[]},\
+      "aggregations":{}}""";
 
   /**
    * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
@@ -619,7 +631,7 @@ public class SearchRepository {
 
   public void createIndexes() {
     RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
-    ReindexContext context = recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
+    ReindexContext context = recreateIndexHandler.reCreateIndexes(managedIndexMappings().keySet());
     if (context != null) {
       for (String entityType : context.getEntities()) {
         try {
@@ -653,19 +665,33 @@ public class SearchRepository {
   }
 
   public void updateIndexes() {
-    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
+    for (Map.Entry<String, IndexMapping> entry : managedIndexMappings().entrySet()) {
       updateIndex(entry.getValue());
     }
   }
 
+  /**
+   * The index mappings whose indexes should exist: every mapping, minus the column index while
+   * column indexing is turned off, so startup and CLI index creation don't bring it back.
+   */
+  private Map<String, IndexMapping> managedIndexMappings() {
+    if (isColumnIndexingEnabled()) {
+      return entityIndexMap;
+    }
+    Map<String, IndexMapping> mappings = new HashMap<>(entityIndexMap);
+    mappings.remove(Entity.TABLE_COLUMN);
+    return mappings;
+  }
+
   public int createMissingIndexes() {
     LOG.info("Checking for missing search indexes...");
+    Map<String, IndexMapping> mappings = managedIndexMappings();
     int parallelism = SeedDataGate.getInstance().getSearchInitParallelism();
     int created;
     if (parallelism == 1) {
-      created = (int) entityIndexMap.entrySet().stream().filter(this::createMissingIndex).count();
+      created = (int) mappings.entrySet().stream().filter(this::createMissingIndex).count();
     } else {
-      created = createMissingIndexesInParallel(parallelism);
+      created = createMissingIndexesInParallel(mappings, parallelism);
     }
     if (created > 0) {
       LOG.info(
@@ -678,9 +704,9 @@ public class SearchRepository {
     return created;
   }
 
-  private int createMissingIndexesInParallel(int parallelism) {
+  private int createMissingIndexesInParallel(Map<String, IndexMapping> mappings, int parallelism) {
     List<Callable<Boolean>> tasks =
-        entityIndexMap.entrySet().stream()
+        mappings.entrySet().stream()
             .<Callable<Boolean>>map(entry -> () -> createMissingIndex(entry))
             .toList();
     try (ExecutorService executor =
@@ -1047,10 +1073,10 @@ public class SearchRepository {
    *
    * <p>This is the authoritative reindexing target list: {@code SearchIndexingApplication} expands
    * {@code "all"} from it and {@code GET /v1/search/entityTypes} serves it to the entity picker, so
-   * the two cannot drift.
+   * the two cannot drift. While column indexing is turned off it leaves out {@code tableColumn}.
    */
   public Set<String> getIndexedEntityTypes() {
-    return Collections.unmodifiableSet(new TreeSet<>(entityIndexMap.keySet()));
+    return Collections.unmodifiableSet(new TreeSet<>(managedIndexMappings().keySet()));
   }
 
   /**
@@ -1193,10 +1219,15 @@ public class SearchRepository {
     return SearchIndexUtils.getIndexOrAliasName(name, entityIndexMap, aliasIndexMap, clusterAlias);
   }
 
-  /** @see SearchIndexUtils#getEntityTypesForIndex(String, Map, Map, String) */
+  /**
+   * Leaves out the column index while column indexing is off, since the caller names each type's
+   * index explicitly and one missing index fails the whole request.
+   *
+   * @see SearchIndexUtils#getEntityTypesForIndex(String, Map, Map, String)
+   */
   public List<String> getEntityTypesForIndex(String index) {
     return SearchIndexUtils.getEntityTypesForIndex(
-        index, entityIndexMap, aliasIndexMap, clusterAlias);
+        index, managedIndexMappings(), aliasIndexMap, clusterAlias);
   }
 
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =
@@ -1274,14 +1305,17 @@ public class SearchRepository {
   public void deleteIndex(IndexMapping indexMapping) {
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
-      if (searchClient.indexExists(indexName)) {
-        searchClient.deleteIndex(indexMapping);
-      } else {
-        Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+      // After a recreate reindex the canonical name is an alias over the rebuilt index. The exists
+      // check is true for aliases as well, and an index can't be deleted through its alias, so the
+      // alias targets have to be resolved first.
+      Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+      if (!aliasTargets.isEmpty()) {
         for (String target : aliasTargets) {
           searchClient.removeAliases(target, Set.of(indexName));
           searchClient.deleteIndex(target);
         }
+      } else if (searchClient.indexExists(indexName)) {
+        searchClient.deleteIndex(indexMapping);
       }
     } catch (Exception e) {
       LOG.error(
@@ -1382,14 +1416,48 @@ public class SearchRepository {
     }
   }
 
+  /** Column docs are an extension of table indexing that admins can turn off in Search Settings. */
+  public boolean isColumnIndexingEnabled() {
+    return SettingsCache.isColumnIndexingEnabled();
+  }
+
+  /**
+   * Whether {@code entityType}'s index is turned off in Search Settings, so its absence is intended.
+   * Checks that walk every index mapping use it so they don't report that index as missing.
+   */
+  public boolean isIndexDisabled(String entityType) {
+    return Entity.TABLE_COLUMN.equals(entityType) && !isColumnIndexingEnabled();
+  }
+
+  private IndexMapping columnIndexMappingIfEnabled() {
+    return isColumnIndexingEnabled() ? entityIndexMap.get(Entity.TABLE_COLUMN) : null;
+  }
+
+  /**
+   * Makes the column search index match the column indexing setting: created if missing while the
+   * setting is on, deleted while it is off. Failures are logged, not thrown, so a search outage
+   * cannot fail the settings save that triggered this.
+   */
+  public void reconcileColumnIndex() {
+    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      return;
+    }
+    if (isColumnIndexingEnabled()) {
+      createIndex(columnIndexMapping);
+    } else {
+      deleteIndex(columnIndexMapping);
+    }
+  }
+
   private void indexTableColumns(Table table) {
     if (table.getColumns() == null || table.getColumns().isEmpty()) {
       return;
     }
 
-    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    IndexMapping columnIndexMapping = columnIndexMappingIfEnabled();
     if (columnIndexMapping == null) {
-      LOG.debug("Column index mapping not found, skipping column indexing");
+      LOG.debug("Column indexing is disabled or unmapped, skipping column indexing");
       return;
     }
 
@@ -1428,7 +1496,7 @@ public class SearchRepository {
   }
 
   private void deleteTableColumns(Table table) {
-    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    IndexMapping columnIndexMapping = columnIndexMappingIfEnabled();
     if (columnIndexMapping == null) {
       return;
     }
@@ -1471,7 +1539,7 @@ public class SearchRepository {
           default -> null;
         };
     if (columnParentField != null) {
-      IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+      IndexMapping columnIndexMapping = columnIndexMappingIfEnabled();
       if (columnIndexMapping != null) {
         try {
           searchClient.deleteEntityByFields(
@@ -1520,7 +1588,7 @@ public class SearchRepository {
   }
 
   private void updateTableColumnsInheritedFields(Table table) {
-    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    IndexMapping columnIndexMapping = columnIndexMappingIfEnabled();
     if (columnIndexMapping == null) {
       return;
     }
@@ -1695,7 +1763,7 @@ public class SearchRepository {
   private static final int COLUMN_BATCH_SIZE = 500;
 
   private void indexColumnsForTables(List<EntityInterface> entities) {
-    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    IndexMapping columnIndexMapping = columnIndexMappingIfEnabled();
     if (columnIndexMapping == null) {
       return;
     }
@@ -2700,9 +2768,28 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * The mapping's child aliases, minus {@code tableColumn} while column indexing is turned off.
+   * Child updates go out as one multi-index request, which fails as a whole on a missing index.
+   */
+  private List<String> childAliasesOf(IndexMapping indexMapping) {
+    List<String> childAliases = listOrEmpty(indexMapping.getChildAliases());
+    if (!childAliases.contains(Entity.TABLE_COLUMN) || isColumnIndexingEnabled()) {
+      return childAliases;
+    }
+    return childAliases.stream().filter(alias -> !Entity.TABLE_COLUMN.equals(alias)).toList();
+  }
+
+  private List<String> clusterChildAliasesOf(IndexMapping indexMapping) {
+    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
+    return childAliasesOf(indexMapping).stream()
+        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
+        .toList();
+  }
+
   private List<String> filterChildAliasesByCapability(
       IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
-    List<String> childAliases = indexMapping.getChildAliases();
+    List<String> childAliases = childAliasesOf(indexMapping);
     if (nullOrEmpty(childAliases)) {
       return List.of();
     }
@@ -2939,7 +3026,7 @@ public class SearchRepository {
     if (indexMapping == null) {
       return;
     }
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    List<String> childAliases = clusterChildAliasesOf(indexMapping);
     if (nullOrEmpty(childAliases)) {
       return;
     }
@@ -2979,7 +3066,7 @@ public class SearchRepository {
     if (indexMapping == null) {
       return;
     }
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    List<String> childAliases = clusterChildAliasesOf(indexMapping);
     if (nullOrEmpty(childAliases)) {
       return;
     }
@@ -3669,7 +3756,7 @@ public class SearchRepository {
   }
 
   private void softDeleteOrRestoreTableColumns(Table table, boolean delete) {
-    IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+    IndexMapping columnIndexMapping = columnIndexMappingIfEnabled();
     if (columnIndexMapping == null) {
       return;
     }
@@ -3784,7 +3871,7 @@ public class SearchRepository {
         // we are doing below because we want to delete the data products with domain when domain is
         // deleted
         searchClient.deleteEntityByFields(
-            indexMapping.getChildAliases(clusterAlias),
+            clusterChildAliasesOf(indexMapping),
             List.of(new ImmutablePair<>(entityType + ".id", docId)));
       }
       case Entity.DATA_PRODUCT -> searchClient.updateChildren(
@@ -3804,11 +3891,11 @@ public class SearchRepository {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getBasic())) {
           searchClient.deleteEntityByFields(
-              indexMapping.getChildAliases(clusterAlias),
+              clusterChildAliasesOf(indexMapping),
               List.of(new ImmutablePair<>("testSuite.id", docId)));
         } else {
           searchClient.updateChildren(
-              indexMapping.getChildAliases(clusterAlias),
+              clusterChildAliasesOf(indexMapping),
               new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
               new ImmutablePair<>(
                   REMOVE_TEST_SUITE_CHILDREN_SCRIPT,
@@ -3825,8 +3912,7 @@ public class SearchRepository {
           Entity.SEARCH_SERVICE,
           Entity.SECURITY_SERVICE,
           Entity.DRIVE_SERVICE -> searchClient.deleteEntityByFields(
-          indexMapping.getChildAliases(clusterAlias),
-          List.of(new ImmutablePair<>("service.id", docId)));
+          clusterChildAliasesOf(indexMapping), List.of(new ImmutablePair<>("service.id", docId)));
         // Knowledge Center pages are nested via FQN (parent.fqn -> parent.fqn.child),
         // not via a parent.id field on the child doc. A recursive hard-delete on the
         // parent must therefore also remove every descendant from search by FQN
@@ -3834,7 +3920,7 @@ public class SearchRepository {
         // hierarchy / search results until a full reindex.
       case Entity.PAGE -> deleteEntityByFQNPrefix(entity);
       default -> {
-        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
+        List<String> indexNames = clusterChildAliasesOf(indexMapping);
         if (!indexNames.isEmpty()) {
           searchClient.deleteEntityByFields(
               indexNames, List.of(new ImmutablePair<>(entityType + ".id", docId)));
@@ -4049,7 +4135,25 @@ public class SearchRepository {
   }
 
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    if (targetsDisabledColumnIndex(request.getIndex())) {
+      return emptySearchResponse();
+    }
     return searchClient.search(request, subjectContext);
+  }
+
+  /**
+   * Whether {@code index} names only the column index while column indexing is off. Such a search
+   * gets an empty result rather than a missing-index error: the index is gone on purpose, and
+   * callers like the Explore Columns tab cannot tell that apart from a broken cluster.
+   */
+  private boolean targetsDisabledColumnIndex(String index) {
+    return !nullOrEmpty(index)
+        && !isColumnIndexingEnabled()
+        && getIndexOrAliasName(Entity.TABLE_COLUMN).equals(getIndexOrAliasName(index));
+  }
+
+  private static Response emptySearchResponse() {
+    return Response.ok(EMPTY_SEARCH_RESPONSE, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
   public int countSearchResults(SearchRequest baseRequest, SubjectContext subjectContext)
@@ -4209,11 +4313,17 @@ public class SearchRepository {
   public Response previewSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
+    if (targetsDisabledColumnIndex(request.getIndex())) {
+      return emptySearchResponse();
+    }
     return searchClient.previewSearch(request, subjectContext, searchSettings);
   }
 
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
+    if (targetsDisabledColumnIndex(request.getIndex())) {
+      return emptySearchResponse();
+    }
     return searchClient.searchWithNLQ(request, subjectContext);
   }
 
@@ -4276,7 +4386,8 @@ public class SearchRepository {
         searchSortFilter,
         q,
         queryString,
-        subjectContext);
+        subjectContext,
+        filter.getMemoryStatuses());
   }
 
   public SearchResultListMapper listWithDeepPagination(
@@ -4498,6 +4609,9 @@ public class SearchRepository {
   }
 
   public Response aggregate(AggregationRequest request) throws IOException {
+    if (targetsDisabledColumnIndex(request.getIndex())) {
+      return emptySearchResponse();
+    }
     return searchClient.aggregate(request);
   }
 

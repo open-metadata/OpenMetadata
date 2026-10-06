@@ -14,7 +14,6 @@
 import { type Page } from '@playwright/test';
 import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
-  INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
   TEST_SUITE_NAME,
   WEBHOOK_DELIVERY_COLUMN_NAME,
@@ -129,7 +128,12 @@ test.beforeAll(async ({ browser }) => {
   });
   await table1.createTestCase(apiContext, { name: TEST_CASE_NAME });
   await pipeline.create(apiContext);
-  await pipeline.createIngestionPipeline(apiContext, INGESTION_PIPELINE_NAME);
+  // Named per run, not per module: under fullyParallel this hook can run
+  // again in the same worker, and the shared pipelineService keeps the name.
+  await pipeline.createIngestionPipeline(
+    apiContext,
+    `0-playwright-ingestion-pipeline-${uuid()}`
+  );
 
   // Wait for the entities used as alert-filter dropdown picks to be searchable.
   // In mode="multiple" the user can only pick options returned by the search API,
