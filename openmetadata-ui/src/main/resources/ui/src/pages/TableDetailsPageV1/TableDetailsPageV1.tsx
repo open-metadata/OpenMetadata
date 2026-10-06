@@ -122,7 +122,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
-// The incidents API 403s without ViewTests/ViewAll; the rejection counts as zero incidents.
+// The incidents API 403s without ViewTests/ViewAll, so skip it and report no incidents.
 const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
   canViewTests
     ? getListTestCaseIncidentStatus({
@@ -137,7 +137,7 @@ const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
         endTs: Date.now(),
         limit: DQ_INDICATOR_FETCH_LIMIT,
       })
-    : Promise.reject();
+    : Promise.resolve({ data: [], paging: { total: 0 } });
 
 const TableDetailsPageV1: React.FC = () => {
   const {
