@@ -400,6 +400,7 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
         new ToolCall(
             "entity_neighborhood",
             Map.of("entityId", assetId, "entityType", "table", "depth", 1, "limit", 5)),
+        new ToolCall("find_by_tag", Map.of("tagFqn", "Tier.Tier1", "limit", 1)),
         new ToolCall("ontology_describe", Map.of("resource", assetIri, "maxBytes", 2048)));
   }
 
