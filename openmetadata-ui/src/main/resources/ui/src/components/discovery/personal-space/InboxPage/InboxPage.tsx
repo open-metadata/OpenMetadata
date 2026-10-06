@@ -12,7 +12,6 @@
  */
 
 import {
-  Box,
   EmptyPlaceholder,
   FeaturedIcon,
   PageLayout,
@@ -30,9 +29,11 @@ export interface InboxPageProps {
 }
 
 /**
- * The routed shell for `/inbox`: a header carrying the Activity / Triage tabs,
- * over the active surface, edge to edge. My Data is a separate surface, not an
- * inbox tab.
+ * The routed shell for `/inbox`: the standard app page — `PageLayout` with a
+ * `PageLayout.PageHeader` carrying the Activity / Triage tabs, over
+ * `PageLayout.Content` — so its frame, spacing and surfaces match the other
+ * pages (Data Quality, Alerts, Connections). My Data is a separate surface,
+ * not an inbox tab.
  *
  * The brand-tinted "gradient" header is app-mode chrome — gated on
  * {@link useIsAiMode} so a classic mount renders the flat header.
@@ -42,14 +43,9 @@ const InboxPage: React.FC<InboxPageProps> = ({ tabs, content }) => {
   const isAiMode = useIsAiMode();
 
   return (
-    <Box
-      className="inbox-page tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden"
-      data-testid="inbox-page"
-      direction="col">
-      {/* Flush with the page card: the header's own card edge would otherwise
-          draw a second frame inside it. Only the rule under the tabs stays. */}
+    <PageLayout data-testid="inbox-page">
       <PageLayout.PageHeader
-        className="tw:mb-0! tw:shrink-0 tw:rounded-none tw:border-0! tw:border-b! tw:border-secondary! tw:shadow-none"
+        className="tw:mb-0!"
         footer={tabs}
         icon={
           <FeaturedIcon
@@ -65,9 +61,7 @@ const InboxPage: React.FC<InboxPageProps> = ({ tabs, content }) => {
         variant={isAiMode ? 'gradient' : 'flat'}
       />
 
-      <Box
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:bg-primary"
-        direction="col">
+      <PageLayout.Content className="tw:flex tw:min-h-0 tw:flex-col tw:overflow-hidden! tw:px-2! tw:pt-0! tw:pb-0!">
         {content ?? (
           <EmptyPlaceholder
             data-testid="inbox-empty"
@@ -75,8 +69,8 @@ const InboxPage: React.FC<InboxPageProps> = ({ tabs, content }) => {
             variant="blank"
           />
         )}
-      </Box>
-    </Box>
+      </PageLayout.Content>
+    </PageLayout>
   );
 };
 

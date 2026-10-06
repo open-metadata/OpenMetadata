@@ -37,8 +37,8 @@ export interface TestCaseConfigurationCardProps {
   withSqlParams: TestCaseParameterValue[];
   isVersionPage: boolean;
   /**
-   * Pre-rendered parameter diff for the version page. Replaces `parameterRows`
-   * when set, because a diff carries its own added/removed markup.
+   * The version page's `sqlExpression` diff, a block of its own. The other
+   * parameters arrive in `parameterRows`, each value carrying its change.
    */
   versionParameterDiff?: ReactNode;
   /**

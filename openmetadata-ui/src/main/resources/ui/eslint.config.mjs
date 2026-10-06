@@ -57,6 +57,12 @@ export default [
     ],
   },
 
+  // A disable directive that suppresses nothing silently hides whatever is added
+  // under it later, so fail lint and make the fix that left it stale delete it too.
+  {
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+  },
+
   // Base config for JavaScript and TypeScript files
   {
     files: ['src/**/*.{js,jsx,ts,tsx}'],
@@ -267,29 +273,6 @@ export default [
       'sonarjs/prefer-while': 'error',
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
-
-      // Design-system import discipline — warn while existing violations are
-      // migrated; promote to error once the backlog reaches zero.
-      //
-      // Safety: no-restricted-imports carries no auto-fixer, so 'warn' here
-      // does not trigger the eslint --fix footgun in ui-checkstyle.
-      'no-restricted-imports': [
-        'warn',
-        {
-          patterns: [
-            {
-              group: ['@untitledui/icons', '@untitledui/icons/*'],
-              message:
-                'Import icons from @openmetadata/ui-core-components/icons, not directly from @untitledui/icons.',
-            },
-            {
-              group: ['**/assets/**/*.svg'],
-              message:
-                'Do not import SVG icons directly from assets/ paths; use the designated abstraction instead.',
-            },
-          ],
-        },
-      ],
 
       // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
       // had never been registered, so none of it ran.

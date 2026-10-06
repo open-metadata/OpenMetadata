@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -182,6 +183,7 @@ class ContextMemoryIndexTest {
         new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(new HashMap<>());
 
     assertNull(doc.get("visibility"));
+    assertEquals(ContextMemoryIndex.UNANCHORED, doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
     @SuppressWarnings("unchecked")
     List<String> sharedWithIds = (List<String>) doc.get("sharedWithIds");
     assertTrue(sharedWithIds.isEmpty());
@@ -222,6 +224,7 @@ class ContextMemoryIndexTest {
     EntityReference docPrimary = (EntityReference) doc.get("primaryEntity");
     assertNotNull(docPrimary);
     assertEquals("orders", docPrimary.getDisplayName());
+    assertEquals(primaryEntity.getId().toString(), doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
 
     @SuppressWarnings("unchecked")
     List<EntityReference> docRelated = (List<EntityReference>) doc.get("relatedEntities");
@@ -259,6 +262,13 @@ class ContextMemoryIndexTest {
 
     assertTrue(index.getRequiredReindexFields().contains("tags"));
     assertTrue(index.getRequiredReindexFields().contains("owners"));
+  }
+
+  @Test
+  void requiredReindexFields_includeTheRelationshipFieldsTheDocReads() {
+    Set<String> fields = new ContextMemoryIndex(baseMemory()).getRequiredReindexFields();
+
+    assertTrue(fields.containsAll(Set.of("primaryEntity", "relatedEntities", "sourceFile")));
   }
 
   private ContextMemory baseMemory() {

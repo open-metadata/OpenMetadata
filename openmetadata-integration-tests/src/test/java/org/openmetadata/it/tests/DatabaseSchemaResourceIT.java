@@ -58,6 +58,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
 
   {
     supportsImportExport = true;
+    supportsCreationAudit = true;
     supportsBatchImport = true;
     supportsRecursiveImport = true; // DatabaseSchema supports recursive import with nested entities
     supportsLifeCycle = true;
