@@ -19,26 +19,27 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** What a caller who holds only {@code ExecuteSparqlQuery} gets from {@code sparql_query}. */
@@ -50,6 +51,18 @@ class SparqlQueryToolAgentProfileTest {
   private static final String SELECT_ALL = "SELECT ?s WHERE { ?s ?p ?o } LIMIT 10";
   private static final CatalogSecurityContext CALLER =
       RdfToolAuthorization.caller("agent-profile-user");
+
+  private MockedStatic<DefaultAuthorizer> subjects;
+
+  @BeforeEach
+  void callersAreNotAdministrators() {
+    subjects = RdfToolAuthorization.resolvingCallersAs(false);
+  }
+
+  @AfterEach
+  void releaseTheCallerResolution() {
+    subjects.close();
+  }
 
   @Test
   void selectReturnsTheAgentJsonWithCompletenessOutsideTheBoundedBody() throws IOException {
@@ -170,7 +183,7 @@ class SparqlQueryToolAgentProfileTest {
             RdfRetryLaterException.class,
             () ->
                 tool(repository, () -> RdfProjectionState.REBUILDING)
-                    .execute(nonAdmin(), CALLER, Map.of("query", SELECT_ALL)));
+                    .execute(grantedAuthorizer(), CALLER, Map.of("query", SELECT_ALL)));
 
     assertTrue(notReady.getMessage().startsWith("PROJECTION_NOT_READY:"));
     verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
@@ -182,7 +195,7 @@ class SparqlQueryToolAgentProfileTest {
         RdfNotEnabledException.class,
         () ->
             new SparqlQueryTool(() -> null, SparqlQueryExecutionGuard.shared()::execute)
-                .execute(nonAdmin(), CALLER, Map.of("query", SELECT_ALL)));
+                .execute(grantedAuthorizer(), CALLER, Map.of("query", SELECT_ALL)));
   }
 
   @Test
@@ -194,14 +207,15 @@ class SparqlQueryToolAgentProfileTest {
         AuthorizationException.class,
         () ->
             tool(repository, () -> RdfProjectionState.READY)
-                .execute(nonAdmin(), anonymous, Map.of("query", SELECT_ALL)));
+                .execute(grantedAuthorizer(), anonymous, Map.of("query", SELECT_ALL)));
   }
 
   @Test
   void administratorsKeepConstructGraphAndInferenceOnTheExistingPath() throws IOException {
     final RdfRepository repository = enabledRepository();
     when(repository.executeSparqlQuery(anyString(), anyString())).thenReturn("{}");
-    final Authorizer administrator = mock(Authorizer.class);
+    final Authorizer administrator = grantedAuthorizer();
+    RdfToolAuthorization.resolveCallersAs(subjects, true);
 
     final SparqlQueryTool.Result construct =
         tool(repository, () -> RdfProjectionState.READY)
@@ -225,7 +239,8 @@ class SparqlQueryToolAgentProfileTest {
 
   private static SparqlQueryTool.Result run(
       final RdfRepository repository, final Map<String, Object> params) throws IOException {
-    return tool(repository, () -> RdfProjectionState.READY).execute(nonAdmin(), CALLER, params);
+    return tool(repository, () -> RdfProjectionState.READY)
+        .execute(grantedAuthorizer(), CALLER, params);
   }
 
   private static SparqlQueryTool tool(
@@ -234,12 +249,8 @@ class SparqlQueryToolAgentProfileTest {
         () -> repository, SparqlQueryExecutionGuard.shared()::execute, projectionState);
   }
 
-  private static Authorizer nonAdmin() {
-    final Authorizer authorizer = mock(Authorizer.class);
-    doThrow(new AuthorizationException("Admin permission is required"))
-        .when(authorizer)
-        .authorizeAdmin(any(SecurityContext.class));
-    return authorizer;
+  private static Authorizer grantedAuthorizer() {
+    return mock(Authorizer.class);
   }
 
   private static RdfRepository repositoryReturning(final String selectJson) {

@@ -20,21 +20,27 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.resources.rdf.RdfQueryResourceContext;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /** Shared assertions for the RDF MCP tools' authorization and admission-guard behavior. */
 final class RdfToolAuthorization {
@@ -45,6 +51,25 @@ final class RdfToolAuthorization {
 
   static CatalogSecurityContext caller(final String name) {
     return new CatalogSecurityContext(() -> name, "https", "JWT", Set.of());
+  }
+
+  /**
+   * Makes every caller resolve to an administrator or to a plain user, as the tools see it through
+   * {@link DefaultAuthorizer#getSubjectContext}. The caller closes the returned mock.
+   */
+  static MockedStatic<DefaultAuthorizer> resolvingCallersAs(final boolean administrator) {
+    final MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
+    resolveCallersAs(subjects, administrator);
+    return subjects;
+  }
+
+  static void resolveCallersAs(
+      final MockedStatic<DefaultAuthorizer> subjects, final boolean administrator) {
+    final SubjectContext subject =
+        new SubjectContext(new User().withName("caller").withIsAdmin(administrator), null, null);
+    subjects
+        .when(() -> DefaultAuthorizer.getSubjectContext(any(SecurityContext.class)))
+        .thenReturn(subject);
   }
 
   static Authorizer denyingAuthorizer() {

@@ -34,6 +34,7 @@ import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /**
@@ -137,24 +138,17 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     String sparql = parameters.requiredString("query");
-    return isAdministrator(authorizer, securityContext)
+    return isAdministrator(securityContext)
         ? executeAsAdministrator(securityContext, parameters, sparql)
         : executeWithAgentProfile(securityContext, parameters, sparql);
   }
 
   /**
-   * Asks the same authorizer whose answer gated this call before, so administrator status has one
-   * definition. A refusal here only means "not an administrator"; the permission check already
-   * ran.
+   * Resolves the caller the way {@code Authorizer#authorizeAdmin} does, so administrator status has
+   * one definition. The permission check already ran, so this only picks the execution profile.
    */
-  private static boolean isAdministrator(
-      final Authorizer authorizer, final CatalogSecurityContext securityContext) {
-    try {
-      authorizer.authorizeAdmin(securityContext);
-      return true;
-    } catch (AuthorizationException notAnAdministrator) {
-      return false;
-    }
+  private static boolean isAdministrator(final CatalogSecurityContext securityContext) {
+    return DefaultAuthorizer.getSubjectContext(securityContext).isAdmin();
   }
 
   private Result executeAsAdministrator(

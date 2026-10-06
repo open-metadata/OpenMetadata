@@ -33,12 +33,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 class SparqlQueryToolTest {
@@ -46,6 +50,18 @@ class SparqlQueryToolTest {
   private static final Authorizer AUTHORIZER = mock(Authorizer.class);
   private static final CatalogSecurityContext SECURITY_CONTEXT =
       new CatalogSecurityContext(() -> "mcp-admin", "https", "JWT", Set.of());
+
+  private MockedStatic<DefaultAuthorizer> subjects;
+
+  @BeforeEach
+  void callersAreAdministrators() {
+    subjects = RdfToolAuthorization.resolvingCallersAs(true);
+  }
+
+  @AfterEach
+  void releaseTheCallerResolution() {
+    subjects.close();
+  }
 
   @Test
   void deniedCallerNeverReachesTheGraph() {
@@ -62,7 +78,7 @@ class SparqlQueryToolTest {
                     Map.of("query", "SELECT * WHERE { ?s ?p ?o }")));
 
     RdfToolAuthorization.assertSparqlGrantRequested(deniedAuthorizer, SECURITY_CONTEXT);
-    verify(deniedAuthorizer, never()).authorizeAdmin(any(SecurityContext.class));
+    subjects.verify(() -> DefaultAuthorizer.getSubjectContext(any(SecurityContext.class)), never());
     verify(repository, never()).executeSparqlQuery(anyString(), anyString());
   }
 
