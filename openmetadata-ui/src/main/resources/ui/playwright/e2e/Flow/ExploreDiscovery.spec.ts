@@ -341,7 +341,11 @@ test.describe('Explore Assets Discovery', () => {
 
     // Arm before applying: clicking Update fires the query
     const fetchWithOwner = page.waitForResponse(
-      `/api/v1/search/query?*deleted=true*ownerDisplayName*${ownerSearchText}*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('deleted=true') &&
+        response.url().includes('ownerDisplayName') &&
+        response.url().includes(ownerSearchText)
     );
     await page
       .getByTestId('drop-down-menu')
@@ -380,10 +384,11 @@ test.describe('Explore Assets Discovery', () => {
 
     // Arm before applying: clicking Update fires the query
     const fetchWithDomain = page.waitForResponse(
-      `/api/v1/search/query?*deleted=true*domains.displayName.keyword*${getEncodedFqn(
-        domainSearchText,
-        true
-      )}*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('deleted=true') &&
+        response.url().includes('domains.displayName.keyword') &&
+        response.url().includes(getEncodedFqn(domainSearchText, true))
     );
     await page
       .getByTestId('drop-down-menu')
