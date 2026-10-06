@@ -369,7 +369,10 @@ const CuratedAssetsWidgetContent = ({
               <div className="flex items-center gap-1">
                 <Typography
                   className="entity-list-item-title"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {title}
                 </Typography>
                 {certification && (
@@ -382,7 +385,10 @@ const CuratedAssetsWidgetContent = ({
                 <Typography
                   className="max-two-lines entity-list-item-description"
                   color="secondary"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getTextFromHtmlString(description)}
                 </Typography>
               )}

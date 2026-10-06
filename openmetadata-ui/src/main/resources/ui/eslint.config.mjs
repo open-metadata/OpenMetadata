@@ -347,6 +347,9 @@ export default [
       // per-area, then promote to 'error' (and re-add a shade-restricted
       // fixer). See docs/colors.md + the dark-mode guidelines.
       'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
+      // A Typography ellipsis tooltip inside a link/button renders a nested
+      // <button> (#30779). Report-only, so `eslint --fix` never edits it.
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -816,6 +819,19 @@ export default [
     ],
     rules: {
       'openmetadata-ui-patterns/no-raw-title-attribute': 'off',
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
+    },
+  },
+
+  // Classic-mode-only surfaces left out of the #30779 fix, which targeted the
+  // AI-mode UI. Remove an entry once that file is fixed.
+  {
+    files: [
+      'src/components/Settings/Users/UserProfileIcon/UserProfileIcon.component.tsx',
+      'src/utils/EntitySummaryPanelUtils.tsx',
+    ],
+    rules: {
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
     },
   },
 
