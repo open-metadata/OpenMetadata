@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Popover } from 'antd';
+import {
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import {
   FC,
   HTMLAttributes,
   lazy,
+  isValidElement,
   ReactNode,
   useCallback,
   useEffect,
@@ -168,22 +172,32 @@ const EntityPopOverCard: FC<Props> = ({
   }, [pathname]);
 
   return (
-    <Popover
-      align={{ targetOffset: [0, 10] }}
-      content={
+    // antd defaulted to `placement="top"`; react-aria defaults to bottom.
+    // `zIndex={9999}` becomes a class because core's Popover takes no zIndex
+    // prop. `align={{ targetOffset: [0, 10] }}` is dropped: it closed the gap
+    // antd's arrow and spacer left so the pointer could reach the panel, and
+    // core draws no arrow while `closeDelay` already forgives the crossing.
+    <PopoverTrigger isOpen={open} trigger="hover" onOpenChange={setOpen}>
+      {/*
+        Cloned to receive the hover handlers, so it must be an element — a bare
+        text child would get none and the card would never open.
+      */}
+      {isValidElement(children) ? (
+        children
+      ) : (
+        <span>{children as ReactNode}</span>
+      )}
+      <Popover
+        className="entity-popover-card tw:z-[9999]"
+        containerClassName="tw:p-4"
+        placement="top">
         <PopoverContent
           entityFQN={entityFQN}
           entityType={entityType}
           extraInfo={extraInfo}
         />
-      }
-      open={open}
-      overlayClassName="entity-popover-card"
-      trigger="hover"
-      zIndex={9999}
-      onOpenChange={setOpen}>
-      {children as ReactNode}
-    </Popover>
+      </Popover>
+    </PopoverTrigger>
   );
 };
 
