@@ -25,7 +25,7 @@ import {
   searchUserRow,
   waitForUserPatch,
 } from '../../../utils/aiProfile';
-import { uuid } from '../../../utils/common';
+import { chooseSelectOption, uuid } from '../../../utils/common';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
@@ -242,10 +242,13 @@ test.describe('AI Profile Users', () => {
     await openUserProfile(page, user.responseData.name);
 
     await page.getByTestId('persona-edit').click();
-    await page.getByTestId('persona-multiselect').click();
-    await page
-      .getByRole('option', { name: persona.responseData.displayName })
-      .click();
+    await chooseSelectOption(
+      page.getByTestId('persona-multiselect'),
+      page.getByRole('option', {
+        name: persona.responseData.displayName,
+        exact: true,
+      })
+    );
 
     const patch = waitForUserPatch(page, user.responseData.id ?? '');
     await page.getByTestId('persona-save').click();
@@ -266,14 +269,27 @@ test.describe('AI Profile Users', () => {
     await openUserProfile(page, user.responseData.name);
 
     await page.getByTestId('domains-edit').click();
-    await page.getByTestId('domains-multiselect').click();
+    // The fixture may be outside the first page of domains. The selection helper
+    // also reopens the popup if scrolling the profile panel dismisses it.
     await page
-      .getByRole('option', { name: domain.responseData.displayName })
-      .click();
+      .getByTestId('domains-multiselect')
+      .getByRole('combobox')
+      .fill(domain.responseData.displayName);
+    await chooseSelectOption(
+      page.getByTestId('domains-multiselect'),
+      page.getByRole('option', {
+        name: domain.responseData.displayName,
+        exact: true,
+      })
+    );
 
     const patch = waitForUserPatch(page, user.responseData.id ?? '');
     await page.getByTestId('domains-save').click();
-    await patch;
+    const response = await patch;
+    expect(response.ok()).toBeTruthy();
+    await expect(page.getByTestId('domains')).toContainText(
+      domain.responseData.displayName
+    );
   });
 
   test('Non-admin can edit own name but not persona', async ({
