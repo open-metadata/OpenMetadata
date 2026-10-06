@@ -35,10 +35,9 @@ Python clients must replace `resolve_feed_task` / `close_feed_task` with `resolv
 `close_task`. Generated feed models no longer include task creation, resolution, or closure
 payloads, and `Thread.type` no longer accepts `Task`.
 
-The 2.1 migration sweeps `thread_entity`, `thread_entity_legacy`, and
-`thread_entity_archived` for tasks created after the 2.0 migration. It preserves existing Task
-entities on reruns and stops before archival if a legacy task cannot be migrated. A private
-migration reader retains the historical task shape so older supported upgrades still work.
+Task threads created through the removed feed task API while on 2.0.x are not migrated and stay
+in `thread_entity_archived`. A private migration reader retains the historical task shape so older
+supported upgrades still work.
 
 The deprecated `CreateApprovalTaskImpl` and `CreateRecognizerFeedbackApprovalTaskImpl`
 listener names remain aliases to `CreateTask`. Removing those aliases is a separate compatibility
