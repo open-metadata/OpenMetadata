@@ -3798,6 +3798,7 @@
     "can-not-add-widget": "Kan de widget niet toevoegen aan deze sectie vanwege beperkingen in grootte.",
     "can-you-add-a-description": "Kunt u een beschrijving toevoegen?",
     "cannot-delete-relation-type-in-use": "Kan niet verwijderen: wordt gebruikt door {{count}} termrelatie(s). Verwijder eerst deze relaties.",
+    "check-on-table": "{{check}} op {{table}}",
     "check-spelling-or-try-different-term": "Controleer de spelling of probeer een kortere of algemenere term.",
     "check-spelling-or-try-shorter-term": "Controleer de spelling of probeer een kortere of algemenere term.",
     "checkout-service-connectors-doc": "Er zijn hier veel connectors beschikbaar om data van uw services te indexeren. Bekijk onze connectors.",

@@ -3798,6 +3798,7 @@
     "can-not-add-widget": "このセクションにウィジェットを追加できません（サイズ制限）。",
     "can-you-add-a-description": "説明を追加していただけますか？",
     "cannot-delete-relation-type-in-use": "削除できません: {{count}}件の用語関係で使用されています。まずこれらの関係を削除してください。",
+    "check-on-table": "{{table}} の {{check}}",
     "check-spelling-or-try-different-term": "スペルを確認するか、より短い、または一般的な語句をお試しください。",
     "check-spelling-or-try-shorter-term": "スペルを確認するか、より短い、または一般的な用語をお試しください。",
     "checkout-service-connectors-doc": "サービスからデータを取り込むための多くのコネクタが利用可能です。ドキュメントをご確認ください。",

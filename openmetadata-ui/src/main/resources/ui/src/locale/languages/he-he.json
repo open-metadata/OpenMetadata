@@ -3798,6 +3798,7 @@
     "can-not-add-widget": "לא ניתן להוסיף את הווידג'ט לסקשן זה עקב הגבלות בגודל.",
     "can-you-add-a-description": "האם תוכל להוסיף תיאור?",
     "cannot-delete-relation-type-in-use": "לא ניתן למחוק: בשימוש על ידי {{count}} קשר(י) מונח. הסר קשרים אלה תחילה.",
+    "check-on-table": "{{check}} ב-{{table}}",
     "check-spelling-or-try-different-term": "בדוק את האיות, או נסה מונח קצר או כללי יותר.",
     "check-spelling-or-try-shorter-term": "בדוק את האיות, או נסה מונח קצר או כללי יותר.",
     "checkout-service-connectors-doc": "ישנם חיבורים רבים כאן זמינים לאינדקסציה של נתונים מהשירותים שלך. בדוק את החיבורים שלנו.",

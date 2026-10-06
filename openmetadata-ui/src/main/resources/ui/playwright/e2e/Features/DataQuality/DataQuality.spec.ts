@@ -951,12 +951,12 @@ test.describe(
         await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
           /^INC-\d+$/
         );
+        // What the test checks, and on which table, not the task's name.
         await expect(
           incident.getByTestId('test-case-incident-description')
-        ).toContainText('Request TestCase Failure Resolution for');
-        await expect(
-          incident.getByTestId('test-case-incident-description')
-        ).toContainText(testCase.name);
+        ).toHaveText(
+          `Row count vs. allowed range 1–100 on ${failedRunTable.entity.name}`
+        );
         await expect(
           incident.getByTestId('test-case-incident-status')
         ).toHaveText('New');

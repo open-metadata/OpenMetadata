@@ -12,7 +12,6 @@
  */
 
 import { useTranslation } from 'react-i18next';
-import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import IncidentDetails from './IncidentDetails.component';
 import LastRunBannerLayout from './LastRunBannerLayout.component';
@@ -95,15 +94,11 @@ const TestCaseLastRunBanner = ({
     testCaseStatus
   );
   const incidentTitle = incidentTask
-    ? getIncidentTitle(
-        incidentTask,
-        t(TASK_ENTITY_TYPES[incidentTask.type] ?? 'label.task')
-      )
+    ? getIncidentTitle(testCase, t)
     : undefined;
   const incidentMetadata = getIncidentMetadata(
     incidentTitle,
     testCaseStatusData,
-    result,
     incidentLink
   );
 

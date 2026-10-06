@@ -3798,6 +3798,7 @@
     "can-not-add-widget": "Não é possível adicionar o widget a esta seção devido a restrições de tamanho.",
     "can-you-add-a-description": "Você pode adicionar uma descrição?",
     "cannot-delete-relation-type-in-use": "Não é possível excluir: utilizado por {{count}} relação(ões) de termos. Remova essas relações primeiro.",
+    "check-on-table": "{{check}} em {{table}}",
     "check-spelling-or-try-different-term": "Verifique a ortografia ou tente um termo mais curto ou genérico.",
     "check-spelling-or-try-shorter-term": "Verifique a ortografia ou tente um termo mais curto ou geral.",
     "checkout-service-connectors-doc": "Há muitos conectores disponíveis aqui para indexar dados de seus serviços. Por favor, confira nossos conectores.",

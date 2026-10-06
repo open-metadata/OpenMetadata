@@ -46,7 +46,7 @@ import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interfa
 import RunSummaryTiles from './RunSummaryTiles/RunSummaryTiles';
 import './test-summary.less';
 import {
-  getResultHistoryCaption,
+  getResultHistoryCaptionText,
   hasTestCaseNeverRun,
 } from './TestSummary.utils';
 import TestSummaryGraph from './TestSummaryGraph';
@@ -78,17 +78,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     )
   );
 
-  const caption = useMemo(() => {
-    const { metric, comparison } = getResultHistoryCaption(data);
-    const metricText = t(metric.key, metric.values);
-
-    return comparison
-      ? t('message.metric-vs-comparison', {
-          metric: metricText,
-          comparison: t(comparison.key, comparison.values),
-        })
-      : metricText;
-  }, [data, t]);
+  const caption = useMemo(
+    () => getResultHistoryCaptionText(data, t),
+    [data, t]
+  );
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, pick(dateRangeObject, ['startTs', 'endTs']))) {

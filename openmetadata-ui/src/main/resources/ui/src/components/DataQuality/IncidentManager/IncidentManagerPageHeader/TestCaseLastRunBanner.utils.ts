@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { TFunction } from 'i18next';
 import { isUndefined } from 'lodash';
 import {
   TestCase,
@@ -19,9 +20,13 @@ import {
 } from '../../../../generated/tests/testCase';
 import { toFiniteNumber } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { convertMillisecondsToHumanReadableFormat } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
-import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
+import {
+  formatNumber,
+  getResultHistoryCaptionText,
+} from '../../../Database/Profiler/TestSummary/TestSummary.utils';
 import {
   formatExpectation,
   getFoundValue,
@@ -91,13 +96,13 @@ export const getMetricSummary = (
 export const getIncidentMetadata = (
   incidentTitle: string | undefined,
   testCaseStatusData: TestCaseLastRunBannerProps['testCaseStatusData'],
-  result: string | undefined,
   incidentLink: TaskLinkInfo | null
 ) => {
   const incidentStatus = testCaseStatusData?.testCaseResolutionStatusType;
 
   return {
-    description: incidentTitle ?? testCaseStatusData?.failureSummary ?? result,
+    // Never the run's result: the banner shows it already, as the reason.
+    description: incidentTitle ?? testCaseStatusData?.failureSummary,
     id: incidentLink
       ? `INC-${incidentLink.label.replace(/^#/, '')}`
       : undefined,
@@ -107,21 +112,21 @@ export const getIncidentMetadata = (
   };
 };
 
+/**
+ * The incident in a line, as the mock heads it ("Row count dropped 99% on
+ * customers"): what the test checks, and on which table. The task's own name,
+ * "Request TestCase Failure Resolution for …", said neither.
+ */
 export const getIncidentTitle = (
-  incidentTask: NonNullable<TestCaseLastRunBannerProps['incidentTask']>,
-  taskTypeLabel: string
-) => {
-  const entityFQN = incidentTask.about?.fullyQualifiedName;
-  const entityName = entityFQN
-    ? getNameFromFQN(entityFQN)
-    : incidentTask.about?.name;
-  const entityType = incidentTask.about?.type;
-
-  return [taskTypeLabel, entityName, entityType ? `(${entityType})` : undefined]
-    .filter(Boolean)
-    .join(' ')
-    .trim();
-};
+  testCase: TestCase | undefined,
+  t: TFunction
+) =>
+  testCase
+    ? t('message.check-on-table', {
+        check: getResultHistoryCaptionText(testCase, t),
+        table: getNameFromFQN(getEntityFQN(testCase.entityLink)),
+      })
+    : undefined;
 
 /**
  * The not-run banner's line. It asks for a pipeline only when the test is

@@ -3798,6 +3798,7 @@
     "can-not-add-widget": "由於大小限制，無法將小工具新增到此區段。",
     "can-you-add-a-description": "您可以新增描述嗎？",
     "cannot-delete-relation-type-in-use": "無法刪除：正被{{count}}個術語關係使用中。請先移除這些關係。",
+    "check-on-table": "{{table}} 上的{{check}}",
     "check-spelling-or-try-different-term": "請檢查拼字,或嘗試使用更簡短、更通用的詞語。",
     "check-spelling-or-try-shorter-term": "請檢查拼字，或嘗試更簡短或更通用的搜尋字詞。",
     "checkout-service-connectors-doc": "這裡有許多可用的連接器，可從您的服務中索引資料。請查看我們的連接器。",

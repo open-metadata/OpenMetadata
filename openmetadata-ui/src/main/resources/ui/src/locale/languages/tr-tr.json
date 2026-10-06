@@ -3798,6 +3798,7 @@
     "can-not-add-widget": "Boyut kısıtlamaları nedeniyle widget bu bölüme eklenemiyor.",
     "can-you-add-a-description": "Bir açıklama ekleyebilir misiniz?",
     "cannot-delete-relation-type-in-use": "Silinemez: {{count}} terim ilişkisi tarafından kullanılıyor. Önce bu ilişkileri kaldırın.",
+    "check-on-table": "{{table}} üzerinde {{check}}",
     "check-spelling-or-try-different-term": "Yazımı kontrol edin veya daha kısa ya da daha genel bir terim deneyin.",
     "check-spelling-or-try-shorter-term": "Yazımı kontrol edin ya da daha kısa veya genel bir terim deneyin.",
     "checkout-service-connectors-doc": "Servislerinizden veri indekslemek için burada birçok bağlayıcı bulunmaktadır. Lütfen bağlayıcılarımızı inceleyin.",

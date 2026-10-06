@@ -3798,6 +3798,7 @@
     "can-not-add-widget": "Das Widget kann aufgrund von Größenbeschränkungen nicht zu diesem Abschnitt hinzugefügt werden.",
     "can-you-add-a-description": "Können Sie eine Beschreibung hinzufügen?",
     "cannot-delete-relation-type-in-use": "Löschen nicht möglich: wird von {{count}} Begriffsbeziehung(en) verwendet. Entfernen Sie zuerst diese Beziehungen.",
+    "check-on-table": "{{check}} in {{table}}",
     "check-spelling-or-try-different-term": "Überprüfen Sie die Schreibweise oder versuchen Sie einen kürzeren oder allgemeineren Begriff.",
     "check-spelling-or-try-shorter-term": "Überprüfen Sie die Schreibweise oder versuchen Sie einen kürzeren oder allgemeineren Begriff.",
     "checkout-service-connectors-doc": "Es gibt viele Konnektoren hier, um Daten von Ihren Diensten zu indizieren. Bitte schauen Sie sich unsere Konnektoren an.",

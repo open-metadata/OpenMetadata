@@ -3798,6 +3798,7 @@
     "can-not-add-widget": "Det går inte att lägga till widgeten i det här avsnittet på grund av storleksbegränsningar.",
     "can-you-add-a-description": "Kan du lägga till en beskrivning?",
     "cannot-delete-relation-type-in-use": "Kan inte ta bort: används av {{count}} termrelation(er). Ta bort dessa relationer först.",
+    "check-on-table": "{{check}} i {{table}}",
     "check-spelling-or-try-different-term": "Kontrollera stavningen, eller prova en kortare eller mer generell term.",
     "check-spelling-or-try-shorter-term": "Kontrollera stavningen eller prova en kortare eller mer allmän term.",
     "checkout-service-connectors-doc": "Det finns många anslutningar tillgängliga här för att indexera data från dina tjänster. Titta gärna på våra anslutningar.",

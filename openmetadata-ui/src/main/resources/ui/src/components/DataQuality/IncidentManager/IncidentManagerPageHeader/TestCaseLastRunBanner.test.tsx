@@ -193,9 +193,8 @@ describe('TestCaseLastRunBanner', () => {
 
         expect(incidentRow).toHaveClass('tw:bg-primary/55');
         expect(incidentRow).toHaveTextContent('INC-9');
-        expect(incidentRow).toHaveTextContent(
-          'message.request-test-case-failure-resolution-message getNameFromFQN (testCase)'
-        );
+        // What the test checks, on which table; its wording is checked in the utils test.
+        expect(incidentRow).toHaveTextContent('message.check-on-table');
         expect(incidentRow).toHaveTextContent('label.acknowledged');
         expect(screen.getByTestId('test-case-incident-icon')).not.toHaveClass(
           TOP_ALIGNED_CLASS

@@ -3798,6 +3798,7 @@
     "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
     "can-you-add-a-description": "Can you add a description?",
     "cannot-delete-relation-type-in-use": "Cannot delete: used by {{count}} term relation(s). Remove these relations first.",
+    "check-on-table": "{{check}} on {{table}}",
     "check-spelling-or-try-different-term": "Check the spelling, or try a shorter or more general term.",
     "check-spelling-or-try-shorter-term": "Check the spelling, or try a shorter or more general term.",
     "checkout-service-connectors-doc": "There are a lot of connectors available here to index data from your services. Please checkout our connectors.",

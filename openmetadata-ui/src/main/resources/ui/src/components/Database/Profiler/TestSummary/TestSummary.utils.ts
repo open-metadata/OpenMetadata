@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TFunction } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { getParameterBounds } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
@@ -135,6 +136,22 @@ export const getResultHistoryCaption = (
     },
     ...(comparison && { comparison }),
   };
+};
+
+/** The caption as text, "Row count vs. expected 10,000". */
+export const getResultHistoryCaptionText = (
+  testCase: TestCase,
+  t: TFunction
+) => {
+  const { metric, comparison } = getResultHistoryCaption(testCase);
+  const metricText = t(metric.key, metric.values);
+
+  return comparison
+    ? t('message.metric-vs-comparison', {
+        metric: metricText,
+        comparison: t(comparison.key, comparison.values),
+      })
+    : metricText;
 };
 
 /**
