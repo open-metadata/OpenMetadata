@@ -705,6 +705,14 @@ describe('TestSummaryGraph', () => {
     ).toEqual(expect.objectContaining({ size: 10.8, ringWidth: 1.5 }));
   });
 
+  it('should start the status key at the chart edge, not inset from it', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(
+      screen.getByTestId('test-summary-status-key').parentElement?.className
+    ).not.toContain('tw:px-');
+  });
+
   it('should tell the reader a point opens its run', () => {
     render(<TestSummaryGraph {...mockProps} />);
 

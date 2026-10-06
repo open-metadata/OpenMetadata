@@ -669,7 +669,7 @@ function TestSummaryGraph({
         points={plottedData}
         seriesLabels={seriesLabels}
       />
-      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:px-4 tw:pb-2">
+      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:pb-2">
         <TestSummaryStatusKey statuses={plottedStatuses} />
         <span className="tw:ml-auto tw:text-xs tw:text-quaternary">
           {t('message.click-a-point-for-run-details')}
