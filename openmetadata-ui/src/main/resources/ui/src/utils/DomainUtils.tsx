@@ -165,7 +165,7 @@ export const renderDomainLink = (
         {trimLink ? (
           <Typography
             className="domain-link-name"
-            ellipsis={{ tooltip: false }}>
+            ellipsis={{ tooltip: false, excludeTriggerFromTabOrder: true }}>
             {displayName}
           </Typography>
         ) : (

@@ -64,7 +64,11 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
           title={
             <div className="d-flex justify-between w-full">
               <div>
-                <Typography ellipsis={{ tooltip: true }}>
+                <Typography
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getEntityName(persona)}
                 </Typography>
               </div>
