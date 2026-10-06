@@ -167,11 +167,6 @@
       "count": 3
     }
   },
-  "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/EntitySummaryPanel.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4

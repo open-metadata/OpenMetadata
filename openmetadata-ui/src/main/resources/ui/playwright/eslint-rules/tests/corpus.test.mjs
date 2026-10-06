@@ -42,11 +42,11 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 1,
-    // Two below main's count: replyAnnouncement targets the announcement
-    // banner's title rather than the first of a list of items, and the two
-    // quick-filter helpers in DomainFilterQueryFilter now share one trigger
-    // lookup.
-    'om-playwright/no-positional-locator': 609,
+    // Three below main's count: replyAnnouncement targets the announcement
+    // banner's title rather than the first of a list of items, and
+    // DomainFilterQueryFilter's quick-filter helpers now share one opener that
+    // reaches for `asset-filter-button` instead of the first button in the row.
+    'om-playwright/no-positional-locator': 608,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 18,

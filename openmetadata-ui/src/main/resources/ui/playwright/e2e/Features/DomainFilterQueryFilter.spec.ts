@@ -851,7 +851,7 @@ const selectQuickFilter = async (
   menuItem: RegExp,
   dropdownTestId: string
 ) => {
-  await page.locator('.filters-row button').first().click();
+  await page.getByTestId('asset-filter-button').click();
   await waitForAntdPopupToSettle(page);
   await page.getByRole('menuitem', { name: menuItem }).click();
   await expect(page.getByTestId(dropdownTestId)).toBeVisible();
