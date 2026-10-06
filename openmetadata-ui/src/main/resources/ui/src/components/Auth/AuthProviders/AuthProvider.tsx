@@ -380,57 +380,63 @@ export const AuthProvider = ({
       // Let SSO complete the logout process. Swallow failures so local
       // cleanup always runs — a rejected OIDC end-session call must not
       // leave the user half-logged-out with a stale persona session key.
-      await authenticatorRef.current?.invokeLogout();
-    } catch {
-      // SSO logout failed; proceed with local cleanup anyway
+      try {
+        await authenticatorRef.current?.invokeLogout();
+      } catch {
+        // SSO logout failed; proceed with local cleanup anyway
+      }
+
+      clearPersonaSession();
+
+      setIsAuthenticated(false);
+
+      // reset the user details on logout
+      setCurrentUser({} as User);
+
+      // remove analytics session on logout
+      removeSession();
+
+      // Clear tokens properly during logout
+      await clearOidcToken();
+
+      // Drop every in-memory client-side cache keyed by the current principal so the next user
+      // that signs in within this SPA session cannot see the previous user's cached responses.
+      // The app navigates to /signin without a hard reload, so global Zustand / module-level
+      // caches would otherwise survive across users.
+      //
+      // Three caches need clearing:
+      //   * useExploreCache — SWR cache for Explore search results (Zustand store)
+      //   * clearEtagCache() — ETag interceptor's response cache; without it, a freshly-
+      //     authenticated user could pick up another principal's cached body via 304.
+      //   * queryClient.clear() — React Query cache. Entries are keyed without the principal
+      //     in the key (auth comes from the Authorization header), so without an explicit
+      //     clear the next user would see the previous user's bodies until staleTime + gcTime.
+      useExploreCache.getState().clearCache();
+      clearEtagCache();
+      queryClient.clear();
+
+      // Drop the tab-scoped app-mode session so the next user boots into
+      // their own persona/preference-resolved mode rather than inheriting
+      // this user's transient mode.
+      clearAppMode();
+
+      // Reset the debounced backend-sync bookkeeping so a pending PATCH
+      // from user A cannot be flushed with user B's value/id when the SPA
+      // logs out + back in within the 300ms window.
+      resetBackendSyncState();
+
+      setApplicationLoading(false);
+
+      // Upon logout, redirect to the login page
+      navigate(ROUTES.SIGNIN);
+    } finally {
+      // From here the stored token is gone, which stops any silent
+      // re-authentication on its own. The `finally` guarantees the flag is
+      // cleared even if a cleanup step above throws — otherwise a parked
+      // `handleRefreshFailed` recovery would never see the logout finish and
+      // the SPA would be left half-logged-out with the flag stuck armed.
+      isSigningOutRef.current = false;
     }
-
-    clearPersonaSession();
-
-    setIsAuthenticated(false);
-
-    // reset the user details on logout
-    setCurrentUser({} as User);
-
-    // remove analytics session on logout
-    removeSession();
-
-    // Clear tokens properly during logout
-    await clearOidcToken();
-
-    // Drop every in-memory client-side cache keyed by the current principal so the next user
-    // that signs in within this SPA session cannot see the previous user's cached responses.
-    // The app navigates to /signin without a hard reload, so global Zustand / module-level
-    // caches would otherwise survive across users.
-    //
-    // Three caches need clearing:
-    //   * useExploreCache — SWR cache for Explore search results (Zustand store)
-    //   * clearEtagCache() — ETag interceptor's response cache; without it, a freshly-
-    //     authenticated user could pick up another principal's cached body via 304.
-    //   * queryClient.clear() — React Query cache. Entries are keyed without the principal
-    //     in the key (auth comes from the Authorization header), so without an explicit
-    //     clear the next user would see the previous user's bodies until staleTime + gcTime.
-    useExploreCache.getState().clearCache();
-    clearEtagCache();
-    queryClient.clear();
-
-    // Drop the tab-scoped app-mode session so the next user boots into
-    // their own persona/preference-resolved mode rather than inheriting
-    // this user's transient mode.
-    clearAppMode();
-
-    // Reset the debounced backend-sync bookkeeping so a pending PATCH
-    // from user A cannot be flushed with user B's value/id when the SPA
-    // logs out + back in within the 300ms window.
-    resetBackendSyncState();
-
-    setApplicationLoading(false);
-
-    // Upon logout, redirect to the login page
-    navigate(ROUTES.SIGNIN);
-    // From here the stored token is gone, which stops any silent
-    // re-authentication on its own.
-    isSigningOutRef.current = false;
   }, []);
 
   /**
@@ -532,6 +538,13 @@ export const AuthProvider = ({
 
       return;
     }
+    // A Sign-out click that landed between the entry guard and here (e.g.
+    // during the `await getOidcToken()` further up, or this fn's own
+    // microtask yield) started a logout. Honour it rather than firing a
+    // top-level redirect that would abort the in-flight `/logout`.
+    if (isSigningOutRef.current) {
+      return;
+    }
     authCoordinator.pause();
     setApplicationLoading(true);
     try {
@@ -544,11 +557,56 @@ export const AuthProvider = ({
   const waitForSiblingReauth = async (staleToken: string) => {
     setApplicationLoading(true);
     if (await waitForSiblingToken(staleToken)) {
+      // The sibling stored a fresh token, but a Sign-out click during the
+      // poll (a window of seconds-to-minutes) started a `/logout` that is
+      // still in flight. Reloading now would abort that logout and re-
+      // establish the session from the sibling's token, silently undoing
+      // the user's explicit Sign out. Let the logout finish instead.
+      if (isSigningOutRef.current) {
+        return;
+      }
       window.location.reload();
 
       return;
     }
     signOutAfterRefreshFailure(true);
+  };
+
+  // Recover a refresh failure once a stored token is known to still exist.
+  // Extracted from `handleRefreshFailed` to keep that entry under the
+  // `sonarjs/cyclomatic-complexity` limit: the sibling/reauth/sign-out
+  // decision tree lives here, including the post-`await` re-check of
+  // `isSigningOutRef` before the `reauth` branch's terminal redirect.
+  const recoverRefreshFailure = async (
+    storedToken: string,
+    payload: RefreshFailedPayload,
+    invokeSilentReauth: () => Promise<void>
+  ) => {
+    const staleToken = payload.staleToken ?? storedToken;
+    if (hasReplacedToken(storedToken, staleToken)) {
+      // A sibling tab re-established the session while this (possibly
+      // throttled) tab's failure was in flight. Signing out now would end
+      // that fresh session for every tab.
+      window.location.reload();
+
+      return;
+    }
+    const decision = decideReauth();
+    if (decision === 'wait-for-sibling') {
+      await waitForSiblingReauth(staleToken);
+    } else if (decision === 'reauth' && isSilentReauthRecoverable(payload)) {
+      // `decideReauth()`/`isSilentReauthRecoverable()` are synchronous, but a
+      // Sign-out click that landed during the `await getOidcToken()` window
+      // is only observable now — re-check before the top-level redirect.
+      if (isSigningOutRef.current) {
+        isHandlingRefreshFailureRef.current = false;
+
+        return;
+      }
+      await startSilentReauth(invokeSilentReauth);
+    } else {
+      signOutAfterRefreshFailure(true);
+    }
   };
 
   // A failed silent renewal does not mean the identity provider session is
@@ -573,29 +631,23 @@ export const AuthProvider = ({
     isHandlingRefreshFailureRef.current = true;
     handleStoreProtectedRedirectPath();
     const storedToken = await getOidcToken().catch(() => '');
+    // A Sign-out click during the `await getOidcToken()` above started a
+    // `/logout`. The entry guard only saw the flag before the await, so
+    // re-check here: proceeding would fire a terminal navigation that
+    // aborts the in-flight logout. Reset the handling flag so a future
+    // failure (after the logout finishes) is not left parked.
+    if (isSigningOutRef.current) {
+      isHandlingRefreshFailureRef.current = false;
+
+      return;
+    }
     if (!storedToken) {
       // Signed out elsewhere (e.g. in another tab): nothing to re-establish.
       signOutAfterRefreshFailure(false);
 
       return;
     }
-    const staleToken = payload.staleToken ?? storedToken;
-    if (hasReplacedToken(storedToken, staleToken)) {
-      // A sibling tab re-established the session while this (possibly
-      // throttled) tab's failure was in flight. Signing out now would end
-      // that fresh session for every tab.
-      window.location.reload();
-
-      return;
-    }
-    const decision = decideReauth();
-    if (decision === 'wait-for-sibling') {
-      await waitForSiblingReauth(staleToken);
-    } else if (decision === 'reauth' && isSilentReauthRecoverable(payload)) {
-      await startSilentReauth(invokeSilentReauth);
-    } else {
-      signOutAfterRefreshFailure(true);
-    }
+    await recoverRefreshFailure(storedToken, payload, invokeSilentReauth);
   };
 
   const getLoggedInUserDetails = async () => {

@@ -160,6 +160,10 @@ jest.mock('../../../utils/ToastUtils', () => ({
 // this mock) working — they call startTokenExpiryTimer during mount, which
 // destructures isExpired/timeoutExpiry from the return value.
 const mockGetOidcToken = jest.fn().mockResolvedValue('');
+// Default resolves so the normal logout path is unaffected; individual
+// tests override with `mockRejectedValueOnce` to exercise the
+// `onLogoutHandler` try/finally.
+const mockClearOidcToken = jest.fn().mockResolvedValue(undefined);
 const mockExtractDetailsFromToken = jest.fn().mockReturnValue({
   exp: 0,
   isExpired: true,
@@ -172,6 +176,7 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => {
   return {
     ...actual,
     getOidcToken: (...args: unknown[]) => mockGetOidcToken(...args),
+    clearOidcToken: (...args: unknown[]) => mockClearOidcToken(...args),
   };
 });
 
@@ -487,6 +492,29 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     );
   });
 
+  // Renders the provider and hands back its onLogoutHandler. Declared at
+  // this scope (rather than further down) so the 'while a sibling tab
+  // re-authenticates' tests, which interleave a logout with a refresh
+  // failure, can reach it without tripping @typescript-eslint/no-use-before-define.
+  const renderForLogout = async () => {
+    let logout: (() => void) | undefined;
+    const LogoutConsumer = () => {
+      logout = useAuthProvider().onLogoutHandler;
+
+      return null;
+    };
+
+    await act(async () => {
+      render(
+        <AuthProvider childComponentType={LogoutConsumer}>
+          <LogoutConsumer />
+        </AuthProvider>
+      );
+    });
+
+    return () => logout?.();
+  };
+
   describe('refresh failure → one silent re-authentication, then sign-out', () => {
     let onFailed: ((payload?: RefreshFailedPayload) => void) | undefined;
 
@@ -723,28 +751,43 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
 
         expect(reload).not.toHaveBeenCalled();
       });
+
+      it('does NOT reload over an in-flight logout when the sibling succeeds', async () => {
+        // The headline manifestation: a Sign-out click during the
+        // seconds-to-minutes `waitForSiblingToken` poll must not be undone
+        // by the reload that fires once the sibling stores a fresh token.
+        // Before the fix `waitForSiblingReauth` reloaded without re-reading
+        // `isSigningOutRef`, aborting the in-flight `/logout` and re-
+        // establishing the session from the sibling's token.
+        let resolveSibling!: (v: boolean) => void;
+        (waitForSiblingToken as jest.Mock).mockReturnValueOnce(
+          new Promise<boolean>((resolve) => {
+            resolveSibling = resolve;
+          })
+        );
+        mockInvokeLogout.mockReturnValueOnce(new Promise(() => undefined));
+        mockGetOidcToken.mockResolvedValue('stored-token');
+        const logout = await renderForLogout();
+        const onFailed = getOnHandler('refresh-failed');
+        await act(async () => {
+          onFailed?.(REAUTH_REQUIRED); // parks at waitForSiblingToken
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        // User clicks Sign out while the poll is running.
+        await act(async () => {
+          logout();
+        });
+        // Sibling completes silent reauth and stores a fresh token.
+        await act(async () => {
+          resolveSibling(true);
+        });
+
+        expect(reload).not.toHaveBeenCalled();
+        expect(mockInvokeLogout).toHaveBeenCalled();
+      });
     });
   });
-
-  // Renders the provider and hands back its onLogoutHandler.
-  const renderForLogout = async () => {
-    let logout: (() => void) | undefined;
-    const LogoutConsumer = () => {
-      logout = useAuthProvider().onLogoutHandler;
-
-      return null;
-    };
-
-    await act(async () => {
-      render(
-        <AuthProvider childComponentType={LogoutConsumer}>
-          <LogoutConsumer />
-        </AuthProvider>
-      );
-    });
-
-    return () => logout?.();
-  };
 
   it('never re-authenticates a user who is signing out', async () => {
     // The server has already revoked the session while the SSO logout is
@@ -765,6 +808,93 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
 
     expect(mockInvokeSilentReauth).not.toHaveBeenCalled();
     expect(decideReauth).not.toHaveBeenCalled();
+
+    mockGetOidcToken.mockResolvedValue('');
+  });
+
+  it('does NOT re-authenticate when a logout starts while a refresh failure is already being handled', async () => {
+    // Reverse ordering of the test above: here a refresh failure is ALREADY
+    // being handled (parked at the `await getOidcToken()`) when the user
+    // clicks Sign out. The entry guard saw the flag clear; only a re-check
+    // after the await can honour the logout that started while the handler
+    // was suspended. Before the fix the handler resumed straight into
+    // `invokeSilentReauth`, silently re-authenticating over the in-flight
+    // `/logout`.
+    mockSupportsSilentReauth = true;
+    (decideReauth as jest.Mock).mockReturnValue('reauth');
+    (markReauthAttempt as jest.Mock).mockReturnValue(true);
+    mockInvokeLogout.mockReturnValueOnce(new Promise(() => undefined));
+    const logout = await renderForLogout();
+    const onFailed = getOnHandler('refresh-failed');
+    let resolveStoredToken!: (v: string) => void;
+    mockGetOidcToken.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        resolveStoredToken = resolve;
+      })
+    );
+    await act(async () => {
+      onFailed?.(REAUTH_REQUIRED); // handleRefreshFailed parks at await getOidcToken()
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      logout(); // user clicks Sign out while the handler is parked
+    });
+    await act(async () => {
+      resolveStoredToken('stored-token'); // handler resumes; must re-check the flag
+    });
+
+    expect(mockInvokeSilentReauth).not.toHaveBeenCalled();
+    expect(decideReauth).not.toHaveBeenCalled();
+
+    mockGetOidcToken.mockResolvedValue('');
+  });
+
+  it('clears isSigningOutRef even when a logout cleanup step throws (try/finally)', async () => {
+    // Defense in depth for the same flag: if a step inside `onLogoutHandler`
+    // throws partway through, the `finally` must still clear
+    // `isSigningOutRef` — otherwise a later refresh failure would be blocked
+    // forever at the entry guard. Observed here by driving a refresh failure
+    // AFTER a throwing logout and asserting `decideReauth` runs (it is only
+    // reached once the entry guard passes, i.e. once the flag is clear).
+    mockSupportsSilentReauth = true;
+    (decideReauth as jest.Mock).mockReturnValue('reauth');
+    (markReauthAttempt as jest.Mock).mockReturnValue(true);
+    mockInvokeSilentReauth.mockResolvedValue(undefined);
+    mockClearOidcToken.mockRejectedValueOnce(new Error('storage gone'));
+
+    let logoutHandler: (() => Promise<void>) | undefined;
+    const ThrowingLogoutConsumer = () => {
+      // The context types `onLogoutHandler` as `() => void`, but the
+      // implementation is async — cast to the runtime shape so the `.catch`
+      // below can swallow the rejection from the throwing cleanup step.
+      logoutHandler = useAuthProvider().onLogoutHandler as () => Promise<void>;
+
+      return null;
+    };
+
+    await act(async () => {
+      render(
+        <AuthProvider childComponentType={ThrowingLogoutConsumer}>
+          <ThrowingLogoutConsumer />
+        </AuthProvider>
+      );
+    });
+
+    // Run the logout and swallow the rejection from the throwing cleanup
+    // step so it does not surface as an unhandled promise rejection.
+    await act(async () => {
+      await logoutHandler?.().catch(() => undefined);
+    });
+
+    // A subsequent refresh failure must NOT be blocked at the entry guard.
+    mockGetOidcToken.mockResolvedValue('stored-token');
+    const onFailed = getOnHandler('refresh-failed');
+    await act(async () => {
+      onFailed?.(REAUTH_REQUIRED);
+    });
+
+    expect(decideReauth).toHaveBeenCalled();
 
     mockGetOidcToken.mockResolvedValue('');
   });
