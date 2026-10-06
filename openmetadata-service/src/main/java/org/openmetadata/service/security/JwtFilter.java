@@ -26,6 +26,7 @@ import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getAlgorithmFromPublicKey;
 
 import com.auth0.jwk.Jwk;
+import com.auth0.jwk.JwkException;
 import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -522,7 +523,14 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getExpiredTokenException();
     }
 
-    Jwk jwk = jwkProvider.get(jwt.getKeyId());
+    Jwk jwk;
+    try {
+      jwk = jwkProvider.get(jwt.getKeyId());
+    } catch (JwkException e) {
+      // A key ID this server does not trust is an authentication failure (401), not a server error.
+      throw AuthenticationException.getInvalidTokenException(
+          "Invalid token. Signing key not found.", e);
+    }
     Algorithm algorithm = createAlgorithmFromJwk(tokenValidationAlgorithm, jwk);
     try {
       algorithm.verify(jwt);

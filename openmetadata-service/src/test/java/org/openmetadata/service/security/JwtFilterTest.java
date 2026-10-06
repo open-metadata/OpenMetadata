@@ -30,6 +30,7 @@ import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
+import com.auth0.jwk.SigningKeyNotFoundException;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -288,6 +289,24 @@ class JwtFilterTest {
     Exception exception =
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("claim"));
+  }
+
+  @Test
+  void testUnknownSigningKeyIsUnauthorized() throws Exception {
+    when(jwkProvider.get("unknown-kid"))
+        .thenThrow(new SigningKeyNotFoundException("No key found", null));
+    String jwt =
+        JWT.create()
+            .withKeyId("unknown-kid")
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("signing key not found"));
   }
 
   @Test
