@@ -155,12 +155,16 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   );
 
   const onSectionNavigate = useCallback(
-    (subPath?: string) => {
+    (subPath?: string, params?: Record<string, string | undefined>) => {
       if (viewSectionKey) {
-        onNavigate({ type: 'section', key: viewSectionKey, subPath });
+        setHash(
+          'notification',
+          viewToSubPath({ type: 'section', key: viewSectionKey, subPath }),
+          params
+        );
       }
     },
-    [viewSectionKey, onNavigate]
+    [viewSectionKey, setHash]
   );
 
   // Resolve the contributed section component + its menu label for the active

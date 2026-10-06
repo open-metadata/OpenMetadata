@@ -229,8 +229,15 @@ export interface NotificationSectionProps {
    */
   subPath?: string;
 
-  /** Navigate within the section; omit `subPath` to return to its root. */
-  onNavigate?: (subPath?: string) => void;
+  /**
+   * Navigate within the section; omit `subPath` to return to its root.
+   * `params` become the hash query (e.g. a list's paging), so a section can
+   * carry its state through a sub-page and back; omitted, the query is cleared.
+   */
+  onNavigate?: (
+    subPath?: string,
+    params?: Record<string, string | undefined>
+  ) => void;
 
   /**
    * Name the current sub-page (e.g. "Add Template"). The header then shows it

@@ -214,6 +214,37 @@ describe('NotificationPanel', () => {
     expect(screen.getByTestId('weekly-emails-section')).toBeInTheDocument();
   });
 
+  it('should carry params through a section navigation into the hash', () => {
+    mockSubPath = 'section/templates';
+    let navigate:
+      | ((subPath?: string, params?: Record<string, string>) => void)
+      | undefined;
+    const TemplatesSection = ({
+      onNavigate,
+    }: {
+      onNavigate?: (subPath?: string, params?: Record<string, string>) => void;
+    }) => {
+      navigate = onNavigate;
+
+      return <div data-testid="templates-section" />;
+    };
+    mockGetContributions.mockReturnValue([
+      { key: 'templates', component: TemplatesSection },
+    ]);
+
+    render(<NotificationPanel onHeaderChange={mockOnHeaderChange} />);
+
+    act(() => {
+      navigate?.('view/a', { page: '3', cursor: 'abc' });
+    });
+
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'notification',
+      'section/templates/view/a',
+      { page: '3', cursor: 'abc' }
+    );
+  });
+
   it('should show the section icon in the header instead of the bell', () => {
     const SectionIcon = () => <span />;
     mockSubPath = 'section/weekly-emails';
@@ -308,7 +339,8 @@ describe('NotificationPanel', () => {
 
     expect(mockSetHash).toHaveBeenCalledWith(
       'notification',
-      'section/templates'
+      'section/templates',
+      undefined
     );
   });
 
