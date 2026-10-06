@@ -44,18 +44,23 @@ const mockOnShowDeletedTeamChange = jest.fn();
 jest.mock('../../components/Settings/Team/TeamDetails/TeamDetailsV1', () => {
   return jest
     .fn()
-    .mockImplementation(({ onShowDeletedTeamChange, currentTeam }) => {
-      mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
+    .mockImplementation(
+      ({ onShowDeletedTeamChange, currentTeam, childTeams }) => {
+        mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
 
-      return (
-        <>
-          <p>TeamDetailsV1</p>
-          {currentTeam?.users?.map((user: { id: string; name: string }) => (
-            <span key={user.id}>{user.name}</span>
-          ))}
-        </>
-      );
-    });
+        return (
+          <>
+            <p>TeamDetailsV1</p>
+            {currentTeam?.users?.map((user: { id: string; name: string }) => (
+              <span key={user.id}>{user.name}</span>
+            ))}
+            {childTeams?.map((team: { id: string; name: string }) => (
+              <span key={team.id}>{team.name}</span>
+            ))}
+          </>
+        );
+      }
+    );
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -411,6 +416,63 @@ describe('Test Teams Page', () => {
           include: Include.NonDeleted,
         })
       );
+    });
+
+    it('should drop a stale advanced-fetch response that resolves after a newer one', async () => {
+      setMockPermissions({ ViewBasic: true });
+
+      // Basic (no fields) list fetches resolve instantly; the advanced (fields) fetches stay pending
+      // so we can resolve the two overlapping full refreshes out of order.
+      const advancedResolvers: Array<(value: unknown) => void> = [];
+      (getTeams as jest.Mock).mockImplementation(
+        ({ fields }: { fields?: string[] }) =>
+          fields
+            ? new Promise((resolve) => {
+                advancedResolvers.push(resolve);
+              })
+            : Promise.resolve({ data: [] })
+      );
+
+      // Mount fires full refresh #1 (advancedResolvers[0]).
+      await act(async () => {
+        render(<TeamsPage />);
+      });
+
+      // Toggling showDeletedTeam fires full refresh #2 (advancedResolvers[1]) while #1 is still
+      // in flight — #2 is now the latest.
+      await act(async () => {
+        mockOnShowDeletedTeamChange();
+      });
+
+      expect(advancedResolvers).toHaveLength(2);
+
+      // Resolve the newer request first, then the older (stale) one.
+      await act(async () => {
+        advancedResolvers[1]({
+          data: [
+            {
+              id: 'latest',
+              name: 'latest-team',
+              fullyQualifiedName: 'latest-team',
+            },
+          ],
+        });
+      });
+      await act(async () => {
+        advancedResolvers[0]({
+          data: [
+            {
+              id: 'stale',
+              name: 'stale-team',
+              fullyQualifiedName: 'stale-team',
+            },
+          ],
+        });
+      });
+
+      // The stale response must not overwrite the list produced by the newer request.
+      expect(screen.getByText('latest-team')).toBeInTheDocument();
+      expect(screen.queryByText('stale-team')).not.toBeInTheDocument();
     });
   });
 });

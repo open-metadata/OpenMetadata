@@ -14,7 +14,7 @@
 import type { ReactNode } from 'react';
 import type { Task } from '../../../../generated/entity/tasks/task';
 import type {
-  TestCaseParameterValue,
+  TestCase,
   TestCaseResolutionStatus,
   TestCaseResult,
   TestCaseStatus,
@@ -31,7 +31,7 @@ export interface TestCaseLastRunBannerProps {
   incidentTask: Task | null;
   nextRunTimestamp?: number;
   onAcknowledge?: () => Promise<void>;
-  parameterValues?: TestCaseParameterValue[];
+  testCase?: TestCase;
   testCaseResult?: TestCaseResult;
   testCaseStatus?: TestCaseStatus;
   testCaseStatusData?: TestCaseResolutionStatus;

@@ -79,6 +79,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   {
     supportsEntityStatus = false;
     supportsImportExport = true;
+    supportsCreationAudit = true;
     supportsBatchImport = true;
     supportsRecursiveImport =
         true; // Team supports recursive import with hierarchical relationships
