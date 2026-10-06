@@ -162,7 +162,8 @@ class AtlasSource(Source):
                     tpc_attrs = tpc_entity["attributes"]
                     topic_name = tpc_attrs["name"]
 
-                    assert self.message_service is not None
+                    if self.message_service is None:
+                        raise ValueError("message_service is not set")  # noqa: TRY301
                     topic_fqn = fqn.build(
                         self.metadata,
                         entity_type=Topic,
