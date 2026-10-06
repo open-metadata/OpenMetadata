@@ -283,8 +283,8 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      // The target is fixed at creation: moving an announcement between an asset and system-wide
-      // would bypass the admin check on system-wide writes (e.g. dropping entityLink via PATCH).
+      // The target is fixed at creation: turning an entity announcement into a system one (e.g. by
+      // dropping entityLink via PATCH) would bypass the admin check on system announcement writes.
       if (!Objects.equals(original.getEntityLink(), updated.getEntityLink())) {
         throw new IllegalArgumentException("entityLink cannot be changed after creation");
       }

@@ -137,7 +137,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAnnouncementStatusCondition());
-    conditions.add(getSystemWideCondition());
+    conditions.add(getSystemAnnouncementCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -541,13 +541,15 @@ public class ListFilter extends Filter<ListFilter> {
     return announcementType == null ? "" : "type = :announcementType";
   }
 
-  /** A system-wide announcement is one with no entityLink; only AnnouncementResource sets this. */
-  private String getSystemWideCondition() {
-    String systemWide = queryParams.get("systemWide");
+  /** A system announcement is one with no entityLink; only AnnouncementResource sets this. */
+  private String getSystemAnnouncementCondition() {
+    String systemAnnouncement = queryParams.get("systemAnnouncement");
     String condition = "";
-    if (systemWide != null) {
+    if (systemAnnouncement != null) {
       condition =
-          Boolean.parseBoolean(systemWide) ? "entityLink IS NULL" : "entityLink IS NOT NULL";
+          Boolean.parseBoolean(systemAnnouncement)
+              ? "entityLink IS NULL"
+              : "entityLink IS NOT NULL";
     }
     return condition;
   }

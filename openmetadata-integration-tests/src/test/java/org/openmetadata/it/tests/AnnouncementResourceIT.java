@@ -830,12 +830,12 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
   }
 
   /**
-   * By default only admins can write announcements at all, so the system-wide rule only bites when
+   * By default only admins can write announcements at all, so the system announcement rule only bites when
    * a custom role grants announcement writes to non-admins. Such a user keeps entity announcements
-   * but cannot create, edit, delete or restore a system-wide one, or patch one into existence.
+   * but cannot create, edit, delete or restore a system announcement, or patch one into existence.
    */
   @Test
-  void testSystemWideAnnouncementWritesAreAdminOnly(TestNamespace ns) throws Exception {
+  void testSystemAnnouncementWritesAreAdminOnly(TestNamespace ns) throws Exception {
     long now = System.currentTimeMillis();
     OpenMetadataClient writer = announcementWriterClient(ns);
     Table table = createTestTable(ns);
@@ -851,8 +851,8 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
         ForbiddenException.class,
         () -> writer.announcements().create(windowed(ns.prefix("writer-system"), now)));
 
-    Announcement systemWide = createEntity(windowed(ns.prefix("admin-system"), now));
-    String systemId = systemWide.getId().toString();
+    Announcement systemAnnouncement = createEntity(windowed(ns.prefix("admin-system"), now));
+    String systemId = systemAnnouncement.getId().toString();
     assertThrows(
         ForbiddenException.class,
         () ->
@@ -861,10 +861,11 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
                 .patch(systemId, patchOp("replace", "/description", "\"edited\"")));
     assertThrows(ForbiddenException.class, () -> writer.announcements().delete(systemId));
     Announcement unchanged = getEntity(systemId);
-    assertEquals(systemWide.getDescription(), unchanged.getDescription());
+    assertEquals(systemAnnouncement.getDescription(), unchanged.getDescription());
     assertFalse(Boolean.TRUE.equals(unchanged.getDeleted()));
 
-    // The target is fixed at creation, so dropping it is rejected rather than becoming system-wide.
+    // The target is fixed at creation, so dropping it is rejected rather than becoming a system
+    // announcement.
     assertThrows(
         InvalidRequestException.class,
         () ->
@@ -878,28 +879,27 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
   }
 
   @Test
-  void testListSystemWideFilter(TestNamespace ns) throws Exception {
+  void testListSystemAnnouncementFilter(TestNamespace ns) throws Exception {
     long now = System.currentTimeMillis();
     Table table = createTestTable(ns);
-    Announcement systemWide = createEntity(windowed(ns.prefix("list-system"), now));
+    Announcement systemAnnouncement = createEntity(windowed(ns.prefix("list-system"), now));
     Announcement onEntity =
         createEntity(
             windowed(ns.prefix("list-entity"), now)
                 .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">"));
 
     List<UUID> systemIds = listIds(true);
-    assertTrue(systemIds.contains(systemWide.getId()));
+    assertTrue(systemIds.contains(systemAnnouncement.getId()));
     assertFalse(systemIds.contains(onEntity.getId()));
 
     List<UUID> entityIds = listIds(false);
     assertTrue(entityIds.contains(onEntity.getId()));
-    assertFalse(entityIds.contains(systemWide.getId()));
+    assertFalse(entityIds.contains(systemAnnouncement.getId()));
 
-    // The landing page asks for the active system-wide ones.
+    // The landing page asks for the active system announcements.
     List<UUID> activeSystemIds =
-        listIds(
-            new ListParams().addQueryParam("systemWide", "true").addQueryParam("active", "true"));
-    assertTrue(activeSystemIds.contains(systemWide.getId()));
+        listIds(new ListParams().addQueryParam("system", "true").addQueryParam("active", "true"));
+    assertTrue(activeSystemIds.contains(systemAnnouncement.getId()));
     assertFalse(activeSystemIds.contains(onEntity.getId()));
   }
 
@@ -923,8 +923,8 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
     assertEquals(entityLink, getEntity(id).getEntityLink());
   }
 
-  private List<UUID> listIds(boolean systemWide) {
-    return listIds(new ListParams().addQueryParam("systemWide", String.valueOf(systemWide)));
+  private List<UUID> listIds(boolean systemAnnouncement) {
+    return listIds(new ListParams().addQueryParam("system", String.valueOf(systemAnnouncement)));
   }
 
   private List<UUID> listIds(ListParams params) {
@@ -934,7 +934,7 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
   private static CreateAnnouncement windowed(String name, long now) {
     return new CreateAnnouncement()
         .withName(name)
-        .withDescription("System-wide announcement test")
+        .withDescription("System announcement test")
         .withStartTime(now)
         .withEndTime(now + 86400000L);
   }

@@ -662,17 +662,17 @@ class ListFilterTest {
   }
 
   @Test
-  void test_systemWide_true_matchesAnnouncementsWithNoEntityLink() {
+  void test_systemAnnouncement_true_matchesAnnouncementsWithNoEntityLink() {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    filter.addQueryParam("systemWide", "true");
+    filter.addQueryParam("systemAnnouncement", "true");
 
     assertTrue(filter.getCondition().contains("entityLink IS NULL"));
   }
 
   @Test
-  void test_systemWide_false_matchesEntityAnnouncementsOnly() {
+  void test_systemAnnouncement_false_matchesEntityAnnouncementsOnly() {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    filter.addQueryParam("systemWide", "false");
+    filter.addQueryParam("systemAnnouncement", "false");
 
     assertTrue(filter.getCondition().contains("entityLink IS NOT NULL"));
   }
