@@ -840,16 +840,17 @@ const searchInDropdown = async (page: Page, searchText: string) => {
   await aggregation;
 };
 
-// The quick-filter menu is a core Dropdown, so its items are react-aria
-// `menuitemcheckbox`es; confirm the picked filter's trigger rendered before the
-// caller opens it.
+// The core menu can still cover the next filter during its exit animation.
+// Wait for it to leave before pressing the selected filter's trigger.
 const selectQuickFilter = async (
   page: Page,
   menuItem: RegExp,
   dropdownTestId: string
 ) => {
   await page.getByTestId('asset-filter-button').click();
-  await page.getByRole('menuitemcheckbox', { name: menuItem }).click();
+  const item = page.getByRole('menuitemcheckbox', { name: menuItem });
+  await item.click();
+  await expect(item).not.toBeVisible();
   await expect(page.getByTestId(dropdownTestId)).toBeVisible();
 };
 
