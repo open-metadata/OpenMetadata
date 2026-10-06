@@ -19,7 +19,7 @@ import threading
 import time
 import traceback
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from itertools import groupby, product
 from typing import Any
@@ -1373,68 +1373,83 @@ class OpenlineageSource(PipelineServiceSource):
                     continue
 
                 idle_time = 0.0
-                for position, message in enumerate(messages):
-                    parsed = None
-                    try:
-                        event = message_to_open_lineage_event(json.loads(message.data))
-                        parsed = self._filter_event_by_types(
-                            event,
-                            [EventType.COMPLETE, EventType.RUNNING, EventType.START],
-                        )
-                    except Exception as e:
-                        logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
-                        logger.debug(traceback.format_exc())
+                # One heartbeat for the whole batch, not one per message: the timers all
+                # start together at the fetch, so refreshing the remainder on every
+                # message meant N(N-1)/2 blocking round trips -- about 4,950 for the
+                # default batch of 100 -- paid even when the pipeline kept up
+                with self._batch_keepalive(client, messages, ack_wait) as leaving_batch:
+                    for message in messages:
+                        parsed = None
+                        try:
+                            event = message_to_open_lineage_event(json.loads(message.data))
+                            parsed = self._filter_event_by_types(
+                                event,
+                                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+                            )
+                        except Exception as e:
+                            logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
+                            logger.debug(traceback.format_exc())
 
-                    if parsed:
-                        # The batch's acknowledgement timers all start together, and this
-                        # generator stays suspended below for as long as the pipeline
-                        # works on the event, so this message and the ones behind it are
-                        # refreshed from another thread until it comes back
-                        with self._batch_keepalive(client, messages[position:], ack_wait):
+                        if parsed:
                             yield parsed
 
-                    # Acknowledged once the connector has handed the event on. The
-                    # ingestion pipeline reports its own failures in the run status and
-                    # does not report them back here, so redelivery covers a run that
-                    # died mid-batch, not an event the pipeline rejected.
-                    try:
-                        client.ack(message)
-                    except Exception as e:
-                        # The event stays unacknowledged and comes back next run; that is
-                        # better than losing the rest of this batch
-                        logger.warning("Failed to acknowledge a NATS message: %s", e)
-                        logger.debug(traceback.format_exc())
+                        # Dropped from the heartbeat first, so a refresh is never sent for
+                        # a message that has already been acknowledged
+                        leaving_batch(message)
+
+                        # Acknowledged once the connector has handed the event on. The
+                        # ingestion pipeline reports its own failures in the run status and
+                        # does not report them back here, so redelivery covers a run that
+                        # died mid-batch, not an event the pipeline rejected.
+                        try:
+                            client.ack(message)
+                        except Exception as e:
+                            # The event stays unacknowledged and comes back next run; that
+                            # is better than losing the rest of this batch
+                            logger.warning("Failed to acknowledge a NATS message: %s", e)
+                            logger.debug(traceback.format_exc())
 
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from NATS: {str(e)}")  # noqa: B904, RUF010
 
     @contextmanager
-    def _batch_keepalive(self, client: Any, pending: list[Any], ack_wait: float) -> Iterator[None]:
-        """Keep refreshing the acknowledgement timers of `pending` until the block exits.
+    def _batch_keepalive(self, client: Any, messages: list[Any], ack_wait: float) -> Iterator[Callable[[Any], None]]:
+        """Refresh the batch's acknowledgement timers while it is being processed.
 
-        A single refresh before the `yield` only buys one `ackWait`. The connector has no
-        say in how long the pipeline then takes, and nothing of ours runs while the
-        generator is suspended, so a downstream slower than `ackWait` has the event
-        redelivered while it is still being processed -- duplicating the lineage work and
-        spending `maxDeliver` attempts on a run that never failed.
+        The timers all start together at the fetch, and this generator is suspended at its
+        `yield` for as long as the pipeline works on an event, so nothing of ours runs in
+        that window. Without a refresh, a pipeline slower than `ackWait` has its events
+        redelivered while they are still being processed -- duplicating the lineage write
+        and spending `maxDeliver` attempts on a run that never failed.
 
-        The heartbeat is stopped before the caller acknowledges, so a refresh cannot race
-        the acknowledgement of the same message.
+        Nothing is sent until the batch has been held for half of `ackWait`, so a batch
+        that keeps up costs no control traffic at all.
+
+        The yielded callable drops a message from the heartbeat. Callers use it before
+        acknowledging, which is what keeps a refresh from racing the acknowledgement of
+        the same message.
         """
+        pending: dict[int, Any] = {id(message): message for message in messages}
+        lock = threading.Lock()
         stop = threading.Event()
         interval = max(ack_wait / 2.0, MIN_NATS_KEEPALIVE_INTERVAL)
 
+        def _leaving_batch(message: Any) -> None:
+            with lock:
+                pending.pop(id(message), None)
+
         def _heartbeat() -> None:
-            while True:
-                self._keep_batch_alive(client, pending)
-                if stop.wait(interval):
-                    return
+            while not stop.wait(interval):
+                with lock:
+                    still_waiting = list(pending.values())
+                if still_waiting:
+                    self._keep_batch_alive(client, still_waiting)
 
         thread = threading.Thread(target=_heartbeat, name="openmetadata-nats-keepalive", daemon=True)
         thread.start()
         try:
-            yield
+            yield _leaving_batch
         finally:
             stop.set()
             thread.join(timeout=interval)

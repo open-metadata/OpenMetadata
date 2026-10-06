@@ -43,7 +43,6 @@ class NestedSecretConverterCoverageTest {
    */
   private static final Set<String> KNOWN_UNCONVERTIBLE =
       Set.of(
-          "NatsConnection.authType",
           "QlikSenseConnection.certificates",
           "SapS4HanaConnection.authType");
 
