@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Button,
-  ButtonUtility,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { DotsGrid, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
+import TopicCardControls from './TopicCardControls';
+import TopicCardHeader from './TopicCardHeader';
+import TopicCardFooter from './TopicCardFooter';
+import { useTopicCollapse } from './TopicCollapseContext';
 import {
-  TOGGLE_ICON_CLASS,
   TopicAction,
   TopicIconTone,
   TopicKey,
@@ -45,7 +41,64 @@ export interface TopicCardProps {
   widgetKey: string;
   isEditView?: boolean;
   handleRemoveWidget?: (widgetKey: string) => void;
+  /**
+   * The widget's own fetch is still in flight.
+   *
+   * Every topic widget derives its summary, status and body from counts that
+   * start at zero, so without this the card renders a confident empty state —
+   * "No recent team activity", "0 followed assets changed" — and then replaces
+   * it once the data lands. A skeleton says "not yet" instead of saying
+   * something false.
+   */
+  isLoading?: boolean;
 }
+
+/** Body placeholder: a few rows at the widths a populated card tends to use. */
+const SKELETON_ROW_WIDTHS = ['90%', '75%', '85%', '60%'];
+
+/**
+ * The three slots a loading card has to stand in for, extracted so TopicCard
+ * itself stays under the complexity ceiling rather than carrying a ternary per
+ * slot inline.
+ */
+const TopicSummary = ({
+  isLoading,
+  summary,
+  topicKey,
+}: Pick<TopicCardProps, 'summary' | 'topicKey'> & { isLoading: boolean }) =>
+  isLoading ? (
+    // Wrapped rather than putting the testid on Skeleton: it takes no arbitrary
+    // props, and TS does not flag a hyphenated JSX attribute, so the prop would
+    // be dropped silently.
+    <div data-testid={`topic-summary-skeleton-${topicKey}`}>
+      <Skeleton height={14} width="70%" />
+    </div>
+  ) : (
+    // `!` on the colour: Typography renders `.prose`, whose unlayered `color`
+    // rule is emitted after the Tailwind utilities and would otherwise win.
+    <Typography
+      className="tw:text-pretty tw:text-text-secondary!"
+      size="text-sm">
+      {summary}
+    </Typography>
+  );
+
+const TopicBody = ({
+  children,
+  isLoading,
+  topicKey,
+}: Pick<TopicCardProps, 'children' | 'topicKey'> & { isLoading: boolean }) =>
+  isLoading ? (
+    <div
+      className="tw:flex tw:flex-col tw:gap-3.5"
+      data-testid={`topic-body-skeleton-${topicKey}`}>
+      {SKELETON_ROW_WIDTHS.map((width) => (
+        <Skeleton height={14} key={width} width={width} />
+      ))}
+    </div>
+  ) : (
+    children
+  );
 
 /**
  * The shell every landing-page topic widget renders into: a summary header, the
@@ -67,78 +120,48 @@ const TopicCard: React.FC<TopicCardProps> = ({
   widgetKey,
   isEditView = false,
   handleRemoveWidget,
+  isLoading = false,
 }) => {
-  const { t } = useTranslation();
-  const ToneIcon = tone.icon;
+  const collapse = useTopicCollapse();
+  const isCollapsed = collapse.isCollapsed(widgetKey);
 
   return (
     <section
-      className="tw:flex tw:h-full tw:min-w-0 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-xs"
+      className={classNames(
+        'tw:flex tw:min-w-0 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-xs',
+        // Expanded, the card fills its grid cell so the body can scroll inside
+        // it. Collapsed, it is only a header — stretching would hang an empty
+        // half-card below the summary, which is the cell's height showing
+        // through rather than anything the card has to say.
+        isCollapsed ? 'tw:h-auto' : 'tw:h-full'
+      )}
       data-testid={`topic-card-${topicKey}`}>
       <div className="tw:flex tw:shrink-0 tw:items-start tw:gap-3.5 tw:p-5">
-        <div
-          aria-hidden
-          className={classNames(
-            'tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
-            tone.tile
-          )}>
-          <ToneIcon size={20} />
-        </div>
-
-        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
-          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
-            {/* `!` on the colour: Typography renders `.prose`, whose unlayered
-              `color` rule is emitted after the Tailwind utilities and would
-              otherwise silently win. */}
-            <Typography
-              className="tw:min-w-0 tw:text-text-primary!"
-              ellipsis={{ rows: 1 }}
-              size="text-md"
-              weight="semibold">
-              {title}
-            </Typography>
-            {status && (
-              <Badge
-                className="tw:shrink-0"
-                color={status.color}
-                data-testid={`topic-status-${topicKey}`}
-                size="sm"
-                type="pill-color">
-                {status.label}
-              </Badge>
-            )}
-          </div>
-          <Typography
-            className="tw:text-pretty tw:text-text-secondary!"
-            size="text-sm">
-            {summary}
-          </Typography>
-        </div>
-
-        {/* View mode has no header control — the persona layout owns size and
-          placement, so there is nothing left for the card to toggle. */}
-        {isEditView && (
-          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
-            {/* Mirrors the OSS WidgetHeader handle: `.drag-widget-icon` is the
-              selector react-grid-layout is configured with as `draggableHandle`,
-              and dragging is pointer-only, so this is not a focusable control. */}
-            <span
-              aria-hidden
-              className="drag-widget-icon tw:cursor-grab tw:text-fg-quaternary"
-              data-testid={`drag-widget-${widgetKey}`}>
-              <DotsGrid size={16} />
-            </span>
-            <ButtonUtility
-              aria-label={t('label.remove')}
-              className={TOGGLE_ICON_CLASS}
-              color="tertiary"
-              data-testid={`remove-widget-${widgetKey}`}
-              icon={Trash01}
-              size="xs"
-              onClick={() => handleRemoveWidget?.(widgetKey)}
+        <TopicCardHeader
+          isCollapsed={isCollapsed}
+          isLoading={isLoading}
+          status={status}
+          summarySlot={
+            <TopicSummary
+              isLoading={isLoading}
+              summary={summary}
+              topicKey={topicKey}
             />
-          </div>
-        )}
+          }
+          title={title}
+          tone={tone}
+          topicKey={topicKey}
+          widgetKey={widgetKey}
+          onToggle={
+            collapse.isEnabled ? () => collapse.toggle(widgetKey) : undefined
+          }
+        />
+
+        <TopicCardControls
+          handleRemoveWidget={handleRemoveWidget}
+          isEditView={isEditView}
+          widgetKey={widgetKey}
+        />
       </div>
 
       {/* min-h-0 is what lets this flex child scroll rather than grow past the
@@ -146,33 +169,21 @@ const TopicCard: React.FC<TopicCardProps> = ({
         column from compressing its own children to fit — without it a block
         that carries `min-h-0` is squeezed and clips its text mid-line instead
         of the body scrolling. */}
-      {children && (
+      {!isCollapsed && (children || isLoading) && (
         <div className="tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-y-auto tw:border-t tw:border-secondary tw:p-5 tw:*:shrink-0">
-          {children}
+          <TopicBody isLoading={isLoading} topicKey={topicKey}>
+            {children}
+          </TopicBody>
         </div>
       )}
 
-      {(meta || action) && (
-        <div className="tw:flex tw:min-w-0 tw:shrink-0 tw:items-center tw:gap-3 tw:border-t tw:border-secondary tw:px-5 tw:py-3.5">
-          {meta && (
-            <Typography
-              className="tw:min-w-0 tw:text-text-tertiary!"
-              ellipsis={{ rows: 1 }}
-              size="text-sm">
-              {meta}
-            </Typography>
-          )}
-          {action && (
-            <Button
-              className="tw:ml-auto tw:shrink-0"
-              color="link-color"
-              data-testid={`topic-action-${topicKey}`}
-              size="sm"
-              onPress={action.onPress}>
-              {action.label}
-            </Button>
-          )}
-        </div>
+      {!isCollapsed && (
+        <TopicCardFooter
+          action={action}
+          isLoading={isLoading}
+          meta={meta}
+          topicKey={topicKey}
+        />
       )}
     </section>
   );

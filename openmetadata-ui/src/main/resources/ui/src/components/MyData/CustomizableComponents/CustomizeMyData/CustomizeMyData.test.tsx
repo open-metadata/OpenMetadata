@@ -210,14 +210,23 @@ describe('CustomizeMyData component', () => {
     });
 
     expect(screen.getByText('KnowledgePanel.ActivityFeed')).toBeInTheDocument();
-    expect(screen.getByText('KnowledgePanel.Following')).toBeInTheDocument();
-    expect(
-      screen.getByText('KnowledgePanel.RecentlyViewed')
-    ).toBeInTheDocument();
     expect(screen.queryByText('KnowledgePanel.Announcements')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+  });
+
+  // The editor must read the saved layout exactly as the home page does.
+  // Following and RecentlyViewed were retired: the home page drops them, and
+  // the widget renderer answers with a render-nothing component, so leaving
+  // them in the editor's grid would reserve cells that draw as blank gaps.
+  it('CustomizeMyData should drop widgets the page can no longer render', async () => {
+    await act(async () => {
+      render(<CustomizeMyData {...mockProps} />);
+    });
+
+    expect(screen.queryByText('KnowledgePanel.Following')).toBeNull();
+    expect(screen.queryByText('KnowledgePanel.RecentlyViewed')).toBeNull();
   });
 
   it('should call onSaveLayout on reset', async () => {

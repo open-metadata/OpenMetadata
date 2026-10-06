@@ -11,35 +11,24 @@
  *  limitations under the License.
  */
 
-import MyTaskImg from '../assets/img/my-task-widget.png';
-import ActivityFeedImg from '../assets/img/widgets/activity-feed-widget.png';
 import KnowledgeCenterWidgetImg from '../assets/img/widgets/context-center-widget.png';
-import CuratedAssetsImg from '../assets/img/widgets/curated-assets.png';
-import DataAssetsImg from '../assets/img/widgets/data-assets-widget.png';
-import DataProductsImg from '../assets/img/widgets/data-products-widget.png';
-import DomainsImg from '../assets/img/widgets/domains-widget.png';
-import FollowingImg from '../assets/img/widgets/following-widget.png';
-import KPIImg from '../assets/img/widgets/kpi-widget.png';
-import MyDataImg from '../assets/img/widgets/my-data-widget.png';
-import TotalAssetsImg from '../assets/img/widgets/total-assets-widget.png';
-import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 
 // Widget preview screenshots are only needed inside customize/add-widget flows.
 // Keeping them out of CustomizeMyDataPageClassBase avoids preloading these
 // image modules when /my-data only needs layout defaults.
+/**
+ * Landing-page widgets deliberately have no entry here.
+ *
+ * Every screenshot this table used to carry was taken of a widget the topic
+ * cards replaced — `activity-feed-widget.png` is the old feed, not the Team
+ * Activity card now on `KnowledgePanel.ActivityFeed` — so the picker was
+ * showing a confident picture of the wrong thing. A missing entry resolves to
+ * `''`, which WidgetCard renders as an empty tile rather than a broken image,
+ * and the card still carries its name and description. Add the replacement
+ * screenshots here, one line each, when they land.
+ */
 const WIDGET_IMAGE_BY_KEY: ReadonlyArray<[string, string]> = [
-  [LandingPageWidgetKeys.ACTIVITY_FEED, ActivityFeedImg],
-  [LandingPageWidgetKeys.DATA_ASSETS, DataAssetsImg],
-  [LandingPageWidgetKeys.DATA_PRODUCTS, DataProductsImg],
-  [LandingPageWidgetKeys.MY_DATA, MyDataImg],
-  [LandingPageWidgetKeys.KPI, KPIImg],
-  [LandingPageWidgetKeys.TOTAL_DATA_ASSETS, TotalAssetsImg],
-  [LandingPageWidgetKeys.FOLLOWING, FollowingImg],
-  [LandingPageWidgetKeys.CURATED_ASSETS, CuratedAssetsImg],
-  [LandingPageWidgetKeys.MY_TASK, MyTaskImg],
-  [LandingPageWidgetKeys.DOMAINS, DomainsImg],
-  [LandingPageWidgetKeys.KNOWLEDGE_CENTER, KnowledgeCenterWidgetImg],
   [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE, KnowledgeCenterWidgetImg],
 ];
 

@@ -30,6 +30,8 @@ export interface DataProductSummary {
   domainName?: string;
   ownerName?: string;
   assetCount: number;
+  /** Only ever compared, never formatted — so the epoch unit does not matter. */
+  updatedAt: number;
 }
 
 export interface DataProductsOverview {
@@ -51,6 +53,7 @@ interface SearchHit {
     assets?: unknown[];
     domains?: Array<{ displayName?: string; name?: string }>;
     owners?: Array<{ displayName?: string; name?: string }>;
+    updatedAt?: number;
   };
 }
 
@@ -84,6 +87,7 @@ export const useDataProducts = (): DataProductsOverview => {
     id: source.id,
     name: source.displayName || source.name,
     ownerName: firstName(source.owners),
+    updatedAt: source.updatedAt ?? 0,
   }));
 
   const domains = new Set(

@@ -12,17 +12,23 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { Assets } from '@openmetadata/ui-core-components/icons';
+import { Assets, Calendar } from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../../constants/constants';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ConnectorBreakdown from '../Common/TopicWidget/ConnectorBreakdown';
+import FilterButton from '../Common/TopicWidget/FilterButton';
 import CoverageStat from '../Common/TopicWidget/CoverageStat';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
-import { useDataEstate } from '../../../../hooks/useDataEstate';
+import {
+  DATA_ESTATE_WINDOW_DAYS,
+  DATA_ESTATE_WINDOW_OPTIONS,
+  useDataEstate,
+} from '../../../../hooks/useDataEstate';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 
 const TONE = {
   icon: Assets,
@@ -39,6 +45,11 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  // Coverage is an AI-mode block: the design pairs the figure with an agent's
+  // read on why it moved, and without that sentence it is a bare percentage
+  // with no action attached. Classic mode gets the estate's size and shape.
+  const isAiMode = useIsAiMode();
+  const [windowDays, setWindowDays] = useState<number>(DATA_ESTATE_WINDOW_DAYS);
   const {
     totalAssets,
     totalDelta,
@@ -48,7 +59,7 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
     descriptionCoverageSeries,
     isLoading,
     isError,
-  } = useDataEstate();
+  } = useDataEstate({ windowDays });
 
   // Intl rather than a hardcoded format so grouping separators follow the
   // user's locale, not en-US.
@@ -65,19 +76,40 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
     [i18n.language]
   );
 
+  const assetsAcrossConnectors = t('message.count-assets-across-connectors', {
+    connectors: connectors.length,
+    count: compactFormat.format(totalAssets),
+  });
+
   const summary = isError
     ? t('message.something-went-wrong')
-    : t('message.count-assets-across-connectors', {
-        connectors: connectors.length,
-        count: compactFormat.format(totalAssets),
-      });
+    : assetsAcrossConnectors;
 
-  const deltaLabel =
-    totalDelta === null || totalDelta === 0
-      ? undefined
-      : t('label.this-week', {
-          defaultValue: 'This week',
-        });
+  // Derived in a callback rather than inline in the JSX: each is a small chain
+  // of conditions, and together they put the component over the complexity
+  // ceiling.
+  const windowOptions = useMemo(
+    () =>
+      DATA_ESTATE_WINDOW_OPTIONS.map((days) => ({
+        label: t('label.last-count-days', { count: days }),
+        value: String(days),
+      })),
+    [t]
+  );
+
+  const status = useMemo(() => {
+    if (totalDelta === null || totalDelta === 0) {
+      return undefined;
+    }
+
+    const sign = totalDelta > 0 ? '+' : '';
+    const label = t('label.this-week', { defaultValue: 'This week' });
+
+    return {
+      color: 'blue' as const,
+      label: `${sign}${totalDelta} ${label.toLowerCase()}`,
+    };
+  }, [totalDelta, t]);
 
   return (
     <TopicCard
@@ -87,43 +119,39 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
-      meta={
-        isLoading || isError
-          ? undefined
-          : t('message.count-assets-across-connectors', {
-              connectors: connectors.length,
-              count: compactFormat.format(totalAssets),
-            })
-      }
-      status={
-        deltaLabel
-          ? {
-              color: 'blue',
-              label: `${
-                totalDelta && totalDelta > 0 ? '+' : ''
-              }${totalDelta} ${deltaLabel.toLowerCase()}`,
-            }
-          : undefined
-      }
+      isLoading={isLoading}
+      meta={isError ? undefined : assetsAcrossConnectors}
+      status={status}
       summary={summary}
       title={t('label.your-data-estate')}
       tone={TONE}
       topicKey={TopicKey.DATA_ESTATE}
       widgetKey={widgetKey}>
-      <div className="tw:flex tw:flex-col tw:gap-1">
-        {/* `!` on the colours: Typography renders `.prose`, whose unlayered
-          `color` rule is emitted after the Tailwind utilities and would
-          otherwise silently win. */}
-        <Typography className="tw:text-text-tertiary!" size="text-sm">
-          {t('label.total-assets')}
-        </Typography>
-        <Typography
-          className="tw:text-text-primary!"
-          data-testid="data-estate-total"
-          size="text-xl"
-          weight="semibold">
-          {numberFormat.format(totalAssets)}
-        </Typography>
+      <div className="tw:flex tw:items-start tw:justify-between tw:gap-3">
+        <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1">
+          {/* `!` on the colours: Typography renders `.prose`, whose unlayered
+            `color` rule is emitted after the Tailwind utilities and would
+            otherwise silently win. */}
+          <Typography className="tw:text-text-tertiary!" size="text-sm">
+            {t('label.total-assets')}
+          </Typography>
+          <Typography
+            className="tw:text-text-primary!"
+            data-testid="data-estate-total"
+            size="text-xl"
+            weight="semibold">
+            {numberFormat.format(totalAssets)}
+          </Typography>
+        </div>
+
+        <FilterButton
+          iconLeading={Calendar}
+          label={t('label.range')}
+          options={windowOptions}
+          testId="data-estate-window-filter"
+          value={String(windowDays)}
+          onChange={(next) => setWindowDays(Number(next))}
+        />
       </div>
 
       <ConnectorBreakdown
@@ -132,7 +160,7 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
         format={(value) => numberFormat.format(value)}
       />
 
-      {descriptionCoverage !== null && (
+      {isAiMode && descriptionCoverage !== null && (
         <CoverageStat
           className="tw:mt-5"
           dataTestId="description-coverage"

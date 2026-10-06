@@ -66,7 +66,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const currentUser = useApplicationStore((state) => state.currentUser);
-  const { data, isError } = useQuery<ActivityEvent[]>({
+  const { data, isError, isPending } = useQuery<ActivityEvent[]>({
     queryFn: fetchTeamActivity,
     queryKey: TEAM_ACTIVITY_QUERY_KEY,
     staleTime: TEAM_ACTIVITY_TTL_MS,
@@ -103,6 +103,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isLoading={isPending}
       meta={
         count > 0
           ? t('message.count-updates-in-domains-you-own', { count })

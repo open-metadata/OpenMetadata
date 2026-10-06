@@ -70,12 +70,22 @@ const WidgetCard = ({
       data-testid={widget.fullyQualifiedName}
       onClick={handleClick}>
       <div className="widget-card-content d-flex justify-between items-center flex-1">
-        <img
-          alt={widget.name}
-          className="h-full w-full"
-          data-testid="widget-image"
-          src={widgetImage}
-        />
+        {/* An empty src resolves against the page URL, so the browser paints a
+          broken-image icon rather than nothing. Widgets added without a preview
+          screenshot keep an empty tile instead. */}
+        {widgetImage ? (
+          <img
+            alt={widget.name}
+            className="h-full w-full"
+            data-testid="widget-image"
+            src={widgetImage}
+          />
+        ) : (
+          <div
+            className="h-full w-full"
+            data-testid="widget-image-placeholder"
+          />
+        )}
         {isSelected && (
           <div className="check-box bg-white border-radius-sm p-sm d-flex items-center justify-center">
             <Icon className="check-icon" component={CheckIcon} />
@@ -84,7 +94,7 @@ const WidgetCard = ({
       </div>
       <div className="p-t-md p-x-sm">
         <Typography className="text-sm font-medium">
-          {startCase(widget.name)}
+          {widget.displayName ?? startCase(widget.name)}
         </Typography>
         <Typography
           as="p"

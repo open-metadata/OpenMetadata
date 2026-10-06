@@ -52,7 +52,7 @@ describe('CoverageStat', () => {
   // Guards the regression this file shipped with: `series` was used in the JSX
   // but never imported or destructured, which only blew up once this branch
   // actually rendered.
-  it('draws the trend behind the value when given a series', () => {
+  it('draws the trend beside the value when given a series', () => {
     render(
       <CoverageStat
         dataTestId={TEST_ID}

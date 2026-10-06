@@ -40,9 +40,8 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const currentUser = useApplicationStore((state) => state.currentUser);
-  const { owned, followed, changedCount, isError } = useOwnedAndFollowed(
-    currentUser?.id
-  );
+  const { owned, followed, changedCount, isError, isLoading } =
+    useOwnedAndFollowed(currentUser?.id);
 
   const summary = isError
     ? t('message.something-went-wrong')
@@ -58,6 +57,7 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isLoading={isLoading}
       meta={t('message.count-owned-and-followed', {
         followed: followed.length,
         owned: owned.length,

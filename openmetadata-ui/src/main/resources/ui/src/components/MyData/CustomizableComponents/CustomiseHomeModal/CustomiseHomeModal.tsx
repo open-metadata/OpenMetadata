@@ -28,6 +28,7 @@ import {
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { isAvailableMyDataWidgetKey } from '../../../../utils/CustomizeMyDataPageWidgetUtils';
 import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -72,15 +73,18 @@ const CustomiseHomeModal = ({
       });
       const excludedWidgetFqns =
         customizeMyDataPageClassBase.getExcludedWidgetFqns();
+      // An allowlist off the widget registry, not a denylist of known-bad FQNs.
+      // docStore holds every KnowledgePanel ever seeded — retired widgets, this
+      // edition's widgets on an install of the other one — and a denylist has to
+      // name each one as it appears. Anything it misses is offered to the user
+      // and then renders as a blank cell, because the renderer resolves an
+      // unknown key to a render-nothing component.
       setWidgets(
-        data.filter(
-          (widget) =>
-            ![
-              LandingPageWidgetKeys.RECENTLY_VIEWED,
-              LandingPageWidgetKeys.PIPELINE,
-              LandingPageWidgetKeys.ANNOUNCEMENTS,
-            ].includes(widget.fullyQualifiedName as LandingPageWidgetKeys) &&
-            !excludedWidgetFqns.includes(widget.fullyQualifiedName ?? '')
+        data.filter((widget) =>
+          isAvailableMyDataWidgetKey(
+            widget.fullyQualifiedName ?? '',
+            excludedWidgetFqns
+          )
         )
       );
     } catch (error) {
@@ -184,7 +188,16 @@ const CustomiseHomeModal = ({
       ...(!onHomePage
         ? widgets.map((widget) => ({
             key: widget.fullyQualifiedName,
-            label: widget.name,
+            // `displayName` is what the seed doc calls the widget today; `name`
+            // is its stable key and lags a rename. The widget on
+            // `KnowledgePanel.ActivityFeed` is "Team Activity" now, so reading
+            // `name` would label the new card after the one it replaced.
+            //
+            // Cased here rather than at the render site: `startCase` is what
+            // turns the key-ish `name` into words, but it would also split an
+            // already-written displayName on its capitals — "KPIs" renders as
+            // "KP Is".
+            label: widget.displayName ?? startCase(widget.name ?? ''),
             id: widget.id,
           }))
         : []),
@@ -232,7 +245,7 @@ const CustomiseHomeModal = ({
               onKeyDown={handleKeyboardActivation(() =>
                 handleSidebarClick(item.key)
               )}>
-              <span>{startCase(item.label)}</span>
+              <span>{item.label}</span>
               {isAllWidgetsTab && (
                 <span className="widget-count text-xs border-radius-md m-l-sm">
                   {widgets.length}

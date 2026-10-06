@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import { DataHealthScore } from '@openmetadata/ui-core-components/icons';
 import { HEALTH_PARAM } from '../../../../components/integration/ConnectionsPage/ConnectionsPage.constants';
 import { EntityTabs } from '../../../../enums/entity.enum';
@@ -179,6 +180,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isLoading={isLoading}
       meta={
         lastRunTs
           ? t('message.updated-relative', { time: getRelativeTime(lastRunTs) })
@@ -208,6 +210,19 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
             />
           ))}
         </ul>
+      )}
+
+      {failingServices.length > MAX_VISIBLE_ROWS && (
+        <Button
+          className="tw:mt-3 tw:self-start tw:px-0"
+          color="link-color"
+          data-testid="view-all-failing-services"
+          size="sm"
+          onPress={() => goToHealth('failing')}>
+          {t('message.view-all-count-failing-services', {
+            count: failingServices.length,
+          })}
+        </Button>
       )}
 
       {PlatformHealthInsight && (

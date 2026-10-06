@@ -22,10 +22,14 @@ import { WidgetCommonProps } from '../../../../interface/customization.interface
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import FilterButton from '../Common/TopicWidget/FilterButton';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
-import { useDataProducts } from '../../../../hooks/useDataProducts';
+import {
+  DataProductSummary,
+  useDataProducts,
+} from '../../../../hooks/useDataProducts';
 
 /** Bucket filters over the products already fetched — no extra request. */
 const PRODUCT_FILTERS = {
@@ -33,6 +37,33 @@ const PRODUCT_FILTERS = {
   EMPTY: 'empty',
   NO_OWNER: 'noOwner',
 } as const;
+
+/** Sorts over the products already fetched — no extra request. */
+const PRODUCT_SORTS = {
+  MOST_ASSETS: 'mostAssets',
+  RECENTLY_UPDATED: 'recentlyUpdated',
+  NEEDS_ATTENTION: 'needsAttention',
+  ALPHABETICAL: 'alphabetical',
+} as const;
+
+/**
+ * How badly a product wants looking at: an unowned product and an empty one are
+ * each one problem, and a product that is both outranks either.
+ */
+const attentionScore = (product: DataProductSummary): number =>
+  (product.ownerName ? 0 : 1) + (product.assetCount === 0 ? 1 : 0);
+
+const BY_SORT: Record<
+  string,
+  (a: DataProductSummary, b: DataProductSummary) => number
+> = {
+  [PRODUCT_SORTS.MOST_ASSETS]: (a, b) => b.assetCount - a.assetCount,
+  [PRODUCT_SORTS.RECENTLY_UPDATED]: (a, b) => b.updatedAt - a.updatedAt,
+  // Alphabetical second, so an unowned-and-empty block keeps a stable reading order.
+  [PRODUCT_SORTS.NEEDS_ATTENTION]: (a, b) =>
+    attentionScore(b) - attentionScore(a) || a.name.localeCompare(b.name),
+  [PRODUCT_SORTS.ALPHABETICAL]: (a, b) => a.name.localeCompare(b.name),
+};
 
 const PRODUCTS_LABEL_KEY = 'label.data-product-plural';
 const NO_OWNER_LABEL_KEY = 'label.no-owner';
@@ -59,19 +90,45 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
     emptyCount,
     domainCount,
     isError,
+    isLoading,
   } = useDataProducts();
   const [filter, setFilter] = useState<string>(PRODUCT_FILTERS.ALL);
+  const [sort, setSort] = useState<string>(PRODUCT_SORTS.MOST_ASSETS);
+
+  const sortOptions = useMemo(
+    () => [
+      { label: t('label.most-assets'), value: PRODUCT_SORTS.MOST_ASSETS },
+      {
+        label: t('label.recently-updated'),
+        value: PRODUCT_SORTS.RECENTLY_UPDATED,
+      },
+      {
+        label: t('label.needs-attention'),
+        value: PRODUCT_SORTS.NEEDS_ATTENTION,
+      },
+      { label: t('label.a-z'), value: PRODUCT_SORTS.ALPHABETICAL },
+    ],
+    [t]
+  );
 
   const visibleProducts = useMemo(() => {
-    if (filter === PRODUCT_FILTERS.NO_OWNER) {
-      return products.filter((product) => !product.ownerName);
-    }
-    if (filter === PRODUCT_FILTERS.EMPTY) {
-      return products.filter((product) => product.assetCount === 0);
-    }
+    const matches = (product: DataProductSummary) => {
+      if (filter === PRODUCT_FILTERS.NO_OWNER) {
+        return !product.ownerName;
+      }
+      if (filter === PRODUCT_FILTERS.EMPTY) {
+        return product.assetCount === 0;
+      }
 
-    return products;
-  }, [products, filter]);
+      return true;
+    };
+
+    // `filter` hands back a fresh array, so sorting it in place is safe —
+    // `products` itself must never be sorted, it is the hook's own result.
+    return products
+      .filter(matches)
+      .sort(BY_SORT[sort] ?? BY_SORT[PRODUCT_SORTS.MOST_ASSETS]);
+  }, [products, filter, sort]);
 
   const summary = isError
     ? t('message.something-went-wrong')
@@ -88,6 +145,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isLoading={isLoading}
       meta={t('message.count-products', { count: totalCount })}
       status={{
         color: 'gray',
@@ -106,31 +164,40 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
         </Typography>
       ) : (
         <>
-          <TopicFilterChips
-            chips={[
-              {
-                count: totalCount,
-                id: PRODUCT_FILTERS.ALL,
-                label: t('label.all'),
-                tone: 'brand',
-              },
-              {
-                count: unownedCount,
-                id: PRODUCT_FILTERS.NO_OWNER,
-                label: t(NO_OWNER_LABEL_KEY),
-                tone: 'warning',
-              },
-              {
-                count: emptyCount,
-                id: PRODUCT_FILTERS.EMPTY,
-                label: t('label.empty'),
-                tone: 'muted',
-              },
-            ]}
-            label={t(PRODUCTS_LABEL_KEY)}
-            value={filter}
-            onChange={setFilter}
-          />
+          <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2">
+            <TopicFilterChips
+              chips={[
+                {
+                  count: totalCount,
+                  id: PRODUCT_FILTERS.ALL,
+                  label: t('label.all'),
+                  tone: 'brand',
+                },
+                {
+                  count: unownedCount,
+                  id: PRODUCT_FILTERS.NO_OWNER,
+                  label: t(NO_OWNER_LABEL_KEY),
+                  tone: 'warning',
+                },
+                {
+                  count: emptyCount,
+                  id: PRODUCT_FILTERS.EMPTY,
+                  label: t('label.empty'),
+                  tone: 'muted',
+                },
+              ]}
+              label={t(PRODUCTS_LABEL_KEY)}
+              value={filter}
+              onChange={setFilter}
+            />
+            <FilterButton
+              label={t('label.sort-by')}
+              options={sortOptions}
+              testId="data-product-sort-filter"
+              value={sort}
+              onChange={setSort}
+            />
+          </div>
 
           <ul
             className="tw:mt-3 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"

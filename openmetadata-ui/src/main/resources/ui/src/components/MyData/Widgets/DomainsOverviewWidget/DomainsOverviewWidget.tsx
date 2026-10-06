@@ -48,7 +48,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { domains, totalCount, unownedCount, emptyCount, isError } =
+  const { domains, totalCount, unownedCount, emptyCount, isError, isLoading } =
     useDomainOverview();
   const [filter, setFilter] = useState<string>(DOMAIN_FILTERS.ALL);
 
@@ -80,6 +80,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isLoading={isLoading}
       meta={
         remaining > 0
           ? t('message.count-more-domains', { count: remaining })

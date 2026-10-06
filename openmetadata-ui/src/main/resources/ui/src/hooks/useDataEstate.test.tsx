@@ -127,6 +127,102 @@ describe('useDataEstate', () => {
     expect(result.current.descriptionCoverageSeries).toHaveLength(2);
   });
 
+  it('weights the per-entity-type percentages instead of summing them', async () => {
+    // The real chart reports one percentage per entity type. Summing them put
+    // "240%" on the card; an unweighted mean would read 33% here, letting the
+    // two assets nobody described outvote the eight hundred that are.
+    mockGetCharts.mockResolvedValue(
+      chartsResponse(
+        [
+          { count: 800, day: DAY_TWO, group: 'table' },
+          { count: 100, day: DAY_TWO, group: 'database' },
+          { count: 100, day: DAY_TWO, group: 'databaseSchema' },
+        ],
+        [
+          { count: 100, day: DAY_TWO, group: 'table' },
+          { count: 0, day: DAY_TWO, group: 'database' },
+          { count: 0, day: DAY_TWO, group: 'databaseSchema' },
+        ]
+      )
+    );
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.descriptionCoverage).toBeCloseTo(80);
+  });
+
+  it('falls back to the plain mean when the totals chart carries no weight', async () => {
+    // A group the totals chart does not report, so there is nothing to weight
+    // by. Better an unweighted average than dropping the day entirely.
+    mockGetCharts.mockResolvedValue(
+      chartsResponse(
+        [],
+        [
+          { count: 40, day: DAY_TWO, group: 'table' },
+          { count: 60, day: DAY_TWO, group: 'database' },
+        ]
+      )
+    );
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.descriptionCoverage).toBeCloseTo(50);
+  });
+
+  it('never reports a coverage above 100 percent', async () => {
+    mockGetCharts.mockResolvedValue(
+      chartsResponse(
+        [
+          { count: 1, day: DAY_TWO, group: 'table' },
+          { count: 1, day: DAY_TWO, group: 'database' },
+          { count: 1, day: DAY_TWO, group: 'databaseSchema' },
+        ],
+        [
+          { count: 100, day: DAY_TWO, group: 'table' },
+          { count: 100, day: DAY_TWO, group: 'database' },
+          { count: 100, day: DAY_TWO, group: 'databaseSchema' },
+        ]
+      )
+    );
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.descriptionCoverage).toBeCloseTo(100);
+  });
+
+  it('keeps the derived arrays referentially stable across re-renders', async () => {
+    mockGetCharts.mockResolvedValue(
+      chartsResponse(
+        [
+          { count: 100, day: DAY_TWO, group: 'Snowflake' },
+          { count: 250, day: DAY_TWO, group: 'Redshift' },
+        ],
+        [{ count: 23, day: DAY_TWO, group: '' }]
+      )
+    );
+
+    const { result, rerender } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const settled = result.current;
+    rerender();
+
+    // The bar chart replaces its series whenever the option identity changes,
+    // which replays the entry animation. A re-render with unchanged query data
+    // must not hand it new arrays.
+    expect(result.current.connectors).toBe(settled.connectors);
+    expect(result.current.descriptionCoverageSeries).toBe(
+      settled.descriptionCoverageSeries
+    );
+  });
+
   it('surfaces a failed fetch instead of reporting an empty estate', async () => {
     mockGetCharts.mockRejectedValue(new Error('network'));
 

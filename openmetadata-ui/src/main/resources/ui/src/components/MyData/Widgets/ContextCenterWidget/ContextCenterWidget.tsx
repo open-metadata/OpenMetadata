@@ -70,7 +70,7 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
   const currentUser = useApplicationStore((state) => state.currentUser);
   const userId = currentUser?.id;
 
-  const { data, isError } = useQuery<KnowledgePage[]>({
+  const { data, isError, isPending } = useQuery<KnowledgePage[]>({
     enabled: Boolean(userId),
     queryFn: () => fetchKnowledgePages(userId ?? ''),
     queryKey: [...CONTEXT_CENTER_QUERY_KEY, userId],
@@ -96,6 +96,7 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isLoading={isPending}
       meta={t('message.count-new-articles-this-week', { count: newCount })}
       status={
         // Nothing new is worth saying out loud — it is the reassuring case.

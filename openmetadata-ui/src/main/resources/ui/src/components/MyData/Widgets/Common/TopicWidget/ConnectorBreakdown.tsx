@@ -57,31 +57,35 @@ const ConnectorBreakdown: React.FC<ConnectorBreakdownProps> = ({
         segments={segments}
       />
 
+      {/* Cased in CSS, not in the string: a locale whose script has no case
+        must not be handed a pre-uppercased translation. */}
       <Typography
-        className="tw:mt-3 tw:block tw:text-text-tertiary!"
+        className="tw:mt-3 tw:block tw:uppercase tw:tracking-wide tw:text-text-tertiary!"
         size="text-xs"
         weight="semibold">
         {t('label.by-connector')}
       </Typography>
 
-      <ul className="tw:mt-2 tw:grid tw:grid-cols-2 tw:gap-x-4 tw:gap-y-1.5 tw:@lg:grid-cols-3">
+      {/* Wrapping flex, not a grid. A grid gives every entry the widest
+        entry's column, so a short name and a long count sit metres apart and
+        the row count is fixed by the breakpoint rather than by what fits. The
+        design packs entries at their natural width and lets them wrap, which
+        is why its rows hold two, then two, then three. */}
+      <ul className="tw:mt-2 tw:flex tw:flex-wrap tw:gap-x-[18px] tw:gap-y-2.5">
         {segments.map((segment) => (
           <li
-            className="tw:flex tw:min-w-0 tw:items-center tw:gap-2"
+            className="tw:inline-flex tw:max-w-full tw:items-center tw:gap-1.5"
             key={segment.key}>
             <span
               aria-hidden
               className="tw:size-2 tw:shrink-0 tw:rounded-xs"
               style={{ backgroundColor: segment.color }}
             />
-            <Typography
-              className="tw:min-w-0 tw:text-text-secondary!"
-              ellipsis={{ rows: 1 }}
-              size="text-sm">
+            <Typography className="tw:text-text-secondary!" size="text-sm">
               {segment.name}
             </Typography>
             <Typography
-              className="tw:ml-auto tw:shrink-0 tw:text-text-primary!"
+              className="tw:shrink-0 tw:text-text-primary!"
               size="text-sm"
               weight="medium">
               {format(segment.value)}

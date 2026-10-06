@@ -329,3 +329,66 @@ WHERE name IN (
 UPDATE user_entity
 SET json = JSON_SET(json, '$.email', LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email'))))
 WHERE BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')) <> LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')));
+
+-- Landing-page widgets: re-point the five panels whose widget was replaced, and drop the five
+-- whose widget was retired.
+--
+-- The seed loader (EntityRepository.initializeEntity) only inserts rows it cannot find -- it
+-- returns early on an existing fullyQualifiedName and never updates or deletes. So the new seed
+-- files reach a fresh install and nothing else: on an upgrade the four added panels appear, the
+-- rewritten ones keep the name and description of the widget they replaced, and the retired ones
+-- linger. KnowledgePanel.ActivityFeed renders the Team Activity card now, so without this the
+-- picker advertises it as "Activity Feed" and describes a feed that is no longer there.
+--
+-- Values mirror json/data/document/docs/*.json exactly, so an upgraded install ends up byte-equal
+-- to a fresh one. gridSizes is set on its own path rather than by replacing `data` wholesale, so
+-- the statement means the same thing as its Postgres counterpart. Re-runnable: every statement is
+-- an absolute write or a delete that matches nothing on a second pass.
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'Team Activity',
+    '$.description', 'Recent activity across the assets and domains the user owns, showing who changed what and when.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'ActivityFeed' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.description', 'A filtered list of high-impact assets. Ships with a certified Tier-1 rule and can be pointed at any saved filter from the persona editor.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'CuratedAssets' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.description', 'Data products across the platform with their owning domain, for quicker access to high-value products.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'DataProducts' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.description', 'Domain-by-domain overview of owner, description coverage, and failing tests, so a gap is visible without opening each one.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'Domains' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'KPIs',
+    '$.description', 'Progress against each active KPI: target, current pace, and whether it is on track to land by its end date.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'KPI' AND entityType = 'KnowledgePanel';
+
+-- Retired: their seed files are gone and no component resolves their key, so the renderer would
+-- answer with a render-nothing component and leave an empty cell. The UI already filters them out
+-- of both the grid and the picker; this stops the rows accumulating.
+DELETE FROM doc_store
+WHERE entityType = 'KnowledgePanel'
+  AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');

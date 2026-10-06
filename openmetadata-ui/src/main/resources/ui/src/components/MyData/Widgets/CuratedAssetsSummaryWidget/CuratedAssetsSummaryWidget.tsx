@@ -59,7 +59,7 @@ const CuratedAssetsSummaryWidget: React.FC<CuratedAssetsSummaryWidgetProps> = ({
   const hasSavedFilter = Boolean(source.queryFilter);
   const savedTitle = widgetConfig?.config?.title as string | undefined;
 
-  const { assets, totalCount, isError } = useCuratedAssets(source);
+  const { assets, totalCount, isError, isLoading } = useCuratedAssets(source);
 
   // Chips describe the built-in rule only; a saved advanced filter is arbitrary
   // JSON that cannot be rendered back as `<field> is <value>` clauses.
@@ -77,6 +77,7 @@ const CuratedAssetsSummaryWidget: React.FC<CuratedAssetsSummaryWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isLoading={isLoading}
       meta={
         remaining > 0
           ? t('message.count-more-assets-match-rule', { count: remaining })

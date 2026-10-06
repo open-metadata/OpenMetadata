@@ -53,7 +53,7 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
   const navigate = useNavigate();
   const currentUser = useApplicationStore((state) => state.currentUser);
   const [filters, setFilters] = useState(DEFAULT_DATA_QUALITY_FILTERS);
-  const { passed, failed, aborted, total, failedTests, isError } =
+  const { passed, failed, aborted, total, failedTests, isError, isLoading } =
     useDataQualitySummary(filters, currentUser?.name);
 
   const scopeOptions = useMemo(
@@ -97,6 +97,7 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isLoading={isLoading}
       meta={
         failedTests.length < failed
           ? t('message.count-more-assets-match-rule', {

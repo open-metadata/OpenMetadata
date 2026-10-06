@@ -12,17 +12,24 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { RankingDetails } from '@openmetadata/ui-core-components/icons';
+import {
+  Calendar,
+  RankingDetails,
+} from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../../constants/constants';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import FilterButton from '../Common/TopicWidget/FilterButton';
 import KpiProgressRow from '../Common/TopicWidget/KpiProgressRow';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
 import {
+  KPI_ALL_TIME,
   KPI_WINDOW_DAYS,
+  KPI_WINDOW_OPTIONS,
+  KpiWindow,
   useKpiProgress,
 } from '../../../../hooks/useKpiProgress';
 
@@ -41,7 +48,20 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { kpis, atRiskCount, isError } = useKpiProgress();
+  const [range, setRange] = useState<KpiWindow>(KPI_WINDOW_DAYS);
+  const { kpis, atRiskCount, isError, isLoading } = useKpiProgress(range);
+
+  const windowOptions = useMemo(
+    () =>
+      KPI_WINDOW_OPTIONS.map((option) => ({
+        label:
+          option === KPI_ALL_TIME
+            ? t('label.all-time')
+            : t('label.last-count-days', { count: option }),
+        value: String(option),
+      })),
+    [t]
+  );
 
   const summary = isError
     ? t('message.something-went-wrong')
@@ -55,7 +75,7 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
-      meta={t('label.last-count-days', { count: KPI_WINDOW_DAYS })}
+      isLoading={isLoading}
       status={
         atRiskCount > 0
           ? {
@@ -76,13 +96,27 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
           {t('message.no-kpis-yet')}
         </Typography>
       ) : (
-        <ul
-          className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
-          data-testid="kpi-rows">
-          {kpis.map((kpi) => (
-            <KpiProgressRow key={kpi.id} kpi={kpi} />
-          ))}
-        </ul>
+        <>
+          <div className="tw:mb-3 tw:flex tw:justify-end">
+            <FilterButton
+              iconLeading={Calendar}
+              label={t('label.range')}
+              options={windowOptions}
+              testId="kpi-window-filter"
+              value={String(range)}
+              onChange={(next) =>
+                setRange(next === KPI_ALL_TIME ? KPI_ALL_TIME : Number(next))
+              }
+            />
+          </div>
+          <ul
+            className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+            data-testid="kpi-rows">
+            {kpis.map((kpi) => (
+              <KpiProgressRow key={kpi.id} kpi={kpi} />
+            ))}
+          </ul>
+        </>
       )}
     </TopicCard>
   );

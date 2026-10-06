@@ -40,6 +40,7 @@ import {
 } from '../../../../utils/CustomizableLandingPagePureUtils';
 import { getWidgetFromKey } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { normalizeLandingPageLayout } from '../../../../utils/CustomizeMyDataPageWidgetUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -64,10 +65,23 @@ function CustomizeMyData({
 
   const defaultLayout = customizeMyDataPageClassBase.defaultLayout;
 
-  const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    getLandingPageLayoutWithEmptyWidgetPlaceholder(
-      (initialPageData?.layout as WidgetConfig[]) ?? defaultLayout
-    )
+  // The editor has to read the persona's layout exactly as HomeLandingPage
+  // does, or it offers an arrangement the home page will not render: retired
+  // and excluded widgets resolve to render-nothing components and leave holes,
+  // and an `x` saved against a wider grid strands the column it vacated.
+  const normalizedLayout = useMemo(
+    () =>
+      normalizeLandingPageLayout(
+        initialPageData?.layout as WidgetConfig[] | undefined,
+        defaultLayout,
+        customizeMyDataPageClassBase.getExcludedWidgetFqns(),
+        customizeMyDataPageClassBase.landingPageMaxGridSize
+      ),
+    [initialPageData?.layout, defaultLayout]
+  );
+
+  const [layout, setLayout] = useState<Array<WidgetConfig>>(() =>
+    getLandingPageLayoutWithEmptyWidgetPlaceholder(normalizedLayout)
   );
 
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
@@ -208,8 +222,14 @@ function CustomizeMyData({
   };
 
   const handleReset = useCallback(async () => {
-    const newMainPanelLayout =
-      getLandingPageLayoutWithEmptyWidgetPlaceholder(defaultLayout);
+    const newMainPanelLayout = getLandingPageLayoutWithEmptyWidgetPlaceholder(
+      normalizeLandingPageLayout(
+        undefined,
+        defaultLayout,
+        customizeMyDataPageClassBase.getExcludedWidgetFqns(),
+        customizeMyDataPageClassBase.landingPageMaxGridSize
+      )
+    );
     setLayout(newMainPanelLayout);
     await handleBackgroundColorUpdate();
     await onSaveLayout();

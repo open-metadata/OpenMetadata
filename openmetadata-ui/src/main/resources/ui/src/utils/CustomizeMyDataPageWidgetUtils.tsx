@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import { lazy, type ComponentType } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
-import type { WidgetCommonProps } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type {
+  WidgetCommonProps,
+  WidgetConfig,
+} from '../pages/CustomizablePage/CustomizablePage.interface';
+import { reflowLayoutToGrid } from './CustomizableLandingPagePureUtils';
+
+/** Every landing widget occupies exactly one grid column. */
+const LANDING_PAGE_WIDGET_COLUMN_SPAN = 1;
 
 // This registry is intentionally isolated from the layout class base. The
 // class base is imported for sizing/defaults on /my-data, while widget chunks
@@ -118,6 +126,15 @@ const WIDGET_KEY_PREFIX_MAP: Array<
 ];
 
 /**
+ * Every landing-page widget key this build resolves to a component, in default
+ * layout order. Exported so a caller can assert the whole set instead of
+ * re-deriving it, which is what makes adding or retiring a widget a visible,
+ * deliberate change rather than a silent one.
+ */
+export const MY_DATA_WIDGET_KEYS: readonly LandingPageWidgetKeys[] =
+  WIDGET_KEY_PREFIX_MAP.map(([widgetKey]) => widgetKey);
+
+/**
  * Whether a saved layout entry still names a widget this build can render.
  *
  * Persona layouts outlive the widgets in them: a doc saved before a widget was
@@ -126,6 +143,23 @@ const WIDGET_KEY_PREFIX_MAP: Array<
  */
 export const isKnownMyDataWidgetKey = (widgetKey: string): boolean =>
   WIDGET_KEY_PREFIX_MAP.some(([prefix]) => widgetKey.startsWith(prefix));
+
+/**
+ * Whether a landing-page widget may appear on the page at all — both in the
+ * grid and in the Add Widgets picker.
+ *
+ * The picker and the renderer have to answer this the same way. A key the
+ * picker offers but the renderer cannot resolve becomes a blank grid cell, and
+ * a key the renderer accepts but the picker withholds is a widget nobody can
+ * add back once it is removed. Sharing one predicate is what keeps the offered
+ * set and the renderable set equal.
+ */
+export const isAvailableMyDataWidgetKey = (
+  widgetKey: string,
+  excludedWidgetFqns: string[]
+): boolean =>
+  isKnownMyDataWidgetKey(widgetKey) &&
+  !excludedWidgetFqns.some((fqn) => widgetKey.startsWith(fqn));
 
 export const getMyDataWidgetFromKey = (
   widgetKey: string
@@ -137,4 +171,41 @@ export const getMyDataWidgetFromKey = (
   return (
     matchedWidget?.[1] ?? ((() => null) as ComponentType<WidgetCommonProps>)
   );
+};
+
+/**
+ * The read path for a persona's landing layout, shared by the home page and by
+ * the customize page that edits it.
+ *
+ * A saved layout outlives the build that wrote it. It names widgets that have
+ * since been retired or excluded, carries `w` from when a column was a third of
+ * the row rather than half, and carries `x` from when the grid was three
+ * columns wide. None of those read as an error: a retired key resolves to a
+ * render-nothing component and leaves a hole, a stale `w` of 2 is no longer
+ * two-thirds but the whole row, and an `x` past the last column is pushed onto
+ * a row of its own, stranding the space it vacated. Both call sites must
+ * correct them identically or the editor shows an arrangement the home page
+ * will not render.
+ */
+export const normalizeLandingPageLayout = (
+  savedLayout: WidgetConfig[] | undefined,
+  defaultLayout: WidgetConfig[],
+  excludedWidgetFqns: string[],
+  cols: number
+): WidgetConfig[] => {
+  const filtered = (savedLayout ?? [])
+    .filter((widget) =>
+      isAvailableMyDataWidgetKey(widget.i, excludedWidgetFqns)
+    )
+    // One column each, rather than `getConstrainedWidgetWidth`'s upper bound.
+    // The landing grid exposes no width control -- CustomiseHomeModal adds at
+    // width 1 and both grids are `isResizable={false}` -- so any other width is
+    // stale state from the three-column era that nothing in the UI can undo,
+    // and at two columns a `w` of 2 spans the whole row. Revisit this line if a
+    // size control comes back.
+    .map((widget) => ({ ...widget, w: LANDING_PAGE_WIDGET_COLUMN_SPAN }));
+
+  // Re-packed whichever source it came from: a default a subclass positioned
+  // itself can overflow the grid just as a saved layout can.
+  return reflowLayoutToGrid(isEmpty(filtered) ? defaultLayout : filtered, cols);
 };
