@@ -13,9 +13,9 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import { searchQuery } from '../rest/searchAPI';
 import React from 'react';
 import { queryClient } from '../queryClient';
+import { searchQuery } from '../rest/searchAPI';
 import {
   buildCuratedQueryFilter,
   DEFAULT_CURATED_RULE,

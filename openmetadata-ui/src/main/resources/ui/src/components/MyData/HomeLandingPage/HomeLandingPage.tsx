@@ -17,7 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import type { ReactNode } from 'react';
-import { lazy, useMemo, useState } from 'react';
+import { lazy, useMemo } from 'react';
 import type { ReactGridLayoutProps } from 'react-grid-layout';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
@@ -25,30 +25,24 @@ import { useNavigate } from 'react-router-dom';
 import { PageType } from '../../../generated/system/ui/page';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
+import type { WidgetConfig } from '../../../interface/customization.interface';
 import {
   docStoreQueryFn,
   docStoreQueryKey,
-  PERSONA_DOC_STALE_TIME,
   personaDocFqn,
+  PERSONA_DOC_STALE_TIME,
 } from '../../../rest/queries/docStoreQuery';
 import customizeMyDataPageClassBase from '../../../utils/CustomizeMyDataPageClassBase';
 import { normalizeLandingPageLayout } from '../../../utils/CustomizeMyDataPageWidgetUtils';
 import { getPersonaPage } from '../../../utils/CustomizePage/PersonaPage.utils';
-import { getCustomizePagePath } from '../../../utils/GlobalSettingsUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import type { WidgetConfig } from '../../../interface/customization.interface';
-import { TopicCollapseContext } from '../Widgets/Common/TopicWidget/TopicCollapseContext';
+import { getCustomizePagePath } from '../../../utils/GlobalSettingsUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DeferredWidget from '../../common/DeferredWidget/DeferredWidget.component';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
-import HomeLandingPageSkeleton from './HomeLandingPageSkeleton';
+import { TopicCollapseContext } from '../Widgets/Common/TopicWidget/TopicCollapseContext';
 import AnnouncementsRail from './AnnouncementsRail';
-import NeedsYouNowSection from './NeedsYouNow/NeedsYouNowSection';
-import {
-  PLACEHOLDER_NEEDS_YOU_NOW,
-  PLACEHOLDER_SYSTEM_ALERT,
-} from './NeedsYouNow/needsYouNowPlaceholderData';
-import SystemAlertBanner from './SystemAlertBanner';
+import HomeLandingPageSkeleton from './HomeLandingPageSkeleton';
 import TopicsSectionHeader from './TopicsSectionHeader';
 import { useTopicsView } from './useTopicsView';
 
@@ -93,7 +87,6 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser, selectedPersona } = useApplicationStore();
-  const [isSystemAlertDismissed, setIsSystemAlertDismissed] = useState(false);
 
   const personaFqn = personaDocFqn(selectedPersona);
   const { data: docData, isPending: isDocPending } = useQuery({
@@ -134,7 +127,10 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
   const widgets = useMemo(
     () =>
       displayLayout.map((widget) => (
-        <div data-grid={widget} key={widget.i}>
+        // The grid instance key is the handle every landing-page test reaches
+        // for. The widgets used to carry it individually; now that they share
+        // one shell it belongs on the cell that holds them.
+        <div data-grid={widget} data-testid={widget.i} key={widget.i}>
           <DeferredWidget
             data-testid={`deferred-widget-${widget.i}`}
             minHeight={widgetHeight(widget.h)}>
@@ -159,55 +155,52 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
   return (
     <div className="tw:relative tw:h-full tw:overflow-hidden">
       <PageLayout className="tw:p-0!" scroll="page">
-        {isSystemAlertDismissed ? (
-          <PageLayout.PageHeader
-            actions={
-              selectedPersona?.fullyQualifiedName ? (
-                <Button
-                  color="secondary"
-                  data-testid="customize-home-page"
-                  iconLeading={Settings01}
-                  size="sm"
-                  onPress={() =>
-                    navigate(
-                      getCustomizePagePath(
-                        selectedPersona.fullyQualifiedName as string,
-                        PageType.LandingPage
-                      )
+        <PageLayout.PageHeader
+          actions={
+            selectedPersona?.fullyQualifiedName ? (
+              <Button
+                color="secondary"
+                data-testid="customize-home-page"
+                iconLeading={Settings01}
+                size="sm"
+                onPress={() =>
+                  navigate(
+                    getCustomizePagePath(
+                      selectedPersona.fullyQualifiedName as string,
+                      PageType.LandingPage
                     )
-                  }>
-                  {t('label.customize')}
-                </Button>
-              ) : undefined
-            }
-            className="tw:m-2 tw:mb-0! tw:border-0"
-            density="comfortable"
-            icon={
-              currentUser?.name ? (
-                <ProfilePicture
-                  displayName={displayName}
-                  name={currentUser.name}
-                  width="42"
-                />
-              ) : null
-            }
-            subtitle={t('message.home-landing-page-subtitle')}
-            title={greeting}
-            variant="gradient"
-          />
-        ) : (
-          <PageLayout.Header className="tw:p-2 tw:pb-0">
-            <SystemAlertBanner
-              alert={PLACEHOLDER_SYSTEM_ALERT}
-              onDismiss={() => setIsSystemAlertDismissed(true)}
-            />
-          </PageLayout.Header>
-        )}
+                  )
+                }>
+                {t('label.customize')}
+              </Button>
+            ) : undefined
+          }
+          className="tw:m-2 tw:mb-0! tw:border-0"
+          density="comfortable"
+          icon={
+            currentUser?.name ? (
+              <ProfilePicture
+                displayName={displayName}
+                name={currentUser.name}
+                width="42"
+              />
+            ) : null
+          }
+          subtitle={t('message.home-landing-page-subtitle')}
+          title={greeting}
+          variant="gradient"
+        />
 
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
           <div className="tw:flex tw:flex-col tw:gap-14 tw:px-4 tw:pt-8">
             <AnnouncementsRail />
-            <NeedsYouNowSection items={PLACEHOLDER_NEEDS_YOU_NOW} />
+
+            {/* `SystemAlertBanner` and `NeedsYouNowSection` are built but not
+              mounted. Both are prototype-only: the alert feed and the ranked
+              cross-domain inbox have no API behind them, and their stand-in
+              content is an invented security incident and an invented approval
+              queue. Rendering that to every user states something false about
+              their deployment. Mount them when the endpoints land. */}
 
             <section data-testid="topics-to-catch-up-on">
               <TopicsSectionHeader

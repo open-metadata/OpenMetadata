@@ -16,22 +16,22 @@ import {
   Calendar,
   RankingDetails,
 } from '@openmetadata/ui-core-components/icons';
-import { ROUTES } from '../../../../constants/constants';
-import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../../constants/constants';
+import {
+  KpiWindow,
+  KPI_ALL_TIME,
+  KPI_WINDOW_DAYS,
+  KPI_WINDOW_OPTIONS,
+  useKpiProgress,
+} from '../../../../hooks/useKpiProgress';
+import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import KpiProgressRow from '../Common/TopicWidget/KpiProgressRow';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
-import {
-  KPI_ALL_TIME,
-  KPI_WINDOW_DAYS,
-  KPI_WINDOW_OPTIONS,
-  KpiWindow,
-  useKpiProgress,
-} from '../../../../hooks/useKpiProgress';
 
 const TONE = {
   icon: RankingDetails,

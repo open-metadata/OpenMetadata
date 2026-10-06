@@ -18,13 +18,21 @@ import {
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
+// The default landing layout, in DEFAULT_LANDING_PAGE_LAYOUT order. MyData,
+// DataAssets, TotalAssets, Following and MyTask are gone: the topic cards
+// replaced them, and `getExcludedWidgetFqns` keeps their keys out of both the
+// grid and the Add Widgets picker, so waiting on one now waits forever.
 const DEFAULT_LANDING_PAGE_WIDGETS = [
+  'KnowledgePanel.PlatformHealth',
+  'KnowledgePanel.DataEstate',
   'KnowledgePanel.ActivityFeed',
-  'KnowledgePanel.DataAssets',
-  'KnowledgePanel.MyData',
+  'KnowledgePanel.YoursAndFollowed',
+  'KnowledgePanel.KnowledgeCenter',
+  'KnowledgePanel.CuratedAssets',
+  'KnowledgePanel.DataQuality',
+  'KnowledgePanel.Domains',
+  'KnowledgePanel.DataProducts',
   'KnowledgePanel.KPI',
-  'KnowledgePanel.TotalAssets',
-  'KnowledgePanel.Following',
 ];
 
 export const CURATED_ASSETS_WIDGET_KEY = 'KnowledgePanel.CuratedAssets';

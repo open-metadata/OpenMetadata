@@ -12,12 +12,12 @@
  */
 
 import { Badge, Typography } from '@openmetadata/ui-core-components';
-import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
-import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TrackedAsset } from '../../../../../hooks/useOwnedAndFollowed';
+import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 
 export interface TrackedAssetListProps {
   title: string;

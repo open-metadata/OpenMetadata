@@ -12,13 +12,13 @@
  */
 
 import classNames from 'classnames';
+import React from 'react';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import React from 'react';
 
 export interface UserChipProps {
   /**

@@ -13,20 +13,20 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
+import React from 'react';
 import {
   PipelineState,
   PipelineType,
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { queryClient } from '../../../../queryClient';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import React from 'react';
-import { queryClient } from '../../../../queryClient';
-import { useIngestionPipelineStats } from './useIngestionPipelineStats';
 import {
   createRouteActivationStore,
   RouteActivationProvider,
   RouteActivationStore,
 } from '../../../platform/ai-shell/context/RouteActivationContext';
+import { useIngestionPipelineStats } from './useIngestionPipelineStats';
 
 jest.mock(
   '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline',

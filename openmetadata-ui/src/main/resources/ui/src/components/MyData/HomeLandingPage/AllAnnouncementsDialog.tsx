@@ -18,15 +18,15 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { useQuery } from '@tanstack/react-query';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
+import { useQuery } from '@tanstack/react-query';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import Loader from '../../../components/common/Loader/Loader';
 import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
-import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import AnnouncementCard from './AnnouncementCard';
 import { compareAnnouncements } from './announcementLifecycle';
 

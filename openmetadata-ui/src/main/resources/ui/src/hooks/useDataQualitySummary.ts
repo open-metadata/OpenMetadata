@@ -13,8 +13,7 @@
 
 import { useQueries } from '@tanstack/react-query';
 import { SORT_ORDER } from '../enums/common.enum';
-import { TestCase } from '../generated/tests/testCase';
-import { TestCaseStatus } from '../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../generated/tests/testCase';
 import { getListTestCaseBySearch } from '../rest/testAPI';
 import {
   DataQualityFilters,

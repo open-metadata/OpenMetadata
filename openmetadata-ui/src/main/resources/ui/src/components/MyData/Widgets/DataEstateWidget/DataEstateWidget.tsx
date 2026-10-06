@@ -13,22 +13,22 @@
 
 import { Typography } from '@openmetadata/ui-core-components';
 import { Assets, Calendar } from '@openmetadata/ui-core-components/icons';
-import { ROUTES } from '../../../../constants/constants';
-import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ConnectorBreakdown from '../Common/TopicWidget/ConnectorBreakdown';
-import FilterButton from '../Common/TopicWidget/FilterButton';
-import CoverageStat from '../Common/TopicWidget/CoverageStat';
-import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import { ROUTES } from '../../../../constants/constants';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   DATA_ESTATE_WINDOW_DAYS,
   DATA_ESTATE_WINDOW_OPTIONS,
   useDataEstate,
 } from '../../../../hooks/useDataEstate';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
+import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import ConnectorBreakdown from '../Common/TopicWidget/ConnectorBreakdown';
+import CoverageStat from '../Common/TopicWidget/CoverageStat';
+import FilterButton from '../Common/TopicWidget/FilterButton';
+import TopicCard from '../Common/TopicWidget/TopicCard';
+import { TopicKey } from '../Common/TopicWidget/topics.types';
 
 const TONE = {
   icon: Assets,

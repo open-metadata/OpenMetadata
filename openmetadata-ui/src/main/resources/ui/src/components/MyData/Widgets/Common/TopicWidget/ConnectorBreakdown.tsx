@@ -15,8 +15,8 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { getSeriesColor } from '@openmetadata/ui-core-components/charts';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import ShareBar, { ShareSegment } from './ShareBar';
 import { ConnectorCount } from '../../../../../hooks/useDataEstate';
+import ShareBar, { ShareSegment } from './ShareBar';
 
 export interface ConnectorBreakdownProps {
   connectors: ConnectorCount[];

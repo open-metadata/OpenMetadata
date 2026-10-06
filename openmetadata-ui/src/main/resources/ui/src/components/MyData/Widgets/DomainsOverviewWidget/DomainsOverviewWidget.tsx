@@ -13,16 +13,16 @@
 
 import { Badge, Typography } from '@openmetadata/ui-core-components';
 import { Globe01 as Domain } from '@openmetadata/ui-core-components/icons';
-import { ROUTES } from '../../../../constants/constants';
-import { getDomainPath } from '../../../../utils/RouterUtils';
-import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../../constants/constants';
+import { useDomainOverview } from '../../../../hooks/useDomainOverview';
+import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { getDomainPath } from '../../../../utils/RouterUtils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
-import { useDomainOverview } from '../../../../hooks/useDomainOverview';
 
 /** Bucket filters over the domains already fetched — no extra request. */
 const DOMAIN_FILTERS = {

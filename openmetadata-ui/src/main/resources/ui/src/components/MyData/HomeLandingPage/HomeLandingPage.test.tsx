@@ -59,11 +59,14 @@ jest.mock('../../common/DeferredWidget/DeferredWidget.component', () => ({
   default: jest.fn().mockImplementation(({ children }) => <>{children}</>),
 }));
 
+// Prefixed rather than bare: the grid cell itself now carries the layout key as
+// its testid -- the handle the Playwright suites reach for -- so a bare one here
+// would resolve to two elements.
 jest.mock('../LandingPageWidgetRenderer/LandingPageWidgetRenderer', () => {
   return jest
     .fn()
     .mockImplementation(({ widgetConfig }) => (
-      <div data-testid={widgetConfig.i}>{widgetConfig.i}</div>
+      <div data-testid={`rendered-${widgetConfig.i}`}>{widgetConfig.i}</div>
     ));
 });
 
@@ -125,7 +128,28 @@ describe('HomeLandingPage', () => {
 
     expect(await screen.findByTestId('react-grid-layout')).toBeInTheDocument();
     expect(screen.getByTestId('announcements-rail')).toBeInTheDocument();
-    expect(screen.getByTestId('needs-you-now')).toBeInTheDocument();
+  });
+
+  // Both are built but deliberately not mounted: their stand-in content is an
+  // invented security incident and an invented approval queue, and there is no
+  // API behind either. Showing that to every user states something false about
+  // their deployment.
+  it('does not render the placeholder-backed alert banner or inbox', async () => {
+    renderHome();
+    await screen.findByTestId('react-grid-layout');
+
+    expect(screen.queryByTestId('needs-you-now')).toBeNull();
+    expect(screen.queryByTestId('system-alert-banner')).toBeNull();
+  });
+
+  // The banner used to gate it: the greeting and Customize only appeared once
+  // the alert was dismissed, and dismissal was never persisted.
+  it('always offers the Customize entry point', async () => {
+    renderHome();
+
+    expect(
+      await screen.findByTestId('customize-home-page')
+    ).toBeInTheDocument();
   });
 
   it('should show the skeleton while the persona layout is resolving', async () => {

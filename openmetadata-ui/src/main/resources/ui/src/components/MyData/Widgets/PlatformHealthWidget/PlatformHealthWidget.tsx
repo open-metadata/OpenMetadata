@@ -13,17 +13,17 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import { DataHealthScore } from '@openmetadata/ui-core-components/icons';
-import { HEALTH_PARAM } from '../../../../components/integration/ConnectionsPage/ConnectionsPage.constants';
-import { EntityTabs } from '../../../../enums/entity.enum';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
-import connectionsRouterClassBase from '../../../../utils/ConnectionsRouterClassBase';
-import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
-import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import type { TFunction } from 'i18next';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { HEALTH_PARAM } from '../../../../components/integration/ConnectionsPage/ConnectionsPage.constants';
+import { EntityTabs } from '../../../../enums/entity.enum';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import connectionsRouterClassBase from '../../../../utils/ConnectionsRouterClassBase';
+import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import FailingServiceRow from '../Common/TopicWidget/FailingServiceRow';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';

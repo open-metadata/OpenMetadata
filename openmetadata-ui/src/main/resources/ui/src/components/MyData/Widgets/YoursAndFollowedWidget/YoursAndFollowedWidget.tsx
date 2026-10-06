@@ -13,16 +13,16 @@
 
 import { Typography } from '@openmetadata/ui-core-components';
 import { Star01 as Follow } from '@openmetadata/ui-core-components/icons';
-import { ROUTES } from '../../../../constants/constants';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../../constants/constants';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useOwnedAndFollowed } from '../../../../hooks/useOwnedAndFollowed';
+import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
 import TrackedAssetList from '../Common/TopicWidget/TrackedAssetList';
-import { useOwnedAndFollowed } from '../../../../hooks/useOwnedAndFollowed';
 
 const TONE = {
   icon: Follow,

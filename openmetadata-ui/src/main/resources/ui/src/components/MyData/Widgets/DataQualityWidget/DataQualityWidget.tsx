@@ -12,26 +12,25 @@
  */
 
 import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
-import { DataQuality } from '@openmetadata/ui-core-components/icons';
-import { Calendar } from '@openmetadata/ui-core-components/icons';
-import { TestCaseType } from '../../../../enums/TestSuite.enum';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
-import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { Calendar, DataQuality } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { TestCaseType } from '../../../../enums/TestSuite.enum';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useDataQualitySummary } from '../../../../hooks/useDataQualitySummary';
+import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import {
   DataQualityRange,
   DataQualityScope,
   DEFAULT_DATA_QUALITY_FILTERS,
 } from '../../../../utils/dataQualityFilters';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import FilterButton from '../Common/TopicWidget/FilterButton';
 import TestStatusBar from '../Common/TopicWidget/TestStatusBar';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
-import { useDataQualitySummary } from '../../../../hooks/useDataQualitySummary';
-import FilterButton from '../Common/TopicWidget/FilterButton';
-import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 
 // The card is a digest; the footer link opens the full Data Quality view.
 const MAX_VISIBLE_ROWS = 4;

@@ -13,11 +13,11 @@
 
 import { Badge, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import Sparkline, { SparklineTone } from './Sparkline';
 import { KpiProgress, KpiStatus } from '../../../../../hooks/useKpiProgress';
+import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
+import Sparkline, { SparklineTone } from './Sparkline';
 
 const STATUS: Record<
   KpiStatus,

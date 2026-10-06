@@ -20,7 +20,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import UserChip from '../../common/UserChip/UserChip';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import {
   ANNOUNCEMENT_STATUS_COLORS,
@@ -37,9 +39,7 @@ import {
 } from '../../../utils/FeedUtilsPure';
 import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import UserChip from '../../common/UserChip/UserChip';
 import { getAnnouncementLifecycle } from './announcementLifecycle';
 
 export interface AnnouncementCardProps {

@@ -13,9 +13,9 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import { getListKpiResult, getListKPIs } from '../rest/KpiAPI';
 import React from 'react';
 import { queryClient } from '../queryClient';
+import { getListKpiResult, getListKPIs } from '../rest/KpiAPI';
 import {
   KPI_ALL_TIME,
   KPI_WINDOW_DAYS,

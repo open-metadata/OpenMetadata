@@ -16,6 +16,7 @@ import {
   SEARCH_INDEX_PATH_MAP,
   type SearchIndexPathMap,
 } from '../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseSearchBar.constants';
+import type { PlatformHealthInsightProps } from '../components/MyData/Widgets/PlatformHealthWidget/PlatformHealthWidget.interface';
 import {
   CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
   DEFAULT_LANDING_PAGE_LAYOUT,
@@ -29,7 +30,6 @@ import {
 } from '../constants/CustomizeMyDataPage.constants';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import type { SearchIndex } from '../enums/search.enum';
-import type { PlatformHealthInsightProps } from '../components/MyData/Widgets/PlatformHealthWidget/PlatformHealthWidget.interface';
 import type {
   WidgetCommonProps,
   WidgetConfig,

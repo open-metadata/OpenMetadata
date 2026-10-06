@@ -12,13 +12,13 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import {
+  KpiProgress,
   KPI_ALL_TIME,
   KPI_WINDOW_DAYS,
-  KpiProgress,
   useKpiProgress,
 } from '../../../../hooks/useKpiProgress';
-import KpiProgressWidget from './KpiProgressWidget';
 import { FilterButtonOption } from '../Common/TopicWidget/FilterButton';
+import KpiProgressWidget from './KpiProgressWidget';
 
 jest.mock('@openmetadata/ui-core-components/charts', () => ({
   AreaChart: () => <div data-testid="area-chart" />,

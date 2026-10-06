@@ -12,22 +12,21 @@
  */
 
 import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Sort } from '@openmetadata/ui-core-components/icons';
-import { Lock01 } from '@openmetadata/ui-core-components/icons';
-import { ROUTES } from '../../../../constants/constants';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
-import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { Lock01, Sort } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { DEFAULT_CURATED_RULE } from '../../../../utils/curatedRule';
-import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import { ROUTES } from '../../../../constants/constants';
 import {
   CuratedAssetsSource,
   useCuratedAssets,
 } from '../../../../hooks/useCuratedAssets';
+import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { DEFAULT_CURATED_RULE } from '../../../../utils/curatedRule';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import TopicCard from '../Common/TopicWidget/TopicCard';
+import { TopicKey } from '../Common/TopicWidget/topics.types';
 
 const TONE = {
   icon: Sort,

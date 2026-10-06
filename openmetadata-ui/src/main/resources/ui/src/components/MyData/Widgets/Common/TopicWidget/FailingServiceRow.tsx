@@ -12,9 +12,9 @@
  */
 
 import { Badge, Typography } from '@openmetadata/ui-core-components';
+import React from 'react';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
-import React from 'react';
 import { FailingService } from '../../PlatformHealthWidget/useIngestionPipelineStats';
 
 export interface FailingServiceRowProps {

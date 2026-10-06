@@ -14,17 +14,17 @@
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { File06 as Articles } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import { KnowledgePage } from '../../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../../rest/knowledgeCenterAPI';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { WidgetCommonProps } from '../../../../interface/customization.interface';
-import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
 

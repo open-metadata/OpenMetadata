@@ -22,7 +22,7 @@ import { CheckCircle, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { NEEDS_YOU_NOW_KINDS, NeedsYouNowItem } from './needsYouNow.types';
+import { NeedsYouNowItem, NEEDS_YOU_NOW_KINDS } from './needsYouNow.types';
 
 export interface NeedsYouNowItemCardProps {
   item: NeedsYouNowItem;

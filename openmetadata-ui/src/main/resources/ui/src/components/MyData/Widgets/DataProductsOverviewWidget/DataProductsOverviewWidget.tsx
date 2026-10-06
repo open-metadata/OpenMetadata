@@ -16,20 +16,20 @@ import {
   Cube01 as DataProduct,
   Globe01 as Domain,
 } from '@openmetadata/ui-core-components/icons';
-import { ROUTES } from '../../../../constants/constants';
-import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
-import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import FilterButton from '../Common/TopicWidget/FilterButton';
-import TopicCard from '../Common/TopicWidget/TopicCard';
-import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import { ROUTES } from '../../../../constants/constants';
 import {
   DataProductSummary,
   useDataProducts,
 } from '../../../../hooks/useDataProducts';
+import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
+import FilterButton from '../Common/TopicWidget/FilterButton';
+import TopicCard from '../Common/TopicWidget/TopicCard';
+import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
+import { TopicKey } from '../Common/TopicWidget/topics.types';
 
 /** Bucket filters over the products already fetched — no extra request. */
 const PRODUCT_FILTERS = {

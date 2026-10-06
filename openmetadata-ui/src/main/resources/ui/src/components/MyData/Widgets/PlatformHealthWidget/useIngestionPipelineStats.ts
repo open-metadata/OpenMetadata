@@ -12,10 +12,6 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ALL_SERVICES_SEARCH_INDEX,
-  ENTITY_TYPE_TO_CATEGORY,
-} from '../../../integration/ConnectionsPage/ConnectionsPage.constants';
 import { OPEN_METADATA } from '../../../../constants/Services.constant';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
@@ -27,6 +23,10 @@ import { ServicesType } from '../../../../interface/service.interface';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { invalidateQueriesWithoutInitialRace } from '../../../../utils/queryCacheUtils';
+import {
+  ALL_SERVICES_SEARCH_INDEX,
+  ENTITY_TYPE_TO_CATEGORY,
+} from '../../../integration/ConnectionsPage/ConnectionsPage.constants';
 import { useRouteActivation } from '../../../platform/ai-shell/context/useRouteActivation';
 
 // Lives here rather than alongside the Connections list, which no longer queries Elasticsearch at
@@ -290,8 +290,8 @@ const fetchAllIngestionPipelines = async (): Promise<IngestionPipeline[]> => {
 
   do {
     // Sequential by necessity: the next cursor is only known once the current
-    // page lands.
-    // eslint-disable-next-line no-await-in-loop
+    // page lands. This is cursor paging, not a request per item -- the
+    // iteration is over pages, and the page size is the batch.
     const response = await getIngestionPipelines({
       arrQueryFields: ['pipelineStatuses'],
       limit: PIPELINE_PAGE_SIZE,

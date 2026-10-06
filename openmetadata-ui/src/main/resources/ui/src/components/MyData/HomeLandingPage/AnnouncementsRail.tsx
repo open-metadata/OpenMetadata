@@ -22,10 +22,6 @@ import {
   ChevronRight,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  AnnouncementEntity,
-  getActiveAnnouncements,
-} from '../../../rest/announcementsAPI';
 import React, {
   useCallback,
   useLayoutEffect,
@@ -34,10 +30,14 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
+import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import AllAnnouncementsDialog from './AllAnnouncementsDialog';
 import AnnouncementCard from './AnnouncementCard';
-import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 
 export const ACTIVE_ANNOUNCEMENTS_QUERY_KEY = [
   'landingPage',

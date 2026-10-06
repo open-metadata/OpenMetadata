@@ -13,8 +13,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { useDataProducts } from '../../../../hooks/useDataProducts';
-import DataProductsOverviewWidget from './DataProductsOverviewWidget';
 import { FilterButtonOption } from '../Common/TopicWidget/FilterButton';
+import DataProductsOverviewWidget from './DataProductsOverviewWidget';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),

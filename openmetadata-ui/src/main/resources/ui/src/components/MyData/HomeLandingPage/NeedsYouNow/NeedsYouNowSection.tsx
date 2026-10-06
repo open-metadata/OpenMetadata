@@ -16,10 +16,10 @@ import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  NEEDS_YOU_NOW_KIND_ORDER,
-  NEEDS_YOU_NOW_KINDS,
   NeedsYouNowItem,
   NeedsYouNowKind,
+  NEEDS_YOU_NOW_KINDS,
+  NEEDS_YOU_NOW_KIND_ORDER,
 } from './needsYouNow.types';
 import NeedsYouNowItemCard from './NeedsYouNowItemCard';
 

@@ -13,14 +13,14 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
+import { queryClient } from '../../../queryClient';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
-import React from 'react';
-import { queryClient } from '../../../queryClient';
 import AnnouncementsRail from './AnnouncementsRail';
 
 jest.mock('react-router-dom', () => ({

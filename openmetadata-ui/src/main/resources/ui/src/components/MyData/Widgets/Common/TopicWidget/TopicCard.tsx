@@ -15,8 +15,8 @@ import { Skeleton, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
 import TopicCardControls from './TopicCardControls';
-import TopicCardHeader from './TopicCardHeader';
 import TopicCardFooter from './TopicCardFooter';
+import TopicCardHeader from './TopicCardHeader';
 import { useTopicCollapse } from './TopicCollapseContext';
 import {
   TopicAction,

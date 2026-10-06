@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { NeedsYouNowItem } from './needsYouNow.types';
 import { SystemAlert } from '../SystemAlertBanner';
+import { NeedsYouNowItem } from './needsYouNow.types';
 
 /**
  * Stand-in content for the two sections that have no backend yet. Both are

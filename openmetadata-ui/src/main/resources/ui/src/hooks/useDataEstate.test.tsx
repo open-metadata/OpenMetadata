@@ -13,10 +13,10 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import { SystemChartType } from '../enums/DataInsight.enum';
-import { getMultiChartsPreviewByName } from '../rest/DataInsightAPI';
 import React from 'react';
+import { SystemChartType } from '../enums/DataInsight.enum';
 import { queryClient } from '../queryClient';
+import { getMultiChartsPreviewByName } from '../rest/DataInsightAPI';
 import { useDataEstate } from './useDataEstate';
 
 jest.mock('../rest/DataInsightAPI', () => ({

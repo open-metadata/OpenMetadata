@@ -13,9 +13,9 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import { searchQuery } from '../rest/searchAPI';
 import React from 'react';
 import { queryClient } from '../queryClient';
+import { searchQuery } from '../rest/searchAPI';
 import { CHANGE_WINDOW_DAYS, useOwnedAndFollowed } from './useOwnedAndFollowed';
 
 jest.mock('../rest/searchAPI', () => ({
