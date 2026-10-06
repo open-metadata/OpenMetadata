@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +70,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
 import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
@@ -1780,16 +1782,21 @@ public class WorkflowHandler {
       return triggerProcessDefinitions(runtimeService, configuredTriggerKeys);
     }
 
-    // Legacy fallback: trigger all latest process definitions matching the workflow prefix.
-    List<ProcessDefinition> processDefinitions =
+    // Legacy fallback: trigger all latest process definitions matching the workflow prefix, except
+    // one an older deployment left for an entity type the trigger is now deployed without.
+    Set<String> excludedTriggerKeys = getExcludedTriggerProcessKeys(workflowName, baseProcessKey);
+    List<String> legacyTriggerKeys =
         repositoryService
             .createProcessDefinitionQuery()
             .processDefinitionKeyLike(baseProcessKey + "-%")
             .latestVersion()
-            .list();
-    if (!processDefinitions.isEmpty()) {
-      return triggerProcessDefinitions(
-          runtimeService, processDefinitions.stream().map(ProcessDefinition::getKey).toList());
+            .list()
+            .stream()
+            .map(ProcessDefinition::getKey)
+            .filter(processKey -> !excludedTriggerKeys.contains(processKey))
+            .toList();
+    if (!legacyTriggerKeys.isEmpty()) {
+      return triggerProcessDefinitions(runtimeService, legacyTriggerKeys);
     }
 
     // Fallback to original behavior for non-periodic trigger types.
@@ -1832,7 +1839,14 @@ public class WorkflowHandler {
         return List.of();
       }
 
-      List<String> configuredEntityTypes = getConfiguredEntityTypes(trigger);
+      // A Git-sink workflow's trigger is deployed without query; a process left from an older
+      // deployment for it is not started.
+      Set<String> excludedEntityTypes =
+          GitSinkEntityTypeRule.excludedTriggerEntityTypes(workflowDefinition);
+      List<String> configuredEntityTypes =
+          getConfiguredEntityTypes(trigger).stream()
+              .filter(entityType -> !excludedEntityTypes.contains(entityType))
+              .toList();
       if (configuredEntityTypes.isEmpty()) {
         return List.of();
       }
@@ -1859,6 +1873,33 @@ public class WorkflowHandler {
           e.getMessage());
       return List.of();
     }
+  }
+
+  /**
+   * Periodic trigger process keys of the entity types the workflow's trigger is deployed without,
+   * see {@link GitSinkEntityTypeRule#excludedTriggerEntityTypes}.
+   */
+  private Set<String> getExcludedTriggerProcessKeys(String workflowName, String baseProcessKey) {
+    Set<String> excludedKeys = Set.of();
+    try {
+      WorkflowDefinitionRepository repository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+      WorkflowDefinition workflowDefinition =
+          repository.getByName(
+              null, workflowName, repository.getFields("trigger"), Include.NON_DELETED, true);
+      excludedKeys =
+          GitSinkEntityTypeRule.excludedTriggerEntityTypes(workflowDefinition).stream()
+              .map(
+                  entityType ->
+                      PeriodicBatchEntityTrigger.getTriggerProcessKey(baseProcessKey, entityType))
+              .collect(Collectors.toUnmodifiableSet());
+    } catch (Exception e) {
+      LOG.warn(
+          "Unable to resolve excluded trigger process keys for workflow '{}': {}",
+          workflowName,
+          e.getMessage());
+    }
+    return excludedKeys;
   }
 
   @SuppressWarnings("unchecked")

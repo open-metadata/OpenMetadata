@@ -41,6 +41,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   buildEntityFieldGroups,
+  getTriggerDataAssets,
   validateWorkflowConfig,
   withExtensionPrefix,
 } from '../../../utils/WorkflowConfigUtils';
@@ -111,6 +112,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   workflowMetadata,
   onWorkflowMetadataUpdate,
   triggerFieldsConfig,
+  hasGitSinkNode = false,
 }) => {
   const {
     allowFullStartNodeConfiguration,
@@ -185,8 +187,12 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   // The trigger-fields registry's entity types are the ones a workflow can be defined on.
   const workflowEntityTypes = useMemo(
-    () => Object.keys(triggerFieldsConfig.entitySpecific),
-    [triggerFieldsConfig]
+    () =>
+      getTriggerDataAssets(
+        Object.keys(triggerFieldsConfig.entitySpecific),
+        hasGitSinkNode
+      ),
+    [triggerFieldsConfig, hasGitSinkNode]
   );
 
   // Group entity-specific fields under their entity type below the common fields

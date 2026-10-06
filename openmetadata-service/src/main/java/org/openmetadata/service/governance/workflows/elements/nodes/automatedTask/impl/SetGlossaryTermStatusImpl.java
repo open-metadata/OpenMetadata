@@ -7,6 +7,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import jakarta.json.JsonPatch;
+import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -29,20 +30,13 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class SetGlossaryTermStatusImpl implements JavaDelegate {
   private Expression statusExpr;
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
-                      RELATED_ENTITY_VARIABLE));
-      GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "", Include.ALL);
-
       String status = (String) statusExpr.getValue(execution);
       String user =
           Optional.ofNullable(
@@ -50,14 +44,34 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
                       varHandler.getNamespacedVariable(
                           inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
               .orElse("governance-bot");
-
-      setStatus(glossaryTerm, user, status);
+      Optional<List<String>> batch =
+          BatchEntities.read(batchExecutionExpr, execution, varHandler, inputNamespaces);
+      if (batch.isPresent()) {
+        BatchEntities.apply(
+                execution.getCurrentActivityId(),
+                batch.get(),
+                entityLink -> setStatus(entityLink, user, status))
+            .record(varHandler, inputNamespaces, batch.get());
+      } else {
+        setStatus(
+            (String)
+                varHandler.getNamespacedVariable(
+                    inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE),
+            user,
+            status);
+      }
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
+  }
+
+  private void setStatus(String entityLinkValue, String user, String status) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkValue);
+    GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "", Include.ALL);
+    setStatus(glossaryTerm, user, status);
   }
 
   private void setStatus(GlossaryTerm glossaryTerm, String user, String status) {

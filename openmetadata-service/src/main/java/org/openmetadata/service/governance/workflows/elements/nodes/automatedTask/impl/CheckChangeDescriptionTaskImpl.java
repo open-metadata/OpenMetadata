@@ -9,6 +9,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -31,25 +32,55 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
   private Expression conditionExpr;
   private Expression rulesExpr;
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
+  private Expression batchContinuingOutcomeExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-      String entityLinkStr =
-          (String)
-              varHandler.getNamespacedVariable(
-                  inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
-
-      boolean result = checkChangeDescription(execution, entityLinkStr);
-      varHandler.setNodeVariable(RESULT_VARIABLE, result);
+      Optional<List<String>> batch =
+          BatchEntities.read(batchExecutionExpr, execution, varHandler, inputNamespaces);
+      if (batch.isPresent()) {
+        checkBatch(execution, varHandler, inputNamespaces, batch.get());
+      } else {
+        checkRelatedEntity(execution, varHandler, inputNamespaces);
+      }
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
+  }
+
+  private void checkRelatedEntity(
+      DelegateExecution execution,
+      WorkflowVariableHandler varHandler,
+      InputNamespaces inputNamespaces) {
+    String entityLinkStr =
+        (String)
+            varHandler.getNamespacedVariable(
+                inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
+
+    boolean result = checkChangeDescription(execution, entityLinkStr);
+    varHandler.setNodeVariable(RESULT_VARIABLE, result);
+  }
+
+  private void checkBatch(
+      DelegateExecution execution,
+      WorkflowVariableHandler varHandler,
+      InputNamespaces inputNamespaces,
+      List<String> entityLinks) {
+    BatchEntities.ConditionOutcome outcome =
+        BatchEntities.evaluate(
+            execution.getCurrentActivityId(),
+            entityLinks,
+            BatchEntities.continuingOutcome(batchContinuingOutcomeExpr, execution),
+            entityLink -> checkChangeDescription(execution, entityLink));
+    outcome.record(varHandler, inputNamespaces, entityLinks);
+    varHandler.setNodeVariable(RESULT_VARIABLE, outcome.result());
   }
 
   private boolean checkChangeDescription(DelegateExecution execution, String entityLinkStr) {

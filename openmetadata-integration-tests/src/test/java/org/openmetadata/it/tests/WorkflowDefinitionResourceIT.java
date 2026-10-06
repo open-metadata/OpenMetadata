@@ -32,13 +32,16 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -157,6 +160,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.GitSinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -778,7 +782,7 @@ public class WorkflowDefinitionResourceIT {
     Entity.getJdbi()
         .useHandle(
             handle ->
-                WorkflowSinkSecretsMigration.encryptSinkSecrets(
+                WorkflowSinkSecretsMigration.migrateSinkWorkflows(
                     handle, connectionType(), () -> {}));
   }
 
@@ -1036,6 +1040,138 @@ public class WorkflowDefinitionResourceIT {
               processInstanceIds.forEach(this::assertNoRuntimeRowsRemain);
             });
     assertEquals(1, sink.subBatchesWritten(), "the sink stops before its next sub-batch");
+  }
+
+  /**
+   * A periodic batch whose condition matches only some tags of the batch. The workflow writes with
+   * a batch sink, so its main process runs once for the whole batch: the condition has to evaluate
+   * every tag of it, and the sink has to receive exactly the tags that matched, none of the others.
+   * The test registers a capturing provider under the {@code webhook} type, as the termination test
+   * does.
+   */
+  @Test
+  void test_batchSinkReceivesOnlyTheEntitiesItsConditionMatches() throws Exception {
+    SinkProviderRegistry registry = SinkProviderRegistry.getInstance();
+    assertFalse(
+        registry.isRegistered(BLOCKING_SINK_TYPE),
+        "the test replaces the %s sink provider and could not restore it"
+            .formatted(BLOCKING_SINK_TYPE));
+    CapturingSink sink = new CapturingSink();
+    registry.register(BLOCKING_SINK_TYPE, config -> sink);
+    try {
+      syncTagsThatMatchTheCondition(sink);
+    } finally {
+      registry.unregister(BLOCKING_SINK_TYPE);
+    }
+  }
+
+  private void syncTagsThatMatchTheCondition(CapturingSink sink) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    List<Tag> tags =
+        createClassificationWithTags(
+            client, "batchTag", List.of("silver", "gold", "bronze", "gold", "silver"));
+    String workflowName = periodicWorkflowName("tCond");
+    createPeriodicTagWorkflow(
+        client, workflowName, tags.getFirst().getClassification().getId(), GOLD_TAGS_TO_SINK_NODES);
+    client.workflowDefinitions().trigger(workflowName);
+
+    await("periodic batch to finish")
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    WorkflowInstance.WorkflowStatus.FINISHED.value(),
+                    onlyWorkflowInstance(client, workflowName).path("status").asText()));
+
+    Set<String> goldTags =
+        tags.stream()
+            .filter(tag -> "gold".equals(tag.getDescription()))
+            .map(Tag::getFullyQualifiedName)
+            .collect(Collectors.toSet());
+    assertEquals(2, goldTags.size());
+    assertEquals(goldTags, Set.copyOf(sink.writtenFqns()));
+    assertEquals(goldTags.size(), sink.writtenFqns().size(), "each tag is written once");
+  }
+
+  /** A batch-sink workflow holding an approval task, which waits on one entity, is refused. */
+  @Test
+  void test_batchSinkWorkflowWithAnApprovalTaskIsRejected() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = periodicWorkflowName("tRefuse");
+    CreateWorkflowDefinition request =
+        MAPPER.readValue(
+            PERIODIC_TAG_WORKFLOW.formatted(
+                workflowName, UUID.randomUUID(), APPROVAL_BEFORE_BATCH_SINK_NODES),
+            CreateWorkflowDefinition.class);
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> executeWorkflowRequest(client, HttpMethod.POST, BASE_PATH, request));
+
+    assertEquals(400, rejected.getStatusCode());
+    assertTrue(
+        rejected
+            .getMessage()
+            .contains(
+                "Workflow '%s' writes its entities with a batch sink, so it runs once per batch"
+                    .formatted(workflowName)),
+        rejected.getMessage());
+    assertTrue(
+        rejected
+            .getMessage()
+            .contains(
+                "node 'ApproveTag' (userApprovalTask) waits for a person to decide on one entity"),
+        rejected.getMessage());
+    assertTrue(
+        rejected.getMessage().contains("set batchMode to false on the sink"),
+        rejected.getMessage());
+  }
+
+  /**
+   * Query entities are not synced to a Git sink: a Git-sink workflow whose trigger lists queries is
+   * refused, and the same workflow over tables is created.
+   */
+  @Test
+  void test_gitSinkWorkflowTriggeredByQueriesIsRejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateWorkflowDefinition overQueries =
+        MAPPER.readValue(
+            GIT_SINK_WORKFLOW.formatted(ns.prefix("gitSinkQueries"), Entity.QUERY),
+            CreateWorkflowDefinition.class);
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> executeWorkflowRequest(client, HttpMethod.POST, BASE_PATH, overQueries));
+
+    assertEquals(400, rejected.getStatusCode());
+    assertTrue(
+        rejected.getMessage().contains(GitSinkEntityTypeRule.QUERY_IN_GIT_SINK_MESSAGE),
+        rejected.getMessage());
+
+    CreateWorkflowDefinition overTables =
+        MAPPER.readValue(
+            GIT_SINK_WORKFLOW.formatted(ns.prefix("gitSinkTables"), Entity.TABLE),
+            CreateWorkflowDefinition.class);
+    JsonNode created =
+        MAPPER.readTree(executeWorkflowRequest(client, HttpMethod.POST, BASE_PATH, overTables));
+    trackWorkflowFromJson(created);
+    assertEquals(overTables.getName(), created.get("name").asText());
+  }
+
+  private JsonNode onlyWorkflowInstance(OpenMetadataClient client, String workflowName)
+      throws IOException {
+    String instancesPath =
+        "/v1/governance/workflowInstances?workflowDefinitionName=%s&startTs=0&endTs=%d&limit=100"
+            .formatted(workflowName, System.currentTimeMillis());
+    JsonNode instances =
+        MAPPER
+            .readTree(executeWorkflowRequest(client, HttpMethod.GET, instancesPath, null))
+            .path("data");
+    assertEquals(1, instances.size(), instances::toString);
+    return instances.get(0);
   }
 
   @Test
@@ -3072,6 +3208,15 @@ public class WorkflowDefinitionResourceIT {
 
   private List<Tag> createClassificationWithTags(
       OpenMetadataClient client, String tagStem, int tagCount) {
+    return createClassificationWithTags(
+        client,
+        tagStem,
+        Collections.nCopies(tagCount, "Tag run through a periodic batch workflow"));
+  }
+
+  /** One tag per description, each carrying its description, in a classification of their own. */
+  private List<Tag> createClassificationWithTags(
+      OpenMetadataClient client, String tagStem, List<String> descriptions) {
     Classification classification =
         client
             .classifications()
@@ -3080,7 +3225,7 @@ public class WorkflowDefinitionResourceIT {
                     .withName(periodicWorkflowName("term"))
                     .withDescription("Classification for workflow instance termination"));
     List<Tag> tags = new ArrayList<>();
-    for (int i = 0; i < tagCount; i++) {
+    for (int i = 0; i < descriptions.size(); i++) {
       tags.add(
           client
               .tags()
@@ -3088,7 +3233,7 @@ public class WorkflowDefinitionResourceIT {
                   new CreateTag()
                       .withName("%s%d".formatted(tagStem, i))
                       .withClassification(classification.getFullyQualifiedName())
-                      .withDescription("Tag run through a periodic batch workflow")
+                      .withDescription(descriptions.get(i))
                       .withOwners(List.of(SharedEntities.get().USER1_REF))));
     }
     tags.forEach(
@@ -3112,6 +3257,46 @@ public class WorkflowDefinitionResourceIT {
     trackWorkflowFromJson(created);
     waitForWorkflowDeployment(client, workflowName);
   }
+
+  /** A never-scheduled periodic batch writing to a Git sink; takes the name and entity type. */
+  private static final String GIT_SINK_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "displayName": "Git Sink Entity Types",
+        "description": "Periodic batch writing to a Git sink",
+        "trigger": {
+          "type": "periodicBatchEntity",
+          "config": {
+            "entityTypes": ["%s"],
+            "schedule": {"scheduleTimeline": "None"},
+            "batchSize": 10,
+            "filters": "{}"
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+          {
+            "name": "gitSink",
+            "displayName": "Git Sink",
+            "type": "automatedTask",
+            "subType": "sinkTask",
+            "config": {
+              "sinkType": "git",
+              "sinkConfig": {
+                "repositoryUrl": "https://github.com/open-metadata/sink-entity-types-it.git",
+                "credentials": {"type": "token", "token": "ghp_itGitSinkEntityTypes"}
+              },
+              "batchMode": true
+            }
+          },
+          {"name": "end", "displayName": "End", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [{"from": "start", "to": "gitSink"}, {"from": "gitSink", "to": "end"}],
+        "config": {"storeStageStatus": false}
+      }
+      """;
 
   /** A periodic batch over the tags of one classification; {@code %s} takes nodes and edges. */
   private static final String PERIODIC_TAG_WORKFLOW =
@@ -3195,6 +3380,127 @@ public class WorkflowDefinitionResourceIT {
         {"from": "blockingSink", "to": "end"}
       ]"""
           .formatted(BLOCKING_SINK_TYPE);
+
+  /** Sends the tags described {@code gold} to a batch sink and ends the others. */
+  private static final String GOLD_TAGS_TO_SINK_NODES =
+      """
+      "nodes": [
+        {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+        {
+          "name": "isGold",
+          "displayName": "Is Gold",
+          "type": "automatedTask",
+          "subType": "checkEntityAttributesTask",
+          "config": {"rules": "{\\"==\\":[{\\"var\\":\\"description\\"},\\"gold\\"]}"},
+          "inputNamespaceMap": {"relatedEntity": "global"}
+        },
+        {
+          "name": "goldSink",
+          "displayName": "Gold Sink",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "%1$s",
+            "sinkConfig": {"endpoint": "http://127.0.0.1:9/unused"},
+            "batchMode": true
+          }
+        },
+        {"name": "end", "displayName": "End", "type": "endEvent", "subType": "endEvent"},
+        {"name": "notGold", "displayName": "Not Gold", "type": "endEvent", "subType": "endEvent"}
+      ],
+      "edges": [
+        {"from": "start", "to": "isGold"},
+        {"from": "isGold", "to": "goldSink", "condition": "true"},
+        {"from": "isGold", "to": "notGold", "condition": "false"},
+        {"from": "goldSink", "to": "end"}
+      ]"""
+          .formatted(BLOCKING_SINK_TYPE);
+
+  /** An approval task ahead of a batch sink: the approval would wait on one tag of the batch. */
+  private static final String APPROVAL_BEFORE_BATCH_SINK_NODES =
+      """
+      "nodes": [
+        {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+        {
+          "name": "ApproveTag",
+          "displayName": "Approve Tag",
+          "type": "userTask",
+          "subType": "userApprovalTask",
+          "config": {
+            "assignees": {"addReviewers": false, "addOwners": true, "candidates": []},
+            "approvalThreshold": 1,
+            "rejectionThreshold": 1,
+            "stageId": "review",
+            "stageDisplayName": "Review",
+            "taskStatus": "Open",
+            "transitionMetadata": [
+              {"id": "approve", "label": "Approve", "targetStageId": "approved", "targetTaskStatus": "Approved", "resolutionType": "Approved", "formRef": "approve", "requiresComment": false},
+              {"id": "reject", "label": "Reject", "targetStageId": "rejected", "targetTaskStatus": "Rejected", "resolutionType": "Rejected", "formRef": "reject", "requiresComment": true}
+            ]
+          },
+          "inputNamespaceMap": {"relatedEntity": "global"}
+        },
+        {
+          "name": "approvedSink",
+          "displayName": "Approved Sink",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "%1$s",
+            "sinkConfig": {"endpoint": "http://127.0.0.1:9/unused"},
+            "batchMode": true
+          }
+        },
+        {"name": "end", "displayName": "End", "type": "endEvent", "subType": "endEvent"},
+        {"name": "endRejected", "displayName": "End Rejected", "type": "endEvent", "subType": "endEvent"}
+      ],
+      "edges": [
+        {"from": "start", "to": "ApproveTag"},
+        {"from": "ApproveTag", "to": "approvedSink", "condition": "approve"},
+        {"from": "ApproveTag", "to": "endRejected", "condition": "reject"},
+        {"from": "approvedSink", "to": "end"}
+      ]"""
+          .formatted(BLOCKING_SINK_TYPE);
+
+  /** Records the fully qualified name of every entity the sink is asked to write. */
+  private static final class CapturingSink implements SinkProvider {
+    private final Queue<String> written = new ConcurrentLinkedQueue<>();
+
+    List<String> writtenFqns() {
+      return List.copyOf(written);
+    }
+
+    @Override
+    public String getSinkType() {
+      return BLOCKING_SINK_TYPE;
+    }
+
+    @Override
+    public SinkResult write(SinkContext context, EntityInterface entity) {
+      return writeBatch(context, List.of(entity));
+    }
+
+    @Override
+    public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+      List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+      written.addAll(fqns);
+      return SinkResult.builder()
+          .success(true)
+          .syncedCount(entities.size())
+          .syncedEntities(fqns)
+          .build();
+    }
+
+    @Override
+    public boolean supportsBatch() {
+      return true;
+    }
+
+    @Override
+    public void close() {
+      // Shared across the test's runs; nothing to release.
+    }
+  }
 
   /**
    * Writes one entity per sub-batch and blocks inside the first until released, so a job of the

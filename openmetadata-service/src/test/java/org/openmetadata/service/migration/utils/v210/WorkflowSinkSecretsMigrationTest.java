@@ -160,7 +160,7 @@ class WorkflowSinkSecretsMigrationTest {
         WorkflowSinkSecretsMigration.redeploySinkWorkflows(
             singlePage(List.of(encrypted, deleted, withoutSink)),
             initializations::incrementAndGet,
-            DEPLOYED_WITH_PLAINTEXT,
+            secrets(DEPLOYED_WITH_PLAINTEXT),
             recordDeploy());
 
     assertEquals(List.of("gitSinkWorkflow"), deployed);
@@ -186,7 +186,7 @@ class WorkflowSinkSecretsMigrationTest {
         WorkflowSinkSecretsMigration.redeploySinkWorkflows(
             singlePage(List.of(broken, healthy)),
             initializations::incrementAndGet,
-            DEPLOYED_WITH_PLAINTEXT,
+            secrets(DEPLOYED_WITH_PLAINTEXT),
             deployer);
 
     assertEquals(List.of("healthySink"), deployed);
@@ -209,7 +209,7 @@ class WorkflowSinkSecretsMigrationTest {
         WorkflowSinkSecretsMigration.redeploySinkWorkflows(
             singlePage(List.of(encrypted)),
             failingInitialization,
-            DEPLOYED_WITH_PLAINTEXT,
+            secrets(DEPLOYED_WITH_PLAINTEXT),
             recordDeploy());
 
     assertTrue(deployed.isEmpty());
@@ -227,7 +227,7 @@ class WorkflowSinkSecretsMigrationTest {
     WorkflowSinkSecretsMigration.redeploySinkWorkflows(
         singlePage(List.of(withoutSink)),
         initializations::incrementAndGet,
-        DEPLOYED_WITH_PLAINTEXT,
+        secrets(DEPLOYED_WITH_PLAINTEXT),
         recordDeploy());
 
     assertEquals(0, initializations.get());
@@ -252,7 +252,10 @@ class WorkflowSinkSecretsMigrationTest {
         };
 
     WorkflowSinkSecretsMigration.redeploySinkWorkflows(
-        pageAfter, initializations::incrementAndGet, DEPLOYED_WITH_PLAINTEXT, recordDeploy());
+        pageAfter,
+        initializations::incrementAndGet,
+        secrets(DEPLOYED_WITH_PLAINTEXT),
+        recordDeploy());
 
     assertEquals(rows.size(), deployed.size());
     assertEquals(1, initializations.get());
@@ -276,7 +279,7 @@ class WorkflowSinkSecretsMigrationTest {
         WorkflowSinkSecretsMigration.redeploySinkWorkflows(
             singlePage(List.of(encrypted, stillPlaintext)),
             initializations::incrementAndGet,
-            isDeployedWithPlaintext,
+            secrets(isDeployedWithPlaintext),
             recordDeploy());
 
     assertEquals(List.of("gitSinkWorkflow", "plaintextDeployed"), checked);
@@ -302,7 +305,7 @@ class WorkflowSinkSecretsMigrationTest {
         WorkflowSinkSecretsMigration.redeploySinkWorkflows(
             singlePage(List.of(unreadable, healthy)),
             initializations::incrementAndGet,
-            isDeployedWithPlaintext,
+            secrets(isDeployedWithPlaintext),
             recordDeploy());
 
     assertEquals(List.of("healthySink"), deployed);
@@ -345,6 +348,11 @@ class WorkflowSinkSecretsMigrationTest {
         .map(node -> new SinkTask(node, new WorkflowConfiguration()))
         .forEach(sinkTask -> sinkTask.addToWorkflow(model, process));
     return model;
+  }
+
+  private static List<RedeployReason> secrets(
+      Predicate<WorkflowDefinition> isDeployedWithPlaintext) {
+    return List.of(WorkflowSinkSecretsMigration.plaintextSecrets(isDeployedWithPlaintext));
   }
 
   private Consumer<WorkflowDefinition> recordDeploy() {

@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
+import { Node } from 'reactflow';
 import { EntityType } from '../enums/entity.enum';
+import { SinkType } from '../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
+import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../interface/workflow-builder-components.interface';
 import { t } from './i18next/LocalUtil';
@@ -247,3 +250,23 @@ export const buildEntityFieldGroups = (
       .map(([field, [entityType]]) => [field, entityType])
   );
 };
+
+/**
+ * Whether a builder node writes to a Git sink. The builder's sink form saves every sink as a Git
+ * sink, so a sink node not configured yet counts as one.
+ */
+export const isGitSinkNode = (node: Node): boolean =>
+  node.data?.subType === NodeSubType.SinkTask &&
+  (node.data?.config?.sinkType ?? SinkType.Git) === SinkType.Git;
+
+/**
+ * Entity types a workflow's trigger can be defined on. Query entities are not synced to a Git sink,
+ * so a workflow with one offers neither them nor an "All" that includes them.
+ */
+export const getTriggerDataAssets = (
+  entityTypes: string[],
+  hasGitSinkNode: boolean
+): string[] =>
+  hasGitSinkNode
+    ? entityTypes.filter((entityType) => entityType !== EntityType.QUERY)
+    : entityTypes;

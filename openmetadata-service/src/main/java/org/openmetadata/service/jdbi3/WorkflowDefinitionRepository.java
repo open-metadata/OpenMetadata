@@ -20,6 +20,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.workflows.BatchExecutionPlan;
+import org.openmetadata.service.governance.workflows.GitSinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -221,6 +223,28 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateConditionalTasks(workflowDefinition);
     // 6. Restrict the values interpolated into conditional-edge JUEL expressions
     validateEdgeConditions(workflowDefinition);
+    // 7. A workflow that runs once per batch handles every entity of the batch in each node
+    validateBatchExecution(workflowDefinition);
+    // 8. Query entities are not synced to a Git sink
+    validateGitSinkEntityTypes(workflowDefinition);
+  }
+
+  /** Checked on write only: a stored definition that fails it is still deployed and run. */
+  private void validateGitSinkEntityTypes(WorkflowDefinition workflowDefinition) {
+    if (GitSinkEntityTypeRule.syncsQueriesToGit(workflowDefinition)) {
+      throw BadRequestException.of(GitSinkEntityTypeRule.QUERY_IN_GIT_SINK_MESSAGE);
+    }
+  }
+
+  /**
+   * Checked on write only: a stored definition that fails it is still deployed, with its nodes
+   * reading only the first entity of each batch, as they did before batch execution existed.
+   */
+  private void validateBatchExecution(WorkflowDefinition workflowDefinition) {
+    BatchExecutionPlan plan = BatchExecutionPlan.of(workflowDefinition);
+    if (!plan.violations().isEmpty()) {
+      throw BadRequestException.of(plan.violationMessage());
+    }
   }
 
   private void validateEdgeConditions(WorkflowDefinition workflowDefinition) {

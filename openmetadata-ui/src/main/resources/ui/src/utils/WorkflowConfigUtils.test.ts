@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
+import { Node } from 'reactflow';
+import { EntityType } from '../enums/entity.enum';
+import { SinkType } from '../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
+import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import {
   buildEntityFieldGroups,
   buildFieldOptions,
   getFieldDisplayLabel,
+  getTriggerDataAssets,
+  isGitSinkNode,
 } from './WorkflowConfigUtils';
 
 describe('WorkflowConfigUtils.getFieldDisplayLabel', () => {
@@ -143,5 +149,58 @@ describe('buildEntityFieldGroups', () => {
 
   it('ignores selected types missing from the registry', () => {
     expect(buildEntityFieldGroups(entitySpecific, ['unknownType'])).toEqual({});
+  });
+});
+
+const builderNode = (data: Node['data']): Node => ({
+  id: 'node',
+  position: { x: 0, y: 0 },
+  data,
+});
+
+describe('WorkflowConfigUtils.isGitSinkNode', () => {
+  it('treats a sink node saved as git, or not configured yet, as a git sink', () => {
+    expect(
+      isGitSinkNode(
+        builderNode({
+          subType: NodeSubType.SinkTask,
+          config: { sinkType: SinkType.Git },
+        })
+      )
+    ).toBe(true);
+    expect(isGitSinkNode(builderNode({ subType: NodeSubType.SinkTask }))).toBe(
+      true
+    );
+  });
+
+  it('does not treat a webhook sink or another node as a git sink', () => {
+    expect(
+      isGitSinkNode(
+        builderNode({
+          subType: NodeSubType.SinkTask,
+          config: { sinkType: SinkType.Webhook },
+        })
+      )
+    ).toBe(false);
+    expect(
+      isGitSinkNode(
+        builderNode({ subType: NodeSubType.CheckEntityAttributesTask })
+      )
+    ).toBe(false);
+  });
+});
+
+describe('WorkflowConfigUtils.getTriggerDataAssets', () => {
+  const entityTypes = [EntityType.TABLE, EntityType.QUERY, EntityType.TOPIC];
+
+  it('leaves query out for a workflow with a git sink', () => {
+    expect(getTriggerDataAssets(entityTypes, true)).toEqual([
+      EntityType.TABLE,
+      EntityType.TOPIC,
+    ]);
+  });
+
+  it('keeps every entity type for a workflow without a git sink', () => {
+    expect(getTriggerDataAssets(entityTypes, false)).toEqual(entityTypes);
   });
 });

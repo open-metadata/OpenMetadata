@@ -9,6 +9,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -32,6 +33,8 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
 
   private Expression rulesExpr;
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
+  private Expression batchContinuingOutcomeExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
@@ -39,13 +42,13 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
     try {
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       String rules = (String) rulesExpr.getValue(execution);
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
-                      RELATED_ENTITY_VARIABLE));
-      varHandler.setNodeVariable(RESULT_VARIABLE, checkAttributes(varHandler, entityLink, rules));
+      Optional<List<String>> batch =
+          BatchEntities.read(batchExecutionExpr, execution, varHandler, inputNamespaces);
+      if (batch.isPresent()) {
+        checkBatch(execution, varHandler, inputNamespaces, batch.get(), rules);
+      } else {
+        checkRelatedEntity(varHandler, inputNamespaces, rules);
+      }
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -54,9 +57,41 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
     }
   }
 
-  private Boolean checkAttributes(
-      WorkflowVariableHandler varHandler, MessageParser.EntityLink entityLink, String rules) {
+  private void checkRelatedEntity(
+      WorkflowVariableHandler varHandler, InputNamespaces inputNamespaces, String rules) {
+    MessageParser.EntityLink entityLink =
+        MessageParser.EntityLink.parse(
+            (String)
+                varHandler.getNamespacedVariable(
+                    inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                    RELATED_ENTITY_VARIABLE));
     EntityInterface entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
+    varHandler.setNodeVariable(RESULT_VARIABLE, checkAttributes(entityLink, entity, rules));
+  }
+
+  private void checkBatch(
+      DelegateExecution execution,
+      WorkflowVariableHandler varHandler,
+      InputNamespaces inputNamespaces,
+      List<String> entityLinks,
+      String rules) {
+    BatchEntities.ConditionOutcome outcome =
+        BatchEntities.evaluate(
+            execution.getCurrentActivityId(),
+            entityLinks,
+            BatchEntities.continuingOutcome(batchContinuingOutcomeExpr, execution),
+            entityLink -> checkEntity(entityLink, rules));
+    outcome.record(varHandler, inputNamespaces, entityLinks);
+    varHandler.setNodeVariable(RESULT_VARIABLE, outcome.result());
+  }
+
+  private boolean checkEntity(String entityLinkValue, String rules) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkValue);
+    return checkAttributes(entityLink, Entity.getEntity(entityLink, "*", Include.ALL), rules);
+  }
+
+  private Boolean checkAttributes(
+      MessageParser.EntityLink entityLink, EntityInterface entity, String rules) {
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
     enrichTransientCounts(entityLink.getEntityType(), entity, entityMap);
 
