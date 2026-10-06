@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { sumBy } from 'lodash';
+import { castArray, isEmpty, isString, omitBy, sumBy, uniq } from 'lodash';
+import { ParsedQs } from 'qs';
 import {
   IncidentGroupBy,
   IncidentStatusCount,
@@ -19,13 +20,28 @@ import {
   Severities,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
+import { Paging } from '../../../../generated/type/paging';
+import {
+  IncidentDateField,
+  IncidentSortType,
+  ListIncidentGroupsParams,
+  OpenIncidentStatus,
+} from '../../../../rest/incidentManagerAPI';
 import Fqn from '../../../../utils/Fqn';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
+  INCIDENT_DATE_FIELD_OPTIONS,
+  INCIDENT_GROUPS_CURSOR_PARAM,
+  INCIDENT_GROUPS_FILTER_PARAMS,
+  INCIDENT_GROUPS_PAGE_PARAM,
+  INCIDENT_GROUPS_PAGE_SIZE,
+  INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
+  INCIDENT_GROUPS_PAGE_SIZE_PARAM,
   INCIDENT_GROUP_BY_OPTIONS,
   INCIDENT_GROUP_MAX_AVATARS,
   INCIDENT_GROUP_SEPARATOR,
   INCIDENT_TREND_COLORS,
+  OPEN_INCIDENT_STATUSES,
   SPARKLINE_HEIGHT,
   SPARKLINE_INSET,
   SPARKLINE_WIDTH,
@@ -33,6 +49,8 @@ import {
 import {
   IncidentGroupAssignees,
   IncidentGroupByOption,
+  IncidentGroupsFilters,
+  IncidentGroupsPagingState,
   IncidentGroupStatusSegment,
   IncidentTrendTone,
 } from './IncidentGroups.types';
@@ -191,3 +209,142 @@ export const getIncidentTrendPoints = (trend: number[]): string => {
     })
     .join(' ');
 };
+
+/** A single, non-empty string, or nothing: a repeated param is not a value. */
+const parseStringParam = (value: unknown): string | undefined =>
+  isString(value) && value !== '' ? value : undefined;
+
+const parseIntegerParam = (value: unknown): number | undefined => {
+  const parsed = isString(value) ? Number(value) : NaN;
+
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : undefined;
+};
+
+/**
+ * Open statuses named by the repeatable `status` param. Anything the endpoint
+ * would 400 on — `Resolved`, an unknown value — is dropped rather than sent.
+ */
+const parseOpenStatuses = (
+  value: unknown
+): OpenIncidentStatus[] | undefined => {
+  const statuses = uniq(
+    castArray(value ?? []).filter((status): status is OpenIncidentStatus =>
+      OPEN_INCIDENT_STATUSES.includes(status as OpenIncidentStatus)
+    )
+  );
+
+  return isEmpty(statuses) ? undefined : statuses;
+};
+
+/**
+ * Only the two fields the groups endpoint takes. The flat listing sharing the
+ * URL writes `timestamp` for creation time; it reads as the default here.
+ */
+const parseDateField = (value: unknown): IncidentDateField | undefined =>
+  INCIDENT_DATE_FIELD_OPTIONS.find((option) => option.value === value)?.value;
+
+export const parseIncidentGroupsFilters = (
+  searchParams: ParsedQs
+): IncidentGroupsFilters =>
+  omitBy(
+    {
+      testCaseFQN: parseStringParam(
+        searchParams[INCIDENT_GROUPS_FILTER_PARAMS.testCaseFQN]
+      ),
+      assignee: parseStringParam(
+        searchParams[INCIDENT_GROUPS_FILTER_PARAMS.assignee]
+      ),
+      status: parseOpenStatuses(
+        searchParams[INCIDENT_GROUPS_FILTER_PARAMS.status]
+      ),
+      dateField: parseDateField(
+        searchParams[INCIDENT_GROUPS_FILTER_PARAMS.dateField]
+      ),
+      startTs: parseIntegerParam(
+        searchParams[INCIDENT_GROUPS_FILTER_PARAMS.startTs]
+      ),
+      endTs: parseIntegerParam(
+        searchParams[INCIDENT_GROUPS_FILTER_PARAMS.endTs]
+      ),
+    },
+    (value) => value === undefined
+  );
+
+/**
+ * The pager position a URL carries. A page past the first means nothing
+ * without the cursor that reached it — the cursor cannot be rebuilt from the
+ * number — so a URL missing either lands on page 1.
+ */
+export const parseIncidentGroupsPaging = (
+  searchParams: ParsedQs
+): IncidentGroupsPagingState => {
+  const requestedPageSize = parseIntegerParam(
+    searchParams[INCIDENT_GROUPS_PAGE_SIZE_PARAM]
+  );
+  const pageSize =
+    requestedPageSize !== undefined &&
+    INCIDENT_GROUPS_PAGE_SIZE_OPTIONS.includes(requestedPageSize)
+      ? requestedPageSize
+      : INCIDENT_GROUPS_PAGE_SIZE;
+  const page = parseIntegerParam(searchParams[INCIDENT_GROUPS_PAGE_PARAM]);
+  const cursor = parseStringParam(searchParams[INCIDENT_GROUPS_CURSOR_PARAM]);
+
+  return page !== undefined && page > 1 && cursor
+    ? { page, pageSize, cursor }
+    : { page: 1, pageSize };
+};
+
+/**
+ * Whether anything narrows the groups. The date field on its own does not: it
+ * only says which timestamp a range applies to.
+ */
+export const hasActiveIncidentGroupsFilters = (
+  filters: IncidentGroupsFilters
+): boolean =>
+  !isEmpty(filters.status) ||
+  [filters.testCaseFQN, filters.assignee, filters.startTs, filters.endTs].some(
+    (value) => value !== undefined
+  );
+
+/**
+ * The groups request for a dimension, its filters and a pager position. Unset
+ * params are left out rather than sent empty, and the cursor goes back as
+ * `offset` exactly as the server handed it out.
+ */
+export const buildIncidentGroupsParams = ({
+  groupBy,
+  filters,
+  paging,
+  sortType,
+}: {
+  groupBy: IncidentGroupBy;
+  filters: IncidentGroupsFilters;
+  paging: IncidentGroupsPagingState;
+  sortType: IncidentSortType;
+}): ListIncidentGroupsParams =>
+  omitBy(
+    {
+      groupBy,
+      ...filters,
+      limit: paging.pageSize,
+      offset: paging.cursor,
+      sortType,
+    },
+    (value) => value === undefined
+  ) as ListIncidentGroupsParams;
+
+/**
+ * Pages the pager offers. `paging.total` sizes it, but a server still handing
+ * out an `after` cursor has more to show than the count said, so the next page
+ * stays reachable rather than being disabled under the user.
+ */
+export const getIncidentGroupsPageCount = (
+  page: number,
+  pageSize: number,
+  paging?: Paging
+): number =>
+  Math.max(
+    Math.ceil((paging?.total ?? 0) / pageSize),
+    paging?.after ? page + 1 : page,
+    1
+  );

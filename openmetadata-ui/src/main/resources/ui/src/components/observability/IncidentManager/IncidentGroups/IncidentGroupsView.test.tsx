@@ -19,6 +19,8 @@ import {
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { listIncidentGroups } from '../../../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { FilterDescriptor } from '../../../DataQuality/TestCases/FilterChip.interface';
+import { FilterBarProps } from '../../common/FilterChip/FilterBar';
 import {
   IncidentGroupByDropdownProps,
   IncidentGroupsTableProps,
@@ -45,6 +47,67 @@ jest.mock('react-i18next', () => ({
       options?.count === undefined ? key : `${key}:${options.count}`,
     i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
   }),
+}));
+
+let mockFilterBarProps: FilterBarProps;
+
+// The bar's own controls are covered by its tests; here only what the view
+// hands it and does with the changes it reports back matters.
+jest.mock('../../common/FilterChip/FilterBar', () =>
+  jest.fn().mockImplementation((props: FilterBarProps) => {
+    mockFilterBarProps = props;
+
+    return <div data-testid="filter-bar" />;
+  })
+);
+
+// Stands in for the pager so a test can ask for any page the real one lets a
+// user click or type, and read back what the view told it to draw.
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  PaginationCardWithControls: jest
+    .fn()
+    .mockImplementation(
+      ({
+        page,
+        total,
+        pageSize,
+        onPageChange,
+        onPageSizeChange,
+      }: {
+        page: number;
+        total: number;
+        pageSize: number;
+        onPageChange: (page: number) => void;
+        onPageSizeChange: (pageSize: number) => void;
+      }) => (
+        <div data-testid="pager">
+          <span data-testid="pager-page">{page}</span>
+          <span data-testid="pager-total">{total}</span>
+          <span data-testid="pager-size">{pageSize}</span>
+          <button
+            data-testid="pager-previous"
+            onClick={() => onPageChange(page - 1)}>
+            previous
+          </button>
+          <button
+            data-testid="pager-next"
+            onClick={() => onPageChange(page + 1)}>
+            next
+          </button>
+          <button
+            data-testid="pager-jump-ahead"
+            onClick={() => onPageChange(page + 3)}>
+            jump-ahead
+          </button>
+          <button
+            data-testid="pager-size-25"
+            onClick={() => onPageSizeChange(25)}>
+            size-25
+          </button>
+        </div>
+      )
+    ),
 }));
 
 jest.mock('../../../common/Loader/Loader', () =>
@@ -332,6 +395,7 @@ describe('IncidentGroupsView', () => {
     expect(mockListIncidentGroups).toHaveBeenCalledTimes(2);
     expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
       groupBy: IncidentGroupBy.Owner,
+      assignee: 'adam',
       limit: 10,
       sortType: 'desc',
     });
@@ -593,5 +657,457 @@ describe('IncidentGroupsView', () => {
     });
 
     expect(mockListIncidentGroups).toHaveBeenCalledTimes(1);
+  });
+});
+
+const BASE_PATH = '/observability/incident-manager';
+
+const getDescriptor = (key: string): FilterDescriptor => {
+  const descriptor = mockFilterBarProps.filters.find(
+    (filter) => filter.key === key
+  );
+
+  if (!descriptor) {
+    throw new Error(`No filter descriptor for ${key}`);
+  }
+
+  return descriptor;
+};
+
+const getSearchParams = () =>
+  new URLSearchParams(screen.getByTestId('location-search').textContent ?? '');
+
+describe('IncidentGroupsView filters', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 3 },
+    });
+  });
+
+  it('should compose every filter the URL carries into the request', async () => {
+    await act(async () => {
+      renderView(
+        `${BASE_PATH}?groupBy=table&testCaseFQN=svc.db.orders.row_count` +
+          '&assignee=adam&status=New&status=Ack&dateField=updatedAt' +
+          '&startTs=100&endTs=200'
+      );
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledWith({
+      groupBy: IncidentGroupBy.Table,
+      testCaseFQN: 'svc.db.orders.row_count',
+      assignee: 'adam',
+      status: ['New', 'Ack'],
+      dateField: 'updatedAt',
+      startTs: 100,
+      endTs: 200,
+      limit: 10,
+      sortType: 'desc',
+    });
+    expect(mockFilterBarProps.hasActiveFilters).toBe(true);
+    expect(getDescriptor('status').value).toEqual(['New', 'Ack']);
+    expect(getDescriptor('dateField').value).toBe('updatedAt');
+  });
+
+  it('should refetch page 1 with all active filters when a filter changes', async () => {
+    await act(async () => {
+      renderView(`${BASE_PATH}?assignee=adam&page=3&cursor=cursor-3`);
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 'cursor-3' })
+    );
+
+    await act(async () => {
+      getDescriptor('status').onChange(['New']);
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(2);
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      assignee: 'adam',
+      status: ['New'],
+      limit: 10,
+      sortType: 'desc',
+    });
+
+    const params = getSearchParams();
+
+    expect(params.getAll('status')).toEqual(['New']);
+    expect(params.get('assignee')).toBe('adam');
+    expect(params.has('page')).toBe(false);
+    expect(params.has('cursor')).toBe(false);
+  });
+
+  it.each([
+    [
+      'testCaseFQN',
+      () => getDescriptor('testCaseFQN').onChange('svc.db.orders.row_count'),
+      { testCaseFQN: 'svc.db.orders.row_count' },
+    ],
+    [
+      'assignee',
+      () =>
+        getDescriptor('assignee').onOwnerChange?.([
+          { id: 'u1', type: 'user', name: 'adam' },
+        ]),
+      { assignee: 'adam' },
+    ],
+    [
+      'dateField',
+      () => getDescriptor('dateField').onChange('updatedAt'),
+      { dateField: 'updatedAt' },
+    ],
+    [
+      'dateRange',
+      () => getDescriptor('dateRange').onChange({ startTs: 1, endTs: 2 }),
+      { startTs: 1, endTs: 2 },
+    ],
+  ])(
+    'should reset to page 1 when the %s filter changes',
+    async (_name, change, expected) => {
+      await act(async () => {
+        renderView(`${BASE_PATH}?page=2&cursor=cursor-2`);
+      });
+
+      await act(async () => {
+        change();
+      });
+
+      expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+        groupBy: IncidentGroupBy.TestDefinition,
+        limit: 10,
+        sortType: 'desc',
+        ...expected,
+      });
+      expect(getSearchParams().has('cursor')).toBe(false);
+      expect(getSearchParams().has('page')).toBe(false);
+    }
+  );
+
+  it('should restore the unfiltered request when the filters are cleared', async () => {
+    await act(async () => {
+      renderView(
+        `${BASE_PATH}?groupBy=owner&assignee=adam&status=New&startTs=1&endTs=2` +
+          '&dateField=updatedAt&testCaseFQN=fqn&page=2&cursor=cursor-2&unrelated=x'
+      );
+    });
+
+    await act(async () => {
+      mockFilterBarProps.onClearAll();
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.Owner,
+      limit: 10,
+      sortType: 'desc',
+    });
+    expect(mockFilterBarProps.hasActiveFilters).toBe(false);
+    // Only the filters and the pager go: the dimension and what else shares
+    // the query string stay.
+    expect(Object.fromEntries(getSearchParams())).toEqual({
+      groupBy: 'owner',
+      unrelated: 'x',
+    });
+  });
+
+  it('should round-trip the filters through the URL', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      getDescriptor('status').onChange(['New', 'Assigned']);
+    });
+
+    await act(async () => {
+      getDescriptor('dateRange').onChange({ startTs: 10, endTs: 20 });
+    });
+
+    // Written as the repeatable param the endpoint reads, then read back from
+    // the URL into the request and into the controls.
+    expect(getSearchParams().getAll('status')).toEqual(['New', 'Assigned']);
+    expect(getDescriptor('status').value).toEqual(['New', 'Assigned']);
+    expect(getDescriptor('dateRange').value).toEqual({
+      startTs: 10,
+      endTs: 20,
+    });
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      status: ['New', 'Assigned'],
+      startTs: 10,
+      endTs: 20,
+      limit: 10,
+      sortType: 'desc',
+    });
+  });
+
+  it('should keep the filter bar up when the fetch fails', async () => {
+    mockListIncidentGroups.mockRejectedValue(new Error('failure'));
+
+    await act(async () => {
+      renderView(`${BASE_PATH}?assignee=adam`);
+    });
+
+    expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-bar')).toBeInTheDocument();
+  });
+
+  it('should say the filters matched nothing rather than that nothing is open', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    await act(async () => {
+      renderView(`${BASE_PATH}?assignee=adam`);
+    });
+
+    expect(screen.getByTestId('incident-groups-empty')).toHaveTextContent(
+      'message.no-data-available-for-selected-filter'
+    );
+    expect(screen.getByTestId('filter-bar')).toBeInTheDocument();
+  });
+});
+
+describe('IncidentGroupsView pagination', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 30, after: 'cursor-2' },
+    });
+  });
+
+  it('should size the pager from paging.total', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    expect(screen.getByTestId('pager-page')).toHaveTextContent('1');
+    expect(screen.getByTestId('pager-total')).toHaveTextContent('3');
+    expect(screen.getByTestId('pager-size')).toHaveTextContent('10');
+  });
+
+  it('should page forward by handing paging.after back verbatim', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 30, before: 'cursor-1', after: 'cursor-3' },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-next'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      offset: 'cursor-2',
+      sortType: 'desc',
+    });
+    expect(getSearchParams().get('page')).toBe('2');
+    expect(getSearchParams().get('cursor')).toBe('cursor-2');
+    expect(screen.getByTestId('pager-page')).toHaveTextContent('2');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-next'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 'cursor-3' })
+    );
+    expect(getSearchParams().get('page')).toBe('3');
+  });
+
+  it('should page backward by handing paging.before back verbatim', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 30, before: 'cursor-2-back' },
+    });
+
+    await act(async () => {
+      renderView(`${BASE_PATH}?page=3&cursor=cursor-3`);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-previous'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 'cursor-2-back' })
+    );
+    expect(getSearchParams().get('page')).toBe('2');
+    expect(getSearchParams().get('cursor')).toBe('cursor-2-back');
+  });
+
+  it('should return to the first page without a cursor', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 30, before: 'cursor-1', after: 'cursor-3' },
+    });
+
+    await act(async () => {
+      renderView(`${BASE_PATH}?page=2&cursor=cursor-2`);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-previous'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+    });
+    expect(getSearchParams().has('page')).toBe(false);
+    expect(getSearchParams().has('cursor')).toBe(false);
+  });
+
+  it('should ignore a page change while a page is still loading', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    mockListIncidentGroups.mockReturnValue(new Promise(() => undefined));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-next'));
+    });
+
+    // Page 1's `after` still in hand would lead to page 2 again, not page 3.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-next'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(2);
+    expect(getSearchParams().get('page')).toBe('2');
+    expect(getSearchParams().get('cursor')).toBe('cursor-2');
+  });
+
+  it('should step one page towards a page further away', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-jump-ahead'));
+    });
+
+    // No cursor is ever computed for page 4: the only one there is leads to 2.
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 'cursor-2' })
+    );
+    expect(getSearchParams().get('page')).toBe('2');
+  });
+
+  it('should not move past the last page', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 3 },
+    });
+
+    await act(async () => {
+      renderView();
+    });
+
+    expect(screen.getByTestId('pager-total')).toHaveTextContent('1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-next'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(1);
+    expect(getSearchParams().has('page')).toBe(false);
+  });
+
+  it('should not move before the first page', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-previous'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(1);
+  });
+
+  it('should restart from page 1 at the new page size', async () => {
+    await act(async () => {
+      renderView(`${BASE_PATH}?page=2&cursor=cursor-2`);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pager-size-25'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 25,
+      sortType: 'desc',
+    });
+    expect(getSearchParams().get('pageSize')).toBe('25');
+    expect(getSearchParams().has('cursor')).toBe(false);
+    expect(screen.getByTestId('pager-size')).toHaveTextContent('25');
+  });
+
+  it('should restart from page 1 when the dimension changes', async () => {
+    await act(async () => {
+      renderView(`${BASE_PATH}?groupBy=table&page=2&cursor=cursor-2`);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-owner'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.Owner,
+      limit: 10,
+      sortType: 'desc',
+    });
+    expect(getSearchParams().get('groupBy')).toBe('owner');
+    expect(getSearchParams().has('page')).toBe(false);
+    expect(getSearchParams().has('cursor')).toBe(false);
+  });
+
+  it('should restart from page 1 when the ordering changes', async () => {
+    await act(async () => {
+      renderView(`${BASE_PATH}?page=2&cursor=cursor-2`);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('flip-sort'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'asc',
+    });
+    expect(getSearchParams().has('cursor')).toBe(false);
+  });
+
+  it('should fall back to page 1 when a later page has emptied out', async () => {
+    mockListIncidentGroups
+      .mockResolvedValueOnce({ data: [], paging: { total: 3 } })
+      .mockResolvedValue({ data: mockGroups, paging: { total: 3 } });
+
+    await act(async () => {
+      renderView(`${BASE_PATH}?page=2&cursor=cursor-2`);
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(2);
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+    });
+    expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
   });
 });

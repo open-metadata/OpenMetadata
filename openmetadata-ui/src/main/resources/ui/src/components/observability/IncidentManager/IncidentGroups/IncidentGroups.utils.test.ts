@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import QueryString from 'qs';
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
@@ -18,6 +19,8 @@ import {
   TestCaseIncidentGroup,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
+import { TestCaseResolutionStatusTypes as ResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
+import { OpenIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
   INCIDENT_TREND_COLORS,
@@ -26,16 +29,21 @@ import {
   SPARKLINE_WIDTH,
 } from './IncidentGroups.constants';
 import {
+  buildIncidentGroupsParams,
   countRecurringIncidentGroups,
   getIncidentGroupAssignees,
   getIncidentGroupByOption,
+  getIncidentGroupsPageCount,
   getIncidentGroupStatusSegments,
   getIncidentGroupSubLine,
   getIncidentTrendColor,
   getIncidentTrendPoints,
+  hasActiveIncidentGroupsFilters,
   isRecurring,
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
+  parseIncidentGroupsFilters,
+  parseIncidentGroupsPaging,
 } from './IncidentGroups.utils';
 
 const group = (
@@ -324,5 +332,216 @@ describe('countRecurringIncidentGroups', () => {
 
   it('should count nothing for an empty page', () => {
     expect(countRecurringIncidentGroups([])).toBe(0);
+  });
+});
+
+describe('parseIncidentGroupsFilters', () => {
+  it('should read every filter the groups endpoint takes', () => {
+    expect(
+      parseIncidentGroupsFilters(
+        QueryString.parse(
+          'testCaseFQN=svc.db.schema.orders.row_count&assignee=adam' +
+            '&status=New&status=Ack&dateField=updatedAt&startTs=100&endTs=200'
+        )
+      )
+    ).toEqual({
+      testCaseFQN: 'svc.db.schema.orders.row_count',
+      assignee: 'adam',
+      status: [ResolutionStatusTypes.New, ResolutionStatusTypes.ACK],
+      dateField: 'updatedAt',
+      startTs: 100,
+      endTs: 200,
+    });
+  });
+
+  it('should read nothing from a URL without filters', () => {
+    expect(parseIncidentGroupsFilters({ groupBy: 'table' })).toEqual({});
+  });
+
+  it('should drop the statuses the endpoint rejects', () => {
+    expect(
+      parseIncidentGroupsFilters(
+        QueryString.parse('status=Resolved&status=Bogus&status=New&status=New')
+      )
+    ).toEqual({ status: [ResolutionStatusTypes.New] });
+    expect(
+      parseIncidentGroupsFilters(QueryString.parse('status=Resolved'))
+    ).toEqual({});
+  });
+
+  it('should read the indexed array format other writers of the URL produce', () => {
+    expect(
+      parseIncidentGroupsFilters(
+        QueryString.parse(
+          QueryString.stringify({ status: ['Assigned', 'New'] })
+        )
+      ).status
+    ).toEqual([ResolutionStatusTypes.Assigned, ResolutionStatusTypes.New]);
+  });
+
+  it('should leave out a date field the endpoint does not take', () => {
+    // `timestamp` is what the flat listing writes for creation time.
+    expect(parseIncidentGroupsFilters({ dateField: 'timestamp' })).toEqual({});
+    expect(parseIncidentGroupsFilters({ dateField: 'createdAt' })).toEqual({
+      dateField: 'createdAt',
+    });
+  });
+
+  it('should ignore malformed values rather than send them', () => {
+    expect(
+      parseIncidentGroupsFilters({
+        testCaseFQN: '',
+        assignee: ['adam', 'eve'],
+        startTs: 'yesterday',
+        endTs: '-5',
+      })
+    ).toEqual({});
+  });
+});
+
+describe('parseIncidentGroupsPaging', () => {
+  it('should open on the first page at the default size', () => {
+    expect(parseIncidentGroupsPaging({})).toEqual({ page: 1, pageSize: 10 });
+  });
+
+  it('should keep the cursor verbatim for a later page', () => {
+    expect(
+      parseIncidentGroupsPaging({
+        page: '3',
+        cursor: 'eyJvZmZzZXQiOjIwfQ==',
+        pageSize: '25',
+      })
+    ).toEqual({ page: 3, pageSize: 25, cursor: 'eyJvZmZzZXQiOjIwfQ==' });
+  });
+
+  it('should land on the first page when the page and cursor do not go together', () => {
+    expect(parseIncidentGroupsPaging({ page: '3' })).toEqual({
+      page: 1,
+      pageSize: 10,
+    });
+    expect(parseIncidentGroupsPaging({ cursor: 'abc' })).toEqual({
+      page: 1,
+      pageSize: 10,
+    });
+    expect(parseIncidentGroupsPaging({ page: '1', cursor: 'abc' })).toEqual({
+      page: 1,
+      pageSize: 10,
+    });
+  });
+
+  it('should fall back to the default size for one the pager does not offer', () => {
+    expect(parseIncidentGroupsPaging({ pageSize: '7' }).pageSize).toBe(10);
+    expect(parseIncidentGroupsPaging({ pageSize: '5000' }).pageSize).toBe(10);
+  });
+});
+
+/** Typed up front: an inline enum array widens to every status, `Resolved` included. */
+const NEW_ONLY: OpenIncidentStatus[] = [ResolutionStatusTypes.New];
+
+describe('buildIncidentGroupsParams', () => {
+  const firstPage = { page: 1, pageSize: 10 };
+
+  it('should send only the dimension, size and order when nothing is filtered', () => {
+    expect(
+      buildIncidentGroupsParams({
+        groupBy: IncidentGroupBy.Table,
+        filters: {},
+        paging: firstPage,
+        sortType: 'desc',
+      })
+    ).toEqual({ groupBy: IncidentGroupBy.Table, limit: 10, sortType: 'desc' });
+  });
+
+  it.each([
+    ['testCaseFQN', { testCaseFQN: 'svc.db.schema.orders.row_count' }],
+    ['assignee', { assignee: 'adam' }],
+    ['status', { status: NEW_ONLY }],
+    ['dateField', { dateField: 'updatedAt' as const }],
+    ['startTs/endTs', { startTs: 100, endTs: 200 }],
+  ])('should map the %s filter onto its API param', (_name, filter) => {
+    expect(
+      buildIncidentGroupsParams({
+        groupBy: IncidentGroupBy.Owner,
+        filters: filter,
+        paging: firstPage,
+        sortType: 'desc',
+      })
+    ).toEqual({
+      groupBy: IncidentGroupBy.Owner,
+      limit: 10,
+      sortType: 'desc',
+      ...filter,
+    });
+  });
+
+  it('should compose every active filter with the pager into one request', () => {
+    expect(
+      buildIncidentGroupsParams({
+        groupBy: IncidentGroupBy.TestDefinition,
+        filters: {
+          testCaseFQN: 'fqn',
+          assignee: 'adam',
+          status: [ResolutionStatusTypes.ACK, ResolutionStatusTypes.Assigned],
+          dateField: 'createdAt',
+          startTs: 1,
+          endTs: 2,
+        },
+        paging: { page: 4, pageSize: 25, cursor: 'opaque==' },
+        sortType: 'asc',
+      })
+    ).toEqual({
+      groupBy: IncidentGroupBy.TestDefinition,
+      testCaseFQN: 'fqn',
+      assignee: 'adam',
+      status: [ResolutionStatusTypes.ACK, ResolutionStatusTypes.Assigned],
+      dateField: 'createdAt',
+      startTs: 1,
+      endTs: 2,
+      limit: 25,
+      offset: 'opaque==',
+      sortType: 'asc',
+    });
+  });
+});
+
+describe('hasActiveIncidentGroupsFilters', () => {
+  it.each([
+    [{ testCaseFQN: 'fqn' }],
+    [{ assignee: 'adam' }],
+    [{ status: NEW_ONLY }],
+    [{ startTs: 0 }],
+    [{ endTs: 5 }],
+  ])('should count %j as narrowing the groups', (filters) => {
+    expect(hasActiveIncidentGroupsFilters(filters)).toBe(true);
+  });
+
+  it('should not count the date field on its own', () => {
+    expect(hasActiveIncidentGroupsFilters({})).toBe(false);
+    expect(hasActiveIncidentGroupsFilters({ dateField: 'updatedAt' })).toBe(
+      false
+    );
+    expect(hasActiveIncidentGroupsFilters({ status: [] })).toBe(false);
+  });
+});
+
+describe('getIncidentGroupsPageCount', () => {
+  it('should size the pager from the total', () => {
+    expect(getIncidentGroupsPageCount(1, 10, { total: 25 })).toBe(3);
+    expect(getIncidentGroupsPageCount(1, 25, { total: 25 })).toBe(1);
+  });
+
+  it('should offer one page when there is nothing to page through', () => {
+    expect(getIncidentGroupsPageCount(1, 10, { total: 0 })).toBe(1);
+    expect(getIncidentGroupsPageCount(1, 10)).toBe(1);
+  });
+
+  it('should keep the next page reachable while the server has one', () => {
+    expect(
+      getIncidentGroupsPageCount(3, 10, { total: 20, after: 'more' })
+    ).toBe(4);
+  });
+
+  it('should never offer fewer pages than the one being shown', () => {
+    expect(getIncidentGroupsPageCount(5, 10, { total: 20 })).toBe(5);
   });
 });

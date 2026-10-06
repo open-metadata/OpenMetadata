@@ -27,6 +27,10 @@ import {
   FilterDescriptor,
   FilterOptionData,
 } from '../DataQuality/TestCases/FilterChip.interface';
+import {
+  INCIDENT_GROUPS_ONLY_PARAMS,
+  INCIDENT_GROUPS_PAGING_PARAMS,
+} from '../observability/IncidentManager/IncidentGroups/IncidentGroups.constants';
 
 // Static, single-select options for the incident resolution status filter.
 const STATUS_FILTER_OPTIONS: FilterOptionData[] = Object.values(
@@ -100,11 +104,11 @@ export const useIncidentFilters = ({
     ) => {
       const updatedFilters = { ...filters, ...newFilters };
       const allUpdatedParams = dateRangeParams
-        ? // `groupBy` belongs to the grouped view rather than to this filter
-          // set, so it is carried over explicitly; every other stale param is
-          // still dropped on the date-range path.
+        ? // The grouped view's own params are not part of this filter set, so
+          // they are carried over explicitly; every other stale param is still
+          // dropped on the date-range path.
           {
-            ...pick(allParams, ['groupBy']),
+            ...pick(allParams, INCIDENT_GROUPS_ONLY_PARAMS),
             ...updatedFilters,
             ...dateRangeParams,
           }
@@ -112,7 +116,11 @@ export const useIncidentFilters = ({
 
       navigate(
         {
-          search: QueryString.stringify(allUpdatedParams),
+          // The grouped view reads the shared filters too, so a change here
+          // sends its pager back to the first page.
+          search: QueryString.stringify(
+            omit(allUpdatedParams, INCIDENT_GROUPS_PAGING_PARAMS)
+          ),
         },
         {
           replace: true,
@@ -153,6 +161,7 @@ export const useIncidentFilters = ({
       'key',
       'title',
       'dateField',
+      ...INCIDENT_GROUPS_PAGING_PARAMS,
     ]);
     navigate(
       {

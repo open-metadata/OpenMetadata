@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
+import QueryString from 'qs';
 import { act } from 'react';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 import {
@@ -146,6 +147,76 @@ describe('useIncidentFilters', () => {
     expect(firstCallArg.search).toContain('groupBy=owner');
     expect(firstCallArg.search).toContain('startTs=5');
     expect(firstCallArg.search).not.toContain('existing=y');
+  });
+
+  it('should keep the grouped view params but drop its pager on the date-range path', () => {
+    const { result } = renderFiltersHook({
+      allParams: {
+        existing: 'y',
+        groupBy: 'owner',
+        status: ['New', 'Ack'],
+        pageSize: '25',
+        page: '3',
+        cursor: 'opaque',
+      },
+    });
+
+    act(() => {
+      result.current.handleDateRangeChange({
+        startTs: 5,
+        endTs: 6,
+        key: 'k',
+        title: 't',
+      });
+    });
+
+    const params = QueryString.parse(mockNavigate.mock.calls[0][0].search);
+
+    expect(params).toEqual(
+      expect.objectContaining({
+        groupBy: 'owner',
+        status: ['New', 'Ack'],
+        pageSize: '25',
+      })
+    );
+    expect(params).not.toHaveProperty('page');
+    expect(params).not.toHaveProperty('cursor');
+    expect(params).not.toHaveProperty('existing');
+  });
+
+  // The groups read the same test case/assignee/date filters, so their pager
+  // has to go back to the first page whichever bar changed them.
+  it('should drop the grouped view pager when a shared filter changes', () => {
+    const { result } = renderFiltersHook({
+      allParams: { groupBy: 'owner', page: '3', cursor: 'opaque' },
+    });
+
+    act(() => {
+      result.current.updateFilters({ assignee: 'adam' });
+    });
+
+    const params = QueryString.parse(mockNavigate.mock.calls[0][0].search);
+
+    expect(params).toEqual(
+      expect.objectContaining({ groupBy: 'owner', assignee: 'adam' })
+    );
+    expect(params).not.toHaveProperty('page');
+    expect(params).not.toHaveProperty('cursor');
+  });
+
+  it('should drop the grouped view pager when the date range is cleared', () => {
+    const { result } = renderFiltersHook({
+      allParams: { startTs: '1', endTs: '2', page: '3', cursor: 'opaque' },
+    });
+
+    act(() => {
+      result.current.handleDateRangeClear();
+    });
+
+    const [firstCallArg] = mockNavigate.mock.calls[0];
+
+    expect(firstCallArg.search).not.toContain('page');
+    expect(firstCallArg.search).not.toContain('cursor');
   });
 
   it('should navigate on a changed date range via handleDateRangeChange', () => {

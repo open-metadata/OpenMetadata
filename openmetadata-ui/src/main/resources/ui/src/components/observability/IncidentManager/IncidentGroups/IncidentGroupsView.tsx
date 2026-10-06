@@ -13,6 +13,8 @@
 
 import {
   Box,
+  PaginationCardWithControls,
+  TableCard,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -21,35 +23,53 @@ import {
 // only; it carries no trend glyph, so this one comes from the shared
 // `@untitledui/icons` both packages pin at the same range.
 import { TrendUp02 } from '@untitledui/icons';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
+import FilterBar from '../../common/FilterChip/FilterBar';
 import IncidentGroupByDropdown from './IncidentGroupByDropdown';
+import { INCIDENT_GROUPS_PAGE_SIZE_OPTIONS } from './IncidentGroups.constants';
 import { IncidentGroupsViewProps } from './IncidentGroups.types';
 import { countRecurringIncidentGroups } from './IncidentGroups.utils';
 import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroups } from './useIncidentGroups';
+import { useIncidentGroupsFilters } from './useIncidentGroupsFilters';
 
 /**
  * Grouped incident listing: the `Group by` dimension picker, the header stats
- * over the fetched groups, and the group table itself — plus the
- * loading/empty/error states of the fetch that feeds all three.
+ * over the fetched groups, the filter bar, and the group table with its pager —
+ * plus the loading/empty/error states of the fetch that feeds them.
  */
 const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
   const { t } = useTranslation();
   const {
     groupBy,
+    filters,
+    hasActiveFilters,
     incidentGroups,
     paging,
+    currentPage,
+    pageSize,
+    pageCount,
     sortType,
     isLoading,
     isError,
     handleGroupByChange,
     handleSortTypeChange,
+    handleFiltersChange,
+    clearFilters,
+    handlePageChange,
+    handlePageSizeChange,
   } = useIncidentGroups({ refreshKey });
+
+  const filterDescriptors = useIncidentGroupsFilters({
+    filters,
+    onFiltersChange: handleFiltersChange,
+  });
 
   /**
    * Only the loaded page can be counted: the endpoint reports the group total
@@ -94,26 +114,52 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     }
 
     if (isEmpty(incidentGroups)) {
+      // With filters on, "no active incidents" would claim more than is known:
+      // there may well be incidents, just none these filters let through.
       return (
         <ErrorPlaceHolder
           className="tw:border-none"
-          placeholderText={t('message.no-active-incidents')}
+          placeholderText={
+            hasActiveFilters
+              ? t('label.no-results-for-filters')
+              : t('message.no-active-incidents')
+          }
           size={SIZE.MEDIUM}
           type={ERROR_PLACEHOLDER_TYPE.NO_DATA}>
           <div data-testid="incident-groups-empty">
-            {t('message.no-active-incidents-description')}
+            {hasActiveFilters
+              ? t('message.no-data-available-for-selected-filter')
+              : t('message.no-active-incidents-description')}
           </div>
         </ErrorPlaceHolder>
       );
     }
 
     return (
-      <IncidentGroupsTable
-        groupBy={groupBy}
-        groups={incidentGroups}
-        sortType={sortType}
-        onSortTypeChange={handleSortTypeChange}
-      />
+      <>
+        <div className="tw:border-b tw:border-secondary">
+          <IncidentGroupsTable
+            groupBy={groupBy}
+            groups={incidentGroups}
+            sortType={sortType}
+            onSortTypeChange={handleSortTypeChange}
+          />
+        </div>
+        {/* Dimmed while a page is in flight; the hook ignores page changes
+            until it lands. */}
+        <PaginationCardWithControls
+          className={classNames(
+            'tw:border-0!',
+            isLoading && 'tw:pointer-events-none tw:opacity-60'
+          )}
+          page={currentPage}
+          pageSize={pageSize}
+          pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
+          total={pageCount}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
+      </>
     );
   };
 
@@ -162,7 +208,15 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
           onChange={handleGroupByChange}
         />
       </Box>
-      {renderContent()}
+      <FilterBar
+        filters={filterDescriptors}
+        hasActiveFilters={hasActiveFilters}
+        variant="input"
+        onClearAll={clearFilters}
+      />
+      <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:outline-0">
+        {renderContent()}
+      </TableCard.Root>
     </Box>
   );
 };

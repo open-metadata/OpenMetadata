@@ -20,7 +20,12 @@ import {
   IncidentTrendDirection,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
-import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
+import { TestCaseResolutionStatusTypes as ResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
+import {
+  IncidentDateField,
+  IncidentSortType,
+  OpenIncidentStatus,
+} from '../../../../rest/incidentManagerAPI';
 import {
   IncidentGroupByOption,
   IncidentTrendTone,
@@ -36,6 +41,65 @@ export const INCIDENT_GROUP_BY_PARAM = 'groupBy';
 export const DEFAULT_INCIDENT_GROUP_BY = IncidentGroupBy.TestDefinition;
 
 export const INCIDENT_GROUPS_PAGE_SIZE = 10;
+
+export const INCIDENT_GROUPS_PAGE_SIZE_OPTIONS = [10, 25, 50];
+
+/**
+ * Query string params of the groups filters. They carry the API params' names
+ * so the URL reads like the request it produces; the ones the flat incident
+ * listing below also understands (test case, assignee, date range) filter both.
+ */
+export const INCIDENT_GROUPS_FILTER_PARAMS = {
+  testCaseFQN: 'testCaseFQN',
+  assignee: 'assignee',
+  status: 'status',
+  dateField: 'dateField',
+  startTs: 'startTs',
+  endTs: 'endTs',
+} as const;
+
+/**
+ * Pager position in the query string. Not `offset`/`limit`: the flat incident
+ * listing sharing the URL forwards those to its own endpoint, which reads
+ * `offset` as a row number and would 400 on a groups cursor.
+ */
+export const INCIDENT_GROUPS_PAGE_PARAM = 'page';
+export const INCIDENT_GROUPS_CURSOR_PARAM = 'cursor';
+export const INCIDENT_GROUPS_PAGE_SIZE_PARAM = 'pageSize';
+
+/** Pager params, dropped whenever what is being paged changes. */
+export const INCIDENT_GROUPS_PAGING_PARAMS = [
+  INCIDENT_GROUPS_PAGE_PARAM,
+  INCIDENT_GROUPS_CURSOR_PARAM,
+];
+
+/**
+ * Params only the grouped view reads. The flat incident listing sharing the
+ * query string must neither send them to its endpoint nor refetch on them.
+ */
+export const INCIDENT_GROUPS_ONLY_PARAMS = [
+  INCIDENT_GROUP_BY_PARAM,
+  INCIDENT_GROUPS_FILTER_PARAMS.status,
+  INCIDENT_GROUPS_PAGE_SIZE_PARAM,
+  ...INCIDENT_GROUPS_PAGING_PARAMS,
+];
+
+/** `Resolved` is left out: the groups endpoint rejects it. */
+export const OPEN_INCIDENT_STATUSES: OpenIncidentStatus[] = [
+  ResolutionStatusTypes.New,
+  ResolutionStatusTypes.ACK,
+  ResolutionStatusTypes.Assigned,
+];
+
+export const DEFAULT_INCIDENT_DATE_FIELD: IncidentDateField = 'createdAt';
+
+export const INCIDENT_DATE_FIELD_OPTIONS: {
+  value: IncidentDateField;
+  labelKey: string;
+}[] = [
+  { value: 'createdAt', labelKey: 'label.created-at' },
+  { value: 'updatedAt', labelKey: 'label.updated-at' },
+];
 
 export const INCIDENT_GROUP_BY_OPTIONS: IncidentGroupByOption[] = [
   {

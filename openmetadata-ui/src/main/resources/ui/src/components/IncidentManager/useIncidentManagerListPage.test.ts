@@ -327,6 +327,47 @@ describe('useIncidentManagerListPage', () => {
       );
       expect(fetchMock.mock.calls[1][0]).not.toHaveProperty('groupBy');
     });
+
+    it('should neither send nor refetch on the params only the grouped view reads', async () => {
+      mockLocation.search = QueryString.stringify({
+        assignee: 'user1',
+        status: ['New', 'Ack'],
+        page: '2',
+        cursor: 'opaque-cursor',
+        pageSize: '25',
+      });
+      fetchMock.mockClear();
+
+      const { rerender } = renderHook(() => useIncidentManagerListPage({}));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      // `cursor` is a groups cursor: reaching this endpoint as `offset` or
+      // alongside it would 400 or page the wrong listing.
+      const [params] = fetchMock.mock.calls[0];
+
+      expect(params).toEqual(expect.objectContaining({ assignee: 'user1' }));
+
+      ['status', 'page', 'cursor', 'pageSize'].forEach((key) =>
+        expect(params).not.toHaveProperty(key)
+      );
+
+      expect(params.offset).toBe(0);
+
+      mockLocation.search = QueryString.stringify({
+        assignee: 'user1',
+        status: ['Assigned'],
+        page: '3',
+        cursor: 'next-cursor',
+        pageSize: '50',
+      });
+
+      await act(async () => {
+        rerender();
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('should navigate when the date-range descriptor onChange is called', () => {

@@ -17,6 +17,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { Table } from '../../generated/entity/data/table';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { TestCaseIncidentStatusParams } from '../../rest/incidentManagerAPI';
+import { INCIDENT_GROUPS_ONLY_PARAMS } from '../observability/IncidentManager/IncidentGroups/IncidentGroups.constants';
 import { useIncidentActions } from './useIncidentActions';
 import { useIncidentFilterOptions } from './useIncidentFilterOptions';
 import { useIncidentFilters } from './useIncidentFilters';
@@ -46,11 +47,11 @@ export const useIncidentManagerListPage = ({
   }, [location.search]);
 
   // The grouped view shares this query string, so key the filters on a string
-  // without its `groupBy`: switching the dimension must not refetch this table,
-  // and `groupBy` must never reach the incident listing endpoint. `allParams`
-  // itself keeps the param so `updateFilters` writes the dimension back.
+  // without the params only it reads (dimension, status, pager): changing them
+  // must not refetch this table, and none may reach the incident listing
+  // endpoint. `allParams` itself keeps them so `updateFilters` writes them back.
   const filterSearch = QueryString.stringify(
-    omit(allParams, ['key', 'title', 'groupBy'])
+    omit(allParams, ['key', 'title', ...INCIDENT_GROUPS_ONLY_PARAMS])
   );
 
   const filters = useMemo(() => {

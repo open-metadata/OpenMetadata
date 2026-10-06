@@ -20,7 +20,12 @@ import {
   TestCaseIncidentGroup,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
-import { IncidentSortType } from '../../../../rest/incidentManagerAPI';
+import {
+  IncidentCursor,
+  IncidentDateField,
+  IncidentSortType,
+  OpenIncidentStatus,
+} from '../../../../rest/incidentManagerAPI';
 
 export interface IncidentGroupByOption {
   key: IncidentGroupBy;
@@ -87,4 +92,24 @@ export interface StackedCellProps {
 
 export interface IncidentGroupCellProps {
   group: TestCaseIncidentGroup;
+}
+
+/** Filters of the grouped view, as read back from the URL. */
+export interface IncidentGroupsFilters {
+  testCaseFQN?: string;
+  assignee?: string;
+  status?: OpenIncidentStatus[];
+  dateField?: IncidentDateField;
+  startTs?: number;
+  endTs?: number;
+}
+
+/**
+ * Where the pager stands. `cursor` is the opaque `offset` that produced `page`:
+ * absent on page 1, and never derived from the page number.
+ */
+export interface IncidentGroupsPagingState {
+  page: number;
+  pageSize: number;
+  cursor?: IncidentCursor;
 }
