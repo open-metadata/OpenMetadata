@@ -9,6 +9,22 @@ The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow s
 
 SSO stays in its dedicated workflow, while knowledge graph and ontology share one RDF workflow and environment. HTTP/2-specific, data-insight application, and nightly specs are explicitly recorded as delegated rather than being silently misclassified as common Chromium coverage. Add new production-to-test relationships to `impact-map.json`; do not make an unmapped source path trigger the full suite.
 
+## Local pre-merge runs
+
+PR checks run unit tests only; Playwright runs in the merge queue. Before requesting review, run the specs the PR impacts on your machine against a local stack (`./docker/run_local_docker.sh -m ui -d mysql`):
+
+```bash
+make playwright_affected                                         # list impacted specs + the exact command
+make playwright_affected_run                                     # run them, write playwright/output/local-pr-results.md
+make playwright_affected_run ARGS="--update-pr --workers=2"      # also upsert the block in the PR body (needs gh)
+```
+
+`.github/scripts/plan_local_playwright.py` diffs the branch against `origin/main` (`--base` to change it; includes uncommitted and untracked files) and feeds that list to `select_playwright_tests.py` as a `pull_request` event, so the selection is the same targeted plan CI computes from `impact-map.json` and `impact-map.generated.json`: smoke, directly changed specs, impact-mapped specs, and canaries when shared infrastructure or unmapped files change. Delegated specs stay with their dedicated workflows.
+
+Where CI escalates unmapped code paths to the full suite, the local plan instead runs the targeted set plus one canary per project and lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
+
+The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. Like every CI lane, the run sets `PLAYWRIGHT_IS_OSS=true` unless you export it yourself; without it `auth.setup.ts` calls the Collate-only ingestion-runner API and fails before any spec runs. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
+
 ## Duration-balanced plans
 
 `build_playwright_shards.py` discovers stable Playwright test IDs and assigns hook-inclusive p75 duration from the latest three successful full runs. It uses longest-processing-time-first balancing and computes the common shard count as:

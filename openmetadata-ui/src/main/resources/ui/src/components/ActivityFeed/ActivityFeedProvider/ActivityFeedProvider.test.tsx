@@ -31,6 +31,7 @@ import {
   DummyChildrenDeletePostComponent,
   DummyChildrenEntityComponent,
   DummyChildrenTaskCloseComponent,
+  DummyChildrenTaskMentionsComponent,
   DummyEntityActivityFeedComponent,
   DummyFollowingActivityComponent,
   DummySetActiveActivityComponent,
@@ -215,6 +216,25 @@ describe('ActivityFeedProvider', () => {
     await waitFor(() =>
       expect(listMyVisibleTasks).toHaveBeenCalledWith(
         expect.objectContaining({ after: 'after-234', statusGroup: 'closed' })
+      )
+    );
+  });
+
+  it('status-filters mentioned tasks like every other task branch', async () => {
+    // The MENTIONS branch spread `common` instead of `scoped`, dropping
+    // statusGroup, so the My Tasks widget listed closed tasks under Mentions.
+    render(
+      <ActivityFeedProvider>
+        <DummyChildrenTaskMentionsComponent />
+      </ActivityFeedProvider>
+    );
+
+    await waitFor(() =>
+      expect(listTasks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mentionedUser: 'admin',
+          statusGroup: 'open',
+        })
       )
     );
   });
