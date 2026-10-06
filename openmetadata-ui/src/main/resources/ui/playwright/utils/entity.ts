@@ -1967,9 +1967,11 @@ export const updateDisplayNameForEntityChildren = async (
   // Rows reflow for about a second after first paint (nested rows auto-expand,
   // description previews clamp). A mouse click can straddle that shift, so
   // `click` fires on the name cell instead of the button and the cell handler
-  // opens the column detail panel rather than this modal. Keyboard activation
-  // targets the button itself, independent of where the row has moved.
-  await row.getByTestId('edit-displayName-button').press('Enter');
+  // opens the column detail panel rather than this modal. Enter is no better:
+  // the react-aria grid row handles Enter itself and cancels the button's
+  // default activation while the table is still mounting. Dispatching the
+  // click on the button runs its own handler wherever the row has moved.
+  await row.getByTestId('edit-displayName-button').dispatchEvent('click');
 
   await expect(page.locator('#name')).toBeDisabled();
 
