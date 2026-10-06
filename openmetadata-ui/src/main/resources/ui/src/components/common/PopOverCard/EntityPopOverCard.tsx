@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Popover,
-  PopoverTrigger,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Popover } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import {
@@ -171,24 +168,22 @@ const EntityPopOverCard: FC<Props> = ({
   }, [pathname]);
 
   return (
-    // antd defaulted to `placement="top"`; react-aria defaults to bottom.
-    // `zIndex={9999}` becomes a class because core's Popover takes no zIndex
-    // prop. `align={{ targetOffset: [0, 10] }}` is dropped: it closed the gap
-    // antd's arrow and spacer left so the pointer could reach the panel, and
-    // core draws no arrow while `closeDelay` already forgives the crossing.
-    <PopoverTrigger isOpen={open} trigger="hover" onOpenChange={setOpen}>
-      {children as ReactNode}
-      <Popover
-        className="entity-popover-card tw:z-[9999]"
-        containerClassName="tw:p-4"
-        placement="top">
+    <Popover
+      align={{ targetOffset: [0, 10] }}
+      content={
         <PopoverContent
           entityFQN={entityFQN}
           entityType={entityType}
           extraInfo={extraInfo}
         />
-      </Popover>
-    </PopoverTrigger>
+      }
+      open={open}
+      overlayClassName="entity-popover-card"
+      trigger="hover"
+      zIndex={9999}
+      onOpenChange={setOpen}>
+      {children as ReactNode}
+    </Popover>
   );
 };
 

@@ -15,11 +15,8 @@
 .entity-popover-card {
   max-width: 500px;
   min-width: 300px;
-  // `background-color` and `border: none` dropped with antd: core's Popover
-  // paints its own `bg-overlay-surface`, and its border is an *outline* that
-  // `border: none` would not have removed anyway — while a stray reset here
-  // could. Leave the surface to the component.
-
+  background-color: var(--om-color-bg-surface) !important;
+  border: none;
   // Embedded preview, not a list card: no border, lift or hover elevation.
   .explore-search-card {
     padding: 0;
@@ -36,5 +33,9 @@
   .explore-card-actions {
     top: 0;
     right: 0;
+  }
+  &.ant-popover-placement-top {
+    padding-top: 0;
+    padding-bottom: 0;
   }
 }
