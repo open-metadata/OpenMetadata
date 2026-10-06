@@ -455,19 +455,22 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (response.statusCode() == 200) {
         return getResponse(200, response.body()).withRunId(runId);
       }
-    } catch (IOException | URISyntaxException e) {
-      throw IngestionPipelineDeploymentException.byMessage(
-          pipelineName, TRIGGER_ERROR, e.getMessage());
+    } catch (URISyntaxException e) {
+      throw IngestionPipelineDeploymentException.triggerFailed(
+          pipelineName, e.getMessage(), Response.Status.BAD_REQUEST);
+    } catch (IOException e) {
+      // Airflow could not be reached: the same run may succeed once it is back.
+      throw IngestionPipelineDeploymentException.triggerFailed(
+          pipelineName, e.getMessage(), Response.Status.SERVICE_UNAVAILABLE);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw IngestionPipelineDeploymentException.byMessage(
-          pipelineName, TRIGGER_ERROR, e.getMessage());
+      throw IngestionPipelineDeploymentException.triggerFailed(
+          pipelineName, e.getMessage(), Response.Status.SERVICE_UNAVAILABLE);
     }
 
-    throw IngestionPipelineDeploymentException.byMessage(
+    throw IngestionPipelineDeploymentException.triggerFailed(
         pipelineName,
-        TRIGGER_ERROR,
-        "Failed to trigger IngestionPipeline",
+        String.format("Airflow answered the trigger with HTTP %d", response.statusCode()),
         Response.Status.fromStatusCode(response.statusCode()));
   }
 

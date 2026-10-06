@@ -451,6 +451,11 @@ class AirflowRESTClientTest {
             IngestionPipelineDeploymentException.class,
             () -> client.runPipeline(pipeline, null, Map.of("force", true)));
     assertTrue(triggerException.getMessage().contains("orders_metadata"));
+    // Airflow is unreachable: a typed 503, worded as the trigger it was, not a deploy.
+    assertEquals(503, triggerException.getResponse().getStatus());
+    assertEquals("TRIGGER_ERROR", triggerException.getErrorType());
+    assertTrue(
+        triggerException.getMessage().startsWith("Failed to trigger pipeline [orders_metadata]"));
 
     PipelineServiceClientException toggleException =
         assertThrows(PipelineServiceClientException.class, () -> client.toggleIngestion(pipeline));
@@ -506,7 +511,12 @@ class AirflowRESTClientTest {
               IngestionPipelineDeploymentException.class,
               () -> client.runPipeline(pipeline, null, Map.of("force", true)));
 
-      assertTrue(exception.getMessage().contains("Failed to trigger IngestionPipeline"));
+      // Read as the trigger it was, not a deploy, with Airflow's status kept.
+      assertEquals(500, exception.getResponse().getStatus());
+      assertEquals(
+          "Failed to trigger pipeline [orders_metadata] due to"
+              + " [Airflow answered the trigger with HTTP 500].",
+          exception.getMessage());
     }
   }
 

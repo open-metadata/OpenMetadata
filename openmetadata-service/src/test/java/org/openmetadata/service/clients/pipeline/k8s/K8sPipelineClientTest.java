@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -57,6 +58,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.ConnectException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -674,6 +676,31 @@ class K8sPipelineClientTest {
 
     // Verify the API was only called once (no retry)
     verify(batchApi, times(1)).createNamespacedJob(eq(NAMESPACE), any());
+  }
+
+  @Test
+  void runFailureReadsAsATriggerAndIsA503WhenTheClusterIsUnreachable() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+
+    // Code 0: the request got no answer, so a retry once the cluster API is back can work.
+    when(createJobRequest.execute())
+        .thenThrow(new ApiException(new ConnectException("Connection refused")));
+    IngestionPipelineDeploymentException unreachable =
+        assertThrows(
+            IngestionPipelineDeploymentException.class,
+            () -> client.runPipeline(pipeline, testService));
+    assertEquals(503, unreachable.getResponse().getStatus());
+    assertTrue(unreachable.getMessage().startsWith("Failed to trigger pipeline [test-pipeline]"));
+
+    // doThrow: re-stubbing through when() would call the mock, which still throws.
+    doThrow(new ApiException(403, "Forbidden")).when(createJobRequest).execute();
+    IngestionPipelineDeploymentException rejected =
+        assertThrows(
+            IngestionPipelineDeploymentException.class,
+            () -> client.runPipeline(pipeline, testService));
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().startsWith("Failed to trigger pipeline [test-pipeline]"));
   }
 
   @Test

@@ -46,6 +46,7 @@ import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1SecurityContext;
 import io.kubernetes.client.util.ClientBuilder;
 import io.kubernetes.client.util.Config;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
@@ -627,8 +628,11 @@ public class K8sPipelineClient extends PipelineServiceClient {
           correlationId,
           e.getCode(),
           parseK8sErrorMessage(e));
-      throw IngestionPipelineDeploymentException.byMessage(
-          pipelineName, TRIGGER_ERROR, buildDetailedErrorMessage("trigger", pipelineName, e));
+      // Code 0 means no answer came back: the cluster API could not be reached.
+      throw IngestionPipelineDeploymentException.triggerFailed(
+          pipelineName,
+          buildDetailedErrorMessage("trigger", pipelineName, e),
+          e.getCode() == 0 ? Status.SERVICE_UNAVAILABLE : Status.BAD_REQUEST);
     } finally {
       MDC.clear();
     }
