@@ -12,6 +12,7 @@
  */
 
 import { HTMLAttributes, ReactNode } from 'react';
+import { To } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import { User } from '../../../generated/entity/teams/user';
 
@@ -51,4 +52,16 @@ export interface UserPopOverCardProps extends HTMLAttributes<HTMLDivElement> {
   showUserProfile?: boolean;
   profileWidth?: number;
   className?: string;
+  /**
+   * Overrides the built-in link destination. Defaults to the legacy user/team
+   * route; pass a hash location to navigate inside the personal-space modal.
+   */
+  to?: To;
+  /**
+   * When set, intercepts the title click (preventing href navigation) and runs
+   * this instead. Used inside the personal-space modal where `location.hash`
+   * driven navigation is starved by streaming panels, so clicks must call
+   * `setHash` synchronously rather than rely on the anchor's href.
+   */
+  onTitleClick?: () => void;
 }
