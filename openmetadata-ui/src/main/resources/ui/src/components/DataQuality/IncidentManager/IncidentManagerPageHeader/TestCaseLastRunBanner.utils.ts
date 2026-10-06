@@ -124,10 +124,15 @@ export const getIncidentTitle = (
 };
 
 export const getNextRunLabel = (
-  nextRunTimestamp: number | undefined,
+  nextRunTimestamp: number | null | undefined,
   inLabel: string,
   notScheduledLabel: string
 ) => {
+  // Unknown while the schedule loads or after it failed to, which is not the
+  // same as unscheduled.
+  if (isUndefined(nextRunTimestamp)) {
+    return NO_VALUE;
+  }
   if (!nextRunTimestamp) {
     return notScheduledLabel;
   }

@@ -66,6 +66,7 @@ const testCaseWith = (
 
 const defaultProps: TestCaseLastRunBannerProps = {
   incidentTask: MOCK_TASK_DATA[1],
+  nextRunTimestamp: null,
   taskLinkInfo: { label: '#9', path: INCIDENT_PATH },
   testCase: testCaseWith('tableRowCountToEqual', [
     { name: 'value', value: '1000' },
@@ -413,6 +414,31 @@ describe('TestCaseLastRunBanner', () => {
       TEXT_XS_CLASS
     );
   });
+
+  it.each<[string, Partial<TestCaseLastRunBannerProps>]>([
+    [
+      'a latest run',
+      {
+        testCaseResult: {
+          result: 'All rows passed',
+          testCaseStatus: TestCaseStatus.Success,
+          timestamp: TEST_CASE_RESULT_TIMESTAMP,
+        },
+        testCaseStatus: TestCaseStatus.Success,
+      },
+    ],
+    ['no run yet', {}],
+  ])(
+    'shows an unknown next run as a dash, not as unscheduled, with %s',
+    (_, props) => {
+      renderBanner({ ...props, nextRunTimestamp: undefined });
+
+      const nextRun = screen.getByTestId(NEXT_RUN_TEST_ID);
+
+      expect(nextRun).toHaveTextContent('label.next · —');
+      expect(nextRun).not.toHaveTextContent('label.not-scheduled');
+    }
+  );
 
   it('does not show a negative duration when a cached next run has passed', () => {
     const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(2_000);
