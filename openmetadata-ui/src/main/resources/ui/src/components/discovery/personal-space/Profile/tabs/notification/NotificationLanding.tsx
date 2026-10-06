@@ -35,7 +35,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-  const { extensionRegistry, contributionsVersion } = useApplicationsProvider();
+  const { getContributions } = useApplicationsProvider();
 
   const cards = useMemo<NotificationLandingCard[]>(() => {
     const alertsCard: NotificationLandingCard = {
@@ -48,10 +48,9 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
 
     // Downstream builds (e.g. Collate) contribute extra Notification sections;
     // their cards come from the global-settings Notifications menu.
-    const contributions =
-      extensionRegistry.getContributions<NotificationSectionContribution>(
-        EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
-      );
+    const contributions = getContributions<NotificationSectionContribution>(
+      EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
+    );
 
     if (contributions.length === 0) {
       return [alertsCard];
@@ -64,12 +63,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
         contributions
       ),
     ];
-    // `contributionsVersion` is not read above, but the registry is mutated in
-    // place when a plugin contributes, so its identity never changes — this
-    // dep is the only signal that forces the recompute once contributions
-    // land (same pattern as AppModeRoutes). react-hooks/exhaustive-deps calls
-    // it unnecessary; it is required at runtime.
-  }, [extensionRegistry, contributionsVersion, permissions, isAdminUser, t]);
+  }, [getContributions, permissions, isAdminUser, t]);
 
   return (
     <div

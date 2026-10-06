@@ -124,6 +124,14 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     setContributionsReady(true);
   }, [installedPluginInstances, extensionRegistry]);
 
+  const getContributions = useCallback(
+    <T,>(extensionPointId: string): T[] =>
+      contributionsVersion >= 0
+        ? extensionRegistry.getContributions<T>(extensionPointId)
+        : [],
+    [extensionRegistry, contributionsVersion]
+  );
+
   const appContext = useMemo(() => {
     return {
       applications,
@@ -132,6 +140,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       extensionRegistry,
       contributionsVersion,
       contributionsReady,
+      getContributions,
     };
   }, [
     applications,
@@ -140,6 +149,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     extensionRegistry,
     contributionsVersion,
     contributionsReady,
+    getContributions,
   ]);
 
   return (

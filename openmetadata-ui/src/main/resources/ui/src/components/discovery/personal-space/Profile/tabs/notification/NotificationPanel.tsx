@@ -86,8 +86,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-  const { extensionRegistry, contributionsVersion, contributionsReady } =
-    useApplicationsProvider();
+  const { getContributions, contributionsReady } = useApplicationsProvider();
   const { state: hashState, setHash } = useSettingsHash();
 
   const view = useMemo<NotificationView>(
@@ -121,15 +120,10 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
 
   const sectionContributions = useMemo(
     () =>
-      extensionRegistry.getContributions<NotificationSectionContribution>(
+      getContributions<NotificationSectionContribution>(
         EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
       ),
-    // `contributionsVersion` is not read above, but the registry is mutated in
-    // place when a plugin contributes, so its identity never changes — this
-    // dep is the only signal that forces the recompute once contributions
-    // land (same pattern as AppModeRoutes). react-hooks/exhaustive-deps calls
-    // it unnecessary; it is required at runtime.
-    [extensionRegistry, contributionsVersion]
+    [getContributions]
   );
 
   const sectionPath = useMemo(
