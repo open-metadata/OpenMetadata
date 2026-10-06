@@ -212,6 +212,23 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     });
   });
 
+  it("should head the sample like the page's other sections", async () => {
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
+
+    const heading = await screen.findByRole('heading', {
+      level: 2,
+      name: 'label.sample-data',
+    });
+
+    // Result history's heading, not the legacy grey right-panel label.
+    expect(heading).toHaveClass(
+      'tw:text-md',
+      'tw:font-bold',
+      'tw:text-primary'
+    );
+    expect(heading).not.toHaveClass('right-panel-label');
+  });
+
   it('should fetch the failed-rows sample when the test case has failed', async () => {
     render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
 
