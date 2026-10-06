@@ -130,6 +130,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     Toggle: jest.requireActual('@openmetadata/ui-core-components').Toggle,
     CloseButton: jest

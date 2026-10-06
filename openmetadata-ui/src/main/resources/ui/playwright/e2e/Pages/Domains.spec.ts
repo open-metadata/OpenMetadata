@@ -2780,7 +2780,9 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('rename-button-title').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       await page.locator('#name').clear();
       await page.locator('#name').fill(domain2.responseData.name);

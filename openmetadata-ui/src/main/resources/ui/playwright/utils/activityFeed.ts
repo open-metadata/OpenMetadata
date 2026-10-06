@@ -41,12 +41,11 @@ export const checkDescriptionInEditModal = async (
 
   expect(taskContent).toContain(`Request to update description for`);
 
-  await page.getByRole('button', { name: 'down' }).click();
-  await page.locator('.ant-dropdown').waitFor({
-    state: 'visible',
-  });
+  await page.locator('[data-testid$="-task-action-trigger"]').click();
+  const taskActionMenu = page.locator('.task-action-dropdown');
+  await taskActionMenu.waitFor({ state: 'visible' });
 
-  await page.getByRole('menuitem', { name: 'edit' }).click();
+  await taskActionMenu.getByRole('menuitem', { name: 'edit' }).click();
 
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 

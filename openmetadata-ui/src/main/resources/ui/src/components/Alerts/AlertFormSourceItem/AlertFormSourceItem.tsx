@@ -11,30 +11,19 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Dropdown,
-  Form,
-  MenuItemProps,
-  MenuProps,
-  Select,
-} from 'antd';
-import type { MenuInfo } from 'rc-menu/lib/interface';
-import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import { Form, Select } from 'antd';
+import { Key, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { useFqn } from '../../../hooks/useFqn';
 import { getSourceOptionsFromResourceList } from '../../../utils/Alerts/AlertsUtil';
-import './alert-form-source-item.less';
 import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
 
 function AlertFormSourceItem({
   filterResources,
 }: Readonly<AlertFormSourceItemProps>) {
   const { t } = useTranslation();
-  const newRef = useRef(null);
   const form = Form.useFormInstance();
   const { fqn } = useFqn();
   const [selectedResource, setSelectedResource] = useState<string[]>([]);
@@ -60,42 +49,16 @@ function AlertFormSourceItem({
     form.setFieldValue('resources', [value]);
   };
 
-  const dropdownCardComponent = useCallback((menuNode: ReactNode) => {
-    return (
-      <Card
-        bodyStyle={{ padding: 0 }}
-        className="source-dropdown-card"
-        data-testid="drop-down-menu">
-        <Typography className="p-l-md" color="secondary">
-          {t('label.data-asset-plural')}
-        </Typography>
-        <div className="p-t-xss">{menuNode}</div>
-      </Card>
-    );
+  const handleMenuItemClick = useCallback((key: Key) => {
+    form.setFieldValue(['resources'], [key]);
+    setIsEditMode(true);
   }, []);
-
-  const dropdownMenuItems: MenuProps['items'] = useMemo(
-    () =>
-      resourcesOptions.map((option) => ({
-        label: option.label,
-        key: option.value,
-      })),
-    [resourcesOptions]
-  );
-
-  const handleMenuItemClick: MenuItemProps['onClick'] = useCallback(
-    (info: MenuInfo) => {
-      form.setFieldValue(['resources'], [info.key]);
-      setIsEditMode(true);
-    },
-    []
-  );
 
   return (
     <FormCardSection
       heading={t('label.source')}
       subHeading={t('message.alerts-source-description')}>
-      <div className="source-input-container" ref={newRef}>
+      <div className="source-input-container">
         <Form.Item
           required
           initialValue={
@@ -127,22 +90,37 @@ function AlertFormSourceItem({
               onChange={handleSourceChange}
             />
           ) : (
-            <Dropdown
-              destroyPopupOnHide
-              dropdownRender={dropdownCardComponent}
-              getPopupContainer={() => newRef.current ?? document.body}
-              menu={{
-                items: dropdownMenuItems,
-                onClick: handleMenuItemClick,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Button data-testid="add-source-button" type="primary">
+            <Dropdown.Root>
+              <Button data-testid="add-source-button" size="sm">
                 {t('label.add-entity', {
                   entity: t('label.source'),
                 })}
               </Button>
-            </Dropdown>
+              <Dropdown.Popover
+                className="tw:w-auto tw:min-w-50"
+                placement="bottom start"
+                shouldFlip={false}>
+                <div className="tw:pt-2" data-testid="drop-down-menu">
+                  <Typography className="tw:px-4" color="secondary">
+                    {t('label.data-asset-plural')}
+                  </Typography>
+                  <Dropdown.Menu
+                    aria-label={t('label.data-asset-plural')}
+                    className="tw:max-h-75 tw:overflow-y-auto"
+                    selectionMode="none"
+                    onAction={handleMenuItemClick}>
+                    {resourcesOptions.map((option) => (
+                      <Dropdown.Item
+                        id={option.value}
+                        key={option.value}
+                        textValue={option.value}>
+                        {option.label}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </div>
+              </Dropdown.Popover>
+            </Dropdown.Root>
           )}
         </Form.Item>
       </div>
