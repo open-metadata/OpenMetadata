@@ -59,12 +59,7 @@ export const useRunTestCase = (testCase: TestCase) => {
   const isVersionPage = !isUndefined(version);
 
   // Only a failed first load counts: a failed poll keeps the pipelines it had.
-  const {
-    data: pipelines = [],
-    isLoading,
-    isLoadingError,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isLoadingError, refetch } = useQuery({
     queryKey: [RUN_PIPELINES_QUERY_KEY, testSuiteFqn],
     queryFn: async () =>
       (
@@ -85,6 +80,8 @@ export const useRunTestCase = (testCase: TestCase) => {
     },
   });
 
+  // A disabled query still returns what the test case page cached under its key.
+  const pipelines = isVersionPage ? [] : data ?? [];
   const pipeline = getRunnablePipeline(pipelines);
   const { permissions: resourcePermissions } = usePermissionProvider();
   const { permissions: pipelinePermissions, isLoading: isPermissionLoading } =
