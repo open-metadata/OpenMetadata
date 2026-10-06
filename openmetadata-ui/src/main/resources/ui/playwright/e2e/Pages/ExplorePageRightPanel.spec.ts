@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { APIRequestContext } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -43,6 +44,7 @@ import {
   openColumnDetailPanel,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
@@ -56,6 +58,19 @@ import {
   RIGHT_PANEL_TAB,
 } from '../PageObject/Explore/RightPanelPageObject';
 import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
+
+// Each entity class creates its own service and deletes it with
+// recursive=true&hardDelete=true. Ten of those cascades at once per worker
+// made the server drop connections ("socket hang up"), and the error was
+// charged to whichever test ran last in the describe, forcing a retry.
+const deleteEntitiesSequentially = async (
+  apiContext: APIRequestContext,
+  entities: Array<{ delete: (apiContext: APIRequestContext) => unknown }>
+) => {
+  for (const entity of entities) {
+    await entity.delete(apiContext);
+  }
+};
 
 const domainEntity = new Domain();
 const user1 = new UserClass();
@@ -164,18 +179,22 @@ test.describe('Right Panel Test Suite', () => {
 
   test.describe('Explore page right panel tests', () => {
     test.describe('Overview panel CRUD and Removal operations', () => {
-      const crudEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const crudEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
@@ -191,10 +210,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(crudEntityMap).map((e) => e.delete(apiContext))
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(crudEntityMap)
           );
         } finally {
           await afterAction();
@@ -401,18 +423,22 @@ test.describe('Right Panel Test Suite', () => {
     });
 
     test.describe('Entity validation with shared read-only entities', () => {
-      const entityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const entityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
@@ -428,10 +454,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(entityMap).map((e) => e.delete(apiContext))
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(entityMap)
           );
         } finally {
           await afterAction();
@@ -1056,18 +1085,22 @@ test.describe('Right Panel Test Suite', () => {
     test.describe('Overview panel - Deleted entity verification', () => {
       test.describe.configure({ mode: 'default' });
 
-      const deletedEntityVerificationEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const deletedEntityVerificationEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1083,12 +1116,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(deletedEntityVerificationEntityMap).map((e) =>
-              e.delete(apiContext)
-            )
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(deletedEntityVerificationEntityMap)
           );
         } finally {
           await afterAction();
@@ -1271,18 +1305,22 @@ test.describe('Right Panel Test Suite', () => {
     });
 
     test.describe('Data Steward User - Permission Verification', () => {
-      const dataStewardEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const dataStewardEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1296,10 +1334,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(dataStewardEntityMap).map((e) => e.delete(apiContext))
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(dataStewardEntityMap)
           );
         } finally {
           await afterAction();
@@ -1514,18 +1555,22 @@ test.describe('Right Panel Test Suite', () => {
     });
 
     test.describe('Data Consumer User - Permission Verification', () => {
-      const dataConsumerEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const dataConsumerEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
@@ -1543,12 +1588,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(dataConsumerEntityMap).map((e) =>
-              e.delete(apiContext)
-            )
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(dataConsumerEntityMap)
           );
         } finally {
           await afterAction();
@@ -2040,18 +2086,22 @@ test.describe('Right Panel Test Suite', () => {
     });
 
     test.describe('Overview panel - Description removal', () => {
-      const descriptionRemovalEntityMap = {
-        table: new TableClass(),
-        dashboard: new DashboardClass(),
-        pipeline: new PipelineClass(),
-        topic: new TopicClass(),
-        database: new DatabaseClass(),
-        databaseSchema: new DatabaseSchemaClass(),
-        dashboardDataModel: new DashboardDataModelClass(),
-        mlmodel: new MlModelClass(),
-        container: new ContainerClass(),
-        searchIndex: new SearchIndexClass(),
-      };
+      const descriptionRemovalEntityMap = pickEntityMatrix(
+        __filename,
+        {
+          table: new TableClass(),
+          dashboard: new DashboardClass(),
+          pipeline: new PipelineClass(),
+          topic: new TopicClass(),
+          database: new DatabaseClass(),
+          databaseSchema: new DatabaseSchemaClass(),
+          dashboardDataModel: new DashboardDataModelClass(),
+          mlmodel: new MlModelClass(),
+          container: new ContainerClass(),
+          searchIndex: new SearchIndexClass(),
+        },
+        { table: new TableClass() }
+      );
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2067,12 +2117,13 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.afterAll(async ({ browser }) => {
+        // Bounded hook budget — see deleteEntitiesSequentially.
+        test.setTimeout(120_000);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          await Promise.all(
-            Object.values(descriptionRemovalEntityMap).map((e) =>
-              e.delete(apiContext)
-            )
+          await deleteEntitiesSequentially(
+            apiContext,
+            Object.values(descriptionRemovalEntityMap)
           );
         } finally {
           await afterAction();
@@ -2083,52 +2134,45 @@ test.describe('Right Panel Test Suite', () => {
         ([entityType, entityInstance]) => {
           test(`Should clear description for ${entityType}`, async ({
             adminPage,
+            rightPanel,
+            overview,
           }) => {
-            const { page: authenticatedPage, afterAction } =
-              await performAdminLogin(adminPage.context().browser()!, {
-                navigate: true,
-              });
-            const rightPanel = new RightPanelPageObject(authenticatedPage);
-            const localOverview = new OverviewPageObject(rightPanel);
+            const fqn = getEntityFqn(entityInstance);
+            await navigateToExploreAndSelectEntity({
+              page: adminPage,
+              entityName: getEntityDisplayName(entityInstance.entity),
+              endpoint: entityInstance.endpoint,
+              fullyQualifiedName: fqn,
+            });
+            await rightPanel.waitForPanelVisible();
+            rightPanel.setEntityConfig(entityInstance);
 
-            // Use the shared entity instance from entityMap which is already created in beforeAll
+            const descriptionText = `Description to remove - ${uuid()}`;
+            await overview.editDescription(descriptionText);
+            await overview.shouldShowDescriptionWithText(descriptionText);
+
+            await overview.editDescription('');
+
+            const descriptionSection = rightPanel
+              .getSummaryPanel()
+              .locator('.description-section');
+            await expect(descriptionSection).toBeVisible();
+            await expect(descriptionSection).not.toContainText(descriptionText);
+
+            // Read persistence from the entity GET, which is immediately
+            // consistent. A second Explore round trip (page load plus a
+            // search) pushed this test past its 60 s budget on CI.
+            const { apiContext, afterAction } = await getApiContext(adminPage);
             try {
-              const fqn = getEntityFqn(entityInstance);
-              await navigateToExploreAndSelectEntity({
-                page: authenticatedPage,
-                entityName: getEntityDisplayName(entityInstance.entity),
-                endpoint: entityInstance.endpoint,
-                fullyQualifiedName: fqn,
-              });
-              await rightPanel.waitForPanelVisible();
-              rightPanel.setEntityConfig(entityInstance);
-
-              // First, ensure there is a description
-              const descriptionText = `Description to remove - ${uuid()}`;
-              await localOverview.editDescription(descriptionText);
-              await localOverview.shouldShowDescriptionWithText(
+              const persisted = await okJson<{ description?: string }>(
+                await apiContext.get(
+                  `/api/v1/${entityInstance.endpoint}/${entityInstance.entityResponseData.id}`
+                ),
+                'Read cleared description'
+              );
+              expect(persisted.description ?? '').not.toContain(
                 descriptionText
               );
-
-              // Clear the description
-              await localOverview.editDescription('');
-
-              // Reload the entity panel and verify description is gone.
-              // waitForPanelLoaded waits for panel loaders to finish, ensuring the
-              // entity data (description) has been fetched from the server before asserting.
-              await navigateToExploreAndSelectEntity({
-                page: authenticatedPage,
-                entityName: getEntityDisplayName(entityInstance.entity),
-                endpoint: entityInstance.endpoint,
-                fullyQualifiedName: fqn,
-              });
-              await rightPanel.waitForPanelLoaded();
-
-              // The description text should no longer be present
-              const descElement = authenticatedPage
-                .locator('.description-section')
-                .getByText(descriptionText);
-              await expect(descElement).not.toBeVisible();
             } finally {
               await afterAction();
             }
@@ -2341,7 +2385,7 @@ test.describe('Right Panel Test Suite', () => {
         const page = await context.newPage();
 
         try {
-          await viewBasicUser.login(page);
+          await viewBasicUser.signIn(page);
           await viewBasicTable.visitEntityPage(page);
 
           const panelContainer = await openColumnDetailPanel({
@@ -2382,7 +2426,7 @@ test.describe('Right Panel Test Suite', () => {
         });
 
         try {
-          await viewBasicUser.login(page);
+          await viewBasicUser.signIn(page);
           await viewBasicTable.visitEntityPage(page);
 
           await openColumnDetailPanel({

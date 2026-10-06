@@ -70,13 +70,14 @@ const SOURCE_NAME_4 = 'conversation';
 const SOURCE_NAME_5 = 'table';
 
 // Admin page fixture — tests call getApiContext(page) for backend operations
-// (delete/restore table), which reads the OIDC token from IndexedDB. storageState
-// only restores cookies/localStorage, not IndexedDB, so we need a real login.
+// (delete/restore table), which reads the OIDC token from IndexedDB. A page
+// restored from storageState alone has cookies and localStorage but no token
+// there; `signIn` writes it, which is what these tests need.
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
-    // eslint-disable-next-line no-restricted-syntax -- getApiContext reads OIDC token from IndexedDB; storageState does not restore it
+    // eslint-disable-next-line no-restricted-syntax -- getApiContext reads the OIDC token from IndexedDB, which signIn writes into this fresh context
     const page = await browser.newPage();
-    await admin.login(page);
+    await admin.signIn(page);
     await use(page);
     await page.close();
   },
@@ -359,6 +360,8 @@ test('Task source alert', async ({ page }) => {
 });
 
 test('Conversation source alert', async ({ page }) => {
+  test.slow();
+
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
 

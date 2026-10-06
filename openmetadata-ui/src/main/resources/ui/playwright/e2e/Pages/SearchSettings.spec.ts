@@ -39,7 +39,7 @@ let adminUser: AdminClass;
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -197,6 +197,38 @@ test.describe('Search Settings', () => {
       ).toHaveText('2000');
     });
 
+    // Confirming would delete the column index that later specs search, so this stops at Cancel.
+    test('Column indexing asks for confirmation before turning off', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      const columnIndexingToggle = page.getByTestId(
+        'enable-column-indexing-switch'
+      );
+      const columnIndexingSwitch = columnIndexingToggle.getByRole('switch');
+
+      await expect(columnIndexingSwitch).toBeChecked();
+
+      await columnIndexingToggle.click();
+
+      await expect(
+        page.getByText(
+          'Turning off column indexing deletes the column search index'
+        )
+      ).toBeVisible();
+
+      await page.getByTestId('cancel').click();
+
+      await expect(page.getByTestId('save-button')).not.toBeVisible();
+      await expect(columnIndexingSwitch).toBeChecked();
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(columnIndexingSwitch).toBeChecked();
+    });
+
     test('Update entity search settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
@@ -294,9 +326,11 @@ test.describe('Search Settings', () => {
       // mapping can actually highlight -- an analyzed text field such as `description`.
       await page.getByTestId('field-configuration-panel-description').click();
 
-      const highlightFieldToggle = page.getByTestId('highlight-field-switch');
+      const highlightFieldToggle = page
+        .getByTestId('highlight-field-switch')
+        .getByRole('switch');
 
-      await expect(highlightFieldToggle).toBeVisible();
+      await expect(highlightFieldToggle).toBeAttached();
       await expect(highlightFieldToggle).toBeEnabled();
 
       // Saving must not disable it. The page takes the PUT response straight into app state, so an
@@ -450,10 +484,9 @@ test.describe('Search Settings', () => {
       await page.getByTestId('highlight-field-switch').click();
       await previewResponse;
 
-      await expect(page.getByTestId('highlight-field-switch')).toHaveAttribute(
-        'aria-checked',
-        'false'
-      );
+      await expect(
+        page.getByTestId('highlight-field-switch').getByRole('switch')
+      ).not.toBeChecked();
 
       const searchInput = page.getByTestId('searchbar');
       const searchPreviewResponse = page.waitForResponse(
@@ -764,8 +797,9 @@ test.describe('Search Settings', () => {
       await firstFieldContainer.click();
 
       const highlightToggle = page.getByTestId('highlight-field-switch');
-      const wasHighlighted =
-        (await highlightToggle.getAttribute('aria-checked')) === 'true';
+      const wasHighlighted = await highlightToggle
+        .getByRole('switch')
+        .isChecked();
       await highlightToggle.click();
 
       await setSliderValue(
@@ -802,10 +836,9 @@ test.describe('Search Settings', () => {
       await openMatchingFieldsPanel(page);
 
       await firstFieldContainer.click();
-      await expect(highlightToggle).toHaveAttribute(
-        'aria-checked',
-        String(!wasHighlighted)
-      );
+      await expect(highlightToggle.getByRole('switch')).toBeChecked({
+        checked: !wasHighlighted,
+      });
     });
 
     test('Search preview displays column results correctly', async ({

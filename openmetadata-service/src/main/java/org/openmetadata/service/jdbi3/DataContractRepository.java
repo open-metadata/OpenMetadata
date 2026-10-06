@@ -17,10 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
 import jakarta.ws.rs.core.Response;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,10 +31,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.ContractSecurity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -43,18 +44,17 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.LatestResult;
 import org.openmetadata.schema.entity.data.TermsOfUse;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
+import org.openmetadata.schema.entity.datacontract.SlaValidation;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
@@ -76,6 +76,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.datacontract.sla.ContractSlaValidator;
+import org.openmetadata.service.datacontract.sla.TableRefreshHistoryLoader;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.DataContractValidationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -85,7 +87,7 @@ import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -117,6 +119,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private final IngestionPipelineMapper ingestionPipelineMapper;
   @Getter @Setter private PipelineServiceClientInterface pipelineServiceClient;
   private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private final ContractSlaValidator slaValidator;
 
   private static final List<TestCaseStatus> FAILED_DQ_STATUSES =
       List.of(TestCaseStatus.Failed, TestCaseStatus.Aborted);
@@ -129,8 +132,20 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         Entity.getCollectionDAO().dataContractDAO(),
         DATA_CONTRACT_PATCH_FIELDS,
         DATA_CONTRACT_UPDATE_FIELDS);
+    // A contract's rules and inheritance apply only once it is Approved, so a new contract starts
+    // in Draft until it is reviewed.
+    onlyReviewersDeleteInReview = true;
+    approvalTaskReviewsEntityStatus = true;
     this.ingestionPipelineMapper = new IngestionPipelineMapper(config);
     this.openMetadataApplicationConfig = config;
+    Clock clock = Clock.systemUTC();
+    this.slaValidator =
+        new ContractSlaValidator(
+            clock,
+            table ->
+                Entity.getEntity(
+                    Entity.TABLE, table.getId(), "columns,lifeCycle", Include.NON_DELETED),
+            new TableRefreshHistoryLoader(daoCollection.profilerDataTimeSeriesDao(), clock));
   }
 
   @Override
@@ -220,26 +235,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   protected void postUpdate(DataContract original, DataContract updated) {
     super.postUpdate(original, updated);
-    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
-      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
-        closeApprovalTask(updated, "Approved the data contract");
-      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
-        closeApprovalTask(updated, "Rejected the data contract");
-      }
-    }
-
-    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
-    // will be a Task created.
-    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
-    // Data Contract goes back to DRAFT.
-    if (original.getEntityStatus() != EntityStatus.DRAFT
-        && updated.getEntityStatus() == EntityStatus.DRAFT) {
-      try {
-        closeApprovalTask(updated, "Closed due to data contract going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
-    }
 
     postCreateOrUpdate(updated);
   }
@@ -397,10 +392,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     // Get schema validation results (prepareForValidation already validated but we want the
-    // details)
-    SchemaValidation schemaValidation =
-        validateSchemaFieldsAgainstEntity(dataContract, dataContract.getEntity());
-    validation.setSchemaValidation(schemaValidation);
+    // details). This call can throw (e.g. NPE when entity is null, EntityNotFoundException when the
+    // referenced entity does not exist); those failures are collected as constraint errors so the
+    // method still returns a structured ContractValidation instead of propagating the exception.
+    try {
+      SchemaValidation schemaValidation =
+          validateSchemaFieldsAgainstEntity(dataContract, dataContract.getEntity());
+      validation.setSchemaValidation(schemaValidation);
+    } catch (Exception e) {
+      validation.setValid(false);
+      constraintErrors.add(e.getMessage());
+    }
 
     validation.setEntityErrors(entityErrors.isEmpty() ? null : entityErrors);
     validation.setConstraintErrors(constraintErrors.isEmpty() ? null : constraintErrors);
@@ -482,26 +484,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<String> failedFields = new ArrayList<>();
     List<String> typeMismatchFields = new ArrayList<>();
 
-    switch (entityType) {
-      case Entity.TABLE:
-        SchemaValidationResult tableResult = validateFieldsAgainstTable(dataContract, entityRef);
-        failedFields = tableResult.failedFields;
-        typeMismatchFields = tableResult.typeMismatchFields;
-        break;
-      case Entity.TOPIC:
-        failedFields = validateFieldsAgainstTopic(dataContract, entityRef);
-        break;
-      case Entity.API_ENDPOINT:
-        failedFields = validateFieldsAgainstApiEndpoint(dataContract, entityRef);
-        break;
-      case Entity.DASHBOARD_DATA_MODEL:
-        SchemaValidationResult dataModelResult =
-            validateFieldsAgainstDashboardDataModel(dataContract, entityRef);
-        failedFields = dataModelResult.failedFields;
-        typeMismatchFields = dataModelResult.typeMismatchFields;
-        break;
-      default:
-        break;
+    if (ChildFieldResolver.supports(entityType)) {
+      SchemaValidationResult result = validateFieldsAgainstEntity(dataContract, entityRef);
+      failedFields = result.failedFields;
+      typeMismatchFields = result.typeMismatchFields;
     }
 
     validation.setTypeMismatchFields(typeMismatchFields.isEmpty() ? null : typeMismatchFields);
@@ -539,178 +525,82 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<String> typeMismatchFields = new ArrayList<>();
   }
 
-  private SchemaValidationResult validateFieldsAgainstTable(
-      DataContract dataContract, EntityReference tableRef) {
+  /**
+   * Validate a contract's declared fields against whatever child collection the entity type
+   * actually has, per the child-field registry. Replaces four near-identical per-type validators.
+   * Column-shaped children (table, dashboardDataModel, container, worksheet) additionally get the
+   * dataType compatibility check; name-shaped children are matched by name only, as before.
+   */
+  private SchemaValidationResult validateFieldsAgainstEntity(
+      DataContract dataContract, EntityReference entityRef) {
+    ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityRef.getType());
+    EntityInterface parent =
+        Entity.getEntity(
+            entityRef.getType(), entityRef.getId(), spec.requiredFields(), Include.NON_DELETED);
+    List<FieldInterface> children = ChildFieldResolver.childrenOf(parent, entityRef.getType());
+    return children.isEmpty()
+        ? allFieldsFailed(dataContract)
+        : matchContractFields(dataContract, children, spec);
+  }
+
+  private SchemaValidationResult allFieldsFailed(DataContract dataContract) {
     SchemaValidationResult result = new SchemaValidationResult();
-    org.openmetadata.schema.entity.data.Table table =
-        Entity.getEntity(Entity.TABLE, tableRef.getId(), "columns", Include.NON_DELETED);
-
-    if (table.getColumns() == null || table.getColumns().isEmpty()) {
-      result.failedFields = getAllContractFieldNames(dataContract);
-      return result;
-    }
-
-    Map<String, Column> tableColumnMap = buildColumnMap(table.getColumns());
-
-    for (Column contractColumn : dataContract.getSchema()) {
-      String columnName = contractColumn.getName();
-      Column entityColumn = tableColumnMap.get(columnName);
-
-      if (entityColumn == null) {
-        result.failedFields.add(columnName);
-      } else if (contractColumn.getDataType() != null
-          && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType())) {
-        result.typeMismatchFields.add(
-            String.format(
-                "%s: expected %s, got %s",
-                columnName, entityColumn.getDataType(), contractColumn.getDataType()));
-      }
-    }
-
+    result.failedFields = getAllContractFieldNames(dataContract);
     return result;
   }
 
-  private List<String> validateFieldsAgainstTopic(
-      DataContract dataContract, EntityReference topicRef) {
-    Topic topic =
-        Entity.getEntity(Entity.TOPIC, topicRef.getId(), "messageSchema", Include.NON_DELETED);
-
-    if (topic.getMessageSchema() == null
-        || topic.getMessageSchema().getSchemaFields() == null
-        || topic.getMessageSchema().getSchemaFields().isEmpty()) {
-      return getAllContractFieldNames(dataContract);
-    }
-
-    Set<String> topicFieldNames = extractFieldNames(topic.getMessageSchema().getSchemaFields());
-
-    return validateContractFieldsAgainstNames(dataContract, topicFieldNames);
-  }
-
-  private List<String> validateFieldsAgainstApiEndpoint(
-      DataContract dataContract, EntityReference apiEndpointRef) {
-    org.openmetadata.schema.entity.data.APIEndpoint apiEndpoint =
-        Entity.getEntity(
-            Entity.API_ENDPOINT,
-            apiEndpointRef.getId(),
-            "requestSchema,responseSchema",
-            Include.NON_DELETED);
-
-    Set<String> apiFieldNames = new HashSet<>();
-
-    if (apiEndpoint.getRequestSchema() != null
-        && apiEndpoint.getRequestSchema().getSchemaFields() != null
-        && !apiEndpoint.getRequestSchema().getSchemaFields().isEmpty()) {
-      apiFieldNames.addAll(extractFieldNames(apiEndpoint.getRequestSchema().getSchemaFields()));
-    }
-
-    if (apiEndpoint.getResponseSchema() != null
-        && apiEndpoint.getResponseSchema().getSchemaFields() != null
-        && !apiEndpoint.getResponseSchema().getSchemaFields().isEmpty()) {
-      apiFieldNames.addAll(extractFieldNames(apiEndpoint.getResponseSchema().getSchemaFields()));
-    }
-
-    if (apiFieldNames.isEmpty()) {
-      return getAllContractFieldNames(dataContract);
-    }
-
-    return validateContractFieldsAgainstNames(dataContract, apiFieldNames);
-  }
-
-  private SchemaValidationResult validateFieldsAgainstDashboardDataModel(
-      DataContract dataContract, EntityReference dashboardDataModelRef) {
+  private SchemaValidationResult matchContractFields(
+      DataContract dataContract,
+      List<FieldInterface> children,
+      ChildFieldResolver.ChildContainerSpec spec) {
     SchemaValidationResult result = new SchemaValidationResult();
-    org.openmetadata.schema.entity.data.DashboardDataModel dashboardDataModel =
-        Entity.getEntity(
-            Entity.DASHBOARD_DATA_MODEL,
-            dashboardDataModelRef.getId(),
-            "columns",
-            Include.NON_DELETED);
-
-    if (dashboardDataModel.getColumns() == null || dashboardDataModel.getColumns().isEmpty()) {
-      result.failedFields = getAllContractFieldNames(dataContract);
-      return result;
-    }
-
-    Map<String, Column> columnMap = buildColumnMap(dashboardDataModel.getColumns());
-
+    Map<String, FieldInterface> childByName = flattenChildrenByName(children);
     for (Column contractColumn : dataContract.getSchema()) {
-      String columnName = contractColumn.getName();
-      Column entityColumn = columnMap.get(columnName);
-
-      if (entityColumn == null) {
-        result.failedFields.add(columnName);
-      } else if (contractColumn.getDataType() != null
-          && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType())) {
-        result.typeMismatchFields.add(
-            String.format(
-                "%s: expected %s, got %s",
-                columnName, entityColumn.getDataType(), contractColumn.getDataType()));
+      FieldInterface child = childByName.get(contractColumn.getName());
+      if (child == null) {
+        result.failedFields.add(contractColumn.getName());
+      } else if (spec.childClass() == Column.class) {
+        recordTypeMismatch(result, contractColumn, (Column) child);
       }
     }
-
     return result;
+  }
+
+  private void recordTypeMismatch(
+      SchemaValidationResult result, Column contractColumn, Column entityColumn) {
+    boolean mismatch =
+        contractColumn.getDataType() != null
+            && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType());
+    if (mismatch) {
+      result.typeMismatchFields.add(
+          String.format(
+              "%s: expected %s, got %s",
+              contractColumn.getName(), entityColumn.getDataType(), contractColumn.getDataType()));
+    }
+  }
+
+  /**
+   * Flatten a child collection to a name-keyed map, recursing into nested children. Mirrors the
+   * behavior of the deleted buildColumnMap and extractFieldNames, both of which keyed by bare name
+   * across all nesting levels, so contract fields keep matching nested struct children.
+   */
+  @SuppressWarnings("unchecked")
+  private Map<String, FieldInterface> flattenChildrenByName(List<FieldInterface> children) {
+    Map<String, FieldInterface> byName = new HashMap<>();
+    for (FieldInterface child : children) {
+      byName.putIfAbsent(child.getName(), child);
+      if (child.getChildren() != null) {
+        flattenChildrenByName((List<FieldInterface>) child.getChildren())
+            .forEach(byName::putIfAbsent);
+      }
+    }
+    return byName;
   }
 
   private List<String> getAllContractFieldNames(DataContract dataContract) {
     return dataContract.getSchema().stream()
         .map(org.openmetadata.schema.type.Column::getName)
         .collect(Collectors.toList());
-  }
-
-  private List<String> validateContractFieldsAgainstNames(
-      DataContract dataContract, Set<String> entityFieldNames) {
-    List<String> failedFields = new ArrayList<>();
-    for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
-      if (!entityFieldNames.contains(column.getName())) {
-        failedFields.add(column.getName());
-      }
-    }
-    return failedFields;
-  }
-
-  private Set<String> extractFieldNames(List<org.openmetadata.schema.type.Field> fields) {
-    if (fields == null || fields.isEmpty()) {
-      return Collections.emptySet();
-    }
-
-    Set<String> fieldNames = new HashSet<>();
-    for (org.openmetadata.schema.type.Field field : fields) {
-      fieldNames.add(field.getName());
-      if (field.getChildren() != null && !field.getChildren().isEmpty()) {
-        fieldNames.addAll(extractFieldNames(field.getChildren()));
-      }
-    }
-    return fieldNames;
-  }
-
-  private Set<String> extractColumnNames(List<Column> columns) {
-    if (columns == null || columns.isEmpty()) {
-      return Collections.emptySet();
-    }
-
-    Set<String> columnNames = new HashSet<>();
-    for (Column column : columns) {
-      columnNames.add(column.getName());
-      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
-        columnNames.addAll(extractColumnNames(column.getChildren()));
-      }
-    }
-    return columnNames;
-  }
-
-  private Map<String, Column> buildColumnMap(List<Column> columns) {
-    if (columns == null || columns.isEmpty()) {
-      return Collections.emptyMap();
-    }
-
-    Map<String, Column> columnMap = new HashMap<>();
-    for (Column column : columns) {
-      columnMap.put(column.getName(), column);
-      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
-        columnMap.putAll(buildColumnMap(column.getChildren()));
-      }
-    }
-    return columnMap;
   }
 
   /**
@@ -1097,6 +987,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       SemanticsValidation semanticsValidation = validateSemantics(dataContract);
       result.withSemanticsValidation(semanticsValidation);
     }
+    result.withSlaValidation(validateSla(dataContract));
 
     // If we don't have quality expectations, flag the results based on schema and semantics
     // Otherwise, keep it Running and wait for the DQ results to kick in
@@ -1152,6 +1043,32 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   /**
+   * Validates the contract that applies to an entity: its own contract together with what it
+   * inherits from an approved Data Product contract. An entity that only inherits one gets an empty
+   * contract of its own to hold the results.
+   *
+   * @return the stored result, or empty when no contract applies to the entity
+   */
+  public Optional<RestUtil.PutResponse<DataContractResult>> validateEntityContract(
+      EntityInterface entity, String user) {
+    return Optional.ofNullable(getEffectiveDataContract(entity))
+        .map(
+            effective ->
+                validateContractWithEffective(
+                    contractForResults(entity, effective, user), effective));
+  }
+
+  private DataContract contractForResults(
+      EntityInterface entity, DataContract effective, String user) {
+    DataContract direct = getEntityDataContractSafely(entity);
+    DataContract contract = direct != null ? direct : effective;
+    if (direct == null && Boolean.TRUE.equals(effective.getInherited())) {
+      contract = materializeInheritedContract(entity, effective.getName(), user);
+    }
+    return contract;
+  }
+
+  /**
    * Validate a contract using the effective contract rules (which may include inherited properties)
    * but store the results against the provided contract entity.
    */
@@ -1180,6 +1097,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       SemanticsValidation semanticsValidation = validateSemantics(effectiveContract);
       result.withSemanticsValidation(semanticsValidation);
     }
+    result.withSlaValidation(validateSla(effectiveContract));
 
     // Handle quality expectations
     if (!nullOrEmpty(effectiveContract.getQualityExpectations())) {
@@ -1323,10 +1241,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           RuleEngine.getInstance()
               .evaluateAndReturn(entity, dataContract.getSemantics(), false, false);
 
+      int total = dataContract.getSemantics().size();
+      int applied =
+          (int)
+              dataContract.getSemantics().stream()
+                  .filter(rule -> RuleEngine.getInstance().shouldApplyRule(entity, rule))
+                  .count();
       validation
           .withFailed(failedRules.size())
-          .withPassed(dataContract.getSemantics().size() - failedRules.size())
-          .withTotal(dataContract.getSemantics().size())
+          .withPassed(applied - failedRules.size())
+          .withSkipped(total - applied)
+          .withTotal(total)
           .withFailedRules(
               failedRules.stream()
                   .map(
@@ -1343,7 +1268,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           e.getMessage(),
           e);
       int totalRules = Optional.ofNullable(dataContract.getSemantics()).map(List::size).orElse(0);
-      validation.withFailed(totalRules).withPassed(0).withTotal(totalRules);
+      validation.withFailed(totalRules).withPassed(0).withSkipped(0).withTotal(totalRules);
     }
 
     return validation;
@@ -1402,6 +1327,31 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
+
+    if (missesSla(result.getSlaValidation())) {
+      result.withContractExecutionStatus(ContractExecutionStatus.Failed);
+    }
+  }
+
+  /** An SLA requirement that was not evaluated does not fail the run; one that was missed does. */
+  private static boolean missesSla(SlaValidation sla) {
+    return sla != null
+        && Stream.of(sla.getRefreshFrequencyMet(), sla.getLatencyMet(), sla.getAvailabilityMet())
+            .anyMatch(Boolean.FALSE::equals);
+  }
+
+  private SlaValidation validateSla(DataContract dataContract) {
+    SlaValidation validation;
+    try {
+      validation = slaValidator.validate(dataContract);
+    } catch (EntityNotFoundException e) {
+      LOG.warn(
+          "Could not check the SLA of data contract {}: {}",
+          dataContract.getFullyQualifiedName(),
+          e.getMessage());
+      validation = new SlaValidation().withMessage("Not evaluated: " + e.getMessage());
+    }
+    return validation;
   }
 
   public RestUtil.PutResponse<DataContractResult> addContractResult(
@@ -1538,10 +1488,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           "latestResult",
           () ->
               recordChange("latestResult", original.getLatestResult(), updated.getLatestResult()));
-      compareAndUpdate(
-          "entityStatus",
-          () ->
-              recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus()));
       compareAndUpdate(
           "testSuite",
           () -> recordChange("testSuite", original.getTestSuite(), updated.getTestSuite()));
@@ -1887,42 +1833,5 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               + "and can only be removed by removing the entity from the Data Product or by creating "
               + "an entity-specific contract that overrides the inherited one.");
     }
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
-  }
-
-  public static void checkUpdatedByReviewer(DataContract dataContract, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = dataContract.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
-    }
-  }
-
-  private void closeApprovalTask(DataContract entity, String comment) {
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 }

@@ -45,8 +45,8 @@ jest.mock(
     __esModule: true,
     default: jest.fn(
       (props: {
-        mode?: 'multiple';
-        onChange?: (option: DataAssetOption | DataAssetOption[]) => void;
+        multiple?: boolean;
+        onChange?: (option?: DataAssetOption | DataAssetOption[]) => void;
         searchIndex?: SearchIndex;
       }) => {
         mockDataAssetAsyncSelectList(props);
@@ -54,14 +54,14 @@ jest.mock(
         return (
           <button
             data-testid={
-              props.mode === 'multiple'
+              props.multiple
                 ? 'asset-select-list-multiple'
                 : 'asset-select-list-single'
             }
             type="button"
             onClick={() =>
               props.onChange?.(
-                props.mode === 'multiple'
+                props.multiple
                   ? [mockSelectedReferenceOption]
                   : mockSelectedReferenceOption
               )
@@ -740,7 +740,7 @@ describe('CSV utils ClassBase', () => {
       );
       expect(mockDataAssetAsyncSelectList).toHaveBeenCalledWith(
         expect.objectContaining({
-          mode: 'multiple',
+          multiple: true,
           searchIndex: SearchIndex.USER,
           value: undefined,
         })

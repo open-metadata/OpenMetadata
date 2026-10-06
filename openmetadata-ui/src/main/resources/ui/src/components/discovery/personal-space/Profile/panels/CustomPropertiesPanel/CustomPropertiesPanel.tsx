@@ -17,8 +17,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Hint } from '@openmetadata/ui-core-components/icons';
-import { Settings02 } from '@untitledui/icons';
+import { Hint, Settings02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import type { Key } from 'react';
 import React, {

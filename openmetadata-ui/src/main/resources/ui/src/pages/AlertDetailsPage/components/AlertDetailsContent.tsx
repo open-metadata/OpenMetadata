@@ -12,8 +12,8 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
-import { Box, Owner, Tabs } from '@openmetadata/ui-core-components';
-import { Button, Card, Skeleton, Space, Tooltip } from 'antd';
+import { Box, Owner, Skeleton, Tabs } from '@openmetadata/ui-core-components';
+import { Button, Card, Space, Tooltip } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -104,7 +104,7 @@ function AlertDetailsContent({
                 <div>
                   <div className="d-flex items-center flex-wrap gap-2">
                     {ownerLoading ? (
-                      <Skeleton.Button active className="extra-info-skeleton" />
+                      <Skeleton height={40} variant="rounded" width={80} />
                     ) : (
                       <Owner
                         hasPermission={editOwnersPermission}

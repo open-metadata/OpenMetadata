@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { Meta, StoryObj } from '@storybook/react';
-import { HelpCircle } from '@untitledui/icons';
+import { HelpCircle } from '../icons';
 import { Tooltip } from '../components/base/tooltip/tooltip';
 import { Button } from '../components/base/buttons/button';
 

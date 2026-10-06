@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import {
   ServiceEmptyStateConfig,
   SERVICE_EMPTY_STATE,
@@ -161,7 +161,7 @@ export const ALL_SERVICES_SEARCH_INDEX = Object.values(
 // matches the "All Connections" entry in the tab rail (ConnectionsSecondaryNav's CATEGORY_ICONS
 // covers only the per-category tabs, not this one) rather than reusing a per-category icon.
 export const ALL_CONNECTIONS_EMPTY_STATE: ServiceEmptyStateConfig = {
-  icon: SearchLg,
+  icon: Search,
   titleKey: 'message.empty-all-connections-title',
   descriptionKey: 'message.empty-all-connections-description',
 };

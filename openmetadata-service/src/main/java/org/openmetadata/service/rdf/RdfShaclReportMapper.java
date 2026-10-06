@@ -19,6 +19,7 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.shacl.ValidationReport;
 import org.apache.jena.shacl.validation.ReportEntry;
+import org.apache.jena.shacl.validation.Severity;
 import org.openmetadata.schema.type.RdfValidationReport;
 import org.openmetadata.schema.type.RdfValidationViolation;
 
@@ -53,7 +54,7 @@ public final class RdfShaclReportMapper {
         .withFocusNode(stringValue(entry.focusNode()))
         .withMessage(entry.message() == null ? "SHACL constraint violation" : entry.message())
         .withResultPath(stringValue(entry.resultPath()))
-        .withSeverity(stringValue(entry.severity()))
+        .withSeverity(severityIri(entry.severity()))
         .withSourceConstraint(stringValue(entry.sourceConstraintComponent()))
         .withValue(stringValue(entry.value()));
   }
@@ -66,5 +67,9 @@ public final class RdfShaclReportMapper {
 
   private static String stringValue(final Object value) {
     return value == null ? null : value.toString();
+  }
+
+  private static String severityIri(final Severity severity) {
+    return severity == null ? null : severity.level().toString();
   }
 }

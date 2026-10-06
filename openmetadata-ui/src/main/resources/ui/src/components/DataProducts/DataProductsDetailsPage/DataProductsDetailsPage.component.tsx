@@ -15,13 +15,14 @@ import {
   Avatar,
   Button as CoreButton,
   Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, toLower, toString } from 'lodash';
+import { toLower, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -105,9 +106,9 @@ import {
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -368,8 +369,6 @@ function DataProductActionButtons(
     manageButtonContent: ItemType[];
     showActions: boolean;
     setShowActions: (value: boolean) => void;
-    activeAnnouncement: AnnouncementEntity | undefined;
-    handleOpenAnnouncementDrawer: () => void;
   }>
 ) {
   const {
@@ -387,8 +386,6 @@ function DataProductActionButtons(
     manageButtonContent,
     showActions,
     setShowActions,
-    activeAnnouncement,
-    handleOpenAnnouncementDrawer,
   } = props;
 
   return (
@@ -433,12 +430,12 @@ function DataProductActionButtons(
               data-testid="version-button"
               icon={<Icon component={VersionIcon} />}
               onClick={handleVersionClick}>
-              <Typography.Text
+              <Typography
                 className={classNames('', {
                   'text-primary': version,
                 })}>
                 {toString(dataProduct.version)}
-              </Typography.Text>
+              </Typography>
             </Button>
           </Tooltip>
         )}
@@ -473,13 +470,6 @@ function DataProductActionButtons(
           </Dropdown>
         )}
       </ButtonGroup>
-
-      {activeAnnouncement && (
-        <AnnouncementCard
-          announcement={activeAnnouncement}
-          onClick={handleOpenAnnouncementDrawer}
-        />
-      )}
     </div>
   );
 }
@@ -566,8 +556,9 @@ const DataProductsDetailsPage = ({
   );
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] =
-    useState<AnnouncementEntity>();
+  const [activeAnnouncements, setActiveAnnouncements] = useState<
+    AnnouncementEntity[]
+  >([]);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
@@ -613,11 +604,7 @@ const DataProductsDetailsPage = ({
           dataProduct.fullyQualifiedName ?? ''
         )
       );
-      if (isEmpty(announcements.data)) {
-        setActiveAnnouncement(undefined);
-      } else {
-        setActiveAnnouncement(announcements.data[0]);
-      }
+      setActiveAnnouncements(announcements.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -1085,11 +1072,9 @@ const DataProductsDetailsPage = ({
             </div>
             <div className="tw:shrink-0 tw:max-w-full">
               <DataProductActionButtons
-                activeAnnouncement={activeAnnouncement}
                 canCreate={canCreate}
                 dataContractLatestResultButton={dataContractLatestResultButton}
                 dataProduct={dataProduct}
-                handleOpenAnnouncementDrawer={handleOpenAnnouncementDrawer}
                 handleVersionClick={handleVersionClick}
                 handleVoteChange={handleVoteChange}
                 isVersionsView={isVersionsView}
@@ -1104,6 +1089,13 @@ const DataProductsDetailsPage = ({
               />
             </div>
           </div>
+
+          <AnnouncementsWidgetV3Body
+            announcements={activeAnnouncements}
+            className="tw:mx-5 tw:mt-3"
+            testId="entity-header-announcements"
+            onItemClick={handleOpenAnnouncementDrawer}
+          />
 
           {dataProductClassBase.getRequestDataAccessBanner()}
 

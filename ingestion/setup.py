@@ -94,6 +94,7 @@ VERSIONS = {
     "sqlalchemy-vertica": "sqlalchemy-vertica[vertica-python]>=0.0.5,<1.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf>=8.2,<8.8",  # 8.8+ requires chardet>=7, conflicting with the chardet==4.0.0 profiler pin
+    "canmatrix": "canmatrix<1.3",  # 1.3 breaks importing asammdf: https://github.com/ebroecker/canmatrix/issues/926
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
@@ -110,6 +111,7 @@ COMMONS = {
     },
     "datalake": {
         VERSIONS["asammdf"],
+        VERSIONS["canmatrix"],
         VERSIONS["avro"],
         VERSIONS["boto3"],
         VERSIONS["ijson"],

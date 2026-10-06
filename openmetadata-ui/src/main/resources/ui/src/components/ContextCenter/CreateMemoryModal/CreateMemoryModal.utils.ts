@@ -12,10 +12,12 @@
  */
 import { compare } from 'fast-json-patch';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import { ROUTES } from '../../../constants/constants';
 import { MEMORY_TYPE_OPTIONS } from '../../../constants/ContextCenter.constants';
 import {
   ContextMemory,
   EntityReference,
+  MemoryType,
   ShareVisibility,
 } from '../../../generated/entity/context/contextMemory';
 import { queryClient } from '../../../queryClient';
@@ -43,6 +45,32 @@ export const removeAssetByKey = (
   assets: DataAssetOption[],
   fqn: string
 ): DataAssetOption[] => assets.filter((asset) => getAssetKey(asset) !== fqn);
+
+// The form offers only the types people choose by hand, so a stored type it
+// cannot show (an agent's Learning) survives unless the editor picks another.
+const resolveMemoryType = (
+  stored: MemoryType | undefined,
+  selected: MemoryType | undefined
+): MemoryType | undefined =>
+  selected ??
+  (MEMORY_TYPE_OPTIONS.some((option) => option.id === stored)
+    ? undefined
+    : stored);
+
+// Opening a successor keeps the Context Center's other query parameters; from
+// anywhere else it starts fresh, so another page's parameters do not leak in.
+export const getSuccessorSearch = (
+  currentPathname: string,
+  currentSearch: string,
+  successorName: string
+): string => {
+  const params = new URLSearchParams(
+    currentPathname === ROUTES.CONTEXT_CENTER_MEMORIES ? currentSearch : ''
+  );
+  params.set('memory', successorName);
+
+  return params.toString();
+};
 
 // Patches only the fields that actually changed, preserving a pre-existing
 // shareConfig — or adding one — only when there is a reason to (an existing
@@ -89,11 +117,11 @@ export const submitMemoryUpdate = async ({
     summary: '',
     answer: memory.trim(),
     question: memory.trim(),
-    memoryType: memoryTypeValue,
+    memoryType: resolveMemoryType(memoryToEdit.memoryType, memoryTypeValue),
     tags: selectedTags,
     primaryEntity,
     relatedEntities,
-    ...(hasExistingShareConfig || visibility !== ShareVisibility.Shared
+    ...(hasExistingShareConfig || visibility !== ShareVisibility.Private
       ? { shareConfig: { visibility } }
       : {}),
   };
@@ -198,7 +226,7 @@ export const buildMemoryFormState = (
     memoryType: memoryTypeOption
       ? { id: memoryTypeOption.id, label: t(memoryTypeOption.labelKey) }
       : null,
-    visibility: memoryToEdit.shareConfig?.visibility ?? ShareVisibility.Shared,
+    visibility: memoryToEdit.shareConfig?.visibility ?? ShareVisibility.Private,
   };
 
   const assets: DataAssetOption[] = [

@@ -19,7 +19,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { assignDomainWidget, removeDomainWidget } from '../../../utils/domain';
+import { setDomain } from '../../../utils/domainPicker';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
@@ -368,8 +368,11 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await assignDomainWidget(page, domain.responseData);
-      await removeDomainWidget(page, domain.responseData);
+      await setDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData, {
+        trigger: 'edit-domain',
+        verify: 'chip-gone',
+      });
     } finally {
       await glossary.delete(apiContext);
       await domain.delete(apiContext);
@@ -392,8 +395,8 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await assignDomainWidget(page, domain1.responseData);
-      await assignDomainWidget(page, domain2.responseData, false, true);
+      await setDomain(page, domain1.responseData);
+      await setDomain(page, domain2.responseData, { trigger: 'edit-domain' });
     } finally {
       await glossary.delete(apiContext);
       await domain1.delete(apiContext);
@@ -602,15 +605,13 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      // Clear all synonyms by clicking each remove button
-      const removeButtons = page.locator(
-        '.ant-select-selection-item .ant-select-selection-item-remove'
-      );
-      const count = await removeButtons.count();
-
-      for (let i = count - 1; i >= 0; i--) {
-        await removeButtons.nth(i).click();
+      for (const synonym of ['Synonym1', 'Synonym2', 'Synonym3']) {
+        await page.getByTestId(`remove-synonym-${synonym}`).click();
       }
+
+      await expect(
+        page.getByTestId('synonyms-select').getByRole('button')
+      ).toHaveCount(0);
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-synonym-btn').click();
@@ -1309,6 +1310,10 @@ test.describe('Glossary Advanced Operations', () => {
   test('should show error when glossary name exceeds limit', async ({
     page,
   }) => {
+    // Redirect + sidebar navigate + modal open is 3 page transitions
+    // that can each drift a few seconds under merge-queue load.
+    test.slow();
+
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
 

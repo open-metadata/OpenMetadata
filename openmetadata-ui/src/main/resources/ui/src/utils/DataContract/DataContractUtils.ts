@@ -30,8 +30,11 @@ import {
   ContractExecutionStatus,
   DataContract,
 } from '../../generated/entity/data/dataContract';
-import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
-import { formatMonth } from '../date-time/DateTimeUtils';
+import {
+  DataContractResult,
+  SlaValidation,
+} from '../../generated/entity/datacontract/dataContractResult';
+import { customFormatDateTime, formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 import { withGlossaryTermField } from '../queryBuilderWidgets/glossaryTermQueryField';
@@ -53,6 +56,24 @@ export const semanticRuleValidator = (_: RuleObject, value: string) => {
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');
+};
+
+/**
+ * An SLA requirement nothing could evaluate is neither passed nor failed, so
+ * an SLA with no evaluated requirement is reported as not evaluated.
+ */
+export const getSlaStatusLabel = (slaValidation: SlaValidation) => {
+  const evaluated = [
+    slaValidation.refreshFrequencyMet,
+    slaValidation.latencyMet,
+    slaValidation.availabilityMet,
+  ].filter((met) => met !== undefined && met !== null);
+
+  if (evaluated.includes(false)) {
+    return t('label.failed');
+  }
+
+  return isEmpty(evaluated) ? t('label.not-evaluated') : t('label.passed');
 };
 
 export const getConstraintStatus = (
@@ -79,6 +100,10 @@ export const getConstraintStatus = (
     statusArray['quality'] = getContractStatusLabelBasedOnFailedResult(
       latestContractResults.qualityValidation.failed
     );
+  }
+
+  if (latestContractResults.slaValidation) {
+    statusArray['sla'] = getSlaStatusLabel(latestContractResults.slaValidation);
   }
 
   return statusArray;
@@ -323,55 +348,6 @@ export const processContractExecutionData = (
   });
 };
 
-// Create custom scale function for positioning bars from left
-export const createContractExecutionCustomScale = (
-  data: DataContractProcessedResultCharts[]
-) => {
-  const domainValues = data.map((d) => d.name);
-  let rangeValues = [0, 800];
-
-  const scale = (value: string) => {
-    const index = data.findIndex((item) => item.name === value);
-    if (index === -1) {
-      return 0;
-    }
-
-    // Calculate position starting from the left edge
-    const maxBarWidth = 20; // Wider bars for better visibility
-    const spacing = 8; // More spacing between bars
-    const position = rangeValues[0] + index * (maxBarWidth + spacing);
-
-    return position;
-  };
-
-  // Implement chainable methods like d3-scale
-  scale.domain = (domain?: string[]) => {
-    if (domain === undefined) {
-      return domainValues;
-    }
-
-    return scale;
-  };
-
-  scale.range = (range?: number[]) => {
-    if (range === undefined) {
-      return rangeValues;
-    }
-    rangeValues = range;
-
-    return scale;
-  };
-
-  scale.ticks = () => [];
-  scale.tickFormat = () => formatMonth;
-  scale.bandwidth = () => 20; // Match the maxBarWidth
-  scale.copy = () => createContractExecutionCustomScale(data);
-  scale.nice = () => scale;
-  scale.type = 'band';
-
-  return scale;
-};
-
 // Generate tick positions for month labels
 export const generateMonthTickPositions = (
   processedData: DataContractProcessedResultCharts[]
@@ -391,13 +367,22 @@ export const generateMonthTickPositions = (
   return tickPositions;
 };
 
-// Format tick value for month display
-export const formatContractExecutionTick = (value: string) => {
-  // Extract timestamp from the unique name (format: timestamp_index)
-  const timestamp = value.split('_')[0];
+// Extract timestamp from the unique name (format: timestamp_index)
+const contractExecutionTimestamp = (value: string) =>
+  Number(value.split('_')[0]);
 
-  return formatMonth(Number(timestamp));
-};
+// Format tick value for month display
+export const formatContractExecutionTick = (value: string) =>
+  formatMonth(contractExecutionTimestamp(value));
+
+const CONTRACT_EXECUTION_DAY_TICK_FORMAT = 'MMM d';
+
+// Format tick value for day display
+export const formatContractExecutionDayTick = (value: string) =>
+  customFormatDateTime(
+    contractExecutionTimestamp(value),
+    CONTRACT_EXECUTION_DAY_TICK_FORMAT
+  );
 
 // Utility function to convert string to options array for Ant Design Select
 export const generateSelectOptionsFromString = (

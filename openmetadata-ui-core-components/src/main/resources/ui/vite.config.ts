@@ -92,8 +92,8 @@ export default defineConfig({
       external: [
         'react',
         'react-dom',
+        'react-dom/server',
         'react/jsx-runtime',
-        '@untitledui/icons',
         'react-aria',
         'react-aria-components',
         'react-stately',
@@ -108,6 +108,11 @@ export default defineConfig({
         'tailwindcss-react-aria-components',
         'i18next',
         'react-i18next',
+        // Charts: `/charts` imports echarts' modular entries (echarts/core,
+        // echarts/charts, ...) and echarts-for-react/esm/core. Keep every
+        // sub-path external so consumers resolve their own single copy.
+        /^echarts(\/.*)?$/,
+        /^echarts-for-react(\/.*)?$/,
       ],
       output: {
         entryFileNames: (chunkInfo) => {

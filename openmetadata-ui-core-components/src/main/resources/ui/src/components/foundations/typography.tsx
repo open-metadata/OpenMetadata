@@ -13,12 +13,14 @@
 
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
-import type {
-  ElementType,
-  HTMLAttributeAnchorTarget,
-  HTMLAttributes,
-  ReactNode,
-  Ref,
+import {
+  type ElementType,
+  type HTMLAttributeAnchorTarget,
+  type HTMLAttributes,
+  type ReactNode,
+  type Ref,
+  useRef,
+  useState,
 } from 'react';
 import type { PressEvent } from 'react-aria-components';
 
@@ -75,6 +77,13 @@ type TypographyEllipsis =
   | {
       rows?: EllipsisRows;
       tooltip?: ReactNode;
+      /**
+       * Render the tooltip trigger as a plain span instead of a `<button>`.
+       * Set it when the text sits inside a link, button or other interactive
+       * element: a nested button is invalid HTML and adds a second tab stop.
+       * Hover still opens the tooltip; keyboard focus belongs to the ancestor.
+       */
+      excludeTriggerFromTabOrder?: boolean;
     };
 
 interface TypographyProps extends HTMLAttributes<HTMLElement> {
@@ -117,6 +126,33 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
 // === 'string'` guard: that guard narrows `Component` to `string` in the JSX
 // below, which TypeScript then resolves to an arbitrary intrinsic element.
 const UNWRAPPED_ELEMENTS = new Set<unknown>(['span', 'div']);
+
+// Ellipsis on these keeps them in the text flow (inline-block, capped at the
+// container width) instead of breaking the line with a block wrapper.
+const INLINE_ELEMENTS = new Set<unknown>(['span', 'a']);
+
+const overflows = (el: Element | null, rows: number) =>
+  !!el &&
+  (rows > 1
+    ? el.scrollHeight > el.clientHeight
+    : el.scrollWidth > el.clientWidth);
+
+// The clamp classes sit on both the wrapper and the inner element. A block
+// inner element clips its own overflow, so the wrapper never sees it — check
+// the inner element too.
+const isTruncated = (wrapper: HTMLElement | null, rows: number) =>
+  overflows(wrapper, rows) ||
+  overflows(wrapper?.firstElementChild ?? null, rows);
+
+// Marks a Typography root so `styles/typography.css` can keep article-prose
+// link styling (always underlined, weight 400) off links nested in UI text.
+const TYPOGRAPHY_ROOT = 'prose-typography';
+
+// The tooltip trigger is a <button>, whose UA `text-align: center` would
+// otherwise centre short text; cursor-[inherit] likewise overrides the UA
+// `cursor: default`, which would beat a clickable ancestor's pointer.
+const TOOLTIP_TRIGGER =
+  'tw:min-w-0 tw:cursor-[inherit] tw:[text-align:inherit]';
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
   default: '',
@@ -170,6 +206,9 @@ export const Typography = (props: TypographyProps) => {
     ...otherProps
   } = props;
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isEllipsisTooltipOpen, setIsEllipsisTooltipOpen] = useState(false);
+
   const sizeClass = size ? sizeClasses[size] : undefined;
   const weightClass = weight ? weightClasses[weight] : undefined;
   const colorClass = color ? colorClasses[color] : undefined;
@@ -218,27 +257,57 @@ export const Typography = (props: TypographyProps) => {
   const element = (
     <Component
       {...otherProps}
-      className={canUnwrap ? cx('prose', innerClassName) : innerClassName}
+      className={
+        canUnwrap
+          ? cx('prose', TYPOGRAPHY_ROOT, innerClassName)
+          : innerClassName
+      }
       style={style}>
       {children}
     </Component>
   );
 
+  const isInlineEllipsis = isEllipsis && INLINE_ELEMENTS.has(Component);
+  const Wrapper = isInlineEllipsis ? 'span' : 'div';
+
   const content = canUnwrap ? (
     element
   ) : (
-    <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
+    <Wrapper
+      className={cx(
+        'prose',
+        TYPOGRAPHY_ROOT,
+        quoteStyles[quoteVariant],
+        ellipsisClassName,
+        isInlineEllipsis &&
+          'tw:inline-block tw:min-w-0 tw:max-w-full tw:align-bottom'
+      )}
+      ref={wrapperRef}>
       {element}
-    </div>
+    </Wrapper>
   );
 
   if (ellipsisTooltip) {
     return (
       <Tooltip
+        excludeTriggerFromTabOrder={ellipsisConfig?.excludeTriggerFromTabOrder}
+        isOpen={isEllipsisTooltipOpen}
         title={ellipsisTooltip}
-        // cursor-[inherit] overrides the UA `cursor: default` the wrapper gets
-        // for being a button, which would beat a clickable ancestor's pointer.
-        triggerClassName="tw:block tw:w-full tw:min-w-0 tw:cursor-[inherit]"
+        triggerClassName={cx(
+          TOOLTIP_TRIGGER,
+          isInlineEllipsis
+            ? // inline-flex, not inline-block: an inline-block child would sit
+              // in the button's own line box, whose inherited line-height adds
+              // ~2px under the text and shifts everything below it.
+              'tw:inline-flex tw:max-w-full tw:align-bottom'
+            : 'tw:block tw:w-full'
+        )}
+        onOpenChange={(isOpen) =>
+          // The full text is only worth a tooltip when it is actually cut off.
+          setIsEllipsisTooltipOpen(
+            isOpen && isTruncated(wrapperRef.current, ellipsisRows)
+          )
+        }
         onTriggerPress={allowEllipsisTooltipPressToPropagate}>
         {content}
       </Tooltip>
@@ -249,6 +318,7 @@ export const Typography = (props: TypographyProps) => {
     return (
       <Tooltip
         title={tooltip}
+        triggerClassName={TOOLTIP_TRIGGER}
         onTriggerPress={allowEllipsisTooltipPressToPropagate}>
         {content}
       </Tooltip>

@@ -15,11 +15,19 @@
  */
 export interface TestCaseIncidentGroup {
     /**
-     * Number of distinct current assignees across the group's open incidents.
+     * Number of distinct current assignees across the group's open incidents, each of which has
+     * one at most.
      */
     assigneeCount?: number;
     /**
-     * Distinct names of the current assignees of the group's open incidents.
+     * The distinct current assignees of the group's open incidents as users and teams, one per
+     * incident at most, in the order of `assignees`. A name no user or team holds any more is
+     * left out.
+     */
+    assigneeReferences?: EntityReference[];
+    /**
+     * Distinct names of the current assignees of the group's open incidents, one per incident
+     * at most.
      */
     assignees?: string[];
     /**
@@ -65,6 +73,30 @@ export interface TestCaseIncidentGroup {
      */
     status?: TestCaseResolutionStatusTypes;
     /**
+     * Number of the group's open incidents in each current status, most actionable first. A
+     * status no incident sits in is left out, and `Resolved` never appears — a resolved
+     * incident leaves the group.
+     */
+    statusCounts?: IncidentStatusCount[];
+    /**
+     * Number of distinct tables the group's open incidents were raised on.
+     */
+    tableCount?: number;
+    /**
+     * Tables the group's open incidents were raised on, the one with the most open incidents
+     * first. Capped at a handful; `tableCount` holds the full count.
+     */
+    tables?: EntityReference[];
+    /**
+     * Number of distinct test definitions across the group's open incidents.
+     */
+    testDefinitionCount?: number;
+    /**
+     * Test definitions of the group's open incidents, the one with the most open incidents
+     * first. Capped at a handful; `testDefinitionCount` holds the full count.
+     */
+    testDefinitions?: EntityReference[];
+    /**
      * Number of incidents opened in each of 8 equal time buckets spanning `firstSeen` to
      * `lastSeen`.
      */
@@ -73,6 +105,55 @@ export interface TestCaseIncidentGroup {
      * Direction of the incident-creation trend for the group.
      */
     trendDirection?: IncidentTrendDirection;
+}
+
+/**
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
 }
 
 /**
@@ -105,12 +186,28 @@ export enum Severities {
  * Ack > New.
  *
  * Test case resolution status type.
+ *
+ * Current status the incidents are in.
  */
 export enum TestCaseResolutionStatusTypes {
     ACK = "Ack",
     Assigned = "Assigned",
     New = "New",
     Resolved = "Resolved",
+}
+
+/**
+ * Number of the group's open incidents currently sitting in one status.
+ */
+export interface IncidentStatusCount {
+    /**
+     * Number of the group's open incidents in that status.
+     */
+    count: number;
+    /**
+     * Current status the incidents are in.
+     */
+    status: TestCaseResolutionStatusTypes;
 }
 
 /**

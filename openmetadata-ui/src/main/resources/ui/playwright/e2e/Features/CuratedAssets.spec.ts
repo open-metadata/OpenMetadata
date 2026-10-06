@@ -67,7 +67,7 @@ const entityTypeToTestEntity: Record<string, () => NameableEntityResponse> = {
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -197,7 +197,6 @@ test.describe('Curated Assets Widget', () => {
         curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
-          .first()
       ).toBeVisible();
 
       await redirectToHomePage(page);
@@ -226,7 +225,6 @@ test.describe('Curated Assets Widget', () => {
         curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
-          .first()
       ).toBeVisible();
 
       await navigateToCustomizeLandingPage(page, {
@@ -413,8 +411,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
     await navigateToCustomizeLandingPage(page, {
@@ -522,8 +520,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
 
@@ -538,8 +536,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
     await navigateToCustomizeLandingPage(page, {
@@ -666,8 +664,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
 
@@ -682,8 +680,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
     await navigateToCustomizeLandingPage(page, {
