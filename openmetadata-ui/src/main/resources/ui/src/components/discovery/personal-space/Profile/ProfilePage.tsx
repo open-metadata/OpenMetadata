@@ -153,9 +153,15 @@ const ProfilePage: React.FC = () => {
       // Ignore a stale response superseded by a newer target.
       if (reqId === requestRef.current) {
         // isAdmin is not in the fields list but is used by contributed-tab
-        // conditions (e.g. billing tab). Preserve it from currentUser so the
-        // condition evaluates correctly after the fetch overwrites the seed.
-        setUserData({ ...res, isAdmin: currentUserRef.current?.isAdmin });
+        // conditions (e.g. billing tab). Keep the fetched value when present;
+        // fall back to the logged-in user's flag only for your own profile so
+        // viewing another user's profile doesn't overwrite their isAdmin with ours.
+        setUserData({
+          ...res,
+          isAdmin:
+            res.isAdmin ??
+            (isViewingOtherUser ? undefined : currentUserRef.current?.isAdmin),
+        });
       }
     } catch (error) {
       if (reqId !== requestRef.current) {
