@@ -288,6 +288,44 @@ describe('TestSummary component', () => {
     expect(screen.getByTestId('run-summary-failed')).toHaveTextContent('2');
   });
 
+  // A slow response for a range the reader has since replaced must not
+  // overwrite the newer range's results.
+  it('should keep the newest range when an older response arrives late', async () => {
+    render(<TestSummary {...mockProps} />);
+
+    await screen.findByText('DqDateRangeFilter');
+
+    let resolveSlowResponse!: (value: unknown) => void;
+    mockGetListTestCaseResults
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSlowResponse = resolve;
+          })
+      )
+      .mockResolvedValueOnce({
+        data: [
+          { timestamp: 1, testCaseStatus: 'Success' },
+          { timestamp: 2, testCaseStatus: 'Failed' },
+        ],
+      });
+
+    await applyRange({ startTs: 1, endTs: 2 });
+    await applyRange({ startTs: 3, endTs: 4 });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('run-summary-runs')).toHaveTextContent('2');
+    });
+
+    await act(async () => {
+      resolveSlowResponse({
+        data: [{ timestamp: 5, testCaseStatus: 'Success' }],
+      });
+    });
+
+    expect(screen.getByTestId('run-summary-runs')).toHaveTextContent('2');
+  });
+
   it('should show the newest run below the tiles', async () => {
     mockGetListTestCaseResults.mockResolvedValueOnce({
       data: [

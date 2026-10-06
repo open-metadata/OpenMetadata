@@ -100,12 +100,31 @@ describe('Test ProfilePicture component', () => {
     render(<ProfilePicture {...mockData} />);
 
     const [matched, plain] = (Avatar as jest.Mock).mock.calls.map(
-      ([props]) => props.style
+      ([props]) => props
     );
-    const hue = matched.backgroundColor.match(/hsl\((\d+)/)[1];
+    const ringClass = 'tw:border-[hsl(var(--avatar-hue)_70%_80%)]';
 
-    expect(matched.borderColor).toBe(`hsl(${hue}, 70%, 80%)`);
-    expect(plain.borderColor).toBeUndefined();
+    expect(matched.className).toContain(ringClass);
+    expect(plain.className).not.toContain(ringClass);
+  });
+
+  it('carries the hue as a CSS variable so the tint can follow the theme', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.style).toEqual({
+      '--avatar-hue': expect.any(Number),
+    });
+    expect(props.className).toContain(
+      'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]'
+    );
+    expect(props.className).toContain(
+      'tw:dark:bg-[hsl(var(--avatar-hue)_40%_22%)]'
+    );
   });
 
   it('draws no outline, ring or tinted border when borderless', () => {
@@ -118,7 +137,11 @@ describe('Test ProfilePicture component', () => {
 
     expect(props.contrastBorder).toBe(false);
     expect(props.colorVariant).toBe('neutral');
-    expect(props.style.borderColor).toBeUndefined();
-    expect(props.style.backgroundColor).toMatch(/^hsl\(/);
+    expect(props.className).not.toContain(
+      'tw:border-[hsl(var(--avatar-hue)_70%_80%)]'
+    );
+    expect(props.className).toContain(
+      'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]'
+    );
   });
 });

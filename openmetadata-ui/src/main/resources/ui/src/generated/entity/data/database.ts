@@ -21,6 +21,15 @@ export interface Database {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * This schema defines the type for Database profile config.
      */
     databaseProfilerConfig?: DatabaseProfilerConfig;

@@ -82,7 +82,6 @@ import {
 } from '../inbox.utils';
 import { createThreadReply, useActivityReplies } from '../useActivityReplies';
 import { writeInboxReactions } from '../useInboxActivity';
-import './activity-feed-item.less';
 import ActivityChangePanel from './ActivityChangePanel';
 import ActivityThread from './ActivityThread';
 import AuthorPopover from './AuthorPopover';

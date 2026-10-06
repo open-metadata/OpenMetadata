@@ -41,15 +41,52 @@
 
     color: var(--tw-color-text-white);
     display: flex;
-    align-items: center;
-    gap: var(--om-space-8);
-    justify-content: center;
+    align-items: flex-start;
+    gap: var(--om-space-12);
+    justify-content: flex-start;
     min-width: 140px;
-    padding: @size-lg 0;
+    padding: var(--om-space-16) var(--om-space-20);
 
-    .whats-new-alert-rocket-icon {
-      width: 30px;
-      height: 30px;
+    &.whats-new-alert-left--centered {
+      align-items: center;
+      justify-content: center;
+
+      .whats-new-alert-version-block {
+        align-items: center;
+      }
+    }
+
+    .whats-new-alert-version-block {
+      display: flex;
+      flex-direction: column;
+      gap: var(--om-space-8);
+      width: 100%;
+    }
+
+    .whats-new-alert-meta {
+      display: flex;
+      flex-direction: column;
+      gap: var(--om-space-2);
+    }
+
+    .whats-new-alert-meta-label {
+      color: var(--tw-color-text-white);
+      font-size: var(--om-font-size-xs);
+      font-weight: var(--om-font-weight-semibold);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .whats-new-alert-divider {
+      height: 1px;
+      width: 100%;
+      background: var(--om-legacy-color-255-255-255-0-302);
+    }
+
+    .whats-new-alert-released-date {
+      color: var(--tw-color-text-white);
+      font-size: var(--om-font-size-md);
+      font-weight: var(--om-font-weight-semibold);
     }
   }
 }
@@ -71,8 +108,9 @@
 }
 
 .whats-new-alert-version {
-  .text-lg();
-  font-weight: var(--om-font-weight-semibold);
+  font-size: var(--om-font-size-display-xs);
+  font-weight: var(--om-font-weight-bold);
+  line-height: 1.1;
 
   color: @white !important;
 }

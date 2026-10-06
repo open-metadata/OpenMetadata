@@ -87,7 +87,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const latestRunTimestamp = data.testCaseResult?.timestamp;
 
   const fetchTestResults = useCallback(
-    async (dateRangeObj: DateRangeObject, { quietly = false } = {}) => {
+    async (
+      dateRangeObj: DateRangeObject,
+      { quietly, isStale }: { quietly: boolean; isStale: () => boolean }
+    ) => {
       if (!testCaseFqn) {
         return;
       }
@@ -103,12 +106,19 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             })
           : getListTestCaseResults(testCaseFqn, range));
 
-        setResults(chartData);
+        if (!isStale()) {
+          setResults(chartData);
+        }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (!isStale()) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
-        setIsGraphLoading(false);
+        // The fetch that replaced this one owns the loaders now.
+        if (!isStale()) {
+          setIsLoading(false);
+          setIsGraphLoading(false);
+        }
       }
     },
     [testCaseFqn, dimensionKey]
@@ -129,8 +139,19 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     const quietly = lastFetch.current === fetchKey;
     lastFetch.current = fetchKey;
 
+    // A newer range, dimension or run replaces this fetch, and a slow response
+    // must not overwrite the newer one's results when it arrives.
+    let isStale = false;
+
     // fetchTestResults reports its own errors, so the effect need not wait on it.
-    void fetchTestResults(dateRangeObject, { quietly });
+    void fetchTestResults(dateRangeObject, {
+      quietly,
+      isStale: () => isStale,
+    });
+
+    return () => {
+      isStale = true;
+    };
   }, [
     fetchTestResults,
     testCaseFqn,
