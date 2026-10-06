@@ -19,6 +19,7 @@ import {
 import {
   Category as EntityCategory,
   Characteristic as EntityCharacteristic,
+  EntityStatus,
   PaletteKey as EntityPaletteKey,
 } from '../../generated/entity/data/relationshipType';
 import {
@@ -34,6 +35,15 @@ import {
 } from './RelationshipTypeForm.utils';
 
 describe('RelationshipTypeForm.utils', () => {
+  it.each([EntityStatus.Superseded, EntityStatus.Invalidated])(
+    'rejects the memory-only %s stage in a relationship type form',
+    (entityStatus) => {
+      expect(() =>
+        toRelationshipTypeForm(createRelationshipTypeMock({ entityStatus }))
+      ).toThrow(`${entityStatus} is not a relationship type lifecycle stage`);
+    }
+  );
+
   it('maps a governed entity into editable values without losing advanced fields', () => {
     const entity = createRelationshipTypeMock({
       category: EntityCategory.OwlSkos,

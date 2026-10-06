@@ -21,6 +21,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.Metric;
@@ -138,6 +140,23 @@ class EntityRepositoryEntityStatusTest {
     new TestMetricRepo(metricDAO).assignInitialEntityStatus(metric);
 
     assertEquals(EntityStatus.IN_REVIEW, metric.getEntityStatus());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"Superseded", "Invalidated"})
+  void generalEntitiesCannotBeCreatedOrUpdatedInMemoryRetirementStages(String value) {
+    EntityStatus status = EntityStatus.fromValue(value);
+    TestMetricRepo repo = new TestMetricRepo(metricDAO);
+    Metric original = metric().withEntityStatus(EntityStatus.APPROVED);
+
+    assertThrows(
+        BadRequestException.class,
+        () -> repo.assignInitialEntityStatus(metric().withEntityStatus(status)));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            newUpdater(repo, original, movedBy(original, status, REVIEWER))
+                .updateEntityStatus(false));
   }
 
   @Test

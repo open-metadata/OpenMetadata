@@ -141,6 +141,28 @@ describe('AdvancedSearchClassBase', () => {
     advancedSearchClassBase = new AdvancedSearchClassBase();
   });
 
+  it.each(['Superseded', 'Invalidated'])(
+    'does not offer %s for general entity searches',
+    (status) => {
+      const result = advancedSearchClassBase.getCommonConfig({});
+
+      expect(result[EntityFields.ENTITY_STATUS]).toHaveProperty(
+        'fieldSettings.listValues',
+        expect.arrayContaining([expect.objectContaining({ value: 'Approved' })])
+      );
+
+      expect(result[EntityFields.ENTITY_STATUS]).not.toEqual(
+        expect.objectContaining({
+          fieldSettings: expect.objectContaining({
+            listValues: expect.arrayContaining([
+              expect.objectContaining({ value: status }),
+            ]),
+          }),
+        })
+      );
+    }
+  );
+
   it('getCommonConfig function should return expected fields', () => {
     const result = advancedSearchClassBase.getCommonConfig({});
 

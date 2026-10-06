@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
@@ -31,6 +33,12 @@ import org.openmetadata.service.Entity;
 class ContextMemorySchemaTest {
 
   @Test
+  void memoryRetirementStagesHaveDistinctWireValues() {
+    assertEquals("Superseded", EntityStatus.fromValue("Superseded").value());
+    assertEquals("Invalidated", EntityStatus.fromValue("Invalidated").value());
+  }
+
+  @Test
   void lifecycleEnumsCarryTheirWireValues() {
     assertEquals(ContextMemoryType.LEARNING, ContextMemoryType.fromValue("Learning"));
     assertEquals(
@@ -40,8 +48,11 @@ class ContextMemorySchemaTest {
     assertEquals(EntityStatus.REJECTED, EntityStatus.fromValue("Rejected"));
   }
 
-  @Test
-  void lifecycleFieldsSurviveAJsonRoundTrip() {
+  @ParameterizedTest
+  @EnumSource(
+      value = EntityStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void lifecycleFieldsSurviveAJsonRoundTrip(EntityStatus status) {
     EntityReference keeper =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_MEMORY);
     MemoryDispute dispute =
@@ -53,13 +64,14 @@ class ContextMemorySchemaTest {
         new ContextMemory()
             .withId(UUID.randomUUID())
             .withName("superseded-memory")
-            .withEntityStatus(EntityStatus.DEPRECATED)
+            .withEntityStatus(status)
             .withSupersededBy(keeper)
             .withStatusReason("Duplicate of the keeper")
             .withDisputes(List.of(dispute));
 
     ContextMemory copy = JsonUtils.readValue(JsonUtils.pojoToJson(memory), ContextMemory.class);
 
+    assertEquals(status, copy.getEntityStatus());
     assertEquals(keeper, copy.getSupersededBy());
     assertEquals("Duplicate of the keeper", copy.getStatusReason());
     assertEquals(List.of(dispute), copy.getDisputes());

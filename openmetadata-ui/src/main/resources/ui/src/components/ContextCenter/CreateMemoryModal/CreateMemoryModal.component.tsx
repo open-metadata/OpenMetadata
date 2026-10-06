@@ -647,10 +647,13 @@ const MemoryTagsRow: FC<{
 const getEntityStatusColor = (
   status: EntityStatus
 ): 'error' | 'warning' | 'gray' => {
-  if (status === EntityStatus.Rejected) {
+  if (status === EntityStatus.Rejected || status === EntityStatus.Invalidated) {
     return 'error';
   }
-  if (status === EntityStatus.Deprecated) {
+  if (
+    status === EntityStatus.Deprecated ||
+    status === EntityStatus.Superseded
+  ) {
     return 'warning';
   }
 
@@ -727,7 +730,8 @@ const MemoryLifecycleRows: FC<{
         </Typography>
       </div>
     )}
-    {memoryToEdit?.entityStatus === EntityStatus.Deprecated &&
+    {(memoryToEdit?.entityStatus === EntityStatus.Deprecated ||
+      memoryToEdit?.entityStatus === EntityStatus.Superseded) &&
       memoryToEdit.supersededBy && (
         <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
           <div className="tw:basis-[30%]">

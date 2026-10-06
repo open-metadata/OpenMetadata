@@ -31,6 +31,8 @@ export const EntityStatusClass: Record<EntityStatus, StatusType> = {
   [EntityStatus.Draft]: StatusType.Pending,
   [EntityStatus.Rejected]: StatusType.Failure,
   [EntityStatus.Deprecated]: StatusType.Deprecated,
+  [EntityStatus.Superseded]: StatusType.Deprecated,
+  [EntityStatus.Invalidated]: StatusType.Failure,
   [EntityStatus.InReview]: StatusType.InReview,
   [EntityStatus.Unprocessed]: StatusType.Pending,
   [EntityStatus.Archived]: StatusType.Archived,

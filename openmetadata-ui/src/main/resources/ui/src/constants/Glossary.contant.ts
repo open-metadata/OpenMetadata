@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import i18n from '../utils/i18next/LocalUtil';
+import { GENERAL_ENTITY_STATUSES } from './entity.constants';
 
 export const GLOSSARY_TERM_TABLE_COLUMNS_KEYS = {
   NAME: 'name',
@@ -42,7 +42,7 @@ export const GLOSSARY_TERM_STATUS_OPTIONS = [
     value: 'all',
     text: i18n.t('label.all'),
   },
-  ...Object.values(EntityStatus).map((status) => ({
+  ...GENERAL_ENTITY_STATUSES.map((status) => ({
     value: status,
     text: status,
   })),

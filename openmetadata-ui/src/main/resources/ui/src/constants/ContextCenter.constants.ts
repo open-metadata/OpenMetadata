@@ -149,6 +149,8 @@ export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
   [EntityStatus.Draft]: 'label.draft',
   [EntityStatus.Deprecated]: 'label.deprecated',
   [EntityStatus.Rejected]: 'label.rejected',
+  [EntityStatus.Superseded]: 'label.superseded',
+  [EntityStatus.Invalidated]: 'label.invalidated',
 };
 
 export const FILTER_TABS = [

@@ -20,6 +20,7 @@ import {
   CERTIFICATION_CATEGORY,
   TIER_CATEGORY,
 } from '../../../../constants/constants';
+import { GENERAL_ENTITY_STATUSES } from '../../../../constants/entity.constants';
 import {
   FieldOptions,
   FIELD_OPTIONS_DROPDOWN,
@@ -27,7 +28,6 @@ import {
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
-import { EntityStatus } from '../../../../generated/entity/data/glossaryTerm';
 import {
   LabelType,
   State,
@@ -71,7 +71,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   const [fieldOptions, setFieldOptions] = useState<Record<string, string[]>>({
     certification: [],
     tier: [],
-    status: Object.values(EntityStatus),
+    status: GENERAL_ENTITY_STATUSES,
   });
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
 

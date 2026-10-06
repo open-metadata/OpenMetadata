@@ -8,9 +8,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.type.EntityStatus;
 
 class EntityLifecycleTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {"Superseded", "Invalidated"})
+  void memoryRetirementStagesAreNotGeneralStages(String value) {
+    EntityStatus stage = EntityStatus.fromValue(value);
+
+    assertFalse(EntityLifecycle.GENERAL.includes(stage));
+    assertFalse(EntityLifecycle.GENERAL.allows(EntityStatus.APPROVED, stage));
+  }
+
   /** A lifecycle where a draft is reviewed before it is approved, and approval is final. */
   private static final EntityLifecycle REVIEWED =
       new EntityLifecycle(

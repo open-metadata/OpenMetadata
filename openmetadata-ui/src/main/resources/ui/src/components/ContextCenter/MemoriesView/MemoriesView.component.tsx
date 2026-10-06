@@ -290,9 +290,12 @@ const EntityStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
   }
 
   let color: 'error' | 'warning' | 'gray' = 'gray';
-  if (status === EntityStatus.Rejected) {
+  if (status === EntityStatus.Rejected || status === EntityStatus.Invalidated) {
     color = 'error';
-  } else if (status === EntityStatus.Deprecated) {
+  } else if (
+    status === EntityStatus.Deprecated ||
+    status === EntityStatus.Superseded
+  ) {
     color = 'warning';
   }
 

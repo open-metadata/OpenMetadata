@@ -104,6 +104,8 @@ const MEMORY_STATUSES = [
   EntityStatus.Approved,
   EntityStatus.Unprocessed,
   EntityStatus.Draft,
+  EntityStatus.Superseded,
+  EntityStatus.Invalidated,
   EntityStatus.Deprecated,
   EntityStatus.Rejected,
   EntityStatus.Archived,

@@ -35,6 +35,7 @@ import {
   TAG_LABEL_TYPE_LIST_VALUES,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
+import { GENERAL_ENTITY_STATUSES } from '../constants/entity.constants';
 import {
   EntityFields,
   EntityReferenceFields,
@@ -42,7 +43,6 @@ import {
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import type { Config } from '../generated/api/data/createCustomProperty';
-import { EntityStatus } from '../generated/entity/data/searchIndex';
 import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
@@ -1076,7 +1076,7 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
-          listValues: Object.values(EntityStatus).map((status) => ({
+          listValues: GENERAL_ENTITY_STATUSES.map((status) => ({
             value: status,
             title: status,
           })),

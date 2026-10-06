@@ -6,11 +6,37 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 class ContextMemoryStatusTransitionTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {"Superseded", "Invalidated"})
+  void explicitRetirementStagesResolvePendingAndApprovedMemories(String value) {
+    EntityStatus retired = EntityStatus.fromValue(value);
+
+    assertTrue(MEMORY.allows(EntityStatus.UNPROCESSED, retired));
+    assertTrue(MEMORY.allows(EntityStatus.APPROVED, retired));
+    assertTrue(MEMORY.allows(retired, EntityStatus.APPROVED));
+    assertTrue(MEMORY.allows(retired, EntityStatus.UNPROCESSED));
+    assertTrue(MEMORY.allows(retired, EntityStatus.ARCHIVED));
+    assertFalse(MEMORY.allows(EntityStatus.DRAFT, retired));
+    assertFalse(MEMORY.allows(retired, EntityStatus.DRAFT));
+    for (EntityStatus other :
+        Set.of(
+            EntityStatus.SUPERSEDED,
+            EntityStatus.INVALIDATED,
+            EntityStatus.DEPRECATED,
+            EntityStatus.REJECTED)) {
+      if (other != retired) {
+        assertFalse(MEMORY.allows(retired, other));
+      }
+    }
+  }
 
   @Test
   void unprocessedMemoriesCanBeResolvedAndReviewedMemoriesCanBeExplicitlyRequeued() {
@@ -32,6 +58,8 @@ class ContextMemoryStatusTransitionTest {
             EntityStatus.APPROVED,
             EntityStatus.DEPRECATED,
             EntityStatus.REJECTED,
+            EntityStatus.SUPERSEDED,
+            EntityStatus.INVALIDATED,
             EntityStatus.ARCHIVED),
         MEMORY.stages());
   }

@@ -570,6 +570,8 @@ describe('CreateMemoryModal', () => {
     EntityStatus.Archived,
     EntityStatus.Deprecated,
     EntityStatus.Rejected,
+    EntityStatus.Superseded,
+    EntityStatus.Invalidated,
   ])('hides proposal action for status %s', async (status) => {
     const memory = {
       id: 'memory-id',
@@ -741,36 +743,42 @@ describe('CreateMemoryModal', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows why a memory was superseded and links to its successor', () => {
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          viewOnly
-          memoryToEdit={{
-            id: 'old-memory',
-            name: 'old-memory',
-            entityStatus: EntityStatus.Deprecated,
-            statusReason: 'The replacement has the corrected definition.',
-            supersededBy: {
-              id: 'new-memory',
-              type: 'contextMemory',
-              name: 'new-memory',
-            },
-          }}
-        />
-      </MemoryRouter>
-    );
+  it.each<[EntityStatus, string]>([
+    [EntityStatus.Deprecated, 'label.deprecated'],
+    [EntityStatus.Superseded, 'label.superseded'],
+  ])(
+    'shows why a %s memory was replaced and links to its successor',
+    (status, label) => {
+      render(
+        <MemoryRouter>
+          <CreateMemoryModal
+            {...defaultProps}
+            viewOnly
+            memoryToEdit={{
+              id: 'old-memory',
+              name: 'old-memory',
+              entityStatus: status,
+              statusReason: 'The replacement has the corrected definition.',
+              supersededBy: {
+                id: 'new-memory',
+                type: 'contextMemory',
+                name: 'new-memory',
+              },
+            }}
+          />
+        </MemoryRouter>
+      );
 
-    expect(screen.getByText('label.deprecated')).toBeInTheDocument();
-    expect(
-      screen.getByText('The replacement has the corrected definition.')
-    ).toBeInTheDocument();
-    expect(screen.getByText('new-memory')).toHaveAttribute(
-      'href',
-      '/context-center/memories?memory=new-memory'
-    );
-  });
+      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(
+        screen.getByText('The replacement has the corrected definition.')
+      ).toBeInTheDocument();
+      expect(screen.getByText('new-memory')).toHaveAttribute(
+        'href',
+        '/context-center/memories?memory=new-memory'
+      );
+    }
+  );
 
   it('keeps the other Context Center parameters when opening the successor', () => {
     render(

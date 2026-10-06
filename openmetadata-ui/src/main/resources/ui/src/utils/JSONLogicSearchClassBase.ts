@@ -29,6 +29,7 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
+import { GENERAL_ENTITY_STATUSES } from '../constants/entity.constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
   DATA_PRODUCT_ENTITY_FIELDS_KEYS,
@@ -41,7 +42,6 @@ import {
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
@@ -470,7 +470,7 @@ class JSONLogicSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
-          listValues: Object.values(EntityStatus).map((status) => ({
+          listValues: GENERAL_ENTITY_STATUSES.map((status) => ({
             value: status,
             title: status,
           })),

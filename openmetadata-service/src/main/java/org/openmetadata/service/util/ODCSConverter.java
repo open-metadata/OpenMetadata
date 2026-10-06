@@ -391,6 +391,8 @@ public class ODCSConverter {
       case ARCHIVED -> ODCSDataContract.OdcsStatus.RETIRED;
       case DEPRECATED -> ODCSDataContract.OdcsStatus.DEPRECATED;
       case DRAFT, IN_REVIEW, REJECTED, UNPROCESSED -> ODCSDataContract.OdcsStatus.DRAFT;
+      case SUPERSEDED, INVALIDATED -> throw new IllegalArgumentException(
+          status.value() + " is not a data contract lifecycle stage");
     };
   }
 

@@ -12,6 +12,8 @@
     "Archived",
     "Deprecated",
     "Rejected",
-    "Unprocessed"
+    "Unprocessed",
+    "Superseded",
+    "Invalidated"
   ]
 }

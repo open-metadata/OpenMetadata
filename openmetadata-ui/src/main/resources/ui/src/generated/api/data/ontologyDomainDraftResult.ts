@@ -332,7 +332,9 @@ export enum EntityStatus {
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
+    Invalidated = "Invalidated",
     Rejected = "Rejected",
+    Superseded = "Superseded",
     Unprocessed = "Unprocessed",
 }
 

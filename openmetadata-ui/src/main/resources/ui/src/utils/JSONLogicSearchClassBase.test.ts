@@ -370,6 +370,32 @@ describe('JSONLogicSearchClassBase', () => {
         EntityReferenceFields.COLUMN_TAG
       );
     });
+
+    it.each(['Superseded', 'Invalidated'])(
+      'does not offer %s for semantic-rule entity statuses',
+      (status) => {
+        const commonConfig = jsonLogicSearchClassBase.getCommonConfig();
+
+        expect(
+          commonConfig[EntityReferenceFields.ENTITY_STATUS]
+        ).toHaveProperty(
+          'fieldSettings.listValues',
+          expect.arrayContaining([
+            expect.objectContaining({ value: 'Approved' }),
+          ])
+        );
+
+        expect(commonConfig[EntityReferenceFields.ENTITY_STATUS]).not.toEqual(
+          expect.objectContaining({
+            fieldSettings: expect.objectContaining({
+              listValues: expect.arrayContaining([
+                expect.objectContaining({ value: status }),
+              ]),
+            }),
+          })
+        );
+      }
+    );
   });
 
   describe('getNegativeQueryForNotContainsReverserOperation', () => {

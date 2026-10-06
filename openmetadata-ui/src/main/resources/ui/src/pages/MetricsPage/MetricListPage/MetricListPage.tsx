@@ -81,6 +81,7 @@ import { useMetricCreateDrawer } from '../../../components/Metric/AddMetric/useM
 import MetricListHealth from '../../../components/Metric/MetricListHealth/MetricListHealth';
 import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import { GENERAL_ENTITY_STATUSES } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
@@ -177,7 +178,7 @@ const METRIC_COLUMN_LABEL_KEYS: Record<MetricColumnId, string> = {
   updatedAt: 'label.last-updated',
 };
 
-const METRIC_STATUS_LABEL_KEYS: Record<EntityStatus, string> = {
+const METRIC_STATUS_LABEL_KEYS: Partial<Record<EntityStatus, string>> = {
   [EntityStatus.Approved]: 'label.approved',
   [EntityStatus.Archived]: 'label.archived',
   [EntityStatus.Deprecated]: 'label.deprecated',
@@ -187,7 +188,7 @@ const METRIC_STATUS_LABEL_KEYS: Record<EntityStatus, string> = {
   [EntityStatus.Unprocessed]: 'label.unprocessed',
 };
 
-const METRIC_STATUS_FILTER_OPTIONS = Object.values(EntityStatus);
+const METRIC_STATUS_FILTER_OPTIONS = GENERAL_ENTITY_STATUSES;
 
 const getInputChangeValue = (value: string | ChangeEvent<HTMLInputElement>) =>
   typeof value === 'string' ? value : value.target.value;
@@ -480,7 +481,7 @@ const MetricListPage = () => {
   }, [rows, searchParams]);
 
   const getStatusLabel = useCallback(
-    (status: EntityStatus) => t(METRIC_STATUS_LABEL_KEYS[status]),
+    (status: EntityStatus) => t(METRIC_STATUS_LABEL_KEYS[status] ?? status),
     [t]
   );
 

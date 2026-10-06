@@ -51,7 +51,7 @@ public final class ContextMemoryLifecycle {
 
   private static void applyStatusChange(ContextMemory original, ContextMemory updated) {
     boolean statusChanged = original.getEntityStatus() != updated.getEntityStatus();
-    if (statusChanged && original.getEntityStatus() == EntityStatus.DEPRECATED) {
+    if (statusChanged && isSuperseded(original.getEntityStatus())) {
       updated.setSupersededBy(null);
     }
     if (statusChanged && Objects.equals(original.getStatusReason(), updated.getStatusReason())) {
@@ -60,13 +60,17 @@ public final class ContextMemoryLifecycle {
   }
 
   private static void validateSupersession(ContextMemory memory) {
-    boolean superseded = memory.getEntityStatus() == EntityStatus.DEPRECATED;
+    boolean superseded = isSuperseded(memory.getEntityStatus());
     if (superseded != (memory.getSupersededBy() != null)) {
       throw new BadRequestException(
           superseded
-              ? "A Deprecated memory requires supersededBy"
-              : "supersededBy is only allowed on a Deprecated memory");
+              ? String.format("A %s memory requires supersededBy", memory.getEntityStatus().value())
+              : "supersededBy is only allowed on a Deprecated memory or a Superseded memory");
     }
+  }
+
+  private static boolean isSuperseded(EntityStatus status) {
+    return status == EntityStatus.SUPERSEDED || status == EntityStatus.DEPRECATED;
   }
 
   private static void resolveReferences(
