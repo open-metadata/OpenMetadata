@@ -226,8 +226,13 @@ class DomodatabaseSource(DatabaseServiceSource):
         Method to retrieve the column metadata from federated datasets
         """
         try:
-            # SQL query to get all columns without fetching any rows
-            sql_query = f'SELECT * FROM "{table_name}" LIMIT 1'
+            # SQL query to get all columns without fetching any rows.
+            # The dataset is addressed by `dataset_id` in the request URL, so the FROM
+            # clause is the literal `table` -- pydomo's own example is
+            # `SELECT * FROM table LIMIT 2`. Interpolating the dataset name here put a
+            # free-text label a Domo user controls into the query, where a `"` broke out
+            # of the quotes (`SELECT * FROM "a" UNION SELECT * FROM "b" LIMIT 1`).
+            sql_query = "SELECT * FROM table LIMIT 1"
             schema_columns = []
             response = self.domo_client.datasets.query(dataset_id, sql_query)
             if response:

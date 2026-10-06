@@ -1014,7 +1014,9 @@ class TrinoTableMetricComputer(_StatsBasedTableMetricComputer):
     def compute(self):
         """Extract row_count from SHOW STATS FOR. The summary row
         (where column_name IS NULL) contains the table-level row_count."""
-        query = sa_text(f'SHOW STATS FOR "{self.schema_name}"."{self.table_name}"')
+        # Schema and table names come from the source system, so they are untrusted.
+        quote = self.runner._session.get_bind().dialect.identifier_preparer.quote_identifier
+        query = sa_text(f"SHOW STATS FOR {quote(self.schema_name)}.{quote(self.table_name)}")
         rows = self.runner._session.execute(query)
         for row in rows:
             row_dict = row._asdict()
