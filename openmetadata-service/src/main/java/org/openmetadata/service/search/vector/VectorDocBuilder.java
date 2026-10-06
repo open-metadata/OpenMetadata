@@ -53,7 +53,7 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 4;
+  public static final int CHUNK_DOC_VERSION = 7;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -320,7 +320,8 @@ public class VectorDocBuilder {
    *
    * <p>Every field here is already covered by the fingerprint (via {@code metaLight}/{@code body}),
    * so denormalizing them does not change the fingerprint; the {@link #CHUNK_DOC_VERSION} marker is
-   * what drives the additive backfill.
+   * what drives the additive backfill. A memory's status and anchor are the exception: they filter
+   * rather than describe, so the chunk header records them for the restamp check instead.
    */
   private static Map<String, Object> buildDenormalizedFields(
       EntityInterface entity, String entityType) {
@@ -375,9 +376,7 @@ public class VectorDocBuilder {
       addMetricFields(fields, metric);
     }
     if (entity instanceof ContextMemory memory) {
-      // Reuses the entity-doc definition so both documents stamp identical values; see
-      // ContextMemoryIndex#shareConfigFields.
-      fields.putAll(ContextMemoryIndex.shareConfigFields(memory));
+      addContextMemoryFields(fields, memory);
     }
     return fields;
   }
@@ -399,6 +398,11 @@ public class VectorDocBuilder {
     // read side resolves OTHER -> customUnitOfMeasurement for display.
     putIfPresent(fields, "unitOfMeasurement", enumValue(metric.getUnitOfMeasurement()));
     putIfPresent(fields, "customUnitOfMeasurement", metric.getCustomUnitOfMeasurement());
+  }
+
+  private static void addContextMemoryFields(Map<String, Object> fields, ContextMemory memory) {
+    fields.putAll(ContextMemoryIndex.shareConfigFields(memory));
+    putIfPresent(fields, ContextMemoryIndex.FIELD_STATUS, ContextMemoryIndex.statusValue(memory));
   }
 
   /**
@@ -586,9 +590,8 @@ public class VectorDocBuilder {
   }
 
   /**
-   * Share config folded into the content fingerprint, so a visibility change restamps the chunk docs
-   * that the search-time privacy filter reads {@code visibility} from. Sorted, so reordering {@code
-   * sharedWith} is not mistaken for a change. Empty for types without a share config.
+   * Share config remains in the fingerprint for compatibility with existing chunk documents.
+   * Status and anchor are filter metadata; tracking them separately avoids paid re-embedding.
    */
   @SuppressWarnings("unchecked")
   private static String shareConfigPart(EntityInterface entity) {

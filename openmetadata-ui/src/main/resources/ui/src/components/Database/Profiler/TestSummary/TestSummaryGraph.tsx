@@ -50,6 +50,7 @@ import {
   getThresholdReference,
   isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
+  placedSeriesKey,
   prepareChartData,
   TooltipBoundary,
   TooltipPosition,
@@ -98,6 +99,14 @@ const paddedYAxisMin = (extent: AxisExtent) =>
   extent.min - yAxisPadding(extent);
 const paddedYAxisMax = (extent: AxisExtent) =>
   extent.max + yAxisPadding(extent);
+
+// ECharts does not draw a reference line outside the axis range, and a failing
+// run can sit far from its expectation (110 rows against 10,000), so the
+// extent takes the expectation in.
+const includeInExtent = (extent: AxisExtent, value?: number): AxisExtent =>
+  isUndefined(value)
+    ? extent
+    : { min: Math.min(extent.min, value), max: Math.max(extent.max, value) };
 
 interface ActiveTooltip {
   anchor: TooltipPosition;
@@ -364,6 +373,16 @@ function TestSummaryGraph({
           },
         ]
       : [];
+    // A row a series holds no value for - a run that produced nothing, or one
+    // whose value was placed off the line - draws no dot.
+    const pointStyleOf = (key: string) => (point: Record<string, unknown>) =>
+      isUndefined(point[key])
+        ? undefined
+        : {
+            status: getStatusChartStatus(point.status as TestCaseStatus),
+            hollow: point.status === POINT_STATUS_HOLLOW,
+            selected: point.name === activeRunTimestamp,
+          };
     const lines = seriesLabels.map<ChartSeries>((label) => ({
       key: label,
       name: label,
@@ -373,22 +392,36 @@ function TestSummaryGraph({
       type: isSingleSeries ? 'area' : 'line',
       status: isSingleSeries ? 'muted' : undefined,
       smooth: false,
-      // A row this series holds no value for - a run that produced nothing,
-      // or one placed on another series - draws no dot.
-      pointStyle: (point) =>
-        isUndefined(point[label])
-          ? undefined
-          : {
-              status: getStatusChartStatus(point.status as TestCaseStatus),
-              hollow: point.status === POINT_STATUS_HOLLOW,
-              selected: point.name === activeRunTimestamp,
-            },
-      // Focusing the hovered series fades the others, and with them the band
-      // and the expectation label; only worth it when there are others.
-      seriesOption: isSingleSeries ? undefined : MULTI_SERIES_EMPHASIS,
+      pointStyle: pointStyleOf(label),
+      seriesOption: {
+        // The line bridges the runs placed off it, so it joins measured
+        // runs only.
+        connectNulls: true,
+        // Focusing the hovered series fades the others, and with them the
+        // band and the expectation label; only worth it when there are others.
+        ...(isSingleSeries ? {} : MULTI_SERIES_EMPHASIS),
+      },
     }));
+    // Aborted and queued runs as dots alone, after the lines so no line's
+    // palette colour shifts. Named like their line, so the legend lists and
+    // toggles the two once.
+    const placed = seriesLabels.reduce<ChartSeries[]>((series, label) => {
+      const key = placedSeriesKey(label);
 
-    return [...band, ...lines];
+      if (plottedData.some((point) => !isUndefined(point[key]))) {
+        series.push({
+          key,
+          name: label,
+          type: 'line',
+          pointStyle: pointStyleOf(key),
+          seriesOption: { lineStyle: { opacity: 0 } },
+        });
+      }
+
+      return series;
+    }, []);
+
+    return [...band, ...lines, ...placed];
   }, [plottedData, seriesLabels, isSingleSeries, activeRunTimestamp, t]);
 
   const referenceLines = useMemo<ChartReferenceLine[]>(
@@ -425,11 +458,13 @@ function TestSummaryGraph({
 
   const yAxis = useMemo<ChartYAxisProps>(
     () => ({
-      min: paddedYAxisMin,
-      max: paddedYAxisMax,
+      min: (extent: AxisExtent) =>
+        paddedYAxisMin(includeInExtent(extent, thresholdReference?.y)),
+      max: (extent: AxisExtent) =>
+        paddedYAxisMax(includeInExtent(extent, thresholdReference?.y)),
       formatter: (value) => formatYAxis(Number(value)),
     }),
-    [formatYAxis]
+    [formatYAxis, thresholdReference]
   );
 
   // With one series there is nothing to tell apart.

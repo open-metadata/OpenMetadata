@@ -21,7 +21,7 @@ import {
 import {
   ContextMemory,
   EntityReference,
-  MemoryStatus,
+  EntityStatus,
   ShareVisibility,
 } from '../../../../generated/entity/context/contextMemory';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -47,7 +47,7 @@ const hasOpenWork = (status: OntologyMemoryProposalStatus): boolean =>
 
 const isProposable = (memory: ContextMemory): boolean =>
   getDerivedTerms(memory).length === 0 &&
-  (!memory.status || memory.status === MemoryStatus.Active);
+  (!memory.entityStatus || memory.entityStatus === EntityStatus.Approved);
 
 const isIdle = (status: OntologyMemoryProposalStatus | undefined): boolean =>
   status !== undefined && status.enabled && !hasOpenWork(status);

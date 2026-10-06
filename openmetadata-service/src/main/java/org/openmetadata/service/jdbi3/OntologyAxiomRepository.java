@@ -53,6 +53,7 @@ public class OntologyAxiomRepository extends EntityRepository<OntologyAxiom> {
         new OwlProfileGuard(
             relationshipTypes::isSimple,
             new PersistentVocabularyIndex(Entity.getCollectionDAO().ontologyAxiomDAO()));
+    defaultEntityStatus = EntityStatus.DRAFT;
   }
 
   @Override
@@ -69,8 +70,6 @@ public class OntologyAxiomRepository extends EntityRepository<OntologyAxiom> {
     entity.setFullyQualifiedName(
         FullyQualifiedName.add(glossary.getFullyQualifiedName(), entity.getName()));
     entity.setExpressions(List.copyOf(listOrEmpty(entity.getExpressions())));
-    entity.setEntityStatus(
-        entity.getEntityStatus() == null ? EntityStatus.DRAFT : entity.getEntityStatus());
     profileGuard.validateOrThrow(entity);
   }
 

@@ -35,7 +35,7 @@ import {
   getEntityType,
   prepareFeedLink,
 } from '../../../utils/FeedUtilsPure';
-import { stripMarkdown } from '../../../utils/StringUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
