@@ -210,8 +210,8 @@ public final class AlertUtil {
         && resource.equalsIgnoreCase(conversation.getEntityRef().getType());
   }
 
-  // Announcement is its own entity since #25894; task stays until #30559 retires the legacy path.
-  private static final Set<String> THREAD_TYPE_RESOURCES = Set.of("task", "conversation");
+  // Announcement (#25894) and task (#30559) are their own entities; conversation is the last one.
+  private static final Set<String> THREAD_TYPE_RESOURCES = Set.of("conversation");
 
   private static boolean shouldTriggerAlertForThread(ChangeEvent event, String resource) {
     Thread thread = AlertsRuleEvaluator.getThread(event);

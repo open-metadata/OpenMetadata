@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -136,7 +137,7 @@ test.describe(
           page.getByTestId(
             `table-data-card_${table.entityResponseData.fullyQualifiedName}`
           )
-        ).toBeVisible({ timeout: 30_000 });
+        ).toBeVisible({ timeout: ACTION_TIMEOUT });
 
         await expect
           .poll(async () =>

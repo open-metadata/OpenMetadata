@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, test as base } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { UserClass } from '../../../support/user/UserClass';
@@ -107,13 +108,15 @@ const openObservability = async (page: Page) => {
   // for a freshly-logged-in non-admin — the classic shell can win the boot
   // race — so wait for the AI shell to actually render before navigating on.
   await redirectToAiModeHomePage(page);
-  await expect(page.getByTestId('ask-sidebar')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId('ask-sidebar')).toBeVisible({
+    timeout: ACTION_TIMEOUT,
+  });
   await page.goto('/observability/data-quality', {
     waitUntil: 'domcontentloaded',
   });
   await expandAiSubPanel(page);
   await expect(page.getByTestId('ask-sub-panel')).toBeVisible({
-    timeout: 30000,
+    timeout: ACTION_TIMEOUT,
   });
 };
 
