@@ -347,6 +347,9 @@ export default [
       // per-area, then promote to 'error' (and re-add a shade-restricted
       // fixer). See docs/colors.md + the dark-mode guidelines.
       'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
+      // A Typography ellipsis tooltip inside a link/button renders a nested
+      // <button> (#30779). Report-only, so `eslint --fix` never edits it.
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -704,10 +707,9 @@ export default [
       // A facet aggregation wait must name the value it is waiting for, not just
       // the endpoint or field: a dropdown fires one aggregation when it opens and
       // one per typed search, so a wait that names neither can resolve off the
-      // wrong one and run the test ahead of the request it queued (#31859). Warn
-      // rather than error while the remaining 27 call sites are migrated to
-      // playwright/utils/searchAggregation.ts.
-      'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
+      // wrong one and run the test ahead of the request it queued (#31859).
+      // playwright/utils/searchAggregation.ts matches GET params and POST bodies.
+      'openmetadata-playwright/require-aggregation-wait-helper': 'error',
       'openmetadata-playwright/no-form-sign-in': 'error',
 
       // Playwright rules — promoted to error behind the suppressions ratchet
@@ -817,6 +819,19 @@ export default [
     ],
     rules: {
       'openmetadata-ui-patterns/no-raw-title-attribute': 'off',
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
+    },
+  },
+
+  // Classic-mode-only surfaces left out of the #30779 fix, which targeted the
+  // AI-mode UI. Remove an entry once that file is fixed.
+  {
+    files: [
+      'src/components/Settings/Users/UserProfileIcon/UserProfileIcon.component.tsx',
+      'src/utils/EntitySummaryPanelUtils.tsx',
+    ],
+    rules: {
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
     },
   },
 

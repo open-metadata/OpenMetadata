@@ -489,11 +489,3 @@ export function removeAttachmentsWithoutUrl(htmlString: string): string {
 
   return doc.body.innerHTML;
 }
-
-// Kept for downstream (Collate) imports. Code in this repo should import these
-// from RichTextStringUtils so the shell does not load dompurify / html parsing.
-export {
-  decodeHtmlEntities,
-  stringToHTML,
-  stripMarkdown,
-} from './RichTextStringUtils';

@@ -13,7 +13,7 @@
 
 import { Popover } from 'antd';
 import classNames from 'classnames';
-import { FC, ReactNode } from 'react';
+import { FC, MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import {
@@ -37,8 +37,16 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   className,
   profileWidth = 24,
   trigger = 'hover',
+  to,
+  onTitleClick,
 }) => {
   const isTeam = type === OwnerType.TEAM;
+  const handleTitleClick = (event: MouseEvent) => {
+    if (onTitleClick) {
+      event.preventDefault();
+      onTitleClick();
+    }
+  };
   const profilePicture = (
     <ProfilePicture
       avatarType="outlined"
@@ -85,10 +93,12 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
           )}
           data-testid={userName}
           to={
-            type === OwnerType.TEAM
+            to ??
+            (type === OwnerType.TEAM
               ? getTeamAndUserDetailsPath(userName)
-              : getUserPath(userName ?? '')
-          }>
+              : getUserPath(userName))
+          }
+          onClick={handleTitleClick}>
           {showUserProfile ? profilePicture : null}
           {showUserName ? (
             <span className="truncate">{displayName ?? userName}</span>
