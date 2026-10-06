@@ -22,7 +22,6 @@ import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import type { MembersView } from './Members.types';
@@ -51,7 +50,7 @@ export const TEAM_USER_FIELDS = [
 
 export const TEAM_DRAG_TYPE = 'team-hierarchy-row';
 
-export { LIST_CAP };
+export { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 
 export const isTeamDropTarget = (target: {
   type: string;

@@ -259,7 +259,7 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        save();
+                        void save();
                       }
                     }}
                   />
