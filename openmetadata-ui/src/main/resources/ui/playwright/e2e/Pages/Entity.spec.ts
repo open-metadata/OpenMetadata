@@ -810,10 +810,8 @@ pickEntityMatrix(
 
             // If there are multiple columns, test navigation
             if (totalCount > 1) {
-              const nextButton = panelContainer
-                .locator('.navigation-container')
-                .locator('button')
-                .nth(1);
+              const nextButton =
+                panelContainer.getByTestId('next-column-button');
 
               if (await nextButton.isEnabled()) {
                 // Navigate to next column
@@ -832,10 +830,9 @@ pickEntityMatrix(
                 }
 
                 // Navigate back
-                const prevButton = panelContainer
-                  .locator('.navigation-container')
-                  .locator('button')
-                  .nth(0);
+                const prevButton = panelContainer.getByTestId(
+                  'previous-column-button'
+                );
 
                 await prevButton.click();
 
@@ -1026,10 +1023,9 @@ pickEntityMatrix(
             const panelContainer = page.locator('.column-detail-panel');
 
             // Navigate back to parent column first
-            const prevButton = panelContainer
-              .locator('.navigation-container')
-              .locator('button')
-              .nth(0);
+            const prevButton = panelContainer.getByTestId(
+              'previous-column-button'
+            );
 
             // Only navigate back if we moved forward
             if (await prevButton.isEnabled()) {
@@ -1614,10 +1610,7 @@ pickEntityMatrix(
           // Verify pagination text format: "X of Y columns" (includes nested columns)
           expect(initialText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
 
-          const nextButton = page
-            .locator('.navigation-container')
-            .locator('button')
-            .nth(1);
+          const nextButton = page.getByTestId('next-column-button');
 
           if (await nextButton.isEnabled()) {
             // Wait for navigation API response
@@ -1638,10 +1631,7 @@ pickEntityMatrix(
             expect(updatedText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
 
             // Navigate back to previous column
-            const prevButton = page
-              .locator('.navigation-container')
-              .locator('button')
-              .nth(0);
+            const prevButton = page.getByTestId('previous-column-button');
 
             await expect(prevButton).toBeEnabled();
 

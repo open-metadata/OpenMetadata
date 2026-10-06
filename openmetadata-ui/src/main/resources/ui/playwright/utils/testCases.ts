@@ -816,18 +816,15 @@ export const performE2EExportImportFlow = async (
       failed: '3',
     });
 
-    const cellDetails = page.locator('.rdg-cell-details');
-    await expect(cellDetails.nth(0)).toContainText('Entity created');
-    await expect(cellDetails.nth(1)).toContainText('Entity created');
-    await expect(cellDetails.nth(2)).toContainText(
-      '#FIELD_REQUIRED: Field 1 is required'
-    );
-    await expect(cellDetails.nth(3)).toContainText(
-      '#FIELD_REQUIRED: Field 4 is required'
-    );
-    await expect(cellDetails.nth(4)).toContainText(
-      '#FIELD_REQUIRED: Field 5 is required'
-    );
+    // An array expectation asserts the per-row details in order and pins the
+    // row count, which five separate indexed assertions did not.
+    await expect(page.locator('.rdg-cell-details')).toContainText([
+      'Entity created',
+      'Entity created',
+      '#FIELD_REQUIRED: Field 1 is required',
+      '#FIELD_REQUIRED: Field 4 is required',
+      '#FIELD_REQUIRED: Field 5 is required',
+    ]);
 
     const updateButtonResponse = page.waitForResponse(
       (response) =>
@@ -903,9 +900,10 @@ export const performE2EExportImportFlow = async (
       failed: '0',
     });
 
-    const cellDetails = page.locator('.rdg-cell-details');
-    await expect(cellDetails.nth(0)).toContainText('Entity created');
-    await expect(cellDetails.nth(1)).toContainText('Entity created');
+    await expect(page.locator('.rdg-cell-details')).toContainText([
+      'Entity created',
+      'Entity created',
+    ]);
 
     // Click Update button
     const bulkEditUpdateResponse = page.waitForResponse(

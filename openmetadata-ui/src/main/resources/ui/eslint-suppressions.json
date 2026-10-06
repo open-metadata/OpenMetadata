@@ -267,11 +267,6 @@
       "count": 2
     }
   },
-  "playwright/e2e/Features/PersonaAIContext.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    }
-  },
   "playwright/e2e/Features/PersonaAIContextRules.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 5
@@ -295,11 +290,6 @@
   "playwright/e2e/Features/SearchExport.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
-    }
-  },
-  "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
     }
   },
   "playwright/e2e/Features/SettingsNavigationPage.spec.ts": {
@@ -483,7 +473,7 @@
       "count": 2
     },
     "om-playwright/no-positional-locator": {
-      "count": 12
+      "count": 7
     }
   },
   "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts": {
@@ -777,11 +767,6 @@
       "count": 3
     }
   },
-  "playwright/utils/sso.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
-    }
-  },
   "playwright/utils/task.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -802,7 +787,7 @@
   },
   "playwright/utils/testCases.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 11
+      "count": 4
     }
   },
   "playwright/utils/userDetails.ts": {

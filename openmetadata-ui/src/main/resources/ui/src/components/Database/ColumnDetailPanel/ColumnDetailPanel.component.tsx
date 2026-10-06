@@ -1028,14 +1028,18 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
       <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
         <Button
+          aria-label={t('label.previous')}
           color="secondary"
+          data-testid="previous-column-button"
           iconLeading={ChevronUp}
           isDisabled={isPreviousDisabled}
           size="sm"
           onClick={handlePreviousColumn}
         />
         <Button
+          aria-label={t('label.next')}
           color="secondary"
+          data-testid="next-column-button"
           iconLeading={ChevronDown}
           isDisabled={isNextDisabled}
           size="sm"

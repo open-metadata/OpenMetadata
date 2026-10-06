@@ -135,9 +135,14 @@ export const fillSSOAuthConfig = async (
 ) => {
   // Fill basic fields
   await page.getByLabel('Provider Name').fill(config.providerName);
-  await page.getByLabel('Authority').first().fill(config.authority);
-  await page.getByLabel('Client ID').first().fill(config.clientId);
-  await page.getByLabel('Callback URL').first().fill(config.callbackUrl);
+  // getByLabel matches a substring, which is why these needed an index:
+  // 'Authority' also hits longer authority labels and 'Client ID' hits
+  // 'Client ID Secret'. Exact matching names the field instead.
+  await page.getByLabel('Authority', { exact: true }).fill(config.authority);
+  await page.getByLabel('Client ID', { exact: true }).fill(config.clientId);
+  await page
+    .getByLabel('Callback URL', { exact: true })
+    .fill(config.callbackUrl);
 
   // Add public key URLs (array field)
   if (config.publicKeyUrls.length > 0) {
@@ -185,9 +190,9 @@ export const fillSSOAuthorizerConfig = async (
   }
 
   // Fill principal domain
+  // 'Principal Domain' is a substring of 'Enforce Principal Domain'.
   await page
-    .getByLabel('Principal Domain')
-    .first()
+    .getByLabel('Principal Domain', { exact: true })
     .fill(config.principalDomain);
 
   // Set enforce principal domain
@@ -206,20 +211,19 @@ export const fillSSOAuthorizerConfig = async (
 
   // Add bot principals if provided (array field)
   if (config.botPrincipals && config.botPrincipals.length > 0) {
-    // Try to find bot principals field by looking for the label first
-    const botPrincipalsSection = page
-      .locator('div')
-      .filter({ hasText: 'Bot Principals' });
-    const botPrincipalsField = botPrincipalsSection.locator(
-      '[data-testid="sso-configuration-form-array-field-template"]'
+    // The array-field template stamps its own field name into the test id
+    // (SsoConfigurationFormArrayFieldTemplate.tsx:256), exactly as the
+    // publicKeyUrls and adminPrincipals fields above already rely on. The
+    // div-filter plus count guard meant this block silently did nothing
+    // whenever the markup shifted.
+    const botPrincipalsField = page.getByTestId(
+      'sso-configuration-form-array-field-template-botPrincipals'
     );
 
-    if ((await botPrincipalsField.count()) > 0) {
-      await botPrincipalsField.first().click();
-      for (const principal of config.botPrincipals) {
-        await botPrincipalsField.first().locator('input').fill(principal);
-        await botPrincipalsField.first().locator('input').press('Enter');
-      }
+    await botPrincipalsField.click();
+    for (const principal of config.botPrincipals) {
+      await botPrincipalsField.locator('input').fill(principal);
+      await botPrincipalsField.locator('input').press('Enter');
     }
   }
 };

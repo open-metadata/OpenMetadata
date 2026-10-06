@@ -319,9 +319,14 @@ test.describe('Service Agents recent run ordering', () => {
 
     expect(statuses).toEqual(['partial', 'success', 'failed']);
 
-    // Only the latest run is drawn at full opacity, and it is now the rightmost dot.
-    await expect(dots.nth(2)).not.toHaveClass(/opacity-\[0\.55\]/);
-    await expect(dots.nth(0)).toHaveClass(/opacity-\[0\.55\]/);
+    // Only the latest run is drawn at full opacity, and it is the rightmost
+    // dot. Asserting the whole sequence covers the middle dot too, which
+    // sampling two indexes did not.
+    const dimmed = await dots.evaluateAll((nodes) =>
+      nodes.map((node) => node.className.includes('opacity-[0.55]'))
+    );
+
+    expect(dimmed).toEqual([true, true, false]);
   });
 
   test('should open the run history drawer oldest-first with the newest run selected', async ({
@@ -337,13 +342,14 @@ test.describe('Service Agents recent run ordering', () => {
 
     const items = drawer.getByTestId('run-history-item');
 
-    await expect(items).toHaveCount(3);
-    await expect(items.nth(0)).toContainText('Partial Success');
-    await expect(items.nth(1)).toContainText('Success');
-    await expect(items.nth(2)).toContainText('Failed');
+    // An array expectation asserts the order and the count in one go.
+    await expect(items).toContainText(['Partial Success', 'Success', 'Failed']);
 
     // The rightmost card is the newest run, and it is what the drawer opens on.
-    await expect(items.nth(2)).toHaveClass(/border-utility-brand-600/);
-    await expect(items.nth(0)).not.toHaveClass(/border-utility-brand-600/);
+    const selected = await items.evaluateAll((nodes) =>
+      nodes.map((node) => node.className.includes('border-utility-brand-600'))
+    );
+
+    expect(selected).toEqual([false, false, true]);
   });
 });

@@ -44,8 +44,33 @@ const CREATED_RULE_ID = '44444444-4444-4444-8444-444444444444';
 // `[data-testid=advanced-search-field-select] .ant-select` selector filtered these out implicitly.
 // The filter this used to carry excluded RAQB's non-combobox field markup.
 // The canvas renders one combobox per control, so the testid is exact.
+// react-awesome-query-builder renders rules as an ordered list and gives them
+// no stable per-rule identity in the DOM, so a rule is addressed by its
+// position -- which is also how these tests talk about them ("the first
+// condition", "the condition just added").
 const comboboxField = (scope: Page | Locator, testId: string): Locator =>
-  scope.getByTestId(testId);
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see above
+  scope.getByTestId(testId).first();
+
+// The rule just added by add-context-condition is the last in RAQB's list.
+const lastComboboxField = (scope: Page | Locator, testId: string): Locator =>
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see above
+  scope.getByTestId(testId).last();
+
+// A rule's free-text value box, as opposed to its combobox value picker.
+const ruleTextValue = (scope: Locator, position: 'first' | 'last'): Locator => {
+  const inputs = scope.locator(
+    '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+  );
+
+  // eslint-disable-next-line om-playwright/no-positional-locator -- rules are positional, see comboboxField
+  return position === 'first' ? inputs.first() : inputs.last();
+};
+
+// Removes the rule added last; RAQB appends, so that is the newest one.
+const removeLastCondition = (scope: Page | Locator): Locator =>
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see comboboxField
+  scope.getByTestId('delete-condition-button').last();
 
 // Reusable rule fixture for tests that only need a visible rule card to exist
 // (cache-state tests, edit-discard test). Keeps the inline mock objects DRY.
@@ -570,7 +595,7 @@ test.describe.serial('Persona AI Context', () => {
     await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
       2
     );
-    await adminPage.getByTestId('delete-condition-button').last().click();
+    await removeLastCondition(adminPage).click();
 
     await selectOptionWithRetry(
       entitySelect.getByRole('button'),
@@ -1259,7 +1284,7 @@ test.describe.serial('Persona AI Context', () => {
     ).toBeVisible();
 
     // Remove the row that was added, the same way the entity-type test does.
-    await adminPage.getByTestId('delete-condition-button').last().click();
+    await removeLastCondition(adminPage).click();
     await expect(
       adminPage.getByTestId('context-rule-filter-error')
     ).toBeHidden();
@@ -1318,7 +1343,7 @@ test.describe.serial('Persona AI Context', () => {
     const fieldContainer = comboboxField(
       adminPage,
       'advanced-search-field-select'
-    ).first();
+    );
     await fieldContainer.waitFor({ state: 'visible' });
     await selectOption(adminPage, fieldContainer, 'Custom Properties', true);
 
@@ -1393,7 +1418,7 @@ test.describe.serial('Persona AI Context', () => {
     const serviceField = comboboxField(
       adminPage,
       'advanced-search-field-select'
-    ).first();
+    );
     await serviceField.waitFor({ state: 'visible' });
 
     await selectOption(adminPage, serviceField, 'Service', true);
@@ -1401,14 +1426,11 @@ test.describe.serial('Persona AI Context', () => {
     const operatorLocator = comboboxField(
       adminPage,
       'advanced-search-operator-select'
-    ).first();
+    );
     await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
     await selectOption(adminPage, operatorLocator, 'Is', false);
 
-    const valueSelect = comboboxField(
-      adminPage,
-      'advanced-search-value'
-    ).first();
+    const valueSelect = comboboxField(adminPage, 'advanced-search-value');
     await valueSelect.waitFor({ state: 'visible' });
 
     await selectOption(adminPage, valueSelect, dbService.entity.name, true);
@@ -1693,21 +1715,17 @@ test.describe.serial('Persona AI Context', () => {
       const firstField = comboboxField(
         adminPage,
         'advanced-search-field-select'
-      ).first();
+      );
       await firstField.waitFor({ state: 'visible' });
       await selectOption(adminPage, firstField, 'Description', true);
 
       const firstOp = comboboxField(
         adminPage,
         'advanced-search-operator-select'
-      ).first();
+      );
       await firstOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, firstOp, 'Contains', false);
-      const alphaInput = drawer
-        .locator(
-          '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
-        )
-        .first();
+      const alphaInput = ruleTextValue(drawer, 'first');
       await alphaInput.fill('alpha');
       // Blur to commit the value to the RAQB immutable tree before adding the
       // second rule; without this the conjunction change may fire before the
@@ -1728,23 +1746,19 @@ test.describe.serial('Persona AI Context', () => {
         adminPage.getByTestId('delete-condition-button')
       ).toHaveCount(3);
 
-      const secondField = comboboxField(
+      const secondField = lastComboboxField(
         adminPage,
         'advanced-search-field-select'
-      ).last();
+      );
       await selectOption(adminPage, secondField, 'Description', true);
 
-      const secondOp = comboboxField(
+      const secondOp = lastComboboxField(
         adminPage,
         'advanced-search-operator-select'
-      ).last();
+      );
       await secondOp.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(adminPage, secondOp, 'Contains', false);
-      const betaInput = drawer
-        .locator(
-          '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
-        )
-        .last();
+      const betaInput = ruleTextValue(drawer, 'last');
       await betaInput.fill('beta');
       // Blur to commit before the conjunction change fires.
       await betaInput.press('Tab');
