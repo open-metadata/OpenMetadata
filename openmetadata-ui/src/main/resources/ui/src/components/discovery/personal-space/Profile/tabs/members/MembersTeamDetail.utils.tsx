@@ -50,8 +50,6 @@ export const TEAM_USER_FIELDS = [
 
 export const TEAM_DRAG_TYPE = 'team-hierarchy-row';
 
-export { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
-
 export const isTeamDropTarget = (target: {
   type: string;
   dropPosition?: string;

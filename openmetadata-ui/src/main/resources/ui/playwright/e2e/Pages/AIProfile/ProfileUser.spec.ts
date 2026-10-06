@@ -16,6 +16,7 @@ import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
+  createTrackedUser,
   navigateToMembersPanel,
   openAdminsPanel,
   openAiProfile,
@@ -34,26 +35,21 @@ import { expect, test } from '../../fixtures/pages';
 // team/role/description editing on the profile and delete/restore from the
 // profile (ProfileDetailsPanel does not expose these); the performance suite.
 
-const persona = new PersonaClass();
-// Assigned in beforeAll — created via the API (bypasses the UI intake form), so
-// the minimal payload the other domain fixtures use is sufficient.
+// Instantiated in beforeAll (not at module scope) so a second beforeAll run in the
+// same worker rebuilds it, and created via the API (bypasses the UI intake form).
+let persona: PersonaClass;
 let domain: Domain;
 let createdUsers: UserClass[] = [];
 
-const trackUser = async (
+const trackUser = (
   apiContext: Parameters<UserClass['create']>[0]
-): Promise<UserClass> => {
-  const user = new UserClass();
-  await user.create(apiContext);
-  createdUsers.push(user);
-
-  return user;
-};
+): Promise<UserClass> => createTrackedUser(apiContext, createdUsers);
 
 /** Open a user's profile view (#profile/<name>) from the Users list. */
 test.describe('AI Profile Users', () => {
   test.beforeAll(async ({ browser }) => {
     createdUsers = [];
+    persona = new PersonaClass();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await persona.create(apiContext);
 

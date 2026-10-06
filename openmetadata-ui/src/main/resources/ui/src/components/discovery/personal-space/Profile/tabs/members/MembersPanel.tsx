@@ -11,17 +11,9 @@
  *  limitations under the License.
  */
 
-import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import {
-  Clock,
-  Lock01,
-  ShieldTick,
-  User01,
-  Users01,
-} from '@openmetadata/ui-core-components/icons';
+import { Lock01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
-import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -32,7 +24,13 @@ import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { MembersPanelProps, MembersView } from './Members.types';
-import { hashSubPathToView, viewToSubPath } from './Members.utils';
+import {
+  buildMembersHeaderMaps,
+  hashSubPathToView,
+  isTeamsOrDetailView,
+  makeBreadcrumbAction,
+  viewToSubPath,
+} from './Members.utils';
 import MembersAddTeamForm from './MembersAddTeamForm';
 import MembersCreateUserForm from './MembersCreateUserForm';
 import MembersImportForm from './MembersImportForm';
@@ -45,134 +43,6 @@ const TEAM_DETAIL = 'team-detail' as const;
 const TEAMS_ADD = 'teams-add' as const;
 const TEAMS_IMPORT = 'teams-import' as const;
 const USER_CREATE = 'user-create' as const;
-
-// Pure header maps extracted to module scope to keep the header effect's
-// cyclomatic complexity within budget.
-const getMembersIcons = (
-  createUserIsAdmin: boolean
-): Record<MembersView['type'], FC<{ className?: string }>> => ({
-  landing: Users01,
-  teams: Users01,
-  [TEAM_DETAIL]: Users01,
-  'teams-add': Users01,
-  'teams-import': Users01,
-  users: User01,
-  admins: ShieldTick,
-  'user-create': createUserIsAdmin ? ShieldTick : User01,
-  'online-users': Clock,
-});
-
-const getMembersDescriptions = (
-  t: (key: string) => string,
-  createUserIsAdmin: boolean
-): Record<MembersView['type'], string> => ({
-  landing: t('message.team-member-management-description'),
-  teams: t('message.members-teams-description'),
-  [TEAM_DETAIL]: t('message.members-teams-description'),
-  'teams-add': t('message.members-teams-description'),
-  'teams-import': t('message.members-teams-description'),
-  users: t('message.members-users-description'),
-  admins: t('message.members-admins-description'),
-  'user-create': createUserIsAdmin
-    ? t('message.members-admins-description')
-    : t('message.members-users-description'),
-  'online-users': t('message.members-online-users-description'),
-});
-
-const makeBreadcrumbAction =
-  (onNavigate: (view: MembersView) => void) => (id: Key) => {
-    if (id === 'members') {
-      onNavigate({ type: 'landing' });
-    } else if (id === 'teams') {
-      onNavigate({ type: 'teams' });
-    } else if (id === 'users') {
-      onNavigate({ type: 'users' });
-    } else if (id === 'admins') {
-      onNavigate({ type: 'admins' });
-    }
-  };
-
-const isTeamsOrDetailView = (view: MembersView): boolean =>
-  view.type === 'teams' || view.type === TEAM_DETAIL || view.type === TEAMS_ADD;
-
-// Builds the per-view breadcrumb/title/icon/description maps. Kept at module
-// scope (pure) so the header effect stays within its complexity budget.
-const buildMembersHeaderMaps = (
-  view: MembersView,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-  resolvedTeamName: string
-) => {
-  const membersLabel = t('label.member-plural');
-  const organizationLabel = t('label.organization');
-  const teamsLabel = t('label.team-plural');
-  const usersLabel = t('label.user-plural');
-  const adminsLabel = t('label.admin-plural');
-  const onlineUsersLabel = t('label.online-user-plural');
-  const addTeamLabel = t('label.add-entity', { entity: t('label.team') });
-  const importIsUser =
-    view.type === TEAMS_IMPORT && view.importType === 'users';
-  const importLabel = t('label.import-entity', {
-    entity: importIsUser ? t('label.user') : t('label.team'),
-  });
-  const teamName =
-    view.type === TEAM_DETAIL ? resolvedTeamName || view.name : '';
-
-  const settingsItem: BreadcrumbItemType = {
-    id: 'settings',
-    label: t('label.setting-plural'),
-  };
-  const membersItem: BreadcrumbItemType = {
-    id: 'members',
-    label: membersLabel,
-  };
-  const teamsItem: BreadcrumbItemType = {
-    id: 'teams',
-    label: organizationLabel,
-  };
-  const usersItem: BreadcrumbItemType = { id: 'users', label: usersLabel };
-  const adminsItem: BreadcrumbItemType = { id: 'admins', label: adminsLabel };
-  const base = [settingsItem, membersItem];
-
-  const createUserIsAdmin = view.type === USER_CREATE && Boolean(view.isAdmin);
-  const createUserLabel = t('label.create-entity', {
-    entity: createUserIsAdmin ? t('label.admin') : t('label.user'),
-  });
-
-  const crumbsByType: Record<MembersView['type'], BreadcrumbItemType[]> = {
-    landing: [settingsItem, { id: 'current', label: membersLabel }],
-    teams: [...base, { id: 'current', label: teamsLabel }],
-    [TEAM_DETAIL]: [...base, teamsItem, { id: 'current', label: teamName }],
-    'teams-add': [...base, teamsItem, { id: 'current', label: addTeamLabel }],
-    'teams-import': [...base, teamsItem, { id: 'current', label: importLabel }],
-    users: [...base, { id: 'current', label: usersLabel }],
-    admins: [...base, { id: 'current', label: adminsLabel }],
-    'user-create': [
-      ...base,
-      createUserIsAdmin ? adminsItem : usersItem,
-      { id: 'current', label: createUserLabel },
-    ],
-    'online-users': [...base, { id: 'current', label: onlineUsersLabel }],
-  };
-
-  const titleByType: Record<MembersView['type'], string> = {
-    landing: membersLabel,
-    teams: organizationLabel,
-    [TEAM_DETAIL]: teamName,
-    'teams-add': addTeamLabel,
-    'teams-import': importLabel,
-    users: usersLabel,
-    admins: adminsLabel,
-    'user-create': createUserLabel,
-    'online-users': onlineUsersLabel,
-  };
-
-  return {
-    crumbsByType,
-    titleByType,
-    iconByType: getMembersIcons(createUserIsAdmin),
-    descByType: getMembersDescriptions(t, createUserIsAdmin),
-  };
-};
 
 const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();

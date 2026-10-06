@@ -11,11 +11,26 @@
  *  limitations under the License.
  */
 
-import { SelectItemType } from '@openmetadata/ui-core-components';
+import type {
+  BreadcrumbItemType,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
+import {
+  Clock,
+  ShieldTick,
+  User01,
+  Users01,
+} from '@openmetadata/ui-core-components/icons';
+import type { FC, Key } from 'react';
 import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import type { MembersView, OnlineStatusInfo, TeamNode } from './Members.types';
+import type {
+  MembersView,
+  OnlineStatusInfo,
+  ParsedImportResult,
+  TeamNode,
+} from './Members.types';
 
 // DomainSelect hands back a single ref, an array, or undefined (cleared);
 // normalise to the array shape the Team PATCH expects.
@@ -54,6 +69,29 @@ export const mergeRoleItems = (
   return [...kept, ...fetched.filter((n) => !keptIds.has(n.id))];
 };
 
+// Parse a result CSV (as papaparse string[][]) into header + keyed-cell rows for
+// the import-result table.
+export const toImportRows = (data: string[][]): ParsedImportResult => {
+  const nonEmpty = data.filter((row) => row.some((cell) => cell !== ''));
+  const [headerRow = [], ...dataRows] = nonEmpty;
+
+  return {
+    headers: headerRow,
+    rows: dataRows.map((row, index) => {
+      const cells = headerRow.reduce<Record<string, string>>(
+        (record, header, column) => {
+          record[header] = row[column] ?? '';
+
+          return record;
+        },
+        {}
+      );
+
+      return { id: `${index}-${cells[headerRow[1]] ?? ''}`, cells };
+    }),
+  };
+};
+
 // Route-segment values reuse the shared settings enum; the form-only suffixes
 // below have no enum equivalent.
 const { TEAMS, USERS, ADMINS, ONLINE_USERS } = GlobalSettingOptions;
@@ -62,6 +100,11 @@ const CREATE = 'create';
 const USER_CREATE = 'user-create';
 const IMPORT_TEAM = 'import-team';
 const IMPORT_USER = 'import-user';
+// View-type discriminants reused across the route parser and the header maps;
+// consts (not repeated literals) keep no-duplicate-string happy.
+const TEAM_DETAIL = 'team-detail';
+const TEAMS_ADD = 'teams-add';
+const TEAMS_IMPORT = 'teams-import';
 
 // A malformed percent-escape (e.g. a hand-edited `#...%ZZ`) makes
 // decodeURIComponent throw URIError, which would unmount the whole panel; fall
@@ -93,13 +136,13 @@ function parseTeamsSubPath(parts: string[]): MembersView {
         ? undefined
         : safeDecodeURIComponent(parts.slice(1, -1).join('/'));
 
-    return { type: 'teams-add', parentFqn };
+    return { type: TEAMS_ADD, parentFqn };
   }
 
   if (last === IMPORT_TEAM || last === IMPORT_USER) {
     // `teams/<fqn>/import-team` or `.../import-user` — fqn is everything between.
     return {
-      type: 'teams-import',
+      type: TEAMS_IMPORT,
       fqn: safeDecodeURIComponent(parts.slice(1, -1).join('/')),
       importType: last === IMPORT_USER ? 'users' : 'teams',
     };
@@ -107,7 +150,7 @@ function parseTeamsSubPath(parts: string[]): MembersView {
 
   const fqn = safeDecodeURIComponent(parts.slice(1).join('/'));
 
-  return { type: 'team-detail', fqn, name: fqn };
+  return { type: TEAM_DETAIL, fqn, name: fqn };
 }
 
 export function hashSubPathToView(subPath: string): MembersView {
@@ -137,13 +180,13 @@ export function hashSubPathToView(subPath: string): MembersView {
 
 function teamsViewToSubPath(view: MembersView): string {
   switch (view.type) {
-    case 'team-detail':
+    case TEAM_DETAIL:
       return `${TEAMS}/${encodeURIComponent(view.fqn)}`;
-    case 'teams-add':
+    case TEAMS_ADD:
       return view.parentFqn
         ? `${TEAMS}/${encodeURIComponent(view.parentFqn)}/${ADD}`
         : `${TEAMS}/${ADD}`;
-    case 'teams-import':
+    case TEAMS_IMPORT:
       return `${TEAMS}/${encodeURIComponent(view.fqn)}/${
         view.importType === 'users' ? IMPORT_USER : IMPORT_TEAM
       }`;
@@ -240,4 +283,133 @@ export const getCsvFileSizeLabel = (bytes = 0): string => {
   return `${normalizedSize.toFixed(unitIndex === 0 ? 0 : 1)} ${
     CSV_FILE_SIZE_UNITS[unitIndex]
   }`;
+};
+
+// Per-view icon map for the members header (pure data; keeps the header effect's
+// complexity within budget).
+export const getMembersIcons = (
+  createUserIsAdmin: boolean
+): Record<MembersView['type'], FC<{ className?: string }>> => ({
+  landing: Users01,
+  teams: Users01,
+  [TEAM_DETAIL]: Users01,
+  [TEAMS_ADD]: Users01,
+  [TEAMS_IMPORT]: Users01,
+  users: User01,
+  admins: ShieldTick,
+  'user-create': createUserIsAdmin ? ShieldTick : User01,
+  'online-users': Clock,
+});
+
+export const getMembersDescriptions = (
+  t: (key: string) => string,
+  createUserIsAdmin: boolean
+): Record<MembersView['type'], string> => ({
+  landing: t('message.team-member-management-description'),
+  teams: t('message.members-teams-description'),
+  [TEAM_DETAIL]: t('message.members-teams-description'),
+  [TEAMS_ADD]: t('message.members-teams-description'),
+  [TEAMS_IMPORT]: t('message.members-teams-description'),
+  users: t('message.members-users-description'),
+  admins: t('message.members-admins-description'),
+  'user-create': createUserIsAdmin
+    ? t('message.members-admins-description')
+    : t('message.members-users-description'),
+  'online-users': t('message.members-online-users-description'),
+});
+
+export const makeBreadcrumbAction =
+  (onNavigate: (view: MembersView) => void) => (id: Key) => {
+    if (id === 'members') {
+      onNavigate({ type: 'landing' });
+    } else if (id === 'teams') {
+      onNavigate({ type: 'teams' });
+    } else if (id === 'users') {
+      onNavigate({ type: 'users' });
+    } else if (id === 'admins') {
+      onNavigate({ type: 'admins' });
+    }
+  };
+
+export const isTeamsOrDetailView = (view: MembersView): boolean =>
+  view.type === 'teams' || view.type === TEAM_DETAIL || view.type === TEAMS_ADD;
+
+// Builds the per-view breadcrumb/title/icon/description maps for the members
+// header. Pure, so the header effect stays within its complexity budget.
+export const buildMembersHeaderMaps = (
+  view: MembersView,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  resolvedTeamName: string
+) => {
+  const membersLabel = t('label.member-plural');
+  const organizationLabel = t('label.organization');
+  const teamsLabel = t('label.team-plural');
+  const usersLabel = t('label.user-plural');
+  const adminsLabel = t('label.admin-plural');
+  const onlineUsersLabel = t('label.online-user-plural');
+  const addTeamLabel = t('label.add-entity', { entity: t('label.team') });
+  const importIsUser =
+    view.type === TEAMS_IMPORT && view.importType === 'users';
+  const importLabel = t('label.import-entity', {
+    entity: importIsUser ? t('label.user') : t('label.team'),
+  });
+  const teamName =
+    view.type === TEAM_DETAIL ? resolvedTeamName || view.name : '';
+
+  const settingsItem: BreadcrumbItemType = {
+    id: 'settings',
+    label: t('label.setting-plural'),
+  };
+  const membersItem: BreadcrumbItemType = {
+    id: 'members',
+    label: membersLabel,
+  };
+  const teamsItem: BreadcrumbItemType = {
+    id: 'teams',
+    label: organizationLabel,
+  };
+  const usersItem: BreadcrumbItemType = { id: 'users', label: usersLabel };
+  const adminsItem: BreadcrumbItemType = { id: 'admins', label: adminsLabel };
+  const base = [settingsItem, membersItem];
+
+  const createUserIsAdmin =
+    view.type === 'user-create' && Boolean(view.isAdmin);
+  const createUserLabel = t('label.create-entity', {
+    entity: createUserIsAdmin ? t('label.admin') : t('label.user'),
+  });
+
+  const crumbsByType: Record<MembersView['type'], BreadcrumbItemType[]> = {
+    landing: [settingsItem, { id: 'current', label: membersLabel }],
+    teams: [...base, { id: 'current', label: teamsLabel }],
+    [TEAM_DETAIL]: [...base, teamsItem, { id: 'current', label: teamName }],
+    [TEAMS_ADD]: [...base, teamsItem, { id: 'current', label: addTeamLabel }],
+    [TEAMS_IMPORT]: [...base, teamsItem, { id: 'current', label: importLabel }],
+    users: [...base, { id: 'current', label: usersLabel }],
+    admins: [...base, { id: 'current', label: adminsLabel }],
+    'user-create': [
+      ...base,
+      createUserIsAdmin ? adminsItem : usersItem,
+      { id: 'current', label: createUserLabel },
+    ],
+    'online-users': [...base, { id: 'current', label: onlineUsersLabel }],
+  };
+
+  const titleByType: Record<MembersView['type'], string> = {
+    landing: membersLabel,
+    teams: organizationLabel,
+    [TEAM_DETAIL]: teamName,
+    [TEAMS_ADD]: addTeamLabel,
+    [TEAMS_IMPORT]: importLabel,
+    users: usersLabel,
+    admins: adminsLabel,
+    'user-create': createUserLabel,
+    'online-users': onlineUsersLabel,
+  };
+
+  return {
+    crumbsByType,
+    titleByType,
+    iconByType: getMembersIcons(createUserIsAdmin),
+    descByType: getMembersDescriptions(t, createUserIsAdmin),
+  };
 };

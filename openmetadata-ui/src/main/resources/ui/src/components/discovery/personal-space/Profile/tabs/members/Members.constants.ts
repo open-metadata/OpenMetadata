@@ -66,6 +66,12 @@ export const TIME_WINDOW_OPTIONS: TimeWindowOption[] = [
 
 export const DEFAULT_TIME_WINDOW = 1440;
 
+// Import-result CSV column keys folded into the status badge, plus the empty-cell
+// placeholder used by the result table.
+export const IMPORT_RESULT_STATUS_KEY = 'status';
+export const IMPORT_RESULT_DETAILS_KEY = 'details';
+export const IMPORT_RESULT_EMPTY_PLACEHOLDER = '--';
+
 export const WIDGET_CLASS =
   'tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3';
 

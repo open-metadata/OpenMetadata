@@ -20,42 +20,16 @@ import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { Status } from '../../../../../../generated/type/csvImportResult';
-import type { MembersImportResultTableProps } from './Members.types';
-
-const STATUS_KEY = 'status';
-const DETAILS_KEY = 'details';
-const EMPTY_PLACEHOLDER = '--';
-
-interface ImportRow {
-  id: string;
-  cells: Record<string, string>;
-}
-
-interface ParsedResult {
-  headers: string[];
-  rows: ImportRow[];
-}
-
-const toImportRows = (data: string[][]): ParsedResult => {
-  const nonEmpty = data.filter((row) => row.some((cell) => cell !== ''));
-  const [headerRow = [], ...dataRows] = nonEmpty;
-
-  return {
-    headers: headerRow,
-    rows: dataRows.map((row, index) => {
-      const cells = headerRow.reduce<Record<string, string>>(
-        (record, header, column) => {
-          record[header] = row[column] ?? '';
-
-          return record;
-        },
-        {}
-      );
-
-      return { id: `${index}-${cells[headerRow[1]] ?? ''}`, cells };
-    }),
-  };
-};
+import {
+  IMPORT_RESULT_DETAILS_KEY as DETAILS_KEY,
+  IMPORT_RESULT_EMPTY_PLACEHOLDER as EMPTY_PLACEHOLDER,
+  IMPORT_RESULT_STATUS_KEY as STATUS_KEY,
+} from './Members.constants';
+import type {
+  MembersImportResultTableProps,
+  ParsedImportResult,
+} from './Members.types';
+import { toImportRows } from './Members.utils';
 
 // The result CSV carries one `status`/`details` pair per row — `status` gets a
 // coloured badge (with the failure reason inline), `details` is folded into it,
@@ -65,7 +39,10 @@ const MembersImportResultTable: FC<MembersImportResultTableProps> = ({
 }) => {
   const { t } = useTranslation();
   const { readString } = usePapaParse();
-  const [parsed, setParsed] = useState<ParsedResult>({ headers: [], rows: [] });
+  const [parsed, setParsed] = useState<ParsedImportResult>({
+    headers: [],
+    rows: [],
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

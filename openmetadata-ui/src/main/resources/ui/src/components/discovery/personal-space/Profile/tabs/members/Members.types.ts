@@ -102,6 +102,16 @@ export interface MembersImportFormProps {
   onClose: () => void;
 }
 
+export interface ImportRow {
+  id: string;
+  cells: Record<string, string>;
+}
+
+export interface ParsedImportResult {
+  headers: string[];
+  rows: ImportRow[];
+}
+
 export interface MembersImportResultTableProps {
   csvImportResult: CSVImportResult;
 }

@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TeamClass } from '../support/team/TeamClass';
-import { redirectToHomePage } from './common';
+import { UserClass } from '../support/user/UserClass';
+import { redirectToHomePage, uuid } from './common';
 
 /**
  * Open the AI-mode profile. The profile is a hash-driven surface reached from the
@@ -237,4 +238,38 @@ export const clickMembersBreadcrumb = async (page: Page): Promise<void> => {
     .getByRole('link', { name: 'Members' })
     .click();
   await expect(page.getByTestId('members-landing')).toBeVisible();
+};
+
+/** Create a team via the API and track it in the caller's cleanup array. */
+export const createMembersTeam = async (
+  apiContext: APIRequestContext,
+  createdTeams: TeamClass[],
+  overrides: Partial<ConstructorParameters<typeof TeamClass>[0]> = {}
+): Promise<TeamClass> => {
+  const id = uuid();
+  const team = new TeamClass({
+    name: `PW%team-${id}`,
+    displayName: `PW Team ${id}`,
+    description: 'playwright team detail',
+    teamType: 'Group',
+    users: [],
+    policies: [],
+    ...overrides,
+  });
+  await team.create(apiContext);
+  createdTeams.push(team);
+
+  return team;
+};
+
+/** Create a user via the API and track it in the caller's cleanup array. */
+export const createTrackedUser = async (
+  apiContext: APIRequestContext,
+  createdUsers: UserClass[]
+): Promise<UserClass> => {
+  const user = new UserClass();
+  await user.create(apiContext);
+  createdUsers.push(user);
+
+  return user;
 };

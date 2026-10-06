@@ -19,6 +19,7 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
   addUserToTeam,
+  createMembersTeam,
   navigateToMembersPanel,
   openCreatedTeam,
   openOrganizationTeams,
@@ -39,25 +40,10 @@ let role: RolesClass;
 let member: UserClass;
 let createdTeams: TeamClass[] = [];
 
-const makeTeam = async (
+const makeTeam = (
   apiContext: APIRequestContext,
   overrides: Partial<ConstructorParameters<typeof TeamClass>[0]> = {}
-): Promise<TeamClass> => {
-  const id = uuid();
-  const team = new TeamClass({
-    name: `PW%team-${id}`,
-    displayName: `PW Team ${id}`,
-    description: 'playwright team detail',
-    teamType: 'Group',
-    users: [],
-    policies: [],
-    ...overrides,
-  });
-  await team.create(apiContext);
-  createdTeams.push(team);
-
-  return team;
-};
+): Promise<TeamClass> => createMembersTeam(apiContext, createdTeams, overrides);
 
 test.describe('AI Profile Team Detail', () => {
   test.beforeAll(async ({ browser }) => {
