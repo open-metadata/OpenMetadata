@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Duration;
 import java.util.List;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -24,6 +26,41 @@ import org.openmetadata.sdk.network.HttpMethod;
 public class LifecycleWorkflowConfigurationIT {
   private static final String WORKFLOWS = "/v1/governance/workflowDefinitions";
   private static final String LIFECYCLE = "/config/lifecycle";
+
+  @Test
+  void deploysMetadataCollectionWithoutAnInputNamespaceMap(final TestNamespace ns) {
+    final ObjectNode request = request(ns);
+    request.set(
+        "nodes",
+        JsonUtils.readTree(
+            """
+        [
+          {"type":"startEvent","subType":"startEvent","name":"start"},
+          {"type":"automatedTask","subType":"collectMetadataTask","name":"collect",
+            "config":{"field":"description","rules":"true","taskAssignees":"owners","stage":"Draft"}},
+          {"type":"endEvent","subType":"endEvent","name":"end"}
+        ]
+        """));
+    request.set(
+        "edges",
+        JsonUtils.readTree(
+            """
+        [{"from":"start","to":"collect"},{"from":"collect","to":"end"}]
+        """));
+    final JsonNode created = execute(HttpMethod.POST, WORKFLOWS, request);
+    final String path = WORKFLOWS + "/" + created.get("id").asText();
+    try {
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .until(
+              () ->
+                  execute(HttpMethod.GET, path + "?fields=deployed", null)
+                      .path("deployed")
+                      .asBoolean());
+    } finally {
+      execute(HttpMethod.DELETE, path + "?hardDelete=true&recursive=true", null);
+    }
+  }
 
   @Test
   void preservesChecklistMetadataAcrossApiUpdates(TestNamespace ns) {

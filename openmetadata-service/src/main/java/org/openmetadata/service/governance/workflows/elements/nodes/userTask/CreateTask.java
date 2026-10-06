@@ -123,6 +123,7 @@ public class CreateTask implements TaskListener {
   private Expression stageDisplayNameExpr;
   private Expression taskStatusExpr;
   private Expression transitionMetadataExpr;
+  private Expression useEntityOwnerFallbackExpr;
 
   @Override
   public void notify(DelegateTask delegateTask) {
@@ -613,6 +614,12 @@ public class CreateTask implements TaskListener {
                 requestedAssignees != null && !requestedAssignees.isEmpty()
                     ? requestedAssignees
                     : assignees)
+            .withUseEntityOwnerFallback(
+                !Boolean.FALSE
+                    .toString()
+                    .equals(
+                        WorkflowVariableResolver.stringExpression(
+                            useEntityOwnerFallbackExpr, delegateTask)))
             .withReviewers(requestedReviewers)
             .withCreatedBy(createdByRef)
             .withWorkflowInstanceId(workflowInstanceId)

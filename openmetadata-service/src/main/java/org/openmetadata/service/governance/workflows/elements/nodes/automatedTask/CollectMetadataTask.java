@@ -54,7 +54,9 @@ public class CollectMetadataTask implements NodeInterface {
     final Map<String, String> fields =
         Map.of(
             "configurationExpr", JsonUtils.pojoToJson(node.getConfig()),
-            "inputNamespaceMapExpr", JsonUtils.pojoToJson(node.getInputNamespaceMap()),
+            "inputNamespaceMapExpr",
+                JsonUtils.pojoToJson(
+                    node.getInputNamespaceMap() != null ? node.getInputNamespaceMap() : Map.of()),
             "taskKeyExpr", workflowName + ":" + node.getConfig().getStage().value());
     fields.forEach(
         (name, value) ->

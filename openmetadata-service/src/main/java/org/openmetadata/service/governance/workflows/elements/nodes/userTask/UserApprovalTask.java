@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.governance.workflows.elements.nodes.userTask.Assignees__1.EmptyAssigneeStrategy.WAIT;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.ArrayList;
@@ -136,6 +137,16 @@ public class UserApprovalTask implements NodeInterface {
             .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getConfig().getTransitionMetadata()))
             .build();
 
+    FieldExtension useEntityOwnerFallbackExpr =
+        new FieldExtensionBuilder()
+            .fieldName("useEntityOwnerFallbackExpr")
+            .fieldValue(
+                Boolean.toString(
+                    nodeDefinition.getConfig().getAssignees() == null
+                        || nodeDefinition.getConfig().getAssignees().getEmptyAssigneeStrategy()
+                            != WAIT))
+            .build();
+
     // Force sync execution on the approval subprocess so the entry path
     // (SetApprovalAssigneesImpl → user task creation → CreateTask listener)
     // runs on the caller's thread inside the current transaction. Without this
@@ -175,7 +186,8 @@ public class UserApprovalTask implements NodeInterface {
             stageIdExpr,
             stageDisplayNameExpr,
             taskStatusExpr,
-            transitionMetadataExpr);
+            transitionMetadataExpr,
+            useEntityOwnerFallbackExpr);
 
     ServiceTask autoApproveTask =
         new ServiceTaskBuilder()
@@ -281,7 +293,8 @@ public class UserApprovalTask implements NodeInterface {
       FieldExtension stageIdExpr,
       FieldExtension stageDisplayNameExpr,
       FieldExtension taskStatusExpr,
-      FieldExtension transitionMetadataExpr) {
+      FieldExtension transitionMetadataExpr,
+      FieldExtension useEntityOwnerFallbackExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
             .event("create")
@@ -303,6 +316,7 @@ public class UserApprovalTask implements NodeInterface {
             .addFieldExtension(stageDisplayNameExpr)
             .addFieldExtension(taskStatusExpr)
             .addFieldExtension(transitionMetadataExpr)
+            .addFieldExtension(useEntityOwnerFallbackExpr)
             .build();
 
     FlowableListener completionValidatorListener =
