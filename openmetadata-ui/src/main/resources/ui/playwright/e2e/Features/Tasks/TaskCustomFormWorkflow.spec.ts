@@ -442,8 +442,10 @@ test.describe.serial(
           .click();
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="task-feed-card"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="task-feed-card"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page.locator('[data-testid="task-feed-card"]').first().click();
         await expect(page.getByTestId('task-tab')).toBeVisible();
         await expect(page.getByTestId('task-payload-details')).toContainText(

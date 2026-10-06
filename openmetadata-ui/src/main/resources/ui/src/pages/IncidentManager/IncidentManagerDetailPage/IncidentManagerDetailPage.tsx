@@ -36,6 +36,7 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -67,6 +68,7 @@ const IncidentManagerDetailPage = ({
   isVersionPage?: boolean;
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const location = useCustomLocation();
   const originBreadcrumb = (
@@ -145,8 +147,8 @@ const IncidentManagerDetailPage = ({
                     }
                     incidentTask={incidentHeaderData.incidentTask}
                     nextRunTimestamp={nextRunTimestamp}
-                    parameterValues={testCase?.parameterValues}
                     taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                    testCase={testCase}
                     testCaseResult={testCase?.testCaseResult}
                     testCaseStatus={testCase?.testCaseStatus}
                     testCaseStatusData={incidentHeaderData.testCaseStatusData}
@@ -169,9 +171,7 @@ const IncidentManagerDetailPage = ({
       isVersionPage,
       nextRunTimestamp,
       tabs,
-      testCase?.parameterValues,
-      testCase?.testCaseResult,
-      testCase?.testCaseStatus,
+      testCase,
     ]
   );
 
@@ -409,7 +409,13 @@ const IncidentManagerDetailPage = ({
               ))}
             </Tabs.List>
             {tabItems.map(({ key, children }) => (
-              <Tabs.Panel id={key} key={key}>
+              <Tabs.Panel
+                className={classNames({
+                  // Classic mode puts tab content on a white panel; AI mode keeps its own surface.
+                  'tw:rounded-xl tw:bg-surface': !isAiMode,
+                })}
+                id={key}
+                key={key}>
                 {children}
               </Tabs.Panel>
             ))}

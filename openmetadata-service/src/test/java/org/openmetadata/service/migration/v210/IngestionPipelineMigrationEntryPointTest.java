@@ -29,6 +29,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
@@ -53,6 +54,7 @@ class IngestionPipelineMigrationEntryPointTest {
     when(handle.createQuery(anyString()).mapTo(String.class).list()).thenReturn(List.of());
     setField(migration, "handle", handle);
     setField(migration, "collectionDAO", collectionDAO);
+    setField(migration, "migrationDAO", mock(MigrationDAO.class));
 
     try (MockedStatic<ConversationMigration> conversationMigration =
             mockStatic(ConversationMigration.class);

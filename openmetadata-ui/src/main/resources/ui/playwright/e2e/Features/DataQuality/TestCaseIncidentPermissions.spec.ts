@@ -318,7 +318,7 @@ test.describe(
         await visitTestCaseIncidentPage(editIncidentsPage);
         await expect(editIncidentsPage.getByTestId('open-task')).toBeVisible();
         const editIcon = editIncidentsPage.getByTestId('edit-resolution-icon');
-        await expect(editIcon.first()).toBeVisible();
+        await expect(editIcon.filter({ visible: true })).not.toHaveCount(0);
       });
 
       test('User with TABLE.EDIT_TESTS can see edit icon on incidents (alternative)', async ({
@@ -331,7 +331,7 @@ test.describe(
         const editIcon = tableEditIncidentsPage.getByTestId(
           'edit-resolution-icon'
         );
-        await expect(editIcon.first()).toBeVisible();
+        await expect(editIcon.filter({ visible: true })).not.toHaveCount(0);
       });
     });
 

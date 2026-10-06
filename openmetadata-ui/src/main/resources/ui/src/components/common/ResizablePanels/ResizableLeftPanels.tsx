@@ -60,7 +60,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
               'tw:shrink-0 tw:p-4',
               firstPanel.titleContainerClassName
             )}
-            gap={2}>
+            gap={1}>
             <Typography
               as="span"
               className={firstPanel.titleClassName}

@@ -18,6 +18,10 @@ import {
   deleteLearningResource,
   LearningResource,
 } from '../../../rest/learningResourceAPI';
+import {
+  opensInNewTab,
+  openUrlInNewTab,
+} from '../../../utils/platform/learning.utils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 interface UseLearningResourceActionsParams {
@@ -100,6 +104,11 @@ export const useLearningResourceActions = ({
   }, []);
 
   const handlePreview = useCallback((resource: LearningResource) => {
+    if (opensInNewTab(resource.resourceType)) {
+      openUrlInNewTab(resource.source.url);
+
+      return;
+    }
     setSelectedResource(resource);
     setIsPlayerOpen(true);
   }, []);

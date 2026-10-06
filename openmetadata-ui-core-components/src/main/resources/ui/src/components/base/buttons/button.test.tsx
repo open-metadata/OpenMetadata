@@ -56,6 +56,45 @@ describe('Button', () => {
   });
 });
 
+describe('Button — link box', () => {
+  it('collapses a link button to an inline text box by default', () => {
+    render(
+      <Button color="link-color" size="md">
+        Back
+      </Button>
+    );
+    const button = screen.getByRole('button', { name: 'Back' });
+
+    expect(button).toHaveClass('tw:p-0!');
+    expect(screen.getByText('Back')).not.toHaveClass('tw:px-0.5');
+  });
+
+  it('keeps the size padding and label padding when boxed', () => {
+    render(
+      <Button boxed color="link-color" size="md">
+        Back
+      </Button>
+    );
+    const button = screen.getByRole('button', { name: 'Back' });
+
+    expect(button).not.toHaveClass('tw:p-0!');
+    expect(button).toHaveClass('tw:px-3.5', 'tw:py-2.5');
+    expect(screen.getByText('Back')).toHaveClass('tw:px-0.5');
+  });
+
+  it('ignores boxed on non-link colours', () => {
+    render(
+      <Button boxed color="primary" size="md">
+        Save
+      </Button>
+    );
+
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveClass(
+      'tw:px-3.5'
+    );
+  });
+});
+
 describe('Button — tooltip prop', () => {
   it('shows a tooltip on hover when the tooltip prop is set', async () => {
     const user = userEvent.setup();
