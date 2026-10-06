@@ -679,7 +679,7 @@ class K8sPipelineClientTest {
   }
 
   @Test
-  void runFailureReadsAsATriggerAndIsA503WhenTheClusterIsUnreachable() throws Exception {
+  void runFailureReadsAsATriggerAndIsA503WhenARetryCanHelp() throws Exception {
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
     when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
 
@@ -693,7 +693,17 @@ class K8sPipelineClientTest {
     assertEquals(503, unreachable.getResponse().getStatus());
     assertTrue(unreachable.getMessage().startsWith("Failed to trigger pipeline [test-pipeline]"));
 
-    // doThrow: re-stubbing through when() would call the mock, which still throws.
+    // Throttled, or failing on the cluster's side: the codes the client itself retries on.
+    for (int transientCode : new int[] {429, 500}) {
+      // doThrow: re-stubbing through when() would call the mock, which still throws.
+      doThrow(new ApiException(transientCode, "Transient")).when(createJobRequest).execute();
+      IngestionPipelineDeploymentException retryable =
+          assertThrows(
+              IngestionPipelineDeploymentException.class,
+              () -> client.runPipeline(pipeline, testService));
+      assertEquals(503, retryable.getResponse().getStatus());
+    }
+
     doThrow(new ApiException(403, "Forbidden")).when(createJobRequest).execute();
     IngestionPipelineDeploymentException rejected =
         assertThrows(

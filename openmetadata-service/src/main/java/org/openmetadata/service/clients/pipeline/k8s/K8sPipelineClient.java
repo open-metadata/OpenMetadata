@@ -628,11 +628,13 @@ public class K8sPipelineClient extends PipelineServiceClient {
           correlationId,
           e.getCode(),
           parseK8sErrorMessage(e));
-      // Code 0 means no answer came back: the cluster API could not be reached.
+      // Code 0 means no answer came back; the codes the client retries on are transient too.
       throw IngestionPipelineDeploymentException.triggerFailed(
           pipelineName,
           buildDetailedErrorMessage("trigger", pipelineName, e),
-          e.getCode() == 0 ? Status.SERVICE_UNAVAILABLE : Status.BAD_REQUEST);
+          e.getCode() == 0 || isRetryableException(e)
+              ? Status.SERVICE_UNAVAILABLE
+              : Status.BAD_REQUEST);
     } finally {
       MDC.clear();
     }
