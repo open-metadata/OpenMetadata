@@ -77,7 +77,11 @@ const readRequest = (response: Response): AggregationRequest => {
   };
 };
 
-const matches = (response: Response, wait: AggregationWait): boolean => {
+/** For a `waitForResponse` predicate that also accepts other responses. */
+export const isAggregationResponse = (
+  response: Response,
+  wait: AggregationWait
+): boolean => {
   if (!new URL(response.url()).pathname.endsWith(AGGREGATE_PATH)) {
     return false;
   }
@@ -114,4 +118,8 @@ export const waitForAggregation = (
   page: Page,
   wait: AggregationWait,
   options?: { timeout?: number }
-) => page.waitForResponse((response) => matches(response, wait), options);
+) =>
+  page.waitForResponse(
+    (response) => isAggregationResponse(response, wait),
+    options
+  );
