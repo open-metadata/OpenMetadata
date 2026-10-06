@@ -535,7 +535,8 @@ them as IRIs, which is tracked as a separate follow-up.
 
 ### A7. What this amendment does not change
 
-- Default roles and policies (#34253 owns any default grant); §2a opt-in wording is unchanged here.
+- Default roles and policies: the Data Consumer default grant is #34253 (§2a, amended
+  2026-09-29); this amendment adds no grant and changes none.
 - `get_entity_lineage` behavior.
 - The live-write projection of lineage details.
 - Asset-level SPARQL filtering (#33224).
