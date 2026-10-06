@@ -3311,6 +3311,7 @@
     "total-unprocessed-event-plural": "เหตุการณ์ที่ยังไม่ได้ประมวลผลทั้งหมด",
     "total-user-plural": "ผู้ใช้ทั้งหมด",
     "tour": "ทัวร์",
+    "traceback": "การติดตามข้อผิดพลาด",
     "tracking": "การติดตาม",
     "transition-form-plural": "ฟอร์มการเปลี่ยนผ่าน",
     "transitive": "สมบัติถ่ายทอด",

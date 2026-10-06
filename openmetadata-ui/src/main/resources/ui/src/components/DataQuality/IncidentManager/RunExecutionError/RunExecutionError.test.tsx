@@ -151,6 +151,17 @@ describe('RunExecutionError', () => {
     ).toHaveTextContent('psycopg2.OperationalError: connection timed out');
   });
 
+  it('lets the keyboard reach the capped traceback to scroll it, as the SQL block does', () => {
+    renderError({ errorDetails: { stackTrace: STACK_TRACE } });
+
+    const traceback = screen.getByRole('region', { name: 'label.traceback' });
+
+    expect(traceback).toHaveAttribute('tabindex', '0');
+    expect(traceback).toHaveTextContent(
+      'psycopg2.OperationalError: connection timed out'
+    );
+  });
+
   it('falls back to the plain-text result without structured details', () => {
     renderError({ result: 'Error computing row count' });
 

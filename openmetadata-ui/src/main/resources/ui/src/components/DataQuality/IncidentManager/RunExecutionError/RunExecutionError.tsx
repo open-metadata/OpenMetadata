@@ -14,6 +14,7 @@ import {
   Badge,
   Box,
   Button,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
@@ -35,10 +36,10 @@ const TRACEBACK_LINE_CLASS: Record<TracebackLineKind, string> = {
   exception: 'tw:text-warning-primary',
 };
 
+// A border rather than an outline: once focusable, the outline is the focus ring.
 const TRACEBACK_CLASS_NAME = [
-  'tw:m-0 tw:max-h-80 tw:max-w-full tw:overflow-auto tw:rounded-lg tw:p-3',
-  'tw:bg-secondary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
-  'tw:font-mono tw:text-xs tw:leading-relaxed',
+  'tw:max-h-80 tw:max-w-full tw:overflow-auto tw:rounded-lg tw:p-3',
+  'tw:border tw:border-secondary tw:bg-secondary tw:focus-visible:outline-focus-ring',
 ].join(' ');
 
 interface RunExecutionErrorProps {
@@ -104,20 +105,28 @@ const RunExecutionError = ({
         </Typography>
       )}
       {tracebackLines.length > 0 && (
-        <pre
+        <Card
+          aria-label={t('label.traceback')}
           className={TRACEBACK_CLASS_NAME}
-          data-testid="run-execution-error-traceback">
-          {tracebackLines.map(({ kind, text }, index) => (
-            <Typography
-              className={`tw:block ${TRACEBACK_LINE_CLASS[kind]}`}
-              data-kind={kind}
-              // A traceback is rendered once and never reordered.
-              // eslint-disable-next-line react/no-array-index-key
-              key={index}>
-              {text}
-            </Typography>
-          ))}
-        </pre>
+          data-testid="run-execution-error-traceback"
+          role="region"
+          // Safari does not make a scroll container keyboard-focusable, so the
+          // trace past the cap would be out of keyboard reach.
+          tabIndex={0}
+          variant="ghost">
+          <pre className="tw:m-0 tw:font-mono tw:text-xs tw:leading-relaxed">
+            {tracebackLines.map(({ kind, text }, index) => (
+              <Typography
+                className={`tw:block ${TRACEBACK_LINE_CLASS[kind]}`}
+                data-kind={kind}
+                // A traceback is rendered once and never reordered.
+                // eslint-disable-next-line react/no-array-index-key
+                key={index}>
+                {text}
+              </Typography>
+            ))}
+          </pre>
+        </Card>
       )}
       {canRun && !disabledReasonKey && (
         <Button
