@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.service.rdf.RdfRepository;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Returns the bounded n-hop RDF neighborhood of an entity. */
@@ -76,9 +75,7 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
 
   @Override
   protected Neighborhood executeAuthorized(
-      final Authorizer authorizer,
-      final CatalogSecurityContext securityContext,
-      final Map<String, Object> params)
+      final CatalogSecurityContext securityContext, final Map<String, Object> params)
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     McpEntityReference entity = McpEntityReference.required(parameters);

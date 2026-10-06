@@ -54,7 +54,7 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
       final Map<String, Object> params)
       throws IOException {
     authorize(authorizer, securityContext, params);
-    return executeAuthorized(authorizer, securityContext, params);
+    return executeAuthorized(securityContext, params);
   }
 
   /**
@@ -99,14 +99,9 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
         : securityContext.getUserPrincipal().getName();
   }
 
-  /**
-   * Runs after {@link #authorize}. The authorizer is passed on so a tool can vary what it does
-   * for administrators and for callers who hold only the query permission.
-   */
+  /** Runs after {@link #authorize}. */
   protected abstract T executeAuthorized(
-      final Authorizer authorizer,
-      final CatalogSecurityContext securityContext,
-      final Map<String, Object> params)
+      final CatalogSecurityContext securityContext, final Map<String, Object> params)
       throws IOException;
 
   @Override

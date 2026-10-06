@@ -33,7 +33,6 @@ import org.openmetadata.service.rdf.agent.AgentSparqlResult;
 import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -132,9 +131,7 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
 
   @Override
   protected Result executeAuthorized(
-      final Authorizer authorizer,
-      final CatalogSecurityContext securityContext,
-      final Map<String, Object> params)
+      final CatalogSecurityContext securityContext, final Map<String, Object> params)
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     String sparql = parameters.requiredString("query");

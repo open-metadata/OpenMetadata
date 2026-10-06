@@ -69,9 +69,7 @@ public class ShaclValidateTool extends RdfMcpTool<ShaclValidateTool.Result> {
 
   @Override
   protected Result executeAuthorized(
-      final Authorizer authorizer,
-      final CatalogSecurityContext securityContext,
-      final Map<String, Object> params)
+      final CatalogSecurityContext securityContext, final Map<String, Object> params)
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     RdfRepository repository = repository();
