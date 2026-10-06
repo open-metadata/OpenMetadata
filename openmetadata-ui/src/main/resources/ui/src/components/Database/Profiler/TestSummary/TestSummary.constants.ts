@@ -20,6 +20,12 @@ export interface ResultMetric {
 }
 
 /**
+ * How the page writes a run's time, "Oct 5, 2026, 12:16 PM": the banner, the
+ * run details card, and the chart's axis, tooltip and point labels alike.
+ */
+export const RUN_TIME_FORMAT = 'MMM d, yyyy, h:mm a';
+
+/**
  * What each test definition measures, for the chart card's caption. The
  * parameters say what the value is compared against; only the definition says
  * what the value is. A definition missing here reads as "Values".

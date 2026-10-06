@@ -31,6 +31,7 @@ import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { axisTickFormatter } from '../../../../utils/ChartUtils';
 import { placedSeriesKey } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
+import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import TestSummaryGraph from './TestSummaryGraph';
 import { TOOLTIP_CLOSE_DELAY } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
@@ -304,6 +305,33 @@ describe('TestSummaryGraph', () => {
 
     expect(xAxis?.type).toBe('time');
     expect(xAxis?.formatter?.(NEWEST_RUN_TIMESTAMP)).toBe(FORMATTED_DATE);
+  });
+
+  it("should tick the runs' own times, one tick per label", () => {
+    const DAY = 86_400_000;
+    // Labels to the minute, as the axis formats them.
+    (formatDateTimeLong as jest.Mock).mockImplementation(
+      (timestamp: number) => `minute ${Math.floor(timestamp / 60_000)}`
+    );
+    const run = (timestamp: number) => ({
+      ...mockProps.testCaseResults[0],
+      timestamp,
+    });
+
+    // Two runs a few seconds apart, and one a day later: not midnight ticks,
+    // and not the same minute twice.
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseResults={[run(DAY + 60_000), run(65_000), run(60_000)]}
+      />
+    );
+
+    expect(getChartProps().xAxis?.axisLabel).toEqual(
+      expect.objectContaining({ customValues: [60_000, DAY + 60_000] })
+    );
+
+    (formatDateTimeLong as jest.Mock).mockReturnValue(FORMATTED_DATE);
   });
 
   it('should format the y axis as a duration for freshness tests', () => {

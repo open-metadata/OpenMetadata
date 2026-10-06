@@ -56,13 +56,11 @@ import {
   TooltipPosition,
   TooltipSize,
 } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
-import {
-  DATE_TIME_12_HOUR_FORMAT,
-  formatDateTimeLong,
-} from '../../../../utils/date-time/DateTimeUtils';
+import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import { useTestCaseStore } from '../../../DataQuality/IncidentManager/useTestCase.store';
 import { TestCaseChartDataType } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
+import { RUN_TIME_FORMAT } from './TestSummary.constants';
 import { TOOLTIP_CLOSE_DELAY, TOOLTIP_GAP } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 import TestSummaryRunList from './TestSummaryRunList';
@@ -458,18 +456,28 @@ function TestSummaryGraph({
   );
 
   const xAxis = useMemo<ChartXAxisProps>(() => {
-    const instants = new Set(plottedData.map((point) => Number(point.name)));
-    const [onlyInstant] = instants;
+    const instants = [
+      ...new Set(plottedData.map((point) => Number(point.name))),
+    ].sort((a, b) => a - b);
+    const formatRunTime = (value: number) =>
+      formatDateTimeLong(value, RUN_TIME_FORMAT);
+    // Ticks at the runs themselves, one per label: ECharts' own ticks landed
+    // on midnight for daily runs ("12:00 AM"), and repeated a minute's label
+    // for runs a few seconds apart.
+    const tickValues = instants.filter(
+      (instant, index) =>
+        index === 0 ||
+        formatRunTime(instant) !== formatRunTime(instants[index - 1])
+    );
 
     return {
       type: 'time',
-      formatter: (value) =>
-        formatDateTimeLong(Number(value), DATE_TIME_12_HOUR_FORMAT),
-      axisLabel: { rotate: 45 },
+      formatter: (value) => formatRunTime(Number(value)),
+      axisLabel: { rotate: 45, customValues: tickValues },
       boundaryGap: X_AXIS_EDGE_GAP,
-      ...(instants.size === 1 && {
-        min: onlyInstant - SINGLE_INSTANT_X_PADDING,
-        max: onlyInstant + SINGLE_INSTANT_X_PADDING,
+      ...(instants.length === 1 && {
+        min: instants[0] - SINGLE_INSTANT_X_PADDING,
+        max: instants[0] + SINGLE_INSTANT_X_PADDING,
       }),
     };
   }, [plottedData]);
@@ -509,10 +517,9 @@ function TestSummaryGraph({
 
   const pointAriaLabel = useCallback(
     (point: PlottedPoint) =>
-      `${formatDateTimeLong(
-        Number(point.name),
-        DATE_TIME_12_HOUR_FORMAT
-      )}: ${String(point.status ?? '')}`,
+      `${formatDateTimeLong(Number(point.name), RUN_TIME_FORMAT)}: ${String(
+        point.status ?? ''
+      )}`,
     []
   );
 

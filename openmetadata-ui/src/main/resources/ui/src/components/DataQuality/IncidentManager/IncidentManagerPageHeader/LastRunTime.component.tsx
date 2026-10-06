@@ -14,6 +14,7 @@
 import { useTranslation } from 'react-i18next';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { RUN_TIME_FORMAT } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import type { LastRunTimeProps } from './TestCaseLastRunBanner.interface';
 import { getNextRunLabel } from './TestCaseLastRunBanner.utils';
 
@@ -29,7 +30,7 @@ const LastRunTime = ({
       <span
         className="tw:whitespace-nowrap tw:text-xs tw:font-normal tw:text-primary"
         data-testid="test-case-last-run-time">
-        {customFormatDateTime(timestamp, 'MMM d, yyyy, h:mm a')}
+        {customFormatDateTime(timestamp, RUN_TIME_FORMAT)}
       </span>
       <span
         className="tw:mt-1 tw:whitespace-nowrap tw:text-xs tw:text-secondary"
