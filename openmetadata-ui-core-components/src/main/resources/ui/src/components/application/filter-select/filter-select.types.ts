@@ -57,6 +57,11 @@ export interface FilterSelectProps {
    * to a borderless text button — the quick-filter look.
    */
   bordered?: boolean;
+  /**
+   * Size of the input-variant trigger, on the core Select scale: `sm` (default)
+   * or `md`, as tall as a Select, Input or Button of that size.
+   */
+  size?: 'sm' | 'md';
   className?: string;
   commitMode?: FilterSelectCommitMode;
   'data-testid'?: string;

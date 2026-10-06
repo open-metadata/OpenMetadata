@@ -42,11 +42,12 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 let adminUser: UserClass;
 
-const entityClasses = [
+const allEntityClasses = [
   ApiEndpointClass,
   TableClass,
   StoredProcedureClass,
@@ -62,6 +63,10 @@ const entityClasses = [
   SpreadsheetClass,
   WorksheetClass,
 ];
+
+const entityClasses = pickEntityMatrix(__filename, allEntityClasses, [
+  TableClass,
+]);
 
 let entities: InstanceType<(typeof entityClasses)[number]>[];
 

@@ -51,10 +51,14 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateType;
+import org.openmetadata.schema.api.governance.EntityLifecycleStages;
+import org.openmetadata.schema.api.governance.EntityTypeLifecycle;
+import org.openmetadata.schema.api.governance.StageTransition;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -62,7 +66,9 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.limits.Limits;
@@ -159,6 +165,50 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               + "applicable to every entity type and a per-entity map of additional fields.")
   public WorkflowTriggerFieldsRegistry.WorkflowTriggerFieldsConfig getWorkflowTriggerFields() {
     return WorkflowTriggerFieldsRegistry.getConfig();
+  }
+
+  @GET
+  @Path("/lifecycleStages")
+  @Operation(
+      operationId = "getEntityLifecycleStages",
+      summary = "Get entity lifecycle stages",
+      description =
+          "Get the lifecycle stages entities can be in, the entity types that have a lifecycle "
+              + "stage (an `entityStatus` field), the stages each type uses and the moves between "
+              + "them, and the active workflows that own each type's stage. Entity types not "
+              + "listed have no lifecycle.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Lifecycle stages and the entity types that have one",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityLifecycleStages.class)))
+      })
+  public EntityLifecycleStages getEntityLifecycleStages() {
+    List<EntityTypeLifecycle> entityTypes =
+        Entity.getEntityTypesWithLifecycleStage().stream().map(TypeResource::lifecycleOf).toList();
+    return new EntityLifecycleStages()
+        .withStages(List.of(EntityStatus.values()))
+        .withEntityTypes(entityTypes);
+  }
+
+  private static EntityTypeLifecycle lifecycleOf(String entityType) {
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    EntityLifecycle lifecycle = repository.getEntityLifecycle();
+    return new EntityTypeLifecycle()
+        .withEntityType(entityType)
+        .withStages(List.copyOf(lifecycle.stages()))
+        .withTransitions(
+            lifecycle.transitions().entrySet().stream()
+                .map(
+                    move ->
+                        new StageTransition()
+                            .withFrom(move.getKey())
+                            .withTo(List.copyOf(move.getValue())))
+                .toList())
+        .withStageWorkflows(repository.getStageWorkflows());
   }
 
   @GET

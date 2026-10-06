@@ -15,10 +15,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jobs.JobDAO;
 
@@ -115,7 +115,7 @@ class OntologyMemoryDerivationQueueTest {
   private static ContextMemory memory(UUID id, MemoryVisibility visibility) {
     return new ContextMemory()
         .withId(id)
-        .withStatus(ContextMemoryStatus.ACTIVE)
+        .withEntityStatus(EntityStatus.APPROVED)
         .withQuestion("What is revenue churn?")
         .withAnswer("Revenue lost from existing customers over a period.")
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));

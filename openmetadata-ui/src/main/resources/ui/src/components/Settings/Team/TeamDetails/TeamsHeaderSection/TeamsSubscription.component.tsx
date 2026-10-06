@@ -66,7 +66,7 @@ const TeamsSubscription = ({
         </a>
       </Typography>
     ),
-    []
+    [getWebhookIconByKey]
   );
 
   const subscriptionRenderElement = useMemo(() => {
@@ -95,7 +95,7 @@ const TeamsSubscription = ({
     }
 
     return cellItem(webhook[0], webhook[1]);
-  }, [subscription, hasEditPermission]);
+  }, [subscription, hasEditPermission, cellItem, t]);
 
   const handleSave = async (values: SubscriptionWebhook) => {
     setIsLoading(true);
@@ -114,7 +114,7 @@ const TeamsSubscription = ({
     if (isWebhookEmpty) {
       form.setFieldValue('endpoint', '');
     }
-  }, [isWebhookEmpty]);
+  }, [isWebhookEmpty, form]);
 
   useEffect(() => {
     if (subscription) {
@@ -124,7 +124,7 @@ const TeamsSubscription = ({
         endpoint: data[1].endpoint,
       });
     }
-  }, [subscription, editSubscription]);
+  }, [subscription, editSubscription, form]);
 
   const subscriptionWebhookTranslated = useMemo(
     () =>

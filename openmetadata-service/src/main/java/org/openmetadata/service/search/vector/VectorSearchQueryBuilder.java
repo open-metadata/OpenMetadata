@@ -9,8 +9,10 @@ import java.util.Map;
 import lombok.experimental.UtilityClass;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -221,14 +223,12 @@ public class VectorSearchQueryBuilder {
    * ContextMemorySearchVisibility#buildVisibilityFilter}, where a null or unresolvable subject means
    * "no filter" and each call site opts into {@code buildOrgWideOnlyFilter}: this builder serves
    * callers that pass no identity at all, so the safe default lives here rather than in call-site
-   * discipline. Unknown subject means org-wide memories only; admins get no clause.
+   * discipline. Unknown subject means org-wide memories only; admins still see only Approved
+   * memories in normal search.
    */
   private static void appendMemoryVisibilityFilter(
       StringBuilder sb, SubjectContext subjectContext) {
-    boolean widen = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
-    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) && !widen) {
-      return; // an identified admin sees every memory, so no clause at all
-    }
+    boolean enforceVisibility = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
     // A sibling `filter` array rather than another `must` entry: a security constraint must not
     // contribute to the relevance score, and keeping it out of `must` also keeps the
     // caller-supplied
@@ -246,17 +246,23 @@ public class VectorSearchQueryBuilder {
     sb.append(",{\"bool\":{\"must\":[")
         .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
         .append(',');
-    appendVisibleToUserClause(sb, widen ? subjectContext : null, true);
+    if (!MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) || enforceVisibility) {
+      appendVisibleToUserClause(sb, enforceVisibility ? subjectContext : null, true);
+      sb.append(',');
+    }
+    sb.append(termClause(ContextMemoryIndex.FIELD_STATUS, EntityStatus.APPROVED.value()));
     sb.append("]}}");
     // Branch 3: a context file this subject may see. A file with no visibility stamped is not
     // restricted — unlike a memory, which is written with one — so it gets its own branch.
     sb.append(",{\"bool\":{\"must\":[")
-        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_FILE))
-        .append(",{\"bool\":{\"should\":[{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"")
-        .append(ContextMemorySearchVisibility.FIELD_VISIBILITY)
-        .append("\"}}]}},");
-    appendVisibleToUserClause(sb, widen ? subjectContext : null, false);
-    sb.append("]}}");
+        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_FILE));
+    if (!MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) || enforceVisibility) {
+      sb.append(",{\"bool\":{\"should\":[{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"")
+          .append(ContextMemorySearchVisibility.FIELD_VISIBILITY)
+          .append("\"}}]}},");
+      appendVisibleToUserClause(sb, enforceVisibility ? subjectContext : null, false);
+      sb.append("]}}");
+    }
     sb.append("]}}");
     sb.append("]}}]");
   }
@@ -266,15 +272,23 @@ public class VectorSearchQueryBuilder {
       StringBuilder sb, SubjectContext subjectContext, boolean allowPublic) {
     // This clause excludes unstamped memories until Search Reindex restamps them; the file wrapper
     // above separately admits unstamped files because those predate document sharing.
-    sb.append("{\"bool\":{\"should\":[")
-        .append(
-            termClause(
-                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    sb.append("{\"bool\":{\"should\":[");
     if (allowPublic) {
-      sb.append(',')
+      sb.append("{\"bool\":{\"must\":[{\"bool\":{\"should\":[")
           .append(
               termClause(
-                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
+                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()))
+          .append(',')
+          .append(
+              termClause(
+                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()))
+          .append("]}},")
+          .append(termClause(ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED))
+          .append("]}}");
+    } else {
+      sb.append(
+          termClause(
+              ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
     }
     if (subjectContext != null) {
       User user = subjectContext.user();
@@ -387,6 +401,10 @@ public class VectorSearchQueryBuilder {
           case "visibility" -> {
             sb.append(',');
             appendFlat(sb, ContextMemorySearchVisibility.FIELD_VISIBILITY, values);
+          }
+          case ContextMemoryIndex.FIELD_STATUS -> {
+            sb.append(',');
+            appendFlat(sb, ContextMemoryIndex.FIELD_STATUS, values);
           }
             // Metric facets: semantic_search returns these on every metric result, so a caller
             // that sees "granularity": "MONTH" will reasonably filter by it.

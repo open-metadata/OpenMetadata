@@ -304,6 +304,36 @@ UPDATE user_entity
 SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
 WHERE json ->> 'email' <> lower(json ->> 'email');
 
+-- Context memories move from their own Draft/Active/Archived `status` onto `entityStatus`, the
+-- lifecycle stage every entity type shares: Active becomes Approved, and a memory with no status
+-- was documented as Active, so it becomes Approved too. Version history is rewritten as well:
+-- `status` is no longer part of the ContextMemory schema, so rows still carrying it would fail to
+-- load. Idempotent: rows without `status` are untouched.
+UPDATE context_memory
+SET json = (json::jsonb - 'status') || jsonb_build_object(
+  'entityStatus',
+  CASE json::jsonb ->> 'status'
+    WHEN 'Draft' THEN 'Draft'
+    WHEN 'Archived' THEN 'Archived'
+    ELSE 'Approved'
+  END)
+WHERE json::jsonb -> 'status' IS NOT NULL;
+
+UPDATE context_memory
+SET json = jsonb_set(json::jsonb, '{entityStatus}', '"Approved"'::jsonb)
+WHERE json::jsonb ->> 'entityStatus' IS NULL;
+
+UPDATE entity_extension
+SET json = (json::jsonb - 'status') || jsonb_build_object(
+  'entityStatus',
+  CASE json::jsonb ->> 'status'
+    WHEN 'Draft' THEN 'Draft'
+    WHEN 'Archived' THEN 'Archived'
+    ELSE 'Approved'
+  END)
+WHERE jsonSchema = 'contextMemory'
+  AND json::jsonb -> 'status' IS NOT NULL;
+
 -- Table Diff gained the optional parallelQueries parameter. Seeding only covers fresh installs
 -- (initializeEntity returns early when the entity exists), so without this backfill an upgraded
 -- deployment would never offer it in the test case form. A no-op once the parameter is present.

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Divider, Form, Input, Row, Select } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Form, Input, Row, Select } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
@@ -207,7 +207,7 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
 
             {SUPPORTED_ROW_FILTER_ENTITIES.includes(entityType) ? (
               <>
-                <Divider />
+                <Divider className="tw:my-6" />
 
                 <Form.List name={[policyField.name, 'rowFilters']}>
                   {(

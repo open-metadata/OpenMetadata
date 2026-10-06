@@ -60,27 +60,10 @@
       width: 85%;
       margin-left: var(--om-space-12);
       max-height: calc(100vh - 70px);
-      .ant-card-body {
-        max-height: calc(100vh - 70px);
-      }
       .data-quality-stats-container,
       .incidents-stats-container {
         margin-top: var(--om-space-12);
       }
-    }
-
-    .ant-card-head {
-      border-bottom: none;
-      padding-top: 0;
-    }
-
-    .ant-card-body {
-      padding-top: 0;
-      padding: 0 !important;
-      display: inherit;
-      flex-direction: row;
-      position: relative;
-      width: 100%;
     }
 
     .content-area {
@@ -104,7 +87,8 @@
       }
     }
 
-    .ant-divider {
+    .ant-divider,
+    .summary-panel-divider {
       visibility: hidden;
     }
 
@@ -134,7 +118,8 @@
       color: @text-color;
     }
 
-    .ant-divider-horizontal {
+    .ant-divider-horizontal,
+    .summary-panel-divider {
       margin: var(--om-space-16) 0;
     }
 

@@ -68,8 +68,7 @@ const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
   try {
-    await page.getByTestId('loader').first().waitFor({
-      state: 'attached',
+    await expect(page.getByTestId('loader')).not.toHaveCount(0, {
       timeout: 999,
     });
     await waitForAllLoadersToDisappear(page);
@@ -923,7 +922,10 @@ export const addAssetsToDomain = async (
       .fill(visibleName);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
 
     await expect(
       page.locator(
@@ -980,7 +982,10 @@ export const addServicesToDomain = async (
       .fill(name);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1038,7 +1043,10 @@ export const addAssetsToDataProduct = async (
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -1114,7 +1122,10 @@ export const removeAssetsFromDataProduct = async (
     await searchRes;
     await waitForAllLoadersToDisappear(page);
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   // Clear the filter before delete-all so the request URL matches the
@@ -2045,7 +2056,10 @@ export const addInputPortToDataProduct = async (
   await searchBar.fill(displayName);
   await searchRes;
 
-  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  await page
+    .locator(`[data-testid="table-data-card_${fqn}"]`)
+    .getByTestId('asset-checkbox')
+    .check();
 
   const addRes = page.waitForResponse(
     (res) =>
@@ -2089,7 +2103,10 @@ export const addOutputPortToDataProduct = async (
   await searchBar.fill(displayName);
   await searchRes;
 
-  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  await page
+    .locator(`[data-testid="table-data-card_${fqn}"]`)
+    .getByTestId('asset-checkbox')
+    .check();
 
   const addRes = page.waitForResponse(
     (res) =>
