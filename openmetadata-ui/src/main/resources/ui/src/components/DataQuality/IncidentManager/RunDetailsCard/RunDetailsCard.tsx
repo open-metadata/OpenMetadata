@@ -80,6 +80,9 @@ const RunDuration = ({
   );
 };
 
+const quietWhenUnknown = (text: string, className: string) =>
+  text === NO_VALUE ? 'tw:text-quaternary' : className;
+
 const ComparisonBars = ({
   bars,
   barClassName,
@@ -202,7 +205,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
     result
   );
   const valueClassName = (text: string) =>
-    text === NO_VALUE ? 'tw:text-quaternary' : style.valueClassName;
+    quietWhenUnknown(text, style.valueClassName);
 
   const details = [
     {
@@ -214,7 +217,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
       value: testCase.testDefinition?.name ?? NO_VALUE,
     },
     {
-      className: 'tw:text-primary',
+      className: quietWhenUnknown(expectedText, 'tw:text-primary'),
       labelKey: 'label.expected',
       testId: 'run-details-expected',
       value: expectedText,
@@ -293,8 +296,10 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
         className="tw:@container tw:bg-surface tw:p-4"
         direction="col"
         gap={4}>
-        {/* Four equal columns, as the mock sets them; two in a narrow card. */}
-        <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:@lg:grid-cols-4">
+        {/* Four columns, as the mock sets them, but the definition's never
+            narrower than its name, or a camel-case name breaks mid-word.
+            Two in a narrow card. */}
+        <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:@lg:grid-cols-[minmax(max-content,1fr)_repeat(3,minmax(0,1fr))]">
           {details.map(({ className, labelKey, testId, value, weight }) => (
             <Box className="tw:min-w-0" direction="col" gap={1} key={labelKey}>
               <Typography

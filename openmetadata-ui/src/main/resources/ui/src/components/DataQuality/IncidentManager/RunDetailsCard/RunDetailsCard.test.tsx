@@ -102,7 +102,7 @@ describe('RunDetailsCard', () => {
     );
   });
 
-  it('sets the four values in equal columns, in the weight the mock gives them', () => {
+  it('sets the four values in columns, in the weight the mock gives them', () => {
     renderCard([FAILED_RUN]);
 
     const found = screen.getByTestId('run-details-found');
@@ -112,10 +112,24 @@ describe('RunDetailsCard', () => {
       'tw:text-[13px]',
       'tw:font-medium'
     );
+    // Equal columns broke "tableRowCountToBeBetween" mid-word at 1440px; the
+    // definition's column is never narrower than the name.
     expect(found.closest('.tw\\:grid')).toHaveClass(
-      'tw:@lg:grid-cols-4',
+      'tw:@lg:grid-cols-[minmax(max-content,1fr)_repeat(3,minmax(0,1fr))]',
       'tw:gap-x-3'
     );
+  });
+
+  it('quiets an unknown expectation, as it does an unknown result', () => {
+    renderCard([{ ...FAILED_RUN, testCaseStatus: TestCaseStatus.Aborted }], {
+      ...TEST_CASE,
+      parameterValues: [],
+    } as TestCase);
+
+    const expected = screen.getByTestId('run-details-expected');
+
+    expect(expected).toHaveTextContent('—');
+    expect(expected).toHaveClass('tw:text-quaternary');
   });
 
   it('shows a successful run with its note', () => {
