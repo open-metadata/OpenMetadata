@@ -348,7 +348,17 @@ public final class ClassConverterFactory {
                 Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
                 Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
                 Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter())));
-    converters.putAll(NESTED_CONFIG_CONVERTERS);
+    // A key in both maps used to be downgraded here in silence: the generic entry won
+    // and whatever the dedicated converter did beyond re-typing properties was dropped.
+    // That is how NatsConnection lost its authType conversion, storing a token in the
+    // clear, so a duplicate now fails at class load instead -- in CI, not in a release.
+    NESTED_CONFIG_CONVERTERS.forEach(
+        (clazz, converter) -> {
+          if (converters.putIfAbsent(clazz, converter) != null) {
+            throw new IllegalStateException(
+                "Duplicate ClassConverter registration for " + clazz.getName());
+          }
+        });
     converterMap = Map.copyOf(converters);
   }
 
