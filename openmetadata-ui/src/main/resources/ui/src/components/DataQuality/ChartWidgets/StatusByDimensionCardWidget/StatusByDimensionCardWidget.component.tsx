@@ -16,7 +16,7 @@ import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { DIMENSIONS_DATA } from '../../../../constants/DataQuality.constants';
 import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
-import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../../interface/observability/dataQuality.interface';
 import {
   fetchTestCaseSummaryByDimension,
   fetchTestCaseSummaryByNoDimension,

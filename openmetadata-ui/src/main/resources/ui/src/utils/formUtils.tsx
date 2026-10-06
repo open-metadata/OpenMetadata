@@ -54,6 +54,9 @@ import { UserSelectableListProps } from '../components/common/UserSelectableList
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
+import AntDTagSuggestion, {
+  TagSuggestionProps as AntDTagSuggestionProps,
+} from '../components/Entity/Task/TagSuggestion/TagSuggestion';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
@@ -61,9 +64,6 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../interface/FormUtils.interface';
-import AntDTagSuggestion, {
-  TagSuggestionProps as AntDTagSuggestionProps,
-} from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
 

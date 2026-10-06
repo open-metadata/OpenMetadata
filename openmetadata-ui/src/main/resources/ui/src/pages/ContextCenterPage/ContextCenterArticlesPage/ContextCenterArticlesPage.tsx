@@ -88,7 +88,7 @@ import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
+import KnowledgePageVersionPage from '../KnowledgePageVersionPage/KnowledgePageVersionPage';
 
 const ARTICLE_PLURAL_LABEL = 'label.article-plural';
 

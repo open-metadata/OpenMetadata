@@ -17,7 +17,7 @@ import { EntityReference } from '../../../../generated/entity/type';
 import {
   DataQualityPageTabs,
   DataQualitySubTabs,
-} from '../../../../pages/DataQuality/DataQualityPage.interface';
+} from '../../../../interface/observability/dataQuality.interface';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { useTestSuiteFilters } from './useTestSuiteFilters';

@@ -15,7 +15,7 @@ import { Search } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualitySubTabs } from '../../../../interface/observability/dataQuality.interface';
 import {
   TestSuitesTable,
   TestSuitesTableProps,

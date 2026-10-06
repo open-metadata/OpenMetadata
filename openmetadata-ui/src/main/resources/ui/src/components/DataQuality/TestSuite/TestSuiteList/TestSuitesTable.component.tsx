@@ -31,7 +31,7 @@ import { Paging } from '../../../../generated/type/paging';
 import {
   DataQualityPageTabs,
   DataQualitySubTabs,
-} from '../../../../pages/DataQuality/DataQualityPage.interface';
+} from '../../../../interface/observability/dataQuality.interface';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';

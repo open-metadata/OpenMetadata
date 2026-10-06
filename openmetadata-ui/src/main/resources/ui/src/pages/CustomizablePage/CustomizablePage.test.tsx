@@ -106,7 +106,7 @@ jest.mock(
   }
 );
 
-jest.mock('../SettingsNavigationPage/SettingsNavigationPage', () => ({
+jest.mock('./SettingsNavigationPage/SettingsNavigationPage', () => ({
   SettingsNavigationPage: jest.fn().mockImplementation(({ persona }) => (
     <div data-testid="settings-navigation-page">
       <span data-testid="settings-navigation-persona-name">

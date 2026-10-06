@@ -133,6 +133,15 @@ export type ConfigData =
   | SecurityConnection
   | DriveConnection;
 
+export interface ServiceConfig {
+  name: string;
+  description: string;
+  serviceType: string;
+  connection: {
+    config: ConfigData;
+  };
+}
+
 export type IngestionWorkflowData = Pipeline & {
   name: string;
   enableDebugLog?: boolean;

@@ -160,7 +160,7 @@ jest.mock('enums/common.enum', () => ({
   ERROR_PLACEHOLDER_TYPE: { PERMISSION: 'PERMISSION' },
 }));
 
-jest.mock('pages/DataQuality/DataQualityPage.interface', () => ({
+jest.mock('interface/observability/dataQuality.interface', () => ({
   DataQualitySubTabs: {
     TABLE_SUITES: 'table-suites',
     BUNDLE_SUITES: 'bundle-suites',

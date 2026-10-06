@@ -52,7 +52,7 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
 import { useClipboard } from '../../hooks/useClipBoard';
-import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../interface/observability/dataQuality.interface';
 import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { HeaderDotSeparator } from '../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';

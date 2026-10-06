@@ -19,7 +19,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter, useNavigate, useParams } from 'react-router-dom';
 import { Operation } from '../../../../generated/entity/policies/policy';
-import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../../interface/observability/dataQuality.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { TestSuites } from './TestSuites.component';

@@ -23,6 +23,7 @@ import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedT
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import TaskPayloadSchemaFields from '../../../components/Entity/Task/TaskPayloadSchemaFields/TaskPayloadSchemaFields';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -60,7 +61,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
-import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
 import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 

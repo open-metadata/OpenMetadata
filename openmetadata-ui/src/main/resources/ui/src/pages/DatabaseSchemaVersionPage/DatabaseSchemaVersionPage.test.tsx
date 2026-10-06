@@ -113,7 +113,7 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: MOCK_FQN })),
 }));
 
-jest.mock('../../pages/DatabaseSchemaPage/SchemaTablesTab', () =>
+jest.mock('../../components/Database/SchemaTablesTab/SchemaTablesTab', () =>
   jest.fn().mockImplementation(() => (
     <>
       <button>{SCHEMA_TABLE_TAB}</button>

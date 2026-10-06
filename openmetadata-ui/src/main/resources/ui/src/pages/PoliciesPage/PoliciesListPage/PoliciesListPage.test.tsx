@@ -13,8 +13,8 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ROUTES } from '../../../constants/constants';
+import { POLICY_LIST_WITH_PAGING } from '../../../mocks/Roles.mock';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
-import { POLICY_LIST_WITH_PAGING } from '../../RolesPage/Roles.mock';
 import PoliciesListPage from './PoliciesListPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({

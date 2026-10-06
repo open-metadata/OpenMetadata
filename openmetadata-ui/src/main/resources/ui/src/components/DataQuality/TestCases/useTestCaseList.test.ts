@@ -18,7 +18,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { Include } from '../../../generated/type/include';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../interface/observability/dataQuality.interface';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import { useTestCaseList, UseTestCaseListProps } from './useTestCaseList';

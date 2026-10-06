@@ -12,7 +12,7 @@
  */
 
 import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
-import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../interface/observability/dataQuality.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { Task } from '../rest/tasksAPI';
 import observabilityRouterClassBase, {

@@ -28,6 +28,7 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import SchemaTablesTab from '../../components/Database/SchemaTablesTab/SchemaTablesTab';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -44,7 +45,6 @@ import { TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
-import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
   getDatabaseSchemaDetailsByFQN,
   getDatabaseSchemaVersionData,

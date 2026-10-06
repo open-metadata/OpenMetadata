@@ -39,6 +39,7 @@ import {
   EMPTY_DQ_INDICATOR_COUNTS,
   OPEN_INCIDENT_STATUSES,
 } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.utils';
+import { useTestCaseStore } from '../../components/DataQuality/IncidentManager/useTestCase.store';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -120,7 +121,6 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
 const TableDetailsPageV1: React.FC = () => {
   const {

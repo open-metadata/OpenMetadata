@@ -37,3 +37,14 @@ export const ENTITY_PERMISSIONS = {
   ViewTests: true,
   ViewUsage: true,
 } as OperationPermission;
+
+export const mockEntityPermissions = {
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  ViewBasic: true,
+  EditAll: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+};

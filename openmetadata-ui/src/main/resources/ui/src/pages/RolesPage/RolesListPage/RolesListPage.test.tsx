@@ -13,7 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ROUTES } from '../../../constants/constants';
-import { ROLES_LIST_WITH_PAGING } from '../Roles.mock';
+import { ROLES_LIST_WITH_PAGING } from '../../../mocks/Roles.mock';
 import RolesListPage from './RolesListPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({

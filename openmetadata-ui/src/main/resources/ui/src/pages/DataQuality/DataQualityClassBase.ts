@@ -16,8 +16,8 @@ import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suit
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
+import { DataQualityPageTabs } from '../../interface/observability/dataQuality.interface';
 import i18n from '../../utils/i18next/LocalUtil';
-import { DataQualityPageTabs } from './DataQualityPage.interface';
 
 const SIDE_PANEL_ICONS = 'side-panel-icons';
 

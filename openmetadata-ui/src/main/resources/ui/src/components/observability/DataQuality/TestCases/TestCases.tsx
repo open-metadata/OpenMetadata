@@ -15,7 +15,7 @@ import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../../interface/observability/dataQuality.interface';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';

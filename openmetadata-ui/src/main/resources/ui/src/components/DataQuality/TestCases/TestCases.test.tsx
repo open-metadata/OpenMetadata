@@ -17,7 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../interface/observability/dataQuality.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';

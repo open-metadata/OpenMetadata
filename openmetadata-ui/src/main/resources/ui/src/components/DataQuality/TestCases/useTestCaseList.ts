@@ -30,7 +30,7 @@ import { ResourcePermission } from '../../../generated/entity/policies/accessCon
 import { TestCase } from '../../../generated/tests/testCase';
 import { Include } from '../../../generated/type/include';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../interface/observability/dataQuality.interface';
 import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,

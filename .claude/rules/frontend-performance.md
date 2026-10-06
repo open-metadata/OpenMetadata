@@ -110,12 +110,13 @@ ESLint blocks these zero-backlog invariants:
 - `openmetadata-performance/require-suspense-fallback` for every React lazy call.
 - `openmetadata-performance/no-unbounded-module-cache` for module-level cache-like `Map` and `Set`
   bindings.
+- `openmetadata-imports/no-cross-page-imports`: a page feature cannot import another page feature
+  (`TourPage` is exempt).
 
 ESLint also reports these backlog-bearing invariants as non-blocking warnings:
 
 - Pure utilities cannot contain JSX or depend on React, UI/state layers, pages, hooks, or REST.
-- Lower layers cannot import pages; page features cannot import other page features; REST and hooks
-  cannot depend upward on UI layers.
+- Lower layers cannot import pages; REST and hooks cannot depend upward on UI layers.
 - Runtime circular imports and app-internal barrel imports are reported; type-only imports do not
   create runtime cycle/barrel findings.
 - Lodash default/namespace imports, REST calls inside iteration, and potentially sequential REST

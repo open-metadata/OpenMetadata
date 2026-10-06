@@ -13,7 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act, ReactNode } from 'react';
 import { TestSuite } from '../../../../generated/tests/testCase';
-import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualitySubTabs } from '../../../../interface/observability/dataQuality.interface';
 import {
   TestSuiteListPanel,
   TestSuiteListPanelProps,

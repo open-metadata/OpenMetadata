@@ -27,19 +27,19 @@ import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { WidgetConfig } from '../../interface/customization.interface';
 import {
   docStoreQueryFn,
   docStoreQueryKey,
   personaDocFqn,
   PERSONA_DOC_STALE_TIME,
 } from '../../rest/queries/docStoreQuery';
+import '../../styles/components/data-marketplace.less';
 import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getPersonaPage } from '../../utils/CustomizePage/PersonaPage.utils';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
-import './data-marketplace-page.less';
 
 // The reader renders the widgets as a plain column: the layout here is always a
 // single full-width stack (`normalizeLayout` forces w/x and sorts by y) and the

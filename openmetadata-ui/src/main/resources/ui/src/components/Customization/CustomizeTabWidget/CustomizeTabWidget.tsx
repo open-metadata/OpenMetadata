@@ -31,8 +31,8 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getEntityTypeFromPageType } from '../../../pages/CustomizablePage/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import {
   getLayoutWithEmptyWidgetPlaceholder,
   getUniqueFilteredLayout,

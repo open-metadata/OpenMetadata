@@ -16,7 +16,7 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import {
   DataQualityPageTabs,
   DataQualitySubTabs,
-} from '../../../../pages/DataQuality/DataQualityPage.interface';
+} from '../../../../interface/observability/dataQuality.interface';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import { useTestSuiteFilters } from './useTestSuiteFilters';
 import { useTestSuitesData } from './useTestSuitesData';

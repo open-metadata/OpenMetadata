@@ -55,7 +55,7 @@ test('exports every warning-tier import rule', async () => {
 const EXPECTED_SEVERITY = {
   'no-api-calls-in-iteration': 'warn',
   'no-circular-imports': 'warn',
-  'no-cross-page-imports': 'warn',
+  'no-cross-page-imports': 'error',
   'no-hook-ui-imports': 'error',
   'no-impure-pure-utils': 'warn',
   'no-internal-barrel-imports': 'error',
@@ -206,6 +206,14 @@ ruleTester.run(
       {
         code: "import Widget from './components/Widget';",
         filename: '/project/src/pages/ExamplePage/ExamplePage.tsx',
+      },
+      {
+        code: "import SubPage from './SubPage/SubPage';",
+        filename: '/project/src/pages/ExamplePage/ExamplePage.tsx',
+      },
+      {
+        code: "import MyDataPage from '../MyDataPage/MyDataPage.component';",
+        filename: '/project/src/pages/TourPage/TourPage.component.tsx',
       },
     ],
     invalid: [

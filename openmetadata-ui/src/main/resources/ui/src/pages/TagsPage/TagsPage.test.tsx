@@ -26,6 +26,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
+import { MOCK_ALL_CLASSIFICATIONS } from '../../mocks/Tags.mock';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { checkPermission } from '../../utils/PermissionsUtils';
@@ -34,7 +35,6 @@ import { getClassifications } from '../../utils/TagsUtils';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagsPage from './TagsPage';
 import {
-  MOCK_ALL_CLASSIFICATIONS,
   MOCK_DELETE_CLASSIFICATION,
   MOCK_DELETE_TAG,
   MOCK_TAGS,

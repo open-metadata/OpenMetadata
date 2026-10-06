@@ -14,7 +14,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestSuite } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
-import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualitySubTabs } from '../../../../interface/observability/dataQuality.interface';
 import { TestSuitesTable } from './TestSuitesTable.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {

@@ -13,7 +13,7 @@
 
 import { StepperStepType } from 'Models';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
-import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../interface/observability/dataQuality.interface';
 import i18n from '../utils/i18next/LocalUtil';
 
 const TEST_SUITE_LABEL = i18n.t('label.test-suite');

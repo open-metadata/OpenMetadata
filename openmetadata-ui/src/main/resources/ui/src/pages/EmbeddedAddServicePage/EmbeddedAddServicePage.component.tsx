@@ -48,9 +48,14 @@ import {
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useServiceNameValidation } from '../../hooks/platform/useServiceNameValidation';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
-import { ConfigData, ServicesType } from '../../interface/service.interface';
+import {
+  ConfigData,
+  ServiceConfig,
+  ServicesType,
+} from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
@@ -69,8 +74,6 @@ import {
 } from '../../utils/ServiceUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { ServiceConfig } from '../AddServicePage/AddServicePage.interface';
-import { useServiceNameValidation } from '../AddServicePage/useServiceNameValidation';
 
 const ConnectionConfigForm = lazy(
   () =>

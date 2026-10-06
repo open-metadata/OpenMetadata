@@ -55,3 +55,73 @@ export const MOCK_TAG_DATA = {
   provider: 'user',
   mutuallyExclusive: false,
 };
+
+export const MOCK_ALL_CLASSIFICATIONS = {
+  data: [
+    {
+      id: '5e77a82e-4bc8-46eb-af52-a383a505eea6',
+      name: 'PersonalData',
+      fullyQualifiedName: 'PersonalData',
+      description:
+        'Tags related classifying **Personal data** as defined by **GDPR.**<br/><br/>',
+      version: 0.2,
+      updatedAt: 1672147362401,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/classifications/5e77a82e-4bc8-46eb-af52-a383a505eea6',
+      termCount: 2,
+      changeDescription: {
+        fieldsAdded: [],
+        fieldsUpdated: [
+          {
+            name: 'description',
+            oldValue: '',
+            newValue:
+              'Tags related classifying **Personal data** as defined by **GDPR.**<br/><br/>',
+          },
+          {
+            name: 'mutuallyExclusive',
+            oldValue: true,
+            newValue: false,
+          },
+        ],
+        fieldsDeleted: [],
+        previousVersion: 0.1,
+      },
+      deleted: false,
+      provider: 'system',
+      mutuallyExclusive: false,
+    },
+    {
+      id: '5d626378-ca93-4ce2-ac20-52908961d26e',
+      name: 'PII',
+      fullyQualifiedName: 'PII',
+      description:
+        'Personally Identifiable Information that, when used alone or with other relevant data, can identify an individual.',
+      version: 0.1,
+      updatedAt: 1672135714322,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/classifications/5d626378-ca93-4ce2-ac20-52908961d26e',
+      deleted: false,
+      provider: 'system',
+      mutuallyExclusive: true,
+      termCount: 3,
+    },
+    {
+      id: '9005388e-5355-412c-8ba9-fc6dbe192a45',
+      name: 'test-category',
+      fullyQualifiedName: 'test-category',
+      description: '',
+      version: 0.1,
+      updatedAt: 1672147038831,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/classifications/9005388e-5355-412c-8ba9-fc6dbe192a45',
+      deleted: false,
+      provider: 'user',
+      mutuallyExclusive: false,
+      termCount: 5,
+    },
+  ],
+  paging: {
+    total: 3,
+  },
+};

@@ -58,7 +58,7 @@ const ContractTab = withSuspenseFallback(
 );
 
 const SchemaTablesTab = withSuspenseFallback(
-  lazy(() => import('../pages/DatabaseSchemaPage/SchemaTablesTab'))
+  lazy(() => import('../components/Database/SchemaTablesTab/SchemaTablesTab'))
 );
 
 const StoredProcedureTab = withSuspenseFallback(

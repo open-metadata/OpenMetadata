@@ -16,7 +16,7 @@ import { AI_APP_MODE } from '../constants/appMode.constants';
 import { ROUTES } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { useAppModeStore } from '../hooks/useAppMode';
-import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../interface/observability/dataQuality.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { Task } from '../rest/tasksAPI';
 import { isAppModeSessionActive } from './appModeSession';

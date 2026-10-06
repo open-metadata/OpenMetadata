@@ -16,13 +16,13 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
+import { MOCK_ALL_CLASSIFICATIONS } from '../../mocks/Tags.mock';
 import {
   getClassificationByName,
   getClassificationVersionData,
   getClassificationVersionsList,
 } from '../../rest/tagAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
-import { MOCK_ALL_CLASSIFICATIONS } from '../TagsPage/TagsPage.mock';
 import ClassificationVersionPage from './ClassificationVersionPage';
 
 const mockParams = {

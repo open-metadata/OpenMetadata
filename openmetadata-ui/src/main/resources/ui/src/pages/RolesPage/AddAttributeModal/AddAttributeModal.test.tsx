@@ -13,7 +13,10 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
-import { POLICY_LIST_WITH_PAGING, ROLES_LIST_WITH_PAGING } from '../Roles.mock';
+import {
+  POLICY_LIST_WITH_PAGING,
+  ROLES_LIST_WITH_PAGING,
+} from '../../../mocks/Roles.mock';
 import AddAttributeModal from './AddAttributeModal';
 
 jest.mock('../../../rest/rolesAPIV1', () => ({

@@ -126,16 +126,16 @@ policy, and deciding which route dependency should remain eager require runtime 
 ## Import architecture and request warnings
 
 `openmetadata-ui/src/main/resources/ui/eslint-rules/openmetadata-imports.mjs` contains ten
-reporting-only rules. None autofix. `no-hook-ui-imports`, `no-internal-barrel-imports` and
-`no-lodash-default-import` have been cleared to zero and run at `error`; the rest stay at `warn`, so
-they do not fail CI while their measured backlog is reduced. The baselines below are the counts at
-introduction.
+reporting-only rules. None autofix. `no-cross-page-imports`, `no-hook-ui-imports`,
+`no-internal-barrel-imports` and `no-lodash-default-import` have been cleared to zero and run at
+`error`; the rest stay at `warn`, so they do not fail CI while their measured backlog is reduced. The
+baselines below are the counts at introduction.
 
 | Rule | What it reports | Baseline findings / files |
 |---|---|---:|
 | `no-impure-pure-utils` | React/JSX or upward UI, state, page, hook, or REST dependencies in `*PureUtils` | 62 / 23 |
 | `no-lower-layer-page-imports` | page imports outside pages and the AppRouter owner | 291 / 271 |
-| `no-cross-page-imports` | one page feature statically importing another page feature | 43 / 32 |
+| `no-cross-page-imports` | one page feature statically importing another page feature; `TourPage` is exempt because it replays real pages | 43 / 32 |
 | `no-rest-ui-imports` | REST clients depending on components, pages, hooks, context, or stores | 55 / 37 |
 | `no-hook-ui-imports` | hooks depending on components or pages | 10 / 6 |
 | `no-circular-imports` | runtime imports/re-exports that participate in a cycle; type-only imports are ignored | 295 / 164 |

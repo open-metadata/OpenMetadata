@@ -16,12 +16,12 @@ import classNames from 'classnames';
 import { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import { DescriptionTabs } from '../../../components/Entity/Task/DescriptionTabs/DescriptionTabs';
 import { Task, TaskEntityStatus, TaskEntityType } from '../../../rest/tasksAPI';
 import {
   getDescriptionDiff,
   getNormalizedTaskPayload,
 } from '../../../utils/TaskPayloadUtils';
-import { DescriptionTabs } from './DescriptionTabs';
 import { DiffViewNew } from './DiffViewNew';
 
 interface DescriptionTaskFromTaskProps {

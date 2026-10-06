@@ -18,7 +18,7 @@ import { DATA_QUALITY_DASHBOARD_HEADER } from '../../../constants/DataQuality.co
 import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../interface/observability/dataQuality.interface';
 import { getTestCaseTabPath } from '../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';

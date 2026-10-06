@@ -69,9 +69,3 @@ export enum TaskActionMode {
   RESOLVE = 'resolve',
   CLOSE = 'close',
 }
-
-export enum TaskTabs {
-  CURRENT = 'current',
-  DIFF = 'diff',
-  NEW = 'new',
-}

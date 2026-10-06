@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
 import { ROUTES } from '../../../../constants/constants';
 import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
-import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../../interface/observability/dataQuality.interface';
 import {
   fetchEntityCoveredWithDQ,
   fetchTotalEntityCount,

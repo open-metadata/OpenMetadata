@@ -149,13 +149,16 @@ jest.mock(
   () =>
     jest.fn().mockImplementation(() => <div>ExploreSearchCard.component</div>)
 );
-jest.mock('../shared/TaskPayloadSchemaFields', () => ({
-  __esModule: true,
-  default: (props: {
-    payload: Record<string, unknown>;
-    onChange?: (payload: Record<string, unknown>) => void;
-  }) => mockPayloadSchemaFields(props),
-}));
+jest.mock(
+  '../../../components/Entity/Task/TaskPayloadSchemaFields/TaskPayloadSchemaFields',
+  () => ({
+    __esModule: true,
+    default: (props: {
+      payload: Record<string, unknown>;
+      onChange?: (payload: Record<string, unknown>) => void;
+    }) => mockPayloadSchemaFields(props),
+  })
+);
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
     .fn()

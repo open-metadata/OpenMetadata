@@ -32,6 +32,7 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { useWelcomeStore } from '../../hooks/useWelcomeStore';
+import type { WidgetConfig } from '../../interface/customization.interface';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
@@ -47,7 +48,6 @@ import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePu
 import customizeMyDataPageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { getPersonaPage } from '../../utils/CustomizePage/PersonaPage.utils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import type { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 import MyDataPageSkeleton from './MyDataPageSkeleton.component';
 

@@ -93,6 +93,10 @@ import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
+  MetricBulkEditListFilters,
+  MetricBulkEditScope,
+} from '../../../interface/entity/csv.interface';
+import {
   deleteMetricAsync,
   exportMetricDetailsInCSV,
 } from '../../../rest/metricsAPI';
@@ -125,10 +129,6 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import {
-  MetricBulkEditListFilters,
-  MetricBulkEditScope,
-} from '../../EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 
 type MetricColumnId =
   | 'description'

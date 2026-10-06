@@ -106,12 +106,14 @@ jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../shared/TaskPayloadSchemaFields', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="description-tabs">RichTextEditor.component</div>
-    ))
+jest.mock(
+  '../../../components/Entity/Task/TaskPayloadSchemaFields/TaskPayloadSchemaFields',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="description-tabs">RichTextEditor.component</div>
+      ))
 );
 jest.mock('../../../rest/taskFormSchemasAPI', () => ({
   resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),

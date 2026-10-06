@@ -236,9 +236,7 @@ const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
 };
 
 const TaskPayloadSchemaFields = withSuspenseFallback(
-  lazy(
-    () => import('../../../../pages/TasksPage/shared/TaskPayloadSchemaFields')
-  )
+  lazy(() => import('../TaskPayloadSchemaFields/TaskPayloadSchemaFields'))
 );
 
 const DAR_FIELD_ICONS: Record<string, string> = {

@@ -278,7 +278,14 @@ const noCrossPageImports = createRule(
     const filename = normalize(context.filename);
     const sourceRoot = getSourceRoot(filename);
 
-    if (getLayer(filename) !== 'pages' || !sourceRoot) {
+    // TourPage replays the real MyData, Explore and table-details pages under
+    // the product tour, so composing other pages is its job, as it is the
+    // router's.
+    if (
+      getLayer(filename) !== 'pages' ||
+      !sourceRoot ||
+      filename.includes('/src/pages/TourPage/')
+    ) {
       return {};
     }
 

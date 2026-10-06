@@ -102,14 +102,3 @@ export const mockPatchDatabaseSchemaDetailsData = {
   },
   deleted: false,
 };
-
-export const mockEntityPermissions = {
-  Create: true,
-  Delete: true,
-  ViewAll: true,
-  ViewBasic: true,
-  EditAll: true,
-  EditDescription: true,
-  EditDisplayName: true,
-  EditCustomFields: true,
-};

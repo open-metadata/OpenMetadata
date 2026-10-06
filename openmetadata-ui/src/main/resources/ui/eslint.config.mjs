@@ -414,7 +414,7 @@ export default [
       // not rewrite source under --fix.
       'openmetadata-imports/no-api-calls-in-iteration': 'warn',
       'openmetadata-imports/no-circular-imports': 'warn',
-      'openmetadata-imports/no-cross-page-imports': 'warn',
+      'openmetadata-imports/no-cross-page-imports': 'error',
       'openmetadata-imports/no-hook-ui-imports': 'error',
       'openmetadata-imports/no-impure-pure-utils': 'warn',
       'openmetadata-imports/no-internal-barrel-imports': 'error',

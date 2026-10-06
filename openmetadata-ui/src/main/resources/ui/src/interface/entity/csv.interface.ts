@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EntityStatus } from '../../generated/entity/data/metric';
+
 export type CSVExportResponse = {
   jobId: string;
   message: string;
@@ -20,3 +22,20 @@ export type CSVImportAsyncResponse = {
   jobId: string;
   message: string;
 };
+
+export interface MetricBulkEditListFilters {
+  searchText?: string;
+  statusFilter?: EntityStatus;
+}
+
+export type MetricBulkEditScope =
+  | {
+      mode: 'selected';
+      metricIds: string[];
+      metricNames: string[];
+      filters: MetricBulkEditListFilters;
+    }
+  | {
+      mode: 'filtered';
+      filters: MetricBulkEditListFilters;
+    };

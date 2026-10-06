@@ -30,7 +30,7 @@ import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../interface/observability/dataQuality.interface';
 import DataQualityProvider, {
   useDataQualityProvider,
 } from '../../../pages/DataQuality/DataQualityProvider';

@@ -65,6 +65,7 @@ import { UserTeamSelectableList } from '../../components/common/UserTeamSelectab
 import { ValueRendererOnEditCell } from '../../components/common/ValueRendererOnEditCell/ValueRendererOnEditCell';
 import DataAssetAsyncSelectList from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import TagSuggestion from '../../components/Entity/Task/TagSuggestion/TagSuggestion';
 import { ModalWithCustomPropertyEditor } from '../../components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component';
 import {
   ExtensionDataProps,
@@ -84,7 +85,6 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Language } from '../../generated/entity/data/metric';
 import { Config, EntityReference, Type } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
-import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
 import { fetchDataProductsElasticSearch } from '../../rest/dataProductAPI';
 import { getDomainList } from '../../rest/domainAPI';
 import { getGlossariesList, getGlossaryTerms } from '../../rest/glossaryAPI';

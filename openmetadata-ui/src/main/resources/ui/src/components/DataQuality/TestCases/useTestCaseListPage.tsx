@@ -17,8 +17,8 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { DataQualityPageTabs } from '../../../interface/observability/dataQuality.interface';
 import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';

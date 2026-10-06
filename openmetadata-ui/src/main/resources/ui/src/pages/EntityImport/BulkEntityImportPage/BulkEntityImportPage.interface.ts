@@ -14,9 +14,11 @@
 import { ReactNode } from 'react';
 import type { Column } from 'react-data-grid';
 import { VALIDATION_STEP } from '../../../constants/BulkImport.constant';
-import { EntityStatus } from '../../../generated/entity/data/metric';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
-import { CSVImportAsyncResponse } from '../../../interface/entity/csv.interface';
+import {
+  CSVImportAsyncResponse,
+  MetricBulkEditScope,
+} from '../../../interface/entity/csv.interface';
 import type { getImportOperationSummary } from '../../../utils/CSV/CSV.utils';
 
 export type TranslateFn = (
@@ -65,23 +67,6 @@ export interface Step1EditGridContentProps {
   onToggleRowFilter: () => void;
   onRevertChanges: () => void;
 }
-
-export interface MetricBulkEditListFilters {
-  searchText?: string;
-  statusFilter?: EntityStatus;
-}
-
-export type MetricBulkEditScope =
-  | {
-      mode: 'selected';
-      metricIds: string[];
-      metricNames: string[];
-      filters: MetricBulkEditListFilters;
-    }
-  | {
-      mode: 'filtered';
-      filters: MetricBulkEditListFilters;
-    };
 
 export interface BulkEntityImportLocationState {
   metricBulkEditScope?: MetricBulkEditScope;

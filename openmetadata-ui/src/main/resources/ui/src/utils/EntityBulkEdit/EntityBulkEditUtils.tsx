@@ -16,7 +16,7 @@ import { ProfilerTabPath } from '../../components/Database/Profiler/ProfilerDash
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../interface/observability/dataQuality.interface';
 import {
   exportDatabaseDetailsInCSV,
   exportDatabaseSchemaDetailsInCSV,

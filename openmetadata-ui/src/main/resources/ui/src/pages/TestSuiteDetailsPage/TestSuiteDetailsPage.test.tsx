@@ -14,7 +14,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
+import { mockEntityPermissions } from '../../mocks/Permissions.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
   addTestCasesToLogicalTestSuiteBulk,

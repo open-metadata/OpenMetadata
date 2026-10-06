@@ -107,7 +107,7 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockImplementation(() => <p>testTagsContainerV2</p>);
 });
 
-jest.mock('./SchemaTablesTab', () => {
+jest.mock('../../components/Database/SchemaTablesTab/SchemaTablesTab', () => {
   return jest.fn().mockReturnValue(<p>testSchemaTablesTab</p>);
 });
 

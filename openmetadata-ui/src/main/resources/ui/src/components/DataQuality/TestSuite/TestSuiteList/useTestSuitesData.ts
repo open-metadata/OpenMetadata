@@ -19,7 +19,7 @@ import { TabSpecificField } from '../../../../enums/entity.enum';
 import { TestSuiteType } from '../../../../enums/TestSuite.enum';
 import { TestSuite } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
-import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualitySubTabs } from '../../../../interface/observability/dataQuality.interface';
 import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,

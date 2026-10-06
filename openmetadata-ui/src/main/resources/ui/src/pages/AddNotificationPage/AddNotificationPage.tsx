@@ -68,6 +68,10 @@ import {
 } from '../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../utils/AlertsClassBase';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from '../../utils/AlertsClassBase.interface';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -76,10 +80,6 @@ import {
   getSettingPath,
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import {
-  ModifiedCreateEventSubscription,
-  ModifiedEventSubscription,
-} from '../AddObservabilityPage/AddObservabilityPage.interface';
 import { AddAlertPageLoadingState } from './AddNotificationPage.interface';
 
 const AddNotificationPage = () => {

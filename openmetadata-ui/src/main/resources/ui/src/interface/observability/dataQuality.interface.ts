@@ -13,7 +13,30 @@
 
 import { EntityType } from '../../enums/entity.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
-import { TestCaseStatus } from '../../generated/tests/testCase';
+import { TestCaseStatus, TestSummary } from '../../generated/tests/testCase';
+
+export enum DataQualityPageTabs {
+  TEST_SUITES = 'test-suites',
+  TEST_CASES = 'test-cases',
+  DASHBOARD = 'dashboard',
+}
+
+export enum DataQualitySubTabs {
+  TABLE_SUITES = 'table-suites',
+  BUNDLE_SUITES = 'bundle-suites',
+}
+
+export interface DataQualityContextInterface {
+  isTestCaseSummaryLoading: boolean;
+  testCaseSummary: TestSummary;
+  activeTab: DataQualityPageTabs;
+  createActions?: {
+    onAddTestCase?: () => void;
+    onAddBundleSuite?: () => void;
+    canCreateTestCase?: boolean;
+    canCreateBundleSuite?: boolean;
+  };
+}
 
 export type DataQualityDashboardChartFilters = {
   ownerFqn?: string;

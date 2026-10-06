@@ -12,11 +12,11 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SuggestionAction } from '../../../enums/Suggestion.enum';
+import { mockEntityPermissions } from '../../../mocks/Permissions.mock';
 import {
   MOCK_SUGGESTIONS,
   MOCK_SUGGESTIONS_WITH_SAME_USER,
 } from '../../../mocks/Suggestions.mock';
-import { mockEntityPermissions } from '../../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import {
   approveRejectAllSuggestions,
   getSuggestionsByUserId,

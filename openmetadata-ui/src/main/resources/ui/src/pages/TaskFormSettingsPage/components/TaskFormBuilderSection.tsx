@@ -38,6 +38,7 @@ import {
 } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import TaskPayloadSchemaFields from '../../../components/Entity/Task/TaskPayloadSchemaFields/TaskPayloadSchemaFields';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import {
   buildDesignerSchema,
@@ -45,7 +46,6 @@ import {
   getDesignerPreviewPayload,
   TaskFormDesignerField,
 } from '../../../utils/TaskFormDesignerUtils';
-import TaskPayloadSchemaFields from '../../TasksPage/shared/TaskPayloadSchemaFields';
 
 interface TaskFormBuilderSectionProps {
   title: string;

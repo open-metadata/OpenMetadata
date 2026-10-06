@@ -20,7 +20,7 @@ import { TestSuite } from '../../../../generated/tests/testCase';
 import {
   DataQualityPageTabs,
   DataQualitySubTabs,
-} from '../../../../pages/DataQuality/DataQualityPage.interface';
+} from '../../../../interface/observability/dataQuality.interface';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';

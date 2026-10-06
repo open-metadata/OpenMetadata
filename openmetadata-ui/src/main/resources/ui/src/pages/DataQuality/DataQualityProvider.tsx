@@ -20,6 +20,10 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { TestSummary } from '../../generated/tests/testCase';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
+  DataQualityContextInterface,
+  DataQualityPageTabs,
+} from '../../interface/observability/dataQuality.interface';
+import {
   fetchEntityCoveredWithDQ,
   fetchTestCaseSummary,
   fetchTotalEntityCount,
@@ -28,10 +32,6 @@ import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQua
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import {
-  DataQualityContextInterface,
-  DataQualityPageTabs,
-} from './DataQualityPage.interface';
 
 export const DataQualityContext = createContext<DataQualityContextInterface>(
   {} as DataQualityContextInterface

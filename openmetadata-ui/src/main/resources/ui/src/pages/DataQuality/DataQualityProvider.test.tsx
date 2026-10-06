@@ -12,12 +12,12 @@
  */
 
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { DataQualityPageTabs } from '../../interface/observability/dataQuality.interface';
 import {
   fetchEntityCoveredWithDQ,
   fetchTestCaseSummary,
   fetchTotalEntityCount,
 } from '../../rest/dataQualityDashboardAPI';
-import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider, {
   useDataQualityProvider,
 } from './DataQualityProvider';

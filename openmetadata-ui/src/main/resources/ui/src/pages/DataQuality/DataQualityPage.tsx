@@ -27,11 +27,11 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { DataQualityPageTabs } from '../../interface/observability/dataQuality.interface';
 import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
-import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {

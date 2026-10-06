@@ -19,8 +19,8 @@ import {
   within,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { DataQualityPageTabs } from '../../interface/observability/dataQuality.interface';
 import DataQualityPage from './DataQualityPage';
-import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DATA_QUALITY_TEST_PATHS = {

@@ -31,8 +31,8 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import type { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getEntityTypeFromPageType } from '../../../pages/CustomizablePage/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getGlossaryChildTermsForCustomization } from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermPureUtils';
 import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';

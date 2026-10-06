@@ -183,7 +183,9 @@ const SearchIndexFieldsTab = withSuspenseFallback(
 );
 
 const SchemaTablesTab = withSuspenseFallback(
-  lazy(() => import('../../pages/DatabaseSchemaPage/SchemaTablesTab'))
+  lazy(
+    () => import('../../components/Database/SchemaTablesTab/SchemaTablesTab')
+  )
 );
 
 const FrequentlyJoinedTables = withSuspenseFallback(

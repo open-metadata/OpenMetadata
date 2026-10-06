@@ -15,12 +15,12 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { diffArrays } from 'diff';
 import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TagsDiffView } from '../../../components/Entity/Task/TagsDiffView/TagsDiffView';
+import { TagsTabs } from '../../../components/Entity/Task/TagsTabs/TagsTabs';
+import TagSuggestion from '../../../components/Entity/Task/TagSuggestion/TagSuggestion';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { Task, TaskEntityStatus, TaskEntityType } from '../../../rest/tasksAPI';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
-import { TagsDiffView } from './TagsDiffView';
-import { TagsTabs } from './TagsTabs';
-import TagSuggestion from './TagSuggestion';
 
 interface TagsTaskFromTaskProps {
   task: Task;

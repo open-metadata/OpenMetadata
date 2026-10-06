@@ -296,7 +296,10 @@ const IncidentManagerDetailPage = withPageSuspenseFallback(
 
 const TestCaseVersionPage = withPageSuspenseFallback(
   React.lazy(
-    () => import('../../pages/TestCaseVersionPage/TestCaseVersionPage')
+    () =>
+      import(
+        '../../pages/IncidentManager/TestCaseVersionPage/TestCaseVersionPage'
+      )
   )
 );
 

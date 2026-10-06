@@ -30,8 +30,8 @@ import {
 } from '../generated/events/eventSubscription';
 import type { TestCase, TestSuite } from '../generated/tests/testCase';
 import { DataInsightTabs } from '../interface/data-insight.interface';
+import { DataQualityPageTabs } from '../interface/observability/dataQuality.interface';
 import type { SearchSourceAlias } from '../interface/search.interface';
-import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { getDataInsightPathWithFqn } from './DataInsightPureUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';

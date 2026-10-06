@@ -15,13 +15,13 @@ import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssets
 import { ProfilerTabPath } from '../../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { ROUTES } from '../../../constants/constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { DataQualityPageTabs } from '../../../interface/observability/dataQuality.interface';
 import { getBulkEntityBreadcrumbList } from '../../../utils/EntityImport/EntityImportUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
   getEntityDetailsPath,
   getTestSuitePath,
 } from '../../../utils/RouterUtils';
-import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface';
 import {
   CSVImportJobType,
   TranslateFn,

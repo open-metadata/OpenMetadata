@@ -24,7 +24,7 @@ import {
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../interface/observability/dataQuality.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';

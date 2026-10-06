@@ -81,6 +81,7 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
 import { CSVImportAsyncResponse } from '../../../interface/entity/csv.interface';
+import { DataQualityPageTabs } from '../../../interface/observability/dataQuality.interface';
 import {
   cancelCsvAsyncJob,
   CsvAsyncJob,
@@ -126,7 +127,6 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface';
 import './bulk-entity-import-page.less';
 import {
   BulkEntityImportLocationState,

@@ -14,7 +14,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { TestSuite } from '../../../../generated/tests/testCase';
-import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualitySubTabs } from '../../../../interface/observability/dataQuality.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useTestSuitesData, UseTestSuitesDataProps } from './useTestSuitesData';

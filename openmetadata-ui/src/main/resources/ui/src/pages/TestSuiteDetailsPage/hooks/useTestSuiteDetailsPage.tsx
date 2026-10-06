@@ -54,7 +54,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import {
   DataQualityPageTabs,
   DataQualitySubTabs,
-} from '../../../pages/DataQuality/DataQualityPage.interface';
+} from '../../../interface/observability/dataQuality.interface';
 import {
   testSuiteDetailsQueryFn,
   testSuiteDetailsQueryKey,

@@ -46,7 +46,7 @@ import { ServiceAgentSubTabs } from '../enums/service.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
-import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import type { DataQualityPageTabs } from '../interface/observability/dataQuality.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
 import { getSettingPath } from './RouterPaths';

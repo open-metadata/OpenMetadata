@@ -14,9 +14,9 @@
 import { act, render, screen } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
+import { ROLE_DATA } from '../../../mocks/Roles.mock';
 import { getRoleByName } from '../../../rest/rolesAPIV1';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { ROLE_DATA } from '../Roles.mock';
 import RolesDetailPage from './RolesDetailPage';
 
 // RolesDetailPage now fetches its own permissions via useEntityPermissions (Task 8 Batch 9)
