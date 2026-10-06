@@ -46,6 +46,12 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   // registration gives those consumers a dependency that actually changes,
   // so they recompute exactly once with contributions in place.
   const [contributionsVersion, setContributionsVersion] = useState(0);
+  // `isLoading` turns false in the same commit as `installedPluginInstances`
+  // is set; the contribution effect below runs after that commit, in a
+  // separate pass. So "not loading" and "contributions registered" are two
+  // different moments — this tracks the second one explicitly instead of
+  // conflating it with `isLoading`.
+  const [contributionsReady, setContributionsReady] = useState(false);
 
   const fetchApplicationList = useCallback(async () => {
     try {
@@ -115,6 +121,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       }
     });
     setContributionsVersion((version) => version + 1);
+    setContributionsReady(true);
   }, [installedPluginInstances, extensionRegistry]);
 
   const appContext = useMemo(() => {
@@ -124,6 +131,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       plugins: installedPluginInstances,
       extensionRegistry,
       contributionsVersion,
+      contributionsReady,
     };
   }, [
     applications,
@@ -131,6 +139,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     installedPluginInstances,
     extensionRegistry,
     contributionsVersion,
+    contributionsReady,
   ]);
 
   return (

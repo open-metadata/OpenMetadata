@@ -75,14 +75,14 @@ jest.mock(
 );
 
 const mockGetContributions = jest.fn().mockReturnValue([]);
-let mockIsApplicationsLoading = false;
+let mockContributionsReady = true;
 
 jest.mock(
   '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => ({
     useApplicationsProvider: () => ({
       extensionRegistry: { getContributions: mockGetContributions },
-      isLoading: mockIsApplicationsLoading,
+      contributionsReady: mockContributionsReady,
     }),
   })
 );
@@ -161,7 +161,7 @@ describe('NotificationPanel', () => {
     mockGetContributions.mockReturnValue([]);
     mockGetGlobalSettingsMenu.mockReturnValue(VISIBLE_SECTIONS_MENU);
     mockIsAdminUser = true;
-    mockIsApplicationsLoading = false;
+    mockContributionsReady = true;
   });
 
   it('should render NotificationLanding by default', () => {
@@ -391,10 +391,11 @@ describe('NotificationPanel', () => {
   });
 
   it('should wait for plugins to load before resolving a deep-linked section', () => {
-    // Plugins contribute sections after `/apps/installed` resolves, later
-    // than this render; a deep link must wait rather than briefly resolve
-    // against an incomplete registry.
-    mockIsApplicationsLoading = true;
+    // `isLoading` alone is not enough: it turns false one render before
+    // plugins' `contributeExtensions` actually runs. `contributionsReady`
+    // covers that gap — a deep link must wait on it rather than briefly
+    // resolve against an incomplete registry.
+    mockContributionsReady = false;
     mockSubPath = 'section/weekly-emails';
     mockGetContributions.mockReturnValue([
       {

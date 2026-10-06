@@ -30,4 +30,18 @@ export type ApplicationsContextType = {
    * they recompute exactly once after contributions land, instead of never.
    */
   contributionsVersion: number;
+  /**
+   * True once installed plugins' `contributeExtensions` have all run at
+   * least once. `isLoading` turns `false` in the same commit as
+   * `installedPluginInstances` is set (both after the same `await`, batched
+   * by React); contribution itself happens later, in a passive effect that
+   * runs after that commit. So there is one committed render where
+   * `isLoading` is `false` but the registry is still empty — a consumer
+   * that deep-links into contributed content (e.g. the profile Notification
+   * panel) and gates only on `isLoading` can flash "not found" in that
+   * render. Gate on `contributionsReady` instead when correctness for
+   * contributed content matters; `isLoading` remains correct for the
+   * application list itself.
+   */
+  contributionsReady: boolean;
 };

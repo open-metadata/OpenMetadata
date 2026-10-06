@@ -46,6 +46,7 @@ const mockSetApplicationsLoaded = jest.fn();
 const APPLICATION_CHILDREN_TEST_ID = 'application-children';
 const APPLICATION_STATUS_TEST_ID = 'application-loading-status';
 const STATEFUL_CHILD_TEST_ID = 'stateful-child';
+const CONTRIBUTIONS_STATUS_TEST_ID = 'contributions-status';
 
 const createDeferredPromise = <T,>() => {
   let resolvePromise: (value: T) => void = () => undefined;
@@ -57,10 +58,16 @@ const createDeferredPromise = <T,>() => {
 };
 
 const ApplicationsLoadingStatus = () => {
-  const { isLoading } = useApplicationsProvider();
+  const { isLoading, contributionsReady } = useApplicationsProvider();
 
   return (
-    <div data-loading={isLoading} data-testid={APPLICATION_STATUS_TEST_ID} />
+    <>
+      <div data-loading={isLoading} data-testid={APPLICATION_STATUS_TEST_ID} />
+      <div
+        data-ready={contributionsReady}
+        data-testid={CONTRIBUTIONS_STATUS_TEST_ID}
+      />
+    </>
   );
 };
 
@@ -123,6 +130,36 @@ describe('ApplicationsProvider', () => {
     });
 
     expect(mockSetApplicationsLoaded).toHaveBeenCalledWith(true);
+  });
+
+  it('turns contributionsReady true only after plugins have contributed, not merely once loading stops', async () => {
+    // `isLoading` flips false in the same commit as the plugin list is set;
+    // `contributeExtensions` runs after that commit, in a separate passive
+    // effect. A consumer gating a deep link on `isLoading` alone can commit
+    // once with `isLoading: false` and the registry still empty —
+    // `contributionsReady` is the flag that only turns true once contribution
+    // has actually happened.
+    mockGetInstalledApplicationList.mockResolvedValue([]);
+
+    render(
+      <ApplicationsProvider>
+        <ApplicationsLoadingStatus />
+      </ApplicationsProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId(APPLICATION_STATUS_TEST_ID)).toHaveAttribute(
+        'data-loading',
+        'false'
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId(CONTRIBUTIONS_STATUS_TEST_ID)).toHaveAttribute(
+        'data-ready',
+        'true'
+      );
+    });
   });
 
   it('preserves child state when the permissions object changes', async () => {

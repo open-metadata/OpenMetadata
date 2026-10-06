@@ -86,11 +86,8 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-  const {
-    extensionRegistry,
-    contributionsVersion,
-    isLoading: isApplicationsLoading,
-  } = useApplicationsProvider();
+  const { extensionRegistry, contributionsVersion, contributionsReady } =
+    useApplicationsProvider();
   const { state: hashState, setHash } = useSettingsHash();
 
   const view = useMemo<NotificationView>(
@@ -218,11 +215,14 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     };
   }, [viewSectionKey, sectionContributions, permissions, isAdminUser, t]);
 
-  // Plugins contribute sections after `/apps/installed` resolves (see
-  // AppModeRoutes), later than this render; until permissions load every
+  // `contributionsReady` (not `isLoading`): `isLoading` turns false in the
+  // same commit as the plugin list is set, one render before the plugins'
+  // `contributeExtensions` actually runs (a later passive effect) — gating on
+  // `isLoading` alone leaves one committed render where the registry is still
+  // empty, flashing "not found" on a deep link. Until permissions load every
   // gated item also looks hidden. Either way, wait instead of resolving a
   // deep link against an incomplete registry/permission set.
-  const sectionLoading = isApplicationsLoading || isEmpty(permissions);
+  const sectionLoading = !contributionsReady || isEmpty(permissions);
 
   const sectionContent =
     section?.Component && !sectionLoading ? (
