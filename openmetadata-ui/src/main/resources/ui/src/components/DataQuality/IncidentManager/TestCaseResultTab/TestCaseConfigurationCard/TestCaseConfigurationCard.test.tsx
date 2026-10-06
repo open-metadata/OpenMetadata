@@ -201,6 +201,50 @@ describe('TestCaseConfigurationCard', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('names the data quality dimension in the category line, not as a row', () => {
+    renderCard({
+      testCaseData: {
+        entityLink: COLUMN_ENTITY_LINK,
+        dataQualityDimension: {
+          id: 'dimension',
+          type: 'dataQualityDimension',
+          name: 'Completeness',
+        },
+      } as TestCase,
+    });
+
+    expect(screen.getByTestId('configuration-category')).toHaveTextContent(
+      'label.column-test-with-column · Completeness'
+    );
+  });
+
+  it('puts a dynamic assertion callout above the rows', () => {
+    renderCard({
+      testCaseData: {
+        entityLink: COLUMN_ENTITY_LINK,
+        useDynamicAssertion: true,
+      } as TestCase,
+      parameterRows: [{ label: 'label.compute-row-count', value: 'false' }],
+    });
+
+    const callout = screen.getByTestId('dynamic-assertion');
+    const rows = screen.getByTestId('configuration-parameter-rows');
+
+    expect(
+      callout.compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('keys a row on the parameter name, and labels it with the display name', () => {
+    renderCard({
+      parameterRows: [{ name: 'minValue', label: 'Min', value: '1' }],
+    });
+
+    expect(
+      screen.getByTestId('configuration-parameter-minValue')
+    ).toHaveTextContent('Min1');
+  });
+
   it('falls back to a start-cased definition name when no display name is set', () => {
     renderCard({
       testDefinition: { name: 'tableRowCountToEqual' } as TestDefinition,

@@ -86,7 +86,8 @@ export const getCategoryTranslation = (
 /**
  * The prototype highlights the assertion SQL as keyword-vs-plain only — it is
  * not a parser, and this deliberately isn't one either. Anything richer belongs
- * in the SQL Query tab's editor, not a 320px rail card.
+ * in the SQL Query tab's editor, not a 320px rail card. Functions such as
+ * COUNT are not keywords, and the prototype leaves them plain.
  */
 const SQL_KEYWORDS = new Set([
   'AND',
@@ -95,7 +96,6 @@ const SQL_KEYWORDS = new Set([
   'BETWEEN',
   'BY',
   'CASE',
-  'COUNT',
   'DESC',
   'DISTINCT',
   'ELSE',
@@ -120,7 +120,6 @@ const SQL_KEYWORDS = new Set([
   'OUTER',
   'RIGHT',
   'SELECT',
-  'SUM',
   'THEN',
   'UNION',
   'WHEN',

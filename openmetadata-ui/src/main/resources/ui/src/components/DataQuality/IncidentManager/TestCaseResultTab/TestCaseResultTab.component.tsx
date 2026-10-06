@@ -208,25 +208,28 @@ const TestCaseResultTab = ({
    * page the rows are the parameters' diff.
    */
   const parameterRows = useMemo<ConfigurationParameterRow[]>(() => {
-    const dataQualityDimension =
-      testCaseData?.dataQualityDimension?.displayName ??
-      testCaseData?.dataQualityDimension?.name;
+    const definitions = new Map(
+      testDefinition?.parameterDefinition?.map((definition) => [
+        definition.name,
+        definition,
+      ])
+    );
+    const labelOf = (name = '') => definitions.get(name)?.displayName ?? name;
     let rows: ConfigurationParameterRow[] = [];
 
     if (versionDiff) {
-      rows = [...versionDiff.rows];
+      rows = versionDiff.rows.map((row) => ({
+        ...row,
+        name: row.label,
+        label: labelOf(row.label),
+      }));
     } else if (!testCaseData?.useDynamicAssertion) {
-      const parameterTypes = new Map(
-        testDefinition?.parameterDefinition?.map(({ name, dataType }) => [
-          name,
-          dataType,
-        ])
-      );
       rows = withoutSqlParams.map((param) => ({
-        label: param.name ?? '',
+        name: param.name,
+        label: labelOf(param.name),
         value: formatParameterValue(
           param.value,
-          parameterTypes.get(param.name)
+          definitions.get(param.name)?.dataType
         ),
       }));
     }
@@ -238,22 +241,13 @@ const TestCaseResultTab = ({
       });
     }
 
-    if (!isVersionPage && dataQualityDimension) {
-      rows.push({
-        label: t('label.data-quality-dimension'),
-        value: dataQualityDimension,
-      });
-    }
-
     return rows;
   }, [
     versionDiff,
     withoutSqlParams,
-    isVersionPage,
     testCaseData?.useDynamicAssertion,
     showComputeRowCount,
     computeRowCountDisplay,
-    testCaseData?.dataQualityDimension,
     testDefinition?.parameterDefinition,
     t,
   ]);
