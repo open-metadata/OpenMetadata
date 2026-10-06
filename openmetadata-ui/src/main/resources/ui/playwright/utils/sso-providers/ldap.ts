@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   applyProviderConfig,
   fetchSecurityConfig,
@@ -144,7 +145,7 @@ export const ldapProviderFixture: SsoProviderFixture = {
     await page.getByLabel(/password/i).fill(LDAP_USER_PASSWORD);
     await page.getByRole('button', { name: /^(sign in|log in)$/i }).click();
     await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
   },
 
