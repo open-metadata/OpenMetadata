@@ -29,7 +29,6 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
-import { GENERAL_ENTITY_STATUSES } from '../constants/entity.constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
   DATA_PRODUCT_ENTITY_FIELDS_KEYS,
@@ -45,6 +44,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
+import { lifecycleStatusAutocomplete } from './governance/lifecycle/LifecycleStatus.utils';
 import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
@@ -470,12 +470,9 @@ class JSONLogicSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
-          listValues: GENERAL_ENTITY_STATUSES.map((status) => ({
-            value: status,
-            title: status,
-          })),
+          asyncFetch: lifecycleStatusAutocomplete([SearchIndex.TABLE]),
           showSearch: true,
-          useAsyncSearch: false,
+          useAsyncSearch: true,
         },
       },
 
@@ -698,9 +695,21 @@ class JSONLogicSearchClassBase {
     } as AsyncFetchListValuesResult;
   };
 
-  public getCommonConfig = () => {
+  public getCommonConfig = (
+    entitySearchIndex: SearchIndex[] = [SearchIndex.TABLE]
+  ): Fields => {
+    const common = getFieldsByKeys(COMMON_ENTITY_FIELDS_KEYS, this.mapFields);
+
     return {
-      ...getFieldsByKeys(COMMON_ENTITY_FIELDS_KEYS, this.mapFields),
+      ...common,
+      [EntityReferenceFields.ENTITY_STATUS]: {
+        ...common[EntityReferenceFields.ENTITY_STATUS],
+        fieldSettings: {
+          asyncFetch: lifecycleStatusAutocomplete(entitySearchIndex),
+          showSearch: true,
+          useAsyncSearch: true,
+        },
+      },
     };
   };
 
@@ -750,7 +759,7 @@ class JSONLogicSearchClassBase {
     entitySearchIndex?: Array<SearchIndex>;
   }) => {
     const fieldsConfig = {
-      ...this.getCommonConfig(),
+      ...this.getCommonConfig(entitySearchIndex),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
     };
 

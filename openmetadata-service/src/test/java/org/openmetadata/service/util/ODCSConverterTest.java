@@ -32,8 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.data.ContractSLA;
@@ -66,16 +64,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
 class ODCSConverterTest {
-
-  @ParameterizedTest
-  @EnumSource(
-      value = EntityStatus.class,
-      names = {"SUPERSEDED", "INVALIDATED"})
-  void memoryRetirementStagesCannotBeExportedAsContractStages(EntityStatus status) {
-    DataContract contract = new DataContract().withName("contract").withEntityStatus(status);
-
-    assertThrows(IllegalArgumentException.class, () -> ODCSConverter.toODCS(contract));
-  }
 
   @Test
   void testToODCS_BasicContract() {

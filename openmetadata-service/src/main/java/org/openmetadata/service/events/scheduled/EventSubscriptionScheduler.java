@@ -328,7 +328,7 @@ public class EventSubscriptionScheduler {
 
   /** The committed row, or null once the subscription has been deleted. */
   private EventSubscription readCommitted(UUID subscriptionId) {
-    EntityRepository<? extends EntityInterface> repository =
+    EntityRepository<? extends EntityInterface<?>> repository =
         Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
     try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
       return (EventSubscription) repository.get(null, subscriptionId, repository.getFields("*"));
@@ -479,7 +479,7 @@ public class EventSubscriptionScheduler {
       return null;
     }
 
-    EntityRepository<? extends EntityInterface> subscriptionRepository =
+    EntityRepository<? extends EntityInterface<?>> subscriptionRepository =
         Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
 
     Optional<EventSubscription> subscriptionOpt =
@@ -502,7 +502,7 @@ public class EventSubscriptionScheduler {
     EventSubscription eventSubscription =
         eventSubscriptionOpt.orElseGet(
             () -> {
-              EntityRepository<? extends EntityInterface> subscriptionRepository =
+              EntityRepository<? extends EntityInterface<?>> subscriptionRepository =
                   Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
 
               return (EventSubscription)

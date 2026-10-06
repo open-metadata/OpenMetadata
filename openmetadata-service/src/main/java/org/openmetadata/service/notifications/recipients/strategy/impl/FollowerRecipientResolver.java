@@ -66,7 +66,7 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
       }
 
       // Standard handling for other entities
-      EntityInterface entity = AlertsRuleEvaluator.getEntity(event);
+      EntityInterface<?> entity = AlertsRuleEvaluator.getEntity(event);
       return resolveFollowersFromEntity(entity, destination);
     } catch (Exception e) {
       LOG.warn(
@@ -92,7 +92,7 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
       }
 
       // Standard handling for other entities
-      EntityInterface entity =
+      EntityInterface<?> entity =
           Entity.getEntity(entityType, entityId, "followers", Include.NON_DELETED);
       return resolveFollowersFromEntity(entity, destination);
 
@@ -108,7 +108,7 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
     }
 
-    EntityInterface referencedEntity =
+    EntityInterface<?> referencedEntity =
         Entity.getEntity(
             conversation.getEntityRef().getType(),
             conversation.getEntityRef().getId(),
@@ -118,7 +118,7 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
   }
 
   private @NotNull Set<Recipient> resolveFollowersFromEntity(
-      EntityInterface entity, SubscriptionDestination destination) {
+      EntityInterface<?> entity, SubscriptionDestination destination) {
     if (entity == null || entity.getFollowers() == null) {
       return Collections.emptySet();
     }

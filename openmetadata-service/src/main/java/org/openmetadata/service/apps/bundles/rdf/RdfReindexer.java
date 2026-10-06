@@ -88,7 +88,7 @@ final class RdfReindexer {
   @FunctionalInterface
   interface BatchWriter {
     CompletableFuture<BatchProcessingResult> submit(
-        String entityType, List<? extends EntityInterface> entities) throws InterruptedException;
+        String entityType, List<? extends EntityInterface<?>> entities) throws InterruptedException;
   }
 
   /** One entity type's stored rows, read a keyset page at a time. */
@@ -96,7 +96,7 @@ final class RdfReindexer {
     List<String> readPage(KeysetCursor after, int limit);
 
     /** Deserializes rows and loads their fields; failures come back as errors, not exceptions. */
-    ResultList<? extends EntityInterface> load(List<String> rows);
+    ResultList<? extends EntityInterface<?>> load(List<String> rows);
 
     KeysetCursor cursorAfter(List<String> rows);
   }
@@ -232,7 +232,7 @@ final class RdfReindexer {
   private record WrittenPage(LoadedPage page, BatchProcessingResult result) {}
 
   private CompletableFuture<BatchProcessingResult> submitToWriter(
-      final String entityType, final List<EntityInterface> entities) {
+      final String entityType, final List<EntityInterface<?>> entities) {
     try {
       return writer.submit(entityType, entities);
     } catch (InterruptedException e) {
@@ -274,8 +274,8 @@ final class RdfReindexer {
    */
   private LoadedPage load(final TypeRead read, final List<String> rows) {
     final long startedAt = System.nanoTime();
-    final ResultList<? extends EntityInterface> loaded = read.pages.load(rows);
-    final List<EntityInterface> entities = new ArrayList<>(loaded.getData());
+    final ResultList<? extends EntityInterface<?>> loaded = read.pages.load(rows);
+    final List<EntityInterface<?>> entities = new ArrayList<>(loaded.getData());
     final List<EntityError> errors = listOrEmpty(loaded.getErrors());
     final int dropped = keepStoredData(read.entityType, errors, entities);
     final String firstError = errors.isEmpty() ? null : errors.getFirst().getMessage();
@@ -291,11 +291,11 @@ final class RdfReindexer {
   private int keepStoredData(
       final String entityType,
       final List<EntityError> errors,
-      final List<EntityInterface> entities) {
+      final List<EntityInterface<?>> entities) {
     int storedOnly = 0;
     String storedOnlyReason = null;
     for (final EntityError error : errors) {
-      if (error.getEntity() instanceof EntityInterface entity) {
+      if (error.getEntity() instanceof EntityInterface<?> entity) {
         LOG.debug(
             "RDF reindex indexes {} {} with its stored data only", entityType, entity.getId());
         entities.add(entity);
@@ -316,7 +316,7 @@ final class RdfReindexer {
   }
 
   private record LoadedPage(
-      List<EntityInterface> entities, int dropped, String firstError, long readerTimeMs) {}
+      List<EntityInterface<?>> entities, int dropped, String firstError, long readerTimeMs) {}
 
   /**
    * The cursor after the last row of {@code rows} that deserializes. Walks back past rows that do
@@ -355,7 +355,7 @@ final class RdfReindexer {
     }
 
     @Override
-    public ResultList<? extends EntityInterface> load(final List<String> rows) {
+    public ResultList<? extends EntityInterface<?>> load(final List<String> rows) {
       return repository.hydrate(rows, fields, filter);
     }
 
@@ -365,7 +365,7 @@ final class RdfReindexer {
           repository.getEntityType(), rows, row -> cursorOf(repository, filter, row));
     }
 
-    private static <T extends EntityInterface> KeysetCursor cursorOf(
+    private static <T extends EntityInterface<?>> KeysetCursor cursorOf(
         final EntityRepository<T> repository, final ListFilter filter, final String row) {
       final T entity = JsonUtils.readValue(row, repository.getEntityClass());
       return cursorOf(JsonUtils.readTree(repository.getCursorValue(entity, filter)));

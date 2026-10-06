@@ -35,7 +35,6 @@ import {
   TAG_LABEL_TYPE_LIST_VALUES,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
-import { GENERAL_ENTITY_STATUSES } from '../constants/entity.constants';
 import {
   EntityFields,
   EntityReferenceFields,
@@ -48,6 +47,7 @@ import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
+import { lifecycleStatusAutocomplete } from './governance/lifecycle/LifecycleStatus.utils';
 import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
@@ -1076,12 +1076,9 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
-          listValues: GENERAL_ENTITY_STATUSES.map((status) => ({
-            value: status,
-            title: status,
-          })),
+          asyncFetch: lifecycleStatusAutocomplete(entitySearchIndex),
           showSearch: true,
-          useAsyncSearch: false,
+          useAsyncSearch: true,
         },
       },
     };

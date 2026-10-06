@@ -12,9 +12,9 @@
  */
 import { DefaultOptionType } from 'antd/lib/select';
 import type { Column } from 'react-data-grid';
-import { GENERAL_ENTITY_STATUSES } from '../../constants/entity.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
+  EntityStatus,
   MetricGranularity,
   MetricType,
   UnitOfMeasurement,
@@ -126,7 +126,7 @@ const METRIC_BULK_EDIT_CONFIG: BulkEntityEditConfig = {
     metricType: toSelectOptions(Object.values(MetricType)),
     unitOfMeasurement: toSelectOptions(Object.values(UnitOfMeasurement)),
     granularity: toSelectOptions(Object.values(MetricGranularity)),
-    entityStatus: toSelectOptions(GENERAL_ENTITY_STATUSES),
+    entityStatus: toSelectOptions(Object.values(EntityStatus)),
     tiers: toTierSelectOptions(),
   },
   newRow: {

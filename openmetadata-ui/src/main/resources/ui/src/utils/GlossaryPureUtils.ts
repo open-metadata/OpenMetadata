@@ -14,7 +14,6 @@ import { StatusType } from '../components/common/StatusBadge/StatusBadge.interfa
 import type { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import type { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { GENERAL_ENTITY_STATUSES } from '../constants/entity.constants';
 import { EntityType } from '../enums/entity.enum';
 import {
   EntityStatus,
@@ -148,12 +147,12 @@ export const StatusClass = {
   [EntityStatus.Unprocessed]: StatusType.Unprocessed,
 };
 
-export const StatusFilters = GENERAL_ENTITY_STATUSES.filter(
-  (status) => status !== EntityStatus.Deprecated
-).map((status) => ({
-  text: status,
-  value: status,
-}));
+export const StatusFilters = Object.values(EntityStatus)
+  .filter((status) => status !== EntityStatus.Deprecated)
+  .map((status) => ({
+    text: status,
+    value: status,
+  }));
 
 export const getGlossaryBreadcrumbs = (fqn: string) => {
   const arr = Fqn.split(fqn);

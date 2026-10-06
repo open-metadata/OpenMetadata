@@ -6,7 +6,7 @@
   "description": "Reusable context memory for Context Center and AI-assisted retrieval.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.context.ContextMemory",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.entity.context.ContextMemoryStatus>"],
   "definitions": {
     "memoryType": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemoryType",
@@ -252,7 +252,7 @@
     },
     "entityStatus": {
       "description": "Lifecycle stage of the memory: Unprocessed (awaiting reconciliation), Draft, Approved (in use), Superseded (replaced), Invalidated (found incorrect) or Archived. Deprecated and Rejected remain supported legacy retirement stages. Superseded and Deprecated memories require supersededBy. When omitted at creation, the memory starts Unprocessed. Only Approved memories ground new memories and agent responses.",
-      "$ref": "../../type/status.json"
+      "$ref": "./contextMemoryStatus.json"
     },
     "statusReason": {
       "description": "Why the memory reached its current status, e.g. the reconciliation verdict or the missing anchor. Cleared by a status change that brings no reason of its own.",

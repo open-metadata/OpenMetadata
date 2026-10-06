@@ -14,14 +14,18 @@
 package org.openmetadata.service.resources.context;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.EntityReference;
@@ -32,10 +36,25 @@ import org.openmetadata.service.Entity;
 /** Pins lifecycle wire values shared with ai-platform and Collate. */
 class ContextMemorySchemaTest {
 
+  @ParameterizedTest
+  @ValueSource(strings = {"Superseded", "Invalidated"})
+  void memoryRetirementStagesAreNotShared(String value) {
+    assertThrows(IllegalArgumentException.class, () -> EntityStatus.fromValue(value));
+  }
+
+  @Test
+  void memoryAndCreateRequestUseTheirOwnStatusEnum() throws NoSuchMethodException {
+    Class<?> memoryStatus = ContextMemory.class.getMethod("getEntityStatus").getReturnType();
+    assertEquals(
+        "org.openmetadata.schema.entity.context.ContextMemoryStatus", memoryStatus.getName());
+    assertEquals(
+        memoryStatus, CreateContextMemory.class.getMethod("getEntityStatus").getReturnType());
+  }
+
   @Test
   void memoryRetirementStagesHaveDistinctWireValues() {
-    assertEquals("Superseded", EntityStatus.fromValue("Superseded").value());
-    assertEquals("Invalidated", EntityStatus.fromValue("Invalidated").value());
+    assertEquals("Superseded", ContextMemoryStatus.fromValue("Superseded").value());
+    assertEquals("Invalidated", ContextMemoryStatus.fromValue("Invalidated").value());
   }
 
   @Test
@@ -44,15 +63,15 @@ class ContextMemorySchemaTest {
     assertEquals(
         ContextMemorySourceType.CONVERSATION_EXTRACTION,
         ContextMemorySourceType.fromValue("ConversationExtraction"));
-    assertEquals(EntityStatus.DEPRECATED, EntityStatus.fromValue("Deprecated"));
-    assertEquals(EntityStatus.REJECTED, EntityStatus.fromValue("Rejected"));
+    assertEquals(ContextMemoryStatus.DEPRECATED, ContextMemoryStatus.fromValue("Deprecated"));
+    assertEquals(ContextMemoryStatus.REJECTED, ContextMemoryStatus.fromValue("Rejected"));
   }
 
   @ParameterizedTest
   @EnumSource(
-      value = EntityStatus.class,
+      value = ContextMemoryStatus.class,
       names = {"DEPRECATED", "SUPERSEDED"})
-  void lifecycleFieldsSurviveAJsonRoundTrip(EntityStatus status) {
+  void lifecycleFieldsSurviveAJsonRoundTrip(ContextMemoryStatus status) {
     EntityReference keeper =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_MEMORY);
     MemoryDispute dispute =

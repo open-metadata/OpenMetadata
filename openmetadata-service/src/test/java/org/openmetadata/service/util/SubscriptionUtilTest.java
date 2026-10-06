@@ -591,7 +591,7 @@ class SubscriptionUtilTest {
     Invocation.Builder builderA = mock(Invocation.Builder.class);
     Invocation.Builder builderB = mock(Invocation.Builder.class);
     ChangeEvent event = new ChangeEvent().withEntityType("table");
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     CollectionDAO dao = mock(CollectionDAO.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
     when(client.target("https://hooks.example.com/a")).thenReturn(targetA);

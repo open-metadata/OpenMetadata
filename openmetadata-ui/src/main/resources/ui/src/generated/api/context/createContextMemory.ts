@@ -35,7 +35,7 @@ export interface CreateContextMemory {
      * excluded from grounding until Approved. Superseded and legacy Deprecated memories require
      * supersededBy.
      */
-    entityStatus?:          EntityStatus;
+    entityStatus?:          ContextMemoryStatus;
     machineRepresentation?: MachineRepresentation;
     memoryScope?:           MemoryScope;
     memoryType?:            MemoryType;
@@ -87,16 +87,15 @@ export interface CreateContextMemory {
  * excluded from grounding until Approved. Superseded and legacy Deprecated memories require
  * supersededBy.
  *
- * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
- * property. Entity types without that property have no lifecycle. When a create request
- * omits the stage, the server assigns the entity type's initial stage.
+ * Lifecycle stage of a context memory. Unprocessed awaits reconciliation; only Approved
+ * memories ground new memories and agent responses. Deprecated and Rejected remain readable
+ * legacy retirement stages.
  */
-export enum EntityStatus {
+export enum ContextMemoryStatus {
     Approved = "Approved",
     Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
-    InReview = "In Review",
     Invalidated = "Invalidated",
     Rejected = "Rejected",
     Superseded = "Superseded",

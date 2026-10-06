@@ -13,7 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import {
   ContextMemory,
-  EntityStatus,
+  ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
@@ -140,11 +140,11 @@ describe('MemoriesView', () => {
     ).toBeInTheDocument();
   });
 
-  it.each<[EntityStatus, string]>([
-    [EntityStatus.Deprecated, 'label.deprecated'],
-    [EntityStatus.Rejected, 'label.rejected'],
-    [EntityStatus.Superseded, 'label.superseded'],
-    [EntityStatus.Invalidated, 'label.invalidated'],
+  it.each<[ContextMemoryStatus, string]>([
+    [ContextMemoryStatus.Deprecated, 'label.deprecated'],
+    [ContextMemoryStatus.Rejected, 'label.rejected'],
+    [ContextMemoryStatus.Superseded, 'label.superseded'],
+    [ContextMemoryStatus.Invalidated, 'label.invalidated'],
   ])('shows the %s memory status and its reason', (status, label) => {
     render(
       <MemoriesView

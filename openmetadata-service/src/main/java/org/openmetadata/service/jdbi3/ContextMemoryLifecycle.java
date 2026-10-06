@@ -20,9 +20,9 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.Objects;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 
 /** Lifecycle rules for status changes, supersession, and disputes. */
@@ -69,8 +69,8 @@ public final class ContextMemoryLifecycle {
     }
   }
 
-  private static boolean isSuperseded(EntityStatus status) {
-    return status == EntityStatus.SUPERSEDED || status == EntityStatus.DEPRECATED;
+  private static boolean isSuperseded(ContextMemoryStatus status) {
+    return status == ContextMemoryStatus.SUPERSEDED || status == ContextMemoryStatus.DEPRECATED;
   }
 
   private static void resolveReferences(

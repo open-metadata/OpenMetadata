@@ -25,14 +25,17 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.EntityLifecycle;
@@ -78,11 +81,16 @@ class EntityRepositoryEntityStatusTest {
       super(dao);
       defaultEntityStatus = EntityStatus.DRAFT;
       entityLifecycle =
-          new EntityLifecycle(
+          new EntityLifecycle<>(
+              EntityStatus.class,
               Map.of(
                   EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED),
                   EntityStatus.APPROVED, Set.of(EntityStatus.DEPRECATED),
-                  EntityStatus.DEPRECATED, Set.of()));
+                  EntityStatus.DEPRECATED, Set.of(),
+                  EntityStatus.IN_REVIEW, Set.of(),
+                  EntityStatus.REJECTED, Set.of(),
+                  EntityStatus.ARCHIVED, Set.of(),
+                  EntityStatus.UNPROCESSED, Set.of()));
     }
   }
 
@@ -110,7 +118,7 @@ class EntityRepositoryEntityStatusTest {
     }
 
     @Override
-    public Optional<String> owningStageOf(String entityType, EntityInterface entity) {
+    public Optional<String> owningStageOf(String entityType, EntityInterface<?> entity) {
       return EXCLUDED_METRIC.equals(entity.getName())
           ? Optional.empty()
           : Optional.of(STAGE_WORKFLOW);
@@ -144,19 +152,10 @@ class EntityRepositoryEntityStatusTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"Superseded", "Invalidated"})
-  void generalEntitiesCannotBeCreatedOrUpdatedInMemoryRetirementStages(String value) {
-    EntityStatus status = EntityStatus.fromValue(value);
-    TestMetricRepo repo = new TestMetricRepo(metricDAO);
-    Metric original = metric().withEntityStatus(EntityStatus.APPROVED);
-
+  void generalEntitiesCannotDeserializeMemoryRetirementStages(String value) {
     assertThrows(
-        BadRequestException.class,
-        () -> repo.assignInitialEntityStatus(metric().withEntityStatus(status)));
-    assertThrows(
-        BadRequestException.class,
-        () ->
-            newUpdater(repo, original, movedBy(original, status, REVIEWER))
-                .updateEntityStatus(false));
+        JsonParsingException.class,
+        () -> JsonUtils.readValue("{\"entityStatus\":\"" + value + "\"}", Metric.class));
   }
 
   @Test
@@ -172,12 +171,10 @@ class EntityRepositoryEntityStatusTest {
   }
 
   @Test
-  void newEntityInAStageItsTypeDoesNotUseIsRejected() {
+  void newEntityCanStartInAnyStageItsSchemaDeclares() {
     Metric inReview = metric().withEntityStatus(EntityStatus.IN_REVIEW);
 
-    assertThrows(
-        BadRequestException.class,
-        () -> new ReviewedMetricRepo(metricDAO).assignInitialEntityStatus(inReview));
+    assertDoesNotThrow(() -> new ReviewedMetricRepo(metricDAO).assignInitialEntityStatus(inReview));
   }
 
   @Test
@@ -246,12 +243,11 @@ class EntityRepositoryEntityStatusTest {
   }
 
   @Test
-  void entitySavedWithoutAStageCanTakeOnlyAStageOfItsTypesLifecycle() {
+  void entitySavedWithoutAStageCanTakeAnyStageOfItsTypesVocabulary() {
     TestMetricRepo repo = new ReviewedMetricRepo(metricDAO);
     Metric unstaged = metric().withEntityStatus(null);
 
-    assertThrows(
-        BadRequestException.class,
+    assertDoesNotThrow(
         () ->
             newUpdater(repo, unstaged, movedBy(unstaged, EntityStatus.IN_REVIEW, REVIEWER))
                 .updateEntityStatus(false));
@@ -264,16 +260,16 @@ class EntityRepositoryEntityStatusTest {
   @Test
   void memoryStageChangesFollowTheMemoryLifecycle() {
     ContextMemoryRepository repo = new ContextMemoryRepository();
-    ContextMemory archived = memory(EntityStatus.ARCHIVED);
+    ContextMemory archived = memory(ContextMemoryStatus.ARCHIVED);
 
     assertThrows(
         BadRequestException.class,
         () ->
-            newUpdater(repo, archived, memoryMovedTo(archived, EntityStatus.DRAFT))
+            newUpdater(repo, archived, memoryMovedTo(archived, ContextMemoryStatus.DRAFT))
                 .updateEntityStatus(false));
     assertDoesNotThrow(
         () ->
-            newUpdater(repo, archived, memoryMovedTo(archived, EntityStatus.APPROVED))
+            newUpdater(repo, archived, memoryMovedTo(archived, ContextMemoryStatus.APPROVED))
                 .updateEntityStatus(false));
   }
 
@@ -512,7 +508,7 @@ class EntityRepositoryEntityStatusTest {
         .withReviewers(current.getReviewers());
   }
 
-  private static ContextMemory memory(EntityStatus stage) {
+  private static ContextMemory memory(ContextMemoryStatus stage) {
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName("orders_are_net_of_refunds")
@@ -521,7 +517,7 @@ class EntityRepositoryEntityStatusTest {
         .withUpdatedBy(Entity.ADMIN_USER_NAME);
   }
 
-  private static ContextMemory memoryMovedTo(ContextMemory current, EntityStatus stage) {
+  private static ContextMemory memoryMovedTo(ContextMemory current, ContextMemoryStatus stage) {
     return memory(stage).withId(current.getId());
   }
 
@@ -541,7 +537,7 @@ class EntityRepositoryEntityStatusTest {
         .withFullyQualifiedName(name);
   }
 
-  private static <E extends EntityInterface> EntityRepository<E>.EntityUpdater newUpdater(
+  private static <E extends EntityInterface<?>> EntityRepository<E>.EntityUpdater newUpdater(
       EntityRepository<E> repo, E original, E updated) {
     EntityRepository<E>.EntityUpdater updater =
         repo.new EntityUpdater(original, updated, EntityRepository.Operation.PUT);

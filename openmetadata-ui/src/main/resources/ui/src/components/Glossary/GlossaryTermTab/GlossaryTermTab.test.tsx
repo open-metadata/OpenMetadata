@@ -1208,12 +1208,7 @@ describe('Test GlossaryTermTab component', () => {
       fireEvent.click(getStatusCheckbox('all'));
 
       Object.values(EntityStatus)
-        .filter(
-          (status) =>
-            ![EntityStatus.Superseded, EntityStatus.Invalidated].includes(
-              status
-            )
-        )
+        .filter((status) => !['Superseded', 'Invalidated'].includes(status))
         .forEach((status) => {
           expect(getStatusCheckbox(status)).toBeChecked();
         });

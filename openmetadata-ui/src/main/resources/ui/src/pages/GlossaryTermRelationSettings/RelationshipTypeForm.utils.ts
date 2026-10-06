@@ -174,8 +174,6 @@ const toRequestEntityStatus = (
         return EntityStatus.Unprocessed;
       case undefined:
         return undefined;
-      default:
-        throw new Error(`${status} is not a relationship type lifecycle stage`);
     }
   })();
 

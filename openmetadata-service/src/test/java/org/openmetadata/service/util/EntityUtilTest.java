@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APIEndpoint;
@@ -367,7 +369,7 @@ class EntityUtilTest {
     assertEquals("after", change.getFieldsUpdated().get(0).getNewValue());
 
     when(createContext.getEntity()).thenReturn(null);
-    when(updateContext.getEntity()).thenReturn(new Table());
+    Mockito.<EntityInterface<?>>when(updateContext.getEntity()).thenReturn(new Table());
     assertEquals(MetadataOperation.CREATE, EntityUtil.createOrUpdateOperation(createContext));
     assertEquals(MetadataOperation.EDIT_ALL, EntityUtil.createOrUpdateOperation(updateContext));
 

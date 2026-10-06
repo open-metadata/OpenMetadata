@@ -1795,7 +1795,7 @@ public class SystemResource {
     if (id == null && normalizedFqn != null) {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(type);
-        EntityInterface resolved = repository.findByName(normalizedFqn, Include.ALL, false);
+        EntityInterface<?> resolved = repository.findByName(normalizedFqn, Include.ALL, false);
         if (resolved != null) {
           id = resolved.getId();
         }

@@ -43,7 +43,7 @@
     },
     "entityStatus": {
       "description": "Lifecycle stage the memory starts in. When omitted, the memory starts Unprocessed and is excluded from grounding until Approved. Superseded and legacy Deprecated memories require supersededBy.",
-      "$ref": "../../type/status.json"
+      "$ref": "../../entity/context/contextMemoryStatus.json"
     },
     "shareConfig": {
       "$ref": "../../entity/context/contextMemory.json#/definitions/shareConfig"

@@ -29,7 +29,7 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import {
   ContextMemory,
-  EntityStatus,
+  ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import {
   getMemoryOntologyProposalStatus,
@@ -444,7 +444,7 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'inactive-customer',
-      entityStatus: EntityStatus.Approved,
+      entityStatus: ContextMemoryStatus.Approved,
       owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
       shareConfig: { visibility: 'Shared' },
       derivedEntities: [],
@@ -566,12 +566,12 @@ describe('CreateMemoryModal', () => {
   });
 
   it.each([
-    EntityStatus.Draft,
-    EntityStatus.Archived,
-    EntityStatus.Deprecated,
-    EntityStatus.Rejected,
-    EntityStatus.Superseded,
-    EntityStatus.Invalidated,
+    ContextMemoryStatus.Draft,
+    ContextMemoryStatus.Archived,
+    ContextMemoryStatus.Deprecated,
+    ContextMemoryStatus.Rejected,
+    ContextMemoryStatus.Superseded,
+    ContextMemoryStatus.Invalidated,
   ])('hides proposal action for status %s', async (status) => {
     const memory = {
       id: 'memory-id',
@@ -743,9 +743,9 @@ describe('CreateMemoryModal', () => {
     ).not.toBeInTheDocument();
   });
 
-  it.each<[EntityStatus, string]>([
-    [EntityStatus.Deprecated, 'label.deprecated'],
-    [EntityStatus.Superseded, 'label.superseded'],
+  it.each<[ContextMemoryStatus, string]>([
+    [ContextMemoryStatus.Deprecated, 'label.deprecated'],
+    [ContextMemoryStatus.Superseded, 'label.superseded'],
   ])(
     'shows why a %s memory was replaced and links to its successor',
     (status, label) => {
@@ -790,7 +790,7 @@ describe('CreateMemoryModal', () => {
           memoryToEdit={{
             id: 'old-memory',
             name: 'old-memory',
-            entityStatus: EntityStatus.Deprecated,
+            entityStatus: ContextMemoryStatus.Deprecated,
             supersededBy: {
               id: 'new-memory',
               type: 'contextMemory',
@@ -816,7 +816,7 @@ describe('CreateMemoryModal', () => {
           memoryToEdit={{
             id: 'old-memory',
             name: 'old-memory',
-            entityStatus: EntityStatus.Deprecated,
+            entityStatus: ContextMemoryStatus.Deprecated,
             supersededBy: {
               id: 'new-memory',
               type: 'contextMemory',

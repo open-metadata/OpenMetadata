@@ -193,8 +193,8 @@ public class RdfPropertyMapper {
   /**
    * Convert all entity properties to RDF triples based on context mappings
    */
-  public void mapEntityToRdf(EntityInterface entity, Resource entityResource, Model model) {
-    EntityInterface requiredEntity = Objects.requireNonNull(entity, "entity");
+  public void mapEntityToRdf(EntityInterface<?> entity, Resource entityResource, Model model) {
+    EntityInterface<?> requiredEntity = Objects.requireNonNull(entity, "entity");
     Resource requiredResource = Objects.requireNonNull(entityResource, "entityResource");
     Model requiredModel = Objects.requireNonNull(model, "model");
     JsonNode entityJson = objectMapper.valueToTree(requiredEntity);
@@ -218,7 +218,7 @@ public class RdfPropertyMapper {
   }
 
   private void emitStructuredProperties(
-      EntityInterface entity, JsonNode entityJson, Resource entityResource, Model model) {
+      EntityInterface<?> entity, JsonNode entityJson, Resource entityResource, Model model) {
     RdfJsonNode.array(entityJson, "tableConstraints")
         .ifPresent(
             constraints ->
@@ -639,8 +639,9 @@ public class RdfPropertyMapper {
 
   private Optional<UUID> findEntityId(String entityType, String fqn) {
     try {
-      EntityInterface entity = Entity.findEntityByNameOrNull(entityType, fqn, Include.NON_DELETED);
-      return Optional.ofNullable(entity).map(EntityInterface::getId);
+      EntityInterface<?> entity =
+          Entity.findEntityByNameOrNull(entityType, fqn, Include.NON_DELETED);
+      return Optional.ofNullable(entity).map(EntityInterface<?>::getId);
     } catch (RuntimeException exception) {
       LOG.debug("Could not resolve {} id for FQN {}", entityType, fqn, exception);
       return Optional.empty();
@@ -1513,7 +1514,7 @@ public class RdfPropertyMapper {
     }
   }
 
-  private void addStandardProperties(EntityInterface entity, Resource resource, Model model) {
+  private void addStandardProperties(EntityInterface<?> entity, Resource resource, Model model) {
     // Add timestamps. updatedAt is epoch millis on the entity; convert to an
     // ISO-8601 instant before tagging it as xsd:dateTime so the lexical form is
     // valid (a long literal would be a malformed xsd:dateTime).

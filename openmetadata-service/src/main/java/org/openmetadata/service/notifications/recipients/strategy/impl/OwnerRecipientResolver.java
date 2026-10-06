@@ -70,7 +70,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       }
 
       // Standard handling for other entities
-      EntityInterface entity = AlertsRuleEvaluator.getEntity(event);
+      EntityInterface<?> entity = AlertsRuleEvaluator.getEntity(event);
       if (entity == null) {
         return Collections.emptySet();
       }
@@ -99,7 +99,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       }
 
       // Standard handling for other entities
-      EntityInterface entity =
+      EntityInterface<?> entity =
           Entity.getEntity(
               entityType,
               entityId,
@@ -127,7 +127,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
 
     if (conversation.getEntityRef() != null) {
       try {
-        EntityInterface parentEntity =
+        EntityInterface<?> parentEntity =
             Entity.getEntity(
                 conversation.getEntityRef().getType(),
                 conversation.getEntityRef().getId(),
@@ -145,7 +145,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
   }
 
   private @NotNull Set<Recipient> resolveOwnersFromEntity(
-      EntityInterface entity, SubscriptionDestination destination) {
+      EntityInterface<?> entity, SubscriptionDestination destination) {
     if (entity == null || entity.getOwners() == null) {
       return Collections.emptySet();
     }

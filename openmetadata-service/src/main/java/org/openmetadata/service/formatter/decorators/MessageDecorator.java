@@ -111,7 +111,7 @@ public interface MessageDecorator<T> {
   T buildTestMessage();
 
   @SneakyThrows
-  default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
+  default String buildEntityUrl(String entityType, EntityInterface<?> entityInterface) {
     String fqn = resolveFullyQualifiedName(entityType, entityInterface);
     String entityUrl = "";
     switch (entityType) {
@@ -155,10 +155,10 @@ public interface MessageDecorator<T> {
   }
 
   // Helper function to resolve FQN if null or empty
-  private String resolveFullyQualifiedName(String entityType, EntityInterface entityInterface) {
+  private String resolveFullyQualifiedName(String entityType, EntityInterface<?> entityInterface) {
     String fqn = entityInterface.getFullyQualifiedName();
     if (CommonUtil.nullOrEmpty(fqn)) {
-      EntityInterface result =
+      EntityInterface<?> result =
           Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
       fqn = result.getFullyQualifiedName();
     }
@@ -176,7 +176,7 @@ public interface MessageDecorator<T> {
                     ? conversation.getId().toString()
                     : conversation.getEntityRef().getFullyQualifiedName();
               } else {
-                EntityInterface entityInterface = getEntity(event);
+                EntityInterface<?> entityInterface = getEntity(event);
                 return entityInterface.getFullyQualifiedName();
               }
             });
@@ -244,7 +244,7 @@ public interface MessageDecorator<T> {
   default OutgoingMessage createEntityMessage(String publisherName, ChangeEvent event) {
     OutgoingMessage message = new OutgoingMessage();
     message.setUserName(event.getUserName());
-    EntityInterface entityInterface = getEntity(event);
+    EntityInterface<?> entityInterface = getEntity(event);
     if (event.getEntity() != null) {
       String eventType;
       if (event.getEntity() instanceof TestCase) {
@@ -275,7 +275,7 @@ public interface MessageDecorator<T> {
   default OutgoingMessage createThreadMessage(String publisherName, ChangeEvent event) {
     Conversation conversation = getConversation(event);
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(conversation.getAbout());
-    EntityInterface entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
+    EntityInterface<?> entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
     String entityUrl = buildEntityUrl(entityLink.getEntityType(), entityInterface);
 
     OutgoingMessage message = new OutgoingMessage();

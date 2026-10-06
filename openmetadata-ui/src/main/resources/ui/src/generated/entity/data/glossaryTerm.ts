@@ -445,9 +445,10 @@ export enum OntologyConceptType {
 /**
  * Approval status of the glossary term.
  *
- * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
- * property. Entity types without that property have no lifecycle. When a create request
- * omits the stage, the server assigns the entity type's initial stage.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  *
  * Approval status of this relation edge.
  */
@@ -457,9 +458,7 @@ export enum EntityStatus {
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
-    Invalidated = "Invalidated",
     Rejected = "Rejected",
-    Superseded = "Superseded",
     Unprocessed = "Unprocessed",
 }
 

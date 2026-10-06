@@ -873,8 +873,7 @@ describe('MetricListPage', () => {
     await screen.findByText('net_sales');
 
     for (const status of Object.values(EntityStatus).filter(
-      (stage) =>
-        ![EntityStatus.Superseded, EntityStatus.Invalidated].includes(stage)
+      (stage) => !['Superseded', 'Invalidated'].includes(stage)
     )) {
       expect(screen.getByTestId(`menu-item-${status}`)).toBeInTheDocument();
     }

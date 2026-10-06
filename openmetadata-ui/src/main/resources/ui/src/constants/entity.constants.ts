@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import { FeedCounts } from '../interface/feed.interface';
 import { EntityField } from './Feeds.constants';
-
-export const GENERAL_ENTITY_STATUSES: EntityStatus[] = [
-  EntityStatus.Approved,
-  EntityStatus.Archived,
-  EntityStatus.Deprecated,
-  EntityStatus.Draft,
-  EntityStatus.InReview,
-  EntityStatus.Rejected,
-  EntityStatus.Unprocessed,
-];
 
 export const FEED_COUNT_INITIAL_DATA: FeedCounts = {
   conversationCount: 0,
