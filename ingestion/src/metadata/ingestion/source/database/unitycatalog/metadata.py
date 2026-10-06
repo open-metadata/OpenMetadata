@@ -676,17 +676,19 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     table_type = TableType.MaterializedView
                 elif table.table_type.value.lower() == TableType.External.value.lower():
                     table_type = TableType.External
-            # Storage format refines a managed/external/regular table but must never
-            # override a view. Iceberg is checked first because a managed Iceberg
-            # table also reports data_source_format DELTA, so the Delta branch would
-            # otherwise swallow it. Both branches need the Iceberg listing to have
-            # succeeded: without it DELTA is ambiguous and guessing DeltaLake would
-            # relabel every Iceberg table. Match DELTA exactly rather than any
-            # DELTA-prefixed value, so DELTASHARING -- a Delta Sharing table, not
-            # Delta Lake -- is not misclassified.
+            # Storage format refines only a Regular (managed) table: a View, a
+            # MaterializedView or an External table keeps the type it already got,
+            # so re-ingesting an existing service never silently flips those.
+            # Iceberg is checked first because a managed Iceberg table also reports
+            # data_source_format DELTA, so the Delta branch would otherwise swallow
+            # it. Both branches need the Iceberg listing to have succeeded: without
+            # it DELTA is ambiguous and guessing DeltaLake would relabel every
+            # Iceberg table. Match DELTA exactly rather than any DELTA-prefixed
+            # value, so DELTASHARING -- a Delta Sharing table, not Delta Lake -- is
+            # not misclassified.
             dsf = getattr(table, "data_source_format", None)
             normalized_dsf = str(getattr(dsf, "value", dsf)).upper() if dsf is not None else ""
-            if table_type not in (TableType.View, TableType.MaterializedView) and iceberg_table_names is not None:
+            if table_type == TableType.Regular and iceberg_table_names is not None:
                 if table_name in iceberg_table_names:
                     table_type = TableType.Iceberg
                 elif normalized_dsf == "DELTA":

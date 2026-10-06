@@ -259,16 +259,21 @@ def test_uniform_iceberg_securable_kind_is_not_iceberg():
 
 
 @pytest.mark.parametrize(
-    "sdk_table_type",
-    [SdkTableType.MANAGED, SdkTableType.EXTERNAL],
+    ("sdk_table_type", "expected"),
+    [
+        # Only a managed (Regular) table is refined to DeltaLake; an External
+        # table keeps External so re-ingest never silently flips its type.
+        (SdkTableType.MANAGED, TableType.DeltaLake),
+        (SdkTableType.EXTERNAL, TableType.External),
+    ],
 )
-def test_delta_format_yields_delta_lake(sdk_table_type):
+def test_delta_format_refines_only_regular_tables(sdk_table_type, expected):
     table = TableInfo(
         name="t",
         table_type=sdk_table_type,
         data_source_format=DataSourceFormat.DELTA,
     )
-    assert _run(table, set()) == [("t", TableType.DeltaLake)]
+    assert _run(table, set()) == [("t", expected)]
 
 
 def test_no_format_non_view_stays_regular():
