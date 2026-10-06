@@ -17,11 +17,12 @@ import {
   Grid,
   Input,
   Select,
+  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
-import { Form, Switch } from 'antd';
+import { Form } from 'antd';
 import { isNil } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -171,14 +172,15 @@ const DynamicSampleConfig = ({
     <div className="m-t-sm">
       <Form.Item className="m-t-md" colon={false}>
         <div className="flex items-center gap-2">
-          <Switch
+          <Toggle
             aria-label={t('label.smart-sampling')}
-            checked={config.smartSampling ?? true}
             data-testid="smart-sampling-toggle"
-            onChange={(checked) =>
+            isSelected={config.smartSampling ?? true}
+            size="sm"
+            onChange={(isSelected) =>
               onChange({
                 sampleConfigType,
-                config: { ...config, smartSampling: checked },
+                config: { ...config, smartSampling: isSelected },
               })
             }
           />

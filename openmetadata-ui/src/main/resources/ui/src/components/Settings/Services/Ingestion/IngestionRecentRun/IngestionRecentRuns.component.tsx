@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { Popover, Space, Tag } from 'antd';
+import { Badge, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Popover, Space } from 'antd';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -159,7 +159,8 @@ export const IngestionRecentRuns = <
             getRunFieldValues(r);
 
           const status = (
-            <Tag
+            <Badge
+              bordered={false}
               className={classNamesFunc(
                 'ingestion-run-badge',
                 pipelineState ?? '',
@@ -167,13 +168,16 @@ export const IngestionRecentRuns = <
                   latest: i === recentRunStatus.length - 1,
                 }
               )}
+              color="gray"
               data-testid="pipeline-status"
               key={`${runId}-status`}
+              size="sm"
+              type="color"
               onClick={() => handleRunStatusClick(r)}>
               {i === recentRunStatus.length - 1
                 ? upperFirst(pipelineState)
                 : ''}
-            </Tag>
+            </Badge>
           );
 
           const showTooltip =

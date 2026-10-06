@@ -18,7 +18,8 @@ import type {
 import { describe, expect, it } from 'vitest';
 import { DARK_CHART_THEME, LIGHT_CHART_THEME } from '../theme';
 import type { GeoMapBuildInput } from '../types';
-import { buildGeoMapOption, GEO_COLOR_RANGE, resolveGeoData } from './geo';
+import { DARK_CHART_PALETTE, LIGHT_CHART_PALETTE } from '../palette';
+import { buildGeoMapOption, resolveGeoData } from './geo';
 
 const ALIASES: Record<string, string> = {
   CA: 'California',
@@ -37,8 +38,8 @@ const base: GeoMapBuildInput = {
 
 const mapOf = (input: GeoMapBuildInput, theme = LIGHT_CHART_THEME) =>
   (buildGeoMapOption(input, theme).option.series as MapSeriesOption[])[0];
-const scaleOf = (input: GeoMapBuildInput) =>
-  buildGeoMapOption(input, LIGHT_CHART_THEME).option
+const scaleOf = (input: GeoMapBuildInput, theme = LIGHT_CHART_THEME) =>
+  buildGeoMapOption(input, theme).option
     .visualMap as VisualMapComponentOption & {
     min: number;
     max: number;
@@ -139,7 +140,7 @@ describe('buildGeoMapOption', () => {
     const scale = scaleOf(base);
 
     expect([scale.min, scale.max]).toEqual([4, 10]);
-    expect(scale.inRange.color).toEqual([...GEO_COLOR_RANGE]);
+    expect(scale.inRange.color).toEqual([...LIGHT_CHART_PALETTE.scale]);
   });
 
   it('widens the scale by one either side when every value is equal', () => {
@@ -154,10 +155,10 @@ describe('buildGeoMapOption', () => {
     expect([scale.min, scale.max]).toEqual([4, 6]);
   });
 
-  it('uses a custom colour range', () => {
-    expect(
-      scaleOf({ ...base, colorRange: ['#fff', '#000'] }).inRange.color
-    ).toEqual(['#fff', '#000']);
+  it('takes the scale colours from the dark palette in dark mode', () => {
+    expect(scaleOf(base, DARK_CHART_THEME).inRange.color).toEqual([
+      ...DARK_CHART_PALETTE.scale,
+    ]);
   });
 
   it('hides the scale and its bottom band when showScale is false', () => {

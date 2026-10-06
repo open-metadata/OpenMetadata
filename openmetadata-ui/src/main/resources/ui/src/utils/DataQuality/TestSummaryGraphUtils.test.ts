@@ -10,21 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  BLUE_500,
-  GREEN_3,
-  RED_3,
-  YELLOW_3,
-} from '../../constants/Color.constants';
 import { Task } from '../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
   applyStatusPlacements,
   formatTestSummaryYAxis,
-  getStatusDotColor,
+  getStatusChartStatus,
   getTestSummaryTooltipPosition,
   getThresholdReference,
   isSameTooltipPosition,
+  isTestSummaryTooltipBoundary,
+  placedSeriesKey,
   PLACED_KEYS_FIELD,
   prepareChartData,
   PrepareChartDataType,
@@ -386,6 +382,58 @@ describe('prepareChartData', () => {
     });
   });
 
+  // The band is the allowed range, so it is read by parameter name, not by
+  // position, and keeps decimal bounds.
+  it.each<
+    [
+      string,
+      PrepareChartDataType['testCaseParameterValue'],
+      [number, number] | undefined
+    ]
+  >([
+    [
+      'decimal bounds',
+      [
+        { name: 'minValueForMeanInCol', value: '0.5' },
+        { name: 'maxValueForMeanInCol', value: '1.5' },
+      ],
+      [0.5, 1.5],
+    ],
+    [
+      'a range that also has a threshold',
+      [
+        { name: 'minValue', value: '12' },
+        { name: 'maxValue', value: '34' },
+        { name: 'threshold', value: '5' },
+      ],
+      [12, 34],
+    ],
+    [
+      'an expected value and a threshold, which state no range',
+      [
+        { name: 'value', value: '10000' },
+        { name: 'threshold', value: '5' },
+      ],
+      undefined,
+    ],
+  ])(
+    'should read the allowed band from %s',
+    (_, testCaseParameterValue, boundArea) => {
+      const { data } = prepareChartData({
+        testCaseParameterValue,
+        testCaseResults: [
+          {
+            timestamp: 1720525804736,
+            testCaseStatus: TestCaseStatus.Success,
+            testResultValue: [{ name: 'value', value: '1' }],
+          },
+        ],
+      });
+
+      expect(data[0].boundArea).toEqual(boundArea);
+    }
+  );
+
   it('should show calculate test case result params accurately', () => {
     const testObj = {
       testCaseParameterValue: [],
@@ -506,23 +554,30 @@ describe('prepareChartData', () => {
   });
 });
 
-describe('getStatusDotColor', () => {
-  it('should return GREEN_3 for Success', () => {
-    expect(getStatusDotColor(TestCaseStatus.Success)).toBe(GREEN_3);
+describe('getStatusChartStatus', () => {
+  it.each([
+    [TestCaseStatus.Success, 'success'],
+    [TestCaseStatus.Failed, 'failed'],
+    [TestCaseStatus.Queued, 'info'],
+    [TestCaseStatus.Aborted, 'warning'],
+    [undefined, 'warning'],
+  ])('should map %s to the %s chart status', (status, expected) => {
+    expect(getStatusChartStatus(status)).toBe(expected);
+  });
+});
+
+describe('isTestSummaryTooltipBoundary', () => {
+  it('should accept a box with every coordinate finite', () => {
+    expect(
+      isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10, height: 5 })
+    ).toBe(true);
   });
 
-  it('should return RED_3 for Failed', () => {
-    expect(getStatusDotColor(TestCaseStatus.Failed)).toBe(RED_3);
-  });
-
-  it('should return YELLOW_3 for Aborted', () => {
-    expect(getStatusDotColor(TestCaseStatus.Aborted)).toBe(YELLOW_3);
-  });
-
-  // Aborted and Queued read as the same run to a colour-blind eye when they
-  // share a dot: one produced no result, the other has not run yet.
-  it('should return BLUE_500 for Queued', () => {
-    expect(getStatusDotColor(TestCaseStatus.Queued)).toBe(BLUE_500);
+  it('should reject a box with a missing or non-finite coordinate', () => {
+    expect(isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10 })).toBe(false);
+    expect(
+      isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10, height: NaN })
+    ).toBe(false);
   });
 });
 
@@ -734,12 +789,13 @@ describe('applyStatusPlacements', () => {
       series
     );
 
-    // Placed on the series itself, so the line runs through the run.
+    // Placed on a series of its own, so the line joins measured runs only
+    // and an aborted run does not read as a measured drop.
     expect(data[2]).toEqual({
       name: 3,
       status: TestCaseStatus.Aborted,
-      rowCount: 90,
-      placedKeys: ['rowCount'],
+      [placedSeriesKey('rowCount')]: 90,
+      placedKeys: [placedSeriesKey('rowCount')],
     });
   });
 
@@ -756,8 +812,8 @@ describe('applyStatusPlacements', () => {
     expect(data[1]).toEqual({
       name: 2,
       status: TestCaseStatus.Queued,
-      rowCount: 10000,
-      placedKeys: ['rowCount'],
+      [placedSeriesKey('rowCount')]: 10000,
+      placedKeys: [placedSeriesKey('rowCount')],
     });
   });
 
@@ -789,7 +845,9 @@ describe('applyStatusPlacements', () => {
       series
     );
 
-    expect(data.map((point) => point[series[0]])).toEqual([0, 0]);
-    expect(data[0][PLACED_KEYS_FIELD]).toEqual(series);
+    expect(data.map((point) => point[placedSeriesKey(series[0])])).toEqual([
+      0, 0,
+    ]);
+    expect(data[0][PLACED_KEYS_FIELD]).toEqual(series.map(placedSeriesKey));
   });
 });

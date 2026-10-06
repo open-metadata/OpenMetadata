@@ -25,13 +25,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
@@ -100,6 +100,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class AIContextBuilder {
   private static final int MAX_KNOWLEDGE_ITEMS = 50;
   private static final int MAX_ARTICLES = 20;
+
+  /** Bounds the batch of attached pills loaded to find {@link #MAX_ARTICLES} usable ones. */
+  private static final int MAX_PILLS_SCANNED = 100;
+
   private static final int MAX_JOIN_HINTS = 25;
   static final int MAX_SAMPLE_ROWS = 10;
   static final int MAX_COLUMN_MAPPINGS_PER_EDGE = 25;
@@ -819,11 +823,6 @@ public class AIContextBuilder {
     return visible;
   }
 
-  private boolean canViewPill(ContextMemory pill) {
-    return securityContext == null
-        || !ContextMemoryVisibility.filterByVisibility(List.of(pill), securityContext).isEmpty();
-  }
-
   private KnowledgeItem toGlossaryKnowledgeItem(String termFqn) {
     KnowledgeItem item = null;
     try {
@@ -856,11 +855,40 @@ public class AIContextBuilder {
         items,
         capWithLog(findAttachedPages(entity), MAX_ARTICLES, "articles"),
         this::toArticleKnowledgeItem);
-    addItems(
-        items,
-        capWithLog(findAttachedPills(entity), MAX_ARTICLES, "pills"),
-        this::toPillKnowledgeItem);
+    pillsForContext(loadPills(findAttachedPills(entity)), this::visibleToCaller)
+        .forEach(pill -> items.add(toPillKnowledgeItem(pill)));
     return items;
+  }
+
+  /**
+   * Retired and hidden pills stay attached to their asset, so they are dropped before the cap
+   * rather than using up the slots of pills that would reach the context.
+   */
+  static List<ContextMemory> pillsForContext(
+      List<ContextMemory> attached, UnaryOperator<List<ContextMemory>> visibleToCaller) {
+    List<ContextMemory> approved =
+        attached.stream().filter(AIContextBuilder::isActivePill).toList();
+    return capList(visibleToCaller.apply(approved), MAX_ARTICLES);
+  }
+
+  private List<ContextMemory> loadPills(List<EntityReference> refs) {
+    List<ContextMemory> pills = new ArrayList<>();
+    try {
+      pills =
+          Entity.getEntities(
+              capWithLog(refs, MAX_PILLS_SCANNED, "attached pills"),
+              ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""),
+              Include.NON_DELETED);
+    } catch (Exception e) {
+      LOG.warn("AIContext: failed to fetch knowledge pills for {}: {}", fqn, e.getMessage());
+    }
+    return pills;
+  }
+
+  private List<ContextMemory> visibleToCaller(List<ContextMemory> pills) {
+    return securityContext == null
+        ? pills
+        : ContextMemoryVisibility.filterByVisibility(pills, securityContext);
   }
 
   private void addItems(
@@ -889,37 +917,26 @@ public class AIContextBuilder {
     return pills;
   }
 
-  private KnowledgeItem toPillKnowledgeItem(EntityReference ref) {
-    KnowledgeItem item = null;
-    try {
-      ContextMemory pill = Entity.getEntity(ref, "", Include.NON_DELETED);
-      // Mirror the glossary path's approval gating: Draft/Archived memories are not settled
-      // knowledge and must not reach agents as current context (issue #32260).
-      if (isActivePill(pill) && canViewPill(pill)) {
-        item =
-            new KnowledgeItem()
-                .withId(pill.getId())
-                .withType(KnowledgeItem.Type.CONTEXT_MEMORY)
-                .withName(pill.getName())
-                .withDisplayName(pill.getDisplayName())
-                .withFullyQualifiedName(pill.getFullyQualifiedName())
-                .withContent(pillContent(pill));
-        stampStaleness(
-            item, pill.getUpdatedAt(), assetUpdatedAt, assetDataQuality, upstreamDataQuality());
-      }
-    } catch (Exception e) {
-      LOG.warn("AIContext: failed to fetch knowledge pill {}: {}", ref.getName(), e.getMessage());
-    }
+  private KnowledgeItem toPillKnowledgeItem(ContextMemory pill) {
+    KnowledgeItem item =
+        new KnowledgeItem()
+            .withId(pill.getId())
+            .withType(KnowledgeItem.Type.CONTEXT_MEMORY)
+            .withName(pill.getName())
+            .withDisplayName(pill.getDisplayName())
+            .withFullyQualifiedName(pill.getFullyQualifiedName())
+            .withContent(pillContent(pill));
+    stampStaleness(
+        item, pill.getUpdatedAt(), assetUpdatedAt, assetDataQuality, upstreamDataQuality());
     return item;
   }
 
   /**
-   * Pills with no lifecycle status (pre-lifecycle memories) are treated as active, matching how
-   * {@link #isApproved(GlossaryTerm)} treats a missing glossary review status.
+   * Mirrors the glossary path's approval gating: only Approved memories are settled knowledge that
+   * may reach agents as current context (issue #32260).
    */
   static boolean isActivePill(ContextMemory pill) {
-    ContextMemoryStatus status = pill.getStatus();
-    return status == null || status == ContextMemoryStatus.ACTIVE;
+    return pill.getEntityStatus() == EntityStatus.APPROVED;
   }
 
   private static String pillContent(ContextMemory pill) {

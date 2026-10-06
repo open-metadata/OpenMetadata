@@ -21,6 +21,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.workflows.BatchExecutionPlan;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.GitSinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
@@ -54,17 +55,20 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   protected void postCreate(WorkflowDefinition entity) {
     WorkflowHandler.getInstance().deploy(new Workflow(entity));
+    EntityStatusWorkflows.invalidate();
   }
 
   @Override
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
+    EntityStatusWorkflows.invalidate();
   }
 
   @Override
   protected void postDelete(WorkflowDefinition entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+    EntityStatusWorkflows.invalidate();
   }
 
   @Override
@@ -474,6 +478,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       dao.update(workflow);
       EntityRepository.invalidateCacheForEntity(
           entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      EntityStatusWorkflows.invalidate();
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -499,6 +504,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       dao.update(workflow);
       EntityRepository.invalidateCacheForEntity(
           entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      EntityStatusWorkflows.invalidate();
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);

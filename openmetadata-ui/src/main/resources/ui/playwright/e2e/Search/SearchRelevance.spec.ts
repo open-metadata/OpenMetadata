@@ -19,6 +19,7 @@ import test, {
 } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
@@ -315,9 +316,7 @@ const searchForExactTableWithRankingDetails = async (page: Page) => {
   await searchBox.press('Enter');
   await searchResponse;
 
-  await page.getByTestId('search-container').getByTestId('loader').waitFor({
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page.getByTestId('search-container'));
   await page.getByTestId('search-results').waitFor({
     state: 'visible',
   });
@@ -593,8 +592,10 @@ test.describe(
 
       await expect(signalBoosts).toBeVisible();
       await expect(
-        signalBoosts.getByTestId('ranking-signal-contributor').first()
-      ).toBeVisible();
+        signalBoosts
+          .getByTestId('ranking-signal-contributor')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
       // Each contributor is a signed contribution against a named signal.
       await expect(
         signalBoosts.getByTestId('ranking-signal-contributor').first()
@@ -655,7 +656,9 @@ test.describe(
 
       await page.getByTestId('ranking-details-switch').click();
       await rankingDetailsResponse;
-      await expect(page.getByTestId('ranking-details').first()).toBeVisible();
+      await expect(
+        page.getByTestId('ranking-details').filter({ visible: true })
+      ).not.toHaveCount(0);
       await expect(page.getByTestId('ranking-details').first()).toContainText(
         /Exact name|Close name|Structural context|Score/i
       );

@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
-import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { groupBy, uniqBy } from 'lodash';
@@ -447,11 +450,12 @@ export const DashboardChartTable = ({
         dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS}
         extraTableFilters={
-          <span>
-            <Switch
-              checked={chartFilters.showDeletedCharts}
+          <span className="tw:inline-flex tw:items-center">
+            <Toggle
               data-testid="show-deleted"
-              onClick={handleShowDeletedCharts}
+              isSelected={chartFilters.showDeletedCharts}
+              size="sm"
+              onChange={handleShowDeletedCharts}
             />
             <Typography className="m-l-xs">{t('label.deleted')}</Typography>
           </span>

@@ -35,6 +35,7 @@ import { getEntityName } from './EntityNameUtils';
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './RichTextStringUtils';
+import { getSafeHttpUrl } from './StringUtils';
 
 export const VersionExtraInfoLink = ({
   value,
@@ -102,6 +103,7 @@ export const getExtraInfoSourceUrl = (
     true
   );
   const changedEntityName = getChangedEntityName(fieldDiff);
+  const safeSourceUrl = getSafeHttpUrl(pipelineDetails.sourceUrl);
   if (isEmpty(sourceUrl)) {
     return null;
   }
@@ -116,7 +118,7 @@ export const getExtraInfoSourceUrl = (
           />
           <div className="d-flex items-center text-xs">
             <Typography>
-              <a href={pipelineDetails.sourceUrl} style={{ fontSize: '12px' }}>
+              <a href={safeSourceUrl} style={{ fontSize: '12px' }}>
                 {getEntityName(pipelineDetails)}{' '}
               </a>
             </Typography>
@@ -128,10 +130,7 @@ export const getExtraInfoSourceUrl = (
           </div>
         </>
       ) : (
-        <VersionExtraInfoLink
-          href={pipelineDetails.sourceUrl}
-          value={sourceUrl}
-        />
+        <VersionExtraInfoLink href={safeSourceUrl} value={sourceUrl} />
       )}
     </>
   );
@@ -198,7 +197,8 @@ const getMetricVersionExtraInfo = (
   );
 
   const displayUnitOfMeasurement =
-    unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
+    metricDetails.unitOfMeasurement === UnitOfMeasurement.Other &&
+    customUnitOfMeasurement
       ? customUnitOfMeasurement
       : unitOfMeasurement;
 

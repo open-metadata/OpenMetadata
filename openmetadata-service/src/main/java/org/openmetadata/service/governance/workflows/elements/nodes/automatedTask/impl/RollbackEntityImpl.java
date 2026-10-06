@@ -276,7 +276,10 @@ public class RollbackEntityImpl implements JavaDelegate {
     JsonPatch patch =
         JsonUtils.getJsonPatch(
             JsonUtils.pojoToJson(currentEntity), JsonUtils.pojoToJson(targetEntity));
-    repository.patch(null, currentEntity.getFullyQualifiedName(), updatedBy, patch);
+    // Impersonating the governance bot marks this as the workflow's own write, which may move a
+    // lifecycle stage the workflow owns.
+    repository.patch(
+        null, currentEntity.getFullyQualifiedName(), updatedBy, patch, null, null, GOVERNANCE_BOT);
   }
 
   private void setOutcomeVariables(
