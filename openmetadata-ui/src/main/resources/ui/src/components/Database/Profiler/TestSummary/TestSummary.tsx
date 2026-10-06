@@ -102,6 +102,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const testCaseFqn = data.fullyQualifiedName ?? '';
   const latestRunTimestamp = data.testCaseResult?.timestamp;
 
+  // Until a load succeeds, a failed reload has no results to keep, quiet or
+  // not: a development build runs the effect twice, so the first load is quiet.
+  const hasLoaded = useRef(false);
+
   const fetchTestResults = useCallback(
     async (
       dateRangeObj: DateRangeObject,
@@ -125,11 +129,15 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         if (!isStale()) {
           setResults(chartData);
           setHasLoadError(false);
+          hasLoaded.current = true;
         }
       } catch (error) {
         if (!isStale()) {
           showErrorToast(error as AxiosError);
-          setHasLoadError(true);
+          // A failed quiet reload keeps the results it would have replaced.
+          if (!quietly || !hasLoaded.current) {
+            setHasLoadError(true);
+          }
         }
       } finally {
         // The fetch that replaced this one owns the loaders now.
@@ -180,11 +188,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     retryCount,
   ]);
 
-  const handleRetry = useCallback(
-    () => setRetryCount((count) => count + 1),
-    []
-  );
-
   // Below the header: the results, or why there are none to show.
   const resultsContent = useMemo(() => {
     if (isGraphLoading) {
@@ -203,7 +206,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
                 key: 'retry',
                 color: 'secondary',
                 label: t('label.retry'),
-                onPress: handleRetry,
+                onPress: () => setRetryCount((count) => count + 1),
               },
             ]}
             icon={<AlertCircle className="tw:text-fg-error-primary" />}
@@ -250,7 +253,6 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   }, [
     isGraphLoading,
     hasLoadError,
-    handleRetry,
     data,
     results,
     version,

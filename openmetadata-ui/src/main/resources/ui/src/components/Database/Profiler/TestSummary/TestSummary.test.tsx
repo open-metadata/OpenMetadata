@@ -18,6 +18,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { get } from 'lodash';
+import { StrictMode } from 'react';
 import { TestCase } from '../../../../generated/tests/testCase';
 import enUS from '../../../../locale/languages/en-us.json';
 import {
@@ -218,6 +219,19 @@ describe('TestSummary component', () => {
     expect(
       screen.queryByTestId('test-summary-never-run')
     ).not.toBeInTheDocument();
+  });
+
+  it('should say the results failed to load when its effects run twice, as in development', async () => {
+    mockGetListTestCaseResults.mockRejectedValue(new Error('API Error'));
+    render(
+      <StrictMode>
+        <TestSummary {...mockProps} />
+      </StrictMode>
+    );
+
+    expect(
+      await screen.findByTestId('test-summary-load-error')
+    ).toBeInTheDocument();
   });
 
   it('should load the results again on retry', async () => {
@@ -421,6 +435,39 @@ describe('TestSummary component', () => {
       'data-status',
       'Success'
     );
+  });
+
+  it('should keep the results when the reload after a new run fails', async () => {
+    mockGetListTestCaseResults.mockResolvedValueOnce({
+      data: [{ timestamp: 1, testCaseStatus: 'Failed' }],
+    });
+    const testCase = {
+      ...mockProps.data,
+      testCaseResult: { timestamp: 1, testCaseStatus: 'Failed' },
+    } as TestCase;
+    const { rerender } = render(<TestSummary data={testCase} />);
+
+    expect(await screen.findByText('TestSummaryGraph')).toBeInTheDocument();
+
+    mockGetListTestCaseResults.mockRejectedValueOnce(new Error('API Error'));
+    rerender(
+      <TestSummary
+        data={
+          {
+            ...testCase,
+            testCaseResult: { timestamp: 2, testCaseStatus: 'Success' },
+          } as TestCase
+        }
+      />
+    );
+
+    // The toast reports the failure; the results it would have replaced stay.
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledTimes(1));
+
+    expect(screen.getByText('TestSummaryGraph')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('test-summary-load-error')
+    ).not.toBeInTheDocument();
   });
 
   it('should not reload the results when the test case changes but its latest run does not', async () => {
