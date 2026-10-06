@@ -287,6 +287,9 @@ test.describe('AI Profile Users', () => {
     await page.getByTestId('domains-save').click();
     const response = await patch;
     expect(response.ok()).toBeTruthy();
+    // The card also contains the draft chip until edit mode closes.
+    await expect(page.getByTestId('domains-save')).toBeHidden();
+    await expect(page.getByTestId('domains-edit')).toBeVisible();
     await expect(page.getByTestId('domains')).toContainText(
       domain.responseData.displayName
     );
