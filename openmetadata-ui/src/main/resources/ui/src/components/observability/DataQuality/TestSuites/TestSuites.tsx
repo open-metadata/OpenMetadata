@@ -12,6 +12,7 @@
  */
 import { Box, EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,7 @@ import { useTestSuitesListPage } from '../../../DataQuality/TestSuite/TestSuiteL
 import {
   chipChevronClassName,
   chipTriggerClassName,
+  chipTriggerSelectedClassName,
 } from '../Dashboard/dqFilterChip.utils';
 import DqSummaryPanel from '../DqSummaryPanel';
 
@@ -120,11 +122,15 @@ const TestSuites = () => {
           popoverProps={{ placement: 'bottomLeft' }}
           onUpdate={handleOwnerSelect}>
           <button
-            className={chipTriggerClassName}
+            className={classNames(chipTriggerClassName, {
+              [chipTriggerSelectedClassName]: Boolean(ownerFilterValue),
+            })}
             data-testid="owner-select-filter"
             type="button">
             {ownerFilterValue?.label ?? t('label.owner')}
-            <ChevronDown className={chipChevronClassName} />
+            <ChevronDown
+              className={chipChevronClassName(Boolean(ownerFilterValue))}
+            />
           </button>
         </UserTeamSelectableList>
       </Box>

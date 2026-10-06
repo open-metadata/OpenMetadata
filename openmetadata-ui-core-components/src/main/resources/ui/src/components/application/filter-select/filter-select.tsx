@@ -20,6 +20,7 @@ import {
   DropdownSearchField,
   DropdownStagedFooter,
   DropdownStatusFooter,
+  selectedTriggerClassName,
   TriggerCountBadge,
 } from './filter-select.shared';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
@@ -89,6 +90,7 @@ export const TriggerButton = ({
           // filters (4px padding, 14px chevron), so a full toolbar of them
           // fits on one row beside same-sized toolbar controls.
           !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+          hasSelection && selectedTriggerClassName(bordered),
           className
         )}
         color={bordered ? 'secondary' : 'tertiary'}
@@ -150,7 +152,8 @@ export const TriggerButton = ({
         className={cx(
           'tw:size-5 tw:shrink-0 tw:transition-transform tw:duration-200',
           isOpen && 'tw:rotate-180',
-          'tw:text-fg-quaternary'
+          'tw:text-fg-quaternary',
+          hasSelection && 'tw:not-dark:text-fg-brand-primary'
         )}
       />
     </AriaButton>

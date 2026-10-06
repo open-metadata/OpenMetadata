@@ -14,6 +14,7 @@ import {
   chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
+  chipTriggerSelectedClassName,
 } from './dqFilterChip.utils';
 
 describe('dqFilterChip utils', () => {
@@ -34,10 +35,24 @@ describe('dqFilterChip utils', () => {
     });
   });
 
+  describe('chipTriggerSelectedClassName', () => {
+    it('should brand the trigger in light mode only, like FilterSelect', () => {
+      expect(chipTriggerSelectedClassName).toContain(
+        'tw:not-dark:text-fg-brand-primary'
+      );
+      expect(chipTriggerSelectedClassName).toContain(
+        'tw:not-dark:after:outline-brand'
+      );
+    });
+  });
+
   describe('chipChevronClassName', () => {
-    it('should stay neutral like the FilterSelect trigger chevron', () => {
-      expect(chipChevronClassName).toContain('tw:text-fg-quaternary');
-      expect(chipChevronClassName).not.toContain('brand');
+    it('should brand the chevron in light mode once a value is picked', () => {
+      expect(chipChevronClassName(true)).toContain(
+        'tw:not-dark:text-fg-brand-primary'
+      );
+      expect(chipChevronClassName(false)).toContain('tw:text-fg-quaternary');
+      expect(chipChevronClassName(false)).not.toContain('brand');
     });
   });
 

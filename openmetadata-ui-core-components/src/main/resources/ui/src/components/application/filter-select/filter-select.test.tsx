@@ -421,23 +421,31 @@ describe('FilterSelect', () => {
     );
   });
 
-  it('keeps the button trigger neutral once a value is selected', () => {
-    render(
+  it('brands the button trigger in light mode only once a value is selected', () => {
+    const renderTrigger = (selectedValues: string[]) => (
       <FilterSelect
         bordered
         data-testid="trigger-test"
         label="Service"
         options={OPTIONS}
-        selectedValues={['snowflake']}
+        selectedValues={selectedValues}
         triggerVariant="button"
         onChange={() => undefined}
       />
     );
+    const { rerender } = render(renderTrigger(['snowflake']));
+    const trigger = screen.getByTestId('trigger-test');
 
-    const { className } = screen.getByTestId('trigger-test');
+    // Scoped to light: dark mode keeps the trigger neutral.
+    expect(trigger.className).toContain('tw:not-dark:text-fg-brand-primary');
+    expect(trigger.className).toContain('tw:not-dark:after:outline-brand');
+    expect(trigger.className).not.toMatch(/(^|\s)tw:(dark:)?text-fg-brand/);
 
-    expect(className).not.toContain('after:outline-brand');
-    expect(className).not.toContain('text-fg-brand');
+    rerender(renderTrigger([]));
+
+    expect(screen.getByTestId('trigger-test').className).not.toContain(
+      'not-dark:'
+    );
   });
 
   it('sizes the input trigger on the Select scale', () => {

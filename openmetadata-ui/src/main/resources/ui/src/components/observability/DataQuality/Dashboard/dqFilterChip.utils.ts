@@ -32,11 +32,19 @@ export const chipTriggerClassName = classNames(
 );
 
 /**
- * Chevron for a trigger built by hand. `FilterSelect` keeps its trigger neutral
- * whether or not a value is picked, so this does too.
+ * Brand treatment the `FilterSelect` trigger takes once a value is picked —
+ * light mode only, dark keeps it neutral.
  */
-export const chipChevronClassName =
-  'tw:size-5 tw:shrink-0 tw:text-fg-quaternary';
+export const chipTriggerSelectedClassName = classNames(
+  'tw:not-dark:text-fg-brand-primary tw:not-dark:hover:text-fg-brand-primary',
+  'tw:not-dark:after:outline-brand'
+);
+
+/** Chevron for a trigger built by hand, branded with it like `FilterSelect`. */
+export const chipChevronClassName = (hasSelection: boolean) =>
+  classNames('tw:size-5 tw:shrink-0 tw:text-fg-quaternary', {
+    'tw:not-dark:text-fg-brand-primary': hasSelection,
+  });
 
 /** Matches the count badge `FilterSelect` renders on its own trigger. */
 export const chipCountBadgeClassName = classNames(

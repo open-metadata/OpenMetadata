@@ -18,11 +18,23 @@ import { Button } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
 import { Typography } from '@/components/foundations/typography';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
+import { cx } from '@/utils/cx';
 
 // Narrowed so the icon prop's type doesn't widen to the raw core-ui icons FC.
 export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
   <Search aria-hidden="true" {...props} />
 );
+
+/**
+ * Brand label, icons and (bordered) outline a button trigger takes once a value
+ * is picked. Light mode only: dark keeps the trigger neutral and lets the count
+ * badge carry the state.
+ */
+export const selectedTriggerClassName = (bordered?: boolean) =>
+  cx(
+    'tw:not-dark:text-fg-brand-primary tw:not-dark:hover:text-fg-brand-primary tw:not-dark:*:data-icon:text-fg-brand-primary',
+    bordered && 'tw:not-dark:after:outline-brand'
+  );
 
 export const TriggerCountBadge = ({ count }: { count: number }) => (
   <Typography
