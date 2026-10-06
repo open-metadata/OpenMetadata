@@ -155,7 +155,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       filter.addQueryParam("entityLink", entityLink);
     }
     if (status != null) {
-      filter.addQueryParam("status", status.value());
+      filter.addQueryParam("announcementStatus", status.value());
     }
     if (active != null) {
       filter.addQueryParam("active", String.valueOf(active));
@@ -394,6 +394,8 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
         .withType(create.getType())
+        .withColor(create.getColor())
+        .withCustomTypeName(create.getCustomTypeName())
         .withEntityLink(create.getEntityLink())
         .withStartTime(create.getStartTime())
         .withEndTime(create.getEndTime())

@@ -111,8 +111,8 @@ test(
         .waitFor({ state: 'visible' });
 
       await expect(
-        page.locator('.failed-sample-data-column').first()
-      ).toBeVisible();
+        page.locator('.failed-sample-data-column').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       const sampleDataTable = page.getByTestId('sample-data-table').first();
 

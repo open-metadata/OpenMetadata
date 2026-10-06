@@ -501,7 +501,7 @@ test.describe(
       const feedItems = feedWidget.getByTestId('message-container');
 
       await expect(feedWidget).toBeVisible();
-      await expect(feedItems.first()).toBeVisible({
+      await expect(feedItems.filter({ visible: true })).not.toHaveCount(0, {
         timeout: FEED_ITEM_TIMEOUT,
       });
     });
@@ -601,8 +601,8 @@ test.describe(
         feedWidget
           .getByTestId('message-container')
           .filter({ hasText: followedActivitySummary })
-          .first()
-      ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+          .filter({ visible: true })
+      ).not.toHaveCount(0, { timeout: FEED_ITEM_TIMEOUT });
     });
   }
 );

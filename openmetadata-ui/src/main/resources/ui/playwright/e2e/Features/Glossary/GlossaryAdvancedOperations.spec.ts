@@ -605,15 +605,13 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      // Clear all synonyms by clicking each remove button
-      const removeButtons = page.locator(
-        '.ant-select-selection-item .ant-select-selection-item-remove'
-      );
-      const count = await removeButtons.count();
-
-      for (let i = count - 1; i >= 0; i--) {
-        await removeButtons.nth(i).click();
+      for (const synonym of ['Synonym1', 'Synonym2', 'Synonym3']) {
+        await page.getByTestId(`remove-synonym-${synonym}`).click();
       }
+
+      await expect(
+        page.getByTestId('synonyms-select').getByRole('button')
+      ).toHaveCount(0);
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-synonym-btn').click();

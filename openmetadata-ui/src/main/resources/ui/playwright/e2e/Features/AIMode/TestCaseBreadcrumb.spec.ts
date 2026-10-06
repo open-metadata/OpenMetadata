@@ -116,17 +116,28 @@ const openTestCaseFromDataQualityList = async (
 
 const openTestCaseFromIncidentList = async (
   page: Page,
-  testCaseName: string
+  testCaseName: string,
+  testCaseFqn: string
 ) => {
-  await page.goto('/observability/incident-manager', {
-    waitUntil: 'domcontentloaded',
-  });
+  // The listing groups incidents; filtered to this one test case it holds a
+  // single group, whose drawer lists the incident and links its test case.
+  await page.goto(
+    `/observability/incident-manager?groupBy=table&testCaseFQN=${encodeURIComponent(
+      testCaseFqn
+    )}`,
+    { waitUntil: 'domcontentloaded' }
+  );
 
-  // Same as above, but this listing also waits on the resolution-status
-  // pipeline, which lags the plain test-case index — hence the larger bound.
-  const row = page.getByTestId(`test-case-${testCaseName}`);
-  await expect(row).toBeVisible({ timeout: 40_000 });
-  await row.click();
+  const groupName = page
+    .getByTestId('incident-groups-table')
+    .getByRole('rowheader');
+  await expect(groupName).toBeVisible({ timeout: 40_000 });
+  await groupName.click();
+
+  await page
+    .getByRole('dialog', { name: 'Incident group' })
+    .getByRole('link', { name: testCaseName })
+    .click();
   await expectDetailPageLoaded(page);
 };
 
@@ -136,6 +147,7 @@ test.describe('AI Observability - test case detail breadcrumb origin', () => {
   let testCaseName = '';
   let testCaseFqn = '';
   let incidentTestCaseName = '';
+  let incidentTestCaseFqn = '';
   let tableName = '';
 
   test.beforeAll(async ({ browser }) => {
@@ -165,6 +177,7 @@ test.describe('AI Observability - test case detail breadcrumb origin', () => {
     // status of the test case used by the other assertions.
     const incidentTestCase = await table.createTestCase(apiContext);
     incidentTestCaseName = incidentTestCase?.name;
+    incidentTestCaseFqn = incidentTestCase?.fullyQualifiedName;
 
     await table.addTestCaseResult(
       apiContext,
@@ -226,16 +239,25 @@ test.describe('AI Observability - test case detail breadcrumb origin', () => {
   test('leads with Incident Manager when opened from the incident listing', async ({
     page,
   }) => {
-    // 40s row bound + navigation can top the 60s default. Sized from that
+    // 40s group bound + navigation can top the 60s default. Sized from that
     // bound, not guessed.
     test.setTimeout(90_000);
 
-    await openTestCaseFromIncidentList(page, incidentTestCaseName);
+    await openTestCaseFromIncidentList(
+      page,
+      incidentTestCaseName,
+      incidentTestCaseFqn
+    );
 
     await expect(firstTrailCrumb(page)).toHaveAccessibleName(
       'Incident Manager'
     );
     await expect(currentCrumb(page)).toHaveText(incidentTestCaseName);
+
+    // The crumb returns to the listing as it was left, filters included.
+    await firstTrailCrumb(page).click();
+
+    await expect(page).toHaveURL(/groupBy=table.*testCaseFQN=/);
   });
 
   test('falls back to the table asset trail on a deep link', async ({

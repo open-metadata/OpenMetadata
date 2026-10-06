@@ -38,8 +38,10 @@ export const getRandomColor = (name: string) => {
   const hue = nameValue % 360;
 
   return {
+    hue,
     color: `hsl(${hue}, 70%, 40%)`,
     backgroundColor: `hsl(${hue}, 100%, 92%)`,
+    borderColor: `hsl(${hue}, 70%, 80%)`,
     character: firstAlphabet.toUpperCase(),
   };
 };
