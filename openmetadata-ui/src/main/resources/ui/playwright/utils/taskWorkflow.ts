@@ -331,7 +331,9 @@ export const openEntityTasksTab = async (page: Page) => {
   logTaskDebug('openEntityTasksTab:done');
 };
 
-export const getTaskCard = (page: Page, task: CreatedTask) => {
+// Accepts a Locator as well as the Page so callers can scope the search to a
+// single feed widget; both expose the getByTestId/getByRole used below.
+export const getTaskCard = (page: Page | Locator, task: CreatedTask) => {
   const taskDisplayId = getTaskDisplayId(task.taskId);
 
   // The card renders aria-label="#<displayId> <type>", so its accessible name

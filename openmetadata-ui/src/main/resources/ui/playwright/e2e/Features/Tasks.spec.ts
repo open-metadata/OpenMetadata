@@ -18,7 +18,14 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
-import { addTagSuggestion, selectAssignee } from '../../utils/taskWorkflow';
+import {
+  addTagSuggestion,
+  approveTaskFromDetails,
+  type CreatedTask,
+  getTaskCard,
+  openEntityTasksTab,
+  selectAssignee,
+} from '../../utils/taskWorkflow';
 
 /**
  * Task System E2E Tests
@@ -189,7 +196,7 @@ test.describe('Task Workflow Tests', () => {
 
       try {
         // Create a task via API
-        await apiContext.post('/api/v1/tasks', {
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
             about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
@@ -199,6 +206,9 @@ test.describe('Task Workflow Tests', () => {
           },
         });
 
+        expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
+        const task = (await taskResponse.json()) as CreatedTask;
+
         const page = await browser.newPage();
         await adminUser.signIn(page);
 
@@ -206,21 +216,18 @@ test.describe('Task Workflow Tests', () => {
         await redirectToHomePage(page);
         await waitForPageLoaded(page);
 
-        // Find the task in activity feed widget
+        // The widget must show the task just created, not whichever card the
+        // feed renders first -- the previous `if (isVisible())` let this test
+        // pass without ever clicking anything.
         const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-        const taskItem = feedWidget
-          .locator('[data-testid="task-feed-card"]')
-          .first();
+        const taskItem = getTaskCard(feedWidget, task);
+        await expect(taskItem).toBeVisible({ timeout: 45000 });
 
-        if (await taskItem.isVisible()) {
-          // Click on the task link
-          const taskLink = taskItem.getByTestId('redirect-task-button-link');
-          await taskLink.click();
-          await waitForPageLoaded(page);
+        await taskItem.getByTestId('redirect-task-button-link').click();
+        await waitForPageLoaded(page);
 
-          // Verify navigation - should NOT be 404
-          await expect(page.getByText('No data available')).not.toBeVisible();
-        }
+        // Verify navigation - should NOT be 404
+        await expect(page.getByText('No data available')).not.toBeVisible();
 
         await page.close();
       } finally {
@@ -229,18 +236,35 @@ test.describe('Task Workflow Tests', () => {
     });
 
     test('task link should NOT navigate to wrong URL like /table/TASK-xxxxx', async ({
-      page,
+      browser,
     }) => {
-      await tableWithOwner.visitEntityPage(page);
-      await page.getByTestId('activity_feed').click();
-      await waitForPageLoaded(page);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      // Click on a task if visible
-      const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+      try {
+        // Seed this test's own task rather than clicking whatever the feed
+        // has left over from a neighbouring test.
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            name: `Test Task - ${Date.now()}`,
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [regularUser.responseData.name],
+          },
+        });
 
-      if (await taskCard.isVisible()) {
-        const taskLink = taskCard.getByTestId('redirect-task-button-link');
-        await taskLink.click();
+        expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
+        const task = (await taskResponse.json()) as CreatedTask;
+
+        const page = await browser.newPage();
+        await adminUser.signIn(page);
+
+        await tableWithOwner.visitEntityPage(page);
+        await openEntityTasksTab(page);
+
+        const taskCard = getTaskCard(page, task);
+        await expect(taskCard).toBeVisible({ timeout: 45000 });
+        await taskCard.getByTestId('redirect-task-button-link').click();
         await waitForPageLoaded(page);
 
         // URL should NOT contain /table/TASK- pattern
@@ -248,6 +272,10 @@ test.describe('Task Workflow Tests', () => {
 
         // Should not show 404 or "No data available"
         await expect(page.getByText('No data available')).not.toBeVisible();
+
+        await page.close();
+      } finally {
+        await afterAction();
       }
     });
   });
@@ -267,30 +295,24 @@ test.describe('Task Workflow Tests', () => {
             assignees: [regularUser.responseData.name],
           },
         });
-        const task = await taskResponse.json();
+        expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
+        const task = (await taskResponse.json()) as CreatedTask;
 
         // Login as regular user (who is the assignee)
         const page = await browser.newPage();
         await regularUser.signIn(page);
 
         await tableWithOwner.visitEntityPage(page);
-        await page.getByTestId('activity_feed').click();
-        await waitForPageLoaded(page);
+        await openEntityTasksTab(page);
 
-        // Find the task card
-        const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-        if (await taskCard.isVisible()) {
-          // Click on card to open drawer
-          await taskCard.click();
-          await waitForPageLoaded(page);
+        const taskCard = getTaskCard(page, task);
+        await expect(taskCard).toBeVisible({ timeout: 45000 });
+        await taskCard.click();
+        await expect(page.getByTestId('task-tab')).toBeVisible();
 
-          // Look for approve button in drawer
-          const approveBtn = page.getByTestId('approve-task');
-          if (await approveBtn.isVisible()) {
-            await approveBtn.click();
-            await waitForPageLoaded(page);
-          }
-        }
+        // approveTaskFromDetails waits on the task-action response, so the
+        // approval is proven rather than fired and hoped for.
+        await approveTaskFromDetails(page);
 
         await page.close();
       } finally {
@@ -307,24 +329,34 @@ test.describe('Task Workflow Tests', () => {
       await nonAssignee.create(apiContext);
 
       try {
+        // Seed this test's own task. It used to read whichever card the feed
+        // showed first, which was the one the previous test had just resolved.
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            name: `Test Task - ${Date.now()}`,
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DescriptionUpdate',
+            category: 'MetadataUpdate',
+            assignees: [regularUser.responseData.name],
+          },
+        });
+
+        expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
+        const task = (await taskResponse.json()) as CreatedTask;
+
         const page = await browser.newPage();
         await nonAssignee.signIn(page);
 
         await tableWithOwner.visitEntityPage(page);
-        await page.getByTestId('activity_feed').click();
-        await waitForPageLoaded(page);
+        await openEntityTasksTab(page);
 
-        // Find the task card
-        const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+        const taskCard = getTaskCard(page, task);
+        await expect(taskCard).toBeVisible({ timeout: 45000 });
+        await taskCard.click();
+        await expect(page.getByTestId('task-tab')).toBeVisible();
 
-        if (await taskCard.isVisible()) {
-          await taskCard.click();
-          await waitForPageLoaded(page);
-
-          // Should NOT see approve button (not assignee)
-          const approveBtn = page.getByTestId('approve-task');
-          await expect(approveBtn).not.toBeVisible();
-        }
+        // Not the assignee, so no approve action is offered.
+        await expect(page.getByTestId('approve-button')).not.toBeVisible();
 
         await page.close();
       } finally {

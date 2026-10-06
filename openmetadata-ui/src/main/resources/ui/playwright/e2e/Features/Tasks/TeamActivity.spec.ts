@@ -18,6 +18,11 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForPageLoaded } from '../../../utils/polling';
+import {
+  type CreatedTask,
+  getTaskCard,
+  openEntityTasksTab,
+} from '../../../utils/taskWorkflow';
 
 /**
  * Team Activity Tests
@@ -285,6 +290,9 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
   const team = new TeamClass();
   const table = new TableClass();
 
+  // The one task this describe seeds, so each test can name the card it means.
+  let seededTask: CreatedTask;
+
   test.beforeAll('Setup test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -314,7 +322,7 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
       await table.create(apiContext);
 
       // Create task assigned to team
-      await apiContext.post('/api/v1/tasks', {
+      const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           about: {
             type: 'table',
@@ -328,6 +336,9 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
           },
         },
       });
+
+      expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
+      seededTask = (await taskResponse.json()) as CreatedTask;
     } finally {
       await afterAction();
     }
@@ -426,26 +437,13 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
     await teamMember1.signIn(page);
     await table.visitEntityPage(page);
 
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
+    await openEntityTasksTab(page);
 
-    const tasksTab = page
-      .getByTestId('global-setting-left-panel')
-      .getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
+    const taskCard = getTaskCard(page, seededTask);
+    await expect(taskCard).toBeVisible({ timeout: 45000 });
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      // Team member should see approve/reject buttons for team-assigned task
-      const approveBtn = taskCard.getByTestId('approve-button');
-
-      // As team member, should have permission to resolve
-      await expect(approveBtn).toBeVisible();
-    }
+    // Team member inherits the team's permission to resolve.
+    await expect(taskCard.getByTestId('approve-button')).toBeVisible();
   });
 });
 
