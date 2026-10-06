@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { SelectItemType } from '@openmetadata/ui-core-components';
+import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
 import type { EntityReference } from '../../../../../../generated/entity/type';
-import type { MembersView, OnlineStatusInfo } from './Members.types';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import type { MembersView, OnlineStatusInfo, TeamNode } from './Members.types';
 
 // DomainSelect hands back a single ref, an array, or undefined (cleared);
 // normalise to the array shape the Team PATCH expects.
@@ -26,12 +29,36 @@ export const toDomainArray = (
   return next ? [next] : [];
 };
 
-const TEAMS = 'teams';
-const USERS = 'users';
-const ADMINS = 'admins';
+// Flatten the full team hierarchy (not just direct children) so nested teams —
+// e.g. a Group under a Department — are assignable in the create-user form.
+export const flattenTeamHierarchy = (teams: TeamNode[]): SelectItemType[] =>
+  teams.flatMap((team) => [
+    { id: team.id, label: getEntityName(team) },
+    ...flattenTeamHierarchy(team.children ?? []),
+  ]);
+
+// Drop an id from a string[] field value (multi-select onItemCleared).
+export const withoutId = (ids: string[], key: string | number): string[] =>
+  ids.filter((id) => id !== String(key));
+
+// Keep the currently-selected role items when merging a fresh server page, so a
+// selection doesn't vanish just because it fell outside the latest search page.
+export const mergeRoleItems = (
+  prev: SelectItemType[],
+  fetched: SelectItemType[],
+  selected: string[]
+): SelectItemType[] => {
+  const kept = prev.filter((item) => selected.includes(String(item.id)));
+  const keptIds = new Set(kept.map((k) => k.id));
+
+  return [...kept, ...fetched.filter((n) => !keptIds.has(n.id))];
+};
+
+// Route-segment values reuse the shared settings enum; the form-only suffixes
+// below have no enum equivalent.
+const { TEAMS, USERS, ADMINS, ONLINE_USERS } = GlobalSettingOptions;
 const ADD = 'add';
 const CREATE = 'create';
-const ONLINE_USERS = 'online-users';
 const USER_CREATE = 'user-create';
 const IMPORT_TEAM = 'import-team';
 const IMPORT_USER = 'import-user';
@@ -102,7 +129,7 @@ export function hashSubPathToView(subPath: string): MembersView {
         ? { type: USER_CREATE, isAdmin: true }
         : { type: 'admins' };
     case ONLINE_USERS:
-      return { type: ONLINE_USERS };
+      return { type: 'online-users' };
     default:
       return { type: 'landing' };
   }
@@ -135,7 +162,7 @@ export function viewToSubPath(view: MembersView): string | undefined {
   if (view.type === 'admins') {
     return ADMINS;
   }
-  if (view.type === ONLINE_USERS) {
+  if (view.type === 'online-users') {
     return ONLINE_USERS;
   }
   if (view.type === USER_CREATE) {

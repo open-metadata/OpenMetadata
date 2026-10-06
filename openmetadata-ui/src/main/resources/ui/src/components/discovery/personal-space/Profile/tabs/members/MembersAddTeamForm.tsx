@@ -23,7 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
@@ -76,30 +76,24 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
 
   // Resolve the parent fqn to its id + team type once, so the new team nests
   // correctly and the team-type options reflect what the parent can contain.
-  useEffect(() => {
+  const resolveParentTeam = useCallback(async () => {
     if (!parentTeamFqn) {
       return;
     }
-    let active = true;
-    setParentResolveFailed(false);
-    getTeamByName(parentTeamFqn)
-      .then((parent) => {
-        if (active) {
-          setParentTeamId(parent.id);
-          setResolvedParentType(parent.teamType ?? parentTeamType);
-        }
-      })
-      .catch((error) => {
-        if (active) {
-          setParentResolveFailed(true);
-        }
-        showErrorToast(error as AxiosError);
-      });
-
-    return () => {
-      active = false;
-    };
+    try {
+      setParentResolveFailed(false);
+      const parent = await getTeamByName(parentTeamFqn);
+      setParentTeamId(parent.id);
+      setResolvedParentType(parent.teamType ?? parentTeamType);
+    } catch (error) {
+      setParentResolveFailed(true);
+      showErrorToast(error as AxiosError);
+    }
   }, [parentTeamFqn, parentTeamType]);
+
+  useEffect(() => {
+    void resolveParentTeam();
+  }, [resolveParentTeam]);
 
   const form = useForm<AddTeamFormValues>({
     defaultValues: {
@@ -231,6 +225,14 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
       return;
     }
     const description = descEditorRef.current?.getEditorContent() ?? '';
+    // One pass: keep only domains that carry an fqn and collect those fqns.
+    const domainFqns = selectedDomains.reduce<string[]>((acc, domain) => {
+      if (domain.fullyQualifiedName) {
+        acc.push(domain.fullyQualifiedName);
+      }
+
+      return acc;
+    }, []);
 
     setIsSaving(true);
     try {
@@ -245,11 +247,7 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
         // The API takes parent team ids so the new team nests under the current
         // team instead of becoming top-level.
         parents: parentTeamId ? [parentTeamId] : undefined,
-        domains: selectedDomains.length
-          ? (selectedDomains
-              .map((domain) => domain.fullyQualifiedName)
-              .filter(Boolean) as string[])
-          : undefined,
+        domains: domainFqns.length ? domainFqns : undefined,
       });
       showSuccessToast(
         t('server.create-entity-success', { entity: t('label.team') })

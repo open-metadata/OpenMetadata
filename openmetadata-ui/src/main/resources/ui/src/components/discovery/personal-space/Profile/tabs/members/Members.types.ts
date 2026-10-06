@@ -18,6 +18,15 @@ import type { ProfileHashTarget } from './profileHash.utils';
 
 export type MembersImportType = 'teams' | 'users';
 
+// Minimal recursive shape of the /teams/hierarchy response used to build the
+// create-user team multi-select.
+export type TeamNode = {
+  id: string;
+  name: string;
+  displayName?: string;
+  children?: TeamNode[];
+};
+
 export type MembersView =
   | { type: 'landing' }
   | { type: 'teams' }

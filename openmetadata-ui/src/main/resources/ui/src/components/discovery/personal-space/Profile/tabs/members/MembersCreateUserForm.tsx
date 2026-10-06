@@ -37,7 +37,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compact, debounce } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFilter } from 'react-aria';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -68,7 +68,12 @@ import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import { CreateUserFormData } from '../../../../../Settings/Users/CreateUser/CreateUser.interface';
-import type { MembersCreateUserFormProps } from './Members.types';
+import type { MembersCreateUserFormProps, TeamNode } from './Members.types';
+import {
+  flattenTeamHierarchy,
+  mergeRoleItems,
+  withoutId,
+} from './Members.utils';
 
 interface FormValues {
   email: string;
@@ -80,25 +85,6 @@ interface FormValues {
   roles: string[];
   personas: string[];
 }
-
-// Minimal recursive shape of the /teams/hierarchy response.
-type TeamNode = {
-  id: string;
-  name: string;
-  displayName?: string;
-  children?: TeamNode[];
-};
-
-const flattenTeamHierarchy = (teams: TeamNode[]): SelectItemType[] =>
-  teams.flatMap((team) => [
-    { id: team.id, label: getEntityName(team) },
-    ...flattenTeamHierarchy(team.children ?? []),
-  ]);
-
-// Hoisted so the multi-select item handlers don't nest a filter callback five
-// levels deep (sonarjs/no-nested-functions).
-const withoutId = (ids: string[], key: string | number): string[] =>
-  ids.filter((id) => id !== String(key));
 
 const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   isAdmin,
@@ -205,7 +191,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
     },
   ];
 
-  const generateRandomPassword = async () => {
+  const generateRandomPassword = useCallback(async () => {
     setIsPasswordGenerating(true);
     try {
       const pwd = await generateRandomPwd();
@@ -215,7 +201,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
     } finally {
       setIsPasswordGenerating(false);
     }
-  };
+  }, []);
 
   const handleCopyPassword = async () => {
     if (!generatedPassword) {
@@ -225,10 +211,8 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
     showSuccessToast(t('message.copied-to-clipboard'));
   };
 
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     try {
-      // Flatten the full team hierarchy (not just Organization's direct children)
-      // so nested teams — e.g. a Group under a Department — are assignable too.
       const { data } = await getTeamsHierarchy();
       setTeamItems(flattenTeamHierarchy(data as TeamNode[]));
     } catch (error) {
@@ -237,44 +221,35 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         t('server.entity-fetch-error', { entity: t('label.team-plural') })
       );
     }
-  };
+  }, [t]);
 
-  const mergeRoleItems = (
-    prev: SelectItemType[],
-    fetched: SelectItemType[],
-    selected: string[]
-  ): SelectItemType[] => {
-    const kept = prev.filter((item) => selected.includes(String(item.id)));
-    const keptIds = new Set(kept.map((k) => k.id));
-
-    return [...kept, ...fetched.filter((n) => !keptIds.has(n.id))];
-  };
-
-  const fetchRoleOptions = async (searchText = '') => {
-    try {
-      const roles = await searchRoles(searchText);
-      const fetched: SelectItemType[] = roles.map((role) => ({
-        id: role.id,
-        label: getEntityName(role),
-      }));
-      setRoleItems((prev) =>
-        mergeRoleItems(prev, fetched, form.getValues('roles'))
-      );
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.role-plural') })
-      );
-    }
-  };
+  const fetchRoleOptions = useCallback(
+    async (searchText = '') => {
+      try {
+        const roles = await searchRoles(searchText);
+        const fetched: SelectItemType[] = roles.map((role) => ({
+          id: role.id,
+          label: getEntityName(role),
+        }));
+        setRoleItems((prev) =>
+          mergeRoleItems(prev, fetched, form.getValues('roles'))
+        );
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', { entity: t('label.role-plural') })
+        );
+      }
+    },
+    [t, form]
+  );
 
   const debouncedFetchRoleOptions = useMemo(
     () => debounce(fetchRoleOptions, 300),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [fetchRoleOptions]
   );
 
-  const fetchPersonaOptions = async () => {
+  const fetchPersonaOptions = useCallback(async () => {
     try {
       const { data } = await getAllPersonas({
         limit: AGGREGATE_PAGE_SIZE_LARGE,
@@ -291,11 +266,11 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         t('server.entity-fetch-error', { entity: t('label.persona-plural') })
       );
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     void generateRandomPassword();
-  }, []);
+  }, [generateRandomPassword]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -307,8 +282,13 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
     return () => {
       debouncedFetchRoleOptions.cancel();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [
+    isAdmin,
+    fetchTeams,
+    fetchRoleOptions,
+    fetchPersonaOptions,
+    debouncedFetchRoleOptions,
+  ]);
 
   const selectedItems = (ids: string[], items: SelectItemType[]) =>
     ids.map((id) => {

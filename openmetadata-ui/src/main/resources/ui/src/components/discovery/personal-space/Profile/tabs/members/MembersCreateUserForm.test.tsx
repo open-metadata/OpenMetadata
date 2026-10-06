@@ -15,12 +15,15 @@ import { createUser } from '../../../../../../rest/userAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import MembersCreateUserForm from './MembersCreateUserForm';
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, params?: Record<string, unknown>) =>
-      params ? `${key}${JSON.stringify(params)}` : key,
-  }),
-}));
+// A stable `t` reference, matching real react-i18next — a fresh one each render
+// would make the t-dependent useCallback fetchers (and their effect) re-run in a
+// loop.
+jest.mock('react-i18next', () => {
+  const t = (key: string, params?: Record<string, unknown>) =>
+    params ? `${key}${JSON.stringify(params)}` : key;
+
+  return { useTranslation: () => ({ t }) };
+});
 
 jest.mock('../../../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
