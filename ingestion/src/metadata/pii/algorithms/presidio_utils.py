@@ -41,7 +41,6 @@ from presidio_analyzer.predefined_recognizers import (
     DateRecognizer,
     InAadhaarRecognizer,
     NhsRecognizer,
-    PhoneRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
 )
@@ -200,7 +199,6 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
         regex_flags: int | None = None,
     ) -> list[RecognizerResult]:
         results: list[RecognizerResult] = []
-        phone_recognizer: PhoneRecognizer | None = None
         for match in re.finditer(r"\d[\d -]*\d|\d", text):
             start, end = match.span()
             preceding = start - 1
@@ -220,16 +218,17 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
             ):
                 continue
             candidate = match.group()
-            if len(candidate) > 2048:
+            if len(candidate) > 5000:
                 continue
             spans = [(start, end)]
             parts = list(re.finditer(r"\S+", candidate))
             if len(parts) >= 2 and all(_has_card_shape(part.group()) for part in parts):
                 spans = [(start + part.start(), start + part.end()) for part in parts]
-            # A short number after a complete card can be a year or another field.
+            # A four-digit year is distinct from a card; shorter groups can complete one.
             prefix, separator, suffix = candidate.rpartition(" ")
-            if separator and 1 <= len(suffix) <= 4 and suffix.isdecimal() and _has_card_shape(prefix):
-                spans.append((start, start + len(prefix)))
+            card_prefix = prefix.rstrip(" ")
+            if separator and re.fullmatch(r"(?:19|20)\d{2}", suffix) and _has_card_shape(card_prefix):
+                spans.append((start, start + len(card_prefix)))
             for candidate_start, candidate_end in spans:
                 original = text[candidate_start:candidate_end]
                 normalized = self.sanitize_value(original, self.replacement_pairs)
@@ -241,13 +240,6 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
                     if result.start == 0 and result.end == len(normalized)
                 ]
                 if not card_results:
-                    continue
-                if phone_recognizer is None:
-                    phone_recognizer = PhoneRecognizer(supported_language=self.supported_language)
-                if any(
-                    phone.start == 0 and phone.end == len(original)
-                    for phone in phone_recognizer.analyze(original, ["PHONE_NUMBER"])
-                ):
                     continue
                 for result in card_results:
                     result.start, result.end = candidate_start, candidate_end
@@ -297,10 +289,11 @@ class UrlRecognizer(PresidioUrlRecognizer):
                         break
                     depth -= 1
                 end += 1
-            while end > start and text[end - 1] in ".,":
-                end -= 1
+            if end == len(text) or text[end] not in ">\"'":
+                while end > start and text[end - 1] in ".,":
+                    end -= 1
             candidate = text[start:end]
-            if len(candidate) > 2048 or depth or not candidate:
+            if len(candidate) > 5000 or depth or not candidate:
                 continue
             try:
                 has_scheme = candidate.lower().startswith(("http://", "https://"))

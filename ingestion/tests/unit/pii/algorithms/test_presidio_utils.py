@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 import pytest
 from presidio_analyzer import EntityRecognizer, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpArtifacts
-from presidio_analyzer.predefined_recognizers import CreditCardRecognizer, IpRecognizer, UrlRecognizer
+from presidio_analyzer.predefined_recognizers import CreditCardRecognizer, IpRecognizer, PhoneRecognizer, UrlRecognizer
 
 from metadata.pii.algorithms.presidio_utils import (
     MIN_SCORE_FOR_ENHANCEMENT,
@@ -37,10 +37,17 @@ from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
         ("(4111-1111-1111-1111)", "4111-1111-1111-1111"),
         ("'4111 1111 1111 1111'", "4111 1111 1111 1111"),
         ("Card 4111111111111111 2025", "4111111111111111"),
-        ("4111 1111 1111 1111 123", "4111 1111 1111 1111"),
+        ("4111111111111111 2025", "4111111111111111"),
+        ("4111111111111111" + " " * 2028 + "2025", "4111111111111111"),
+        ("4322 7148 2639 4388 390", "4322 7148 2639 4388 390"),
+        ("4111 1111 1111 1111 2025", "4111 1111 1111 1111"),
         ("3782 822463 10005", "3782 822463 10005"),
         ("6221 2600 0000 0000 001", "6221 2600 0000 0000 001"),
         ("4222222222222", "4222222222222"),
+        ("4000000000000000006", "4000000000000000006"),
+        ("4991123456788", "4991123456788"),
+        ("4930123456786", "4930123456786"),
+        ("4989123456782", "4989123456782"),
         ("é 4111111111111111 and 5555555555554444", "4111111111111111"),
     ],
 )
@@ -54,6 +61,44 @@ def test_card_results_use_original_candidate_spans(text, expected):
         result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
     )
     assert all(result.analysis_explanation.pattern_name == "Credit Card Number" for result in results)
+
+
+@pytest.mark.parametrize("card", ["4939323083746", "4924867307503760", "4930582239178"])
+def test_valid_card_is_not_vetoed_by_phone_overlap(card):
+    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    results = recognizer.analyze(f"Reference {card} recorded", ["CREDIT_CARD"])
+    assert [(result.start, result.end, result.score) for result in results] == [(10, 10 + len(card), 1.0)]
+
+
+def test_competing_phone_and_card_evidence_remain_independent():
+    value = "4991123456788"
+    card = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    phone = PhoneRecognizer()
+    assert [(result.start, result.end, result.score) for result in card.analyze(value, ["CREDIT_CARD"])] == [
+        (0, len(value), 1.0)
+    ]
+    assert any(result.start == 0 and result.end == len(value) for result in phone.analyze(value, ["PHONE_NUMBER"]))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "4111 1111 1111 1111 123",
+        "4322 7148 2639 4388 391",
+    ],
+)
+def test_card_does_not_recover_prefix_from_plausible_complete_candidate(text):
+    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    assert recognizer.analyze(text, ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize("length", [2049, 4999, 5000])
+def test_compact_card_followed_by_distant_year_within_preprocessing_limit(length):
+    card = "4111111111111111"
+    text = card + " " * (length - len(card) - len("2025")) + "2025"
+    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end, text[result.start : result.end]) for result in results] == [(0, 16, card)]
 
 
 @pytest.mark.parametrize(
@@ -78,9 +123,6 @@ def test_card_results_use_original_candidate_spans(text, expected):
         "Batch 5 312 34567 8901233 done",
         "4111-1111 1111-1111",
         "4111 1111 1111 1111 123 45",
-        "4991123456788",
-        "4930123456786",
-        "4989123456782",
     ],
 )
 def test_card_rejects_invalid_enclosing_candidate(text):
@@ -103,6 +145,9 @@ def test_card_rejects_invalid_enclosing_candidate(text):
         (UrlRecognizer, "URL", "https://example.org/a://b", "https://example.org/a://b", 0.6),
         (UrlRecognizer, "URL", "HTTPS://example.com/path", "HTTPS://example.com/path", 0.6),
         (UrlRecognizer, "URL", "('http://example.org/a(b)c')", "http://example.org/a(b)c", 0.6),
+        (UrlRecognizer, "URL", "<https://example.com/path.>", "https://example.com/path.", 0.6),
+        (UrlRecognizer, "URL", "<https://example.com/path,>", "https://example.com/path,", 0.6),
+        (UrlRecognizer, "URL", "'https://example.com/path,'", "https://example.com/path,", 0.6),
         (IpRecognizer, "IP_ADDRESS", "IP 2001:db8::1 recorded", "2001:db8::1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "é 192.168.1.1 and 2001:db8::1", "192.168.1.1", 0.6),
         (
@@ -131,6 +176,20 @@ def test_network_results_use_complete_original_candidate(recognizer_class, entit
         result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
     )
     assert all(result.analysis_explanation.pattern_name for result in results)
+
+
+@pytest.mark.parametrize("length", [2049, 4999, 5000])
+def test_url_candidate_within_preprocessing_limit_keeps_full_span(length):
+    url = "https://example.com/" + "a" * (length - len("https://example.com/"))
+    recognizer = recognizer_factories.get(UrlRecognizer, UrlRecognizer)()
+    results = recognizer.analyze(url, ["URL"])
+    assert [(result.start, result.end, url[result.start : result.end]) for result in results] == [(0, length, url)]
+
+
+def test_url_candidate_above_preprocessing_limit_is_bounded():
+    url = "https://example.com/" + "a" * (5001 - len("https://example.com/"))
+    recognizer = recognizer_factories.get(UrlRecognizer, UrlRecognizer)()
+    assert recognizer.analyze(url, ["URL"]) == []
 
 
 @pytest.mark.parametrize(

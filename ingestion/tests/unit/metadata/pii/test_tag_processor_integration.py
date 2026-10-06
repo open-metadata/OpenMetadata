@@ -233,6 +233,10 @@ def test_luhn_valid_operational_lookalike_remains_ambiguous():
     ("value", "expected_entities", "expected_labels"),
     [
         ("Card 4111111111111111 issued", {"CREDIT_CARD": "4111111111111111"}, ["PII.Sensitive"]),
+        ("Reference 4939323083746 recorded", {"CREDIT_CARD": "4939323083746"}, ["PII.Sensitive"]),
+        ("Reference 4924867307503760 recorded", {"CREDIT_CARD": "4924867307503760"}, ["PII.Sensitive"]),
+        ("Reference 4930582239178 recorded", {"CREDIT_CARD": "4930582239178"}, ["PII.Sensitive"]),
+        ("Card 4000000000000000006 issued", {"CREDIT_CARD": "4000000000000000006"}, ["PII.Sensitive"]),
         ("user@example.com", {"EMAIL_ADDRESS": "user@example.com"}, ["PII.Sensitive"]),
         (
             "https://example.org/4111111111111111",
@@ -275,11 +279,12 @@ def test_full_shipped_recognizer_interactions(value, expected_entities, expected
     [
         ("phone", "+49 1512 3456787", None, None, ["PII.NonSensitive"]),
         ("notes", "Call me on +49 1512 3456787 tomorrow", None, None, []),
-        ("phone", "4991123456788", None, None, ["PII.NonSensitive"]),
+        ("phone", "4991123456788", "4991123456788", None, ["PII.Sensitive"]),
         ("notes", "Scores 41 12 34 56 78 90 12 38 final", None, None, []),
         ("description", "Batch 5 312 34567 8901233 done", None, None, []),
         ("description", "Card 4111111111111111 2025", "4111111111111111", None, ["PII.Sensitive"]),
-        ("description", "4111 1111 1111 1111 123", "4111 1111 1111 1111", None, ["PII.Sensitive"]),
+        ("description", "4111 1111 1111 1111 123", None, None, []),
+        ("description", "4322 7148 2639 4388 390", "4322 7148 2639 4388 390", None, ["PII.Sensitive"]),
         ("ip_address", "10.1.2.3:51234", None, "10.1.2.3", ["PII.Sensitive"]),
         ("ip_address", "10.0.0.0/8", None, "10.0.0.0", ["PII.Sensitive"]),
     ],
