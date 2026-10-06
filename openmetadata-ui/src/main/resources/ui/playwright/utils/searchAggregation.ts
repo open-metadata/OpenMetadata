@@ -43,27 +43,54 @@ const isSameField = (requested: string | null, expected: string): boolean =>
   requested?.replace(KEYWORD_SUFFIX, '') ===
   expected.replace(KEYWORD_SUFFIX, '');
 
+type AggregationRequest = {
+  field: string | null;
+  value: string | null;
+  deleted: string | null;
+};
+
+// Independent filters (lineage) POST the aggregation with the same field,
+// wrapped value and deleted flag in a JSON body instead of the query string.
+const readRequest = (response: Response): AggregationRequest => {
+  const request = response.request();
+
+  if (request.method() === 'POST') {
+    const body = (request.postDataJSON() ?? {}) as {
+      fieldName?: string;
+      fieldValue?: string;
+      deleted?: boolean;
+    };
+
+    return {
+      field: body.fieldName ?? null,
+      value: body.fieldValue ?? null,
+      deleted: body.deleted === undefined ? null : String(body.deleted),
+    };
+  }
+
+  const params = new URL(response.url()).searchParams;
+
+  return {
+    field: params.get('field'),
+    value: params.get('value'),
+    deleted: params.get('deleted'),
+  };
+};
+
 const matches = (response: Response, wait: AggregationWait): boolean => {
-  const url = new URL(response.url());
-
-  if (!url.pathname.endsWith(AGGREGATE_PATH)) {
+  if (!new URL(response.url()).pathname.endsWith(AGGREGATE_PATH)) {
     return false;
   }
 
-  const params = url.searchParams;
+  const { field, value, deleted } = readRequest(response);
 
-  if (wait.field && !isSameField(params.get('field'), wait.field)) {
+  if (wait.field && !isSameField(field, wait.field)) {
     return false;
   }
 
-  if (
-    wait.deleted !== undefined &&
-    params.get('deleted') !== String(wait.deleted)
-  ) {
+  if (wait.deleted !== undefined && deleted !== String(wait.deleted)) {
     return false;
   }
-
-  const value = params.get('value');
 
   // The API sends `.*` when there is no search text, which is the open request.
   if (!wait.value) {
@@ -83,5 +110,8 @@ const matches = (response: Response, wait: AggregationWait): boolean => {
 };
 
 /** Arm before the action that triggers the request, as with `waitForResponse`. */
-export const waitForAggregation = (page: Page, wait: AggregationWait) =>
-  page.waitForResponse((response) => matches(response, wait));
+export const waitForAggregation = (
+  page: Page,
+  wait: AggregationWait,
+  options?: { timeout?: number }
+) => page.waitForResponse((response) => matches(response, wait), options);

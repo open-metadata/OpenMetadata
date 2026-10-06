@@ -38,6 +38,7 @@ import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
 import { getCellByName } from './scopedLocators';
+import { waitForAggregation } from './searchAggregation';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -624,9 +625,10 @@ export const checkStewardServicesPermissions = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: 'table',
+  });
 
   await page
     .getByTestId('drop-down-menu')

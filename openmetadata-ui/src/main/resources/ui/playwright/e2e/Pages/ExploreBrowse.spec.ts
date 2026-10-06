@@ -43,7 +43,7 @@ const dashboard = new DashboardClass({
 });
 
 // Expand any tree node by its title testid (works for categories, service
-// types, services and entity-type leaves) and wait for the count query.
+// types, services and entity-type leaves) and wait for its children to render.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
   const row = page
     .getByTestId('explore-tree')
@@ -57,30 +57,23 @@ const expandTreeNode = async (page: Page, titleTestId: string) => {
     return;
   }
 
-  // Set up response listener BEFORE clicking. After #29642, ExploreTree skips
-  // setIsLoading on browse selections, so loader-based waiting is unreliable.
-  // Response-based waiting (the same pattern used in expandServiceInExploreTree
-  // etc.) anchors on the actual data fetch so children are fully rendered before
-  // we interact with them.
-  // ServiceType nodes drill down through POST /search/aggregate (service.style
-  // top hits for custom icons); every other level still uses GET /search/query.
-  // A node only fetches its children the first time it opens though, so a caller
-  // re-expanding a node the tree already holds gets no request at all — hence the
-  // bound and the tolerance for it never arriving. Left unbounded this waits the
-  // full 30s default, which is enough to exhaust a caller's whole retry budget.
-  const res = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query?') ||
-        (response.url().endsWith('/api/v1/search/aggregate') &&
-          response.request().method() === 'POST'),
-      { timeout: 15_000 }
+  // Wait on the rendered children, not the fetch: ServiceType nodes drill down
+  // through POST /search/aggregate and every other level through GET
+  // /search/query, and a node the tree already holds re-expands with no request
+  // at all. The page loader is no signal either — after #29642 ExploreTree skips
+  // setIsLoading on browse selections. Rows render flat under the treegrid, so a
+  // node's first child is the row right after it, one level deeper; until the
+  // children arrive that row is the node's untitled "Loading…" placeholder.
+  const level = Number(await row.getAttribute('aria-level'));
+  const firstChildTitle = row
+    .locator(
+      `xpath=following-sibling::*[@role="row"][1][@aria-level="${level + 1}"]`
     )
-    .catch(() => undefined);
+    .getByTestId(/^explore-tree-title-/);
 
   await row.getByTestId('tree-expand-btn').click({ timeout: 10_000 });
-  await res;
   await expect(row).toHaveAttribute('aria-expanded', 'true');
+  await expect(firstChildTitle).toBeVisible();
   await waitForAllLoadersToDisappear(page);
 };
 
