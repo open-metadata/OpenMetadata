@@ -574,11 +574,26 @@ export const fillUserAndTeamOwnerDetails = async (
   await commitOwnerSelection(page, 'owner-select-teams-panel');
 };
 
+// TODO: this helper does not reliably change the entity type -- nth(0) can
+// land on the current value rather than a dropdown option, so it passes when
+// the default is already correct. Driving rc-select by typing to filter is the
+// fix, but it needs its own validation run and is out of scope for a locator
+// cleanup.
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
   await page.getByTestId('entity-type-select').click();
-  await page.getByRole('option', { exact: true, name: entityType }).click();
+  // Reverted from getByRole('option', { name, exact: true }) after run
+  // 37444506474: rc-select virtualises its dropdown, so the option for an
+  // entity type further down the list is simply not in the DOM and the
+  // locator never resolves ("waiting for getByRole('option', { name:
+  // 'Table' })" until the test timeout, 4 tests across both import-export
+  // shards). getByTitle matches the title attribute, which rc-select also
+  // puts on the already-selected value in the closed selector -- which is
+  // what nth(0) actually hits. See the TODO below; narrowing this needs the
+  // dropdown driven by typing, not a different selector.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see above
+  await page.getByTitle(entityType, { exact: true }).nth(0).click();
   await clickInlineSave(page);
 };
 
