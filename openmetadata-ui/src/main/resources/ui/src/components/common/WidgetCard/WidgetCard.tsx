@@ -39,6 +39,7 @@ const WidgetCard = ({
   dataTestId,
   className,
   contentClassName,
+  footer,
 }: WidgetCardProps) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(
@@ -54,6 +55,18 @@ const WidgetCard = ({
   useEffect(() => {
     setIsExpanded(isExpandDisabled ? false : defaultExpanded);
   }, [defaultExpanded, isExpandDisabled]);
+
+  const renderBody = () => (
+    <>
+      {children && (
+        <Card.Content
+          className={classNames('tw:pb-4 tw:pt-0', contentClassName)}>
+          {children}
+        </Card.Content>
+      )}
+      {footer && <Card.Footer>{footer}</Card.Footer>}
+    </>
+  );
 
   useEffect(() => {
     if (forceExpand) {
@@ -130,12 +143,7 @@ const WidgetCard = ({
           }
         />
       )}
-      {isExpanded && children && (
-        <Card.Content
-          className={classNames('tw:pb-4 tw:pt-0', contentClassName)}>
-          {children}
-        </Card.Content>
-      )}
+      {isExpanded && renderBody()}
     </Card>
   );
 };

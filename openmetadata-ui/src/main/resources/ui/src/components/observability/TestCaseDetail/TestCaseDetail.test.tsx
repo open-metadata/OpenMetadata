@@ -666,7 +666,9 @@ describe('TestCaseDetail', () => {
           incidentTask: incidentHeaderWithTask.incidentTask,
           taskLinkInfo: incidentHeaderWithTask.taskLinkInfo,
           testCaseStatusData: incidentHeaderWithTask.testCaseStatusData,
-          parameterValues: [{ name: 'columnCount', value: '10' }],
+          testCase: expect.objectContaining({
+            parameterValues: [{ name: 'columnCount', value: '10' }],
+          }),
           testCaseResult: expect.objectContaining({
             testCaseStatus: 'Success',
           }),

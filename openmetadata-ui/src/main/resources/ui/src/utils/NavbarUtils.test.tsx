@@ -212,21 +212,52 @@ describe('NavbarUtils test', () => {
       });
     });
 
-    it('should display version in version item label when provided', () => {
-      const version = '1.5.2';
-      const helpDropdownItems = getHelpDropdownItems(version);
+    it('should display the simplified version in version item label when provided', () => {
+      const helpDropdownItems = getHelpDropdownItems('1.5.202609250000');
 
       const versionItem = helpDropdownItems.find(
         (item) => item.key === HELP_ITEMS_ENUM.VERSION
       );
       const labelContent = versionItem?.label.props.children;
       const secondColumn = labelContent.props.children[1];
-      const textElement = secondColumn.props.children[0];
+      const versionBlock = secondColumn.props.children[0];
+      const versionLine = versionBlock.props.children[0];
 
-      expect(textElement.props.children).toContain(version);
+      expect(versionLine.props.children).toContain('1.5');
+      expect(versionLine.props.children).not.toContain('202609250000');
     });
 
-    it('should display question mark for version when version is undefined', () => {
+    it('should render a released date line for a build-stamped version', () => {
+      const helpDropdownItems = getHelpDropdownItems('2.0.202610050000');
+
+      const versionItem = helpDropdownItems.find(
+        (item) => item.key === HELP_ITEMS_ENUM.VERSION
+      );
+      const labelContent = versionItem?.label.props.children;
+      const secondColumn = labelContent.props.children[1];
+      const versionBlock = secondColumn.props.children[0];
+      const versionLine = versionBlock.props.children[0];
+      const releasedLine = versionBlock.props.children[1];
+
+      expect(versionLine.props.children).toContain('2.0');
+      expect(releasedLine).toBeTruthy();
+      expect(releasedLine.props.className).toBe('text-grey-muted text-xs');
+    });
+
+    it('should not render a released date line when version has no build stamp', () => {
+      const helpDropdownItems = getHelpDropdownItems('1.5.2');
+
+      const versionItem = helpDropdownItems.find(
+        (item) => item.key === HELP_ITEMS_ENUM.VERSION
+      );
+      const labelContent = versionItem?.label.props.children;
+      const secondColumn = labelContent.props.children[1];
+      const versionBlock = secondColumn.props.children[0];
+
+      expect(versionBlock.props.children[1]).toBeFalsy();
+    });
+
+    it('should render an empty version when version is undefined', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
       const versionItem = helpDropdownItems.find(
@@ -234,9 +265,11 @@ describe('NavbarUtils test', () => {
       );
       const labelContent = versionItem?.label.props.children;
       const secondColumn = labelContent.props.children[1];
-      const textElement = secondColumn.props.children[0];
+      const versionBlock = secondColumn.props.children[0];
+      const versionLine = versionBlock.props.children[0];
 
-      expect(textElement.props.children).toContain('?');
+      expect(versionLine.props.children).toContain('');
+      expect(versionLine.props.children).not.toContain('?');
     });
 
     it('should handle special characters in version string', () => {
