@@ -308,22 +308,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             .addQueryParam("parent", fqn)
             .addQueryParam("directChildrenOf", parentTermFQNParam)
             .addQueryParam("entityStatus", entityStatus);
-    // The terms inherit the domain of the parent term, else the glossary, they are listed under.
-    ResourceContextInterface parentContext = null;
-    if (parentTermParam != null) {
-      parentContext = new ResourceContext<>(Entity.GLOSSARY_TERM, parentTermParam, null);
-    } else if (glossary != null) {
-      parentContext = new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null);
-    } else if (!nullOrEmpty(parentTermFQNParam)) {
-      // directChildrenOf names either a glossary or a parent term.
-      String parentType =
-          Entity.findEntityByNameOrNull(Entity.GLOSSARY_TERM, parentTermFQNParam, Include.ALL)
-                  == null
-              ? Entity.GLOSSARY
-              : Entity.GLOSSARY_TERM;
-      parentContext = new ResourceContext<>(parentType, null, parentTermFQNParam);
-    }
-    EntityUtil.addDomainQueryParam(securityContext, filter, Entity.GLOSSARY_TERM, parentContext);
+    // Only the navbar filter: this list never enforced domain access (terms are checked per
+    // entity).
+    UUID listGlossaryId = glossary == null ? null : glossary.getId();
+    EntityUtil.addNavbarDomainFilter(
+        securityContext,
+        filter,
+        Entity.GLOSSARY_TERM,
+        () -> termListParent(parentTermParam, listGlossaryId, parentTermFQNParam));
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
@@ -1746,5 +1738,25 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @DefaultValue("true")
           boolean dryRun) {
     return importCsvInternalAsync(uriInfo, securityContext, fqn, csv, dryRun, false);
+  }
+
+  // Terms inherit the domain of the parent term, else the glossary, they are listed under.
+  private static ResourceContextInterface termListParent(
+      UUID parentTermId, UUID glossaryId, String directChildrenOf) {
+    if (parentTermId != null) {
+      return new ResourceContext<>(Entity.GLOSSARY_TERM, parentTermId, null);
+    }
+    if (glossaryId != null) {
+      return new ResourceContext<>(Entity.GLOSSARY, glossaryId, null);
+    }
+    if (nullOrEmpty(directChildrenOf)) {
+      return null;
+    }
+    // directChildrenOf names either a glossary or a parent term.
+    String parentType =
+        Entity.findEntityByNameOrNull(Entity.GLOSSARY_TERM, directChildrenOf, Include.ALL) == null
+            ? Entity.GLOSSARY
+            : Entity.GLOSSARY_TERM;
+    return new ResourceContext<>(parentType, null, directChildrenOf);
   }
 }

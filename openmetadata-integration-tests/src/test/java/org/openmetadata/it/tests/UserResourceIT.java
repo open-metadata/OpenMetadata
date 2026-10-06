@@ -595,6 +595,30 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals("Updated Display Name", updated.getDisplayName());
   }
 
+  // The navbar selection is personal: only the user can change it, so tests set it as that user.
+  private static User patchDefaultDomainAsSelf(User user) {
+    return SdkClients.createClient(user.getName(), user.getEmail(), new String[] {})
+        .users()
+        .update(user.getId().toString(), user);
+  }
+
+  @Test
+  void test_otherUsersCannotChangeTheDefaultDomain(TestNamespace ns) {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("othersdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("someone else's pick"));
+    User user = createEntity(createMinimalRequest(ns));
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+
+    assertThrows(Exception.class, () -> patchEntity(user.getId().toString(), user));
+    assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+  }
+
   @Test
   void test_defaultDomainRoundTripsThroughPatch(TestNamespace ns) {
     // The navbar domain selection is persisted on the user; a PATCH that changes only
@@ -611,7 +635,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertNull(user.getDefaultDomain());
 
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
-    patchEntity(user.getId().toString(), user);
+    patchDefaultDomainAsSelf(user);
 
     User reread = Users.get(user.getId().toString(), "defaultDomain");
     assertNotNull(reread.getDefaultDomain(), "defaultDomain must persist through PATCH");
@@ -620,7 +644,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     // Clearing the selection must persist too.
     reread.setDefaultDomain(null);
-    patchEntity(reread.getId().toString(), reread);
+    patchDefaultDomainAsSelf(reread);
     assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
   }
 
@@ -638,7 +662,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     CreateUser create = createMinimalRequest(ns);
     User user = createEntity(create);
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
-    patchEntity(user.getId().toString(), user);
+    patchDefaultDomainAsSelf(user);
 
     SdkClients.adminClient()
         .getHttpClient()
@@ -653,7 +677,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   void test_defaultDomainMustBeARealDomain(TestNamespace ns) {
     User user = createEntity(createMinimalRequest(ns));
     user.setDefaultDomain(new EntityReference().withId(UUID.randomUUID()).withType("domain"));
-    assertThrows(Exception.class, () -> patchEntity(user.getId().toString(), user));
+    assertThrows(Exception.class, () -> patchDefaultDomainAsSelf(user));
     assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
   }
 
@@ -671,7 +695,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .withDescription("will be deleted"));
     User user = createEntity(createMinimalRequest(ns));
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
-    patchEntity(user.getId().toString(), user);
+    patchDefaultDomainAsSelf(user);
     assertNotNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
 
     SdkClients.adminClient()
@@ -733,7 +757,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     String email = userName + "@test.openmetadata.org";
     User user = createEntity(new CreateUser().withName(userName).withEmail(email));
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
-    patchEntity(user.getId().toString(), user);
+    patchDefaultDomainAsSelf(user);
 
     ListParams params = new ListParams();
     params.setLimit(100);

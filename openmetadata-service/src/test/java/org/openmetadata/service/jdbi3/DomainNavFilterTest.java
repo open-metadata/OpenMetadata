@@ -22,6 +22,8 @@ class DomainNavFilterTest {
     assertFalse(DomainNavFilter.shouldApply(Entity.USER, true, false, DOMAIN_ID));
     assertFalse(DomainNavFilter.shouldApply(Entity.TAG, true, false, DOMAIN_ID));
     assertFalse(DomainNavFilter.shouldApply(Entity.TEST_CASE, true, false, DOMAIN_ID));
+    // Basic test suites inherit their table's domain, like test cases.
+    assertFalse(DomainNavFilter.shouldApply(Entity.TEST_SUITE, true, false, DOMAIN_ID));
   }
 
   @Test

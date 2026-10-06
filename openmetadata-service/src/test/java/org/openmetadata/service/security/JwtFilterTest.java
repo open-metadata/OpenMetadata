@@ -257,6 +257,40 @@ class JwtFilterTest {
   }
 
   @Test
+  void testPersonalAccessTokensCarryNoActiveDomain() {
+    // The navbar selection is a UI preference: scripts and SDK calls using a personal access token
+    // list without it.
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<UserTokenCache> userTokenCache =
+            org.mockito.Mockito.mockStatic(UserTokenCache.class);
+        MockedStatic<SubjectCache> subjectCache =
+            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+      userTokenCache.when(() -> UserTokenCache.isTokenValid("sam", jwt)).thenReturn(true);
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("sam"))
+          .thenReturn(
+              new User()
+                  .withName("sam")
+                  .withDefaultDomain(
+                      new EntityReference().withId(UUID.randomUUID()).withType("domain")));
+      jwtFilter.filter(context);
+    }
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContextArgument.capture());
+    assertNull(((CatalogSecurityContext) securityContextArgument.getValue()).activeDomain());
+    assertNull(ActiveDomainContext.getActiveDomain());
+  }
+
+  @Test
   void testBotsCarryNoActiveDomain() {
     String jwt =
         JWT.create()

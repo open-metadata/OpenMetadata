@@ -1098,18 +1098,6 @@ public final class EntityUtil {
         securityContext, filter, entityType, () -> listParent(filter, entityType));
   }
 
-  /**
-   * As above, for a caller that knows the entity its list is confined to ({@code parent}, null when
-   * unconfined), e.g. a glossary whose terms are listed.
-   */
-  public static void addDomainQueryParam(
-      SecurityContext securityContext,
-      ListFilter filter,
-      String entityType,
-      ResourceContextInterface parent) {
-    applyDomainQueryParam(securityContext, filter, entityType, () -> parent);
-  }
-
   // The parent is only resolved when a navbar selection is actually applied.
   private static void applyDomainQueryParam(
       SecurityContext securityContext,
@@ -1140,8 +1128,30 @@ public final class EntityUtil {
       }
       return;
     }
-    // Global (navbar) domain filter: a view preference that narrows lists to the selected domain
-    // and never restricts access, so it applies to admins too.
+    applyNavbarDomain(securityContext, filter, entityType, parent);
+  }
+
+  /**
+   * The navbar domain filter alone, without the domain-only role's access condition, for lists that
+   * never enforced domain access (e.g. glossary terms, which are access-checked per entity).
+   */
+  public static void addNavbarDomainFilter(
+      SecurityContext securityContext,
+      ListFilter filter,
+      String entityType,
+      Supplier<ResourceContextInterface> parent) {
+    if (!getSubjectContext(securityContext).isBot()) {
+      applyNavbarDomain(securityContext, filter, entityType, parent);
+    }
+  }
+
+  // Global (navbar) domain filter: a view preference that narrows lists to the selected domain and
+  // never restricts access, so it applies to admins too.
+  private static void applyNavbarDomain(
+      SecurityContext securityContext,
+      ListFilter filter,
+      String entityType,
+      Supplier<ResourceContextInterface> parent) {
     EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
     String selectedFqn = selected == null ? null : selected.getFullyQualifiedName();
     DomainNavFilter.apply(
@@ -1192,6 +1202,9 @@ public final class EntityUtil {
       return DomainNavFilter.ParentScope.NONE;
     }
     try {
+      if (parent.getEntity() == null) {
+        return DomainNavFilter.ParentScope.UNRESOLVED;
+      }
       boolean inSelection =
           listOrEmpty(parent.getDomains()).stream()
               .map(EntityReference::getFullyQualifiedName)

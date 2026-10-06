@@ -60,7 +60,6 @@ import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
@@ -341,8 +340,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
       String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
-      // The (possibly impersonated) user's persisted navbar selection; a view preference only.
-      EntityReference activeDomain = ActiveDomainContext.resolve(userName, isBotUser);
+      // The persisted navbar selection is a UI view preference: bot tokens (including impersonated
+      // requests) and personal access tokens (scripts, SDK) list without it.
+      EntityReference activeDomain =
+          ActiveDomainContext.resolve(userName, isBotUser || isPersonalAccessToken(claims));
       CatalogSecurityContext catalogSecurityContext =
           new CatalogSecurityContext(
               catalogPrincipal,
@@ -577,12 +578,15 @@ public class JwtFilter implements ContainerRequestFilter {
         "The given token does not match the current bot's token!");
   }
 
+  private static boolean isPersonalAccessToken(Map<String, Claim> claims) {
+    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
+    return tokenTypeClaim != null
+        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenTypeClaim.asString());
+  }
+
   private void validatePersonalAccessToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName) {
-    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
-    String tokenType = tokenTypeClaim == null ? StringUtils.EMPTY : tokenTypeClaim.asString();
-    if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenType)) {
+    if (isPersonalAccessToken(claims)) {
       if (UserTokenCache.isTokenValid(userName, tokenFromHeader)) {
         return;
       }
@@ -709,7 +713,8 @@ public class JwtFilter implements ContainerRequestFilter {
         isBotUser,
         null,
         activePersona,
-        ActiveDomainContext.resolve(resolvedIdentity.userName(), isBotUser));
+        ActiveDomainContext.resolve(
+            resolvedIdentity.userName(), isBotUser || isPersonalAccessToken(claims)));
   }
 
   private Algorithm createAlgorithmFromJwk(

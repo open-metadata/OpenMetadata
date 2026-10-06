@@ -1129,6 +1129,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         continue;
       }
       String path = patchOpObject.getString("path");
+      if (path.startsWith("/defaultDomain") && !isSelf) {
+        throw new AuthorizationException("Users can only update their own default domain");
+      }
       if (isPrivilegedUserPatchPath(path)) {
         authorizer.authorizeAdmin(securityContext);
         continue;

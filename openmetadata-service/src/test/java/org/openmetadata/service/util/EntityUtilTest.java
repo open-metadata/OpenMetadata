@@ -55,6 +55,7 @@ import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class EntityUtilTest {
@@ -1055,6 +1056,95 @@ class EntityUtilTest {
       // A sub-domain of an allowed domain is within scope too.
       assertEquals("'" + salesEmea.getId() + "'", subNarrowed.getQueryParam("domainId"));
       assertEquals("true", subNarrowed.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void addNavbarDomainFilter_skipsTheDomainOnlyAccessCondition() {
+    // Glossary terms never enforced domain access on their list; adding the navbar filter must not
+    // bring the domain-only role's exact-id condition with it.
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    org.openmetadata.schema.entity.teams.User restricted =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(sales));
+    CatalogSecurityContext context =
+        new CatalogSecurityContext(
+            () -> "analyst", "https", "digest", null, false, null, null, sales);
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("glossaryTerm")).thenReturn(true);
+      entity
+          .when(() -> Entity.getEntityRepository("glossaryTerm"))
+          .thenReturn(domainAwareRepository);
+      entity.when(Entity::getSearchRepository).thenReturn(null);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", sales.getId(), NON_DELETED))
+          .thenReturn(sales);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(context))
+          .thenReturn(new SubjectContext(restricted, null));
+
+      ListFilter filter = new ListFilter();
+      EntityUtil.addNavbarDomainFilter(context, filter, "glossaryTerm", () -> null);
+
+      assertEquals(sales.getId().toString(), filter.getQueryParam("domainId"));
+      assertNull(filter.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void addNavbarDomainFilter_unresolvableParentListsChildrenInFull() {
+    // A parent that no longer resolves (ResourceContext returns no entity) can't vouch for its
+    // children's inherited domain, so the list is left unfiltered rather than strictly narrowed.
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    CatalogSecurityContext context =
+        new CatalogSecurityContext(
+            () -> "viewer", "https", "digest", null, false, null, null, sales);
+    ResourceContextInterface missingParent = mock(ResourceContextInterface.class);
+    when(missingParent.getEntity()).thenReturn(null);
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
+      entity.when(Entity::getSearchRepository).thenReturn(null);
+      entity
+          .when(() -> Entity.getEntityReferenceById("domain", sales.getId(), NON_DELETED))
+          .thenReturn(sales);
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(context))
+          .thenReturn(
+              new SubjectContext(
+                  new org.openmetadata.schema.entity.teams.User().withName("viewer"), null));
+
+      ListFilter filter = new ListFilter();
+      EntityUtil.addNavbarDomainFilter(context, filter, "table", () -> missingParent);
+
+      assertNull(filter.getQueryParam("domainId"));
     }
   }
 
