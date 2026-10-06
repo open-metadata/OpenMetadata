@@ -54,7 +54,7 @@ import {
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
-import { clickUntilVisible } from './waitHelpers';
+import { clickUntilVisible, waitForResponseWithStatus } from './waitHelpers';
 
 /**
  * Waits until no loader is left in `scope`: the whole page, or a widget's
@@ -1962,10 +1962,14 @@ export const updateDisplayNameForEntityChildren = async (
   rowId: string,
   rowSelector = 'data-row-key'
 ) => {
-  await page
-    .locator(`[${rowSelector}="${rowId}"]`)
-    .getByTestId('edit-displayName-button')
-    .click();
+  const row = page.locator(`[${rowSelector}="${rowId}"]`);
+
+  // Rows reflow for about a second after first paint (nested rows auto-expand,
+  // description previews clamp). A mouse click can straddle that shift, so
+  // `click` fires on the name cell instead of the button and the cell handler
+  // opens the column detail panel rather than this modal. Keyboard activation
+  // targets the button itself, independent of where the row has moved.
+  await row.getByTestId('edit-displayName-button').press('Enter');
 
   await expect(page.locator('#name')).toBeDisabled();
 
@@ -1977,27 +1981,23 @@ export const updateDisplayNameForEntityChildren = async (
 
   await page.locator('#displayName').fill(displayName.newDisplayName);
 
-  const updateRequest = page.waitForResponse(
-    (req) =>
-      ['PUT', 'PATCH'].includes(req.request().method()) &&
-      !req.url().includes('api/v1/analytics/web/events/collect')
+  const updateRequest = waitForResponseWithStatus(
+    page,
+    (response) =>
+      ['PUT', 'PATCH'].includes(response.request().method()) &&
+      !response.url().includes('api/v1/analytics/web/events/collect'),
+    200
   );
 
-  await page.click('[data-testid="save-button"]');
+  await page.getByTestId('save-button').click();
   await updateRequest;
 
   if (displayName.newDisplayName === '') {
-    await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('column-display-name')
-    ).not.toBeAttached();
+    await expect(row.getByTestId('column-display-name')).not.toBeAttached();
   } else {
-    await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('column-display-name')
-    ).toHaveText(displayName.newDisplayName);
+    await expect(row.getByTestId('column-display-name')).toHaveText(
+      displayName.newDisplayName
+    );
   }
 };
 
@@ -2006,39 +2006,13 @@ export const removeDisplayNameForEntityChildren = async (
   displayName: string,
   rowId: string,
   rowSelector = 'data-row-key'
-) => {
-  await page
-    .locator(`[${rowSelector}="${rowId}"]`)
-    .getByTestId('edit-displayName-button')
-    .click();
-
-  await expect(page.locator('#name')).toBeDisabled();
-
-  await expect(page.locator('#displayName')).toBeVisible();
-
-  await expect(page.locator('#displayName')).toHaveValue(displayName);
-
-  await page.locator('#displayName').fill('');
-
-  const updateRequest = page.waitForResponse((response) => {
-    const method = response.request().method();
-    const url = response.url();
-
-    // Check Analytics Api Does Not Intterupt With PUT CAll
-    return (
-      (method === 'PUT' || method === 'PATCH') &&
-      !url.includes('api/v1/analytics/web/events/collect')
-    );
-  });
-  await page.click('[data-testid="save-button"]');
-  await updateRequest;
-
-  await expect(
-    page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('column-display-name')
-  ).not.toBeVisible();
-};
+) =>
+  updateDisplayNameForEntityChildren(
+    page,
+    { oldDisplayName: displayName, newDisplayName: '' },
+    rowId,
+    rowSelector
+  );
 
 export const checkForEditActions = async ({
   page,
