@@ -45,11 +45,11 @@ import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
 
 export const waitForAllLoadersToDisappear = async (
-  page: Page,
+  scope: Page | Locator,
   dataTestId = 'loader',
   timeout = 30000
 ) => {
-  const loaders = page.locator(`[data-testid="${dataTestId}"]`);
+  const loaders = scope.locator(`[data-testid="${dataTestId}"]`);
 
   // Wait for the loader elements count to become 0
   await expect(loaders).toHaveCount(0, { timeout });
