@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -282,6 +283,11 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      // The target is fixed at creation: moving an announcement between an asset and system-wide
+      // would bypass the admin check on system-wide writes (e.g. dropping entityLink via PATCH).
+      if (!Objects.equals(original.getEntityLink(), updated.getEntityLink())) {
+        throw new IllegalArgumentException("entityLink cannot be changed after creation");
+      }
       recordChange("startTime", original.getStartTime(), updated.getStartTime());
       recordChange("endTime", original.getEndTime(), updated.getEndTime());
       recordChange("status", original.getStatus(), updated.getStatus());

@@ -864,8 +864,9 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
     assertEquals(systemWide.getDescription(), unchanged.getDescription());
     assertFalse(Boolean.TRUE.equals(unchanged.getDeleted()));
 
+    // The target is fixed at creation, so dropping it is rejected rather than becoming system-wide.
     assertThrows(
-        ForbiddenException.class,
+        InvalidRequestException.class,
         () ->
             writer
                 .announcements()
@@ -900,6 +901,26 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
             new ListParams().addQueryParam("systemWide", "true").addQueryParam("active", "true"));
     assertTrue(activeSystemIds.contains(systemWide.getId()));
     assertFalse(activeSystemIds.contains(onEntity.getId()));
+  }
+
+  /** The target is fixed at creation; PATCH skips the schema pattern, so this guards it. */
+  @Test
+  void testEntityLinkCannotBeChangedByPatch(TestNamespace ns) throws Exception {
+    long now = System.currentTimeMillis();
+    Table table = createTestTable(ns);
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
+    Announcement onEntity =
+        createEntity(windowed(ns.prefix("fixed-target"), now).withEntityLink(entityLink));
+    String id = onEntity.getId().toString();
+    OpenMetadataClient admin = SdkClients.adminClient();
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> admin.announcements().patch(id, patchOp("replace", "/entityLink", "\"\"")));
+    assertThrows(
+        InvalidRequestException.class,
+        () -> admin.announcements().patch(id, patchOp("remove", "/entityLink", null)));
+    assertEquals(entityLink, getEntity(id).getEntityLink());
   }
 
   private List<UUID> listIds(boolean systemWide) {

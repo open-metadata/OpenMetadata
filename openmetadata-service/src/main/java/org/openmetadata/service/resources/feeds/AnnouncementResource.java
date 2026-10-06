@@ -22,10 +22,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonString;
-import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -78,14 +75,6 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
 
   public static final String COLLECTION_PATH = "v1/announcements/";
   static final String FIELDS = "";
-  private static final String ENTITY_LINK_FIELD = "entityLink";
-  private static final String ENTITY_LINK_PATH = "/" + ENTITY_LINK_FIELD;
-  private static final String PATCH_OP = "op";
-  private static final String PATCH_PATH = "path";
-  private static final String PATCH_FROM = "from";
-  private static final String PATCH_VALUE = "value";
-  private static final String PATCH_REMOVE = "remove";
-  private static final String PATCH_MOVE = "move";
 
   public AnnouncementResource(Authorizer authorizer, Limits limits) {
     super(Entity.ANNOUNCEMENT, authorizer, limits);
@@ -311,9 +300,6 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @PathParam("id") UUID id,
       JsonPatch patch) {
     authorizeSystemWideWrite(securityContext, repository.find(id, Include.NON_DELETED));
-    if (dropsEntityLink(patch)) {
-      authorizer.authorizeAdmin(securityContext);
-    }
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -345,46 +331,14 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
 
   /**
    * An announcement with no entityLink is system-wide: it is shown to every user rather than on one
-   * asset, so writing one (create, update, delete, restore, or a patch that drops the entityLink) is
-   * admin-only, on top of the usual policy check.
+   * asset, so writing one is admin-only on top of the usual policy check. The repository keeps
+   * entityLink fixed after creation, so an update can't turn an entity announcement into one.
    */
   private void authorizeSystemWideWrite(
       SecurityContext securityContext, Announcement announcement) {
     if (announcement != null && nullOrEmpty(announcement.getEntityLink())) {
       authorizer.authorizeAdmin(securityContext);
     }
-  }
-
-  /**
-   * Inspects the operations rather than applying the patch: the stored announcement has no owners
-   * or domains (they are relationships), so a patch computed against the full entity would not
-   * apply to it.
-   */
-  private static boolean dropsEntityLink(JsonPatch patch) {
-    return patch.toJsonArray().stream()
-        .map(JsonValue::asJsonObject)
-        .anyMatch(AnnouncementResource::dropsEntityLink);
-  }
-
-  private static boolean dropsEntityLink(JsonObject operation) {
-    String op = operation.getString(PATCH_OP, "");
-    String path = operation.getString(PATCH_PATH, "");
-    boolean clearsField =
-        ENTITY_LINK_PATH.equals(path) && (PATCH_REMOVE.equals(op) || isEmptyValue(operation));
-    boolean movesField =
-        PATCH_MOVE.equals(op) && ENTITY_LINK_PATH.equals(operation.getString(PATCH_FROM, ""));
-    boolean replacesDocument =
-        path.isEmpty()
-            && operation.get(PATCH_VALUE) instanceof JsonObject document
-            && nullOrEmpty(document.getString(ENTITY_LINK_FIELD, null));
-    return clearsField || movesField || replacesDocument;
-  }
-
-  private static boolean isEmptyValue(JsonObject operation) {
-    JsonValue value = operation.get(PATCH_VALUE);
-    return value != null
-        && (value.getValueType() == JsonValue.ValueType.NULL
-            || (value instanceof JsonString text && text.getString().isEmpty()));
   }
 
   private Announcement getAnnouncement(CreateAnnouncement create, String userName) {
