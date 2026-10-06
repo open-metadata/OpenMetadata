@@ -369,6 +369,8 @@ class TrinoSource(CommonDbSourceService):
             row = result.first()
             if row and row[0] == "iceberg":
                 table_type = TableType.Iceberg
+            elif row and row[0] == "delta_lake":
+                table_type = TableType.DeltaLake
         except Exception:
             logger.debug(traceback.format_exc())
 

@@ -1185,6 +1185,7 @@ export interface Partitioning {
  * This schema defines the type used for describing different types of tables.
  */
 export enum TableType {
+    DeltaLake = "DeltaLake",
     Dynamic = "Dynamic",
     External = "External",
     Foreign = "Foreign",
