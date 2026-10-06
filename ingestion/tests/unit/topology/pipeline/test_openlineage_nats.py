@@ -13,10 +13,13 @@ OpenLineage connector: consuming events from NATS JetStream.
 """
 
 import json
+import time
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from nats.js.api import ConsumerConfig, DeliverPolicy
+from nats.js.errors import APIError, NotFoundError
 
 from metadata.clients.nats_client import build_connect_options, cleanup_temp_secrets
 from metadata.generated.schema.entity.services.connections.messaging.nats.basicAuth import (
@@ -38,6 +41,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.openLineageC
     OpenLineageConnection,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.pipeline.openlineage import metadata as openlineage_metadata
 from metadata.ingestion.source.pipeline.openlineage.connection import _get_nats_connection
 from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
 
@@ -48,6 +52,36 @@ def _message(payload: dict) -> MagicMock:
     message = MagicMock()
     message.data = json.dumps(payload).encode()
     return message
+
+
+def _fake_nats(js: MagicMock) -> MagicMock:
+    connection = MagicMock()
+    connection.jetstream.return_value = js
+    connection.flush = AsyncMock()
+    connection.close = AsyncMock()
+    return connection
+
+
+def _fake_jetstream(existing: ConsumerConfig | None = None, add_error: Exception | None = None) -> MagicMock:
+    """A JetStream stub whose consumer either already exists or does not."""
+    js = MagicMock()
+    if existing is None:
+        js.consumer_info = AsyncMock(side_effect=NotFoundError())
+    else:
+        js.consumer_info = AsyncMock(return_value=MagicMock(config=existing))
+    js.add_consumer = AsyncMock(side_effect=add_error)
+    js.pull_subscribe_bind = AsyncMock(return_value=MagicMock())
+    return js
+
+
+def _connect_with(monkeypatch: pytest.MonkeyPatch, js: MagicMock) -> MagicMock:
+    connection = _fake_nats(js)
+
+    async def fake_connect(**_: object) -> MagicMock:
+        return connection
+
+    monkeypatch.setattr("metadata.ingestion.source.pipeline.openlineage.connection.nats.connect", fake_connect)
+    return connection
 
 
 @pytest.fixture
@@ -213,3 +247,133 @@ class TestPollNats:
 
         assert list(source._poll_nats(broker)) == []
         assert source.client.ack.call_count == 1
+
+
+class TestDurableConsumerReuse:
+    """A durable carries the position in the stream, so the wrong one is not harmless.
+
+    ``durableConsumerName`` defaults to ``openmetadata`` for every OpenLineage service,
+    so a second service on the same stream can find a durable belonging to the first.
+    """
+
+    def test_a_missing_consumer_is_created(self, broker, monkeypatch):
+        js = _fake_jetstream(existing=None)
+        _connect_with(monkeypatch, js)
+
+        client = _get_nats_connection(broker)
+        try:
+            js.add_consumer.assert_awaited_once()
+        finally:
+            client.close()
+
+    def test_a_consumer_filtering_other_subjects_is_refused(self, broker, monkeypatch):
+        """Binding to it would consume and acknowledge events meant for someone else."""
+        js = _fake_jetstream(existing=ConsumerConfig(durable_name="openmetadata", filter_subject="other.>"))
+        connection = _connect_with(monkeypatch, js)
+
+        with pytest.raises(SourceConnectionException, match="already exists and filters"):
+            _get_nats_connection(broker)
+
+        js.pull_subscribe_bind.assert_not_awaited()
+        connection.close.assert_awaited_once()
+
+    def test_an_unfiltered_consumer_matches_the_catch_all(self, broker, monkeypatch):
+        """No filter and ``>`` both mean every subject, so they must not look different."""
+        js = _fake_jetstream(existing=ConsumerConfig(durable_name="openmetadata", filter_subject=None))
+        _connect_with(monkeypatch, js)
+
+        client = _get_nats_connection(broker)
+        try:
+            js.pull_subscribe_bind.assert_awaited_once()
+            js.add_consumer.assert_not_awaited()
+        finally:
+            client.close()
+
+    def test_tuning_differences_are_warned_about_not_refused(self, broker, monkeypatch, caplog):
+        """add_consumer cannot reconfigure a durable, so the existing values stand."""
+        js = _fake_jetstream(
+            existing=ConsumerConfig(
+                durable_name="openmetadata",
+                filter_subject=">",
+                ack_wait=5,
+                max_deliver=99,
+                deliver_policy=DeliverPolicy.NEW,
+            )
+        )
+        _connect_with(monkeypatch, js)
+
+        client = _get_nats_connection(broker)
+        try:
+            warnings = caplog.text
+            assert "ackWait" in warnings
+            assert "maxDeliver" in warnings
+            assert "consumerOffsets" in warnings
+        finally:
+            client.close()
+
+    def test_a_consumer_created_concurrently_is_checked_too(self, broker, monkeypatch):
+        """Two runs starting together must not make one of them fail outright."""
+        js = _fake_jetstream(existing=None, add_error=APIError(code=400, description="consumer already exists"))
+        js.consumer_info = AsyncMock(
+            side_effect=[
+                NotFoundError(),
+                MagicMock(config=ConsumerConfig(durable_name="openmetadata", filter_subject=">")),
+            ]
+        )
+        _connect_with(monkeypatch, js)
+
+        client = _get_nats_connection(broker)
+        try:
+            js.pull_subscribe_bind.assert_awaited_once()
+        finally:
+            client.close()
+
+
+class TestBatchKeepalive:
+    """The generator is suspended for the whole time the pipeline works on an event."""
+
+    @pytest.fixture
+    def quick_broker(self) -> NatsBrokerConfig:
+        return NatsBrokerConfig(
+            natsServers="nats://localhost:4222",
+            streamName="OPENLINEAGE",
+            poolTimeout=0.01,
+            sessionTimeout=0,
+            ackWait=1,
+        )
+
+    def test_the_lease_is_refreshed_repeatedly_while_suspended(self, source, quick_broker, event_payload, monkeypatch):
+        """One refresh before the yield only buys a single ackWait."""
+        monkeypatch.setattr(openlineage_metadata, "MIN_NATS_KEEPALIVE_INTERVAL", 0.01)
+        message = _message(event_payload)
+        source.client = MagicMock()
+        source.client.fetch.side_effect = [[message], []]
+
+        for _ in source._poll_nats(quick_broker):
+            # a downstream slower than one refresh interval
+            time.sleep(0.6)
+
+        assert source.client.in_progress.call_count >= 2, "the lease was refreshed only once"
+        assert source.client.in_progress.call_args[0][0] is message
+
+    def test_the_refresh_stops_before_the_acknowledgement(self, source, quick_broker, event_payload, monkeypatch):
+        """A refresh racing the ack of the same message would fight it."""
+        monkeypatch.setattr(openlineage_metadata, "MIN_NATS_KEEPALIVE_INTERVAL", 0.01)
+        calls: list[str] = []
+        source.client = MagicMock()
+        source.client.in_progress.side_effect = lambda _m: calls.append("in_progress")
+        source.client.ack.side_effect = lambda _m: calls.append("ack")
+        source.client.fetch.side_effect = [[_message(event_payload)], []]
+
+        for _ in source._poll_nats(quick_broker):
+            time.sleep(0.05)
+
+        assert calls[-1] == "ack"
+
+    def test_nothing_is_kept_alive_for_an_unparseable_message(self, source, quick_broker):
+        """It is acknowledged straight away, so there is no processing window to cover."""
+        source.client = MagicMock()
+        source.client.fetch.side_effect = [[_message({"not": "an event"})], []]
+
+        assert list(source._poll_nats(quick_broker)) == []
+        source.client.in_progress.assert_not_called()

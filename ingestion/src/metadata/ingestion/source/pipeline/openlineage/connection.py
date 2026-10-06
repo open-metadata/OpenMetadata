@@ -20,6 +20,7 @@ from typing import Any
 
 import nats
 import nats.errors
+import nats.js.errors
 from botocore.client import BaseClient
 from confluent_kafka import Consumer as KafkaConsumer
 from confluent_kafka import TopicPartition
@@ -224,6 +225,79 @@ def _run_event_loop(loop: asyncio.AbstractEventLoop) -> None:
         loop.close()
 
 
+def _consumer_subject_filter(config: Any) -> str:
+    """The subject filter of a consumer config, as one comparable string.
+
+    A consumer with no filter at all receives every subject of its stream, which is
+    exactly what ``>`` means, so the two spellings have to compare equal. Newer servers
+    also allow a list of filters, which is why the plural field is checked first.
+    """
+    subjects = getattr(config, "filter_subjects", None)
+    if subjects:
+        return ",".join(sorted(subjects))
+    return getattr(config, "filter_subject", None) or ">"
+
+
+async def _existing_consumer(js: Any, consumer: Any, broker: NatsBrokerConfig) -> Any | None:
+    """The durable's config as the server holds it, or None once we created it."""
+    try:
+        info = await js.consumer_info(broker.streamName, broker.durableConsumerName)
+    except nats.js.errors.NotFoundError:
+        pass
+    else:
+        return info.config
+    try:
+        await js.add_consumer(broker.streamName, config=consumer)
+    except nats.js.errors.APIError:
+        # Another run created it between the lookup and here, so hold what now
+        # exists to the same check rather than failing this run over the race
+        info = await js.consumer_info(broker.streamName, broker.durableConsumerName)
+        return info.config
+    return None
+
+
+async def _ensure_consumer(js: Any, consumer: Any, broker: NatsBrokerConfig) -> None:
+    """Create the durable consumer, or confirm the existing one is ours.
+
+    Reusing a durable by name is the point -- it carries the position in the
+    stream from one run to the next -- but ``durableConsumerName`` defaults to
+    ``openmetadata`` for every OpenLineage service. A second service pointed at
+    the same stream therefore finds a durable belonging to the first, and binding
+    to it blindly means consuming and acknowledging events this connector was
+    never configured to read. A subject filter that does not match is refused
+    instead of silently adopted.
+    """
+    existing = await _existing_consumer(js, consumer, broker)
+    if existing is None:
+        return
+
+    wanted = _consumer_subject_filter(consumer)
+    found = _consumer_subject_filter(existing)
+    if wanted != found:
+        raise SourceConnectionException(
+            f"The JetStream consumer '{broker.durableConsumerName}' on stream "
+            f"'{broker.streamName}' already exists and filters '{found}', not '{wanted}'. "
+            f"It belongs to a different configuration: give this service its own "
+            f"durableConsumerName, or delete the existing consumer."
+        )
+
+    # A durable cannot be reconfigured through add_consumer, so these stay as the
+    # existing consumer has them. Say so rather than let them look applied.
+    for label, configured, in_use in (
+        ("ackWait", consumer.ack_wait, existing.ack_wait),
+        ("maxDeliver", consumer.max_deliver, existing.max_deliver),
+        ("consumerOffsets", consumer.deliver_policy, existing.deliver_policy),
+    ):
+        if configured != in_use:
+            logger.warning(
+                "The existing JetStream consumer '%s' keeps its %s of %s; the configured %s is ignored",
+                broker.durableConsumerName,
+                label,
+                getattr(in_use, "value", in_use),
+                getattr(configured, "value", configured),
+            )
+
+
 def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
     from nats.js.api import AckPolicy, ConsumerConfig, DeliverPolicy
 
@@ -258,12 +332,7 @@ def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
                     # a limit JetStream would redeliver them on every run
                     max_deliver=broker.maxDeliver,
                 )
-                try:
-                    await js.add_consumer(broker.streamName, config=consumer)
-                except Exception as exc:
-                    # A durable consumer that already exists keeps its own settings and
-                    # its position in the stream, which is the point of reusing the name
-                    logger.debug("Reusing the existing JetStream consumer: %s", exc)
+                await _ensure_consumer(js, consumer, broker)
                 subscription = await js.pull_subscribe_bind(broker.durableConsumerName, stream=broker.streamName)
             except Exception:
                 # The connection is open by now, so a failure here would leak it: one

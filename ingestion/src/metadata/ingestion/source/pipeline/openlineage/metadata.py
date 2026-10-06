@@ -15,10 +15,12 @@ OpenLineage source to extract metadata from Kafka or Kinesis events
 
 import json
 import re
+import threading
 import time
 import traceback
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from itertools import groupby, product
 from typing import Any
 from urllib.parse import quote, urlparse
@@ -193,6 +195,10 @@ def deaggregate_kinesis_record(data: bytes) -> list[bytes]:
 DEFAULT_NATS_POOL_TIMEOUT = 1.0
 DEFAULT_NATS_SESSION_TIMEOUT = 30
 DEFAULT_NATS_BATCH_SIZE = 100
+DEFAULT_NATS_ACK_WAIT = 60
+# Floor for the keep-alive heartbeat, so a short ackWait cannot turn the refresh into a
+# tight loop of control messages against the server
+MIN_NATS_KEEPALIVE_INTERVAL = 1.0
 
 
 class OpenlineageSource(PipelineServiceSource):
@@ -1358,6 +1364,7 @@ class OpenlineageSource(PipelineServiceSource):
             pool_timeout = DEFAULT_NATS_POOL_TIMEOUT if broker.poolTimeout is None else broker.poolTimeout
             session_timeout = DEFAULT_NATS_SESSION_TIMEOUT if broker.sessionTimeout is None else broker.sessionTimeout
             batch_size = DEFAULT_NATS_BATCH_SIZE if broker.batchSize is None else broker.batchSize
+            ack_wait = DEFAULT_NATS_ACK_WAIT if broker.ackWait is None else broker.ackWait
             while idle_time <= session_timeout:
                 messages = client.fetch(batch_size, timeout=pool_timeout)
                 if not messages:
@@ -1378,12 +1385,13 @@ class OpenlineageSource(PipelineServiceSource):
                         logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
                         logger.debug(traceback.format_exc())
 
-                    # The whole batch's acknowledgement timers start together, so tell the
-                    # server the rest are still being worked on before handing this one to
-                    # the pipeline; otherwise a slow run has them redelivered underneath it
-                    self._keep_batch_alive(client, messages[position + 1 :])
                     if parsed:
-                        yield parsed
+                        # The batch's acknowledgement timers all start together, and this
+                        # generator stays suspended below for as long as the pipeline
+                        # works on the event, so this message and the ones behind it are
+                        # refreshed from another thread until it comes back
+                        with self._batch_keepalive(client, messages[position:], ack_wait):
+                            yield parsed
 
                     # Acknowledged once the connector has handed the event on. The
                     # ingestion pipeline reports its own failures in the run status and
@@ -1400,6 +1408,36 @@ class OpenlineageSource(PipelineServiceSource):
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from NATS: {str(e)}")  # noqa: B904, RUF010
+
+    @contextmanager
+    def _batch_keepalive(self, client: Any, pending: list[Any], ack_wait: float) -> Iterator[None]:
+        """Keep refreshing the acknowledgement timers of `pending` until the block exits.
+
+        A single refresh before the `yield` only buys one `ackWait`. The connector has no
+        say in how long the pipeline then takes, and nothing of ours runs while the
+        generator is suspended, so a downstream slower than `ackWait` has the event
+        redelivered while it is still being processed -- duplicating the lineage work and
+        spending `maxDeliver` attempts on a run that never failed.
+
+        The heartbeat is stopped before the caller acknowledges, so a refresh cannot race
+        the acknowledgement of the same message.
+        """
+        stop = threading.Event()
+        interval = max(ack_wait / 2.0, MIN_NATS_KEEPALIVE_INTERVAL)
+
+        def _heartbeat() -> None:
+            while True:
+                self._keep_batch_alive(client, pending)
+                if stop.wait(interval):
+                    return
+
+        thread = threading.Thread(target=_heartbeat, name="openmetadata-nats-keepalive", daemon=True)
+        thread.start()
+        try:
+            yield
+        finally:
+            stop.set()
+            thread.join(timeout=interval)
 
     @staticmethod
     def _keep_batch_alive(client: Any, pending: list[Any]) -> None:
