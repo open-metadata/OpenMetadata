@@ -113,6 +113,9 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   // `contributionsVersion` so such consumers have a deps entry that changes
   // once contributions are actually in.
   useEffect(() => {
+    if (isLoading) {
+      return; // plugin list not final yet
+    }
     installedPluginInstances.forEach((plugin) => {
       try {
         plugin.contributeExtensions?.(extensionRegistry);
@@ -122,7 +125,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     });
     setContributionsVersion((version) => version + 1);
     setContributionsReady(true);
-  }, [installedPluginInstances, extensionRegistry]);
+  }, [installedPluginInstances, extensionRegistry, isLoading]);
 
   const getContributions = useCallback(
     <T,>(extensionPointId: string): T[] =>

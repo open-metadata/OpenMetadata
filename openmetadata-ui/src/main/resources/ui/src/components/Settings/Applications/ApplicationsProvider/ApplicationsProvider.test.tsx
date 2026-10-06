@@ -162,6 +162,37 @@ describe('ApplicationsProvider', () => {
     });
   });
 
+  it('keeps contributionsReady false while fetch is pending', async () => {
+    const applicationsRequest = createDeferredPromise<EntityReference[]>();
+    mockGetInstalledApplicationList.mockReturnValue(
+      applicationsRequest.promise
+    );
+
+    render(
+      <ApplicationsProvider>
+        <ApplicationsLoadingStatus />
+      </ApplicationsProvider>
+    );
+
+    // While fetch is in-flight, contributionsReady must stay false
+    expect(screen.getByTestId(CONTRIBUTIONS_STATUS_TEST_ID)).toHaveAttribute(
+      'data-ready',
+      'false'
+    );
+
+    await act(async () => {
+      applicationsRequest.resolve([]);
+      await applicationsRequest.promise;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId(CONTRIBUTIONS_STATUS_TEST_ID)).toHaveAttribute(
+        'data-ready',
+        'true'
+      );
+    });
+  });
+
   it('preserves child state when the permissions object changes', async () => {
     mockGetInstalledApplicationList.mockResolvedValue([]);
     const { rerender } = render(
