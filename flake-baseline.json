@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-05T03:30:16Z",
+  "generatedAt": "2026-10-06T03:22:53Z",
   "window": 10,
   "threshold": 2,
   "runs": [
@@ -33,9 +33,24 @@
       "runId": "37257479217",
       "sourceSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
       "recordedAt": "2026-10-05T03:30:16Z"
+    },
+    {
+      "runId": "37406058596",
+      "sourceSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
+      "recordedAt": "2026-10-06T03:22:53Z"
     }
   ],
   "entries": {
+    "Basic :: Flow/Metric.spec.ts :: Metric Entity Special Test Cases \u203a verify metric expression update": {
+      "observations": [
+        "37406058596"
+      ],
+      "project": "Basic",
+      "file": "Flow/Metric.spec.ts",
+      "title": "Metric Entity Special Test Cases \u203a verify metric expression update",
+      "lastSeenSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
+      "hardFailure": false
+    },
     "Basic :: Pages/Lineage/LineageInteraction.spec.ts :: Lineage Interactions \u203a Edge Interaction \u203a Verify edge delete button in drawer": {
       "observations": [
         "36957299462"
@@ -84,6 +99,16 @@
       "file": "Features/DataQuality/ColumnLevelTests.spec.ts",
       "title": "Column Level Data Quality Test Cases \u203a Column Values To Be In Set",
       "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
+      "hardFailure": false
+    },
+    "chromium :: Features/RestoreEntityInheritedFields.spec.ts :: DashboardDataModel \u203a Validate restore with Inherited domain and data products assigned": {
+      "observations": [
+        "37406058596"
+      ],
+      "project": "chromium",
+      "file": "Features/RestoreEntityInheritedFields.spec.ts",
+      "title": "DashboardDataModel \u203a Validate restore with Inherited domain and data products assigned",
+      "lastSeenSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
       "hardFailure": false
     },
     "chromium :: Pages/DomainAdvanced.spec.ts :: Domain Description Editing \u203a Admin can edit domain description": {
