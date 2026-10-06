@@ -181,6 +181,9 @@ const Description = ({
               entity: t('label.description'),
             })}>
             <Button
+              aria-label={t('label.edit-entity', {
+                entity: t('label.description'),
+              })}
               color="secondary"
               data-testid="edit-description"
               // edit-new.svg, not untitled's Edit02: every other edit affordance on an entity
