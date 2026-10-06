@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import axiosClient from '.';
 import { MCPConfiguration } from '../generated/configuration/mcpConfiguration';
+import axiosClient from './axiosClient';
 
 /**
  * The MCP server reads its configuration from the `mcpConfiguration` system setting, not from the

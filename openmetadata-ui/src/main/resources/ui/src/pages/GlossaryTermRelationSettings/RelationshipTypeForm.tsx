@@ -249,7 +249,7 @@ const RelationshipTypeForm = ({
         }}>
         {(item) => <Select.Item {...item} />}
       </Select>
-      <div className="tw:grid tw:grid-cols-2 tw:gap-3">
+      <div className="tw:grid tw:grid-cols-2 tw:gap-3 tw:relative">
         {characteristicOptions.map((option) => (
           <Checkbox
             data-testid={`characteristic-${option.id}`}

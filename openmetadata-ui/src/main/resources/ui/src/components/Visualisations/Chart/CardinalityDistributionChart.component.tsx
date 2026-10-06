@@ -12,28 +12,20 @@
  */
 
 import { Badge } from '@openmetadata/ui-core-components';
+import {
+  BarChart,
+  useChartPalette,
+  type ChartSeries,
+  type ChartTooltipRenderProps,
+  type ChartXAxisProps,
+  type ChartYAxisProps,
+} from '@openmetadata/ui-core-components/charts';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  TooltipProps,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { ColumnProfile } from '../../../generated/entity/data/table';
-import { useChartColors } from '../../../hooks/useChartColors';
-import {
-  axisTickFormatter,
-  createHorizontalGridLineRenderer,
-  tooltipFormatter,
-} from '../../../utils/ChartUtils';
+import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
@@ -45,65 +37,158 @@ export interface CardinalityDistributionChartProps {
   noDataPlaceholderText?: string | React.ReactNode;
 }
 
+interface CardinalityRow {
+  name: string;
+  count: number;
+  percentage: number;
+}
+
+const MIN_HEIGHT = 350;
+const ROW_HEIGHT = 30;
+const LABEL_WIDTH = 120;
+const PERCENT_AXIS: ChartYAxisProps = {
+  formatter: (value) => String(axisTickFormatter(Number(value), '%')),
+};
+
+// ECharts rich text is `{style|text}`; these characters would break it, so
+// they are drawn as their full-width lookalikes.
+const RICH_LOOKALIKES: Record<string, string> = {
+  '{': '\uFF5B',
+  '}': '\uFF5D',
+  '|': '\uFF5C',
+};
+const richSafe = (value: string) =>
+  value.replace(/[{}|]/g, (char) => RICH_LOOKALIKES[char]);
+const RICH_STYLES = (selectedColor: string) => ({
+  selected: { color: selectedColor, fontWeight: 600 },
+  dimmed: { opacity: 0.5 },
+});
+
 const renderPlaceholder = (placeholderText?: string | React.ReactNode) => (
   <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
     <ErrorPlaceHolder placeholderText={placeholderText} />
   </div>
 );
 
-interface CustomYAxisTickProps {
-  x?: number;
-  y?: number;
-  payload?: { value: string };
+interface CardinalityGraphProps {
+  chartKey: string;
+  rows: CardinalityRow[];
+  ariaLabel: string;
   selectedCategory: string | null;
-  onCategoryClick: (categoryName: string) => void;
-  axisColor: string;
-  highlightedColor: string;
-  selectedColor: string;
+  onToggle: (category: string) => void;
 }
 
-const CustomYAxisTick = ({
-  x,
-  y,
-  payload,
+const CardinalityGraph = ({
+  chartKey,
+  rows,
+  ariaLabel,
   selectedCategory,
-  onCategoryClick,
-  axisColor,
-  highlightedColor,
-  selectedColor,
-}: CustomYAxisTickProps) => {
-  if (!payload) {
-    return null;
-  }
+  onToggle,
+}: CardinalityGraphProps) => {
+  const { t } = useTranslation();
+  const palette = useChartPalette();
 
-  const categoryName = payload.value;
-  const isSelected = selectedCategory === categoryName;
-  const isHighlighted = selectedCategory && selectedCategory !== categoryName;
-  let textColor = axisColor;
+  const series = useMemo<ChartSeries[]>(
+    () => [
+      {
+        key: 'percentage',
+        name: t('label.percentage'),
+        status: 'info',
+        seriesOption: { barWidth: 22, cursor: 'pointer' },
+      },
+    ],
+    [t]
+  );
 
-  if (isSelected) {
-    textColor = selectedColor;
-  } else if (isHighlighted) {
-    textColor = highlightedColor;
-  }
+  const categoryAxis = useMemo<ChartXAxisProps>(
+    () => ({
+      formatter: (value) => {
+        const name = String(value);
+        if (selectedCategory === null) {
+          return name;
+        }
+        const style = name === selectedCategory ? 'selected' : 'dimmed';
+
+        return `{${style}|${richSafe(name)}}`;
+      },
+      // Rich text only while a category is selected: with `rich` set, ECharts
+      // parses every label as markup, so a raw `{a|b}` name would be mangled.
+      axisLabel: {
+        width: LABEL_WIDTH,
+        overflow: 'truncate',
+        rich:
+          selectedCategory === null
+            ? undefined
+            : RICH_STYLES(palette.status.info),
+      },
+    }),
+    [selectedCategory, palette]
+  );
+
+  const getBarStatus = useCallback(
+    (row: CardinalityRow) =>
+      selectedCategory !== null && row.name !== selectedCategory
+        ? ('neutral' as const)
+        : undefined,
+    [selectedCategory]
+  );
+
+  const tooltip = useMemo<ChartTooltipRenderProps<CardinalityRow>>(
+    () => ({
+      render: (_items, row) =>
+        row ? (
+          <div className="tw:bg-primary tw:rounded-md tw:shadow-md tw:p-2.5">
+            <p className="tw:text-primary tw:font-medium tw:text-xs">
+              {row.name}
+            </p>
+            <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
+            <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
+              <span className="tw:text-tertiary tw:text-[11px]">
+                {t('label.count')}
+              </span>
+              <span className="tw:text-primary tw:font-medium tw:text-[11px]">
+                {tooltipFormatter(row.count)}
+              </span>
+            </div>
+            <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
+              <span className="tw:text-tertiary tw:text-[11px]">
+                {t('label.percentage')}
+              </span>
+              <span className="tw:text-primary tw:font-medium tw:text-[11px]">
+                {`${row.percentage}%`}
+              </span>
+            </div>
+          </div>
+        ) : null,
+    }),
+    [t]
+  );
+
+  const handlePointClick = useCallback(
+    (row: CardinalityRow) => onToggle(row.name),
+    [onToggle]
+  );
 
   return (
-    <g transform={`translate(${x},${y})`}>
-      <text
-        cursor="pointer"
-        dy={4}
-        fill={textColor}
-        fontSize={12}
-        fontWeight={isSelected ? 600 : 400}
-        opacity={isHighlighted ? 0.5 : 1}
-        textAnchor="end"
-        x={-8}
-        onClick={() => onCategoryClick(categoryName)}>
-        {categoryName.length > 15
-          ? `${categoryName.slice(0, 15)}...`
-          : categoryName}
-      </text>
-    </g>
+    <div
+      className="tw:flex-1 tw:min-h-87.5 tw:overflow-x-hidden"
+      id={`${chartKey}-cardinality`}>
+      <BarChart
+        ariaLabel={ariaLabel}
+        data={rows}
+        getBarStatus={getBarStatus}
+        height={Math.max(MIN_HEIGHT, rows.length * ROW_HEIGHT)}
+        layout="horizontal"
+        radius={8}
+        series={series}
+        tooltip={tooltip}
+        xAxis={categoryAxis}
+        xKey="name"
+        yAxis={PERCENT_AXIS}
+        onCategoryClick={onToggle}
+        onPointClick={handlePointClick}
+      />
+    </div>
   );
 };
 
@@ -112,9 +197,43 @@ const CardinalityDistributionChart = ({
   noDataPlaceholderText,
 }: CardinalityDistributionChartProps) => {
   const { t } = useTranslation();
-  const { axis, cursorFill, emptyFill, grid, inactive, primary } =
-    useChartColors();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const entries = useMemo(
+    () =>
+      Object.entries(data)
+        .filter(
+          ([, columnProfile]) =>
+            !isUndefined(columnProfile?.cardinalityDistribution)
+        )
+        .map(([key, columnProfile]) => {
+          const cardinality = columnProfile?.cardinalityDistribution;
+
+          return {
+            key,
+            isAllUnique: cardinality?.allValuesUnique ?? false,
+            categoriesCount: cardinality?.categories?.length || 0,
+            date: customFormatDateTime(
+              columnProfile?.timestamp || 0,
+              'MMM dd, yyyy'
+            ),
+            rows: (cardinality?.categories ?? []).map(
+              (category, i): CardinalityRow => ({
+                name: category,
+                count: cardinality?.counts?.[i] || 0,
+                percentage: cardinality?.percentages?.[i] || 0,
+              })
+            ),
+          };
+        }),
+    [data]
+  );
+
+  const handleToggle = useCallback(
+    (name: string) =>
+      setSelectedCategory((prev) => (prev === name ? null : name)),
+    []
+  );
 
   const firstDayAllUnique =
     data.firstDayData?.cardinalityDistribution?.allValuesUnique ?? false;
@@ -125,217 +244,67 @@ const CardinalityDistributionChart = ({
     isUndefined(data.firstDayData?.cardinalityDistribution) ||
     isUndefined(data.currentDayData?.cardinalityDistribution);
 
-  const renderHorizontalGridLine = useMemo(
-    () => createHorizontalGridLineRenderer(),
-    []
-  );
-
-  if (
-    isUndefined(data.firstDayData?.cardinalityDistribution) &&
-    isUndefined(data.currentDayData?.cardinalityDistribution)
-  ) {
+  if (entries.length === 0) {
     return renderPlaceholder(noDataPlaceholderText);
   }
 
-  const renderTooltip: TooltipProps<string | number, string>['content'] = (
-    props
-  ) => {
-    const { active, payload } = props;
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-
-      return (
-        <div className="tw:bg-primary tw:rounded-md tw:shadow-md tw:p-2.5">
-          <p className="tw:text-primary tw:font-medium tw:text-xs">
-            {data.name}
-          </p>
-          <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
-          <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
-            <span className="tw:text-tertiary tw:text-[11px]">
-              {t('label.count')}
-            </span>
-            <span className="tw:text-primary tw:font-medium tw:text-[11px]">
-              {tooltipFormatter(data.count)}
-            </span>
-          </div>
-          <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
-            <span className="tw:text-tertiary tw:text-[11px]">
-              {t('label.percentage')}
-            </span>
-            <span className="tw:text-primary tw:font-medium tw:text-[11px]">
-              {`${data.percentage}%`}
-            </span>
-          </div>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  const dataEntries = Object.entries(data).filter(
-    ([, columnProfile]) => !isUndefined(columnProfile?.cardinalityDistribution)
-  );
-
-  const bothAllUnique = firstDayAllUnique && currentDayAllUnique;
   const allValuesUniqueMessage = t(
     'message.all-values-unique-no-distribution-available'
   );
-
-  const handleCategoryClick = (categoryName: string) => {
-    setSelectedCategory((prev) =>
-      prev === categoryName ? null : categoryName
-    );
-  };
+  const chartAriaLabel = t('label.total-entity', {
+    entity: t('label.category-plural'),
+  });
 
   return (
     <div className="tw:flex tw:w-full" data-testid="chart-container">
-      {bothAllUnique
+      {firstDayAllUnique && currentDayAllUnique
         ? renderPlaceholder(allValuesUniqueMessage)
-        : dataEntries.map(([key, columnProfile], index) => {
-            if (
-              isUndefined(columnProfile) ||
-              isUndefined(columnProfile?.cardinalityDistribution)
-            ) {
-              return;
-            }
-
-            const cardinalityData = columnProfile.cardinalityDistribution;
-            const isAllUnique = cardinalityData.allValuesUnique ?? false;
-
-            const graphData =
-              cardinalityData.categories?.map((category, i) => ({
-                name: category,
-                count: cardinalityData.counts?.[i] || 0,
-                percentage: cardinalityData.percentages?.[i] || 0,
-              })) || [];
-
-            const graphDate = customFormatDateTime(
-              columnProfile?.timestamp || 0,
-              'MMM dd, yyyy'
-            );
-
-            const containerHeight = Math.max(350, graphData.length * 30);
-
-            const colClassName = classNames(
-              'tw:min-w-0 tw:flex tw:flex-col tw:pt-2 tw:pb-2',
-              showSingleGraph
-                ? 'tw:flex-1 tw:basis-full tw:px-4'
-                : 'tw:flex-1 tw:basis-1/2 tw:px-6',
-              {
-                'tw:border-r tw:border-border-secondary':
-                  !showSingleGraph && index === 0,
-              }
-            );
-
-            return (
-              <div className={colClassName} key={key}>
-                {isAllUnique ? (
-                  renderPlaceholder(allValuesUniqueMessage)
-                ) : (
-                  <>
-                    <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
-                      <Badge
-                        className="tw:font-semibold"
-                        color="gray"
-                        data-testid="date"
-                        size="lg"
-                        type="color">
-                        {graphDate}
-                      </Badge>
-                      <Badge
-                        className="tw:font-semibold"
-                        color="gray"
-                        data-testid="cardinality-tag"
-                        size="lg"
-                        type="color">
-                        {`${t('label.total-entity', {
-                          entity: t('label.category-plural'),
-                        })}: ${cardinalityData.categories?.length || 0}`}
-                      </Badge>
-                    </div>
-                    <div className="tw:flex-1 tw:min-h-87.5 tw:overflow-x-hidden">
-                      <ResponsiveContainer
-                        debounce={200}
-                        height={containerHeight}
-                        id={`${key}-cardinality`}
-                        width="100%">
-                        <BarChart
-                          className="tw:w-full"
-                          data={graphData}
-                          layout="vertical">
-                          <CartesianGrid
-                            horizontal={renderHorizontalGridLine}
-                            stroke={grid}
-                            strokeDasharray="3 3"
-                            vertical={false}
-                          />
-                          <XAxis
-                            axisLine={false}
-                            padding={{ left: 16, right: 16 }}
-                            tick={{ fontSize: 12 }}
-                            tickFormatter={(props) =>
-                              axisTickFormatter(props, '%')
-                            }
-                            tickLine={false}
-                            type="number"
-                          />
-                          <YAxis
-                            allowDataOverflow
-                            axisLine={false}
-                            dataKey="name"
-                            padding={{ top: 16, bottom: 16 }}
-                            tick={
-                              <CustomYAxisTick
-                                axisColor={axis}
-                                highlightedColor={inactive}
-                                selectedCategory={selectedCategory}
-                                selectedColor={primary}
-                                onCategoryClick={handleCategoryClick}
-                              />
-                            }
-                            tickLine={false}
-                            type="category"
-                            width={120}
-                          />
-                          <Tooltip
-                            content={renderTooltip}
-                            cursor={{
-                              fill: cursorFill,
-                              stroke: grid,
-                              strokeDasharray: '3 3',
-                            }}
-                          />
-                          <Bar
-                            barSize={22}
-                            dataKey="percentage"
-                            radius={[0, 8, 8, 0]}>
-                            {graphData.map((entry) => {
-                              const isHighlighted =
-                                selectedCategory &&
-                                selectedCategory !== entry.name;
-
-                              return (
-                                <Cell
-                                  cursor="pointer"
-                                  fill={isHighlighted ? emptyFill : primary}
-                                  key={`cell-${entry.name}`}
-                                  opacity={isHighlighted ? 0.3 : 1}
-                                  onClick={() =>
-                                    handleCategoryClick(entry.name)
-                                  }
-                                />
-                              );
-                            })}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
+        : entries.map((entry, index) => (
+            <div
+              className={classNames(
+                'tw:min-w-0 tw:flex tw:flex-col tw:pt-2 tw:pb-2',
+                showSingleGraph
+                  ? 'tw:flex-1 tw:basis-full tw:px-4'
+                  : 'tw:flex-1 tw:basis-1/2 tw:px-6',
+                {
+                  'tw:border-r tw:border-border-secondary':
+                    !showSingleGraph && index === 0,
+                }
+              )}
+              key={entry.key}>
+              {entry.isAllUnique ? (
+                renderPlaceholder(allValuesUniqueMessage)
+              ) : (
+                <>
+                  <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
+                    <Badge
+                      className="tw:font-semibold"
+                      color="gray"
+                      data-testid="date"
+                      size="lg"
+                      type="color">
+                      {entry.date}
+                    </Badge>
+                    <Badge
+                      className="tw:font-semibold"
+                      color="gray"
+                      data-testid="cardinality-tag"
+                      size="lg"
+                      type="color">
+                      {`${chartAriaLabel}: ${entry.categoriesCount}`}
+                    </Badge>
+                  </div>
+                  <CardinalityGraph
+                    ariaLabel={chartAriaLabel}
+                    chartKey={entry.key}
+                    rows={entry.rows}
+                    selectedCategory={selectedCategory}
+                    onToggle={handleToggle}
+                  />
+                </>
+              )}
+            </div>
+          ))}
     </div>
   );
 };

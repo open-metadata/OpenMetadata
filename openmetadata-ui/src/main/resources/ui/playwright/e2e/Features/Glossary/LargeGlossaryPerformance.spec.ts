@@ -13,7 +13,7 @@
 import test, { expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../../utils/common';
+import { createNewPage, waitForToastStackToClear } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
@@ -104,6 +104,7 @@ test.describe('Large Glossary Performance Tests', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms.length = 0;
     test.setTimeout(8 * 60 * 1000);
 
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -152,11 +153,9 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should handle large number of glossary terms with pagination', async ({
     page,
   }) => {
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
 
     const initialTerms = await page.locator('tbody tr[data-row-key]').count();
 
@@ -177,15 +176,16 @@ test.describe('Large Glossary Performance Tests', () => {
         response.url().includes('after=')
     );
 
+    // Background async notifications stack at bottom-center over the
+    // pagination controls and intercept the click; drain the toast stack first.
+    await waitForToastStackToClear(page);
     await pagination.getByTestId('next').click();
 
     const nextPageResponse = await nextPageRequest;
     expect(nextPageResponse.status()).toBe(200);
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
 
     // Cursor pagination replaces the page rather than appending, so the second
     // page still shows 50 rows and Previous is now enabled.
@@ -195,12 +195,11 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(pagination.getByTestId('previous')).toBeEnabled();
 
     // Going back returns to the first page.
+    await waitForToastStackToClear(page);
     await pagination.getByTestId('previous').click();
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
     await expect(pagination.getByTestId('previous')).toBeDisabled();
   });
 
@@ -329,11 +328,9 @@ test.describe('Large Glossary Performance Tests', () => {
     await scrollGlossaryTermsToBottom(page);
 
     // Wait for more terms to load
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
 
     await setGlossaryTermsScrollTop(page, scrollPositionBeforeLoad);
 
@@ -399,6 +396,7 @@ test.describe('Large Glossary Child Term Performace', () => {
   const glossaryTerms: GlossaryTerm[] = [];
 
   test.beforeAll(async ({ browser }) => {
+    glossaryTerms.length = 0;
     test.setTimeout(8 * 60 * 1000);
 
     const { apiContext, afterAction } = await createNewPage(browser);

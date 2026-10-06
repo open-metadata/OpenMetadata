@@ -29,6 +29,23 @@ export interface Metric {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Immediate child metrics (variants) of this metric.
+     */
+    children?: EntityReference[];
+    /**
+     * Count of immediate, non-deleted child metrics. Computed on read and never stored.
+     */
+    childrenCount?: number;
+    /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * Custom unit of measurement when unitOfMeasurement is OTHER.
      */
     customUnitOfMeasurement?: string;
@@ -69,6 +86,10 @@ export interface Metric {
      * Status of the Metric.
      */
     entityStatus?: EntityStatus;
+    /**
+     * Users who are experts in this Metric.
+     */
+    experts?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -114,6 +135,11 @@ export interface Metric {
      */
     metricExpression?: MetricExpression;
     /**
+     * Metric Group this metric belongs to, if any. A group organizes metrics for browsing;
+     * membership is a relationship, so it is derived on read and never stored on the metric.
+     */
+    metricGroup?: EntityReference;
+    /**
      * Type of the metric.
      */
     metricType?: MetricType;
@@ -124,7 +150,13 @@ export interface Metric {
     /**
      * Owners of this metrics.
      */
-    owners?:   EntityReference[];
+    owners?: EntityReference[];
+    /**
+     * Parent metric this metric is a variant of. Metric fully qualified names stay flat, so the
+     * hierarchy is tracked purely through CONTAINS relationships and reparenting never rewrites
+     * the fully qualified name.
+     */
+    parent?:   EntityReference;
     provider?: ProviderType;
     /**
      * Related Metrics.
@@ -180,6 +212,13 @@ export interface Metric {
  *
  * Derived: the context memory from which the Memory Agent created this metric (DERIVED_FROM
  * edge, read-only projection).
+ *
+ * Metric Group this metric belongs to, if any. A group organizes metrics for browsing;
+ * membership is a relationship, so it is derived on read and never stored on the metric.
+ *
+ * Parent metric this metric is a variant of. Metric fully qualified names stay flat, so the
+ * hierarchy is tracked purely through CONTAINS relationships and reparenting never rewrites
+ * the fully qualified name.
  */
 export interface EntityReference {
     /**
@@ -541,8 +580,9 @@ export enum Type {
 /**
  * Status of the Metric.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",

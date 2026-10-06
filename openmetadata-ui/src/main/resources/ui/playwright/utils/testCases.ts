@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  RUN_TEST_CASE_BUTTON_TEST_ID,
   TEST_CASE_LAST_RUN_BANNER_TEST_IDS,
   type TestCaseLastRunBannerStatus,
 } from '../constant/dataQuality';
@@ -32,6 +33,7 @@ import {
   startCsvPreviewAndWaitForGrid,
   suppressCsvJobsTray,
 } from './importUtils';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const getFailedRowsData = (table: TableClass) => {
   const columns = table.entity.columns.map((col) => col.name);
@@ -141,46 +143,54 @@ export const submitTestCaseForm = async (page: Page) => {
 };
 
 export const waitForPermissionsResponse = (page: Page) =>
-  page.waitForResponse((res) => {
-    const url = res.url();
-    return (
-      url.includes('/api/v1/permissions') &&
-      !url.includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
-    );
-  });
+  waitForResponseWithStatus(
+    page,
+    (res) => {
+      const url = res.url();
+      return (
+        url.includes('/api/v1/permissions') &&
+        !url.includes('/api/v1/permissions/table/name/') &&
+        res.request().method() === 'GET'
+      );
+    },
+    200
+  );
 
 export const waitForTableEntityPermissionsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestCaseListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testCases/search/list'),
+    200
   );
 
 export const waitForTestCaseDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/dataQuality/testCases/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestSuiteListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       (res.url().includes('/api/v1/dataQuality/testSuites') ||
         res.url().includes('/api/v1/dataQuality/testSuites/search/list')) &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 /**
@@ -210,15 +220,19 @@ export const confirmIngestionPipelineHardDelete = async (page: Page) => {
 
 export const visitTestSuitesPage = async (page: Page) => {
   const listPromise = waitForTestSuiteListResponse(page);
-  await page.goto('/data-quality/test-suites');
+  await page.goto('/data-quality/test-suites', {
+    waitUntil: 'domcontentloaded',
+  });
   await listPromise;
 };
 
 export const waitForTestSuiteDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testSuites/') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testSuites/'),
+    200
   );
 
 export const visitTestSuiteDetailsPage = async (
@@ -226,16 +240,19 @@ export const visitTestSuiteDetailsPage = async (
   suiteFqn: string
 ) => {
   const detailsPromise = waitForTestSuiteDetailsResponse(page);
-  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`);
+  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await detailsPromise;
 };
 
 export const waitForFailedRowsSampleResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/failedRowsSample') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const visitDataQualityTab = async (page: Page, table: TableClass) => {
@@ -297,11 +314,11 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
 
   await page.keyboard.press('Escape');
 
-  const tableResponsePromise = page.waitForResponse(
+  const tableResponsePromise = waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/tables/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.url().includes('/api/v1/tables/') && res.request().method() === 'GET',
+    200
   );
   const testCaseResponsePromise = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -317,7 +334,7 @@ export const findSystemTestDefinition = async (page: Page) => {
       response.request().method() === 'GET'
   );
 
-  await page.goto('/test-library');
+  await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
   let response = await responsePromise;
   let data = await response.json();
 
@@ -381,7 +398,9 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
   const testCaseListResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.goto(`/test-suites/${testSuiteFqn}`);
+  await page.goto(`/test-suites/${testSuiteFqn}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await testCaseListResponse;
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('manage-button').waitFor({
@@ -394,7 +413,9 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
  * @param page - Playwright page object
  */
 export const navigateToGlobalDataQuality = async (page: Page) => {
-  await page.goto('/data-quality/test-cases');
+  await page.goto('/data-quality/test-cases', {
+    waitUntil: 'domcontentloaded',
+  });
   await page.getByTestId('manage-button').waitFor();
 };
 
@@ -498,7 +519,7 @@ export const verifyPageAccess = async (
   const permissionResponse = page.waitForResponse((response) =>
     response.url().includes('api/v1/permissions')
   );
-  await page.goto(url);
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   await permissionResponse;
   await waitForAllLoadersToDisappear(page);
 
@@ -843,7 +864,8 @@ export const performE2EExportImportFlow = async (
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     // Update display name for first test case (existing test case)
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
@@ -863,7 +885,8 @@ export const performE2EExportImportFlow = async (
     await page.keyboard.press('Enter');
 
     // First test case - add tag
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     await page
       .locator('.rdg-row')
       .nth(0)
@@ -926,9 +949,94 @@ export const openTestCaseDetailsPage = async (
   await page.goto(
     `/observability/test-case/${encodeURIComponent(
       testCaseFqn
-    )}/test-case-results`
+    )}/test-case-results`,
+    { waitUntil: 'domcontentloaded' }
   );
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
+};
+
+export const createTableWithTestCase = async (
+  apiContext: APIRequestContext
+) => {
+  const table = new TableClass();
+  await table.create(apiContext);
+  await table.createTestCase(apiContext);
+
+  return table;
+};
+
+/**
+ * Unscheduled on purpose: a scheduled DAG can start a run of its own as soon as
+ * it is deployed, which would disable Run now before the test clicks it.
+ */
+export const createUnscheduledTestSuitePipeline = async (
+  apiContext: APIRequestContext,
+  table: TableClass
+) => {
+  const createResponse = await apiContext.post(
+    '/api/v1/services/ingestionPipelines',
+    {
+      data: {
+        name: `pw-run-test-case-pipeline-${uuid()}`,
+        pipelineType: 'TestSuite',
+        airflowConfig: {},
+        service: { id: table.testSuiteResponseData.id, type: 'testSuite' },
+        sourceConfig: {
+          config: {
+            type: 'TestSuite',
+            entityFullyQualifiedName:
+              table.entityResponseData.fullyQualifiedName,
+          },
+        },
+      },
+    }
+  );
+  expect(createResponse.status()).toBe(201);
+  const { id, name } = await createResponse.json();
+
+  return { id: id as string, name: name as string };
+};
+
+export const patchIngestionPipeline = async (
+  apiContext: APIRequestContext,
+  pipelineId: string,
+  path: string,
+  value: unknown
+) => {
+  const patchResponse = await apiContext.patch(
+    `/api/v1/services/ingestionPipelines/${pipelineId}`,
+    {
+      data: [{ op: 'add', path, value }],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    }
+  );
+  expect(patchResponse.status()).toBe(200);
+};
+
+export const isPipelinePermissionResponse =
+  (pipelineName: string) => (response: Response) =>
+    response.url().includes('/api/v1/permissions/ingestionPipeline/name/') &&
+    response.url().includes(pipelineName);
+
+export const isRunTestCaseResponse = (response: Response) =>
+  response.url().endsWith('/api/v1/services/ingestionPipelines/run') &&
+  response.request().method() === 'POST';
+
+export const expectRunTestCaseDisabledWithReason = async (
+  page: Page,
+  reason: string
+) => {
+  const reasonTrigger = page.getByRole('group', { name: reason });
+
+  await expect(page.getByTestId(RUN_TEST_CASE_BUTTON_TEST_ID)).toBeDisabled();
+  await expect(reasonTrigger).toBeVisible();
+
+  // React Aria opens a tooltip on hover only once a pointer press has happened on
+  // the page, which a freshly loaded page has not seen; keyboard focus opens it
+  // regardless, and reaching the reason by keyboard is what the wrapper is for.
+  await reasonTrigger.focus();
+
+  await expect(page.getByRole('tooltip')).toHaveText(reason);
 };

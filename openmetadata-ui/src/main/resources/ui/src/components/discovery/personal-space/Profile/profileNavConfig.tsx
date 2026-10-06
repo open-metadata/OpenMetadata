@@ -12,56 +12,87 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
+import {
+  Bell01,
+  Key01,
+  PermissionDebugger as AccessControlIcon,
+  Policy as GovernanceTabIcon,
+  Settings02,
+  ShieldTick,
+  User01,
+  Users01,
+} from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
+import type { ProfileNavId } from '../../../../constants/Profile.constants';
+import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
+import AccessControlPanel from './tabs/access-control/AccessControlPanel';
+import BotsPanel from './tabs/bots/BotsPanel';
+import GovernancePanel from './tabs/governance/GovernancePanel';
+import MembersPanel from './tabs/members/MembersPanel';
+import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
-export type ProfileNavId =
-  | 'profile'
-  | 'permissions'
-  | 'access-token'
-  | 'my-connections'
-  | 'custom-properties';
+// Single source of truth lives in Profile.constants (hook-safe layer); re-exported
+// here so existing imports of `ProfileNavId` from this module keep working.
+export type { ProfileNavId };
 
 /** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
-export type ProfileNavGroup = 'account' | 'workspace' | 'credentials';
+export type ProfileNavGroup =
+  | 'account'
+  | 'administration'
+  | 'features'
+  | 'workspace'
+  | 'application'
+  | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
 export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   account: 'label.account',
+  administration: 'label.administration',
+  features: 'label.feature-plural',
   workspace: 'label.workspace',
+  application: 'label.application',
   credentials: 'label.credential-plural',
 };
 
 /** Group render order in the sidebar. */
 export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'account',
+  'administration',
+  'features',
   'workspace',
+  'application',
   'credentials',
 ];
 
 /**
  * Dynamic overrides a panel can push up to ProfilePage so ProfileContentHeader
- * can reflect the panel's internal state (e.g. multi-level breadcrumbs).
+ * can reflect the panel's internal state (e.g. multi-level breadcrumbs, entity icon).
+ * All fields are optional — panels provide only what they need to override.
  */
-export type HeaderOverride = {
+export interface ProfileHeaderOverride {
+  breadcrumbs?: BreadcrumbItemType[];
   title?: string;
   description?: string;
-  breadcrumbs?: BreadcrumbItemType[];
-  onBreadcrumbAction?: (id: Key) => void;
+  icon?: FC<{ className?: string }>;
+  /** Pre-rendered icon node; takes precedence over `icon` in ProfileContentHeader. */
   iconNode?: React.ReactNode;
+  onBreadcrumbAction?: (id: Key) => void;
+  /** Action buttons rendered on the right of the header title row. */
   actions?: React.ReactNode;
-};
+  /** When set, renders in place of the title text (e.g. an inline rename input). */
+  titleInput?: React.ReactNode;
+  /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
+  titleSuffix?: React.ReactNode;
+}
 
 /**
  * Context handed to each nav item's `render`. Mirrors the data ProfilePage
@@ -72,12 +103,8 @@ export interface ProfileNavRenderContext {
   userData: User;
   isProfileLoading: boolean;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
-  /**
-   * Call this to push dynamic header state (breadcrumbs, icon, actions) up to
-   * ProfilePage so it can update ProfileContentHeader without the panel needing
-   * to render its own header.
-   */
-  onHeaderChange: (overrides: HeaderOverride) => void;
+  /** Allows a panel to override the header breadcrumbs/title shown by ProfilePage. */
+  onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
 export interface ProfileNavItem {
@@ -97,10 +124,10 @@ export interface ProfileNavItem {
    */
   selfContainedLayout?: boolean;
   /**
-   * When present, the item is shown only if this returns true.
-   * Receives the current UIPermission map from PermissionProvider.
+   * When present, the item is shown only when this returns true.
+   * Receives the UIPermission map and the isAdmin flag of the current user.
    */
-  isVisible?: (permissions: UIPermission) => boolean;
+  isVisible?: (permissions: UIPermission, isAdmin: boolean) => boolean;
 }
 
 export const DEFAULT_PROFILE_NAV_ID: ProfileNavId = 'profile';
@@ -141,12 +168,48 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     icon: Key01,
     render: () => <AccessTokenPanel />,
   },
+  {
+    id: 'access-control',
+    group: 'administration',
+    label: 'label.access-control',
+    description: 'message.access-control-description',
+    icon: AccessControlIcon,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <AccessControlPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'bots',
+    group: 'administration',
+    label: 'label.bot-plural',
+    description: 'message.page-sub-header-for-bots',
+    icon: BotIcon as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <BotsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   // The "My Connections" tab is contributed by the Query Runner plugin through
   // the `profile.tabs` extension point (see ProfilePage), so the app-mode
   // profile works standalone in OSS when the plugin is absent.
 ];
 
 export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'members',
+    group: 'workspace',
+    label: 'label.member-plural',
+    description: 'message.team-member-management-description',
+    icon: Users01,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <MembersPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   {
     id: 'custom-properties',
     group: 'workspace',
@@ -162,5 +225,44 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
   },
 ];
 
+export const APPLICATION_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'notification',
+    group: 'application',
+    label: 'label.notification',
+    description: 'message.alerts-description',
+    icon: Bell01 as FC<{ className?: string }>,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.EVENT_SUBSCRIPTION,
+        permissions
+      ),
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <NotificationPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+];
+
+export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'governance',
+    group: 'features',
+    label: 'label.governance',
+    description: 'message.governance-settings-description',
+    icon: GovernanceTabIcon as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <GovernancePanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+];
+
 export const getProfileNavItem = (id: ProfileNavId): ProfileNavItem =>
-  PROFILE_NAV_ITEMS.find((item) => item.id === id) ?? PROFILE_NAV_ITEMS[0];
+  [
+    ...PROFILE_NAV_ITEMS,
+    ...WORKSPACE_NAV_ITEMS,
+    ...APPLICATION_NAV_ITEMS,
+    ...FEATURES_NAV_ITEMS,
+  ].find((item) => item.id === id) ?? PROFILE_NAV_ITEMS[0];

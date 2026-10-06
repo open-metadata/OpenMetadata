@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { FC } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
+import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { TestPlatform } from '../../../generated/tests/testDefinition';
 import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
 import { TestDefinitionFormValues } from './TestDefinitionForm.interface';
@@ -210,54 +211,101 @@ describe('TestDefinitionFormBody', () => {
     });
   });
 
-  describe('supportedDataTypes conditional required', () => {
-    it('flags supportedDataTypes required when testPlatforms includes OpenMetadata and it is empty', async () => {
-      render(<Harness />);
+  // An empty supportedDataTypes means "all data types", so it must stay valid on every
+  // platform — including OpenMetadata, where it used to be flagged as required. See #27718.
+  it('accepts empty supportedDataTypes when testPlatforms includes OpenMetadata', async () => {
+    render(<Harness />);
 
-      await act(async () => {
-        formRef?.setValue('testPlatforms', [
-          { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
-        ]);
-        formRef?.setValue('supportedDataTypes', []);
-      });
-
-      let isValid = true;
-      await act(async () => {
-        isValid = await (
-          formRef as UseFormReturn<TestDefinitionFormValues>
-        ).trigger('supportedDataTypes');
-      });
-
-      expect(isValid).toBe(false);
-
-      await waitFor(() => {
-        expect(
-          formRef?.getFieldState('supportedDataTypes').error?.message
-        ).toBeDefined();
-      });
+    await act(async () => {
+      formRef?.setValue('testPlatforms', [
+        { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
+      ]);
+      formRef?.setValue('supportedDataTypes', []);
     });
 
-    it('does not flag supportedDataTypes when testPlatforms excludes OpenMetadata', async () => {
-      render(<Harness />);
+    let isValid = false;
+    await act(async () => {
+      isValid = await (
+        formRef as UseFormReturn<TestDefinitionFormValues>
+      ).trigger('supportedDataTypes');
+    });
 
-      await act(async () => {
-        formRef?.setValue('testPlatforms', [
-          { id: TestPlatform.Soda, label: TestPlatform.Soda },
-        ]);
-        formRef?.setValue('supportedDataTypes', []);
-      });
+    expect(isValid).toBe(true);
+    expect(formRef?.getFieldState('supportedDataTypes').error).toBeUndefined();
+  });
 
-      let isValid = false;
-      await act(async () => {
-        isValid = await (
-          formRef as UseFormReturn<TestDefinitionFormValues>
-        ).trigger('supportedDataTypes');
-      });
+  it('excludes the Dbt and QueryLog pseudo-types from the supported-services picker', async () => {
+    // `Dbt` and `QueryLog` are `DatabaseServiceType` enum members with no entry in the
+    // backend `databaseService.json` connection `oneOf` — there is no connector to
+    // ingest them, so no `Table` can ever live under such a service. A test definition
+    // saved with `supportedServices = ["Dbt"]` (or `["QueryLog"]`) silently vanishes
+    // from the Add-Test-Case picker for every real table, because the backend treats a
+    // non-empty `supportedServices` as a whitelist (JSON `LIKE` substring match). They
+    // must therefore never be offered as a selectable supported service.
+    render(<Harness />);
 
-      expect(isValid).toBe(true);
-      expect(
-        formRef?.getFieldState('supportedDataTypes').error
-      ).toBeUndefined();
+    const input = document.querySelector(
+      'input[id="root/supportedServices"]'
+    ) as HTMLElement;
+
+    expect(input).toBeInTheDocument();
+
+    fireEvent.mouseDown(input);
+    fireEvent.focus(input);
+
+    fireEvent.change(input, { target: { value: DatabaseServiceType.Dbt } });
+
+    // The pseudo-type is never part of the options list (filtered at module scope), so
+    // it cannot render regardless of filter/timing state.
+    expect(
+      screen.queryByRole('option', { name: DatabaseServiceType.Dbt })
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(input, {
+      target: { value: DatabaseServiceType.QueryLog },
+    });
+
+    expect(
+      screen.queryByRole('option', { name: DatabaseServiceType.QueryLog })
+    ).not.toBeInTheDocument();
+
+    // Positive control: the picker opens and filters to a real connector, proving the
+    // pseudo-types are genuinely excluded — not hidden by a closed or empty menu.
+    fireEvent.change(input, { target: { value: DatabaseServiceType.Mysql } });
+
+    expect(
+      await screen.findByRole('option', { name: DatabaseServiceType.Mysql })
+    ).toBeInTheDocument();
+  });
+
+  it('keeps real, wizard-hidden connectors selectable so test definitions can target them', async () => {
+    // Dremio is in the Add-Service wizard's `unSupportedServices` list but IS a real
+    // connector (it has a connection schema in `databaseService.json`'s `oneOf`) and
+    // can host tables. It must stay selectable here so a future change never regresses
+    // by reusing the wizard's over-broad `filterUnsupportedServiceType` filter, which
+    // would wrongly block scoping a test definition to such a connector. See #25573.
+    render(<Harness />);
+
+    const input = document.querySelector(
+      'input[id="root/supportedServices"]'
+    ) as HTMLElement;
+
+    expect(input).toBeInTheDocument();
+
+    fireEvent.mouseDown(input);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: DatabaseServiceType.Dremio } });
+    fireEvent.click(
+      await screen.findByRole('option', { name: DatabaseServiceType.Dremio })
+    );
+
+    await waitFor(() => {
+      expect(formRef?.getValues('supportedServices')).toEqual([
+        {
+          id: DatabaseServiceType.Dremio,
+          label: DatabaseServiceType.Dremio,
+        },
+      ]);
     });
   });
 });

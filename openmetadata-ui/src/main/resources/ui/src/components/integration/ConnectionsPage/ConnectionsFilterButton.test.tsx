@@ -102,10 +102,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Check: () => <span />,
   ChevronDown: () => <span />,
-  SearchLg: () => <span />,
+  Search: () => <span />,
 }));
 
 jest.mock('react-i18next', () => ({

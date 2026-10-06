@@ -21,11 +21,14 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Database01, Globe01, User03 } from '@untitledui/icons';
+import {
+  Database01,
+  Globe01,
+  User03,
+} from '@openmetadata/ui-core-components/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getTierTags } from '../../../../utils/TablePureUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
 import TierCard from '../../../common/TierCard/TierCard';
@@ -42,7 +45,9 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
   domains,
   tags,
   visibilitySlot,
-  hasEditPermission,
+  canEditDomains,
+  canEditOwners,
+  canEditTier,
   onUpdateDomain,
   onUpdateOwners,
   onUpdateTier,
@@ -50,7 +55,6 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
 }) => {
   /* eslint-enable sonarjs/cyclomatic-complexity */
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [tierPopoverOpen, setTierPopoverOpen] = useState(false);
   const tier = getTierTags(tags ?? []);
   const firstDomain = domains?.[0];
@@ -117,7 +121,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             </Popover>
           </PopoverTrigger>
         )}
-        {hasEditPermission && onUpdateDomain && (
+        {canEditDomains && onUpdateDomain && (
           <DomainSelectableList
             hasPermission
             isClearable
@@ -149,8 +153,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
           <Owner
             hasPermission={false}
             isCompactView={false}
-            owners={toOwnersWithHref(owners)}
-            renderOwnerContent={renderOwnerContent}
+            owners={owners}
             showLabel={false}
           />
         ) : (
@@ -160,7 +163,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             {t('label.add-entity', { entity: t('label.owner') })}
           </Typography>
         )}
-        {hasEditPermission && onUpdateOwners && (
+        {canEditOwners && onUpdateOwners && (
           <UserTeamSelectableList
             hasPermission
             multiple={{ user: true, team: true }}
@@ -181,13 +184,11 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
       {/* Tier */}
       <TierCard
         currentTier={tier?.tagFQN}
-        popoverProps={{
-          open: tierPopoverOpen,
-          onOpenChange: setTierPopoverOpen,
-        }}
-        updateTier={onUpdateTier}>
+        open={tierPopoverOpen}
+        updateTier={onUpdateTier}
+        onOpenChange={setTierPopoverOpen}>
         <div
-          className="tw:flex tw:cursor-pointer tw:items-center tw:gap-2"
+          className="tw:flex tw:items-center tw:gap-2"
           data-testid="tier-container">
           <Tooltip
             arrow
@@ -202,8 +203,10 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
               ? tier.displayName ?? tier.name ?? tier.tagFQN
               : t('label.add-entity', { entity: t('label.tier') })}
           </Typography>
-          {hasEditPermission && onUpdateTier && (
+          {canEditTier && onUpdateTier && (
             <ButtonUtility
+              aria-expanded={tierPopoverOpen}
+              aria-haspopup="dialog"
               className="tw:h-5.5 tw:w-5.5 tw:p-1"
               color="tertiary"
               data-testid="edit-tier-button"

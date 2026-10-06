@@ -28,7 +28,7 @@ import { createAdminApiContext } from '../../utils/admin';
 import {
   redirectToHomePage,
   uuid,
-  waitForMetricsSearchResponse,
+  waitForMetricsListingResponse,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { verifyPageAccess } from '../../utils/testCases';
@@ -163,6 +163,9 @@ const CSV_HEADERS = [
   'dataProducts',
   'entityStatus',
   'extension',
+  'parent',
+  'experts',
+  'metricGroup',
 ];
 
 const METRIC_EDITOR_RULES = [
@@ -543,14 +546,19 @@ const cleanupFixtures = async () => {
 };
 
 const waitForMetricsPage = async (page: Page) => {
-  const metricsResponse = waitForMetricsSearchResponse(page);
+  const metricsResponse = waitForMetricsListingResponse(page);
   // domcontentloaded, not the default 'load': /metrics pulls enough subresources
   // that waiting for all of them exceeded the 60s navigation timeout under merge
-  // queue load. The real readiness signal is the search response awaited next.
+  // queue load. The real readiness signal is the listing response awaited next.
   await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
   await metricsResponse;
   await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('heading')).toHaveText('Metrics');
+  await expect(page.getByTestId('metric-list-page')).toBeVisible();
+  await expect(
+    page.getByTestId('metric-list-header').getByRole('heading', {
+      name: 'Metrics',
+    })
+  ).toBeVisible();
 };
 
 const filterMetrics = async (page: Page, searchText: string) => {
@@ -581,15 +589,17 @@ const getFirstVisibleFixtureMetricRow = async (
   return { metric, row };
 };
 
+const getMetricActionsMenu = (page: Page) =>
+  page.getByRole('menu', { name: 'Open menu' });
+
 const openMetricActions = async (page: Page) => {
   await page.getByTestId('metric-actions').click();
-  await expect(page.locator('.metric-actions-menu')).toBeVisible();
+  await expect(getMetricActionsMenu(page)).toBeVisible();
 };
 
 const clickMetricAction = async (page: Page, actionName: string) => {
-  await page
-    .locator('.metric-actions-menu-item')
-    .filter({ hasText: actionName })
+  await getMetricActionsMenu(page)
+    .getByRole('menuitemradio', { name: actionName, exact: true })
     .click();
 };
 
@@ -604,10 +614,12 @@ const waitForMetricBulkEditGrid = async (page: Page, metricName?: string) => {
       page
         .locator('.bulk-edit-name-value')
         .filter({ hasText: metricName })
-        .first()
-    ).toBeVisible();
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   } else {
-    await expect(page.locator('.rdg-row').first()).toBeVisible();
+    await expect(
+      page.locator('.rdg-row').filter({ visible: true })
+    ).not.toHaveCount(0);
   }
 };
 
@@ -626,6 +638,7 @@ const editFirstDisplayNameCell = async (page: Page, value: string) => {
 };
 
 const editFirstDisplayNameCellAndBlur = async (page: Page, value: string) => {
+  // eslint-disable-next-line om-playwright/no-positional-locator -- metric grid rows are keyed by the metric uuid, so there is no rdg-row-0
   const firstRow = page.locator('.rdg-row').first();
   const displayNameCell = firstRow.locator('[aria-colindex="3"]');
 
@@ -837,6 +850,9 @@ const createMetricCsvFile = (metricName: string) => {
       fixtures.dataProduct.fullyQualifiedName,
       'Approved',
       `${metricCustomPropertyName}:imported custom value`,
+      '',
+      '',
+      '',
     ],
   ]);
   const csvPath = test.info().outputPath(`${metricName}.csv`);
@@ -867,6 +883,9 @@ const createInvalidMetricCsvFile = (fileName: string) => {
       fixtures.dataProduct.fullyQualifiedName,
       '',
       '',
+      '',
+      '',
+      '',
     ],
     [
       `${fixtures.prefix}_invalid_refs`,
@@ -888,6 +907,9 @@ const createInvalidMetricCsvFile = (fileName: string) => {
       'missing_data_product',
       '',
       `${metricCustomPropertyName}:invalid refs`,
+      '',
+      '',
+      '',
     ],
   ]);
   const csvPath = test.info().outputPath(`${fileName}.csv`);
@@ -1035,7 +1057,7 @@ test.describe(
       browser,
     }) => {
       const page = await browser.newPage();
-      await metricExportUser.login(page);
+      await metricExportUser.signIn(page);
       try {
         await redirectToHomePage(page);
         await waitForMetricsPage(page);
@@ -1097,7 +1119,7 @@ test.describe(
     }) => {
       test.slow();
       const page = await browser.newPage();
-      await metricExportUser.login(page);
+      await metricExportUser.signIn(page);
       try {
         const importedMetricName = `${fixtures.prefix}_imported`;
         fixtures.metrics.push({
@@ -1167,7 +1189,7 @@ test.describe(
     }) => {
       test.slow();
       const page = await browser.newPage();
-      await metricExportUser.login(page);
+      await metricExportUser.signIn(page);
       try {
         const existingMetricName = fixtures.metrics[1].name;
         const updatedDisplayName = `${fixtures.prefix} Import Updated`;
@@ -1190,8 +1212,12 @@ test.describe(
             `team:${fixtures.reviewer.name}`,
             fixtures.domain.fullyQualifiedName,
             fixtures.dataProduct.fullyQualifiedName,
-            'Approved',
+            // MetricApprovalWorkflow owns metric stages, so a CSV row cannot move one; blank keeps it.
+            '',
             `${metricCustomPropertyName}:updated custom value`,
+            '',
+            '',
+            '',
           ],
         ]);
         const csvPath = test
@@ -1304,6 +1330,7 @@ test.describe(
       await page.getByRole('button', { name: 'Revert Changes' }).click();
       await expect(nextButton).toBeDisabled();
       await expect(
+        // eslint-disable-next-line om-playwright/no-positional-locator -- metric grid rows are keyed by the metric uuid
         page.locator('.rdg-row').first().locator('[aria-colindex="3"]')
       ).toContainText(originalDisplayName);
     });
@@ -1407,9 +1434,7 @@ test.describe(
 
       // eslint-disable-next-line playwright/no-force-option -- styled checkbox control intercepts the native input.
       await row.getByRole('checkbox').check({ force: true });
-      await expect(page.locator('.metric-list-selection-count')).toHaveText(
-        '1'
-      );
+      await expect(page.getByText('1 selected', { exact: true })).toBeVisible();
 
       await page.getByTestId('bulk-edit-metric').click();
       await waitForMetricBulkEditGrid(page, selectedMetric.name);
@@ -1437,7 +1462,7 @@ test.describe(
       browser,
     }) => {
       const metricEditorPage = await browser.newPage();
-      await metricEditorUser.login(metricEditorPage);
+      await metricEditorUser.signIn(metricEditorPage);
 
       try {
         await redirectToHomePage(metricEditorPage);
@@ -1450,14 +1475,16 @@ test.describe(
         ).toBeVisible();
         await openMetricActions(metricEditorPage);
         await expect(
-          metricEditorPage
-            .locator('.metric-actions-menu-item')
-            .filter({ hasText: 'Export' })
+          getMetricActionsMenu(metricEditorPage).getByRole('menuitemradio', {
+            name: 'Export',
+            exact: true,
+          })
         ).toBeVisible();
         await expect(
-          metricEditorPage
-            .locator('.metric-actions-menu-item')
-            .filter({ hasText: 'Import' })
+          getMetricActionsMenu(metricEditorPage).getByRole('menuitemradio', {
+            name: 'Import',
+            exact: true,
+          })
         ).toBeVisible();
         await metricEditorPage.keyboard.press('Escape');
 
@@ -1476,7 +1503,7 @@ test.describe(
     }) => {
       test.slow();
       const customViewOnlyPage = await browser.newPage();
-      await viewOnlyUser.login(customViewOnlyPage);
+      await viewOnlyUser.signIn(customViewOnlyPage);
 
       try {
         for (const restrictedPage of [
@@ -1520,8 +1547,10 @@ test.describe(
       await waitForMetricBulkEditGrid(page, targetMetric.name);
 
       await expect(
-        page.locator('.bulk-edit-operation-badge-no_change').first()
-      ).toBeVisible();
+        page
+          .locator('.bulk-edit-operation-badge-no_change')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
       await expect(
         page.getByTestId('bulk-edit-operation-summary')
       ).toBeVisible();
@@ -1546,8 +1575,10 @@ test.describe(
       await waitForMetricBulkEditGrid(page, targetMetric.name);
 
       await expect(
-        page.locator('.bulk-edit-operation-badge-no_change').first()
-      ).toBeVisible();
+        page
+          .locator('.bulk-edit-operation-badge-no_change')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
       await expect(
         page.locator('.bulk-edit-operation-summary-count-update')
       ).toContainText('0');
@@ -1555,8 +1586,10 @@ test.describe(
       await editFirstDisplayNameCell(page, updatedDisplayName);
 
       await expect(
-        page.locator('.bulk-edit-operation-badge-update').first()
-      ).toBeVisible();
+        page
+          .locator('.bulk-edit-operation-badge-update')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
       await expect(
         page.locator('.bulk-edit-operation-summary-count-update')
       ).toContainText('1');
@@ -1615,8 +1648,10 @@ test.describe(
 
       await expect(page.locator('.bulk-edit-error-pill')).toBeVisible();
       await expect(
-        page.locator('.bulk-edit-operation-badge-skip').last()
-      ).toBeVisible();
+        page
+          .locator('.bulk-edit-operation-badge-skip')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     test('Removing a newly added metric row restores the grid state', async ({
@@ -1654,7 +1689,9 @@ test.describe(
       await expect(page.locator('.rdg-header-row')).toBeVisible({
         timeout: 90_000,
       });
-      await expect(page.locator('.rdg-row').first()).toBeVisible();
+      await expect(
+        page.locator('.rdg-row').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       const searchInput = page.getByTestId('bulk-edit-search').locator('input');
       await searchInput.fill(firstMetric.name);
@@ -1677,7 +1714,9 @@ test.describe(
       await expect(page.locator('.rdg-header-row')).toBeVisible({
         timeout: 90_000,
       });
-      await expect(page.locator('.rdg-row').first()).toBeVisible();
+      await expect(
+        page.locator('.rdg-row').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       const searchInput = page.getByTestId('bulk-edit-search').locator('input');
       await searchInput.fill(firstMetric.name);
@@ -1761,18 +1800,18 @@ test.describe(
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
 
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
-      await expect(page.getByTestId('metric-name').first()).toBeVisible();
+      await expect(
+        page.getByTestId('metric-name').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       await page.locator('thead label[slot="selection"]').click();
 
-      await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
-      await expect(page.locator('.metric-list-selection-count')).not.toHaveText(
-        '0'
-      );
+      await expect(page.getByTestId('clear-metric-selection')).toBeVisible();
+      await expect(page.getByText(/^[1-9]\d* selected$/)).toBeVisible();
     });
 
     test('MetricListPage unchecking header checkbox clears the selection bar', async ({
@@ -1781,19 +1820,20 @@ test.describe(
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
 
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
-      await expect(page.getByTestId('metric-name').first()).toBeVisible();
-
-      await page.locator('thead label[slot="selection"]').click();
-      await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
-
-      await page.locator('thead label[slot="selection"]').click();
       await expect(
-        page.locator('.metric-list-selection-bar')
-      ).not.toBeVisible();
+        page.getByTestId('metric-name').filter({ visible: true })
+      ).not.toHaveCount(0);
+
+      await page.locator('thead label[slot="selection"]').click();
+      const clearSelection = page.getByTestId('clear-metric-selection');
+      await expect(clearSelection).toBeVisible();
+
+      await page.locator('thead label[slot="selection"]').click();
+      await expect(clearSelection).not.toBeVisible();
     });
 
     test('MetricListPage clicking anywhere in a row navigates to metric details', async ({
@@ -1801,7 +1841,7 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
@@ -1811,7 +1851,7 @@ test.describe(
         .first();
       await expect(row).toBeVisible();
 
-      await row.locator('.metric-status-pill').first().click();
+      await row.getByRole('status').click();
 
       await expect(page).toHaveURL(/\/metric\//);
     });
@@ -1821,7 +1861,7 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
-      const searchResponse = waitForMetricsSearchResponse(page);
+      const searchResponse = waitForMetricsListingResponse(page);
       await filterMetrics(page, fixtures.prefix);
       await searchResponse;
 
@@ -1833,9 +1873,7 @@ test.describe(
 
       await row.locator('label[slot="selection"]').click();
 
-      await expect(page.locator('.metric-list-selection-count')).toHaveText(
-        '1'
-      );
+      await expect(page.getByText('1 selected', { exact: true })).toBeVisible();
       await expect(page).toHaveURL(/\/metrics/);
     });
   }

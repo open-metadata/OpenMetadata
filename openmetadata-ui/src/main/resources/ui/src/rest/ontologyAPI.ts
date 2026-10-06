@@ -50,6 +50,8 @@ import { OntologyIRIPreview } from '../generated/api/data/ontologyIriPreview';
 import { OntologyIRIPreviewRequest } from '../generated/api/data/ontologyIriPreviewRequest';
 import { OntologyMappingSuggestionList } from '../generated/api/data/ontologyMappingSuggestionList';
 import { OntologyMappingSuggestionRequest } from '../generated/api/data/ontologyMappingSuggestionRequest';
+import { OntologyMemoryDerivationRequest } from '../generated/api/data/ontologyMemoryDerivationRequest';
+import { OntologyMemoryProposalStatus } from '../generated/api/data/ontologyMemoryProposalStatus';
 import { OntologyNaturalLanguageQueryRequest } from '../generated/api/data/ontologyNaturalLanguageQueryRequest';
 import { OntologyNaturalLanguageQueryResult } from '../generated/api/data/ontologyNaturalLanguageQueryResult';
 import { OntologyPackInstallResult } from '../generated/api/data/ontologyPackInstallResult';
@@ -67,12 +69,16 @@ import { OntologySubsetResult } from '../generated/api/data/ontologySubsetResult
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';
 import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyChangeSet';
 import { OntologyAxiom } from '../generated/entity/data/ontologyAxiom';
-import { OntologyChangeSet } from '../generated/entity/data/ontologyChangeSet';
+import {
+  OntologyChangeSet,
+  OntologyChangeSetState,
+} from '../generated/entity/data/ontologyChangeSet';
 import { RelationshipType } from '../generated/entity/data/relationshipType';
+import { BackgroundJob } from '../generated/jobs/backgroundJob';
 import { OntologyEditLock } from '../generated/type/ontologyEditLock';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const RELATIONSHIP_TYPES_PATH = '/relationshipTypes';
 const ONTOLOGY_AXIOMS_PATH = '/ontologyAxioms';
@@ -92,6 +98,23 @@ const ONTOLOGY_SUBSETS_PATH = '/ontology/subsets';
 type OntologyChangeSetCreation =
   | CreateOntologyChangeSet
   | CreateOntologyChangeSetRequest;
+
+export const proposeTermFromMemory = async (memoryId: string) => {
+  const response = await APIClient.post<
+    OntologyMemoryDerivationRequest,
+    AxiosResponse<BackgroundJob>
+  >(`${ONTOLOGY_AI_PATH}/memories/jobs`, { memoryIds: [memoryId] });
+
+  return response.data;
+};
+
+export const getMemoryOntologyProposalStatus = async (memoryId: string) => {
+  const response = await APIClient.get<OntologyMemoryProposalStatus>(
+    `${ONTOLOGY_AI_PATH}/memories/${memoryId}/proposals`
+  );
+
+  return response.data;
+};
 
 export const listRelationshipTypes = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<RelationshipType[]>>(
@@ -175,10 +198,25 @@ export const createOntologyAxiom = async (request: CreateOntologyAxiom) => {
   return response.data;
 };
 
-export const listOntologyChangeSets = async (params?: ListParams) => {
+export const listOntologyChangeSets = async (
+  params?: ListParams & {
+    // Several states are sent comma-separated, which the server accepts.
+    state?: OntologyChangeSetState | OntologyChangeSetState[];
+    memorySourced?: boolean;
+  }
+) => {
   const response = await APIClient.get<PagingResponse<OntologyChangeSet[]>>(
     CHANGE_SETS_PATH,
     { params }
+  );
+
+  return response.data;
+};
+
+export const getOntologyChangeSet = async (id: string, fields?: string) => {
+  const response = await APIClient.get<OntologyChangeSet>(
+    `${CHANGE_SETS_PATH}/${id}`,
+    { params: fields ? { fields } : undefined }
   );
 
   return response.data;

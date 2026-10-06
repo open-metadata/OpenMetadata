@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
   XClose,
-} from '@untitledui/icons';
-import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
+} from '@openmetadata/ui-core-components/icons';
+import { Card, Drawer, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -33,15 +33,16 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { LineageData } from '../../../interface/lineage.interface';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityPureUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
   findOriginalColumnIndex,
@@ -51,8 +52,7 @@ import {
   mergeTagsWithGlossary,
   normalizeTags,
 } from '../../../utils/TablePureUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import AlertBar from '../../AlertBar/AlertBar';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
 import { DataQualityTest } from '../../common/DataQualitySection/DataQualitySection.interface';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
@@ -65,8 +65,7 @@ import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRig
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
-import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
-import { LineageData } from '../../Lineage/Lineage.interface';
+import LineageTabContent from '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import {
@@ -76,7 +75,7 @@ import {
   TestCaseStatusCounts,
 } from './ColumnDetailPanel.interface';
 import './ColumnDetailPanel.less';
-import { KeyProfileMetrics } from './KeyProfileMetrics';
+import { KeyProfileMetrics } from './KeyProfileMetrics/KeyProfileMetrics.component';
 import { NestedColumnsSection } from './NestedColumnsSection';
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
@@ -133,11 +132,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
   const [isColumnDataLoading, setIsColumnDataLoading] = useState(false);
-  const [localToast, setLocalToast] = useState<{
-    open: boolean;
-    message: string;
-    type: 'success' | 'error';
-  }>({ open: false, message: '', type: 'success' });
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
@@ -369,13 +363,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           )) as T);
 
       if (response) {
-        setLocalToast({
-          open: true,
-          message: t('server.update-entity-success', {
+        showSuccessToast(
+          t('server.update-entity-success', {
             entity: t(successMessageKey),
-          }),
-          type: 'success',
-        });
+          })
+        );
       }
 
       return response;
@@ -392,15 +384,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           'label.description'
         );
       } catch (error) {
-        setLocalToast({
-          open: true,
-          message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
-              entity: t('label.description'),
-            }),
-          type: 'error',
-        });
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.description'),
+          })
+        );
       } finally {
         setIsDescriptionLoading(false);
       }
@@ -447,15 +436,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
         return response?.tags;
       } catch (error) {
-        setLocalToast({
-          open: true,
-          message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
-              entity: t('label.tag-plural'),
-            }),
-          type: 'error',
-        });
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.tag-plural'),
+          })
+        );
 
         throw error;
       }
@@ -491,15 +477,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
         return response?.tags;
       } catch (error) {
-        setLocalToast({
-          open: true,
-          message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
-              entity: t('label.glossary-term-plural'),
-            }),
-          type: 'error',
-        });
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.glossary-term-plural'),
+          })
+        );
 
         throw error;
       }
@@ -515,15 +498,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           'label.custom-property-plural'
         );
       } catch (error) {
-        setLocalToast({
-          open: true,
-          message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
-              entity: t('label.custom-property-plural'),
-            }),
-          type: 'error',
-        });
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.custom-property-plural'),
+          })
+        );
       }
     },
     [performColumnFieldUpdate, t]
@@ -543,15 +523,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           }));
         }
       } catch (error) {
-        setLocalToast({
-          open: true,
-          message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
-              entity: t('label.display-name'),
-            }),
-          type: 'error',
-        });
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.display-name'),
+          })
+        );
       } finally {
         setIsDisplayNameEditing(false);
       }
@@ -607,11 +584,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         const res = await getTypeByFQN(ENTITY_PATH.column);
         setEntityTypeDetail(res);
       } catch (error) {
-        setLocalToast({
-          open: true,
-          message: getErrorText(error as AxiosError, t('message.error')),
-          type: 'error',
-        });
+        showErrorToast(error as AxiosError);
       }
     };
 
@@ -619,18 +592,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       fetchEntityTypeDetail();
     }
   }, [canViewCustomFields]);
-
-  useEffect(() => {
-    if (localToast.open) {
-      const timer = setTimeout(() => {
-        setLocalToast((prev) => ({ ...prev, open: false }));
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-
-    return undefined;
-  }, [localToast]);
 
   useEffect(() => {
     setActiveColumn(column);
@@ -799,7 +760,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             entityText: t('label.column-plural'),
           })}
           entityData={toEntityData(activeColumn)}
-          entityType={entityType}
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={hasEditPermission.customProperties}
           isEntityDataLoading={false}
@@ -827,7 +787,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           className="tw:inline-flex tw:items-center tw:min-w-0"
           key={breadcrumb.fullyQualifiedName}>
           <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
-            <Typography.Text
+            <Typography
               className={classNames('tw:text-xs tw:truncate', {
                 'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
                   isLastItem,
@@ -839,7 +799,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 isLastItem ? undefined : () => handleBreadcrumbClick(breadcrumb)
               }>
               {getEntityName(breadcrumb)}
-            </Typography.Text>
+            </Typography>
             {index < breadcrumbPath.length - 1 && (
               <ChevronRight
                 className="tw:text-gray-400 tw:shrink-0"
@@ -892,12 +852,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Typography.Text
+      <Typography
         className="tw:text-gray-400 tw:text-xs"
         data-testid="entity-name"
         ellipsis={{ tooltip: true }}>
-        {stringToHTML(activeColumn.name || '')}
-      </Typography.Text>
+        {renderHighlightedText(activeColumn.name || '')}
+      </Typography>
     );
   }
 
@@ -959,17 +919,17 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     placement="topLeft"
                     title={getEntityName(activeColumn)}
                     trigger="hover">
-                    <Typography.Text
+                    <Typography
                       ellipsis
                       className="entity-title-link"
                       data-testid="entity-link">
-                      {stringToHTML(
+                      {renderHighlightedText(
                         (activeColumn as { displayName?: string })
                           .displayName ||
                           activeColumn.name ||
                           ''
                       )}
-                    </Typography.Text>
+                    </Typography>
                   </Tooltip>
 
                   {renderEditDisplayNameButton()}
@@ -1034,27 +994,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Typography.Text className="pagination-header-text tw:font-medium">
+      <Typography className="pagination-header-text tw:font-medium">
         {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
         {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
-      </Typography.Text>
-    );
-  }
-
-  function renderLocalToastAlert() {
-    if (!localToast.open) {
-      return null;
-    }
-
-    return (
-      <div className="tw:sticky tw:-top-5 tw:z-1 tw:mr-4 tw:mb-4 tw:ml-2 column-panel-alert-wrapper">
-        <AlertBar
-          defaultExpand
-          className="show-alert"
-          message={localToast.message}
-          type={localToast.type}
-        />
-      </div>
+      </Typography>
     );
   }
 
@@ -1113,7 +1056,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       title={columnTitle}
       width="40%"
       onClose={onClose}>
-      {renderLocalToastAlert()}
       <div className="column-detail-panel-container">
         <div className="tw:flex tw:gap-2 tw:h-full">
           <Card bordered={false} className="summary-panel-container">

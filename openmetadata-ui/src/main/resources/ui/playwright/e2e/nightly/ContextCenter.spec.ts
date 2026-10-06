@@ -199,8 +199,8 @@ test.describe('Context Center - Article Attachments', () => {
       await insertImageViaUpload(page, uploadedFileName);
 
       await expect(
-        page.getByTestId('uploaded-image-node').first()
-      ).toBeVisible();
+        page.getByTestId('uploaded-image-node').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     await test.step('insert image via URL embed', async () => {
@@ -221,13 +221,13 @@ test.describe('Context Center - Article Attachments', () => {
     });
 
     await test.step('reload and verify persistence and attachment widget', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
       await expect(
-        page.getByTestId('uploaded-image-node').first()
-      ).toBeVisible();
+        page.getByTestId('uploaded-image-node').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       const attachmentWidget = page.getByTestId('attachment-widget');
       await expect(attachmentWidget).toBeVisible();
@@ -285,7 +285,9 @@ test.describe('Context Center - Article Attachments', () => {
       await page.keyboard.press(SHORTCUTS.enter);
       await insertFileViaUpload(page, uploadedFileName);
 
-      await expect(page.getByText(uploadedFileName).first()).toBeVisible();
+      await expect(
+        page.getByText(uploadedFileName).filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     await test.step('verify autosave', async () => {
@@ -293,11 +295,13 @@ test.describe('Context Center - Article Attachments', () => {
     });
 
     await test.step('reload and verify persistence', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
-      await expect(page.getByText(uploadedFileName).first()).toBeVisible();
+      await expect(
+        page.getByText(uploadedFileName).filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     await test.step('download the file from the inline attachment', async () => {
@@ -342,7 +346,9 @@ test.describe('Context Center - Article Attachments', () => {
       await page.keyboard.press(SHORTCUTS.enter);
       await insertVideoViaUpload(page, uploadedFileName);
 
-      await expect(page.locator('video.video-player').first()).toBeVisible();
+      await expect(
+        page.locator('video.video-player').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     await test.step('verify autosave', async () => {
@@ -350,11 +356,13 @@ test.describe('Context Center - Article Attachments', () => {
     });
 
     await test.step('reload and verify persistence', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
-      await expect(page.locator('video.video-player').first()).toBeVisible();
+      await expect(
+        page.locator('video.video-player').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
   });
 
@@ -379,7 +387,9 @@ test.describe('Context Center - Article Attachments', () => {
       await page.keyboard.press(SHORTCUTS.enter);
       await insertAudioViaUpload(page, uploadedFileName);
 
-      await expect(page.locator('audio.audio-player').first()).toBeVisible();
+      await expect(
+        page.locator('audio.audio-player').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     await test.step('verify autosave', async () => {
@@ -387,11 +397,13 @@ test.describe('Context Center - Article Attachments', () => {
     });
 
     await test.step('reload and verify persistence', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
-      await expect(page.locator('audio.audio-player').first()).toBeVisible();
+      await expect(
+        page.locator('audio.audio-player').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
   });
 
@@ -445,8 +457,8 @@ test.describe('Context Center - Article Attachments', () => {
       await insertImageViaUpload(page, uploadedFileName);
 
       await expect(
-        page.getByTestId('uploaded-image-node').first()
-      ).toBeVisible();
+        page.getByTestId('uploaded-image-node').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     await test.step('navigate away immediately without waiting for autosave', async () => {
@@ -458,8 +470,8 @@ test.describe('Context Center - Article Attachments', () => {
       await getEditor(page, true);
 
       await expect(
-        page.getByTestId('uploaded-image-node').first()
-      ).toBeVisible();
+        page.getByTestId('uploaded-image-node').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
   });
 });

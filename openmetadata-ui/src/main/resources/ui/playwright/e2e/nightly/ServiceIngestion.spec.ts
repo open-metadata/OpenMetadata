@@ -28,10 +28,10 @@ import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseInges
 import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import PostgresIngestionClass from '../../support/entity/ingestion/PostgresIngestionClass';
-import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/RedshiftWithDBTIngestionClass';
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   getAgentCard,
@@ -55,7 +55,9 @@ const services: Record<string, typeof ApiIngestionClass> = {
   // 'Snowflake Service': SnowflakeIngestionClass,
   'Superset Service': SupersetIngestionClass,
   'Postgres Service': PostgresIngestionClass,
-  'Redshift Service': RedshiftWithDBTIngestionClass,
+  // Skipping Redshift since the shared cluster refuses connections since
+  // 2026-09-23. Unskip once it is back.
+  // 'Redshift Service': RedshiftWithDBTIngestionClass,
 };
 
 if (process.env.PLAYWRIGHT_IS_OSS) {
@@ -357,10 +359,7 @@ test.describe.serial(
         await metadataTab.click();
       }
 
-      await page
-        .getByLabel('agents')
-        .getByTestId('loader')
-        .waitFor({ state: 'detached' });
+      await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
       const agentCard = getAgentCard(page, metadataPipeline.name);
 
@@ -378,7 +377,9 @@ test.describe.serial(
       await runDots.first().click();
 
       await expect(page.getByTestId('run-history-drawer')).toBeVisible();
-      await expect(page.getByTestId('run-history-item').first()).toBeVisible();
+      await expect(
+        page.getByTestId('run-history-item').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       expect(
         await page.getByTestId('run-history-item').count()
@@ -662,10 +663,7 @@ test.describe.serial(
         await metadataTab.click();
       }
 
-      await page
-        .getByLabel('agents')
-        .getByTestId('loader')
-        .waitFor({ state: 'detached' });
+      await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
       await page.getByTestId('more-actions').first().click();
       await page.getByTestId('edit-button').click();

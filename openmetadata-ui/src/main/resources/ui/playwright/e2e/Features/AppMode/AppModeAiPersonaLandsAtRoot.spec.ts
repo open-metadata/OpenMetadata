@@ -40,6 +40,7 @@ import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { signInThroughForm } from '../../../utils/formSignIn';
 import { AppModeExpectation, assertAppMode } from '../../Utils/appMode';
 
 type PersonaWithAppMode = {
@@ -50,7 +51,7 @@ type PersonaWithAppMode = {
 /**
  * Creates a persona + its docStore `UICustomization` doc with a single
  * `personaPreferences` entry forcing `appMode: 'AI'`. Mirrors what the admin
- * persona editor writes (see `CustomizablePage.tsx::handleAppModeSave`).
+ * persona editor writes (see `CustomizablePage.tsx::handleAppLayoutSave`).
  */
 const createAiPersona = async (
   apiContext: APIRequestContext
@@ -163,7 +164,7 @@ test.describe('AppMode — landing URL', { tag: ['@Platform'] }, () => {
           }
         });
 
-        await user.login(page);
+        await signInThroughForm(page, user);
         await waitForAllLoadersToDisappear(page);
 
         // 1. AppMode resolves to AI (persona-driven).

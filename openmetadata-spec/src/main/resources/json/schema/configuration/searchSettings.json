@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/configuration/searchSettings.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SearchSettings",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.search.SearchSettings",
@@ -12,6 +12,11 @@
           "type": "boolean",
           "description": "Flag to enable or disable RBAC Search Configuration globally.",
           "default": false
+        },
+        "enableColumnIndexing": {
+          "type": "boolean",
+          "description": "Index table columns as standalone search documents in the column search index. Disabling it stops column indexing and deletes the column search index; enabling it creates the index again, and a reindex of tables fills it.",
+          "default": true
         },
         "maxAggregateSize": {
           "type": "integer",

@@ -11,15 +11,18 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useNavigate } from 'react-router-dom';
 import {
   TestCaseStatus,
+  type TestCase,
+  type TestCaseParameterValue,
   type TestCaseResolutionStatus,
   type TestCaseResult,
 } from '../../../../generated/tests/testCase';
 import {
   MOCK_TASK_DATA,
+  MOCK_TEST_CASE_DATA,
   MOCK_TEST_CASE_RESOLUTION_STATUS,
 } from '../../../../mocks/TestCase.mock';
 import TestCaseLastRunBanner from './TestCaseLastRunBanner.component';
@@ -41,16 +44,32 @@ const LAST_RUN_SUMMARY_TEST_ID = 'test-case-last-run-summary';
 const NEXT_RUN_TEST_ID = 'test-case-next-run';
 const INCIDENT_ID_TEST_ID = 'test-case-incident-id';
 const INCIDENT_STATUS_TEST_ID = 'test-case-incident-status';
+const ACKNOWLEDGE_BUTTON_TEST_ID = 'acknowledge-incident-button';
 const TEST_CASE_RESULT_TIMESTAMP = 1_786_001_601_000;
 const TOP_ALIGNED_CLASS = 'tw:self-start';
 const TEXT_XS_CLASS = 'tw:text-xs';
 const INCIDENT_PATH =
   '/test-case/sample_data.ecommerce_db.shopify.dim_address.table_column_count_between/issues';
 
+const testCaseWith = (
+  definitionName: string,
+  parameterValues: TestCaseParameterValue[]
+) =>
+  ({
+    ...MOCK_TEST_CASE_DATA,
+    parameterValues,
+    testDefinition: {
+      ...MOCK_TEST_CASE_DATA.testDefinition,
+      name: definitionName,
+    },
+  } as TestCase);
+
 const defaultProps: TestCaseLastRunBannerProps = {
   incidentTask: MOCK_TASK_DATA[1],
-  parameterValues: [{ name: 'rowCount', value: '1000' }],
   taskLinkInfo: { label: '#9', path: INCIDENT_PATH },
+  testCase: testCaseWith('tableRowCountToEqual', [
+    { name: 'value', value: '1000' },
+  ]),
   testCaseStatusData:
     MOCK_TEST_CASE_RESOLUTION_STATUS[1] as TestCaseResolutionStatus,
 };
@@ -109,25 +128,27 @@ describe('TestCaseLastRunBanner', () => {
       );
       expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
         'tw:text-primary',
-        'tw:text-sm'
+        'tw:text-base'
       );
       expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
-        'tw:size-8',
+        'tw:size-10',
         'tw:rounded-lg',
         TOP_ALIGNED_CLASS
       );
       expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
-        'tw:py-3.5',
+        'tw:py-3.5'
+      );
+      expect(screen.getByTestId(bannerTestId)).toHaveClass(
         {
-          [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
-          [TestCaseStatus.Failed]: 'tw:bg-error-50',
+          [TestCaseStatus.Aborted]: 'tw:bg-warning-primary',
+          [TestCaseStatus.Failed]: 'tw:bg-error-primary',
           [TestCaseStatus.Queued]: 'tw:bg-brand-primary',
           [TestCaseStatus.Success]: 'tw:bg-success-primary',
         }[testCaseStatus]
       );
       expect(
         screen.getByTestId('test-case-last-run-right-section')
-      ).toHaveClass('tw:justify-end', 'tw:lg:w-80');
+      ).toHaveClass('tw:justify-end', 'tw:lg:min-w-80');
       expect(screen.getByText(result)).toHaveClass(TEXT_XS_CLASS);
       expect(
         screen.getByTestId('test-case-run-description')
@@ -165,20 +186,16 @@ describe('TestCaseLastRunBanner', () => {
           LAST_RUN_INCIDENT_TEST_ID
         );
 
-        expect(incidentRow).toHaveClass(
-          {
-            [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
-            [TestCaseStatus.Failed]: 'tw:bg-error-50',
-          }[testCaseStatus]
-        );
-        expect(incidentRow).toHaveTextContent('INC–9');
+        expect(incidentRow).toHaveClass('tw:bg-primary/55');
+        expect(incidentRow).toHaveTextContent('INC-9');
         expect(incidentRow).toHaveTextContent(
           'message.request-test-case-failure-resolution-message getNameFromFQN (testCase)'
         );
         expect(incidentRow).toHaveTextContent('label.acknowledged');
-        expect(screen.getByTestId('test-case-incident-icon')).toHaveClass(
+        expect(screen.getByTestId('test-case-incident-icon')).not.toHaveClass(
           TOP_ALIGNED_CLASS
         );
+        expect(incidentRow).toHaveClass('tw:lg:items-center');
         expect(
           screen.getByTestId('test-case-incident-text').nextElementSibling
         ).toBe(screen.getByTestId(INCIDENT_STATUS_TEST_ID));
@@ -193,29 +210,26 @@ describe('TestCaseLastRunBanner', () => {
           'tw:font-semibold'
         );
         expect(screen.getByTestId(INCIDENT_ID_TEST_ID)).toHaveTextContent(
-          /INC.*9,/
+          'INC-9'
+        );
+        expect(screen.getByTestId(INCIDENT_ID_TEST_ID)).toHaveClass(
+          'tw:font-mono'
         );
         expect(
           screen.getByTestId('test-case-incident-description')
         ).toHaveClass(TEXT_XS_CLASS);
         expect(
           screen.getByTestId('test-case-incident-description')
-        ).toContainElement(screen.getByTestId(INCIDENT_ID_TEST_ID));
-        expect(screen.getByTestId(INCIDENT_STATUS_TEST_ID)).toHaveClass(
-          TOP_ALIGNED_CLASS
-        );
+        ).not.toContainElement(screen.getByTestId(INCIDENT_ID_TEST_ID));
         expect(
           screen.getByTestId(INCIDENT_STATUS_TEST_ID).firstElementChild
-        ).toHaveClass('tw:bg-white');
+        ).toHaveClass('tw:bg-primary');
 
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 
         expect(viewIncidentButton).toHaveTextContent('label.view-entity');
-        expect(viewIncidentButton).toHaveClass(
-          TEXT_XS_CLASS,
-          'tw:ml-auto',
-          'tw:shrink-0'
-        );
+        expect(incidentActions).toHaveClass('tw:justify-end');
+        expect(viewIncidentButton).toHaveClass(TEXT_XS_CLASS, 'tw:shrink-0');
         expect(viewIncidentButton).not.toHaveAttribute('href');
 
         fireEvent.click(viewIncidentButton);
@@ -250,35 +264,79 @@ describe('TestCaseLastRunBanner', () => {
     ).not.toHaveTextContent('label.failed');
   });
 
-  it('uses the matching test parameter when the result omits its predicted value', () => {
+  // Real result names differ from their parameters' (`rowCount` against
+  // `value`), which is why the comparison is read from the test's bounds.
+  it.each<[string, TestCase, TestCaseResult['testResultValue'], string]>([
+    [
+      'a row count with its expected value',
+      testCaseWith('tableRowCountToEqual', [{ name: 'value', value: '10000' }]),
+      [{ name: 'rowCount', value: '110' }],
+      '110 / 10,000',
+    ],
+    [
+      'a row count with its allowed range',
+      testCaseWith('tableRowCountToBeBetween', [
+        { name: 'minValue', value: '12' },
+        { name: 'maxValue', value: '34' },
+      ]),
+      [{ name: 'rowCount', value: '25' }],
+      '25 / 12 – 34',
+    ],
+    [
+      'a null count with the zero its definition implies',
+      testCaseWith('columnValuesToBeNotNull', []),
+      [{ name: 'nullCount', value: '5' }],
+      '5 / 0',
+    ],
+  ])('compares %s', (_, testCase, testResultValue, expectedText) => {
     renderBanner({
-      parameterValues: [
-        { name: 'rowCount', value: '10000' },
-        { name: 'columnName', value: 'customer_id' },
-      ],
+      testCase,
       testCaseResult: {
-        result: 'Found 110 rows vs. the expected 10,000',
         testCaseStatus: TestCaseStatus.Failed,
-        testResultValue: [{ name: 'rowCount', value: '110' }],
+        testResultValue,
         timestamp: TEST_CASE_RESULT_TIMESTAMP,
       },
       testCaseStatus: TestCaseStatus.Failed,
     });
 
-    expect(screen.getByTestId(RESULT_EXPECTED_TEST_ID)).toHaveTextContent(
-      '110 / 10,000'
+    expect(screen.getByTestId('test-case-result-value')).toHaveTextContent(
+      expectedText
     );
   });
 
-  it('does not pair a result with an unrelated test parameter', () => {
+  it.each<[string, TestCase | undefined, TestCaseResult['testResultValue']]>([
+    [
+      'the test case has not loaded yet',
+      undefined,
+      [{ name: 'rowCount', value: '110' }],
+    ],
+    [
+      'the test states no expectation',
+      testCaseWith('columnValuesToMatchRegex', [
+        { name: 'regex', value: '^[0-9]+$' },
+      ]),
+      [{ name: 'likeCount', value: '5' }],
+    ],
+    [
+      'the run measured more than one value',
+      testCaseWith('columnValuesToBeBetween', [
+        { name: 'minValue', value: '1' },
+        { name: 'maxValue', value: '3489' },
+      ]),
+      [
+        { name: 'min', value: '1' },
+        { name: 'max', value: '3489' },
+      ],
+    ],
+  ])('hides the comparison when %s', (_, testCase, testResultValue) => {
     const result = 'Found 5 rows';
 
     renderBanner({
-      parameterValues: [{ name: 'columnName', value: 'customer_id' }],
+      testCase,
       testCaseResult: {
         result,
         testCaseStatus: TestCaseStatus.Failed,
-        testResultValue: [{ name: 'rowCount', value: '5' }],
+        testResultValue,
         timestamp: TEST_CASE_RESULT_TIMESTAMP,
       },
       testCaseStatus: TestCaseStatus.Failed,
@@ -341,10 +399,10 @@ describe('TestCaseLastRunBanner', () => {
       screen.queryByTestId(LAST_RUN_INCIDENT_TEST_ID)
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
-      'tw:text-sm'
+      'tw:text-base'
     );
     expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
-      'tw:size-8',
+      'tw:size-10',
       'tw:rounded-lg',
       TOP_ALIGNED_CLASS
     );
@@ -374,5 +432,68 @@ describe('TestCaseLastRunBanner', () => {
     expect(nextRun).not.toHaveTextContent('label.in-lowercase');
 
     dateNowSpy.mockRestore();
+  });
+
+  describe('acknowledge action', () => {
+    const failedRun: TestCaseResult = {
+      result: 'Query execution failed',
+      testCaseStatus: TestCaseStatus.Failed,
+      timestamp: TEST_CASE_RESULT_TIMESTAMP,
+    };
+    const newIncidentProps: Partial<TestCaseLastRunBannerProps> = {
+      testCaseResult: failedRun,
+      testCaseStatus: TestCaseStatus.Failed,
+      testCaseStatusData:
+        MOCK_TEST_CASE_RESOLUTION_STATUS[0] as TestCaseResolutionStatus,
+    };
+
+    it('acknowledges a new incident', async () => {
+      const onAcknowledge = jest.fn().mockResolvedValue(undefined);
+
+      renderBanner({
+        ...newIncidentProps,
+        hasEditStatusPermission: true,
+        onAcknowledge,
+      });
+
+      const acknowledgeButton = await screen.findByTestId(
+        ACKNOWLEDGE_BUTTON_TEST_ID
+      );
+
+      expect(acknowledgeButton).toHaveTextContent('label.acknowledge');
+
+      await act(async () => {
+        fireEvent.click(acknowledgeButton);
+      });
+
+      expect(onAcknowledge).toHaveBeenCalledTimes(1);
+    });
+
+    it('hides acknowledge without the edit status permission', async () => {
+      renderBanner({ ...newIncidentProps, hasEditStatusPermission: false });
+
+      expect(
+        await screen.findByTestId(LAST_RUN_INCIDENT_TEST_ID)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(ACKNOWLEDGE_BUTTON_TEST_ID)
+      ).not.toBeInTheDocument();
+    });
+
+    it('hides acknowledge once the incident is no longer new', async () => {
+      renderBanner({
+        ...newIncidentProps,
+        hasEditStatusPermission: true,
+        testCaseStatusData:
+          MOCK_TEST_CASE_RESOLUTION_STATUS[1] as TestCaseResolutionStatus,
+      });
+
+      expect(
+        await screen.findByTestId(LAST_RUN_INCIDENT_TEST_ID)
+      ).toHaveTextContent('label.acknowledged');
+      expect(
+        screen.queryByTestId(ACKNOWLEDGE_BUTTON_TEST_ID)
+      ).not.toBeInTheDocument();
+    });
   });
 });

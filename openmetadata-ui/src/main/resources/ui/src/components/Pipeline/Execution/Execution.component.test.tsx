@@ -72,12 +72,14 @@ describe('Test Execution Component', () => {
 
     expect(screen.getByText('ListViewTab')).toBeInTheDocument();
 
-    const treeRadioButton = screen.getByText('Tree');
+    const treeRadioButton = screen.getByRole('radio', { name: 'Tree' });
 
     act(() => {
       fireEvent.click(treeRadioButton);
     });
 
+    expect(treeRadioButton).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'List' })).not.toBeChecked();
     expect(screen.getByText('TreeViewTab')).toBeInTheDocument();
   });
 
@@ -88,7 +90,7 @@ describe('Test Execution Component', () => {
 
     expect(screen.getByTestId('data-range-picker-button')).toBeInTheDocument();
 
-    const treeRadioButton = screen.getByText('Tree');
+    const treeRadioButton = screen.getByRole('radio', { name: 'Tree' });
 
     act(() => {
       fireEvent.click(treeRadioButton);

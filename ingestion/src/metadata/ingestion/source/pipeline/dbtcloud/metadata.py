@@ -312,12 +312,27 @@ class DbtcloudSource(PipelineServiceSource):
                 )
             )
 
+    def _reset_observability_context(self) -> None:
+        """
+        Blank what the observability stage reads. The topology context is shared across
+        sibling jobs while ``latest_run`` is refreshed for every job, so any path that
+        leaves this stage without repopulating the context would hand the previous job's
+        entity and tables to this job's run -- rewriting rows that were already correct.
+        """
+        ctx = self.context.get()
+        ctx.current_pipeline_entity = None  # pyright: ignore[reportAttributeAccessIssue]
+        ctx.current_table_fqns = set()  # pyright: ignore[reportAttributeAccessIssue]
+
     def yield_pipeline_lineage_details(self, pipeline_details: DBTJob) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between pipeline and data sources.
         Uses combined GraphQL call for models and seeds, with optimized caching.
         """
         try:
+            # Before anything that can return or raise: the early return below and the
+            # except branch both leave this stage without touching the context again.
+            self._reset_observability_context()
+
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
@@ -342,9 +357,10 @@ class DbtcloudSource(PipelineServiceSource):
             # Build parent lookup dict for O(1) access instead of O(n) list search
             parent_by_unique_id = {p.uniqueId: p for p in dbt_parents if p.uniqueId}
 
-            # Cache observability details - store in context for current job
+            # Cache observability details - store in context for current job.
+            # current_table_fqns was emptied by the reset above and fills up as
+            # _track_table_fqn resolves each table.
             self.context.get().current_pipeline_entity = pipeline_entity
-            self.context.get().current_table_fqns = set()
             # Store pipeline FQN from entity to ensure exact match for status updates
             self.context.get().pipeline_fqn = str(pipeline_entity.fullyQualifiedName.root)
 

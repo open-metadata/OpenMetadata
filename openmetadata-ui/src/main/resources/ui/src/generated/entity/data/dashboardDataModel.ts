@@ -25,6 +25,15 @@ export interface DashboardDataModel {
      */
     columns: Column[];
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * Reference to the data contract for this entity.
      */
     dataContract?: EntityReference;
@@ -900,6 +909,8 @@ export enum DataModelType {
     PowerBIDatamart = "PowerBIDatamart",
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",
+    RillMetricsView = "RillMetricsView",
+    RillModel = "RillModel",
     SapS4HanaCdsView = "SapS4HanaCdsView",
     SigmaDataModel = "SigmaDataModel",
     SsrsDataModel = "SsrsDataModel",
@@ -913,8 +924,9 @@ export enum DataModelType {
 /**
  * Status of the DashboardDataModel.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -993,6 +1005,7 @@ export enum DashboardServiceType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    Rill = "Rill",
     SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",

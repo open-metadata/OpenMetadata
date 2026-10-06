@@ -28,13 +28,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -42,6 +45,8 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.PersonalAccessToken;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -53,6 +58,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
@@ -63,6 +70,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for User entity operations.
@@ -78,13 +86,12 @@ import org.openmetadata.sdk.network.RequestOptions;
 @Execution(ExecutionMode.CONCURRENT)
 public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
-  private static final String DIRECT_USER_ASSIGNMENT_ERROR =
-      "Team is of type Department. Direct users can only be assigned to teams of type Group.";
-
   {
     // User CSV export/import is done through the Team endpoint, not User endpoint
     // The actual export is /v1/teams/name/{teamName}/export which exports users in that team
+    supportsEntityStatus = false;
     supportsImportExport = false;
+    supportsCreationAudit = true;
   }
 
   private static final Profile PROFILE =
@@ -460,16 +467,58 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(name))
             .withTeams(List.of(department.getId()));
 
-    Exception exception =
+    OpenMetadataException exception =
         assertThrows(
-            Exception.class,
+            OpenMetadataException.class,
             () ->
                 SdkClients.adminClient()
                     .getHttpClient()
                     .execute(HttpMethod.PUT, "/v1/users", create, User.class));
 
-    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+    assertEquals(400, exception.getStatusCode());
     assertThrows(Exception.class, () -> SdkClients.adminClient().users().getByName(name));
+  }
+
+  @Test
+  void test_putUpdateUserValidatesOnlyNewDepartmentTeam(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team department =
+        client
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("legacyDepartment"))
+                    .withTeamType(CreateTeam.TeamType.DEPARTMENT));
+    String name = ns.prefix("legacyDepartmentUser");
+    User user = createEntity(new CreateUser().withName(name).withEmail(toValidEmail(name)));
+    CreateUser update =
+        new CreateUser()
+            .withName(user.getName())
+            .withEmail(user.getEmail())
+            .withTeams(List.of(department.getId()));
+
+    OpenMetadataException newMembershipException =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.getHttpClient().execute(HttpMethod.PUT, "/v1/users", update, User.class));
+    assertEquals(400, newMembershipException.getStatusCode());
+
+    seedLegacyTeamMembership(department, user);
+    String updatedDescription = "Updated without changing legacy team membership";
+    update.setDescription(updatedDescription);
+    User updated = client.getHttpClient().execute(HttpMethod.PUT, "/v1/users", update, User.class);
+
+    assertEquals(updatedDescription, updated.getDescription());
+    User fetched = client.users().get(user.getId().toString(), "teams");
+    assertTrue(
+        fetched.getTeams().stream().anyMatch(team -> department.getId().equals(team.getId())),
+        "The existing legacy department membership must be retained");
+  }
+
+  private static void seedLegacyTeamMembership(Team team, User user) {
+    Entity.getCollectionDAO()
+        .relationshipDAO()
+        .insert(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS.ordinal());
   }
 
   @Test
@@ -2338,6 +2387,100 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_patchUser_otherUser_forbiddenForDataConsumer(TestNamespace ns) {
+    // A user with only the default roles holds DataConsumer's EditDescription on all resources,
+    // which must not reach other users.
+    OpenMetadataClient consumer = clientFor(createRegularUser(ns, "consumer"));
+    User target = createRegularUser(ns, "consumertarget");
+
+    assertPatchForbidden(consumer, target, replaceOp("/description", "edited by consumer"));
+
+    assertNotEquals("edited by consumer", Users.get(target.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_patchUser_otherUser_forbiddenForDataSteward(TestNamespace ns) {
+    // DataSteward grants EditDisplayName on all resources, which must not reach other users.
+    OpenMetadataClient steward = clientFor(createDataSteward(ns));
+    User target = createRegularUser(ns, "stewardtarget");
+
+    assertPatchForbidden(steward, target, replaceOp("/displayName", "edited by steward"));
+
+    assertNotEquals("edited by steward", Users.get(target.getId().toString()).getDisplayName());
+  }
+
+  @Test
+  void test_patchUser_self_allowedForNonAdmin(TestNamespace ns) {
+    User user = createRegularUser(ns, "selfpatcher");
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/users/" + user.getId(), replaceOp("/description", "my own"));
+
+    assertEquals("my own", Users.get(user.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_patchUser_otherUser_allowedWithUserEditAll(TestNamespace ns) {
+    // A role granting EDIT_ALL on users is how a non admin is allowed to edit other users.
+    OpenMetadataClient editorClient = createUserEditorClient(ns);
+    User target = createRegularUser(ns, "editortarget");
+
+    editorClient
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + target.getId(),
+            replaceOp("/description", "edited by user editor"));
+
+    assertEquals("edited by user editor", Users.get(target.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_deleteUser_otherUser_forbiddenForNonAdmin(TestNamespace ns) {
+    OpenMetadataClient steward = clientFor(createDataSteward(ns));
+    User target = createRegularUser(ns, "deletetarget");
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                steward
+                    .getHttpClient()
+                    .executeForString(HttpMethod.DELETE, "/v1/users/" + target.getId(), null));
+    assertEquals(403, exception.getStatusCode(), exception.getMessage());
+
+    assertFalse(Boolean.TRUE.equals(Users.get(target.getId().toString()).getDeleted()));
+  }
+
+  private User createDataSteward(TestNamespace ns) {
+    String localPart = "steward" + ns.shortPrefix();
+    return createEntity(
+        new CreateUser()
+            .withName(localPart)
+            .withEmail(localPart + "@open-metadata.org")
+            .withRoles(List.of(dataStewardRole().getId())));
+  }
+
+  private void assertPatchForbidden(OpenMetadataClient client, User target, ArrayNode patch) {
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PATCH, "/v1/users/" + target.getId(), patch));
+    assertEquals(403, exception.getStatusCode(), exception.getMessage());
+  }
+
+  private ArrayNode replaceOp(String path, String value) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject().put("op", "replace").put("path", path).put("value", value);
+    return ops;
+  }
+
+  @Test
   void test_createPersonalAccessToken_impersonatedBot_forbidden(TestNamespace ns) {
     // The bot's stored name must equal its email local-part: JwtFilter resolves the bot's
     // username from the token's email claim, and BotTokenCache is keyed by that name.
@@ -2408,6 +2551,196 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 "{\"tokenName\":\"" + ns.prefix("pat") + "\",\"JWTTokenExpiry\":\"OneHour\"}");
 
     assertTrue(response.contains("jwtToken"), "Regular users can create their own personal tokens");
+  }
+
+  // ===================================================================
+  // CREDENTIAL REVOCATION
+  // A revoked bot token or personal access token must fail on the very next request, while the
+  // JWT itself is still signed and unexpired (open-metadata/OpenMetadata#32052).
+  // ===================================================================
+
+  @Test
+  void test_revokeBotToken_rejectsTokenOnNextRequest(TestNamespace ns) {
+    User botUser = createBotUser(ns, "revokebot");
+    String botToken = generateBotToken(botUser, JWTTokenExpiry.Seven);
+    OpenMetadataClient botClient = clientWithToken(botToken);
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users/revokeToken", "{\"id\":\"" + botUser.getId() + "\"}");
+
+    assertUnauthorized(botClient);
+  }
+
+  @Test
+  void test_regenerateBotToken_rejectsPreviousToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "rotatebot");
+    String firstToken = generateBotToken(botUser, JWTTokenExpiry.Seven);
+    OpenMetadataClient firstClient = clientWithToken(firstToken);
+    assertEquals(botUser.getId(), getLoggedInUser(firstClient).getId());
+
+    // JWT timestamps have second precision, so two tokens minted within the same second with the
+    // same expiry are byte-identical (and therefore both "current"). A different expiry makes the
+    // rotation observable without sleeping across a second boundary.
+    String secondToken = generateBotToken(botUser, JWTTokenExpiry.Thirty);
+    assertNotEquals(firstToken, secondToken);
+
+    assertUnauthorized(firstClient);
+    assertEquals(botUser.getId(), getLoggedInUser(clientWithToken(secondToken)).getId());
+  }
+
+  @Test
+  void test_deleteBotUser_rejectsBotToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "deletedbot");
+    OpenMetadataClient botClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+
+    deleteEntity(botUser.getId().toString());
+
+    assertUnauthorized(botClient);
+  }
+
+  @Test
+  void test_deleteBotEntity_rejectsContainedUsersBotToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "cascadedeletedbot");
+    Bot bot =
+        SdkClients.adminClient()
+            .bots()
+            .create(
+                new CreateBot()
+                    .withName(ns.prefix("credential_cascade_bot"))
+                    .withBotUser(botUser.getName()));
+    OpenMetadataClient botClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+
+    SdkClients.adminClient().bots().delete(bot.getId().toString());
+
+    assertUnauthorized(botClient);
+  }
+
+  @Test
+  void test_revokePersonalAccessToken_rejectsTokenOnNextRequest(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
+    PersonalAccessToken pat = createPersonalAccessToken(owner, ns.prefix("pat"));
+    OpenMetadataClient patClient = clientWithToken(pat.getJwtToken());
+    assertNotNull(getLoggedInUser(patClient));
+
+    owner
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + pat.getToken() + "\"]}");
+
+    assertUnauthorized(patClient);
+  }
+
+  @Test
+  void test_revokeAllPersonalAccessTokens_rejectsEveryToken(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
+    OpenMetadataClient first =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat1")).getJwtToken());
+    OpenMetadataClient second =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat2")).getJwtToken());
+    assertNotNull(getLoggedInUser(first));
+    assertNotNull(getLoggedInUser(second));
+
+    owner
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, "/v1/users/security/token/revoke?removeAll=true", "{}");
+
+    assertUnauthorized(first);
+    assertUnauthorized(second);
+  }
+
+  @Test
+  void test_deleteUser_rejectsPersonalAccessToken(TestNamespace ns) {
+    User owner = createRegularUser(ns, "patdeleted");
+    OpenMetadataClient patClient =
+        clientWithToken(
+            createPersonalAccessToken(clientFor(owner), ns.prefix("pat")).getJwtToken());
+    assertNotNull(getLoggedInUser(patClient));
+
+    deleteEntity(owner.getId().toString());
+
+    assertUnauthorized(patClient);
+  }
+
+  @Test
+  void test_restoreUser_acceptsPersonalAccessTokenAgain(TestNamespace ns) {
+    User owner = createRegularUser(ns, "patrestored");
+    OpenMetadataClient patClient =
+        clientWithToken(
+            createPersonalAccessToken(clientFor(owner), ns.prefix("pat")).getJwtToken());
+    assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+
+    deleteEntity(owner.getId().toString());
+    assertUnauthorized(patClient);
+
+    restoreEntity(owner.getId().toString());
+
+    assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+  }
+
+  /**
+   * JwtFilter resolves a bot's username from the token's email local-part, so the bot's stored name
+   * must equal the local-part.
+   */
+  private User createBotUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+    return createEntity(
+        new CreateUser()
+            .withName(localPart)
+            .withEmail(localPart + "@test.com")
+            .withIsBot(true)
+            .withAuthenticationMechanism(authMechanism));
+  }
+
+  private String generateBotToken(User botUser, JWTTokenExpiry expiry) {
+    return SdkClients.adminClient().users().generateToken(botUser.getId(), expiry).getJWTToken();
+  }
+
+  private User createRegularUser(TestNamespace ns, String base) {
+    String localPart = base + ns.shortPrefix();
+    return createEntity(
+        new CreateUser().withName(localPart).withEmail(localPart + "@open-metadata.org"));
+  }
+
+  /** A client authenticated as {@code user} with a harness-signed JWT, like the shared clients. */
+  private static OpenMetadataClient clientFor(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  private static OpenMetadataClient clientWithToken(String token) {
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.getServerUrl())
+            .accessToken(token)
+            .build());
+  }
+
+  private static PersonalAccessToken createPersonalAccessToken(
+      OpenMetadataClient owner, String tokenName) {
+    String response =
+        owner
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users/security/token",
+                "{\"tokenName\":\"" + tokenName + "\",\"JWTTokenExpiry\":\"OneHour\"}");
+    return JsonUtils.readValue(response, PersonalAccessToken.class);
+  }
+
+  private void assertUnauthorized(OpenMetadataClient client) {
+    OpenMetadataException exception =
+        assertThrows(OpenMetadataException.class, () -> getLoggedInUser(client));
+    assertEquals(401, exception.getStatusCode(), exception.getMessage());
   }
 
   @Test
@@ -2599,44 +2932,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   void test_updateUser_crossUserRoleElevation_forbidden(TestNamespace ns) throws Exception {
     // A principal holding EDIT on users may update somebody else, but granting them a role stays
     // admin only - the same rule PATCH /v1/users/{id} enforces on the /roles path.
-    OpenMetadataClient admin = SdkClients.adminClient();
-    String prefix = ns.prefix("userEditor");
-    Policy policy =
-        admin
-            .policies()
-            .create(
-                new CreatePolicy()
-                    .withName(prefix + "_policy")
-                    .withDescription("Grants cross user edit for the role elevation IT")
-                    .withRules(
-                        List.of(
-                            userRule(prefix + "_view", MetadataOperation.VIEW_ALL),
-                            userRule(prefix + "_edit", MetadataOperation.EDIT_ALL))));
-    Role role =
-        admin
-            .roles()
-            .create(
-                new CreateRole()
-                    .withName(prefix + "_role")
-                    .withDescription("Cross user edit role for the role elevation IT")
-                    .withPolicies(List.of(policy.getFullyQualifiedName())));
-    CreateTeam createTeam = new CreateTeam();
-    createTeam.setName(prefix + "_team");
-    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
-    createTeam.setDefaultRoles(List.of(role.getId()));
-    Team team = admin.teams().create(createTeam);
-
-    // The name must equal the email local part: JwtFilter resolves the caller's username from the
-    // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
-    String editorName = "usereditor" + ns.shortPrefix();
-    User editor =
-        createEntity(
-            new CreateUser()
-                .withName(editorName)
-                .withEmail(editorName + "@test.com")
-                .withTeams(List.of(team.getId())));
-    OpenMetadataClient editorClient =
-        SdkClients.createClient(editor.getName(), editor.getEmail(), new String[] {});
+    OpenMetadataClient editorClient = createUserEditorClient(ns);
 
     String targetName = ns.prefix("elevationTarget");
     User target =
@@ -2679,6 +2975,47 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     String response =
         editorClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", updateBody);
     assertTrue(response.contains(description), "Cross user edit without roles must stay allowed");
+  }
+
+  // A non admin whose role grants EDIT_ALL on users, through a team's default roles.
+  private OpenMetadataClient createUserEditorClient(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.prefix("userEditor");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(prefix + "_policy")
+                    .withDescription("Grants cross user edit for the user authorization ITs")
+                    .withRules(
+                        List.of(
+                            userRule(prefix + "_view", MetadataOperation.VIEW_ALL),
+                            userRule(prefix + "_edit", MetadataOperation.EDIT_ALL))));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "_role")
+                    .withDescription("Cross user edit role for the user authorization ITs")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(prefix + "_team");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    createTeam.setDefaultRoles(List.of(role.getId()));
+    Team team = admin.teams().create(createTeam);
+
+    // The name must equal the email local part: JwtFilter resolves the caller's username from the
+    // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
+    String editorName = "usereditor" + ns.shortPrefix();
+    User editor =
+        createEntity(
+            new CreateUser()
+                .withName(editorName)
+                .withEmail(editorName + "@test.com")
+                .withTeams(List.of(team.getId())));
+    return SdkClients.createClient(editor.getName(), editor.getEmail(), new String[] {});
   }
 
   private Rule userRule(String name, MetadataOperation operation) {
@@ -2747,6 +3084,43 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         allTime.getData().stream().noneMatch(u -> Boolean.TRUE.equals(u.getIsBot())),
         "Online users response must exclude bots");
+  }
+
+  @Test
+  void test_customPropertyValueSurvivesCreatePatchAndRead(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = ns.prefix("userDeskLocation");
+    CustomPropertyTestSupport.registerStringProperty(client, "user", property);
+    try {
+      String name = ns.prefix("cpUser");
+      User user =
+          client
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(name)
+                      .withEmail(toValidEmail(name))
+                      .withDescription("User carrying a custom property")
+                      .withExtension(Map.of(property, "desk-7")));
+      String id = user.getId().toString();
+
+      User created = client.users().get(id, "extension");
+      assertEquals(
+          "desk-7",
+          CustomPropertyTestSupport.extensionValue(created.getExtension(), property),
+          "extension supplied on create must survive the round trip");
+
+      created.setExtension(Map.of(property, "desk-9"));
+      client.users().update(id, created);
+
+      assertEquals(
+          "desk-9",
+          CustomPropertyTestSupport.extensionValue(
+              client.users().get(id, "extension").getExtension(), property),
+          "PATCHing the extension must replace the stored value");
+    } finally {
+      CustomPropertyTestSupport.removeProperty(client, "user", property);
+    }
   }
 
   private ResultList<User> listOnlineUsers(int timeWindow, int limit) {

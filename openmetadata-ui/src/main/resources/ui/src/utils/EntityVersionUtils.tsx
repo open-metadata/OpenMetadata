@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
-import { Divider, Space, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
 import type { ReactNode } from 'react';
 import { Fragment, lazy } from 'react';
@@ -41,7 +40,6 @@ import {
 import { getEntityName } from './EntityNameUtils';
 import * as Pure from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
-import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import { isValidJSONString } from './StringUtils';
 
 const BulkImportVersionSummary = withSuspenseFallback(
@@ -118,7 +116,7 @@ export const getSummary = ({
   return (
     <Fragment>
       {isDeleteUpdated?.length > 0 ? (
-        <Typography.Paragraph>
+        <Typography as="p">
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
@@ -130,20 +128,20 @@ export const getSummary = ({
                   });
             })
             .join(', ')}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
       {fieldsAdded?.length > 0 ? (
-        <Typography.Paragraph>
+        <Typography as="p">
           {Pure.getSummaryText({
             isPrefix,
             fieldsChanged: fieldsAdded,
             actionType: t('label.added'),
             actionText: t('label.added-lowercase'),
           })}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
       {fieldsUpdated?.length ? (
-        <Typography.Paragraph>
+        <Typography as="div">
           {bulkImportSummary ? (
             <>
               {t('message.bulk-import-completed')}
@@ -158,17 +156,17 @@ export const getSummary = ({
               isGlossaryTerm,
             })
           )}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
       {fieldsDeleted?.length ? (
-        <Typography.Paragraph>
+        <Typography as="p">
           {Pure.getSummaryText({
             isPrefix,
             fieldsChanged: fieldsDeleted,
             actionType: t('label.removed'),
             actionText: t('label.deleted-lowercase'),
           })}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
     </Fragment>
   );
@@ -208,57 +206,85 @@ export const renderVersionButton = (
   );
 };
 
-export const getParameterValueDiffDisplay = (
+type ParameterValueDiff = ReturnType<
+  typeof Pure.getParameterValuesDiff
+>[number];
+
+interface ParameterDiffRow {
+  label: string;
+  value: ReactNode;
+}
+
+const PARAMETER_CHANGE_ARROW = ' → ';
+
+// Token colours rather than the shared `diff-added` class, which sets its own
+// font and size, so both values take the card row's mono type.
+const addedParameterValue = (text: string) => (
+  <span className="tw:text-success-primary" data-testid="diff-added">
+    {text}
+  </span>
+);
+
+const removedParameterValue = (text: string) => (
+  <span className="tw:text-tertiary tw:line-through" data-testid="diff-removed">
+    {text}
+  </span>
+);
+
+/**
+ * A parameter's change read whole, `10000 → 12000`: a character diff glued the
+ * digits of the two numbers into one (`1000012000`).
+ */
+const getParameterDiffValue = (diff: ParameterValueDiff): ReactNode => {
+  switch (diff.status) {
+    case EntityChangeOperations.UPDATED:
+      return (
+        <>
+          {removedParameterValue(diff.oldValue)}
+          {PARAMETER_CHANGE_ARROW}
+          {addedParameterValue(diff.newValue)}
+        </>
+      );
+    case EntityChangeOperations.ADDED:
+      return addedParameterValue(diff.newValue);
+    case EntityChangeOperations.DELETED:
+      return removedParameterValue(diff.oldValue);
+    case EntityChangeOperations.NORMAL:
+    default:
+      return diff.oldValue;
+  }
+};
+
+/**
+ * The version page's parameters as Configuration card rows, each value showing
+ * its change, plus the assertion SQL's diff, which keeps a block of its own.
+ */
+export const getParameterValueDiffRows = (
   changeDescription: ChangeDescription,
   defaultValues?: TestCaseParameterValue[]
-): React.ReactNode => {
+): { rows: ParameterDiffRow[]; sqlDiff?: ReactNode } => {
   const diffs = Pure.getParameterValuesDiff(changeDescription, defaultValues);
-
-  // Separate sqlExpression from other params
   const sqlParamDiff = diffs.find((diff) => diff.name === 'sqlExpression');
-  const otherParamDiffs = diffs.filter((diff) => diff.name !== 'sqlExpression');
 
-  return (
-    <>
-      {/* Render non-sqlExpression parameters as before */}
-      <Space
-        wrap
-        className="parameter-value-container parameter-value"
-        size={6}>
-        {otherParamDiffs.length === 0 ? (
-          <Typography.Text type="secondary">
-            {t('label.no-parameter-available')}
-          </Typography.Text>
-        ) : (
-          otherParamDiffs.map((diff, index) => (
-            <Space data-testid={diff.name} key={diff.name} size={4}>
-              <Typography.Text className="parameter-label">
-                {`${diff.name}:`}
-              </Typography.Text>
-              <Typography.Text className="parameter-value-text">
-                {getDiffDisplayValue(diff)}
-              </Typography.Text>
-              {otherParamDiffs.length - 1 !== index && (
-                <Divider type="vertical" />
-              )}
-            </Space>
-          ))
-        )}
-      </Space>
-      {/* Render sqlExpression parameter separately, using inline diff in a code-style block */}
-      {sqlParamDiff && (
-        <div className="m-t-md">
-          <Typography.Text className="right-panel-label">
-            {startCase(sqlParamDiff.name)}
-          </Typography.Text>
+  return {
+    rows: diffs.reduce<ParameterDiffRow[]>((rows, diff) => {
+      if (diff.name !== 'sqlExpression') {
+        rows.push({ label: diff.name, value: getParameterDiffValue(diff) });
+      }
 
-          <div className="m-t-sm version-sql-expression-container">
-            {getDiffDisplayValue(sqlParamDiff)}
-          </div>
+      return rows;
+    }, []),
+    sqlDiff: sqlParamDiff && (
+      <>
+        <Typography className="right-panel-label">
+          {startCase(sqlParamDiff.name)}
+        </Typography>
+        <div className="m-t-sm version-sql-expression-container">
+          {getDiffDisplayValue(sqlParamDiff)}
         </div>
-      )}
-    </>
-  );
+      </>
+    ),
+  };
 };
 
 export const getComputeRowCountDiffDisplay = (
@@ -320,7 +346,7 @@ export const getOwnerVersionLabel = (
         <Owner
           isCompactView={false}
           ownerDisplayName={ownerDisplayName}
-          owners={toOwnerRefs(owners)}
+          owners={owners}
           showLabel={false}
         />
       );
@@ -344,7 +370,7 @@ export const getOwnerVersionLabel = (
       <Owner
         isCompactView={false}
         ownerDisplayName={ownerDisplayName}
-        owners={toOwnerRefs(defaultItems)}
+        owners={defaultItems}
         showLabel={false}
       />
     );

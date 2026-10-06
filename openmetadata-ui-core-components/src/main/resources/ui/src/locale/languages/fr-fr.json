@@ -7,6 +7,7 @@
     "close": "Fermer",
     "close-navigation-menu": "Fermer le menu de navigation",
     "copy-link": "Copier le lien",
+    "count-remaining": "{{count}} restant(s)",
     "count-selected": "{{count}} sélectionné(s)",
     "current-page": "Page actuelle",
     "date-range-picker": "Sélecteur de plage de dates",
@@ -21,6 +22,7 @@
     "no-data-found": "Aucune donnée trouvée",
     "no-owners": "Aucun propriétaire",
     "none-selected": "Aucun sélectionné",
+    "ok": "D'accord",
     "open-menu": "Ouvrir le menu",
     "owners": "Propriétaires",
     "page": "Page",
@@ -28,12 +30,16 @@
     "pagination-navigation": "Navigation de pagination",
     "previous-page": "Aller à la page précédente",
     "records": "Enregistrements",
+    "remove-entity": "Supprimer {{entity}}",
     "remove-filter": "Supprimer le filtre",
     "search": "Rechercher",
     "select-all": "Tout sélectionner",
+    "select-date": "Sélectionner une date",
     "select-dates": "Sélectionner les dates",
     "select-only-one-row": "Sélectionner une ligne",
+    "show-count-more": "Afficher {{count}} de plus",
     "show-hidden-breadcrumbs": "Afficher le fil d'Ariane masqué",
-    "today": "Aujourd'hui"
+    "today": "Aujourd'hui",
+    "tree-select": "Sélection arborescente"
   }
 }

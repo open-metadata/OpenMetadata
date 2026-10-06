@@ -458,7 +458,9 @@ authenticationConfiguration:
   clientType: ${AUTHENTICATION_CLIENT_TYPE:-public}
   # For SSO: Set to "google", "okta", "azure", etc. and configure OIDC credentials
   provider: ${AUTHENTICATION_PROVIDER:-basic}
-  # This is used by auth provider provide response as either id_token or code
+  # Public (browser) client only: the response_type the UI's OIDC client requests. Confidential
+  # clients are driven by oidcConfiguration.responseType below and ignore this value — note that
+  # GET /api/v1/system/config/auth reports this field, not the oidcConfiguration one.
   responseType: ${AUTHENTICATION_RESPONSE_TYPE:-id_token}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
@@ -467,7 +469,9 @@ authenticationConfiguration:
   tokenValidationAlgorithm: ${AUTHENTICATION_TOKEN_VALIDATION_ALGORITHM:-"RS256"}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
-  # For SSO: Set to your OAuth callback URL (e.g., "https://yourhost/api/v1/callback")
+  # Public (browser) client only: where the IdP returns the browser, handled by the UI
+  # at /callback (e.g., "https://yourhost/callback"). Confidential clients leave this blank
+  # and set oidcConfiguration.callbackUrl below instead.
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   # Additional redirect URIs allowed for the login flow (beyond callbackUrl and the server callbacks).
   # Each entry must exactly match the requested redirect URI. Use for browser-extension logins,
@@ -506,16 +510,21 @@ authenticationConfiguration:
     preferredJwsAlgorithm: ${OIDC_PREFERRED_JWS:-"RS256"}
     responseType: ${OIDC_RESPONSE_TYPE:-"code"}
     disablePkce: ${OIDC_DISABLE_PKCE:-true}
+    # The redirect_uri sent to the IdP, and the one to register in the IdP app. Must point at
+    # the server's /callback endpoint, which performs the code exchange. Do NOT register
+    # /auth/callback — that is the UI route the server redirects to afterwards.
     callbackUrl: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
+    # The deployment's externally reachable base URL, e.g. "https://openmetadata.example.com"
     serverUrl: ${OIDC_SERVER_URL:-"http://localhost:8585"}
     clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
     tenant: ${OIDC_TENANT:-""}
     maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
     tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
     customParams: ${OIDC_CUSTOM_PARAMS:-}
-    maxAge: ${OIDC_MAX_AGE:-"0"}
-    prompt: ${OIDC_PROMPT_TYPE:-"consent"}
+    maxAge: ${OIDC_MAX_AGE:-""}
+    prompt: ${OIDC_PROMPT_TYPE:-""}
     sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} # Deprecated fallback; use AUTHENTICATION_SESSION_EXPIRY
+    endSessionWithProvider: ${OIDC_END_SESSION_WITH_PROVIDER:-false} # sign users out when the identity provider ends their session
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -599,6 +608,7 @@ elasticsearch:
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-10}  # Increased from 5s for Docker networks
   connectionRequestTimeoutSecs: ${ELASTICSEARCH_CONNECTION_REQUEST_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-120}  # Increased from 60s for slow queries
+  requestCompressionEnabled: ${ELASTICSEARCH_REQUEST_COMPRESSION_ENABLED:-true}
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   # Connection pool settings for better load balancing and performance
   maxConnTotal: ${ELASTICSEARCH_MAX_CONN_TOTAL:-100}  # Total connections across all hosts
@@ -634,6 +644,7 @@ llmConfiguration:
   # `enabled` above, which also gates embeddings: LLM features can stay on for semantic search
   # with extraction off. Unmetered here, so opt-in.
   memoryExtractionEnabled: ${LLM_MEMORY_EXTRACTION_ENABLED:-false}
+  ontologyMemoryDerivationEnabled: ${LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED:-false}
   # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
   aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
@@ -916,7 +927,8 @@ rdf:
   shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
   dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
   strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
-  askCollateEnabled: ${RDF_ASK_COLLATE_ENABLED:-false}
+  # RDF_ASK_COLLATE_ENABLED is the deprecated name of RDF_AI_ENABLED.
+  aiEnabled: ${RDF_AI_ENABLED:-${RDF_ASK_COLLATE_ENABLED:-false}}
   federation:
     enabled: ${RDF_FEDERATION_ENABLED:-false}
     allowedEndpoints: ${RDF_FEDERATION_ALLOWED_ENDPOINTS:-[]}
@@ -925,6 +937,7 @@ rdf:
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
 # Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
 # Redis L2 cache; it falls back to NoopCacheProvider if Redis is unreachable at startup.
+# Multi-server deployments must use Redis so credential revocations reach every server.
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}

@@ -57,6 +57,12 @@ export default [
     ],
   },
 
+  // A disable directive that suppresses nothing silently hides whatever is added
+  // under it later, so fail lint and make the fix that left it stale delete it too.
+  {
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+  },
+
   // Base config for JavaScript and TypeScript files
   {
     files: ['src/**/*.{js,jsx,ts,tsx}'],
@@ -268,29 +274,6 @@ export default [
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
 
-      // Design-system import discipline — warn while existing violations are
-      // migrated; promote to error once the backlog reaches zero.
-      //
-      // Safety: no-restricted-imports carries no auto-fixer, so 'warn' here
-      // does not trigger the eslint --fix footgun in ui-checkstyle.
-      'no-restricted-imports': [
-        'warn',
-        {
-          patterns: [
-            {
-              group: ['@untitledui/icons', '@untitledui/icons/*'],
-              message:
-                'Import icons from @openmetadata/ui-core-components/icons, not directly from @untitledui/icons.',
-            },
-            {
-              group: ['**/assets/**/*.svg'],
-              message:
-                'Do not import SVG icons directly from assets/ paths; use the designated abstraction instead.',
-            },
-          ],
-        },
-      ],
-
       // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
       // had never been registered, so none of it ran.
       //
@@ -355,6 +338,18 @@ export default [
       // fail CI. Test/mock files are exempted below — their Tooltip mocks render
       // <div title={title}> on purpose so tests can read the tooltip text.
       'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
+      // Raw palette classes (tw:bg-blue-50, tw:text-gray-500, …) are static in
+      // dark mode — use the utility-* variant or a semantic token. Report-only
+      // (no autofix) on purpose: `ui-checkstyle` runs `eslint --fix` then fails
+      // on the diff, so a fixable rule would rewrite pre-existing violations in
+      // files an unrelated PR merely touches and fail its gate. ~358 existing
+      // hits at promotion time; kept at 'warn' until the backlog is cleared
+      // per-area, then promote to 'error' (and re-add a shade-restricted
+      // fixer). See docs/colors.md + the dark-mode guidelines.
+      'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
+      // A Typography ellipsis tooltip inside a link/button renders a nested
+      // <button> (#30779). Report-only, so `eslint --fix` never edits it.
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -372,7 +367,7 @@ export default [
       // t() keys and label./message./server. strings and is enforced at error.
       'sonarjs/no-duplicate-string': 'off',
       'openmetadata-i18n/no-duplicate-string': 'error',
-      'sonarjs/cognitive-complexity': ['warn', 15], // 85
+      'sonarjs/cognitive-complexity': ['error', 15], // cleared tree-wide; blocks regressions
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
@@ -397,7 +392,7 @@ export default [
       'sonarjs/no-clear-text-protocols': 'error',
       'sonarjs/no-hardcoded-passwords': 'error',
       'sonarjs/no-hardcoded-ip': 'error',
-      'sonarjs/no-invariant-returns': 'warn', // 0 in sample
+      'sonarjs/no-invariant-returns': 'error',
 
       // React correctness and re-render cost — the enforceable slice of
       // frontend-performance.md. Cleared to zero by the ESLint-cleanup stack —
@@ -420,12 +415,12 @@ export default [
       'openmetadata-imports/no-api-calls-in-iteration': 'warn',
       'openmetadata-imports/no-circular-imports': 'warn',
       'openmetadata-imports/no-cross-page-imports': 'warn',
-      'openmetadata-imports/no-hook-ui-imports': 'warn',
+      'openmetadata-imports/no-hook-ui-imports': 'error',
       'openmetadata-imports/no-impure-pure-utils': 'warn',
-      'openmetadata-imports/no-internal-barrel-imports': 'warn',
-      'openmetadata-imports/no-lodash-default-import': 'warn',
+      'openmetadata-imports/no-internal-barrel-imports': 'error',
+      'openmetadata-imports/no-lodash-default-import': 'error',
       'openmetadata-imports/no-lower-layer-page-imports': 'warn',
-      'openmetadata-imports/no-rest-ui-imports': 'warn',
+      'openmetadata-imports/no-rest-ui-imports': 'error',
       'openmetadata-imports/review-sequential-api-calls': 'warn',
 
       // Repository-specific performance invariants. These rules have no
@@ -438,6 +433,100 @@ export default [
       // severity `eslint --fix` would rewrite files and hard-fail the
       // git-diff check in ui-checkstyle. Land a one-time repo-wide autofix
       // commit first, then add it here at error.
+    },
+  },
+
+  {
+    // Charts go through @openmetadata/ui-core-components/charts; recharts and
+    // raw echarts imports are banned. Placed before the Metric block, which
+    // replaces this rule for Metric files (no charts there).
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['recharts', 'recharts/*'],
+              message:
+                'Use @openmetadata/ui-core-components/charts; recharts was removed.',
+            },
+            {
+              group: [
+                'echarts',
+                'echarts/*',
+                'echarts-for-react',
+                'echarts-for-react/*',
+              ],
+              message:
+                'Import charts and chart types from @openmetadata/ui-core-components/charts.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/components/Metric/**/*.{js,jsx,ts,tsx}',
+      'src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx',
+      'src/components/DataAssets/DataAssetsHeader/StatItem.component.tsx',
+      'src/components/common/Table/TableV2.tsx',
+      'src/components/common/Table/TableV2Utils.ts',
+      'src/context/LimitsProvider/useLimitsStore.ts',
+      'src/pages/MetricsPage/**/*.{js,jsx,ts,tsx}',
+      'src/hooks/useMetric*.{js,jsx,ts,tsx}',
+      'src/hoc/LimitWrapper.tsx',
+      'src/rest/metricGroupsAPI.ts',
+      'src/rest/metricsAPI.ts',
+      'src/utils/ToastUtils.ts',
+      'src/utils/MetricEntityUtils/**/*.{js,jsx,ts,tsx}',
+    ],
+    // These two still render the antd Tabs/Row/Col entity-page scaffold that
+    // every other entity details and version page shares; migrate them with
+    // that scaffold rather than in isolation.
+    ignores: [
+      'src/components/Metric/MetricDetails/MetricDetails.tsx',
+      'src/components/Metric/MetricVersion/MetricVersion.tsx',
+    ],
+    rules: {
+      // The typescript-eslint variant is used on purpose: flat config replaces
+      // a rule's options wholesale, so a core `no-restricted-imports` entry here
+      // would be discarded by the later permission block (and would itself
+      // discard the base design-system restrictions) for these files.
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'antd',
+              allowTypeImports: true,
+              message:
+                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
+            },
+            {
+              name: '@ant-design/icons',
+              allowTypeImports: true,
+              message:
+                'Metric workflows use icons from @openmetadata/ui-core-components/icons.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['antd/*'],
+              allowTypeImports: true,
+              message:
+                'Metric workflows use Untitled UI from @openmetadata/ui-core-components.',
+            },
+            {
+              group: ['@ant-design/icons/*'],
+              allowTypeImports: true,
+              message:
+                'Metric workflows use icons from @openmetadata/ui-core-components/icons.',
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -472,23 +561,8 @@ export default [
       // sanctioned fallback/placeholder object used throughout the already-
       // converted code (e.g. before a permissions fetch resolves), unlike
       // the two prioritization helpers.
-      //
-      // Deviation from the task brief: the brief assumed this would land at
-      // 'error', with the sweep having already driven direct call sites to
-      // (near) zero. Verification at promotion time found 40 files (45
-      // import specifiers) still importing these two functions directly
-      // from components/pages — not "a few, small" stragglers, and
-      // concentrated in a category the sweep never touched (the per-entity
-      // `*Version` components — TableVersion, ChartVersion, PipelineVersion,
-      // etc. — plus a handful of widgets and hooks). Converting 40 files'
-      // worth of permission derivation is its own sweep-scale task
-      // (mirroring Task 8), not something to fold silently into a
-      // lint-hardening/promotion task. Landing this specific restriction at
-      // 'warn' follows the repo's own documented convention (see the "warn
-      // tier" comment above) for a real, counted backlog that is not zero
-      // yet; promote to 'error' once a follow-up sweep clears it.
       'no-restricted-imports': [
-        'warn', // 40 files (45 import specifiers) import getPrioritizedEditPermission/getPrioritizedViewPermission directly (measured via this rule at promotion time)
+        'error',
         {
           patterns: [
             {
@@ -567,8 +641,8 @@ export default [
       // TypeScript/base rule overrides for Playwright files
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-duplicate-enum-values': 'off',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-expressions': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-expressions': 'error',
       'prefer-const': 'off',
 
       // Playwright must not import application code from `src/`.
@@ -637,6 +711,7 @@ export default [
       // rather than error while the remaining 27 call sites are migrated to
       // playwright/utils/searchAggregation.ts.
       'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
+      'openmetadata-playwright/no-form-sign-in': 'error',
 
       // Playwright rules — promoted to error behind the suppressions ratchet
       // (see eslint-suppressions.json): existing violations are snapshotted,
@@ -745,6 +820,19 @@ export default [
     ],
     rules: {
       'openmetadata-ui-patterns/no-raw-title-attribute': 'off',
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
+    },
+  },
+
+  // Classic-mode-only surfaces left out of the #30779 fix, which targeted the
+  // AI-mode UI. Remove an entry once that file is fixed.
+  {
+    files: [
+      'src/components/Settings/Users/UserProfileIcon/UserProfileIcon.component.tsx',
+      'src/utils/EntitySummaryPanelUtils.tsx',
+    ],
+    rules: {
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
     },
   },
 

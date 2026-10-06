@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -38,13 +39,13 @@ import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  stringToHTML,
-} from '../../../../utils/StringUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -283,11 +284,11 @@ const BotListV1 = ({
 
           return (
             <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
-              <Typography.Text
-                className="text-ellipsis bot-link"
-                ellipsis={{ tooltip: true }}>
-                {stringToHTML(highlightSearchText(name, searchTerm))}
-              </Typography.Text>
+              <Typography
+                className="text-ellipsis bot-link tw:text-primary"
+                ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+                {renderHighlightedText(highlightSearchText(name, searchTerm))}
+              </Typography>
             </Link>
           );
         },
@@ -434,16 +435,13 @@ const BotListV1 = ({
   return handleErrorPlaceholder ? (
     <Row>
       <Col className="w-full d-flex justify-end">
-        <Space align="end" size={5}>
-          <Switch
-            checked={showDeleted}
-            id="switch-deleted"
-            size="small"
-            onClick={handleShowDeletedBots}
-          />
-          {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-associated; nesting breaks Space gap */}
-          <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
-        </Space>
+        <Toggle
+          id="switch-deleted"
+          isSelected={showDeleted}
+          label={t('label.show-deleted')}
+          size="sm"
+          onChange={handleShowDeletedBots}
+        />
       </Col>
       <Col className="w-full">
         <ErrorPlaceHolder
@@ -476,16 +474,14 @@ const BotListV1 = ({
 
       <Col span={12}>
         <Space align="center" className="w-full justify-end" size={16}>
-          <Space align="end" size={5}>
-            <Switch
-              checked={showDeleted}
-              data-testid="switch-deleted"
-              id="switch-deleted"
-              onClick={handleShowDeletedBots}
-            />
-            {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-associated; nesting breaks Space gap */}
-            <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
-          </Space>
+          <Toggle
+            data-testid="switch-deleted"
+            id="switch-deleted"
+            isSelected={showDeleted}
+            label={t('label.show-deleted')}
+            size="sm"
+            onChange={handleShowDeletedBots}
+          />
 
           <Tooltip
             placement="topLeft"

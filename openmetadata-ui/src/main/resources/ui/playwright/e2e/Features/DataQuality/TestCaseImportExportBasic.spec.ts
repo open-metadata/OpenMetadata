@@ -75,7 +75,7 @@ const test = base.extend<{
 }>({
   testCaseEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await testCaseEditUser.login(page);
+    await testCaseEditUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -258,7 +258,9 @@ test.describe(
           await page.locator('[type="file"]').waitFor({ state: 'attached' });
           await page.setInputFiles('[type="file"]', csvFilePath);
           await startCsvPreview(page);
-          await expect(page.getByText(/INVALID_HEADER/i).first()).toBeVisible({
+          await expect(
+            page.getByText(/INVALID_HEADER/i).filter({ visible: true })
+          ).not.toHaveCount(0, {
             timeout: 30000,
           });
         });
@@ -649,7 +651,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -670,7 +674,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -690,7 +696,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -713,7 +721,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 

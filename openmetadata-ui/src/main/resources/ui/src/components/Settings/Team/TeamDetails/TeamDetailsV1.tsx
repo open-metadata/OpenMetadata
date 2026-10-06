@@ -13,17 +13,12 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
-  Avatar,
-  Button,
-  Col,
-  Modal,
-  Row,
-  Space,
-  Switch,
+  Box,
   Tabs,
-  Tooltip,
+  ToggleBase,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Avatar, Button, Col, Modal, Row, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -51,6 +46,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../../../constants/Learning.constants';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -84,6 +80,10 @@ import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Description from '../../../common/EntityDescription/Description';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -95,7 +95,6 @@ import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBread
 import { useEntityExportModalProvider } from '../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.component';
 import { useApplicationsProvider } from '../../Applications/ApplicationsProvider/ApplicationsProvider';
 import ListEntities from './RolesAndPoliciesList';
@@ -111,12 +110,23 @@ import './teams.less';
 import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import { UserTab } from './UserTab/UserTab.component';
+
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
       import('../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
   )
 );
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
 
 const TeamDetailsV1 = ({
   assetsCount,
@@ -230,7 +240,12 @@ const TeamDetailsV1 = ({
   // contract — the owner, TeamsPage.tsx, is out of this batch's scope so the interface can't
   // be migrated to DerivedPermissionFlags here — and derive named flags internally instead of
   // reading raw `.EditAll` at each call site.
-  const { canEditAll, canEditDescription } = useMemo(
+  const {
+    canEditAll,
+    canEditDescription,
+    canEditCustomFields,
+    canViewCustomFields,
+  } = useMemo(
     () => getDerivedPermissionFlags(entityPermissions, isTeamDeleted),
     [entityPermissions, isTeamDeleted]
   );
@@ -268,9 +283,8 @@ const TeamDetailsV1 = ({
    */
   const deleteUserHandler = useCallback(
     (id: string, leave = false) => {
-      const user = [...(currentTeam?.users as Array<UserTeams>)].find(
-        (u) => u.id === id
-      );
+      // `users` arrives with the team's advanced-details fetch, after the page is interactive.
+      const user = (currentTeam?.users ?? []).find((u) => u.id === id);
       setDeletingUser({ user, state: true, leave });
     },
     [currentTeam, setDeletingUser]
@@ -640,15 +654,16 @@ const TeamDetailsV1 = ({
                   name={
                     <Row>
                       <Col span={21}>
-                        <Typography.Text
+                        <Typography
                           className="font-medium"
                           data-testid="open-group-label">
                           {t('label.public-team')}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
 
                       <Col span={3}>
-                        <Switch checked={currentTeam.isJoinable} size="small" />
+                        {/* Visual only: Toggle swallows the click the menu item's onClick needs. */}
+                        <ToggleBase isSelected={currentTeam.isJoinable} />
                       </Col>
                     </Row>
                   }
@@ -703,12 +718,12 @@ const TeamDetailsV1 = ({
         className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph style={{ marginBottom: '0' }}>
+        <Typography as="p" style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.team'),
           })}
-        </Typography.Paragraph>
-        <Typography.Paragraph>
+        </Typography>
+        <Typography as="p">
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
@@ -723,7 +738,7 @@ const TeamDetailsV1 = ({
               doc: t('label.doc-plural-lowercase'),
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
         <Tooltip placement="top" title={addTeamButtonTitle}>
           <Button
             ghost
@@ -1119,11 +1134,40 @@ const TeamDetailsV1 = ({
     ]
   );
 
+  // updateTeamHandler's second parameter is `fetchTeam`, not the generic context's
+  // `key`, so the extension update is forwarded through a one-argument wrapper.
+  const onTeamExtensionUpdate = useCallback(
+    async (updatedTeam: Team) => {
+      await updateTeamHandler(updatedTeam);
+    },
+    [updateTeamHandler]
+  );
+
+  const customPropertiesTabRender = useMemo(
+    () => (
+      <CustomPropertyTable<EntityType.TEAM>
+        entityDetails={currentTeam}
+        entityType={EntityType.TEAM}
+        hasEditAccess={canEditCustomFields}
+        hasPermission={canViewCustomFields}
+        onEntityUpdate={onTeamExtensionUpdate}
+      />
+    ),
+    [
+      currentTeam,
+      canEditCustomFields,
+      canViewCustomFields,
+      onTeamExtensionUpdate,
+    ]
+  );
+
   const getTabChildren = useCallback(
     (key: TeamsPageTab) => {
       switch (key) {
         case TeamsPageTab.ASSETS:
           return assetTabRender;
+        case TeamsPageTab.CUSTOM_PROPERTIES:
+          return customPropertiesTabRender;
         case TeamsPageTab.POLICIES:
           return policiesTabRender;
         case TeamsPageTab.ROLES:
@@ -1136,6 +1180,7 @@ const TeamDetailsV1 = ({
     },
     [
       assetTabRender,
+      customPropertiesTabRender,
       policiesTabRender,
       rolesTabRender,
       teamsTableRender,
@@ -1250,29 +1295,44 @@ const TeamDetailsV1 = ({
 
   return (
     <div className="teams-layout">
-      <Row className="h-full" data-testid="team-details-container">
+      <Box
+        className="h-full"
+        data-testid="team-details-container"
+        direction="col">
         {isOrganization && (
-          <Col className="p-y-sm" span={24}>
+          <div className="p-y-sm">
             <TitleBreadcrumb titleLinks={breadcrumbs} />
-          </Col>
+          </div>
         )}
 
-        <Col
+        <div
           className="teams-profile-container"
-          data-testid="team-details-collapse"
-          span={24}>
+          data-testid="team-details-collapse">
           {teamsCollapseHeader}
-        </Col>
+        </div>
 
-        <Col className="m-t-sm" span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={currentTab}
-            className="tabs-new"
-            items={allTabs}
-            onChange={updateActiveTab}
-          />
-        </Col>
+        <Tabs
+          className="m-t-sm tw:gap-3"
+          // An explicit URL tab is not validated against the list: plugin tabs
+          // register asynchronously, and falling back would show another tab.
+          selectedKey={currentTab}
+          onSelectionChange={(key) => updateActiveTab(String(key))}>
+          <Tabs.List size="sm" type="underline" variant="card">
+            {allTabs.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {allTabs.map(({ key, children }) => (
+            <Tabs.Panel
+              className="tw:rounded-xl tw:bg-primary"
+              id={key}
+              key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
 
         <Modal
           cancelText={t('label.cancel')}
@@ -1317,15 +1377,15 @@ const TeamDetailsV1 = ({
               );
               setSelectedEntity(undefined);
             }}>
-            <Typography.Text>
+            <Typography>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: getEntityName(currentTeam),
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         )}
-      </Row>
+      </Box>
     </div>
   );
 };

@@ -27,6 +27,7 @@ import {
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
+import { InboxDateRange } from '../../../../interface/inbox.interface';
 import {
   addActivityReaction,
   removeActivityReaction,
@@ -134,18 +135,7 @@ export type InboxScope = 'all' | 'me';
 
 // Selected date window for the Inbox (Activity + Tasks), passed to the feed/task
 // list APIs as startTs/endTs (server-side filtering).
-export interface InboxDateRange {
-  startTs?: number;
-  endTs?: number;
-  // Preset key of the selected range (e.g. 'last30days', 'customRange'). Kept so
-  // the persisted range can be compared to the default by key rather than by
-  // timestamps, which drift between mounts (now-based vs day-aligned millis).
-  key?: string;
-  // Label the picker shows for this range (e.g. "Custom Range"). Persisted so the
-  // dropdown button re-seeds to the selected range after a tab-switch remount
-  // instead of falling back to the default preset title.
-  title?: string;
-}
+export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
 // Default Inbox window: the last 30 days (start-of-day to now), used by the page
 // on first render and by the sidebar inbox-icon count.
@@ -208,16 +198,16 @@ export const isWithinInboxRange = (
   return afterStart && beforeEnd;
 };
 
-const INBOX_DATE_TIME_FORMAT = 'dd LLL, yyyy hh:mm a';
-const INBOX_DATE_FORMAT = 'dd LLL, yyyy';
+const INBOX_DATE_TIME_FORMAT = 'LLL dd, yyyy, hh:mm a';
+const INBOX_DATE_FORMAT = 'LLL d, yyyy';
 
-// Task-card timestamp in the figma format, e.g. "13 May, 2026 08:45 PM".
+// Task timeline timestamp in the design format, e.g. "May 13, 2026, 08:45 PM".
 export const formatInboxDateTime = (timestamp?: number): string =>
   timestamp
     ? DateTime.fromMillis(timestamp).toFormat(INBOX_DATE_TIME_FORMAT)
     : '';
 
-// Date-only variant, e.g. "13 May, 2026".
+// Date-only variant, e.g. "May 13, 2026" or "Oct 8, 2026".
 export const formatInboxDate = (timestamp?: number): string =>
   timestamp ? DateTime.fromMillis(timestamp).toFormat(INBOX_DATE_FORMAT) : '';
 
@@ -241,6 +231,28 @@ export const isTaskOpen = (task: Pick<Task, 'status' | 'type'>): boolean =>
   OPEN_TASK_STATUSES.has(task.status) ||
   (task.type === TaskType.DataAccessRequest &&
     task.status === TaskStatus.Approved);
+
+// Open statuses past the approval step: an access request awaiting its grant
+// or a manual revoke. Its holder still has work, but not an approval, and the
+// workflow's stage name says what.
+const PAST_APPROVAL_STATUSES = new Set<TaskStatus>([
+  TaskStatus.Approved,
+  TaskStatus.ManualRevoke,
+]);
+
+/**
+ * Whether an open task awaits the viewer's approval: it is assigned to them or
+ * one of their teams and has not passed its approval step. The Status filter
+ * and the status label both read it, so a task filed under "Pending approval"
+ * also says so.
+ */
+export const isTaskPendingViewer = (
+  task: Pick<Task, 'status' | 'type' | 'assignees'>,
+  currentUserIds: ReadonlySet<string>
+): boolean =>
+  isTaskOpen(task) &&
+  !PAST_APPROVAL_STATUSES.has(task.status) &&
+  (task.assignees ?? []).some(({ id }) => currentUserIds.has(id));
 
 export interface RelativeDayGroup<T> {
   day: string;

@@ -100,6 +100,7 @@ public class IngestionPipelineResourceIT
 
   // IngestionPipeline only supports owners,followers fields - no tags, no domain
   {
+    supportsEntityStatus = false;
     supportsTags = false;
     supportsDomains = false;
     supportsDataProducts = false;
@@ -902,6 +903,52 @@ public class IngestionPipelineResourceIT
 
     assertNotNull(retrieved);
     assertEquals(PipelineStatusType.SUCCESS, retrieved.getPipelineState());
+  }
+
+  @Test
+  void test_statusReportsCannotSetWhoTriggeredTheRun(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("triggered_by_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(new DatabaseServiceMetadataPipeline()))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    String runId = UUID.randomUUID().toString();
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    // triggeredBy is recorded only from the trigger request; a status report claiming it on a new
+    // run or on a later update of the same run must not be stored.
+    for (PipelineStatusType state :
+        List.of(PipelineStatusType.QUEUED, PipelineStatusType.SUCCESS)) {
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              path,
+              new PipelineStatus()
+                  .withPipelineState(state)
+                  .withRunId(runId)
+                  .withTimestamp(System.currentTimeMillis())
+                  .withTriggeredBy("mallory"),
+              PipelineStatus.class);
+
+      PipelineStatus stored =
+          client
+              .getHttpClient()
+              .execute(HttpMethod.GET, path + "/" + runId, null, PipelineStatus.class);
+
+      assertEquals(state, stored.getPipelineState());
+      assertNull(stored.getTriggeredBy());
+    }
   }
 
   @Test

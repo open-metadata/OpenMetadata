@@ -29,9 +29,14 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+const mockSetHash = jest.fn();
+jest.mock('../../../../hooks/useSettingsHash', () => ({
+  useSettingsHash: () => ({ setHash: mockSetHash }),
+}));
+
 const mockOpenPanel = jest.fn();
 jest.mock('../../../../hooks/usePersonalSpaceStore', () => ({
-  usePersonalSpaceStore: (selector: (s: { open: jest.Mock }) => unknown) =>
+  usePersonalSpaceStore: (selector: (state: unknown) => unknown) =>
     selector({ open: mockOpenPanel }),
 }));
 
@@ -44,6 +49,7 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
     currentUser: {
       displayName: 'Test User',
       email: 'test@example.com',
+      name: 'test-user',
     },
     selectedPersona: null,
     setAppVersion: mockSetAppVersion,
@@ -216,6 +222,14 @@ describe('AIUserMenu', () => {
     expect(screen.getByTestId('ai-user-menu-profile')).toBeInTheDocument();
   });
 
+  it('routes to #profile/<username> when the profile item is clicked', () => {
+    renderMenu();
+
+    fireEvent.click(screen.getByTestId('ai-user-menu-profile'));
+
+    expect(mockSetHash).toHaveBeenCalledWith('profile', 'test-user');
+  });
+
   it('renders all standard menu items: persona, help, language, settings, logout', () => {
     renderMenu();
 
@@ -236,6 +250,14 @@ describe('AIUserMenu', () => {
     expect(switcher).toBeChecked();
     expect(screen.getByText('label.logout')).toBeInTheDocument();
     expect(localStorage.getItem('ui-theme')).toBe('dark');
+  });
+
+  it('opens My Data in the personal-space modal', () => {
+    renderMenu();
+
+    fireEvent.click(screen.getByText('label.my-data'));
+
+    expect(mockOpenPanel).toHaveBeenCalledWith('my-data');
   });
 
   it('navigates to /settings when the settings item is clicked', () => {

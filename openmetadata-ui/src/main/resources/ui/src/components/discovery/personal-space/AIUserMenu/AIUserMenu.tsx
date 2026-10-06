@@ -17,11 +17,12 @@ import {
   ArrowUpRight,
   Check,
   ChevronRight,
+  Database01,
   File06,
   HelpCircle,
   Settings01,
   User01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -44,6 +45,7 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
+import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getVersion } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { languageSelectOptions } from '../../../../utils/i18next/i18nextUtil';
@@ -59,7 +61,7 @@ import {
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const SUBMENU_POPOVER_CLASS =
-  'tw:w-62 tw:overflow-auto tw:rounded-lg tw:bg-primary tw:shadow-lg ' +
+  'tw:w-62 tw:overflow-auto tw:rounded-lg tw:bg-overlay-surface tw:shadow-lg ' +
   'tw:outline-1 tw:outline-secondary_alt tw:origin-(--trigger-anchor-point) tw:will-change-transform ' +
   'data-[entering]:tw:duration-150 data-[entering]:tw:ease-out data-[entering]:tw:animate-in data-[entering]:tw:fade-in ' +
   'data-[exiting]:tw:duration-100 data-[exiting]:tw:ease-in data-[exiting]:tw:animate-out data-[exiting]:tw:fade-out';
@@ -92,7 +94,7 @@ const MenuRow: React.FC<MenuRowProps> = ({
   <Box align="start" gap={2}>
     {Icon && (
       <Icon
-        className="tw:mt-1 tw:shrink-0 tw:text-gray-400"
+        className="tw:mt-1 tw:shrink-0 tw:text-fg-quaternary"
         height={14}
         width={14}
       />
@@ -110,7 +112,7 @@ const MenuRow: React.FC<MenuRowProps> = ({
       </Box>
       {isActive && (
         <Check
-          className="tw:ml-2 tw:shrink-0 tw:text-blue-500"
+          className="tw:ml-2 tw:shrink-0 tw:text-fg-brand-primary"
           height={14}
           width={14}
         />
@@ -168,7 +170,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
                     gap={2}>
                     {child.icon && (
                       <child.icon
-                        className="tw:shrink-0 tw:text-gray-400"
+                        className="tw:shrink-0 tw:text-fg-quaternary"
                         height={child.iconSize ?? 14}
                         width={child.iconSize ?? 14}
                       />
@@ -178,7 +180,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
                     </span>
                     {child.isActive && (
                       <Check
-                        className="tw:ml-auto tw:shrink-0 tw:text-blue-500"
+                        className="tw:ml-auto tw:shrink-0 tw:text-fg-brand-primary"
                         height={14}
                         width={14}
                       />
@@ -222,6 +224,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
+  const { setHash } = useSettingsHash();
   const openPanel = usePersonalSpaceStore((state) => state.open);
   const {
     appVersion,
@@ -239,7 +242,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           // version display is non-critical
         });
     }
-  }, []);
+  }, [appVersion, setAppVersion]);
 
   const userExtras = currentUser as CurrentUserExtras | undefined;
   const displayName = useMemo(
@@ -323,6 +326,14 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
 
   const menuItems: MenuItemConfig[] = useMemo(
     () => [
+      {
+        type: 'item',
+        id: 'my-data',
+        dataTestId: 'ai-user-menu-my-data',
+        icon: Database01,
+        label: t('label.my-data'),
+        onAction: () => openPanel('my-data'),
+      },
       {
         type: 'item',
         id: 'persona',
@@ -419,11 +430,11 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
         className={classNames(
           'tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:overflow-hidden tw:rounded-[10px] tw:p-0',
           {
-            'tw:bg-primary tw:w-full': !collapsed,
+            'tw:bg-surface tw:w-full': !collapsed,
           }
         )}
         data-testid="ask-ai-user-menu-trigger">
-        <ProfilePicture displayName={displayName} name={email} width="40" />
+        <ProfilePicture displayName={displayName} name={email} size="sm" />
         {!collapsed && (
           <Box
             align="start"
@@ -451,7 +462,14 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             data-testid="ai-user-menu-profile"
             id="profile-header"
             textValue={displayName}
-            onAction={() => openPanel('profile')}>
+            onAction={() =>
+              setHash(
+                'profile',
+                currentUser?.name
+                  ? encodeURIComponent(currentUser.name)
+                  : undefined
+              )
+            }>
             <Box
               align="center"
               className="tw:relative tw:rounded-md tw:px-2.5 tw:py-2 tw:transition tw:duration-100 tw:ease-linear tw:group-hover:bg-primary_hover"

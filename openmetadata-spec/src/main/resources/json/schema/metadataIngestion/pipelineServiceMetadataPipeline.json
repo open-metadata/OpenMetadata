@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/pipelineServiceMetadataPipeline.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PipelineServiceMetadataPipeline",
   "description": "PipelineService Metadata Pipeline Configuration.",
   "type": "object",
@@ -66,6 +66,22 @@
         "messagingServiceNames": {
           "title": "Messaging Service Names List",
           "description": "List of Messaging Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "apiServiceNames": {
+          "title": "API Service Names List",
+          "description": "List of API Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "searchServiceNames": {
+          "title": "Search Service Names List",
+          "description": "List of Search Service Names for creation of lineage",
           "type": "array",
           "items": {
             "type": "string"

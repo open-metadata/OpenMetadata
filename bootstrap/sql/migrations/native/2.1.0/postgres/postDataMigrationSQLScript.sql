@@ -27,6 +27,13 @@ ON CONFLICT (stateId) DO UPDATE SET
   updatedAt = EXCLUDED.updatedAt,
   latestRecordId = EXCLUDED.latestRecordId;
 
+-- Existing metrics predate the approval workflow and must remain usable. Explicit
+-- workflow statuses are preserved, and this update is idempotent.
+UPDATE metric_entity
+SET json = jsonb_set(json::jsonb, '{entityStatus}', '"Approved"'::jsonb)
+WHERE json->>'entityStatus' IS NULL
+   OR json->>'entityStatus' = 'Unprocessed';
+
 -- Invalidate pre-2.1 projection success records. RDF status remains REBUILDING until a new
 -- RdfIndexApp run succeeds, and the applications page exposes that Search indexing must be run.
 DELETE FROM apps_extension_time_series
@@ -142,6 +149,58 @@ WHERE name IN (
   )
   AND json->'parameterDefinition' IS NULL;
 
+-- `tableRowInsertedCountToBeBetween` cannot run without `columnName` / `rangeType` /
+-- `rangeInterval`, yet deployments still carry a definition that only declares `min` and `max`
+-- (issue #33617). The 1.12.0 script already adds them back, but only reaches deployments that
+-- upgraded through that release, so repeat it here as a plain guarded append. These run before the
+-- `threshold` / `thresholdUnit` statements below so the resulting parameter order matches the seeded
+-- definition. Guarded on each parameter being absent, which keeps re-runs -- and every deployment
+-- that already has them -- a no-op.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'columnName',
+        'displayName', 'Column Name',
+        'description', 'Name of the Column. It should be a timestamp, date or datetime field.',
+        'dataType', 'STRING',
+        'required', true
+    )::jsonb
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "columnName"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'rangeType',
+        'displayName', 'Range Type',
+        'description', 'One of ''HOUR'', ''DAY'', ''MONTH'', ''YEAR''',
+        'dataType', 'STRING',
+        'required', true
+    )::jsonb
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "rangeType"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'rangeInterval',
+        'displayName', 'Interval',
+        'description', 'Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we''ll check the numbers of rows inserted where columnName=-1 DAY',
+        'dataType', 'INT',
+        'required', true
+    )::jsonb
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "rangeInterval"}]'::jsonb);
+
 UPDATE test_definition
 SET json = jsonb_set(
     json::jsonb,
@@ -214,6 +273,29 @@ WHERE name IN (
   )
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "dimensionFailurePolicy"}]'::jsonb);
 
+-- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
+-- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
+-- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact
+-- dataType, so mean/min/max/median/stddev/sum were unreachable on any NUMERIC column. Seeding only
+-- covers fresh installs (initializeEntity returns early when the entity exists), hence this
+-- backfill. The guard on NUMERIC being absent keeps re-runs a no-op, and it also skips a definition
+-- with no supportedDataTypes at all -- that already means "every data type" (issue #27718), so
+-- appending to it would narrow it to exactly one.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{supportedDataTypes}',
+    (json->'supportedDataTypes')::jsonb || '["NUMERIC"]'::jsonb
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet'
+  )
+  AND json->'supportedDataTypes' IS NOT NULL
+  AND NOT ((json->'supportedDataTypes')::jsonb @> '["NUMERIC"]'::jsonb);
+
 -- Normalize user emails to lowercase: email is the primary identity lookup key and the
 -- application always compares lowercased values. No collision guard is needed -- the 1.5.0
 -- migration already deleted rows duplicated by LOWER(email) and lowercased the survivors, and
@@ -221,3 +303,33 @@ WHERE name IN (
 UPDATE user_entity
 SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
 WHERE json ->> 'email' <> lower(json ->> 'email');
+
+-- Context memories move from their own Draft/Active/Archived `status` onto `entityStatus`, the
+-- lifecycle stage every entity type shares: Active becomes Approved, and a memory with no status
+-- was documented as Active, so it becomes Approved too. Version history is rewritten as well:
+-- `status` is no longer part of the ContextMemory schema, so rows still carrying it would fail to
+-- load. Idempotent: rows without `status` are untouched.
+UPDATE context_memory
+SET json = (json::jsonb - 'status') || jsonb_build_object(
+  'entityStatus',
+  CASE json::jsonb ->> 'status'
+    WHEN 'Draft' THEN 'Draft'
+    WHEN 'Archived' THEN 'Archived'
+    ELSE 'Approved'
+  END)
+WHERE json::jsonb -> 'status' IS NOT NULL;
+
+UPDATE context_memory
+SET json = jsonb_set(json::jsonb, '{entityStatus}', '"Approved"'::jsonb)
+WHERE json::jsonb ->> 'entityStatus' IS NULL;
+
+UPDATE entity_extension
+SET json = (json::jsonb - 'status') || jsonb_build_object(
+  'entityStatus',
+  CASE json::jsonb ->> 'status'
+    WHEN 'Draft' THEN 'Draft'
+    WHEN 'Archived' THEN 'Archived'
+    ELSE 'Approved'
+  END)
+WHERE jsonSchema = 'contextMemory'
+  AND json::jsonb -> 'status' IS NOT NULL;

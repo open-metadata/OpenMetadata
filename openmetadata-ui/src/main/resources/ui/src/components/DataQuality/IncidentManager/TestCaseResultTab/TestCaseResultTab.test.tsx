@@ -17,6 +17,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { useParams } from 'react-router-dom';
 import { TagLabel, TestCase } from '../../../../generated/tests/testCase';
 import {
   LabelType,
@@ -48,6 +49,15 @@ const mockTestCaseData: TestCase = {
     fullyQualifiedName:
       'sample_data.ecommerce_db.shopify.dim_address.testSuite',
   },
+  testSuites: [
+    {
+      id: 'fe44ef1a-1b83-4872-bef6-fbd1885986b8',
+      name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+      basic: true,
+    },
+  ],
   parameterValues: [
     {
       name: 'columnCount',
@@ -124,6 +134,12 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>DataProductsContainer</div>);
   }
 );
+const mockUseIsAiMode = jest.fn().mockReturnValue(false);
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: () => mockUseIsAiMode(),
+}));
 jest.mock('../../../../hooks/useEntityRules', () => ({
   useEntityRules: jest.fn().mockReturnValue({
     entityRules: {
@@ -166,6 +182,15 @@ jest.mock('../../../../rest/testAPI', () => ({
     column: 'column',
   },
 }));
+
+const mockTestSuitesCard = jest.fn();
+jest.mock('./TestCaseTestSuitesCard/TestCaseTestSuitesCard', () => {
+  return jest.fn().mockImplementation((props) => {
+    mockTestSuitesCard(props);
+
+    return <div data-testid="test-suites-container">TestSuitesCard</div>;
+  });
+});
 
 // Mock TagsContainerV2 to capture props
 const mockTagsContainerV2 = jest.fn();
@@ -227,6 +252,28 @@ describe('TestCaseResultTab', () => {
       await screen.findByTestId('test-case-result-tab-container')
     ).toBeInTheDocument();
     expect(screen.queryByText('TestSummary')).not.toBeInTheDocument();
+  });
+
+  it('should frame the result history as a card outside AI mode', async () => {
+    render(<TestCaseResultTab />);
+
+    expect(await screen.findByTestId('test-case-result-tab-graph')).toHaveClass(
+      'test-case-result-tab-graph'
+    );
+  });
+
+  // The AI mode mock sets the chart straight on the page; only its summary
+  // tiles are bordered.
+  it('should leave the result history unframed in AI mode', async () => {
+    mockUseIsAiMode.mockReturnValue(true);
+
+    render(<TestCaseResultTab />);
+
+    expect(
+      await screen.findByTestId('test-case-result-tab-graph')
+    ).not.toHaveClass('test-case-result-tab-graph');
+
+    mockUseIsAiMode.mockReturnValue(false);
   });
 
   it("EditTestCaseModal should be rendered when 'Edit' button is clicked", async () => {
@@ -430,6 +477,47 @@ describe('TestCaseResultTab', () => {
 
     mockTestCaseData.useDynamicAssertion = false;
     mockUseTestCaseStore.showAILearningBanner = false;
+  });
+
+  describe('version page', () => {
+    beforeEach(() => {
+      (useParams as jest.Mock).mockImplementation(() => ({ version: '0.2' }));
+      mockUseTestCaseStore.testCase = {
+        ...mockTestCaseData,
+        parameterValues: [{ name: 'columnCount', value: '12000' }],
+        changeDescription: {
+          fieldsAdded: [],
+          fieldsDeleted: [],
+          fieldsUpdated: [
+            {
+              name: 'parameterValues',
+              oldValue: [{ name: 'columnCount', value: '10000' }],
+              newValue: [{ name: 'columnCount', value: '12000' }],
+            },
+          ],
+        },
+      };
+    });
+
+    afterEach(() => {
+      (useParams as jest.Mock).mockImplementation(() => ({
+        version: undefined,
+      }));
+      mockUseTestCaseStore.testCase = mockTestCaseData;
+    });
+
+    it("should show each parameter's change in the Configuration card's rows", async () => {
+      render(<TestCaseResultTab />);
+
+      const row = await screen.findByTestId(
+        'configuration-parameter-columnCount'
+      );
+
+      expect(row).toHaveTextContent('10000 → 12000');
+      expect(
+        screen.queryByTestId('configuration-version-diff')
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe('Compute Row Count visibility', () => {
@@ -769,6 +857,30 @@ describe('TestCaseResultTab', () => {
       expect(
         screen.queryByTestId('test-case-configuration-card')
       ).not.toBeInTheDocument();
+    });
+
+    it('lists the test suites in the rail, between the description and the tags', async () => {
+      render(<TestCaseResultTab />);
+
+      const rail = await screen.findByTestId('test-case-rail');
+      const testSuites = await screen.findByTestId('test-suites-container');
+      const description = await screen.findByText('Description');
+      const tags = await screen.findByTestId('tags-container-Classification');
+
+      expect(rail).toContainElement(testSuites);
+      expect(
+        description.compareDocumentPosition(testSuites) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(
+        testSuites.compareDocumentPosition(tags) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(mockTestSuitesCard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          testSuites: mockUseTestCaseStore.testCase.testSuites,
+        })
+      );
     });
 
     it('renders the description in the rail, not the main column', async () => {

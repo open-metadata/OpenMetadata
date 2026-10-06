@@ -10,26 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
-  Col,
-  Row,
-  Segmented,
-  Table,
-  Typography as AntTypography,
-} from 'antd';
+  ButtonGroup,
+  ButtonGroupItem,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Table } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
-import { FieldCard } from '../components/common/FieldCard';
+import FieldCard from '../components/common/FieldCard/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../constants/SegmentToggle.constants';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -67,8 +68,6 @@ import { pruneEmptyChildren } from './TablePureUtils';
 import { showErrorToast } from './ToastUtils';
 
 const REQUEST_SCHEMA = 'request-schema' as const;
-
-const { Text } = AntTypography;
 
 const getFieldRowKey = (column: {
   fullyQualifiedName?: string;
@@ -397,12 +396,12 @@ const SchemaFieldCardsV1: React.FC<{
   if (isEmpty(columns) && searchText) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">
+        <Typography className="no-data-text">
           {t('message.no-entity-found-for-name', {
             entity: t('label.column-plural'),
             name: searchText,
           })}
-        </Text>
+        </Typography>
       </div>
     );
   }
@@ -410,7 +409,9 @@ const SchemaFieldCardsV1: React.FC<{
   if (isEmpty(columns)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -470,7 +471,9 @@ const TopicFieldCardsV1: React.FC<{
   if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -575,7 +578,9 @@ const ContainerFieldCardsV1: React.FC<{
   if (isEmpty(filteredColumns)) {
     return (
       <div className="no-data-container text-grey-muted m-t-md d-flex justify-center align-items-center">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -621,7 +626,9 @@ const PipelineTasksV1: React.FC<{
   if (isEmpty(filteredTasks)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -730,7 +737,9 @@ const APICollectionEndpointsV1: React.FC<{
   if (isEmpty(filteredEndpoints) && hasInitialized) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -835,7 +844,9 @@ const DatabaseSchemaTablesV1: React.FC<{
   if (isEmpty(filteredTables) && hasInitialized) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -898,7 +909,9 @@ const DashboardChartsV1: React.FC<{
   if (isEmpty(filteredCharts)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -1040,7 +1053,7 @@ const APIEndpointSchemaV1: React.FC<{
       key: 'dataType',
       width: 150,
       render: (dataType: string, record: Field) => (
-        <Typography as="span" className="tw:text-xs">
+        <Typography as="span" className="tw:text-xs tw:text-primary">
           {record.dataTypeDisplay || dataType || 'Unknown'}
         </Typography>
       ),
@@ -1084,7 +1097,9 @@ const APIEndpointSchemaV1: React.FC<{
   if (isEmpty(requestSchemaFields) && isEmpty(responseSchemaFields)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -1093,14 +1108,26 @@ const APIEndpointSchemaV1: React.FC<{
     <div className="schema-field-cards-container">
       {/* Schema Type Toggle */}
       <div className="mb-md p-x-md d-flex p-y-md justify-between items-center">
-        <Segmented
-          className="segment-toggle"
-          options={viewTypeOptions}
-          value={viewType}
-          onChange={(value) =>
-            setViewType(value as 'request-schema' | 'response-schema')
-          }
-        />
+        <ButtonGroup
+          disallowEmptySelection
+          className={SEGMENT_TOGGLE_GROUP_CLASS}
+          selectedKeys={[viewType]}
+          size="sm"
+          onSelectionChange={(keys) => {
+            const selected = [...keys][0];
+            if (selected) {
+              setViewType(selected as 'request-schema' | 'response-schema');
+            }
+          }}>
+          {viewTypeOptions.map(({ label, value }) => (
+            <ButtonGroupItem
+              className={SEGMENT_TOGGLE_ITEM_CLASS}
+              id={value}
+              key={value}>
+              {label}
+            </ButtonGroupItem>
+          ))}
+        </ButtonGroup>
         <Button size="small" type="link" onClick={handleToggleExpandAll}>
           {expandedRowKeys.length < allRowKeys.length
             ? t('label.expand-all')
@@ -1110,7 +1137,9 @@ const APIEndpointSchemaV1: React.FC<{
 
       {isEmpty(activeSchemaFields) ? (
         <div className="no-data-container m-x-md">
-          <Text className="no-data-text">{t('message.no-data-available')}</Text>
+          <Typography className="no-data-text">
+            {t('message.no-data-available')}
+          </Typography>
         </div>
       ) : (
         <div className="m-l-md">
@@ -1159,7 +1188,9 @@ const DatabaseSchemasV1: React.FC<{
   if (isEmpty(filteredSchemas)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }
@@ -1219,7 +1250,9 @@ const SearchIndexFieldCardsV1: React.FC<{
   if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Typography className="no-data-text">
+          {t('message.no-data-available')}
+        </Typography>
       </div>
     );
   }

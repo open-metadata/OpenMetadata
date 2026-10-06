@@ -14,12 +14,8 @@ import { Grid } from '@openmetadata/ui-core-components';
 import QueryString from 'qs';
 import { useTranslation } from 'react-i18next';
 import type { NavigateFunction } from 'react-router-dom';
-import {
-  ABORTED_CHART_COLOR_SCHEME,
-  FAILED_CHART_COLOR_SCHEME,
-  SUCCESS_CHART_COLOR_SCHEME,
-} from '../../../constants/Chart.constants';
 import { DATA_QUALITY_DASHBOARD_HEADER } from '../../../constants/DataQuality.constants';
+import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
@@ -32,7 +28,6 @@ import IncidentTypeAreaChartWidget from '../ChartWidgets/IncidentTypeAreaChartWi
 import StatusByDimensionCardWidget from '../ChartWidgets/StatusByDimensionCardWidget/StatusByDimensionCardWidget.component';
 import TestCaseStatusAreaChartWidget from '../ChartWidgets/TestCaseStatusAreaChartWidget/TestCaseStatusAreaChartWidget.component';
 import TestCaseStatusPieChartWidget from '../ChartWidgets/TestCaseStatusPieChartWidget/TestCaseStatusPieChartWidget.component';
-import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 
 export const DQ_DASHBOARD_PIE_CHART_CLASS = 'data-quality-dashboard-pie-chart';
@@ -129,7 +124,6 @@ export const DqDashboardSectionContent = ({
         <Grid colGap="6">
           <Grid.Item span={8}>
             <TestCaseStatusAreaChartWidget
-              chartColorScheme={SUCCESS_CHART_COLOR_SCHEME}
               chartFilter={defaultFilters}
               name="success"
               redirectPath={{
@@ -142,7 +136,6 @@ export const DqDashboardSectionContent = ({
           </Grid.Item>
           <Grid.Item span={8}>
             <TestCaseStatusAreaChartWidget
-              chartColorScheme={ABORTED_CHART_COLOR_SCHEME}
               chartFilter={defaultFilters}
               name="aborted"
               redirectPath={{
@@ -155,7 +148,6 @@ export const DqDashboardSectionContent = ({
           </Grid.Item>
           <Grid.Item span={8}>
             <TestCaseStatusAreaChartWidget
-              chartColorScheme={FAILED_CHART_COLOR_SCHEME}
               chartFilter={defaultFilters}
               name="failed"
               redirectPath={{

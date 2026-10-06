@@ -1696,6 +1696,9 @@ public class RdfRepository {
           usesDirectMaterializedQuery(level)
               ? directInferenceResult(query, format)
               : executeLegacyInference(query, format, inferenceLevel, level);
+    } catch (UnsupportedRdfSerializationException exception) {
+      // The caller asked for a format the result cannot be written in: a 400, not a server fault.
+      throw exception;
     } catch (RuntimeException exception) {
       LOG.error("Error executing SPARQL query with inference", exception);
       throw new IllegalStateException("Failed to execute query with inference", exception);
@@ -1827,13 +1830,13 @@ public class RdfRepository {
       if (jenaQuery.isSelectType()) {
         writeSelectResults(queryExecution.execSelect(), format, output);
       } else if (jenaQuery.isConstructType()) {
-        queryExecution.execConstruct().write(output, getJenaFormat(format));
+        RdfGraphSerializer.write(output, queryExecution.execConstruct(), graphFormat(format));
       } else if (jenaQuery.isAskType()) {
         output.write(
             ("{\"head\":{},\"boolean\":" + queryExecution.execAsk() + "}")
                 .getBytes(StandardCharsets.UTF_8));
       } else if (jenaQuery.isDescribeType()) {
-        queryExecution.execDescribe().write(output, getJenaFormat(format));
+        RdfGraphSerializer.write(output, queryExecution.execDescribe(), graphFormat(format));
       }
       return output.toString(StandardCharsets.UTF_8);
     } catch (IOException e) {
@@ -1857,12 +1860,20 @@ public class RdfRepository {
 
   private record InferenceCacheKey(ReasoningLevel level, long tripleCount) {}
 
-  private String getJenaFormat(String mimeType) {
-    if (mimeType.contains("turtle")) return "TURTLE";
-    if (mimeType.contains("rdf+xml")) return "RDF/XML";
-    if (mimeType.contains("n-triples")) return "N-TRIPLES";
-    if (mimeType.contains("json-ld") || mimeType.contains("ld+json")) return "JSON-LD";
-    return "TURTLE"; // default
+  /**
+   * Resolves a CONSTRUCT/DESCRIBE serialization, keeping the long-standing Turtle fallback for a
+   * format string this endpoint does not recognise (callers pass SELECT media types here too).
+   */
+  private static RdfSerializationFormat graphFormat(String requestedFormat) {
+    RdfSerializationFormat format;
+    try {
+      format =
+          RdfSerializationFormat.parseOrDefault(requestedFormat, RdfSerializationFormat.TURTLE);
+    } catch (IllegalArgumentException exception) {
+      LOG.debug("Unrecognised RDF serialization '{}'; falling back to Turtle", requestedFormat);
+      format = RdfSerializationFormat.TURTLE;
+    }
+    return format;
   }
 
   public String getEntityGraph(

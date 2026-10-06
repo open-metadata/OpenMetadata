@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/ontologyAxiom.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyAxiom",
   "description": "A governed OWL axiom whose relational representation remains authoritative when RDF is disabled.",
   "$comment": "@om-entity-type",
@@ -86,6 +86,10 @@
     },
     "updatedBy": {
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "$ref": "../../type/basic.json#/definitions/href"

@@ -30,6 +30,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -39,17 +40,14 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
-  removeSingleSelectDomain,
   resolveDescriptionBox,
   toastNotification,
   uuid,
-  verifyDomainPropagation,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
@@ -57,14 +55,20 @@ import {
   assignTagToChildren,
   closeColumnDetailPanel,
   copyAndGetClipboardText,
+  openClassificationTagPicker,
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
-import { visitServiceDetailsPage } from '../../utils/service';
+import {
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  toggleGlossaryTermInPicker,
+} from '../../utils/glossaryPicker';
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,
@@ -96,13 +100,13 @@ const test = base.extend<{
 }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage({ storageState: undefined });
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage({ storageState: undefined });
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -127,9 +131,20 @@ test.afterAll('Cleanup shared entities', async () => {
   await afterAction();
 });
 
-Object.entries(entities).forEach(([key, EntityClass]) => {
+const entityEntries = Object.entries(entities);
+
+pickEntityMatrix(
+  __filename,
+  entityEntries,
+  entityEntries.filter(([, EntityClass]) => EntityClass === TableClass)
+).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
-  const deleteEntity = new EntityClass();
+  // For tables, softDeleteEntity counts and clicks the deleted table in its
+  // schema's listing, so that table must be alone in its own schema.
+  const deleteEntity =
+    EntityClass === TableClass
+      ? new TableClass({ service: new DatabaseServiceClass() })
+      : new EntityClass();
   const entityName = entity.getType();
 
   test.describe(key, () => {
@@ -172,50 +187,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       );
     });
 
-    /**
-     * Tests domain propagation from service to entity
-     * @description Verifies that a domain assigned to a service propagates to its child entities,
-     * and that removing the domain from the service removes it from the entity
-     */
-    test('Domain Propagation', async ({ page }) => {
-      test.slow(true);
-      const serviceCategory = entity.serviceCategory;
-      if (serviceCategory && 'service' in entity) {
-        await visitServiceDetailsPage(
-          page,
-          {
-            name: entity.service.name,
-            type: serviceCategory,
-          },
-          false
-        );
-
-        await assignSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
-        await verifyDomainPropagation(
-          page,
-          EntityDataClass.domain1.responseData,
-          entity.entityResponseData?.['fullyQualifiedName'] ??
-            entity.entityResponseData?.['name'],
-          entity.exploreTabName
-        );
-
-        await visitServiceDetailsPage(
-          page,
-          {
-            name: entity.service.name,
-            type: serviceCategory,
-          },
-          false
-        );
-        await removeSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
-      }
-    });
+    // Domain Propagation lives in EntityDomainPropagation.spec.ts: it mutates
+    // the parent service, and entities here share the shard's service.
 
     /**
      * Tests user ownership management on entities
@@ -432,47 +405,54 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         test.slow(true);
 
         const isMlModel = entity.type === 'MlModel';
-        // Tag Selector
-        await page
-          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-          .getByTestId('tags-container')
-          .getByTestId('add-tag')
-          .click();
+        const tagRow = page.locator(
+          `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+        );
+        const glossaryRow = page.locator(
+          `[${rowSelector}="${
+            isMlModel
+              ? entity.childrenSelectorId2
+              : entity.childrenSelectorId ?? ''
+          }"]`
+        );
 
-        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
-        await expect(
-          page.locator('.async-tree-select-list-dropdown')
-        ).toBeHidden();
-
-        // Glossary Selector
-        await page
-          .locator(
-            `[${rowSelector}="${
-              isMlModel
-                ? entity.childrenSelectorId2
-                : entity.childrenSelectorId ?? ''
-            }"]`
-          )
-          .getByTestId('glossary-container')
-          .getByTestId('add-tag')
-          .click();
+        // Open Tag Selector
+        await openClassificationTagPicker(
+          page,
+          tagRow.getByTestId('tags-container').getByTestId('add-tag')
+        );
 
         await expect(
-          page.locator('.async-tree-select-list-dropdown')
+          page.getByTestId('classification-tag-picker-popover')
         ).toBeVisible();
-        await expect(page.locator('.async-select-list-dropdown')).toBeHidden();
-
-        // Re-check Tag Selector
-        await page
-          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-          .getByTestId('tags-container')
-          .getByTestId('add-tag')
-          .click();
-
-        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
         await expect(
-          page.locator('.async-tree-select-list-dropdown')
-        ).toBeHidden();
+          page.getByTestId('glossary-term-picker-popover')
+        ).not.toBeAttached();
+
+        // Open Glossary Selector — should close Tag Selector.
+        // Uses the helper so the trigger click retries on slow CI, matching every
+        // other glossary flow migrated in the picker refactor.
+        await openGlossaryPicker(
+          page,
+          glossaryRow.getByTestId('glossary-container').getByTestId('add-tag')
+        );
+
+        await expect(
+          page.getByTestId('classification-tag-picker-popover')
+        ).not.toBeVisible();
+
+        // Re-open Tag Selector — should close Glossary Selector
+        await openClassificationTagPicker(
+          page,
+          tagRow.getByTestId('tags-container').getByTestId('add-tag')
+        );
+
+        await expect(
+          page.getByTestId('classification-tag-picker-popover')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('glossary-term-picker-popover')
+        ).not.toBeAttached();
       });
     }
 
@@ -615,55 +595,24 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           });
           await waitForAllLoadersToDisappear(page);
           // Step 1: Add a glossary term first
-          const glossaryEditButton = panelContainer.getByTestId(
-            'edit-glossary-terms'
+          await openGlossaryPicker(
+            page,
+            panelContainer.getByTestId('edit-glossary-terms')
           );
-          await expect(glossaryEditButton).toBeVisible();
-          await glossaryEditButton.click();
 
-          // Wait for selectable list to be visible and ready
-          const selectableList = page.locator(
-            '[data-testid="selectable-list"]'
-          );
-          await expect(selectableList).toBeVisible();
+          await toggleGlossaryTermInPicker(page, {
+            name: EntityDataClass.glossaryTerm1.responseData.name,
+            displayName: EntityDataClass.glossaryTerm1.responseData.displayName,
+            fullyQualifiedName:
+              EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
+          });
 
-          const searchBar = page.locator(
-            '[data-testid="glossary-term-select-search-bar"]'
-          );
-          await expect(searchBar).toBeVisible();
-          const glossarySearchResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/search/query') &&
-              response.url().includes('glossaryTerm') &&
-              response.request().method() === 'GET'
-          );
-          await searchBar.fill(
-            EntityDataClass.glossaryTerm1.responseData.displayName
-          );
-          const glossarySearchRequest = await glossarySearchResponse;
-          expect(glossarySearchRequest.status()).toBe(200);
-          await waitForAllLoadersToDisappear(page);
-
-          // Wait for term option to be visible before clicking
-          const termOption = page
-            .locator('[data-testid="owner-option"]')
-            .filter({
-              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-            });
-          await expect(termOption).toBeVisible();
-          await termOption.click();
-
-          // Wait for both API response AND UI update
-          const glossaryUpdateResponse = page.waitForResponse(
-            (response) =>
+          await applyGlossaryPicker(page, (response) =>
+            Boolean(
               response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            )
           );
-          const updateButton = page.getByRole('button', { name: 'Update' });
-          await expect(updateButton).toBeVisible();
-          await expect(updateButton).toBeEnabled();
-          await updateButton.click();
-          await glossaryUpdateResponse;
 
           // CRITICAL: Wait for UI to update after API response
           await waitForAllLoadersToDisappear(page);
@@ -683,7 +632,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await editTagsButton.click();
 
           // Wait for selectable list to be visible and ready
-          await expect(selectableList).toBeVisible();
+          await expect(
+            page.locator('[data-testid="selectable-list"]')
+          ).toBeVisible();
 
           const tagSearchBar = page.locator(
             '[data-testid="tag-select-search-bar"]'
@@ -759,33 +710,23 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await waitForAllLoadersToDisappear(page);
           // Remove glossary term
-          await cleanupPanel.getByTestId('edit-glossary-terms').click();
-          await page
-            .locator('[data-testid="selectable-list"]')
-            .waitFor({ state: 'visible' });
-
-          const searchGlossaryCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=glossaryTerm*'
+          await openGlossaryPicker(
+            page,
+            cleanupPanel.getByTestId('edit-glossary-terms')
           );
-          await page
-            .locator('[data-testid="glossary-term-select-search-bar"]')
-            .fill(EntityDataClass.glossaryTerm1.responseData.displayName);
-          await searchGlossaryCleanup;
-          await waitForAllLoadersToDisappear(page);
 
-          await page
-            .locator('.selectable-list-item')
-            .filter({
-              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-            })
-            .click();
-          const glossaryCleanupResponse = page.waitForResponse(
-            (response) =>
+          await toggleGlossaryTermInPicker(page, {
+            name: EntityDataClass.glossaryTerm1.responseData.name,
+            displayName: EntityDataClass.glossaryTerm1.responseData.displayName,
+            fullyQualifiedName:
+              EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
+          });
+          await applyGlossaryPicker(page, (response) =>
+            Boolean(
               response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            )
           );
-          await page.getByRole('button', { name: 'Update' }).click();
-          await glossaryCleanupResponse;
           await waitForAllLoadersToDisappear(page);
 
           // Remove tag
@@ -981,7 +922,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             // Should have at least one nested column link
-            await expect(nestedColumnLinks.first()).toBeVisible({
+            await expect(
+              nestedColumnLinks.filter({ visible: true })
+            ).not.toHaveCount(0, {
               timeout: 5000,
             });
 
@@ -1277,7 +1220,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             if ((await nestedColumnLinks.count()) > 0) {
-              await expect(nestedColumnLinks.first()).toBeVisible();
+              await expect(
+                nestedColumnLinks.filter({ visible: true })
+              ).not.toHaveCount(0);
 
               const linkCount = await nestedColumnLinks.count();
 
@@ -1515,47 +1460,24 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await waitForAllLoadersToDisappear(page);
           // Add glossary term via panel
-          const editButton = panelContainer.getByTestId('edit-glossary-terms');
-          await expect(editButton).toBeVisible();
-          await editButton.click();
-
-          // Wait for selectable list to be visible and ready
-          const selectableList = page.locator(
-            '[data-testid="selectable-list"]'
-          );
-          await expect(selectableList).toBeVisible();
-
-          const searchBar = page.locator(
-            '[data-testid="glossary-term-select-search-bar"]'
-          );
-          await expect(searchBar).toBeVisible();
-          await searchBar.fill(
-            EntityDataClass.glossaryTerm1.responseData.displayName
+          await openGlossaryPicker(
+            page,
+            panelContainer.getByTestId('edit-glossary-terms')
           );
 
-          // Wait for loader to disappear after search
-          await waitForAllLoadersToDisappear(page);
+          await toggleGlossaryTermInPicker(page, {
+            name: EntityDataClass.glossaryTerm1.responseData.name,
+            displayName: EntityDataClass.glossaryTerm1.responseData.displayName,
+            fullyQualifiedName:
+              EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
+          });
 
-          // Wait for term option to be visible before clicking
-          const termOption = page
-            .locator('[data-testid="owner-option"]')
-            .filter({
-              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-            });
-          await expect(termOption).toBeVisible();
-          await termOption.click();
-
-          // Wait for both API response AND UI update
-          const updateResponse = page.waitForResponse(
-            (response) =>
+          await applyGlossaryPicker(page, (response) =>
+            Boolean(
               response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            )
           );
-          const updateButton = page.getByRole('button', { name: 'Update' });
-          await expect(updateButton).toBeVisible();
-          await expect(updateButton).toBeEnabled();
-          await updateButton.click();
-          await updateResponse;
 
           // CRITICAL: Wait for UI to update after API response
           await waitForAllLoadersToDisappear(page);
@@ -1628,8 +1550,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
 
           // Verify Overview tab is active by default
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Update description via panel
@@ -1670,15 +1593,17 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           if (entity.type === 'Table') {
             await page.getByTestId('data-quality-tab').click();
 
-            await expect(page.getByTestId('data-quality-tab')).toHaveClass(
-              /ant-menu-item-selected/
+            await expect(page.getByTestId('data-quality-tab')).toHaveAttribute(
+              'aria-selected',
+              'true'
             );
           }
 
           await page.getByTestId('overview-tab').click();
 
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /ant-menu-item-selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Test column navigation with arrow buttons and verify nested column counting
@@ -1962,12 +1887,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 testCaseCardsSection.locator('.test-case-card');
 
               await expect(failedCards).toHaveCount(1);
-
-              const failedCard = failedCards.first();
-
-              await expect(failedCard.locator('.test-case-name')).toContainText(
-                testCase2Name
-              );
+              await expect(
+                failedCards.locator('.test-case-name')
+              ).toContainText(testCase2Name);
             });
 
             await test.step('Filter by success and verify test case card', async () => {

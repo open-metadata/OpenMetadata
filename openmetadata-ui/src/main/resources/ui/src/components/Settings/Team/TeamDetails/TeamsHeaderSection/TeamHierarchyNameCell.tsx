@@ -15,9 +15,11 @@ import { FC, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../../utils/StringUtils';
 
 type TeamHierarchyNameCellProps = {
   record: Team;
@@ -63,7 +65,7 @@ export const TeamHierarchyNameCell: FC<TeamHierarchyNameCellProps> = ({
       data-testid={`team-name-${record.name}`}
       ref={linkRef}
       to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
-      {stringToHTML(highlightSearchText(displayName, searchTerm))}
+      {renderHighlightedText(highlightSearchText(displayName, searchTerm))}
     </Link>
   );
 

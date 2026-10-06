@@ -14,22 +14,23 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import {
-  fillDescriptionBox,
-  getApiContext,
-  getDescriptionBox,
-  redirectToHomePage,
-} from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   addReferences,
   addRelatedTerms,
   addRelatedTermsByRelationType,
   addSynonyms,
-  fillStyleIconUrl,
-  openAddGlossaryTermModal,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
+import {
+  createGlossaryTermFromForm,
+  fillGlossaryTermForm,
+  getFormNameInput,
+  openEditGlossaryTermForm,
+  replaceFormDescription,
+  saveGlossaryTermForm,
+} from '../../../utils/glossaryForm';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -73,10 +74,7 @@ test.describe('Glossary Term Details Operations', () => {
         .click();
 
       // Find and remove the first synonym
-      const synonym1Tag = page.locator(
-        `.ant-select-selection-item[title="${synonym1}"] .ant-select-selection-item-remove`
-      );
-      await synonym1Tag.click();
+      await page.getByTestId(`remove-synonym-${synonym1}`).click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-synonym-btn').click();
@@ -133,11 +131,9 @@ test.describe('Glossary Term Details Operations', () => {
           .getByText('References')
       ).toBeVisible();
 
-      // Remove first reference using the delete button in the row
-      // The delete button is the only button with IconDelete in the modal rows
       await page
         .getByTestId('glossary-term-references-modal')
-        .locator('.reference-edit-form button[type="button"]')
+        .getByTestId('delete-ref-btn')
         .first()
         .click();
 
@@ -246,7 +242,7 @@ test.describe('Glossary Term Details Operations', () => {
           glossaryTerm1.data.name
         )}*`
       );
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await reloadRes;
 
       await expect(page.getByTestId(relatedTermName)).toHaveCount(2);
@@ -332,54 +328,29 @@ test.describe('Glossary Term Details Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Find the term row and hover to reveal edit button
       const termRow = page.locator(
         `[data-row-key*="${glossaryTerm.responseData.name}"]`
       );
 
       await expect(termRow).toBeVisible();
 
-      // Hover over the term name cell to reveal edit button
-      await termRow.hover();
+      const termForm = await openEditGlossaryTermForm(
+        page,
+        glossaryTerm.responseData.fullyQualifiedName
+      );
 
-      // Click the edit (pencil) icon button in the row
-      // The edit button appears on hover in the term name cell
-      const editButton = termRow.getByTestId('edit-button');
-      await editButton.click();
-
-      // Wait for edit modal to open
-      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
-
-      // Verify the modal has the term name pre-filled
-      await expect(page.getByTestId('name')).toHaveValue(
+      // Verify the form has the term name pre-filled
+      await expect(getFormNameInput(termForm)).toHaveValue(
         glossaryTerm.data.name
       );
 
-      // Update the description
       const newDescription = 'Updated description via table edit modal';
-      await getDescriptionBox(page).clear();
-      await fillDescriptionBox(page, newDescription);
+      await replaceFormDescription(termForm, newDescription);
 
-      // Add a synonym
       const newSynonym = 'TableEditSynonym';
-      await page
-        .getByTestId('synonyms')
-        .locator('input[type="search"]')
-        .fill(newSynonym);
-      await page
-        .getByTestId('synonyms')
-        .locator('input[type="search"]')
-        .press('Enter');
+      await fillGlossaryTermForm(page, termForm, { synonyms: [newSynonym] });
 
-      // Save the changes
-      const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.click('[data-testid="save-glossary-term"]');
-      await updateResponse;
-
-      // Wait for modal to close
-      await expect(
-        page.locator('[role="dialog"].edit-glossary-modal')
-      ).not.toBeVisible();
+      await saveGlossaryTermForm(page, 'edit');
 
       // Verify the description was updated in the table row
       const updatedTermRow = page.locator(
@@ -420,46 +391,19 @@ test.describe('Glossary Term Details Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Click add term button
-      await openAddGlossaryTermModal(page);
-
-      // Fill required fields
       const termName = `FullTerm${Date.now()}`;
-      await page.fill('[data-testid="name"]', termName);
-      await page.fill('[data-testid="display-name"]', termName);
-      await fillDescriptionBox(page, 'A comprehensive test term');
-
-      // Add synonyms
       const synonyms = ['synonym1', 'synonym2', 'alternative'];
-      for (const synonym of synonyms) {
-        await page
-          .getByTestId('synonyms')
-          .locator('input[type="search"]')
-          .fill(synonym);
-        await page
-          .getByTestId('synonyms')
-          .locator('input[type="search"]')
-          .press('Enter');
-      }
 
-      // Add reference
-      await page.click('[data-testid="add-reference"]');
-      await page.locator('#name-0').fill('Documentation');
-      await page.locator('#url-0').fill('https://docs.example.com');
-
-      // Add icon URL (custom style) through the picker's URL tab
-      const iconUrl = 'https://example.com/icon.png';
-      await fillStyleIconUrl(page, iconUrl);
-
-      // Submit the term
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      await createResponse;
-
-      // Wait for modal to close
-      await expect(
-        page.locator('[role="dialog"].edit-glossary-modal')
-      ).not.toBeVisible();
+      await createGlossaryTermFromForm(page, {
+        name: termName,
+        displayName: termName,
+        description: 'A comprehensive test term',
+        synonyms,
+        references: [
+          { name: 'Documentation', endpoint: 'https://docs.example.com' },
+        ],
+        icon: { url: 'https://example.com/icon.png' },
+      });
 
       // Verify term is created and visible in the table
       const termRow = page.locator(`[data-row-key*="${termName}"]`);

@@ -17,8 +17,8 @@ import {
   Owner,
   Skeleton,
   Table,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +28,6 @@ import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import {
   DataQualityPageTabs,
   DataQualitySubTabs,
@@ -88,7 +87,6 @@ export const TestSuitesTable = ({
   emptyStateAction,
 }: TestSuitesTableProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const renderNameCell = (record: TestSuite) => {
     if (record.basic) {
@@ -154,17 +152,16 @@ export const TestSuitesTable = ({
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>{renderNameCell(record)}</Table.Cell>
       <Table.Cell>
-        <Typography.Text>
+        <Typography className="tw:text-primary">
           {(record.summary as TestSummary)?.total ?? 0}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
       <Table.Cell>
         <Owner
           isCompactView={false}
           maxVisibleOwners={4}
-          owners={toOwnersWithHref(record.owners)}
-          renderOwnerContent={renderOwnerContent}
+          owners={record.owners}
           showLabel={false}
         />
       </Table.Cell>

@@ -17,8 +17,8 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Copy01, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { ReactNode, useCallback, useMemo } from 'react';
@@ -38,7 +38,9 @@ import {
   shouldFetchNextRun,
 } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.utils';
 import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -46,7 +48,6 @@ import {
   getEntityDetailsPath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -64,6 +65,7 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import RunTestCaseButton from './RunTestCaseButton/RunTestCaseButton';
 import './test-case-detail.less';
 import { TestCaseDetailProps } from './TestCaseDetail.types';
 
@@ -135,8 +137,13 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     }),
   });
 
+  const renderedActiveTab = useMemo(
+    () => getRenderedActiveTab(tabs, activeTab),
+    [tabs, activeTab]
+  );
+
   const activeTabContent = useMemo(() => {
-    const currentTab = tabs.find(({ key }) => key === activeTab) ?? tabs.at(0);
+    const currentTab = tabs.find(({ key }) => key === renderedActiveTab);
 
     if (!currentTab) {
       return null;
@@ -153,13 +160,17 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
               className="tw:pt-4 tw:pb-2.5"
               data-testid="test-case-last-run-banner-tab-container">
               <TestCaseLastRunBanner
+                hasEditStatusPermission={
+                  incidentHeaderData.hasEditStatusPermission
+                }
                 incidentTask={incidentHeaderData.incidentTask}
                 nextRunTimestamp={nextRunTimestamp}
-                parameterValues={testCase?.parameterValues}
                 taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                testCase={testCase}
                 testCaseResult={testCase?.testCaseResult}
                 testCaseStatus={testCase?.testCaseStatus}
                 testCaseStatusData={incidentHeaderData.testCaseStatusData}
+                onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
               />
             </div>
           )}
@@ -168,7 +179,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     );
   }, [
     tabs,
-    activeTab,
+    renderedActiveTab,
     isTabExpanded,
     dimensionKey,
     isVersionPage,
@@ -176,9 +187,9 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     incidentHeaderData.incidentTask,
     incidentHeaderData.taskLinkInfo,
     incidentHeaderData.testCaseStatusData,
-    testCase?.parameterValues,
-    testCase?.testCaseResult,
-    testCase?.testCaseStatus,
+    incidentHeaderData.hasEditStatusPermission,
+    incidentHeaderData.handleAcknowledgeIncident,
+    testCase,
   ]);
 
   const breadcrumbItems = useMemo(() => {
@@ -316,11 +327,11 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
           data-testid="entity-header-display-name"
           ellipsis={{
-            tooltip: breakableTooltipText(stringToHTML(displayName)),
+            tooltip: breakableTooltipText(renderHighlightedText(displayName)),
           }}
           size="text-lg"
           weight="bold">
-          {stringToHTML(displayName)}
+          {renderHighlightedText(displayName)}
         </Typography>
       )}
       <Typography
@@ -364,7 +375,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         data-testid="test-case-detail-page"
         header={
           <Box
-            className="tw:relative tw:mx-4 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
+            className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
             data-testid="test-case-header-container"
             direction="col"
             gap={4}>
@@ -402,10 +413,10 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                     className={classNames(
                       'tw:relative tw:size-9 tw:shrink-0',
                       'tw:overflow-hidden tw:rounded-full',
-                      'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                      'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                     )}
                     justify="center">
-                    <TestCaseIcon className="tw:size-5" />
+                    <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
                   </Box>
                   <Box
                     align="center"
@@ -438,24 +449,27 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 </Box>
                 <Box align="center" className="tw:shrink-0" gap={2}>
                   {!isVersionPage && (
-                    <ManageButton
-                      isRecursiveDelete
-                      afterDeleteAction={() =>
-                        navigate(
-                          observabilityRouterClassBase.getDataQualityPagePath()
-                        )
-                      }
-                      allowSoftDelete={false}
-                      canDelete={hasDeletePermission}
-                      displayName={testCase.displayName}
-                      editDisplayNamePermission={editDisplayNamePermission}
-                      entityFQN={testCase.fullyQualifiedName}
-                      entityId={testCase.id}
-                      entityName={testCase.name}
-                      entityType={EntityType.TEST_CASE}
-                      extraDropdownContent={extraDropdownContent}
-                      onEditDisplayName={handleDisplayNameChange}
-                    />
+                    <>
+                      <RunTestCaseButton testCase={testCase} />
+                      <ManageButton
+                        isRecursiveDelete
+                        afterDeleteAction={() =>
+                          navigate(
+                            observabilityRouterClassBase.getDataQualityPagePath()
+                          )
+                        }
+                        allowSoftDelete={false}
+                        canDelete={hasDeletePermission}
+                        displayName={testCase.displayName}
+                        editDisplayNamePermission={editDisplayNamePermission}
+                        entityFQN={testCase.fullyQualifiedName}
+                        entityId={testCase.id}
+                        entityName={testCase.name}
+                        entityType={EntityType.TEST_CASE}
+                        extraDropdownContent={extraDropdownContent}
+                        onEditDisplayName={handleDisplayNameChange}
+                      />
+                    </>
                   )}
                 </Box>
               </Box>
@@ -480,7 +494,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
             <Tabs
               className="tw:w-fit"
               data-testid="tabs"
-              selectedKey={activeTab}
+              selectedKey={renderedActiveTab}
               onSelectionChange={(key) => handleTabChange(String(key))}>
               <Tabs.List size="sm" type="underline">
                 {tabs.map(({ labelProps, key, isBeta }) => (

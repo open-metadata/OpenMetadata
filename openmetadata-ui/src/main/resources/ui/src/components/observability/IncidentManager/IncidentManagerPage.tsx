@@ -10,70 +10,49 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, PageLayout } from '@openmetadata/ui-core-components';
-import { useMemo } from 'react';
+import { PageLayout } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import IncidentManagerTable from '../../IncidentManager/IncidentManagerTable.component';
-import { useIncidentManagerListPage } from '../../IncidentManager/useIncidentManagerListPage';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import FilterBar from '../common/FilterChip/FilterBar';
-import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import IncidentGroupsView from './IncidentGroups/IncidentGroupsView';
 import IncidentManagerPageWidgets from './IncidentManagerPageWidgets';
 
+// Widget wrapper: strip the widgets' own border/padding and give the chart cards
+// a light bg in light and a dark surface in dark.
+const INCIDENT_WIDGETS_WRAPPER_CLASS = [
+  'tw:mb-4',
+  'tw:[&_.incident-page-widgets]:border-0',
+  'tw:[&_.incident-page-widgets]:p-0',
+  'tw:[&_.custom-chart-background]:border-0',
+  'tw:[&_.custom-chart-background]:bg-gray-blue-25',
+  'tw:[&_.custom-chart-background]:dark:bg-surface',
+].join(' ');
+
 /**
- * App-mode Incident Manager page. Composes the shared useIncidentManagerListPage
- * hook (logic) + reused IncidentManagerTable, and supplies its own untitled-ui
- * FilterBar. Only the filter chrome differs from the classic renderer, which keeps
- * its antd filter bar.
+ * App-mode Incident Manager page: the incident widgets above the grouped
+ * incidents. A group's own incidents open from its row, in the drawer or the
+ * drill-down, so the page lists no incidents one by one.
  */
 const IncidentManagerPage = () => {
   const { t } = useTranslation();
-  const {
-    commonTestCasePermission,
-    filterDescriptors,
-    hasActiveFilters,
-    clearAllFilters,
-    isIncidentPage,
-    tableDetails,
-    testCaseListData,
-    isPermissionLoading,
-    testCasePermissions,
-    showPagination,
-    pagingData,
-    handleStatusSubmit,
-    handleSeveritySubmit,
-    handleAssigneeUpdate,
-  } = useIncidentManagerListPage({ isIncidentPage: true });
+  const { permissions } = usePermissionProvider();
 
-  // Consumer via a hook return value (useIncidentManagerListPage is out of this batch's
-  // scope — incident permissions decouple from test-case perms in an open upstream PR
-  // #26521), mirroring the classic IncidentManager.component.tsx precedent. Pure rename:
-  // `!hasViewAccess` is De Morgan's law applied to the old `!ViewAll && !ViewBasic` — the
-  // exact same condition, just via the named flag.
-  const hasViewPermission = getDerivedPermissionFlags(
-    commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
-  ).hasViewAccess;
-
-  // Attached to the test case links so the detail page breadcrumb reflects
-  // the incidents page as the origin.
-  const incidentBreadcrumb = useMemo(
-    () => [
-      {
-        name: t('label.incident-manager'),
-        url: OBSERVABILITY_ROUTES.OBSERVABILITY_INCIDENT_MANAGER,
-      },
-    ],
-    [t]
+  const testCasePermissionFlags = getDerivedPermissionFlags(
+    permissions.testCase ?? DEFAULT_ENTITY_PERMISSION
   );
+  const hasViewPermission = testCasePermissionFlags.hasViewAccess;
+  // The bulk actions change incident statuses and severities.
+  const canEditIncidents = testCasePermissionFlags.can(Operation.EditStatus);
 
   return (
     <ObservabilityPageShell
@@ -105,35 +84,11 @@ const IncidentManagerPage = () => {
         />
       }
       pageTitle={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}>
-      <div className="tw:mb-4 tw:[&_.incident-page-widgets]:border-0 tw:[&_.incident-page-widgets]:p-0 tw:[&_.custom-chart-background]:border-0 tw:[&_.custom-chart-background]:bg-gray-blue-25">
+      <div className={INCIDENT_WIDGETS_WRAPPER_CLASS}>
         <IncidentManagerPageWidgets />
       </div>
       {hasViewPermission ? (
-        <Box
-          className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
-          direction="col">
-          <Box className="tw:border-b tw:border-secondary tw:p-4">
-            <FilterBar
-              filters={filterDescriptors}
-              hasActiveFilters={hasActiveFilters}
-              variant="input"
-              onClearAll={clearAllFilters}
-            />
-          </Box>
-          <IncidentManagerTable
-            breadcrumbData={incidentBreadcrumb}
-            handleAssigneeUpdate={handleAssigneeUpdate}
-            handleSeveritySubmit={handleSeveritySubmit}
-            handleStatusSubmit={handleStatusSubmit}
-            isIncidentPage={isIncidentPage}
-            isPermissionLoading={isPermissionLoading}
-            pagingData={pagingData}
-            showPagination={showPagination}
-            tableDetails={tableDetails}
-            testCaseListData={testCaseListData}
-            testCasePermissions={testCasePermissions}
-          />
-        </Box>
+        <IncidentGroupsView canEditIncidents={canEditIncidents} />
       ) : (
         <ErrorPlaceHolder
           className="border-none"

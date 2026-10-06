@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagButton from '../../../common/TagButton/TagButton.component';
+import { SynonymBadge } from '../../../Glossary/GlossaryTermBadges/GlossaryTermBadges';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { GlossaryTermSummaryProps } from './GlossaryTermSummary.interface';
@@ -33,7 +32,6 @@ function GlossaryTermSummary({
   isLoading,
 }: GlossaryTermSummaryProps) {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [selectedData, setSelectedData] = useState<GlossaryTerm>();
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(() => {
@@ -88,26 +86,25 @@ function GlossaryTermSummary({
           className="p-md border-radius-card summary-panel-card"
           gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="reviewer-header">
               {t('label.reviewer-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             {reviewers.length > 0 ? (
               <Owner
                 isCompactView={false}
-                owners={toOwnersWithHref(reviewers)}
-                renderOwnerContent={renderOwnerContent}
+                owners={reviewers}
                 showLabel={false}
               />
             ) : (
-              <Typography.Text
+              <Typography
                 className="no-data-chip-placeholder"
                 data-testid="no-reviewer-header">
                 {t('label.no-reviewer')}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
         </Row>
@@ -116,29 +113,25 @@ function GlossaryTermSummary({
           className="p-md border-radius-card summary-panel-card"
           gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="synonyms-header">
               {t('label.synonym-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             {synonyms.length > 0 ? (
-              <div className="d-flex flex-wrap">
-                {synonyms.map((synonym) => (
-                  <TagButton
-                    className="glossary-synonym-tag"
-                    key={synonym}
-                    label={synonym}
-                  />
+              <div className="tw:flex tw:flex-wrap tw:gap-1">
+                {synonyms.map((synonym: string) => (
+                  <SynonymBadge key={synonym} synonym={synonym} />
                 ))}
               </div>
             ) : (
-              <Typography.Text
+              <Typography
                 className="no-data-chip-placeholder"
                 data-testid="no-synonyms-available-header">
                 {t('message.no-synonyms-available')}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
         </Row>
@@ -147,11 +140,11 @@ function GlossaryTermSummary({
           className="p-md border-radius-card summary-panel-card"
           gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="children-header">
               {t('label.children')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             <SummaryList

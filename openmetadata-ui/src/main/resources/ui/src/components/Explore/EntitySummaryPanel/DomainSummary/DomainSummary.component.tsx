@@ -10,13 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Typography } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../generated/entity/domains/domain';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
@@ -34,7 +33,6 @@ const DomainSummary = ({
   highlights,
 }: DomainSummaryProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const experts = useMemo(() => entityDetails.experts ?? [], [entityDetails]);
 
@@ -49,57 +47,51 @@ const DomainSummary = ({
           )}
         />
 
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
 
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="owner-header">
               {t('label.owner-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             <Owner
               isCompactView={false}
-              owners={toOwnersWithHref(entityDetails.owners ?? [])}
-              renderOwnerContent={renderOwnerContent}
+              owners={entityDetails.owners ?? []}
               showLabel={false}
             />
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
 
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="expert-header">
               {t('label.expert-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
-              <Owner
-                isCompactView={false}
-                owners={toOwnersWithHref(experts)}
-                renderOwnerContent={renderOwnerContent}
-                showLabel={false}
-              />
+              <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
-              <Typography.Text
+              <Typography
                 className="text-grey-body"
                 data-testid="no-expert-header">
                 {t('label.no-entity', {
                   entity: t('label.expert-lowercase'),
                 })}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
       </>
     </SummaryPanelSkeleton>
   );

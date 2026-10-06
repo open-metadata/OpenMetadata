@@ -70,6 +70,7 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -406,10 +407,19 @@ public class ElasticSearchClient implements SearchClient {
       SearchSortFilter searchSortFilter,
       String q,
       String queryString,
-      SubjectContext subjectContext)
+      SubjectContext subjectContext,
+      List<EntityStatus> memoryStatuses)
       throws IOException {
     return searchManager.listWithOffset(
-        filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
+        filter,
+        limit,
+        offset,
+        index,
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext,
+        memoryStatuses);
   }
 
   @Override
@@ -597,13 +607,13 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
-    return aggregationManager.getEntityTypeCounts(request, index);
+    return searchManager.getEntityTypeCounts(request, index, null);
   }
 
   @Override
   public Response getEntityTypeCounts(
       SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
-    return aggregationManager.getEntityTypeCounts(request, index, subjectContext);
+    return searchManager.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @Override
@@ -924,7 +934,7 @@ public class ElasticSearchClient implements SearchClient {
 
               // httpclient5 5.6.0 turned on automatic gzip decompression in the async client
               // pipeline by default. Rest5Client / elasticsearch-java's transport also
-              // decompresses the response body itself (see setCompressionEnabled(true) below),
+              // decompresses the response body itself when request compression is enabled,
               // so leaving both enabled makes the second pass run on already-inflated bytes
               // and throws "java.util.zip.ZipException: Not in GZIP format". Disable at the
               // transport layer and let the ES client own decompression.
@@ -944,7 +954,7 @@ public class ElasticSearchClient implements SearchClient {
                         org.apache.hc.core5.util.Timeout.ofSeconds(
                             esConfig.getSocketTimeoutSecs())));
 
-        restClientBuilder.setCompressionEnabled(true);
+        restClientBuilder.setCompressionEnabled(esConfig.getRequestCompressionEnabled());
 
         Rest5Client tempClient = restClientBuilder.build();
         boolean isElasticsearch7 = isElasticsearch7Version(tempClient);

@@ -7,6 +7,7 @@
     "close": "Pechar",
     "close-navigation-menu": "Pechar menú de navegación",
     "copy-link": "Copiar ligazón",
+    "count-remaining": "{{count}} restantes",
     "count-selected": "{{count}} seleccionados",
     "current-page": "Páxina actual",
     "date-range-picker": "Selector de intervalo de datas",
@@ -21,6 +22,7 @@
     "no-data-found": "Non se atoparon datos",
     "no-owners": "Sen propietarios",
     "none-selected": "Ningún seleccionado",
+    "ok": "Aceptar",
     "open-menu": "Abrir menú",
     "owners": "Propietarios",
     "page": "Páxina",
@@ -28,12 +30,16 @@
     "pagination-navigation": "Navegación de paxinación",
     "previous-page": "Ir á páxina anterior",
     "records": "Rexistros",
+    "remove-entity": "Eliminar {{entity}}",
     "remove-filter": "Eliminar filtro",
     "search": "Buscar",
     "select-all": "Seleccionar todo",
+    "select-date": "Seleccionar data",
     "select-dates": "Seleccionar datas",
     "select-only-one-row": "Seleccionar unha fila",
+    "show-count-more": "Amosar {{count}} máis",
     "show-hidden-breadcrumbs": "Amosar migas de pan ocultas",
-    "today": "Hoxe"
+    "today": "Hoxe",
+    "tree-select": "Selección de árbore"
   }
 }

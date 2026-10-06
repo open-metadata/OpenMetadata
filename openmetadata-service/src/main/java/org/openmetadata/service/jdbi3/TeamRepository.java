@@ -104,6 +104,7 @@ import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver;
 import org.openmetadata.service.tasks.TaskAssigneeCleanup;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
@@ -761,15 +762,10 @@ public class TeamRepository extends EntityRepository<Team> {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAINS)) {
-      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> parents =
           !fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents();
-      if (!nullOrEmpty(parents)) {
-        for (EntityReference parentRef : parents) {
-          Team parentTeam = Entity.getEntity(TEAM, parentRef.getId(), "domains", ALL);
-          combinedParent.addAll(parentTeam.getDomains());
-        }
-      }
+      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
+      combinedParent.addAll(TeamHierarchyResolver.domainsForTeams(parents));
       team.setDomains(
           EntityUtil.mergedInheritedEntityRefs(
               team.getDomains(), combinedParent.stream().toList()));
@@ -790,8 +786,21 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
+  protected void postUpdate(Team original, Team updated) {
+    super.postUpdate(original, updated);
+    // The resolved graph stores each team's name, which is what inAnyTeam() and matchTeam() match
+    // on. The updater invalidates for membership, roles, policies and ancestry; a rename does not
+    // pass through it.
+    if (!Objects.equals(original.getName(), updated.getName())) {
+      SubjectCache.invalidateAll();
+    }
+  }
+
+  @Override
   protected void postDelete(Team entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
+    // Descendants cache this team as their parent, and members inherit its roles and policies.
+    SubjectCache.invalidateAll();
     PolicyConditionUpdater.updateAllPolicyConditions(
         condition ->
             PolicyConditionUpdater.removeFromCondition(

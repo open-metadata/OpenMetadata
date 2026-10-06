@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/context/createContextMemory.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateContextMemory",
   "description": "Request to create a reusable Context Center memory.",
   "type": "object",
@@ -41,8 +41,9 @@
     "memoryScope": {
       "$ref": "../../entity/context/contextMemory.json#/definitions/memoryScope"
     },
-    "status": {
-      "$ref": "../../entity/context/contextMemory.json#/definitions/memoryStatus"
+    "entityStatus": {
+      "description": "Lifecycle stage the memory starts in. When omitted, the memory starts Approved. A Deprecated memory requires supersededBy.",
+      "$ref": "../../type/status.json"
     },
     "shareConfig": {
       "$ref": "../../entity/context/contextMemory.json#/definitions/shareConfig"

@@ -10,14 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
+import { act, renderHook } from '@testing-library/react';
+import { useState } from 'react';
+import {
+  ExploreQuickFilterField,
+  SearchHitCounts,
+} from '../components/Explore/ExplorePage.interface';
 import { FAILED_TO_FIND_INDEX_ERROR } from '../constants/explore.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { useExploreCache } from '../hooks/useExploreCache';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import * as miscAPI from '../rest/miscAPI';
-import { nlqSearch, searchQuery } from '../rest/searchAPI';
+import {
+  nlqSearch,
+  searchEntityTypeCounts,
+  searchQuery,
+} from '../rest/searchAPI';
 import {
   extractTermKeys,
   getExploreQueryFilterMust,
@@ -34,6 +44,7 @@ jest.mock('./ToastUtils');
 
 const mockSearchQuery = searchQuery as jest.Mock;
 const mockNlqSearch = nlqSearch as jest.Mock;
+const mockEntityTypeCounts = searchEntityTypeCounts as jest.Mock;
 
 describe('Explore Utils', () => {
   it('passes search text to independent aggregation requests', async () => {
@@ -764,11 +775,13 @@ describe('fetchEntityData', () => {
       setUpdatedAggregations: jest.fn(),
       setShowIndexNotFoundAlert: jest.fn(),
       onNlqAppliedFilters: jest.fn(),
+      onResultsSettled: jest.fn(),
       ...overrides,
     } as unknown as Parameters<typeof fetchEntityData>[0]);
 
   beforeEach(() => {
     jest.clearAllMocks();
+    useExploreCache.getState().clearCache();
   });
 
   it('issues a single search on the given index when there is no query', async () => {
@@ -788,24 +801,26 @@ describe('fetchEntityData', () => {
   });
 
   it('runs a count then a results query and maps tab hit counts when a query is present', async () => {
-    mockSearchQuery
-      .mockResolvedValueOnce(COUNT_RESPONSE)
-      .mockResolvedValueOnce(RESULTS_RESPONSE);
-    const params = buildParams({ searchQueryParam: 'customer' });
+    mockEntityTypeCounts.mockResolvedValueOnce(COUNT_RESPONSE);
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
+    const { result } = renderHook(() => useState<SearchHitCounts>());
+    const params = buildParams({
+      searchQueryParam: 'customer',
+      setSearchHitCounts: result.current[1],
+    });
 
-    await fetchEntityData(params);
+    await act(async () => {
+      await fetchEntityData(params);
+    });
 
-    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
-    expect(mockSearchQuery.mock.calls[0][0]).toEqual(
+    expect(mockSearchQuery).toHaveBeenCalledTimes(1);
+    expect(mockEntityTypeCounts.mock.calls[0][0]).toEqual(
       expect.objectContaining({
-        searchIndex: SearchIndex.DATA_ASSET,
-        pageNumber: 1,
-        pageSize: 1,
-        fetchSource: true,
-        includeFields: ['entityType'],
+        query: 'customer',
+        searchIndex: [SearchIndex.TABLE],
       })
     );
-    expect(params.setSearchHitCounts).toHaveBeenCalledWith({
+    expect(result.current[0]).toEqual({
       [SearchIndex.TABLE]: 42,
     });
     expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
@@ -826,9 +841,8 @@ describe('fetchEntityData', () => {
         total: { value: 21 },
       },
     };
-    mockSearchQuery
-      .mockResolvedValueOnce(countResponse)
-      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    mockEntityTypeCounts.mockResolvedValueOnce(countResponse);
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
     const params = buildParams({
       searchQueryParam: 'revenue chart',
       tab: '',
@@ -845,7 +859,7 @@ describe('fetchEntityData', () => {
 
     await fetchEntityData(params);
 
-    expect(mockSearchQuery.mock.calls[1][0]).toEqual(
+    expect(mockSearchQuery.mock.calls[0][0]).toEqual(
       expect.objectContaining({ searchIndex: SearchIndex.CHART })
     );
     expect(params.setAutoSelectedSearchIndex).toHaveBeenCalledWith(
@@ -964,27 +978,131 @@ describe('fetchEntityData', () => {
 
   it('issues the results query without waiting for the count when a tab is selected', async () => {
     let resolveCount: (value: unknown) => void = (_value) => undefined;
-    mockSearchQuery
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveCount = resolve;
-          })
-      )
-      .mockResolvedValueOnce(RESULTS_RESPONSE);
-    const params = buildParams({ searchQueryParam: 'customer', tab: 'tables' });
+    mockEntityTypeCounts.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCount = resolve;
+        })
+    );
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
+    const { result } = renderHook(() =>
+      useState<SearchHitCounts>({
+        [SearchIndex.TABLE]: 40,
+        [SearchIndex.DASHBOARD]: 18,
+      } as SearchHitCounts)
+    );
+    const params = buildParams({
+      searchQueryParam: 'customer',
+      tab: 'tables',
+      setSearchHitCounts: result.current[1],
+    });
+    let pending: ReturnType<typeof fetchEntityData>;
+    await act(async () => {
+      pending = fetchEntityData(params);
+    });
 
-    const pending = fetchEntityData(params);
+    expect(params.onResultsSettled).toHaveBeenCalledTimes(1);
+    expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
+    expect(result.current[0]).toEqual({
+      [SearchIndex.TABLE]: 42,
+      [SearchIndex.DASHBOARD]: 18,
+    });
 
-    // Results query is already in flight while the count is still pending.
-    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
-
-    resolveCount(COUNT_RESPONSE);
-    await pending;
+    await act(async () => {
+      resolveCount(COUNT_RESPONSE);
+      await pending;
+    });
 
     expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
-    expect(params.setSearchHitCounts).toHaveBeenCalledWith({
+    expect(result.current[0]).toEqual({
       [SearchIndex.TABLE]: 42,
+    });
+  });
+
+  it('preserves other tab counts when the count request fails', async () => {
+    mockEntityTypeCounts.mockRejectedValueOnce(new Error('Count unavailable'));
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
+    const { result } = renderHook(() =>
+      useState<SearchHitCounts>({
+        [SearchIndex.TABLE]: 40,
+        [SearchIndex.DASHBOARD]: 18,
+      } as SearchHitCounts)
+    );
+
+    await act(async () => {
+      await fetchEntityData(
+        buildParams({
+          searchQueryParam: 'customer',
+          setSearchHitCounts: result.current[1],
+        })
+      );
+    });
+
+    expect(result.current[0]).toEqual({
+      [SearchIndex.TABLE]: 42,
+      [SearchIndex.DASHBOARD]: 18,
+    });
+  });
+
+  it('loads counts and results when the route has no tab segment', async () => {
+    mockEntityTypeCounts.mockResolvedValueOnce(COUNT_RESPONSE);
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({
+      searchQueryParam: 'customer',
+      tab: undefined,
+    });
+
+    await fetchEntityData(params);
+
+    expect(mockEntityTypeCounts).toHaveBeenCalledWith(
+      expect.objectContaining({ includeTopHit: true })
+    );
+    expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
+  });
+
+  it('reuses counts across pagination but separates filters and deleted state', async () => {
+    mockEntityTypeCounts.mockResolvedValue(COUNT_RESPONSE);
+    mockSearchQuery.mockResolvedValue(RESULTS_RESPONSE);
+    await fetchEntityData(buildParams({ searchQueryParam: 'customer' }));
+    await fetchEntityData(
+      buildParams({ searchQueryParam: 'customer', page: 2, sortOrder: 'desc' })
+    );
+
+    expect(mockEntityTypeCounts).toHaveBeenCalledTimes(1);
+    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+
+    await fetchEntityData(
+      buildParams({ searchQueryParam: 'customer', showDeleted: true })
+    );
+    await fetchEntityData(
+      buildParams({
+        searchQueryParam: 'customer',
+        queryFilter: {
+          query: { bool: { must: [{ term: { 'service.name': 'other' } }] } },
+        },
+      })
+    );
+
+    expect(mockEntityTypeCounts).toHaveBeenCalledTimes(3);
+  });
+
+  it('uses the returned results total when cached counts predate a catalog change', async () => {
+    mockEntityTypeCounts.mockResolvedValueOnce(COUNT_RESPONSE);
+    mockSearchQuery.mockResolvedValueOnce({
+      ...RESULTS_RESPONSE,
+      hits: { ...RESULTS_RESPONSE.hits, total: { value: 41 } },
+    });
+    const { result } = renderHook(() => useState<SearchHitCounts>());
+    const params = buildParams({
+      searchQueryParam: 'customer',
+      setSearchHitCounts: result.current[1],
+    });
+    await act(async () => {
+      await fetchEntityData(params);
+    });
+
+    expect(result.current[0]).toEqual({
+      [SearchIndex.TABLE]: 41,
     });
   });
 });

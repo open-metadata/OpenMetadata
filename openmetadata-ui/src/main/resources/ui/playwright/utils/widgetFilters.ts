@@ -61,14 +61,17 @@ const searchQueryMatcher =
  * The response listener is registered after the menu has settled but before the click,
  * so a request fired synchronously by the selection cannot be missed.
  */
-const selectWidgetSortOption = async (
+export const selectWidgetSortOption = async (
   page: Page,
   widget: Locator,
   optionName: string,
   responseMatcher: ResponseMatcher
 ): Promise<Response> => {
   const trigger = widget.getByTestId('widget-sort-by-dropdown');
-  const menuItem = page.getByRole('menuitem', { name: optionName });
+  const menuItem = widget.getByRole('menuitem', {
+    name: optionName,
+    exact: true,
+  });
 
   await trigger.click();
   await expect(menuItem).toBeVisible();
@@ -82,7 +85,7 @@ const selectWidgetSortOption = async (
 
   await menuItem.click();
 
-  await expect(trigger).toContainText(optionName);
+  await expect(trigger).toHaveText(optionName, { useInnerText: true });
 
   const response = await filterResponse;
 
@@ -263,18 +266,31 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   );
 };
 
+/**
+ * Every My Tasks filter must request the open bucket. The backend applies no
+ * status filter at all when `statusGroup` is absent, so a filter that omits it
+ * silently lists closed tasks — which is what the widget used to do on load,
+ * and what the Mentions branch used to do even after that was fixed. Asserting
+ * the param per filter is what keeps either from regressing independently.
+ */
 export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const taskFilterMatcher =
     (predicate: (url: URL) => boolean): ResponseMatcher =>
     (response) => {
       const url = new URL(response.url());
 
-      return response.request().method() === 'GET' && predicate(url);
+      return (
+        response.request().method() === 'GET' &&
+        url.searchParams.get('statusGroup') === 'open' &&
+        predicate(url)
+      );
     };
 
   const widget = await getWidgetForFilters(page, widgetKey);
 
-  await expect(widget.getByTestId('task-feed-card').first()).toBeVisible();
+  await expect(
+    widget.getByTestId('task-feed-card').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await selectWidgetSortOption(
     page,

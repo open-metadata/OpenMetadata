@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/configuration/llmConfiguration.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LLMConfiguration",
   "description": "Platform-wide configuration for LLM chat/completion providers. Generic - usable by any feature that needs structured LLM completions.",
   "type": "object",
@@ -33,6 +33,11 @@
     },
     "memoryExtractionEnabled": {
       "description": "Whether Context Center memory extraction (deriving knowledge pills from uploaded files and Knowledge Center articles) runs. Independent of `enabled`, which also gates embeddings and other completion features: a deployment can keep LLM features on for semantic search while leaving automatic extraction off. Extraction is unmetered in OpenMetadata, so it is opt-in.",
+      "type": "boolean",
+      "default": false
+    },
+    "ontologyMemoryDerivationEnabled": {
+      "description": "Whether published context memories may be used to derive reviewable ontology glossary drafts. Requires LLM completion and RDF AI to be enabled separately.",
       "type": "boolean",
       "default": false
     },

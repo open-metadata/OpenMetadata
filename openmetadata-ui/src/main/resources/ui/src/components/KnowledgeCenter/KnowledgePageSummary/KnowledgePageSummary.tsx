@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Typography } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -23,7 +23,7 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 
 const SummaryPanelSkeleton = withSuspenseFallback(
@@ -68,7 +68,7 @@ const KnowledgePageSummary = ({
     return [
       {
         name: i18n.t('label.owner-plural'),
-        value: <Owner hasPermission={false} owners={toOwnerRefs(owners)} />,
+        value: <Owner hasPermission={false} owners={owners} />,
       },
     ];
   }, [entityDetails]);
@@ -97,22 +97,23 @@ const KnowledgePageSummary = ({
               data-testid="quick-link-data"
               gutter={[0, 8]}>
               <Col span={24}>
-                <Typography.Text
+                <Typography
                   className="summary-panel-section-title"
                   data-testid="tags-header">
                   {t('label.link')}
-                </Typography.Text>
+                </Typography>
               </Col>
               <Col span={24}>
                 <Link
                   className="text-primary"
+                  rel="noopener noreferrer"
                   target="_blank"
-                  to={quickLinkData.url}>
+                  to={getSafeHttpUrl(quickLinkData.url) ?? '#'}>
                   {quickLinkData.url}
                 </Link>
               </Col>
             </Row>
-            <Divider className="m-y-xs" />
+            <Divider className="m-y-xs summary-panel-divider" />
           </>
         )}
 
@@ -120,7 +121,7 @@ const KnowledgePageSummary = ({
           entityDetail={entityDetails as EntityUnion}
           tags={entityDetails?.tags ?? []}
         />
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
         {/* read only data assets */}
         <Row className="m-x-md" gutter={[0, 8]}>
           <Col>

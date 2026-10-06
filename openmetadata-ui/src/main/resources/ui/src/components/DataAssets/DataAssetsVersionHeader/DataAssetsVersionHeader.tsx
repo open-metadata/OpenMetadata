@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Owner } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,10 +23,8 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import './data-asset-version-header.less';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
 
@@ -43,6 +41,7 @@ function DataAssetsVersionHeader({
   entityType,
   serviceName,
   domainDisplayName,
+  domains,
 }: DataAssetsVersionHeaderProps) {
   const { t } = useTranslation();
 
@@ -91,24 +90,28 @@ function DataAssetsVersionHeader({
                   <DomainLabel
                     multiple
                     domainDisplayName={domainDisplayName}
-                    domains={
-                      (currentVersionData as EntitiesWithDomainField).domains
-                    }
+                    domains={domains}
                     entityFqn={currentVersionData.fullyQualifiedName ?? ''}
                     entityId={currentVersionData.id ?? ''}
                     entityType={entityType}
                     hasPermission={false}
                   />
-                  <Divider className="self-center m-x-sm" type="vertical" />
+                  <Divider
+                    className="self-center m-x-sm tw:h-[0.9em]"
+                    orientation="vertical"
+                  />
                 </>
               )}
               <Owner
                 isCompactView={false}
                 ownerDisplayName={ownerDisplayName}
-                owners={toOwnerRefs(currentVersionData?.owners ?? ownerRef)}
+                owners={currentVersionData?.owners ?? ownerRef}
                 showLabel={false}
               />
-              <Divider className="self-center m-x-sm" type="vertical" />
+              <Divider
+                className="self-center m-x-sm tw:h-[0.9em]"
+                orientation="vertical"
+              />
 
               <Space>
                 {tierDisplayName ? (
@@ -137,7 +140,7 @@ function DataAssetsVersionHeader({
                 data-testid="version-button"
                 icon={<Icon component={VersionIcon} />}
                 onClick={onVersionClick}>
-                <Typography.Text>{version}</Typography.Text>
+                <Typography>{version}</Typography>
               </Button>
             </Tooltip>
           </Col>

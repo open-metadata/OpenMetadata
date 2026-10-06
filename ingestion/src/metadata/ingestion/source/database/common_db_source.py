@@ -610,7 +610,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         schema_name=schema_name,
                     )
                 ),
-                tags=self.get_tag_labels(table_name=table_name),  # Pick tags from context info, if any
+                tags=self.get_tag_labels(table_name=table_name),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
                     schema_name=schema_name,
@@ -660,10 +660,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         Method to prepare the foreign constraints
         """
         referred_column_fqns = []
-        if supports_database:
-            database_name = column.get("referred_database")
-        else:
-            database_name = self.context.get().database
+        database_name = (column.get("referred_database") if supports_database else None) or self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
 
         referred_schema = column.get("referred_schema") or schema_name
         referred_table_fqn = (
@@ -816,32 +813,49 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         supports_database = hasattr(self.service_connection, "supportsDatabase")
 
+        # One PATCH per table: fewer round trips than one per deferred FK.
+        grouped: dict[str, list[ColumnAndReferredColumn]] = {}
         for foreign_table in self.context.get_global().foreign_tables or []:
-            try:
-                foreign_constraints = []
-                table_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=foreign_table.db_name,
-                    schema_name=foreign_table.schema_name,
-                    table_name=foreign_table.table_name,
+            table_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=foreign_table.db_name,
+                schema_name=foreign_table.schema_name,
+                table_name=foreign_table.table_name,
+            )
+            if not table_fqn:
+                logger.warning(
+                    "Could not build FQN for table [%s.%s], skipping its foreign key constraints",
+                    foreign_table.schema_name,
+                    foreign_table.table_name,
                 )
-                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-                if table:
+                continue
+            grouped.setdefault(table_fqn, []).append(foreign_table)
+
+        for table_fqn, foreign_table_list in grouped.items():
+            try:
+                # tableConstraints is not a default field: without it the table comes back with
+                # tableConstraints=None, the patch becomes `add /tableConstraints` and replaces
+                # every constraint already stored (PK/UNIQUE and FKs resolved at creation time).
+                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["tableConstraints"])
+                if not table:
+                    continue
+
+                foreign_constraints = []
+                for foreign_table in foreign_table_list:
                     foreign_constraint = self._prepare_foreign_constraints(
                         supports_database,
                         foreign_table.column,
                         foreign_table.table_name,
                         foreign_table.schema_name,
-                        foreign_table.db_name,
+                        foreign_table.db_name,  # pyright: ignore[reportArgumentType]
                         table.columns,
                         False,
                     )
                     if foreign_constraint:
                         foreign_constraints.append(foreign_constraint)
 
-                # send the patch request
                 if foreign_constraints:
                     new_entity = copy.deepcopy(table)
                     new_entity.tableConstraints = (new_entity.tableConstraints or []) + foreign_constraints
@@ -852,10 +866,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                     )
                     yield Either(right=patch_request)
             except Exception as exc:
+                first = foreign_table_list[0]
                 yield Either(
                     left=StackTraceError(
-                        name=str(foreign_table.table_name),
-                        error=f"Error to yield tableConstraints for {str(foreign_table.table_name)}: {exc}",  # noqa: RUF010
+                        name=str(first.table_name),
+                        error=f"Error to yield tableConstraints for {str(first.table_name)}: {exc}",  # noqa: RUF010
                         stackTrace=traceback.format_exc(),
                     )
                 )

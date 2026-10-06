@@ -29,13 +29,13 @@ export const ArrowRight: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 20 20"
+    viewBox="0 0 24 24"
     width={size}
     {...props}>
     <path
-      d="m10.761 2 6.809 6.942a1.517 1.517 0 0 1 0 2.116L10.761 18m6.444-8H2"
+      d="M5 12h14m0 0-7-7m7 7-7 7"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={1.3}
     />
   </svg>
 );

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner, Tooltip } from '@openmetadata/ui-core-components';
-import { Button, Typography } from 'antd';
+import { Owner, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +23,6 @@ import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-u
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
@@ -44,7 +43,6 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
   onFilterChange,
 }) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [searchText, setSearchText] = useState<string>('');
 
   const { upstreamNodes, downstreamNodes, upstreamCount, downstreamCount } =
@@ -155,9 +153,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             {searchClassBase.getEntityIcon(entityType)}
           </span>
         )}
-        <Typography.Text className="item-entity-type-text">
+        <Typography className="item-entity-type-text">
           {capitalize(entityType)}
-        </Typography.Text>
+        </Typography>
       </>
     );
   };
@@ -169,8 +167,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           avatarSize={16}
           className="item-owner-label-text"
           isCompactView={false}
-          owners={toOwnersWithHref(owners)}
-          renderOwnerContent={renderOwnerContent}
+          owners={owners}
           showLabel={false}
         />
       );
@@ -288,9 +285,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                 </div>
                 <div className="lineage-card-content">
-                  <Typography.Text className="item-name-text">
+                  <Typography className="item-name-text">
                     {getEntityName(item.entity)}
-                  </Typography.Text>
+                  </Typography>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
                     {renderEntityTypeInfo(item.entity.entityType)}
                     <span className="item-bullet-separator">
@@ -308,9 +305,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center  no-data-placeholder">
+              <Typography as="p" className="text-center  no-data-placeholder">
                 {t('label.lineage-not-found')}
-              </Typography.Paragraph>
+              </Typography>
             </ErrorPlaceHolderNew>
           </div>
         )}

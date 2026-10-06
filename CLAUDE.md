@@ -167,6 +167,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `connector-standards` / `connector-building` / `connector-review` | building or reviewing an ingestion connector |
 | `playwright` / `writing-playwright-tests` / `playwright-validation` | authoring or validating Playwright E2E tests |
 | `pr-checklist` | opening/finalizing a PR (fills the repo PR template) |
+| `openmetadata-pr-review` | reviewing a real GitHub PR (number/URL/batch) — maintainer merge verdict: live diff, CI, meaningful-test rubric |
 
 > `openmetadata-workflow` is a meta-skill that routes tasks to the skills above; it is auto-loaded at
 > session start when the `openmetadata-skills` plugin is installed.
@@ -185,3 +186,7 @@ sign-off) when the agent-facing config decays:
 - **doc-size budgets** — this file > 200 lines, ARCHITECTURE.md > 300, any single rule > 100;
 - **rule globs** — a `.claude/rules/**` `paths:` glob matching zero files;
 - **generated-doc freshness** — `docs/generated/**` out of date with its source.
+
+## Git commit conventions
+- Never add "Co-Authored-By" lines or any AI-attribution trailers to commit messages. 
+- The commit is authored by me; you are a tool, not a co-author.

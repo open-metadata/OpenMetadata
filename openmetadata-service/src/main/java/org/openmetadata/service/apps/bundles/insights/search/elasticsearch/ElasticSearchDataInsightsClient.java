@@ -6,7 +6,6 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 
@@ -43,6 +42,11 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
+  public String getResourcePath() {
+    return resourcePath;
+  }
+
+  @Override
   public void createIndexTemplate(String name, String template) throws IOException {
     performRequest("PUT", String.format("/_index_template/%s", name), template);
   }
@@ -71,14 +75,16 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
-  public void updateDataAssetsDataStream(
-      String name, String entityType, IndexMapping entityIndexMapping, String language)
-      throws IOException {
-    var mappings =
-        prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath)
-            .getTemplate()
-            .getMappings();
-    performRequest("PUT", "/" + name + "/_mapping", JsonUtils.pojoToJson(mappings));
+  public void putWriteIndexMapping(String name, String mappings) throws IOException {
+    Request request = new Request("PUT", "/" + name + "/_mapping");
+    request.addParameter("write_index_only", "true");
+    request.setEntity(new StringEntity(mappings, ContentType.APPLICATION_JSON));
+    client.performRequest(request);
+  }
+
+  @Override
+  public void rolloverDataStream(String name) throws IOException {
+    performRequest("POST", "/" + name + "/_rollover");
   }
 
   @Override

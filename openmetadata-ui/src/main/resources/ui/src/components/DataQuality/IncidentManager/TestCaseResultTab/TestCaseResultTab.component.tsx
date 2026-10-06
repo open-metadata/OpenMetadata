@@ -17,10 +17,11 @@ import { EntityType } from '../../../../enums/entity.enum';
 
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
-import { getParameterValueDiffDisplay } from '../../../../utils/EntityVersionUtils';
+import { getParameterValueDiffRows } from '../../../../utils/EntityVersionUtils';
 import Description from '../../../common/EntityDescription/Description';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -41,6 +42,7 @@ import {
   shouldShowAILearningBanner,
   shouldShowEditParameterButton,
 } from './TestCaseResultTab.utils';
+import TestCaseTestSuitesCard from './TestCaseTestSuitesCard/TestCaseTestSuitesCard';
 import { useTestCaseResultTab } from './useTestCaseResultTab';
 
 function TestCaseSidePanel({
@@ -92,6 +94,9 @@ function TestCaseSidePanel({
             showCommentsIcon={false}
             onDescriptionUpdate={handleDescriptionChange}
           />
+        </div>
+        <div className="tw:w-full">
+          <TestCaseTestSuitesCard testSuites={testCaseData?.testSuites} />
         </div>
         <div className="tw:w-full">
           <TagsContainerV2
@@ -170,29 +175,49 @@ const TestCaseResultTab = ({
     additionalComponents,
     shouldRenderDefaultGraph,
   } = useTestCaseResultTab();
+  const isAiMode = useIsAiMode();
   const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
   const isSidePanelVisible = resolveIsSidePanelVisible(
     showSidePanel,
     isTabExpanded
   );
 
+  // The version page shows each parameter's change in the card's own rows;
+  // only the assertion SQL keeps a diff block of its own.
+  const versionDiff = useMemo(
+    () =>
+      isVersionPage
+        ? getParameterValueDiffRows(
+            testCaseData?.changeDescription as ChangeDescription,
+            testCaseData?.parameterValues
+          )
+        : undefined,
+    [
+      isVersionPage,
+      testCaseData?.changeDescription,
+      testCaseData?.parameterValues,
+    ]
+  );
+
   /**
    * A dynamic-assertion test has its bounds learned, so it has no parameter
-   * rows of its own — the card renders its callout instead. The version page's
-   * parameters arrive as a pre-rendered diff, so only the compute-row-count
-   * row is passed through here.
+   * rows of its own — the card renders its callout instead. On the version
+   * page the rows are the parameters' diff.
    */
   const parameterRows = useMemo<ConfigurationParameterRow[]>(() => {
     const dataQualityDimension =
       testCaseData?.dataQualityDimension?.displayName ??
       testCaseData?.dataQualityDimension?.name;
-    const rows: ConfigurationParameterRow[] =
-      isVersionPage || testCaseData?.useDynamicAssertion
-        ? []
-        : withoutSqlParams.map((param) => ({
-            label: param.name ?? '',
-            value: param.value ?? '',
-          }));
+    let rows: ConfigurationParameterRow[] = [];
+
+    if (versionDiff) {
+      rows = [...versionDiff.rows];
+    } else if (!testCaseData?.useDynamicAssertion) {
+      rows = withoutSqlParams.map((param) => ({
+        label: param.name ?? '',
+        value: param.value ?? '',
+      }));
+    }
 
     if (showComputeRowCount) {
       rows.push({
@@ -210,6 +235,7 @@ const TestCaseResultTab = ({
 
     return rows;
   }, [
+    versionDiff,
     withoutSqlParams,
     isVersionPage,
     testCaseData?.useDynamicAssertion,
@@ -217,21 +243,6 @@ const TestCaseResultTab = ({
     computeRowCountDisplay,
     testCaseData?.dataQualityDimension,
     t,
-  ]);
-
-  const versionParameterDiff = useMemo(() => {
-    if (!isVersionPage) {
-      return undefined;
-    }
-
-    return getParameterValueDiffDisplay(
-      testCaseData?.changeDescription as ChangeDescription,
-      testCaseData?.parameterValues
-    );
-  }, [
-    isVersionPage,
-    testCaseData?.changeDescription,
-    testCaseData?.parameterValues,
   ]);
 
   return (
@@ -250,7 +261,13 @@ const TestCaseResultTab = ({
               </div>
             )}
           {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
-            <div className="test-case-result-tab-graph tw:w-full">
+            // AI mode sets the result history straight on the page, as the mock
+            // does: the tiles carry the only borders in that section.
+            <div
+              className={
+                isAiMode ? 'tw:w-full' : 'test-case-result-tab-graph tw:w-full'
+              }
+              data-testid="test-case-result-tab-graph">
               <TestSummary data={testCaseData} />
             </div>
           )}
@@ -298,7 +315,7 @@ const TestCaseResultTab = ({
           testCaseData={testCaseData}
           testDefinition={testDefinition}
           updatedTags={updatedTags}
-          versionParameterDiff={versionParameterDiff}
+          versionParameterDiff={versionDiff?.sqlDiff}
           withSqlParams={withSqlParams}
           onEditParameter={() => setIsParameterEdit(true)}
         />

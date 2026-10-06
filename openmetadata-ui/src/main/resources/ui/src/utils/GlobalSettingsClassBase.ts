@@ -76,11 +76,12 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
-import { userPermissions } from '../utils/PermissionsUtils';
+import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../enums/permissions.enum';
+import { Operation } from '../generated/entity/policies/accessControl/resourcePermission';
+import { AuthProvider } from '../generated/settings/settings';
+import { checkPermission, userPermissions } from '../utils/PermissionsUtils';
+import { isLoginConfigurationApplicable } from './AuthProvider.util';
 import { t } from './i18next/LocalUtil';
 
 class GlobalSettingsClassBase {
@@ -155,11 +156,21 @@ class GlobalSettingsClassBase {
 
   /**
    * getSidebarItems
+   *
+   * `authProvider` gates the login configuration entry. It is optional so callers that only want
+   * another category keep working unchanged; omitting it leaves the entry visible, because showing
+   * an inert settings page is a cosmetic fault whereas hiding a live one takes working settings
+   * away from admins. The two pages that actually render the entry pass it.
    */
   public getGlobalSettingsMenuWithPermission(
     permissions: UIPermission,
-    isAdminUser?: boolean
+    isAdminUser?: boolean,
+    authProvider?: AuthProvider
   ): Array<SettingMenuItem> {
+    const isLoginConfigVisible =
+      authProvider === undefined ||
+      isLoginConfigurationApplicable(authProvider);
+
     return [
       {
         category: t('label.service-plural'),
@@ -228,7 +239,7 @@ class GlobalSettingsClassBase {
             icon: MlModelIcon,
           },
           {
-            label: t('label.storage-plural'),
+            label: t('label.storage'),
             description: t('message.page-sub-header-for-storages'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.STORAGE_SERVICE,
@@ -238,7 +249,7 @@ class GlobalSettingsClassBase {
             icon: StorageIcon,
           },
           {
-            label: t('label.search'),
+            label: t('label.search-engine-plural'),
             description: t('message.page-sub-header-for-search'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.SEARCH_SERVICE,
@@ -248,7 +259,7 @@ class GlobalSettingsClassBase {
             icon: SearchIconV1,
           },
           {
-            label: t('label.metadata'),
+            label: t('label.catalog-plural'),
             description: t('message.page-sub-header-for-metadata'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.METADATA_SERVICE,
@@ -380,9 +391,13 @@ class GlobalSettingsClassBase {
           {
             label: t('label.audit-log-plural'),
             description: t('message.page-sub-header-for-audit-logs'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.AUDIT_LOG,
-              permissions
+            isProtected: Boolean(
+              isAdminUser ||
+                checkPermission(
+                  Operation.AuditLogs,
+                  ResourceEntity.AUDIT_LOG,
+                  permissions
+                )
             ),
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
             icon: ManagementIcon,
@@ -412,7 +427,7 @@ class GlobalSettingsClassBase {
           {
             label: t('label.login-configuration'),
             description: t('message.page-sub-header-for-login-configuration'),
-            isProtected: Boolean(isAdminUser),
+            isProtected: Boolean(isAdminUser) && isLoginConfigVisible,
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
             icon: LoginIcon,
           },
@@ -907,6 +922,24 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: WorksheetIcon,
+          },
+          {
+            label: t('label.team-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.team-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TEAMS}`,
+            icon: TeamsIcon,
+          },
+          {
+            label: t('label.user-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.user-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.USERS}`,
+            icon: UsersIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

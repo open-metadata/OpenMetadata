@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Row, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
@@ -36,7 +35,6 @@ const DataProductSummary = ({
   highlights,
 }: DataProductSummaryProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const experts = useMemo(() => entityDetails.experts ?? [], [entityDetails]);
 
@@ -45,11 +43,11 @@ const DataProductSummary = ({
       <div className="d-flex flex-col gap-5">
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="domain-header">
               {t('label.domain-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             <DomainLabel
@@ -73,17 +71,16 @@ const DataProductSummary = ({
 
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="owner-header">
               {t('label.owner-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             <Owner
               isCompactView={false}
-              owners={toOwnersWithHref(entityDetails.owners ?? [])}
-              renderOwnerContent={renderOwnerContent}
+              owners={entityDetails.owners ?? []}
               showLabel={false}
             />
           </Col>
@@ -91,28 +88,23 @@ const DataProductSummary = ({
 
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="expert-header">
               {t('label.expert-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
-              <Owner
-                isCompactView={false}
-                owners={toOwnersWithHref(experts)}
-                renderOwnerContent={renderOwnerContent}
-                showLabel={false}
-              />
+              <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
-              <Typography.Text
+              <Typography
                 className="text-grey-body"
                 data-testid="no-expert-header">
                 {t('label.no-entity', {
                   entity: t('label.expert-lowercase'),
                 })}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
         </Row>

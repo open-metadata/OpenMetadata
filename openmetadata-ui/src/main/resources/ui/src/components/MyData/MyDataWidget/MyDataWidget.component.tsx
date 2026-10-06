@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Button, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -36,7 +36,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -65,7 +64,6 @@ const MyDataWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
@@ -111,8 +109,7 @@ const MyDataWidgetInternal = ({
         value: (
           <Owner
             isCompactView={false}
-            owners={toOwnersWithHref((item.owners as EntityReference[]) ?? [])}
-            renderOwnerContent={renderOwnerContent}
+            owners={(item.owners as EntityReference[]) ?? []}
             showLabel={false}
           />
         ),
@@ -216,17 +213,23 @@ const MyDataWidgetInternal = ({
                       type="text">
                       <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
-                          <Typography.Text
+                          <Typography
                             className="text-left text-xs font-regular text-grey-600"
-                            ellipsis={{ tooltip: true }}>
+                            ellipsis={{
+                              tooltip: true,
+                              excludeTriggerFromTabOrder: true,
+                            }}>
                             {item.serviceType}
-                          </Typography.Text>
+                          </Typography>
                         )}
-                        <Typography.Text
+                        <Typography
                           className="text-left text-sm font-regular text-grey-800"
-                          ellipsis={{ tooltip: true }}>
+                          ellipsis={{
+                            tooltip: true,
+                            excludeTriggerFromTabOrder: true,
+                          }}>
                           {getEntityName(item)}
-                        </Typography.Text>
+                        </Typography>
                       </div>
                     </Button>
                   </Link>

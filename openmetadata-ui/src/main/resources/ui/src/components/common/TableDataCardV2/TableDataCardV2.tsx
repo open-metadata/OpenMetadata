@@ -26,7 +26,6 @@ import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
@@ -87,11 +86,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       const _otherDetails: ExtraInfo[] = [
         {
           key: 'Owner',
-          value: (
-            <Owner
-              owners={toOwnerRefs((source.owners as EntityReference[]) ?? [])}
-            />
-          ),
+          value: <Owner owners={(source.owners as EntityReference[]) ?? []} />,
         },
       ];
 
@@ -175,7 +170,9 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         <Row className="data-asset-info-row" wrap={false}>
           {showCheckboxes && (
             <Col className="flex-center" flex="20px">
-              <Checkbox checked={checked} />
+              {/* Same test id as ExploreSearchCard's checkbox, so Playwright selects
+                assets in this modal and in the asset tabs the same way. */}
+              <Checkbox checked={checked} data-testid="asset-checkbox" />
             </Col>
           )}
           <Col flex="auto">

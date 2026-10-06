@@ -7,6 +7,7 @@
     "close": "Close",
     "close-navigation-menu": "Close navigation menu",
     "copy-link": "Copy link",
+    "count-remaining": "{{count}} remaining",
     "count-selected": "{{count}} selected",
     "current-page": "Current page",
     "date-range-picker": "Date range picker",
@@ -21,6 +22,7 @@
     "no-data-found": "No data found",
     "no-owners": "No owners",
     "none-selected": "None selected",
+    "ok": "OK",
     "open-menu": "Open menu",
     "owners": "Owners",
     "page": "Page",
@@ -28,12 +30,16 @@
     "pagination-navigation": "Pagination Navigation",
     "previous-page": "Go to previous page",
     "records": "Records",
+    "remove-entity": "Remove {{entity}}",
     "remove-filter": "Remove filter",
     "search": "Search",
     "select-all": "Select all",
+    "select-date": "Select date",
     "select-dates": "Select dates",
     "select-only-one-row": "Select one row",
+    "show-count-more": "Show {{count}} more",
     "show-hidden-breadcrumbs": "Show hidden breadcrumbs",
-    "today": "Today"
+    "today": "Today",
+    "tree-select": "Tree select"
   }
 }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Avatar } from '@openmetadata/ui-core-components';
 import { findByTestId, render } from '@testing-library/react';
 import ProfilePicture from './ProfilePicture';
 
@@ -67,5 +68,62 @@ describe('Test ProfilePicture component', () => {
     const profileImage = await findByTestId(container, 'profile-image');
 
     expect(profileImage).toBeInTheDocument();
+  });
+
+  it('forwards a defined size straight to the Avatar', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} size="sm" />);
+
+    expect((Avatar as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ size: 'sm' })
+    );
+  });
+
+  it('maps the legacy numeric width to the nearest defined size', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} width="40" />);
+
+    expect((Avatar as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ size: 'md' })
+    );
+  });
+
+  it('paints the ring in the fill hue only when asked to', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} matchRingToFill />);
+    render(<ProfilePicture {...mockData} />);
+
+    const [matched, plain] = (Avatar as jest.Mock).mock.calls.map(
+      ([props]) => props
+    );
+    const ringClass = 'tw:border-[hsl(var(--avatar-hue)_70%_80%)]';
+
+    expect(matched.className).toContain(ringClass);
+    expect(plain.className).not.toContain(ringClass);
+  });
+
+  it('carries the hue as a CSS variable so the tint can follow the theme', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.style).toEqual({
+      '--avatar-hue': expect.any(Number),
+    });
+    expect(props.className).toContain(
+      'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]'
+    );
+    expect(props.className).toContain(
+      'tw:dark:bg-[hsl(var(--avatar-hue)_40%_22%)]'
+    );
   });
 });

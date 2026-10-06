@@ -42,8 +42,10 @@ export const useIncidentManagerListPage = ({
     return isUndefined(searchData) ? {} : searchData;
   }, [location.search]);
 
+  const filterSearch = QueryString.stringify(omit(allParams, ['key', 'title']));
+
   const filters = useMemo(() => {
-    const urlParams = omit(allParams, ['key', 'title']);
+    const urlParams = QueryString.parse(filterSearch);
 
     const params: TestCaseIncidentStatusParams = {
       ...urlParams,
@@ -60,7 +62,7 @@ export const useIncidentManagerListPage = ({
     }
 
     return params;
-  }, [allParams]);
+  }, [filterSearch]);
 
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { testCase: commonTestCasePermission } = permissions;
@@ -71,9 +73,6 @@ export const useIncidentManagerListPage = ({
     selectedAssignees,
     fetchUserFilterOptions,
     searchTestCases,
-    testCaseFilterOptions,
-    isTestCaseOptionsLoading,
-    fetchTestCaseFilterOptions,
   } = useIncidentFilterOptions({ filters });
 
   const { testCaseListData, setTestCaseListData, pagingData, showPagination } =
@@ -102,17 +101,7 @@ export const useIncidentManagerListPage = ({
     handleDateRangeChange,
     handleDateFieldChange,
     handleDateRangeClear,
-    filterDescriptors,
-    hasActiveFilters,
-    clearAllFilters,
-  } = useIncidentFilters({
-    filters,
-    allParams,
-    testCaseListData,
-    testCaseFilterOptions,
-    isTestCaseOptionsLoading,
-    fetchTestCaseFilterOptions,
-  });
+  } = useIncidentFilters({ filters, allParams });
 
   const { handleSeveritySubmit, handleAssigneeUpdate, handleStatusSubmit } =
     useIncidentActions({ setTestCaseListData });
@@ -145,8 +134,5 @@ export const useIncidentManagerListPage = ({
     handleDateRangeClear,
     handleStatusSubmit,
     searchTestCases,
-    filterDescriptors,
-    hasActiveFilters,
-    clearAllFilters,
   };
 };

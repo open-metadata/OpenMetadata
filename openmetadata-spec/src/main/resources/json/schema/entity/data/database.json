@@ -1,12 +1,15 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/database.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Database",
   "$comment": "@om-entity-type",
   "description": "This schema defines the Database entity. A database also referred to as Database Catalog is a collection of schemas.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Database",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.CreationAudited"
+  ],
   "definitions": {
   },
   "properties": {
@@ -56,6 +59,14 @@
     },
     "updatedBy": {
       "description": "User who made the update.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when this entity was created in OpenMetadata.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created this entity in OpenMetadata.",
       "type": "string"
     },
     "impersonatedBy": {

@@ -6,6 +6,7 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -18,7 +19,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_TEST_SUITES;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -26,11 +26,11 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Lists;
+import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -61,7 +61,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValidationRule;
@@ -72,10 +71,10 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -96,12 +95,17 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.EntityUpdateContext;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchAggregation;
+import org.openmetadata.service.search.SearchAggregationNode;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
@@ -117,6 +121,10 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
+  static final int FAILING_ENTITY_BATCH_SIZE = 100;
+  private static final String FAILING_ENTITY_FILTER_PREFIX = "entity";
+  private static final String ORIGIN_ENTITY_FQN_FIELD = "originEntityFQN";
+  private static final String TEST_CASE_STATUS_SEARCH_FIELD = "testCaseResult.testCaseStatus";
   public static final String TEST_SUITE_FIELD = "testSuite";
   public static final String TEST_DEFINITION_FIELD = "testDefinition";
   public static final String INCIDENTS_FIELD = "incidentId";
@@ -157,6 +165,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         UPDATE_FIELDS);
     supportsSearch = true;
     TestCaseBodyTextContributor.INSTANCE.register();
+    onlyReviewersDeleteInReview = true;
+    approvalTaskReviewsEntityStatus = true;
     // Add the canonical name for test case results
     // As test case result` does not have its own repository
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
@@ -1057,6 +1067,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           }
           validateParameterRule(parameter, values);
         }
+        TestCaseThresholdValidator.validate(testDefinition, values).forEach(LOG::warn);
       }
     }
   }
@@ -1342,6 +1353,70 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             });
   }
 
+  /**
+   * Of {@code entityFqns}, the ones with at least one test case whose latest result failed. A
+   * column-level test counts toward its table. Reads the status stored on the test case search
+   * document, the same one the asset's own data quality views show, in one query per batch.
+   */
+  public Set<String> getEntitiesWithFailingTests(List<String> entityFqns, Include include)
+      throws IOException {
+    Set<String> failing = new HashSet<>();
+    for (List<String> batch : Lists.partition(entityFqns, FAILING_ENTITY_BATCH_SIZE)) {
+      JsonObject aggregations =
+          searchRepository.aggregate(
+              failingTestsQuery(batch),
+              TEST_CASE,
+              failingTestsAggregation(batch),
+              new SearchListFilter(include));
+      failing.addAll(entitiesWithFailures(batch, aggregations));
+    }
+    return failing;
+  }
+
+  static String failingTestsQuery(List<String> entityFqns) {
+    return JsonUtils.pojoToJson(
+        Map.of(
+            "bool",
+            Map.of(
+                "filter",
+                List.of(
+                    Map.of("terms", Map.of(ORIGIN_ENTITY_FQN_FIELD, entityFqns)),
+                    Map.of(
+                        "term",
+                        Map.of(TEST_CASE_STATUS_SEARCH_FIELD, TestCaseStatus.Failed.value()))))));
+  }
+
+  /** One filter per entity, named by position: search rejects some FQN characters in names. */
+  static SearchAggregation failingTestsAggregation(List<String> entityFqns) {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+    for (int i = 0; i < entityFqns.size(); i++) {
+      root.addChild(
+          SearchAggregation.filter(
+              FAILING_ENTITY_FILTER_PREFIX + i,
+              JsonUtils.pojoToJson(
+                  Map.of("term", Map.of(ORIGIN_ENTITY_FQN_FIELD, entityFqns.get(i))))));
+    }
+    return SearchAggregation.fromTree(root);
+  }
+
+  static Set<String> entitiesWithFailures(List<String> entityFqns, JsonObject aggregations) {
+    Set<String> failing = new HashSet<>();
+    for (int i = 0; i < entityFqns.size(); i++) {
+      String key = "filter#" + FAILING_ENTITY_FILTER_PREFIX + i;
+      JsonObject bucket = aggregations == null ? null : aggregations.getJsonObject(key);
+      // A missing bucket means the response shape is not the one asked for; reading it as "no
+      // failure" would hide failures again, so fail loudly instead.
+      if (bucket == null) {
+        throw new IllegalStateException(
+            "Search response has no aggregation " + key + " for entity " + entityFqns.get(i));
+      }
+      if (bucket.getJsonNumber("doc_count").longValue() > 0) {
+        failing.add(entityFqns.get(i));
+      }
+    }
+    return failing;
+  }
+
   @SneakyThrows
   private TestCaseResult getTestCaseResult(TestCase testCase) {
     TestCaseResult testCaseResult = null;
@@ -1444,17 +1519,23 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             relationshipChange.set(
                 addAllTestCasesToLogicalTestSuiteFlush(testSuite.getId(), excludedTestCaseIds)));
 
+    postLogicalSuiteRelationshipUpdatesInBatches(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private void postLogicalSuiteRelationshipUpdatesInBatches(
+      LogicalSuiteRelationshipChange relationshipChange) {
     for (List<EntityReference> batch :
-        Lists.partition(relationshipChange.get().testCaseReferences(), 100)) {
+        Lists.partition(
+            relationshipChange.testCaseReferences(), LOGICAL_SUITE_POST_UPDATE_BATCH_SIZE)) {
       Map<UUID, Long> batchRevisions = new HashMap<>();
       for (EntityReference testCase : batch) {
         batchRevisions.put(
-            testCase.getId(), relationshipChange.get().testCaseRevisions().get(testCase.getId()));
+            testCase.getId(), relationshipChange.testCaseRevisions().get(testCase.getId()));
       }
       postLogicalSuiteRelationshipUpdate(List.copyOf(batch), batchRevisions);
     }
-    updateLogicalTestSuite(relationshipChange.get());
-    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
   private LogicalSuiteRelationshipChange addAllTestCasesToLogicalTestSuiteFlush(
@@ -1492,6 +1573,112 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return prepareLogicalSuiteRelationshipChange(testSuiteId, addedTestCases);
   }
 
+  private static final int BULK_MATCH_SEARCH_BATCH_SIZE = 1000;
+  // Cap each relationship write + post-update so a large filtered selection cannot exceed DB
+  // statement/bind limits or transaction memory (the unfiltered "all" path batches similarly).
+  private static final int BULK_MATCH_WRITE_BATCH_SIZE = 500;
+  private static final int LOGICAL_SUITE_POST_UPDATE_BATCH_SIZE = 100;
+
+  /**
+   * Add every test case matching the given search/filter (as shown in the UI) to the bundle suite,
+   * minus excludeIds. Enumerates all matches via search_after so the count is not capped by the
+   * search engine's max_result_window, and writes them in bounded batches.
+   */
+  public RestUtil.PutResponse<TestSuite> addMatchingTestCasesToLogicalTestSuite(
+      TestSuite testSuite, String searchFilter, String query, List<UUID> excludeIds) {
+    List<UUID> matchingIds = resolveMatchingTestCaseIds(searchFilter, query, excludeIds);
+    if (matchingIds.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE);
+    }
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                addMatchingTestCasesToLogicalTestSuiteFlush(testSuite.getId(), matchingIds)));
+
+    postLogicalSuiteRelationshipUpdatesInBatches(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private LogicalSuiteRelationshipChange addMatchingTestCasesToLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> matchingIds) {
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    for (List<UUID> batch : Lists.partition(matchingIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+      bulkAddToRelationship(testSuiteId, batch, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+    }
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> addedTestCases =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, addedTestCases);
+  }
+
+  private List<UUID> resolveMatchingTestCaseIds(
+      String searchFilter, String query, List<UUID> excludeIds) {
+    Set<String> excluded = excludeIds.stream().map(UUID::toString).collect(Collectors.toSet());
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    // Sort on the keyword subfield (fullyQualifiedName is analyzed text): a unique, stable key
+    // for search_after paging, matching how the search layer sorts FQN elsewhere.
+    SearchSortFilter sortFilter =
+        new SearchSortFilter("fullyQualifiedName.keyword", "asc", null, null);
+    List<UUID> matchingIds = new ArrayList<>();
+    Object[] searchAfter = null;
+    while (true) {
+      SearchResultListMapper page =
+          fetchTestCaseIdPage(searchRepository, query, searchFilter, sortFilter, searchAfter);
+      List<Map<String, Object>> hits = page.getResults();
+      if (nullOrEmpty(hits)) {
+        break;
+      }
+      collectTestCaseIds(hits, excluded, matchingIds);
+      searchAfter = page.getLastDocumentsInBatch();
+      if (hits.size() < BULK_MATCH_SEARCH_BATCH_SIZE
+          || searchAfter == null
+          || searchAfter.length == 0) {
+        break;
+      }
+    }
+    return matchingIds;
+  }
+
+  private SearchResultListMapper fetchTestCaseIdPage(
+      SearchRepository searchRepository,
+      String query,
+      String searchFilter,
+      SearchSortFilter sortFilter,
+      Object[] searchAfter) {
+    try {
+      return searchRepository.listWithDeepPagination(
+          TEST_CASE,
+          query,
+          searchFilter,
+          new String[] {"id"},
+          sortFilter,
+          BULK_MATCH_SEARCH_BATCH_SIZE,
+          searchAfter);
+    } catch (IOException e) {
+      throw new UnhandledServerException("Failed to resolve matching test cases for bulk add", e);
+    }
+  }
+
+  private void collectTestCaseIds(
+      List<Map<String, Object>> hits, Set<String> excluded, List<UUID> matchingIds) {
+    for (Map<String, Object> hit : hits) {
+      Object id = hit.get("id");
+      if (id != null && !excluded.contains(id.toString())) {
+        matchingIds.add(UUID.fromString(id.toString()));
+      }
+    }
+  }
+
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(
       UUID testSuiteId, UUID testCaseId) {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
@@ -1511,6 +1698,60 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testCase.setTestSuite(updatedTestCase.getTestSuite());
     testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
+  }
+
+  public RestUtil.DeleteResponse<TestSuite> deleteTestCasesFromLogicalTestSuite(
+      TestSuite testSuite, List<UUID> testCaseIds) {
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                deleteTestCasesFromLogicalTestSuiteFlush(testSuite.getId(), testCaseIds)));
+
+    postLogicalSuiteRelationshipUpdate(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.DeleteResponse<>(testSuite, ENTITY_DELETED);
+  }
+
+  /**
+   * The ids among {@code testCaseIds} that the logical test suite currently contains, in suite
+   * order and without duplicates. Callers use this to narrow a bulk request down to the
+   * memberships that are actually going to change before they authorize it.
+   */
+  public List<UUID> getLogicalTestSuiteMemberIds(UUID testSuiteId, List<UUID> testCaseIds) {
+    if (nullOrEmpty(testCaseIds)) {
+      return List.of();
+    }
+    return logicalTestSuiteMembers(testSuiteId, testCaseIds).stream()
+        .map(EntityReference::getId)
+        .toList();
+  }
+
+  private List<EntityReference> logicalTestSuiteMembers(UUID testSuiteId, List<UUID> testCaseIds) {
+    Set<UUID> requestedIds = new HashSet<>(testCaseIds);
+    return findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE).stream()
+        .filter(ref -> requestedIds.contains(ref.getId()))
+        .toList();
+  }
+
+  private LogicalSuiteRelationshipChange deleteTestCasesFromLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> testCaseIds) {
+    // Only the test cases the suite actually contains are removed, so that the relationship change
+    // published afterwards describes what really changed
+    List<EntityReference> removedTestCaseReferences =
+        logicalTestSuiteMembers(testSuiteId, testCaseIds);
+    if (removedTestCaseReferences.isEmpty()) {
+      return LogicalSuiteRelationshipChange.empty();
+    }
+
+    // Removed one by one, as the single test case removal does, so that the RDF store and the
+    // caches on both sides of every relationship are kept in step
+    removedTestCaseReferences.forEach(
+        ref ->
+            deleteRelationship(
+                testSuiteId, TEST_SUITE, ref.getId(), TEST_CASE, Relationship.CONTAINS));
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, removedTestCaseReferences);
   }
 
   private List<TestCase> getLogicalSuiteUpdatedTestCase(List<EntityReference> testCaseReferences) {
@@ -1717,13 +1958,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public RestUtil.DeleteResponse<TableData> deleteTestCaseFailedRowsSample(UUID id) {
     daoCollection.entityExtensionDAO().delete(id, FAILED_ROWS_SAMPLE_EXTENSION);
     return new RestUtil.DeleteResponse<>(null, ENTITY_DELETED);
-  }
-
-  @Override
-  protected void preDelete(TestCase entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
   }
 
   public class TestUpdater extends EntityUpdater {
@@ -1982,70 +2216,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public void postUpdate(TestCase original, TestCase updated) {
     hydrateTestSuiteFieldsForSearch(updated);
     super.postUpdate(original, updated);
-    if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
-      if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Approved the test case");
-      } else if (EntityStatus.REJECTED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Rejected the test case");
-      }
-    }
-
-    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
-    // will be a Task created.
-    // This if handles this case scenario, by guaranteeing that we close any Approval Task if the
-    // TestCase goes back to DRAFT.
-    if (!EntityStatus.DRAFT.equals(original.getEntityStatus())
-        && EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
-      try {
-        closeApprovalTask(updated, "Closed due to test case going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
-    }
   }
 
   private void hydrateTestSuiteFieldsForSearch(TestCase updated) {
     setFieldsInternal(updated, getFields(TEST_SUITE_FIELD + "," + Entity.FIELD_TEST_SUITES));
-  }
-
-  private void closeApprovalTask(TestCase entity, String comment) {
-    if (entity.getUpdatedBy() == null) {
-      LOG.debug(
-          "Skipping task closure for test case {} - updatedBy is null",
-          entity.getFullyQualifiedName());
-      return;
-    }
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  public static void checkUpdatedByReviewer(TestCase testCase, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = testCase.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
-    }
   }
 
   @Override

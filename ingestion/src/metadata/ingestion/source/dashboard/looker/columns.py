@@ -126,4 +126,8 @@ def _(model: LookmlModelExplore) -> list[LookmlModelExploreField]:
 
 @get_model_fields.register
 def _(model: LookMlView) -> list[LookMlField]:
-    return (model.dimensions or []) + (model.measures or [])
+    # Dimension groups are columns too. The explore side already gets them -- the API expands a
+    # group into one dimension per timeframe -- so without this a view data model silently drops
+    # every time dimension, and the column lineage `_extract_column_lineage` builds for them is
+    # discarded because `_get_data_model_column_fqn` finds no column to point at.
+    return (model.dimensions or []) + (model.dimension_groups or []) + (model.measures or [])
