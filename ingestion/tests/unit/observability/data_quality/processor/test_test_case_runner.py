@@ -278,7 +278,7 @@ class TestFilterForOMTestCases:
         assert len(result) == 0
 
 
-def _result(status: TestCaseStatus, message: str = "boom") -> Mock:
+def _result(status: TestCaseStatus | None, message: str | None = "boom") -> Mock:
     """A TestCaseResultResponse carrying one result, as run_and_handle returns."""
     response = Mock()
     response.testCaseResult = TestCaseResult(
@@ -320,8 +320,8 @@ class TestAbortedTestCasesAreCounted:
         runner.status.failed.assert_called_once()
         assert "Login failed" in runner.status.failed.call_args[0][0].error
 
-    @pytest.mark.parametrize("status", [TestCaseStatus.Success, TestCaseStatus.Failed])
-    def test_success_and_failed_are_not_step_failures(self, runner, status):
+    @pytest.mark.parametrize("status", [TestCaseStatus.Success, TestCaseStatus.Failed, TestCaseStatus.Queued])
+    def test_a_reported_status_other_than_aborted_is_not_a_step_failure(self, runner, status):
         """A Failed test case is a data problem, not an execution error."""
         test_case = create_test_case(f"{status.value}_case", UUID(int=2))
         test_case.fullyQualifiedName = Mock(root=f"svc.db.schema.table.{status.value}")
@@ -338,6 +338,45 @@ class TestAbortedTestCasesAreCounted:
         test_case.fullyQualifiedName = Mock(root="svc.db.schema.table.no_result")
         suite_runner = Mock()
         suite_runner.run_and_handle.return_value = None
+
+        runner._run_test_case(test_case, suite_runner)
+
+        runner.status.scanned.assert_called_once()
+        runner.status.failed.assert_not_called()
+
+    def test_a_raising_runner_is_a_failure_and_is_not_scanned(self, runner):
+        """The other way a case produces no usable result, and the same accounting."""
+        test_case = create_test_case("raising_case", UUID(int=4))
+        test_case.fullyQualifiedName = Mock(root="svc.db.schema.table.raising")
+        suite_runner = Mock()
+        suite_runner.run_and_handle.side_effect = RuntimeError("connection reset")
+
+        result = runner._run_test_case(test_case, suite_runner)
+
+        assert result is None
+        runner.status.scanned.assert_not_called()
+        runner.status.failed.assert_called_once()
+        failure = runner.status.failed.call_args[0][0]
+        assert "connection reset" in failure.error
+        assert failure.stackTrace, "a raised error carries its traceback"
+
+    def test_aborted_without_a_message_falls_back_to_a_default(self, runner):
+        """``TestCaseResult.result`` is optional, so the error cannot just be passed through."""
+        test_case = create_test_case("silent_abort", UUID(int=5))
+        test_case.fullyQualifiedName = Mock(root="svc.db.schema.table.silent_abort")
+        suite_runner = Mock()
+        suite_runner.run_and_handle.return_value = _result(TestCaseStatus.Aborted, None)
+
+        runner._run_test_case(test_case, suite_runner)
+
+        assert runner.status.failed.call_args[0][0].error == "Test case silent_abort was aborted"
+
+    def test_a_result_without_a_status_is_not_treated_as_aborted(self, runner):
+        """``testCaseStatus`` is optional too; only an explicit Aborted counts."""
+        test_case = create_test_case("no_status_case", UUID(int=6))
+        test_case.fullyQualifiedName = Mock(root="svc.db.schema.table.no_status")
+        suite_runner = Mock()
+        suite_runner.run_and_handle.return_value = _result(None, "no status reported")
 
         runner._run_test_case(test_case, suite_runner)
 
