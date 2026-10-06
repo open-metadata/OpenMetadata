@@ -579,7 +579,7 @@ class TestConnectedDatabases:
 class TestTableTypeSpelling:
     """SVV_ALL_TABLES reports free-form table type names"""
 
-    def test_table_type(self, env):
+    def test_table_type(self):
         assert _table_type("TABLE") == TableType.Regular
         assert _table_type("base table") == TableType.Regular
         assert _table_type("SHARED TABLE") == TableType.Regular
