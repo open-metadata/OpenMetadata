@@ -1194,13 +1194,16 @@ class TestBigqueryDeltaLakeDetection:
     `{"creationTime", "id", "kind", "tableReference", "type": "EXTERNAL"}` — so a Delta
     table is indistinguishable from any other external table until `tables.get` runs.
 
-    Every payload below is a real `tables.get` response from that project, reduced to the
-    keys this code path reads (byte counters, `etag` and `selfLink` dropped). The one
-    exception is `DELTA_LAKE`: the probe service account was denied
-    `bigquery.tables.create`, so no Delta table could be created and **no live DELTA_LAKE
-    response was ever observed**. That row is the real ICEBERG external-table payload with
-    `sourceFormat` swapped to the value Google's own `CREATE EXTERNAL TABLE` example uses
-    (https://cloud.google.com/bigquery/docs/create-delta-lake-table).
+    Every payload below is a real `tables.get` response, reduced to the keys this code path
+    reads (byte counters, `etag` and `selfLink` dropped). The non-Delta rows come from project
+    `modified-leaf-330420`; the two Delta rows come from real DELTA_LAKE external tables in
+    dataset `om_delta_test_b72213f9` of that same project, so `sourceFormat == "DELTA_LAKE"`
+    here is a live observation, not a value faked from the ICEBERG payload.
+
+    The two Delta payloads differ on partitioning, and that difference is the whole point: an
+    unpartitioned Delta table stays DeltaLake, while a partitioned one carries
+    `partitionDefinition.partitionedColumn` and so the shared partition rule flips its final
+    tableType to Partitioned downstream.
     """
 
     # Real `test_omd.icebeag_tbl` external table; `partitionDefinition` is genuinely there.
@@ -1247,6 +1250,57 @@ class TestBigqueryDeltaLakeDetection:
         },
         "type": "VIEW",
         "view": {"query": "SELECT * FROM dbt_jaffle.customers LIMIT 100", "useLegacySql": False},
+    }
+
+    # Real unpartitioned DELTA_LAKE external table from om_delta_test_b72213f9: no
+    # `partitionDefinition`, so it stays DeltaLake end-to-end.
+    DELTA_LAKE_PAYLOAD: ClassVar[dict] = {
+        "id": "modified-leaf-330420:om_delta_test_b72213f9.delta_unpartitioned",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "modified-leaf-330420",
+            "datasetId": "om_delta_test_b72213f9",
+            "tableId": "delta_unpartitioned",
+        },
+        "type": "EXTERNAL",
+        "externalDataConfiguration": {
+            "autodetect": True,
+            "sourceFormat": "DELTA_LAKE",
+            "sourceUris": ["gs://test-om-bucket/delta_unpartitioned/*"],
+        },
+        "schema": {
+            "fields": [
+                {"mode": "NULLABLE", "name": "id", "type": "INTEGER"},
+                {"mode": "NULLABLE", "name": "name", "type": "STRING"},
+                {"mode": "NULLABLE", "name": "amount", "type": "NUMERIC"},
+            ]
+        },
+    }
+
+    # Real partitioned DELTA_LAKE external table from the same dataset: `partitionDefinition`
+    # names `event_ts`, and hive/time/range partitioning are all absent.
+    DELTA_LAKE_PARTITIONED_PAYLOAD: ClassVar[dict] = {
+        "id": "modified-leaf-330420:om_delta_test_b72213f9.delta_partitioned",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "modified-leaf-330420",
+            "datasetId": "om_delta_test_b72213f9",
+            "tableId": "delta_partitioned",
+        },
+        "type": "EXTERNAL",
+        "externalDataConfiguration": {
+            "autodetect": True,
+            "sourceFormat": "DELTA_LAKE",
+            "sourceUris": ["gs://test-om-bucket/delta_partitioned/*"],
+        },
+        "partitionDefinition": {"partitionedColumn": [{"field": "event_ts"}]},
+        "schema": {
+            "fields": [
+                {"mode": "NULLABLE", "name": "event_id", "type": "INTEGER"},
+                {"mode": "NULLABLE", "name": "payload", "type": "STRING"},
+                {"mode": "NULLABLE", "name": "event_ts", "type": "DATETIME"},
+            ]
+        },
     }
 
     def setup_method(self):
@@ -1306,6 +1360,10 @@ class TestBigqueryDeltaLakeDetection:
         self.bq_source.client.get_table.side_effect = get_table
 
     def _external_payload(self, source_format):
+        # The real DELTA_LAKE payload is unpartitioned; every other format reuses the real
+        # (partitioned) ICEBERG table with its sourceFormat swapped or dropped.
+        if source_format == "DELTA_LAKE":
+            return deepcopy(self.DELTA_LAKE_PAYLOAD)
         payload = deepcopy(self.EXTERNAL_PAYLOAD)
         if source_format is None:
             del payload["externalDataConfiguration"]
@@ -1371,3 +1429,43 @@ class TestBigqueryDeltaLakeDetection:
             if record.levelno == logging.WARNING and "unreadable" in record.getMessage()
         ]
         assert len(warnings) == 1
+
+    def test_partitioned_delta_is_detected_as_partitioned(self):
+        """A partitioned Delta table carries `partitionDefinition.partitionedColumn`, so the
+        shared partition rule flips its final tableType to Partitioned (not DeltaLake)."""
+        self._stub_client({"delta_events": ("EXTERNAL", self.DELTA_LAKE_PARTITIONED_PAYLOAD)})
+
+        detected, partition = self.bq_source.get_table_partition_details(
+            "delta_events", MOCK_SCHEMA_NAME, inspector=None
+        )
+
+        assert detected is True
+        assert partition is not None
+        assert [column.columnName for column in partition.columns] == ["event_ts"]
+
+    def test_unpartitioned_delta_stays_delta_lake_with_no_partition(self):
+        """The unpartitioned Delta table has no `partitionDefinition`, so it keeps its
+        DeltaLake type and the partition rule never fires."""
+        self._stub_client({"delta_sales": ("EXTERNAL", self.DELTA_LAKE_PAYLOAD)})
+
+        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
+        detected, partition = self.bq_source.get_table_partition_details(
+            "delta_sales", MOCK_SCHEMA_NAME, inspector=None
+        )
+
+        assert result == [TableNameAndType(name="delta_sales", type_=TableType.DeltaLake)]
+        assert (detected, partition) == (False, None)
+
+    def test_external_table_with_missing_source_format_falls_back_to_external(self):
+        """`externalDataConfiguration` present but with no `sourceFormat` key: reading
+        `external_data_configuration` raises KeyError('sourceFormat') (ExternalConfig refuses
+        to build without it), the broad except swallows it, and the table stays External.
+
+        Distinct from the None case, which drops `externalDataConfiguration` entirely."""
+        payload = deepcopy(self.EXTERNAL_PAYLOAD)
+        del payload["externalDataConfiguration"]["sourceFormat"]
+        self._stub_client({"formatless": ("EXTERNAL", payload)})
+
+        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
+
+        assert result == [TableNameAndType(name="formatless", type_=TableType.External)]
