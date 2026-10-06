@@ -74,7 +74,7 @@ function TestCaseSidePanel({
     <div
       className="transition-all-200ms tw:min-w-0"
       data-testid="test-case-rail">
-      <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+      <div className="tw:flex tw:w-full tw:flex-col tw:gap-4">
         <div className="tw:w-full">
           <TestCaseConfigurationCard
             isVersionPage={isVersionPage}
@@ -256,7 +256,8 @@ const TestCaseResultTab = ({
     <div className="tw:@container">
       <div
         className={classNames(
-          'p-md test-case-result-tab tw:grid tw:w-full tw:gap-2.5',
+          // The mock's 22px between the results and the rail.
+          'p-md test-case-result-tab tw:grid tw:w-full tw:gap-5.5',
           getResultTabGridClass(isSidePanelVisible)
         )}
         data-testid="test-case-result-tab-container">

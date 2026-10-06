@@ -157,7 +157,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           !isVersionPage &&
           !dimensionKey && (
             <div
-              className="tw:pt-4 tw:pb-2.5"
+              className="tw:pt-4 tw:pb-5.5"
               data-testid="test-case-last-run-banner-tab-container">
               <TestCaseLastRunBanner
                 hasEditStatusPermission={

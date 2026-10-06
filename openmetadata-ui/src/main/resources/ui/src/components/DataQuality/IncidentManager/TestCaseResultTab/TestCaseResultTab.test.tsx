@@ -268,6 +268,11 @@ describe('TestCaseResultTab', () => {
     expect(screen.getByTestId('test-case-rail')).not.toHaveClass(
       'tw:col-span-4'
     );
+    // The mock's spacing: 22px between the columns, 16px between rail cards.
+    expect(grid).toHaveClass('tw:gap-5.5');
+    expect(screen.getByTestId('test-case-rail').firstElementChild).toHaveClass(
+      'tw:gap-4'
+    );
   });
 
   it('should give the results the whole tab when the rail is hidden', async () => {
