@@ -57,6 +57,18 @@ import {
 } from '../../utils/importUtils';
 import { waitForSearchIndexed } from '../../utils/polling';
 
+// react-data-grid gives a cell no stable identity: it virtualises columns, so
+// `rdg-cell-<columnKey>` is absent until that column is scrolled into view.
+// The keyboard-navigation, column-resize and range-selection tests below are
+// about column *position* by definition, so the index is the subject of the
+// test rather than a shortcut around a missing id.
+const gridCell = (row: Locator, columnIndex: number) =>
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see above
+  row.locator('.rdg-cell').nth(columnIndex);
+
+const gridHeaderRow = (page: Page) =>
+  page.getByTestId('csv-import-grid').locator('.rdg-header-row');
+
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -884,7 +896,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
     });
 
     await test.step('Perform Cell Delete Operation and Save', async () => {
-      await page.locator('.rdg-cell-name').first().click();
+      await page.getByTestId('rdg-row-0').locator('.rdg-cell-name').click();
 
       // Perform Delete Operation on Edit Operation on Entity
       await performDeleteOperationOnEntity(page);
@@ -984,12 +996,12 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.locator('.rdg-row')).toHaveCount(rowCount);
         // Principle 3: wait for all headers to render before any interaction
-        await expect(
-          page.locator('.rdg-header-row').first().locator('.rdg-cell')
-        ).toHaveCount(colCount);
+        await expect(gridHeaderRow(page).locator('.rdg-cell')).toHaveCount(
+          colCount
+        );
         // Confirm data has loaded (not just skeleton rows)
         await expect(
-          page.getByTestId('rdg-row-0').locator('.rdg-cell').first()
+          gridCell(page.getByTestId('rdg-row-0'), 0)
         ).not.toBeEmpty();
 
         // Principle 6 & 10: shared helpers — every action waits for observable
@@ -1017,29 +1029,19 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
           // Principle 1 & 8: fresh locator + confirm focus before Ctrl+A.
           // The CSV jobs tray can steal keyboard focus when it appears; an explicit
           // click + toBeFocused() guarantees the grid owns the keyboard.
-          await focusCell(
-            page.getByTestId('rdg-row-0').locator('.rdg-cell').first()
-          );
+          await focusCell(gridCell(page.getByTestId('rdg-row-0'), 0));
           await page.keyboard.press('Control+A');
           await expect(selection).toHaveCount(rowCount * colCount);
 
           // Deselect by clicking the second cell (fresh locator, principle 8)
-          const secondCell = page
-            .locator('.rdg-row')
-            .first()
-            .locator('.rdg-cell')
-            .nth(1);
+          const secondCell = gridCell(page.getByTestId('rdg-row-0'), 1);
           await secondCell.click();
           await expect(secondCell).toBeFocused();
           await expect(selection).toHaveCount(0);
         });
 
         await test.step('should select all the cells in the column by clicking on column header', async () => {
-          const firstHeaderCell = page
-            .locator('.rdg-header-row')
-            .first()
-            .locator('.rdg-cell')
-            .first();
+          const firstHeaderCell = gridCell(gridHeaderRow(page), 0);
           await firstHeaderCell.click();
           await expect(firstHeaderCell).toBeFocused();
           await expect(selection).toHaveCount(rowCount);
@@ -1048,9 +1050,9 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         await test.step('allow multiple column selection', async () => {
           // Principle 4: hover() instead of boundingBox() — locators auto-retry
           // until visible, unaffected by scroll, DPI, or layout shifts.
-          const headerRow = page.locator('.rdg-header-row').first();
-          const startHeaderCell = headerRow.locator('.rdg-cell').nth(1);
-          const endHeaderCell = headerRow.locator('.rdg-cell').nth(3);
+          const headerRow = gridHeaderRow(page);
+          const startHeaderCell = gridCell(headerRow, 1);
+          const endHeaderCell = gridCell(headerRow, 3);
 
           await startHeaderCell.hover();
           await page.mouse.down();
@@ -1062,16 +1064,8 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         });
 
         await test.step('allow multiple column selection using keyboard', async () => {
-          const firstHeaderCell = page
-            .locator('.rdg-header-row')
-            .first()
-            .locator('.rdg-cell')
-            .first();
-          const firstDataCell = page
-            .locator('.rdg-row')
-            .first()
-            .locator('.rdg-cell')
-            .first();
+          const firstHeaderCell = gridCell(gridHeaderRow(page), 0);
+          const firstDataCell = gridCell(page.getByTestId('rdg-row-0'), 0);
 
           // Principle 1: confirm data cell focus before navigating up
           await focusCell(firstDataCell);
@@ -1082,11 +1076,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
           // Shift+click the 3rd header cell to select cols 0-2 deterministically.
           // Repeated Shift+ArrowRight races RDG's own internal keyboard handler
           // (both react to the same bubbling keydown event), causing flaky counts.
-          const targetHeaderCell = page
-            .locator('.rdg-header-row')
-            .first()
-            .locator('.rdg-cell')
-            .nth(2);
+          const targetHeaderCell = gridCell(gridHeaderRow(page), 2);
           await page.keyboard.down('Shift');
           await targetHeaderCell.click();
           await page.keyboard.up('Shift');
@@ -1096,21 +1086,12 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
         await test.step('allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click', async () => {
           // Principle 4 & 8: fresh locators + hover-drag instead of boundingBox()
-          const firstCellFirstRow = page
-            .locator('.rdg-row')
-            .first()
-            .locator('.rdg-cell')
-            .first();
-          const secondCellFourthRow = page
-            .locator('.rdg-row')
-            .nth(3)
-            .locator('.rdg-cell')
-            .nth(1);
-          const fifthCellSixthRow = page
-            .locator('.rdg-row')
-            .nth(5)
-            .locator('.rdg-cell')
-            .nth(4);
+          const firstCellFirstRow = gridCell(page.getByTestId('rdg-row-0'), 0);
+          const secondCellFourthRow = gridCell(
+            page.getByTestId('rdg-row-3'),
+            1
+          );
+          const fifthCellSixthRow = gridCell(page.getByTestId('rdg-row-5'), 4);
 
           await focusCell(secondCellFourthRow);
 
@@ -1137,16 +1118,8 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
         await test.step('perform single cell copy-paste and undo-redo', async () => {
           // Principle 1, 8: fresh locators + confirm focus before Ctrl+C
-          const firstCell = page
-            .locator('.rdg-row')
-            .first()
-            .locator('.rdg-cell')
-            .first();
-          const secondCell = page
-            .locator('.rdg-row')
-            .first()
-            .locator('.rdg-cell')
-            .nth(1);
+          const firstCell = gridCell(page.getByTestId('rdg-row-0'), 0);
+          const secondCell = gridCell(page.getByTestId('rdg-row-0'), 1);
 
           await focusCell(firstCell);
           await page.keyboard.press('Control+C');
@@ -1167,16 +1140,8 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         });
 
         await test.step('Select range, copy-paste and undo-redo', async () => {
-          const firstHeaderCell = page
-            .locator('.rdg-header-row')
-            .first()
-            .locator('.rdg-cell')
-            .first();
-          const firstCell = page
-            .locator('.rdg-row')
-            .first()
-            .locator('.rdg-cell')
-            .first();
+          const firstHeaderCell = gridCell(gridHeaderRow(page), 0);
+          const firstCell = gridCell(page.getByTestId('rdg-row-0'), 0);
 
           // Confirm data cell focus then confirm header focus before Shift+Right
           await focusCell(firstCell);
@@ -1190,11 +1155,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
           await page.keyboard.press('Control+C');
 
           // click on fourth cell of first row (principle 8: fresh locator)
-          const fourthCellFirstRow = page
-            .locator('.rdg-row')
-            .first()
-            .locator('.rdg-cell')
-            .nth(3);
+          const fourthCellFirstRow = gridCell(page.getByTestId('rdg-row-0'), 3);
           await fourthCellFirstRow.click();
 
           // paste the range
@@ -1205,14 +1166,10 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
             (await firstCell.textContent()) || ''
           );
           await expect(
-            page.getByTestId('rdg-row-0').locator('.rdg-cell').nth(3)
+            gridCell(page.getByTestId('rdg-row-0'), 3)
           ).toContainText(
-            (await page
-              .locator('.rdg-row')
-              .nth(0)
-              .locator('.rdg-cell')
-              .first()
-              .textContent()) || ''
+            (await gridCell(page.getByTestId('rdg-row-0'), 0).textContent()) ||
+              ''
           );
 
           // undo the action
@@ -1220,9 +1177,9 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
           // check if the range is pasted correctly
           await expect(fourthCellFirstRow).toHaveText('—');
-          await expect(
-            page.getByTestId('rdg-row-0').locator('.rdg-cell').nth(3)
-          ).toHaveText('—');
+          await expect(gridCell(page.getByTestId('rdg-row-0'), 3)).toHaveText(
+            '—'
+          );
 
           // redo the action
           await page.keyboard.press('Control+Y');

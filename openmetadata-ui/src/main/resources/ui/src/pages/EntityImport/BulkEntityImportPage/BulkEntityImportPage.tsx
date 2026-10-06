@@ -1319,7 +1319,10 @@ const BulkEntityImportPage = () => {
 
   const editDataGrid = useMemo(() => {
     return (
-      <div className="om-rdg" ref={setGridContainer}>
+      <div
+        className="om-rdg"
+        data-testid="csv-import-grid"
+        ref={setGridContainer}>
         <LazyDataGrid
           className="rdg-light"
           columns={
@@ -1940,7 +1943,9 @@ const BulkEntityImportPage = () => {
 
           <div>
             {validateCSVData && (
-              <div className="om-rdg csv-import-results-rdg">
+              <div
+                className="om-rdg csv-import-results-rdg"
+                data-testid="csv-results-grid">
                 <LazyDataGrid
                   className="rdg-light"
                   columns={importResultColumns}

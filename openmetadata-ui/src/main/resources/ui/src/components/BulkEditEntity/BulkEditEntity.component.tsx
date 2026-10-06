@@ -460,7 +460,10 @@ const BulkEditEntity = ({
     });
 
     return (
-      <div className="om-rdg bulk-edit-rdg" ref={setGridRef}>
+      <div
+        className="om-rdg bulk-edit-rdg"
+        data-testid="csv-import-grid"
+        ref={setGridRef}>
         <LazyDataGrid
           className="rdg-light"
           columns={
@@ -730,7 +733,7 @@ const BulkEditEntity = ({
 
           <div>
             {validateCSVData && (
-              <div className="om-rdg">
+              <div className="om-rdg" data-testid="csv-results-grid">
                 <LazyDataGrid
                   className="rdg-light"
                   columns={validateCSVData.columns}

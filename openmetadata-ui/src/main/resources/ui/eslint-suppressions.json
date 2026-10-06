@@ -41,7 +41,7 @@
   },
   "playwright/e2e/Features/BulkImport.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 38
+      "count": 1
     }
   },
   "playwright/e2e/Features/BulkImportWithDotInName.spec.ts": {
@@ -735,11 +735,6 @@
     },
     "playwright/no-wait-for-selector": {
       "count": 1
-    }
-  },
-  "playwright/utils/importUtils.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 21
     }
   },
   "playwright/utils/incidentManager.ts": {
