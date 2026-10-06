@@ -95,6 +95,8 @@ export const InputBase = forwardRef<
 ) {
   // Check if the input has a leading icon or tooltip
   const hasTrailingIcon = tooltip || isInvalid;
+  // Help tooltip and invalid marker both shown: the tooltip moves one slot left.
+  const hasBothTrailingIcons = Boolean(tooltip && isInvalid);
   const hasLeadingIcon = Icon;
 
   // If the input is inside a `TextFieldContext`, use its context to simplify applying styles
@@ -107,20 +109,24 @@ export const InputBase = forwardRef<
       root: cx(
         'tw:px-3 tw:py-2',
         hasTrailingIcon && 'tw:pr-9',
+        hasBothTrailingIcons && 'tw:pr-15',
         hasLeadingIcon && 'tw:pl-10'
       ),
       iconLeading: 'tw:left-3',
       iconTrailing: 'tw:right-3',
+      tooltipBesideInvalid: 'tw:right-9',
       shortcut: 'tw:pr-2.5',
     },
     md: {
       root: cx(
         'tw:px-3.5 tw:py-2.5',
         hasTrailingIcon && 'tw:pr-9.5',
+        hasBothTrailingIcons && 'tw:pr-16',
         hasLeadingIcon && 'tw:pl-10.5'
       ),
       iconLeading: 'tw:left-3.5',
       iconTrailing: 'tw:right-3.5',
+      tooltipBesideInvalid: 'tw:right-9.5',
       shortcut: 'tw:pr-3',
     },
   });
@@ -194,14 +200,16 @@ export const InputBase = forwardRef<
       {/* Custom trailing slot (e.g. password reveal button) */}
       {trailingSlot}
 
-      {/* Tooltip and help icon */}
-      {tooltip && !isInvalid && (
+      {/* Help tooltip; kept when invalid too, so the help text stays reachable. */}
+      {tooltip && (
         <Tooltip
           placement="top"
           title={tooltip}
           triggerClassName={cx(
             'tw:absolute tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover',
-            sizes[inputSize].iconTrailing,
+            isInvalid
+              ? sizes[inputSize].tooltipBesideInvalid
+              : sizes[inputSize].iconTrailing,
             context?.tooltipClassName,
             tooltipClassName
           )}>

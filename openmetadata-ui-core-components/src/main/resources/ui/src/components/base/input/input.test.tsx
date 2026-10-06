@@ -36,6 +36,22 @@ describe('Input', () => {
     ).not.toBeNull();
   });
 
+  it('keeps the help tooltip beside the invalid icon', () => {
+    const { container } = render(
+      <Input isInvalid label="Display name" tooltip="Shown to every user" />
+    );
+
+    const errorIcon = container.querySelector('.tw\\:text-fg-error-secondary');
+    const helpTrigger = container.querySelector('.tw\\:right-9');
+
+    expect(errorIcon).not.toBeNull();
+    expect(helpTrigger).not.toBeNull();
+    expect(helpTrigger?.querySelector('svg')).not.toBeNull();
+    expect(screen.getByRole('textbox', { name: /Display name/ })).toHaveClass(
+      'tw:pr-15'
+    );
+  });
+
   it('forwards its ref to the native input', () => {
     const ref = createRef<HTMLInputElement>();
     render(<Input label="Display name" ref={ref} />);

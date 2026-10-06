@@ -103,6 +103,21 @@ export const Invalid: StoryObj = {
   ),
 };
 
+export const InvalidWithTooltip: StoryObj = {
+  render: () => (
+    <div style={{ width: 320 }}>
+      <Input
+        isInvalid
+        hint="Please enter a valid email address."
+        label="Email"
+        placeholder="you@example.com"
+        size="sm"
+        tooltip="We only use this for notifications."
+      />
+    </div>
+  ),
+};
+
 export const Disabled: StoryObj = {
   render: () => (
     <div style={{ width: 320 }}>
