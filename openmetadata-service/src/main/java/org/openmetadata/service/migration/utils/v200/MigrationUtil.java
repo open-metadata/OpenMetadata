@@ -1993,7 +1993,7 @@ public class MigrationUtil {
 
     /** Catches tasks created after the 2.0 cutover before legacy feed storage is archived. */
     public void migrateRemainingThreadTasks() {
-      MigrationStats stats = sweepLegacyThreadTasks();
+      MigrationStats stats = sweepLegacyThreadTasks(threadTaskCutover());
       if (stats.failed > 0 || stats.skipped > 0) {
         throw new IllegalStateException(
             "Legacy task migration incomplete: failed=%d, skipped=%d"
@@ -2008,15 +2008,30 @@ public class MigrationUtil {
           stats.alreadyMigrated);
     }
 
-    private MigrationStats sweepLegacyThreadTasks() {
+    private MigrationStats sweepLegacyThreadTasks(long createdAfter) {
       MigrationStats stats = new MigrationStats();
       for (String table :
           List.of("thread_entity", "thread_entity_legacy", "thread_entity_archived")) {
         if (tableExists(table)) {
-          migrateLegacyThreadTasks(table, stats);
+          migrateLegacyThreadTasks(table, createdAfter, stats);
         }
       }
       return stats;
+    }
+
+    /** Start of the 2.0.0 migration, which copied every older task thread; 0 if never logged. */
+    private long threadTaskCutover() {
+      String epochMillis =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? "UNIX_TIMESTAMP(MIN(executedAt)) * 1000"
+              : "EXTRACT(EPOCH FROM MIN(executedAt)::timestamptz) * 1000";
+      return handle
+          .createQuery(
+              "SELECT COALESCE(%s, 0) FROM SERVER_MIGRATION_SQL_LOGS WHERE version = '2.0.0'"
+                  .formatted(epochMillis))
+          .mapTo(Double.class)
+          .one()
+          .longValue();
     }
 
     public void runRecognizerFeedbackTaskTypeMigration() {
@@ -2334,15 +2349,17 @@ public class MigrationUtil {
       MigrationStats stats = new MigrationStats();
       String legacyThreadTable = getLegacyThreadSourceTable();
       if (legacyThreadTable != null) {
-        migrateLegacyThreadTasks(legacyThreadTable, stats);
+        migrateLegacyThreadTasks(legacyThreadTable, 0, stats);
       }
       return stats;
     }
 
-    private void migrateLegacyThreadTasks(String legacyThreadTable, MigrationStats stats) {
+    private void migrateLegacyThreadTasks(
+        String legacyThreadTable, long createdAfter, MigrationStats stats) {
       int offset = 0;
       while (true) {
-        List<String> threadBatch = listTaskThreadWithOffset(legacyThreadTable, BATCH_SIZE, offset);
+        List<String> threadBatch =
+            listTaskThreadWithOffset(legacyThreadTable, createdAfter, BATCH_SIZE, offset);
         if (threadBatch.isEmpty()) {
           break;
         }
@@ -2845,12 +2862,14 @@ public class MigrationUtil {
       }
     }
 
-    private List<String> listTaskThreadWithOffset(String tableName, int limit, int offset) {
+    private List<String> listTaskThreadWithOffset(
+        String tableName, long createdAfter, int limit, int offset) {
+      String window = createdAfter > 0 ? " AND createdAt > " + createdAfter : "";
       return handle
           .createQuery(
               String.format(
-                  "SELECT json FROM %s WHERE type = 'Task' ORDER BY createdAt ASC LIMIT :limit OFFSET :offset",
-                  tableName))
+                  "SELECT json FROM %s WHERE type = 'Task'%s ORDER BY createdAt ASC LIMIT :limit OFFSET :offset",
+                  tableName, window))
           .bind("limit", limit)
           .bind("offset", offset)
           .mapTo(String.class)

@@ -16,7 +16,9 @@ package org.openmetadata.service.migration.v210;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -27,10 +29,13 @@ import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v200.MigrationUtil.TaskWorkflow;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
@@ -67,9 +72,12 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<MlFeatureTagBackfill> mlFeatureTagBackfill =
             mockStatic(MlFeatureTagBackfill.class);
         MockedStatic<SearchTermBoostRepair> searchTermBoostRepair =
-            mockStatic(SearchTermBoostRepair.class)) {
+            mockStatic(SearchTermBoostRepair.class);
+        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
+        MockedConstruction<TaskWorkflow> taskWorkflow = mockConstruction(TaskWorkflow.class)) {
       migration.runDataMigration();
 
+      verify(taskWorkflow.constructed().getFirst()).migrateRemainingThreadTasks();
       ingestionPipelineMigration.verify(
           () -> IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO));
       searchTermBoostRepair.verify(SearchTermBoostRepair::repairTermBoostSettings);

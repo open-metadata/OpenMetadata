@@ -53,6 +53,8 @@ import org.openmetadata.service.migration.utils.v200.MigrationUtil.TaskWorkflow;
 @Isolated("sweeps legacy task tables and backfills task workflows")
 @ExtendWith(TestNamespaceExtension.class)
 class LegacyThreadTaskMigrationIT {
+  private final long createdAt = System.currentTimeMillis();
+
   @ParameterizedTest
   @CsvSource({
     "thread_entity, UpdateDescription, DescriptionUpdate, Completed",
@@ -91,8 +93,8 @@ class LegacyThreadTaskMigrationIT {
                 assertEquals(table.getId(), task.getAbout().getId());
                 assertEquals(admin.getId(), task.getCreatedBy().getId());
                 assertEquals(admin.getId(), task.getAssignees().getFirst().getId());
-                assertEquals(1000L, task.getCreatedAt());
-                assertEquals(2000L, task.getUpdatedAt());
+                assertEquals(createdAt, task.getCreatedAt());
+                assertEquals(createdAt + 1000, task.getUpdatedAt());
                 assertNull(task.getWorkflowInstanceId());
                 if (type == TaskEntityType.DescriptionUpdate) {
                   assertEquals(
@@ -103,7 +105,7 @@ class LegacyThreadTaskMigrationIT {
                 assertEquals("Please review", task.getComments().getFirst().getMessage());
                 assertEquals("accepted", task.getResolution().getNewValue());
                 assertEquals(admin.getId(), task.getResolution().getResolvedBy().getId());
-                assertEquals(2000L, task.getResolution().getResolvedAt());
+                assertEquals(createdAt + 1000, task.getResolution().getResolvedAt());
 
                 String stored = storedTask(handle, taskId);
                 migration.migrateRemainingThreadTasks();
@@ -165,8 +167,8 @@ class LegacyThreadTaskMigrationIT {
   void failsTheSweepWhenATaskCannotBeRead() {
     UUID taskId = UUID.randomUUID();
     String json =
-        "{\"id\":\"%s\",\"type\":\"Task\",\"threadTs\":1000,\"task\":{\"type\":\"UnknownTask\"}}"
-            .formatted(taskId);
+        "{\"id\":\"%s\",\"type\":\"Task\",\"threadTs\":%d,\"task\":{\"type\":\"UnknownTask\"}}"
+            .formatted(taskId, createdAt);
 
     TestSuiteBootstrap.getJdbi()
         .useHandle(
@@ -198,22 +200,26 @@ class LegacyThreadTaskMigrationIT {
         {
           "id":"%s", "type":"Task", "about":"<#E::table::%s>",
           "entityRef":%s, "createdBy":"admin", "updatedBy":"admin",
-          "threadTs":1000, "updatedAt":2000, "message":"Update description",
+          "threadTs":%d, "updatedAt":%d, "message":"Update description",
           "task":{
             "id":42, "type":"%s", "status":"Closed",
-            "assignees":[%s], "closedBy":"admin", "closedAt":2000,
+            "assignees":[%s], "closedBy":"admin", "closedAt":%d,
             "oldValue":"old", "suggestion":"suggested", "newValue":"accepted"
           },
-          "posts":[{"id":"%s", "from":"admin", "message":"Please review", "postTs":1500}]
+          "posts":[{"id":"%s", "from":"admin", "message":"Please review", "postTs":%d}]
         }
         """
         .formatted(
             taskId,
             table.getFullyQualifiedName(),
             JsonUtils.pojoToJson(table.getEntityReference()),
+            createdAt,
+            createdAt + 1000,
             oldType,
             JsonUtils.pojoToJson(admin.getEntityReference()),
-            postId);
+            createdAt + 1000,
+            postId,
+            createdAt + 500);
   }
 
   private boolean createLegacyTableIfMissing(Handle handle, String source) {
