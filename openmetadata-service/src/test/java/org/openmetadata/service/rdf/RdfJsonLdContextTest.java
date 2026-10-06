@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
+import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -90,36 +91,6 @@ class RdfJsonLdContextTest {
   class StructuredPropertyTests {
 
     @Test
-    @DisplayName("changeDescription should map to @id type, not @json")
-    void testChangeDescriptionMapping() {
-      if (baseContext == null) {
-        return; // Skip if context not found (e.g., running without resources)
-      }
-
-      JsonNode changeDesc = baseContext.get("changeDescription");
-      assertNotNull(changeDesc, "changeDescription should be defined in base context");
-
-      String type = changeDesc.get("@type").asText();
-      assertNotEquals("@json", type, "changeDescription should NOT use @json type");
-      assertEquals("@id", type, "changeDescription should use @id type for structured RDF");
-    }
-
-    @Test
-    @DisplayName("votes should map to @id type, not @json")
-    void testVotesMapping() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode votes = baseContext.get("votes");
-      assertNotNull(votes, "votes should be defined in base context");
-
-      String type = votes.get("@type").asText();
-      assertNotEquals("@json", type, "votes should NOT use @json type");
-      assertEquals("@id", type, "votes should use @id type for structured RDF");
-    }
-
-    @Test
     @DisplayName("lifeCycle should map to @id type, not @json")
     void testLifeCycleMapping() {
       if (baseContext == null) {
@@ -173,42 +144,6 @@ class RdfJsonLdContextTest {
   class SupportingTypeTests {
 
     @Test
-    @DisplayName("ChangeDescription type should be defined")
-    void testChangeDescriptionType() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode changeDescType = baseContext.get("ChangeDescription");
-      assertNotNull(changeDescType, "ChangeDescription type should be defined");
-      assertEquals("om:ChangeDescription", changeDescType.asText());
-    }
-
-    @Test
-    @DisplayName("FieldChange type should be defined")
-    void testFieldChangeType() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode fieldChangeType = baseContext.get("FieldChange");
-      assertNotNull(fieldChangeType, "FieldChange type should be defined");
-      assertEquals("om:FieldChange", fieldChangeType.asText());
-    }
-
-    @Test
-    @DisplayName("Votes type should be defined")
-    void testVotesType() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode votesType = baseContext.get("Votes");
-      assertNotNull(votesType, "Votes type should be defined");
-      assertEquals("om:Votes", votesType.asText());
-    }
-
-    @Test
     @DisplayName("LifeCycle type should be defined")
     void testLifeCycleType() {
       if (baseContext == null) {
@@ -246,96 +181,33 @@ class RdfJsonLdContextTest {
   }
 
   @Nested
-  @DisplayName("P0-1: ChangeDescription Property Definitions")
-  class ChangeDescriptionPropertyTests {
+  @DisplayName("Change history and votes stay outside the metadata projection")
+  class ExcludedProjectionTests {
 
     @Test
-    @DisplayName("previousVersion should be defined with decimal type")
-    void testPreviousVersion() {
-      if (baseContext == null) {
-        return;
+    @DisplayName("base context should not map changeDescription, votes, or their subfields")
+    void testExcludedTermsAbsent() {
+      assertNotNull(baseContext, "base.jsonld should be on the classpath");
+      for (String term :
+          List.of(
+              "changeDescription",
+              "ChangeDescription",
+              "previousVersion",
+              "fieldsAdded",
+              "fieldsUpdated",
+              "fieldsDeleted",
+              "FieldChange",
+              "fieldName",
+              "oldValue",
+              "newValue",
+              "votes",
+              "Votes",
+              "upVotes",
+              "downVotes",
+              "upVoters",
+              "downVoters")) {
+        assertNull(baseContext.get(term), term + " must not be advertised by base.jsonld");
       }
-
-      JsonNode prevVersion = baseContext.get("previousVersion");
-      assertNotNull(prevVersion, "previousVersion should be defined");
-      assertEquals("xsd:decimal", prevVersion.get("@type").asText());
-    }
-
-    @Test
-    @DisplayName("fieldsAdded should be defined with @set container")
-    void testFieldsAdded() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode fieldsAdded = baseContext.get("fieldsAdded");
-      assertNotNull(fieldsAdded, "fieldsAdded should be defined");
-      assertEquals("@set", fieldsAdded.get("@container").asText());
-    }
-
-    @Test
-    @DisplayName("fieldsUpdated should be defined with @set container")
-    void testFieldsUpdated() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode fieldsUpdated = baseContext.get("fieldsUpdated");
-      assertNotNull(fieldsUpdated, "fieldsUpdated should be defined");
-      assertEquals("@set", fieldsUpdated.get("@container").asText());
-    }
-
-    @Test
-    @DisplayName("fieldName should be defined with string type")
-    void testFieldName() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode fieldName = baseContext.get("fieldName");
-      assertNotNull(fieldName, "fieldName should be defined");
-      assertEquals("xsd:string", fieldName.get("@type").asText());
-    }
-  }
-
-  @Nested
-  @DisplayName("P0-1: Votes Property Definitions")
-  class VotesPropertyTests {
-
-    @Test
-    @DisplayName("upVotes should be defined with integer type")
-    void testUpVotes() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode upVotes = baseContext.get("upVotes");
-      assertNotNull(upVotes, "upVotes should be defined");
-      assertEquals("xsd:integer", upVotes.get("@type").asText());
-    }
-
-    @Test
-    @DisplayName("downVotes should be defined with integer type")
-    void testDownVotes() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode downVotes = baseContext.get("downVotes");
-      assertNotNull(downVotes, "downVotes should be defined");
-      assertEquals("xsd:integer", downVotes.get("@type").asText());
-    }
-
-    @Test
-    @DisplayName("upVoters should be defined with @set container")
-    void testUpVoters() {
-      if (baseContext == null) {
-        return;
-      }
-
-      JsonNode upVoters = baseContext.get("upVoters");
-      assertNotNull(upVoters, "upVoters should be defined");
-      assertEquals("@set", upVoters.get("@container").asText());
     }
   }
 

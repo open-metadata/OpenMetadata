@@ -12,7 +12,7 @@
  */
 
 import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -76,7 +76,7 @@ const TestCaseIncidentManagerStatus = ({
   const onCancel = useCallback(() => setIsEditStatus(false), []);
 
   if (!statusType) {
-    return <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>;
+    return <CoreTypography>{NO_DATA_PLACEHOLDER}</CoreTypography>;
   }
 
   if (headerName) {

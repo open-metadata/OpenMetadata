@@ -46,13 +46,7 @@ export interface DescendantSelection {
 export const getNodeSelectionState = (
   { selected, total, hasLoadedChildren }: DescendantSelection,
   isSelected: boolean,
-  /**
-   * Whether a branch's state is derived from its descendants (checkbox
-   * semantics). True for multi-select. In single-choice mode a branch is a
-   * value in its own right — deriving from descendants meant a selected parent
-   * that had loaded children could never render as selected, because `selected
-   * === total` ignores `isSelected` entirely.
-   */
+  /** Checkbox semantics: true only for a cascading multi-select. */
   derivesFromDescendants = true
 ) => {
   if (!derivesFromDescendants) {

@@ -12,7 +12,7 @@
  */
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Database01 } from '@untitledui/icons';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { EmptyPlaceholderVariantProps } from './EmptyPlaceholder.interface';
 

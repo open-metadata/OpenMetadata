@@ -12,7 +12,7 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import { ShieldTick } from '@untitledui/icons';
+import { ShieldTick } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

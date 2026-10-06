@@ -92,6 +92,37 @@ describe('ReindexFailures', () => {
     expect(await screen.findByText('search failure')).toBeInTheDocument();
   });
 
+  it('should offer copying the entity id and the error message', async () => {
+    await act(async () => {
+      render(<ReindexFailures visible onClose={jest.fn()} />);
+    });
+
+    expect(await screen.findByText('abc')).toBeInTheDocument();
+    expect(screen.getAllByTestId('copy-secret')).toHaveLength(2);
+  });
+
+  it('should offer a more toggle only when the error message is clamped', async () => {
+    const scrollHeight = jest
+      .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.tagName === 'P' ? 80 : 0;
+      });
+    const clientHeight = jest
+      .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockReturnValue(40);
+
+    await act(async () => {
+      render(<ReindexFailures visible onClose={jest.fn()} />);
+    });
+
+    expect(await screen.findByTestId('error-message-toggle')).toHaveTextContent(
+      'label.more-lowercase'
+    );
+
+    scrollHeight.mockRestore();
+    clientHeight.mockRestore();
+  });
+
   it('should default to search failures when no app name is provided', async () => {
     await act(async () => {
       render(<ReindexFailures visible onClose={jest.fn()} />);

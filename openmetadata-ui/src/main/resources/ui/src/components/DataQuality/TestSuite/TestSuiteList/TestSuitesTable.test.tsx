@@ -172,6 +172,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Table: MockTable,
     toOwnerRef: jest.fn().mockReturnValue({}),
     toOwnerRefs: jest.fn().mockReturnValue([]),
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
   };
 });
 

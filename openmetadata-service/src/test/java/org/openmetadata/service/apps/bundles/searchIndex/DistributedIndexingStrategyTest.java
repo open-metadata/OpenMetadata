@@ -134,6 +134,30 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void initializeTotalRecordsTracksColumnsWithTablesOnlyWhileColumnIndexingIsOn() {
+    EntityRepository entityRepository = mock(EntityRepository.class);
+    EntityDAO entityDao = mock(EntityDAO.class);
+    when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
+    when(entityDao.listCount(any(ListFilter.class))).thenReturn(7);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
+
+      when(searchRepository.isColumnIndexingEnabled()).thenReturn(true);
+      Stats withColumns = strategy.initializeTotalRecords(Set.of(Entity.TABLE));
+      when(searchRepository.isColumnIndexingEnabled()).thenReturn(false);
+      Stats withoutColumns = strategy.initializeTotalRecords(Set.of(Entity.TABLE));
+
+      assertNotNull(
+          withColumns.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN));
+      assertNull(
+          withoutColumns.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN));
+    }
+  }
+
+  @Test
   void getEntityTotalUsesConfiguredTimeSeriesWindowAndReturnsZeroOnLookupErrors() throws Exception {
     @SuppressWarnings("unchecked")
     EntityTimeSeriesRepository<?> timeSeriesRepository = mock(EntityTimeSeriesRepository.class);

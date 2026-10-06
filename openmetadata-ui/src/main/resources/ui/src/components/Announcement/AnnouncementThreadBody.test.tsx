@@ -25,6 +25,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
+import { AnnouncementStatus } from '../../generated/entity/feed/announcement';
 import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
 import { listAnnouncements } from '../../rest/announcementsAPI';
 import AnnouncementThreadBody from './AnnouncementThreadBody.component';
@@ -36,35 +37,30 @@ jest.mock('../../rest/announcementsAPI', () => ({
 jest.mock('./AnnouncementThreads', () =>
   jest
     .fn()
-    .mockImplementation(({ updateAnnouncementHandler, onConfirmation }) => (
-      <>
-        <p>AnnouncementThreads</p>
-        <button
-          onClick={() =>
-            onConfirmation({
-              state: true,
-              threadId: 'threadId',
-              postId: 'threadId',
-              isThread: true,
-            })
-          }>
-          ConfirmationButton
-        </button>
-        <button onClick={() => updateAnnouncementHandler('threadId', [])}>
-          UpdateAnnouncementButton
-        </button>
-      </>
-    ))
-);
-
-jest.mock('../Modals/ConfirmationModal/ConfirmationModal', () =>
-  jest.fn().mockImplementation(({ visible, onConfirm, onCancel }) => (
-    <>
-      {visible ? 'Confirmation Modal is open' : 'Confirmation Modal is close'}
-      <button onClick={onConfirm}>Confirm Confirmation Modal</button>
-      <button onClick={onCancel}>Cancel Confirmation Modal</button>
-    </>
-  ))
+    .mockImplementation(
+      ({ announcements, updateAnnouncementHandler, onConfirmation }) => (
+        <>
+          <p>AnnouncementThreads</p>
+          <p data-testid="rendered-ids">
+            {announcements.map((a: { id: string }) => a.id).join(',')}
+          </p>
+          <button
+            onClick={() =>
+              onConfirmation({
+                state: true,
+                threadId: 'threadId',
+                postId: 'threadId',
+                isThread: true,
+              })
+            }>
+            ConfirmationButton
+          </button>
+          <button onClick={() => updateAnnouncementHandler('threadId', [])}>
+            UpdateAnnouncementButton
+          </button>
+        </>
+      )
+    )
 );
 
 jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -74,6 +70,12 @@ jest.mock('../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+const baseAnnouncement = {
+  name: 'announcement',
+  displayName: 'Announcement',
+  description: 'Description',
+};
 
 const mockProps = {
   threadLink: 'threadLink',
@@ -113,7 +115,10 @@ describe('AnnouncementThreadBody', () => {
 
     expect(screen.getByTestId('announcement-thread-body')).toBeInTheDocument();
     expect(screen.getByText('AnnouncementThreads')).toBeInTheDocument();
-    expect(screen.getByText('Confirmation Modal is close')).toBeInTheDocument();
+    // The delete confirmation only mounts once a card asks for it.
+    expect(
+      screen.queryByTestId('announcement-delete-confirm')
+    ).not.toBeInTheDocument();
   });
 
   it('should confirm delete with announcement id', async () => {
@@ -126,7 +131,12 @@ describe('AnnouncementThreadBody', () => {
     });
 
     fireEvent.click(screen.getByText('ConfirmationButton'));
-    fireEvent.click(screen.getByText('Confirm Confirmation Modal'));
+
+    expect(
+      await screen.findByTestId('announcement-delete-confirm')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('save-button'));
 
     expect(mockProps.deleteAnnouncementHandler).toHaveBeenCalledWith(
       'threadId'
@@ -148,5 +158,100 @@ describe('AnnouncementThreadBody', () => {
       'threadId',
       []
     );
+  });
+
+  it('should ask the server for the selected status rather than filtering here', async () => {
+    (listAnnouncements as jest.Mock).mockResolvedValueOnce({
+      data: [{ ...baseAnnouncement, id: 'scheduled' }],
+      paging: {},
+    });
+
+    await act(async () => {
+      render(
+        <AnnouncementThreadBody
+          {...mockProps}
+          statusFilter={AnnouncementStatus.Scheduled}
+        />
+      );
+    });
+
+    // Derived server-side from startTime/endTime, so a match on a later page is
+    // never hidden by a page-local filter.
+    expect(listAnnouncements).toHaveBeenCalledWith(
+      expect.objectContaining({ status: AnnouncementStatus.Scheduled })
+    );
+    expect(screen.getByTestId('rendered-ids')).toHaveTextContent('scheduled');
+  });
+
+  it('should refetch when the selected status tab changes', async () => {
+    (listAnnouncements as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: {},
+    });
+
+    const { rerender } = render(
+      <AnnouncementThreadBody
+        {...mockProps}
+        statusFilter={AnnouncementStatus.Active}
+      />
+    );
+
+    await act(async () => {
+      rerender(
+        <AnnouncementThreadBody
+          {...mockProps}
+          statusFilter={AnnouncementStatus.Expired}
+        />
+      );
+    });
+
+    expect(listAnnouncements).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: AnnouncementStatus.Expired })
+    );
+  });
+
+  it('should ignore a slow response for a tab that is no longer selected', async () => {
+    let resolveActive: (value: unknown) => void = (_value) => undefined;
+
+    (listAnnouncements as jest.Mock)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveActive = resolve;
+          })
+      )
+      .mockResolvedValueOnce({
+        data: [{ ...baseAnnouncement, id: 'expired-row' }],
+        paging: {},
+      });
+
+    const { rerender } = render(
+      <AnnouncementThreadBody
+        {...mockProps}
+        statusFilter={AnnouncementStatus.Active}
+      />
+    );
+
+    await act(async () => {
+      rerender(
+        <AnnouncementThreadBody
+          {...mockProps}
+          statusFilter={AnnouncementStatus.Expired}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('rendered-ids')).toHaveTextContent('expired-row');
+
+    // The Active request lands last; it must not repaint the Expired tab.
+    await act(async () => {
+      resolveActive({
+        data: [{ ...baseAnnouncement, id: 'active-row' }],
+        paging: {},
+      });
+    });
+
+    expect(screen.getByTestId('rendered-ids')).toHaveTextContent('expired-row');
+    expect(screen.queryByText('active-row')).not.toBeInTheDocument();
   });
 });

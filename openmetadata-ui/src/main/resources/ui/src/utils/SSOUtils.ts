@@ -419,9 +419,10 @@ export const getDefaultsForProvider = (
       tenant: '',
       serverUrl,
       callbackUrl: DEFAULT_CALLBACK_URL,
-      maxAge: 0,
+      maxAge: '',
       prompt: '',
       sessionExpiry,
+      endSessionWithProvider: false,
     };
   } else if (!isSaml) {
     // For public clients, use root level fields (excluding SAML)

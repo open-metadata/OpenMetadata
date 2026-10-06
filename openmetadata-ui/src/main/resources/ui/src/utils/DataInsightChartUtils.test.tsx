@@ -11,101 +11,111 @@
  *  limitations under the License.
  */
 
+import { LIGHT_CHART_PALETTE } from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
-import { PropsWithChildren } from 'react';
 import {
-  CustomTooltip,
-  renderDataInsightLineChart,
-  renderLegend,
+  DEFAULT_CHART_OPACITY,
+  HOVER_CHART_OPACITY,
+} from '../constants/constants';
+import {
+  dataInsightColor,
+  getDataInsightLineSeries,
+  getDataInsightTooltip,
 } from './DataInsightChartUtils';
 
-jest.mock('recharts', () => ({
-  CartesianGrid: ({ stroke }: { stroke: string }) => (
-    <div data-stroke={stroke} data-testid="data-insight-grid" />
-  ),
-  Line: ({ stroke }: { stroke: string }) => (
-    <div data-stroke={stroke} data-testid="data-insight-line" />
-  ),
-  LineChart: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  Surface: ({ children }: PropsWithChildren) => <svg>{children}</svg>,
-  Tooltip: () => null,
-  XAxis: ({ tick }: { tick?: { fill: string } }) => (
-    <div data-fill={tick?.fill} data-testid="data-insight-x-axis" />
-  ),
-  YAxis: ({ tick }: { tick?: { fill: string } }) => (
-    <div data-fill={tick?.fill} data-testid="data-insight-y-axis" />
-  ),
-}));
+const palette = LIGHT_CHART_PALETTE;
+const keys = ['table', 'topic', 'dashboard'];
 
-const CHART_COLORS = {
-  axis: '#123456',
-  grid: '#234567',
-  inactive: '#345678',
-};
-
-describe('DataInsightChartUtils theme colors', () => {
-  it('uses the semantic text color for tooltip titles', () => {
-    render(
-      <CustomTooltip
-        active
-        payload={[
-          {
-            color: '#abcdef',
-            dataKey: 'count',
-            name: 'Description coverage',
-            payload: { term: 'Sep 1, 2026' },
-            value: 76.27,
-          },
-        ]}
-        timeStampKey="term"
-      />
-    );
-
-    expect(screen.getByRole('heading', { name: 'Sep 1, 2026' })).toHaveClass(
-      'custom-data-insight-tooltip-title'
-    );
+describe('getDataInsightLineSeries', () => {
+  it('gives every key its palette colour by rank', () => {
+    expect(
+      getDataInsightLineSeries({ keys, palette }).map((s) => [s.key, s.color])
+    ).toEqual([
+      ['table', '#100000'],
+      ['topic', '#200000'],
+      ['dashboard', '#300000'],
+    ]);
   });
 
-  it('applies active theme colors to reusable line charts', () => {
-    render(
-      Reflect.apply(renderDataInsightLineChart, null, [
-        [{ day: 1, table: 2 }],
-        ['table'],
-        [],
-        '',
-        false,
-        CHART_COLORS,
-      ])
-    );
+  it('shows only toggled keys, plus the hovered one, without moving colours', () => {
+    const series = getDataInsightLineSeries({
+      keys,
+      palette,
+      activeKeys: ['dashboard'],
+      hoverKey: 'topic',
+    });
 
-    expect(screen.getByTestId('data-insight-grid')).toHaveAttribute(
-      'data-stroke',
-      '#234567'
-    );
-    expect(screen.getByTestId('data-insight-x-axis')).toHaveAttribute(
-      'data-fill',
-      '#123456'
-    );
-    expect(screen.getByTestId('data-insight-y-axis')).toHaveAttribute(
-      'data-fill',
-      '#123456'
-    );
+    expect(series.map((s) => [s.key, s.color])).toEqual([
+      ['topic', '#200000'],
+      ['dashboard', '#300000'],
+    ]);
   });
 
-  it('applies the active theme muted color to inactive legends', () => {
-    const legend = {
-      payload: [{ color: '#abcdef', value: 'Table' }],
-    };
+  it('dims every key but the hovered one', () => {
+    const series = getDataInsightLineSeries({
+      keys,
+      palette,
+      hoverKey: 'topic',
+    });
+
+    expect(series.map((s) => s.seriesOption)).toEqual([
+      { lineStyle: { opacity: HOVER_CHART_OPACITY } },
+      { lineStyle: { opacity: DEFAULT_CHART_OPACITY } },
+      { lineStyle: { opacity: HOVER_CHART_OPACITY } },
+    ]);
+  });
+
+  it('drops keys a search hid and keeps the colours of the rest', () => {
+    const series = getDataInsightLineSeries({
+      keys,
+      palette,
+      visibleKeys: ['dashboard'],
+    });
+
+    expect(series.map((s) => [s.key, s.color])).toEqual([
+      ['dashboard', '#300000'],
+    ]);
+  });
+});
+
+describe('dataInsightColor', () => {
+  it('matches the colour the line gets', () => {
+    expect(dataInsightColor(palette, keys, 'dashboard')).toBe('#300000');
+  });
+});
+
+describe('getDataInsightTooltip', () => {
+  it('renders a date header and one row per value, percent when asked', () => {
+    const { render: renderTooltip } = getDataInsightTooltip<{
+      day: number;
+    }>({ timeKey: 'day', isPercentage: true });
 
     render(
-      Reflect.apply(renderLegend, null, [
-        legend,
-        ['Dashboard'],
-        undefined,
-        CHART_COLORS.inactive,
-      ])
+      <>
+        {renderTooltip?.(
+          [
+            {
+              seriesKey: 'table',
+              name: 'table',
+              value: 40.123,
+              color: '#100000',
+              dataIndex: 0,
+            },
+            {
+              seriesKey: 'topic',
+              name: 'topic',
+              value: null,
+              color: '#200000',
+              dataIndex: 0,
+            },
+          ],
+          { day: 1696118400000 }
+        )}
+      </>
     );
 
-    expect(screen.getByText('Table')).toHaveStyle({ color: '#345678' });
+    expect(screen.getByText('Table')).toBeInTheDocument();
+    expect(screen.queryByText('Topic')).not.toBeInTheDocument();
+    expect(screen.getByText(/40\.12\s?%/)).toBeInTheDocument();
   });
 });

@@ -35,7 +35,7 @@ import { test } from '../../fixtures/pages';
 
 // Create a table with '/' in the name to test encoding functionality
 const tableNameWithSlash = `pw-table-with/slash-${uuid()}`;
-const table = new TableClass(tableNameWithSlash);
+const table = new TableClass({ name: tableNameWithSlash });
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);

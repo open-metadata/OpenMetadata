@@ -19,7 +19,7 @@ import {
   Select,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { X } from '@untitledui/icons';
+import { X } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';

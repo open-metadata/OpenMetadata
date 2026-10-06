@@ -21,6 +21,11 @@ import {
   useImperativeHandle,
 } from 'react';
 import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import {
+  getAuthErrorCode,
+  isInteractionRequiredCode,
+  ReauthRequiredError,
+} from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
@@ -29,6 +34,21 @@ import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 interface Props {
   children: ReactNode;
 }
+
+// Beyond the OIDC interaction codes: an expired or revoked refresh token
+// (invalid_grant), and the prompt=none iframe timing out when third-party
+// cookies are blocked, which okta-auth-js reports only through its message.
+const isReauthRequired = (error: unknown): boolean => {
+  const code = getAuthErrorCode(error);
+  const isIframeTimeout =
+    error instanceof Error && /OAuth flow timed out/i.test(error.message);
+
+  return (
+    isInteractionRequiredCode(code) ||
+    code === 'invalid_grant' ||
+    isIframeTimeout
+  );
+};
 
 const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children }: Props, ref) => {
@@ -85,7 +105,19 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
     // expired tokens.
     const getRenewer = useCallback(
       (): Renewer => async () => {
-        const tokens = await oktaAuth.token.renewTokens();
+        let tokens;
+        try {
+          tokens = await oktaAuth.token.renewTokens();
+        } catch (error) {
+          if (isReauthRequired(error)) {
+            throw new ReauthRequiredError(
+              'Okta silent renewal needs an interactive visit to Okta',
+              error
+            );
+          }
+
+          throw error;
+        }
 
         if (!tokens.idToken?.idToken) {
           throw new Error('Okta renewal returned no idToken');
@@ -101,10 +133,20 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       [oktaAuth]
     );
 
+    // The /callback LoginCallback completes it; a login_required answer signs
+    // the user out there.
+    const silentReauth = async () => {
+      await oktaAuth.signInWithRedirect({
+        originalUri: `${window.location.pathname}${window.location.search}`,
+        prompt: 'none',
+      });
+    };
+
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: renewToken,
+      invokeSilentReauth: silentReauth,
     }));
 
     // Register the coordinator renewer directly from this authenticator's

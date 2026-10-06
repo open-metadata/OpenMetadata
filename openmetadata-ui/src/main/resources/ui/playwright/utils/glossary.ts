@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
-import { get, isUndefined } from 'lodash';
+import { get, isUndefined, omit } from 'lodash';
 import { ASSET_FILTER_KEYS } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
@@ -38,11 +38,8 @@ import {
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
-  dismissToasts,
   getApiContext,
   INVALID_NAMES,
-  NAME_MAX_LENGTH_VALIDATION_ERROR,
-  NAME_VALIDATION_ERROR,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -52,8 +49,25 @@ import {
   escapeESReservedCharacters,
   getEntityDisplayName,
   openClassificationTagPicker,
+  openOwnerPicker,
   waitForAllLoadersToDisappear,
 } from './entity';
+import {
+  editGlossaryTermFromForm,
+  fillGlossaryForm,
+  fillGlossaryTermForm,
+  getFormDisplayNameInput,
+  getFormNameInput,
+  GLOSSARY_NAME_SIZE_ERROR,
+  openAddGlossaryForm,
+  openAddGlossaryTermForm,
+  openEditGlossaryTermForm,
+  replaceFormDescription,
+  saveGlossaryForm,
+  saveGlossaryFormExpectingError,
+  saveGlossaryTermForm,
+  validateGlossaryFormRequiredFields,
+} from './glossaryForm';
 import { pickGlossaryTermInField } from './glossaryPicker';
 import { waitForAggregation } from './searchAggregation';
 import { sidebarClick } from './sidebar';
@@ -63,8 +77,6 @@ import {
   waitForTaskResolveResponse,
 } from './task';
 import { waitForResponseWithStatus } from './waitHelpers';
-
-const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
 const GLOSSARY_TERM_APPROVAL_WORKFLOW = 'GlossaryTermApprovalWorkflow';
 const AUTO_APPROVED_BY_REVIEWER_STAGE = 'Auto-Approved by Reviewer';
@@ -315,155 +327,33 @@ export const setupGlossaryAndTerms = async (page: Page) => {
   return { glossary, term1, term2, cleanup };
 };
 
-export const validateForm = async (page: Page) => {
-  // Error messages
-  await expect(page.locator('#name_help')).toHaveText('Name is required');
-  await expect(page.locator('#description_help')).toHaveText(
-    'Description is required'
-  );
-
-  // Max length validation
-  await page.getByTestId('name').fill(INVALID_NAMES.MAX_LENGTH);
-
-  await expect(page.locator('#name_help')).toHaveText(
-    NAME_MAX_LENGTH_VALIDATION_ERROR
-  );
-
-  // With special char validation
-  await page.locator('[data-testid="name"]').clear();
-  await page.getByTestId('name').fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
-
-  await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
-};
-
-export const addTeamAsReviewer = async (
-  page: Page,
-  teamName: string,
-  activatorBtnDataTestId: string,
-  dataTestId?: string,
-  isSelectableInsideForm = false
-) => {
-  const teamsResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=team&from=0&size=*&sort_field=displayName.keyword&sort_order=asc'
-  );
-
-  const teamsSearchResponse = page.waitForResponse(
-    `api/v1/search/query?q=*${encodeURI(teamName)}*`
-  );
-
-  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
-
-  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
-
-  await teamsResponse;
-
-  await page.fill('[data-testid="owner-select-teams-search-bar"]', teamName);
-  await teamsSearchResponse;
-
-  const ownerItem = page
-    .locator('[data-testid="owner-option"]')
-    .filter({ hasText: teamName });
-  await ownerItem.waitFor({ state: 'visible' });
-
-  if (isSelectableInsideForm) {
-    await ownerItem.click();
-  } else {
-    const patchRequest = page.waitForRequest(
-      (request) => request.method() === 'PATCH'
-    );
-    await ownerItem.click();
-    await patchRequest;
-  }
-
-  await expect(
-    page.locator(`[data-testid=${dataTestId ?? 'owner-link'}]`)
-  ).toContainText(teamName);
-};
+const escapeFqnForRowKey = (fqn: string) =>
+  fqn.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
 export const createGlossary = async (
   page: Page,
   glossaryData: GlossaryData,
   bValidateForm: boolean
 ) => {
-  // Click on the "Add Glossary" button
-  await page.click('[data-testid="add-glossary"]');
-
-  // Validate redirection to the add glossary page
-  await page.getByTestId('form-heading').waitFor();
-
-  await expect(page.locator('[data-testid="form-heading"]')).toHaveText(
-    'Add Glossary'
-  );
-
-  // Perform glossary creation steps
-  await dismissToasts(page);
-  await page.click('[data-testid="save-glossary"]');
+  // The add button opens the create drawer in place; the URL does not change.
+  const form = await openAddGlossaryForm(page);
 
   if (bValidateForm) {
-    await validateForm(page);
+    await saveGlossaryFormExpectingError(page, 'glossary');
+    await validateGlossaryFormRequiredFields(form);
   }
 
-  await page.fill('[data-testid="name"]', glossaryData.name);
+  await fillGlossaryForm(page, form, {
+    name: glossaryData.name,
+    displayName: glossaryData.displayName,
+    description: glossaryData.description,
+    mutuallyExclusive: Boolean(glossaryData.mutuallyExclusive),
+    tags: glossaryData.tags?.slice(0, 1),
+    // Users and teams share one reviewers option list.
+    reviewers: glossaryData.reviewers.map((reviewer) => reviewer.name),
+  });
 
-  await page.fill('[data-testid="display-name"]', glossaryData.displayName);
-
-  await page.locator(descriptionBox).fill(glossaryData.description);
-
-  await expect(
-    page.locator('[data-testid="form-item-alert"]')
-  ).not.toBeVisible();
-
-  if (glossaryData.mutuallyExclusive) {
-    await page.click('[data-testid="mutually-exclusive-button"]');
-
-    await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
-  }
-
-  if (glossaryData.tags && glossaryData.tags.length > 0) {
-    const tagsResponse = page.waitForResponse('/api/v1/search/query');
-
-    // Add tag
-    await page.click('[data-testid="tag-selector"]');
-    await page.fill(
-      '[data-testid="tag-selector"] input[type="search"]',
-      glossaryData.tags[0]
-    );
-    await tagsResponse;
-    await page.click(`[data-testid="tag-${glossaryData.tags[0]}"]`);
-    await page.click('[data-testid="right-panel"]');
-  }
-
-  if (glossaryData.reviewers.length > 0) {
-    // Add reviewer
-    if (glossaryData.reviewers[0].type === 'user') {
-      await addMultiOwner({
-        page,
-        ownerNames: glossaryData.reviewers.map((reviewer) => reviewer.name),
-        activatorBtnDataTestId: 'add-reviewers',
-        resultTestId: 'reviewers-container',
-        endpoint: EntityTypeEndpoint.Glossary,
-        isSelectableInsideForm: true,
-        type: 'Users',
-      });
-    } else {
-      await addTeamAsReviewer(
-        page,
-        glossaryData.reviewers[0].name,
-        'add-reviewers',
-        'reviewers-container',
-        true
-      );
-    }
-  }
-
-  // Save sits under the fixed bottom-center toast region, and an error toast
-  // left over from the Glossary landing page never drains on its own -- see
-  // dismissToasts. Every caller of this helper reaches Save the same way.
-  await dismissToasts(page);
-
-  const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-  await page.click('[data-testid="save-glossary"]');
-  await glossaryResponse;
+  await saveGlossaryForm(page);
 
   await expect(page).toHaveURL(/\/glossary\//);
 
@@ -561,129 +451,29 @@ export const fillGlossaryTermDetails = async (
   // Arrived due to parallel testing
   await closeFirstPopupAlert(page);
 
-  if (isGlossaryTerm) {
-    await page.click('[data-testid="add-placeholder-button"]');
-  } else {
-    await page.click('[data-testid="add-new-tag-button-header"]');
-  }
-
-  await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
-
-  await expect(
-    page.locator('[role="dialog"].edit-glossary-modal')
-  ).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(
-    'Add Glossary Term'
-  );
-
-  // Validation should work
-  await page.click('[data-testid="save-glossary-term"]');
+  const form = await openAddGlossaryTermForm(page, {
+    from: isGlossaryTerm ? 'placeholder' : 'header',
+  });
 
   if (validateCreateForm) {
-    await validateForm(page);
+    await saveGlossaryFormExpectingError(page, 'glossaryTerm');
+    await validateGlossaryFormRequiredFields(form);
   }
 
-  await expect(page.locator('[data-testid="name"]')).toBeVisible();
+  await fillGlossaryTermForm(page, form, {
+    name: term.name,
+    description: term.description,
+    synonyms: (term.synonyms ?? '')
+      .split(',')
+      .filter((synonym) => synonym !== ''),
+    mutuallyExclusive: Boolean(term.mutuallyExclusive),
+    references: [{ name: 'test', endpoint: 'https://test.com' }],
+    icon: term.icon ? { url: term.icon } : undefined,
+    color: term.color,
+    owners: term.owners?.map((owner) => owner.name),
+  });
 
-  await page.locator('[data-testid="name"]').fill(term.name);
-
-  // Scoped to the Add Glossary Term modal asserted above. The glossary page
-  // behind it has its own description editor, so page-global matched two.
-  const termDescription = page
-    .locator('[role="dialog"].edit-glossary-modal')
-    .locator(descriptionBox);
-
-  await expect(termDescription).toHaveCount(1);
-  await expect(termDescription).toBeVisible();
-
-  await termDescription.fill(term.description);
-
-  const synonyms = (term.synonyms ?? '').split(',');
-
-  await expect(page.locator('[data-testid="synonyms"]')).toBeVisible();
-
-  for (const synonym of synonyms) {
-    if (synonym === '') {
-      continue;
-    }
-    await page
-      .locator('[data-testid="synonyms"] input[type="search"]')
-      .fill(`${synonym}`);
-    await page
-      .locator('[data-testid="synonyms"] input[type="search"]')
-      .press('Enter');
-  }
-
-  await expect(
-    page.locator('[data-testid="form-item-alert"]')
-  ).not.toBeVisible();
-
-  if (term.mutuallyExclusive) {
-    await page.click('[data-testid="mutually-exclusive-button"]');
-
-    await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
-  }
-
-  await expect(page.locator('[data-testid="add-reference"]')).toBeVisible();
-
-  await page.click('[data-testid="add-reference"]');
-
-  await expect(page.locator('#name-0')).toBeVisible();
-
-  await page.locator('#name-0').fill('test');
-
-  await expect(page.locator('#url-0')).toBeVisible();
-
-  await page.locator('#url-0').fill('https://test.com');
-
-  if (term.icon) {
-    await fillStyleIconUrl(page, term.icon);
-  }
-
-  if (term.color) {
-    await selectStyleColor(page, term.color);
-  }
-
-  if (!isUndefined(term.owners)) {
-    await addMultiOwner({
-      page,
-      ownerNames: term.owners.map((owner) => owner.name),
-      activatorBtnDataTestId: 'add-owner',
-      resultTestId: 'owner-container',
-      endpoint: EntityTypeEndpoint.GlossaryTerm,
-      isSelectableInsideForm: true,
-      type: 'Users',
-    });
-  }
-};
-
-/**
- * The icon field is a picker, not a text input: the trigger opens a popover
- * with an icon grid and a URL tab. Re-clicking the trigger closes the popover
- * so it cannot cover the form's Save button.
- */
-export const selectStyleIcon = async (page: Page, iconName: string) => {
-  await page.getByTestId('icon-picker-btn').click();
-  await page.getByRole('button', { name: iconName, exact: true }).click();
-};
-
-export const fillStyleIconUrl = async (page: Page, iconUrl: string) => {
-  await page.getByTestId('icon-picker-btn').click();
-  await page.getByRole('tab', { name: 'URL' }).click();
-
-  const urlInput = page.getByRole('textbox', { name: 'Icon URL' });
-  await urlInput.fill(iconUrl);
-
-  await page.getByTestId('icon-picker-btn').click();
-  await expect(urlInput).not.toBeVisible();
-};
-
-/**
- * `color` must be one of ENTITY_PALETTE_HEX (uppercase) — the colour field is a
- * fixed palette of swatches, so an arbitrary hex cannot be picked.
- */
-export const selectStyleColor = async (page: Page, color: string) => {
-  await page.getByRole('button', { name: `Select color ${color}` }).click();
+  return form;
 };
 
 export const verifyTaskCreated = async (
@@ -833,33 +623,15 @@ export const updateGlossaryTermDataFromTree = async (
   page: Page,
   termFqn: string
 ) => {
-  const escapedFqn = termFqn.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-  await termRow.getByTestId('edit-button').click();
+  const form = await openEditGlossaryTermForm(page, termFqn);
 
-  await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
-
-  const editGlossaryModal = page.locator('[role="dialog"].edit-glossary-modal');
-
-  await expect(editGlossaryModal).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(
-    'Edit Glossary Term'
-  );
-
-  // Scoped to the modal this just waited for. The term details page behind it
-  // carries its own description editor, so the page-global locator matched two.
-  const modalDescription = editGlossaryModal.locator(descriptionBox);
-
-  await expect(modalDescription).toHaveCount(1);
-  await modalDescription.clear();
-  await modalDescription.fill('Updated description');
-
-  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-  await page.getByTestId('save-glossary-term').click();
-  await glossaryTermResponse;
+  await replaceFormDescription(form, 'Updated description');
+  await saveGlossaryTermForm(page, 'edit');
 
   await expect(
-    termRow.getByText('Updated description', { exact: true })
+    page
+      .locator(`[data-row-key="${escapeFqnForRowKey(termFqn)}"]`)
+      .getByText('Updated description', { exact: true })
   ).toBeVisible();
 };
 
@@ -875,10 +647,8 @@ export const validateGlossaryTerm = async (
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
-  await expect(
-    page.getByTestId('glossary-terms-table').getByTestId('loader')
-  ).toBeHidden();
-  await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
+  await waitForAllLoadersToDisappear(page.getByTestId('glossary-terms-table'));
+  await waitForAllLoadersToDisappear(page);
 
   const termsTable = page.getByTestId('glossary-terms-table');
   for (const header of ['Terms', 'Description', 'Owners', 'Status']) {
@@ -916,9 +686,7 @@ export const createGlossaryTerm = async (
     validateCreateForm,
     isGlossaryTermPage
   );
-  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms');
-  await page.click('[data-testid="save-glossary-term"]');
-  await glossaryTermResponse;
+  await saveGlossaryTermForm(page, 'create');
   await validateGlossaryTerm(page, term, status, isGlossaryTermPage);
 };
 
@@ -988,9 +756,10 @@ export const addAssetToGlossaryTerm = async (
       .fill(visibleName);
 
     await searchRes;
-    await page.click(
-      `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
-    );
+    await page
+      .locator(`[data-testid="table-data-card_${entityFqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
     await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
@@ -1162,9 +931,7 @@ export const updateNameForGlossaryTerm = async (
   // Max length validation
   await page.locator('#name').fill(INVALID_NAMES.MAX_LENGTH);
 
-  await expect(page.locator('#name_help')).toHaveText(
-    GLOSSARY_NAME_VALIDATION_ERROR
-  );
+  await expect(page.locator('#name_help')).toHaveText(GLOSSARY_NAME_SIZE_ERROR);
 
   await page.fill('#name', name);
   const updateNameResponsePromise = page.waitForResponse(
@@ -1344,11 +1111,13 @@ export const deleteGlossaryOrGlossaryTerm = async (
 
 export const addSynonyms = async (page: Page, synonyms: string[]) => {
   await page.getByTestId('synonym-add-button').click();
-  await page.locator('.ant-select-selection-overflow').click();
+  const synonymsInput = page
+    .getByTestId('synonyms-select')
+    .getByRole('combobox');
 
   for (const synonym of synonyms) {
-    await page.locator('#synonyms-select').fill(synonym);
-    await page.locator('#synonyms-select').press('Enter');
+    await synonymsInput.fill(synonym);
+    await synonymsInput.press('Enter');
   }
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
@@ -1520,7 +1289,7 @@ export const createDescriptionTaskForGlossary = async (
   if (isUndefined(value.assignee)) {
     await expect(
       page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee);
+    ).toHaveText(value.assignee ?? '');
 
     await expect(
       page.locator(
@@ -1574,7 +1343,7 @@ export const createTagTaskForGlossary = async (
   if (isUndefined(value.assignee)) {
     await expect(
       page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee);
+    ).toHaveText(value.assignee ?? '');
 
     await expect(
       page.locator(
@@ -1818,10 +1587,8 @@ export const filterStatus = async (
   );
   const statusColumnIndex = 2;
 
-  for (let i = 0; i < (await rows.count()); i++) {
-    const statusCell = rows
-      .nth(i)
-      .locator(`td:nth-child(${statusColumnIndex + 1})`);
+  for (const row of await rows.all()) {
+    const statusCell = row.locator(`td:nth-child(${statusColumnIndex + 1})`);
     const statusText = await statusCell.textContent();
 
     expect(expectedStatus).toContain(statusText);
@@ -1851,9 +1618,7 @@ export const addMultiOwnerInDialog = async (data: {
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
 
-  await page.click(activatorBtnLocator);
-
-  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+  await openOwnerPicker(page, page.locator(activatorBtnLocator));
 
   await waitForAllLoadersToDisappear(page);
 
@@ -1941,49 +1706,17 @@ export const dragAndDropColumn = async (
   });
 };
 
-export const getEscapedTermFqn = (term: GlossaryTermData) => {
-  return term.fullyQualifiedName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-};
-
-export const openEditGlossaryTermModal = async (
-  page: Page,
-  term: GlossaryTermData
-) => {
-  const escapedFqn = getEscapedTermFqn(term);
-  const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-  const glossaryTermRes = page.waitForResponse('/api/v1/glossaryTerms/name/*');
-  await termRow.getByTestId('edit-button').click();
-  await glossaryTermRes;
-  await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
-
-  await expect(
-    page.locator('[role="dialog"].edit-glossary-modal')
-  ).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(
-    'Edit Glossary Term'
-  );
-};
+export const getEscapedTermFqn = (term: GlossaryTermData) =>
+  escapeFqnForRowKey(term.fullyQualifiedName);
 
 export const updateGlossaryTermOwners = async (
   page: Page,
   term: GlossaryTermData,
   owners: UserTeamRef[]
 ) => {
-  await openEditGlossaryTermModal(page, term);
-  const ownerLocator = '.edit-glossary-modal [data-testid="add-owner"]';
-  await addMultiOwnerInDialog({
-    page,
-    ownerNames: owners.map((owner) => owner.name),
-    activatorBtnLocator: ownerLocator,
-    resultTestId: 'owner-container',
-    endpoint: EntityTypeEndpoint.GlossaryTerm,
-    isSelectableInsideForm: true,
-    type: 'Users',
+  await editGlossaryTermFromForm(page, term.fullyQualifiedName, {
+    owners: owners.map((owner) => owner.name),
   });
-
-  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-  await page.getByTestId('save-glossary-term').click();
-  await glossaryTermResponse;
 };
 
 export const updateGlossaryReviewer = async (
@@ -2006,22 +1739,9 @@ export const updateGlossaryTermReviewers = async (
   term: GlossaryTermData,
   reviewers: UserTeamRef[]
 ) => {
-  await openEditGlossaryTermModal(page, term);
-  const reviewerLocator = '.edit-glossary-modal [data-testid="add-reviewers"]';
-
-  await addMultiOwnerInDialog({
-    page,
-    ownerNames: reviewers.map((reviewer) => reviewer.name),
-    activatorBtnLocator: reviewerLocator,
-    resultTestId: 'reviewers-container',
-    endpoint: EntityTypeEndpoint.Glossary,
-    isSelectableInsideForm: true,
-    type: 'Users',
+  await editGlossaryTermFromForm(page, term.fullyQualifiedName, {
+    reviewers: reviewers.map((reviewer) => reviewer.name),
   });
-
-  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-  await page.getByTestId('save-glossary-term').click();
-  await glossaryTermResponse;
 };
 
 export const checkGlossaryTermDetails = async (
@@ -2030,23 +1750,20 @@ export const checkGlossaryTermDetails = async (
   owner: UserClass,
   reviewer: UserClass
 ) => {
-  await openEditGlossaryTermModal(page, term);
+  const form = await openEditGlossaryTermForm(page, term.fullyQualifiedName);
 
-  await expect(page.locator('[data-testid="name"]')).toHaveValue(term.name);
-  await expect(page.locator('[data-testid="display-name"]')).toHaveValue(
-    term.displayName
+  await expect(getFormNameInput(form)).toHaveValue(term.name);
+  await expect(getFormDisplayNameInput(form)).toHaveValue(term.displayName);
+  await expect(form.getByTestId('description')).toContainText(term.description);
+
+  // Selected owners/reviewers render as chips inside their autocomplete.
+  await expect(form.getByTestId('owners')).toContainText(
+    owner.responseData.displayName
   );
-  await expect(page.getByTestId('editor')).toContainText(term.description);
 
-  await expect(
-    page.locator('[data-testid="owner-container"] [data-testid="owner-link"]')
-  ).toContainText(owner.responseData.displayName);
-
-  await expect(
-    page.locator(
-      '[data-testid="reviewers-container"] [data-testid="owner-link"]'
-    )
-  ).toContainText(reviewer.responseData.displayName);
+  await expect(form.getByTestId('reviewers')).toContainText(
+    reviewer.responseData.displayName
+  );
 };
 
 export const setupGlossaryDenyPermissionTest = async (
@@ -2145,11 +1862,6 @@ export const performExpandAll = async (page: Page) => {
   await termRes;
 
   await waitForAllLoadersToDisappear(page);
-};
-
-export const openAddGlossaryTermModal = async (page: Page) => {
-  await page.click('[data-testid="add-new-tag-button-header"]');
-  await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 };
 
 /**
@@ -2352,3 +2064,68 @@ export const clickTreeNode = async (page: Page, nodeId: string) => {
   const node = getTreeNode(page, nodeId);
   await node.click();
 };
+
+// GlossaryTermApprovalWorkflow owns every glossary term's lifecycle stage, so a direct stage change
+// is rejected unless the workflow's trigger filter excludes the term. Specs that need terms in a
+// given stage exclude their own glossary while seeding. Parallel specs share the one filter, so
+// each adds or removes only its own clause through a compare-and-set patch, retried on conflict.
+const updateApprovalWorkflowExclusion = async (
+  apiContext: APIRequestContext,
+  glossary: Glossary,
+  exclude: boolean
+) => {
+  const clause = JSON.stringify({
+    in: [
+      `${glossary.responseData.fullyQualifiedName}.`,
+      { var: 'fullyQualifiedName' },
+    ],
+  });
+  let updated = false;
+  for (let attempt = 0; attempt < 5 && !updated; attempt++) {
+    const workflow = await (
+      await apiContext.get(
+        `/api/v1/governance/workflowDefinitions/name/${GLOSSARY_TERM_APPROVAL_WORKFLOW}`
+      )
+    ).json();
+    const filter = workflow.trigger.config.filter ?? {};
+    const current = filter.glossaryTerm
+      ? JSON.parse(filter.glossaryTerm)
+      : undefined;
+    const others = (current?.or ?? (current ? [current] : [])).filter(
+      (existing: unknown) => JSON.stringify(existing) !== clause
+    );
+    const clauses = exclude ? [...others, JSON.parse(clause)] : others;
+    const otherTypes = omit(filter, 'glossaryTerm');
+    const nextFilter = clauses.length
+      ? { ...otherTypes, glossaryTerm: JSON.stringify({ or: clauses }) }
+      : otherTypes;
+    const guard = isUndefined(workflow.trigger.config.filter)
+      ? []
+      : [{ op: 'test', path: '/trigger/config/filter', value: filter }];
+    const response = await apiContext.patch(
+      `/api/v1/governance/workflowDefinitions/${workflow.id}`,
+      {
+        data: [
+          ...guard,
+          { op: 'add', path: '/trigger/config/filter', value: nextFilter },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      }
+    );
+    updated = response.ok();
+  }
+
+  expect(updated, 'update GlossaryTermApprovalWorkflow trigger filter').toBe(
+    true
+  );
+};
+
+export const excludeGlossaryFromApprovalWorkflow = (
+  apiContext: APIRequestContext,
+  glossary: Glossary
+) => updateApprovalWorkflowExclusion(apiContext, glossary, true);
+
+export const includeGlossaryInApprovalWorkflow = (
+  apiContext: APIRequestContext,
+  glossary: Glossary
+) => updateApprovalWorkflowExclusion(apiContext, glossary, false);

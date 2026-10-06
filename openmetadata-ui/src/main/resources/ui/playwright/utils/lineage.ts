@@ -398,7 +398,9 @@ export const deleteEdge = async (
 
   await addPipeline.dispatchEvent('click');
 
-  await expect(page.getByRole('dialog').first()).toBeVisible();
+  await expect(
+    page.getByRole('dialog').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await page
     .locator(
@@ -406,7 +408,9 @@ export const deleteEdge = async (
     )
     .dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(
+    page.locator('[role="dialog"]').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   const sceneRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -792,9 +796,12 @@ export const editPipelineEdgeDescription = async (
   await page.locator('.edge-info-drawer').isVisible();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
-  await page.locator('.ProseMirror').first().click();
-  await page.locator('.ProseMirror').first().clear();
-  await page.locator('.ProseMirror').first().fill(description);
+  // The drawer opened two lines up owns the only editor in play; scoping to it
+  // beats indexing into every ProseMirror instance on the page.
+  const descriptionEditor = page.locator('.edge-info-drawer .ProseMirror');
+  await descriptionEditor.click();
+  await descriptionEditor.clear();
+  await descriptionEditor.fill(description);
   const descRes = page.waitForResponse('/api/v1/lineage');
   await page.getByTestId('save').click();
   await descRes;

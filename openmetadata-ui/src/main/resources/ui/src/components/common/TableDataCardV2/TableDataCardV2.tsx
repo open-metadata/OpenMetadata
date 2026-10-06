@@ -170,7 +170,9 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         <Row className="data-asset-info-row" wrap={false}>
           {showCheckboxes && (
             <Col className="flex-center" flex="20px">
-              <Checkbox checked={checked} />
+              {/* Same test id as ExploreSearchCard's checkbox, so Playwright selects
+                assets in this modal and in the asset tabs the same way. */}
+              <Checkbox checked={checked} data-testid="asset-checkbox" />
             </Col>
           )}
           <Col flex="auto">

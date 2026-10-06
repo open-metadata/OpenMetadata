@@ -84,12 +84,14 @@ describe('useIncidentActions', () => {
       ])
     );
 
+    const other = { id: 'r2' } as TestCaseResolutionStatus;
     const next = lastUpdater()({
-      data: [record],
+      data: [record, other],
       isLoading: false,
     });
 
     expect(next.data[0].severity).toBe(Severities.Severity2);
+    expect(next.data[1]).toBe(other);
   });
 
   it('should fall back to an empty id when the record has none', async () => {
@@ -169,6 +171,7 @@ describe('useIncidentActions', () => {
     );
     expect(mockGetByStateId).toHaveBeenCalledWith('task-1');
 
+    const other = { id: 'keep', stateId: 'task-9' } as TestCaseResolutionStatus;
     const next = lastUpdater()({
       data: [
         {
@@ -176,11 +179,13 @@ describe('useIncidentActions', () => {
           stateId: 'task-1',
           testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
         } as TestCaseResolutionStatus,
+        other,
       ],
       isLoading: false,
     });
 
     expect(next.data[0].id).toBe('x');
+    expect(next.data[1]).toBe(other);
   });
 
   it('should use the assign transition when the incident is not yet assigned', async () => {
@@ -290,6 +295,14 @@ describe('useIncidentActions', () => {
       },
       testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
     } as TestCaseResolutionStatus;
+    const other = {
+      id: 'keep',
+      testCaseReference: {
+        id: 't9',
+        type: 'testCase',
+        fullyQualifiedName: 'svc.db.other',
+      },
+    } as TestCaseResolutionStatus;
     const { result } = renderActions();
 
     act(() => {
@@ -311,6 +324,7 @@ describe('useIncidentActions', () => {
           },
           testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
         } as TestCaseResolutionStatus,
+        other,
       ],
       isLoading: false,
     });
@@ -318,5 +332,56 @@ describe('useIncidentActions', () => {
     expect(next.data[0].testCaseResolutionStatusType).toBe(
       TestCaseResolutionStatusTypes.Resolved
     );
+    expect(next.data[1]).toBe(other);
+  });
+
+  it('should default the assignee type and skip the refresh when nothing comes back', async () => {
+    mockTransition.mockResolvedValueOnce({});
+    mockGetByStateId.mockResolvedValueOnce(undefined);
+    const record = {
+      stateId: 'task-3',
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
+    } as TestCaseResolutionStatus;
+    const { result } = renderActions();
+
+    await act(async () => {
+      await result.current.handleAssigneeUpdate(record, [
+        { id: 'a2', name: 'ub' } as EntityReference,
+      ]);
+    });
+
+    expect(mockTransition).toHaveBeenCalledWith(
+      'task-3',
+      expect.objectContaining({
+        payload: {
+          assignees: [
+            expect.objectContaining({
+              type: 'user',
+              fullyQualifiedName: 'ub',
+            }),
+          ],
+        },
+      })
+    );
+    expect(mockSetData).not.toHaveBeenCalled();
+  });
+
+  it('should match rows without a test case reference on handleStatusSubmit', () => {
+    const value = {
+      id: 'new',
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.ACK,
+    } as TestCaseResolutionStatus;
+    const { result } = renderActions();
+
+    act(() => {
+      result.current.handleStatusSubmit(value);
+    });
+
+    const next = lastUpdater()({
+      data: [{ id: 'old' } as TestCaseResolutionStatus],
+      isLoading: false,
+    });
+
+    expect(next.data[0]).toBe(value);
   });
 });
