@@ -13,22 +13,39 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 
 @Execution(ExecutionMode.CONCURRENT)
 class TestCaseResolutionStatusRepositoryTest {
@@ -223,6 +240,82 @@ class TestCaseResolutionStatusRepositoryTest {
     assertEquals("Severity3", Severity.Severity3.value());
     assertEquals("Severity4", Severity.Severity4.value());
     assertEquals("Severity5", Severity.Severity5.value());
+  }
+
+  /**
+   * The incident listing reads every search hit back into {@link TestCaseResolutionStatus}, which
+   * rejects unknown properties, so each field the index adds for search alone has to be stripped
+   * first. One left behind fails every incident on the page, which is what the parent table
+   * reference did. The doc comes from the real index rather than a hand-written field list, so the
+   * next field the index adds fails here instead of in the IT lanes.
+   */
+  @Test
+  void searchOnlyFieldsOfAnIndexedIncidentAreStrippedBeforeTheStrictRead() {
+    Table table = tableWithParentRelations();
+    TestCase testCase = testCaseOn(table);
+    TestSuite basicSuite =
+        new TestSuite()
+            .withId(testCase.getTestSuite().getId())
+            .withName(testCase.getTestSuite().getName())
+            .withBasicEntityReference(table.getEntityReference());
+    TestCaseResolutionStatus incident =
+        createIncident(TestCaseResolutionStatusTypes.New)
+            .withTestCaseReference(testCase.getEntityReference());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () -> Entity.getEntityOrNull(eq(incident.getTestCaseReference()), anyString(), any()))
+          .thenReturn(testCase);
+      entity
+          .when(() -> Entity.getEntityOrNull(eq(testCase.getTestSuite()), anyString(), any()))
+          .thenReturn(basicSuite);
+      entity
+          .when(() -> Entity.getEntityByName(eq(Entity.TABLE), anyString(), anyString(), any()))
+          .thenReturn(table);
+      entity
+          .when(() -> Entity.getEntity(any(EntityReference.class), anyString(), any()))
+          .thenReturn(table);
+      entity.when(() -> Entity.propagatedParentTags(any())).thenCallRealMethod();
+
+      Map<String, Object> listedSource =
+          new HashMap<>(new TestCaseResolutionStatusIndex(incident).buildSearchIndexDoc());
+      TestCaseResolutionStatusRepository.SEARCH_ONLY_FIELDS.forEach(listedSource::remove);
+
+      assertDoesNotThrow(
+          () -> JsonUtils.readOrConvertValue(listedSource, TestCaseResolutionStatus.class));
+    }
+  }
+
+  private static Table tableWithParentRelations() {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("orders")
+        .withFullyQualifiedName("svc.db.sc.orders")
+        .withDatabase(reference(Entity.DATABASE, "db"))
+        .withDatabaseSchema(reference(Entity.DATABASE_SCHEMA, "sc"))
+        .withService(reference(Entity.DATABASE_SERVICE, "svc"))
+        .withCertification(
+            new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Gold")))
+        .withTags(
+            List.of(
+                new TagLabel()
+                    .withTagFQN("Glossary.Revenue")
+                    .withSource(TagLabel.TagSource.GLOSSARY)
+                    .withLabelType(TagLabel.LabelType.MANUAL)));
+  }
+
+  private static TestCase testCaseOn(Table table) {
+    return new TestCase()
+        .withId(UUID.randomUUID())
+        .withName("rowCount")
+        .withFullyQualifiedName(table.getFullyQualifiedName() + ".rowCount")
+        .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+        .withTestSuite(reference(Entity.TEST_SUITE, "orders.testSuite"));
+  }
+
+  private static EntityReference reference(String type, String name) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(type).withName(name);
   }
 
   private TestCaseResolutionStatus createIncident(TestCaseResolutionStatusTypes statusType) {
