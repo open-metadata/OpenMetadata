@@ -63,7 +63,6 @@ import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpClient;
@@ -94,7 +93,6 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
   private static final int INSERT_BATCH_CHARS = 60_000;
   private static final int PAGE_SIZE = 250;
   private static final String FORBIDDEN_STATUS = "403";
-  private static final int NOT_FOUND_STATUS = 404;
   private static final Set<AppRunRecord.Status> FAILED_RUN_STATUSES =
       EnumSet.of(AppRunRecord.Status.FAILED, AppRunRecord.Status.ACTIVE_ERROR);
   private static final Set<AppRunRecord.Status> FINISHED_RUN_STATUSES =
@@ -616,21 +614,12 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
     return isNew && FINISHED_RUN_STATUSES.contains(run.getStatus());
   }
 
+  /** The server answers 204, which the client returns as null, when the app has never run. */
   private static Long latestRunStart(final HttpClient httpClient) {
-    try {
-      final AppRunRecord latest =
-          httpClient.execute(
-              HttpMethod.GET,
-              "/v1/apps/name/" + APP_NAME + "/runs/latest",
-              null,
-              AppRunRecord.class);
-      return latest == null ? null : latest.getStartTime();
-    } catch (ApiException failure) {
-      if (failure.getStatusCode() == NOT_FOUND_STATUS) {
-        return null;
-      }
-      throw failure;
-    }
+    final AppRunRecord latest =
+        httpClient.execute(
+            HttpMethod.GET, "/v1/apps/name/" + APP_NAME + "/runs/latest", null, AppRunRecord.class);
+    return latest == null ? null : latest.getStartTime();
   }
 
   private record ToolCall(String tool, Map<String, Object> arguments) {}
