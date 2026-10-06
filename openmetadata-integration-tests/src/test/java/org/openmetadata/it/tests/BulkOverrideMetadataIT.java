@@ -11,10 +11,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.BulkApi;
@@ -23,6 +25,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -32,8 +35,10 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for the {@code overrideMetadata} flag on the bulk path ({@code PUT
@@ -431,6 +436,100 @@ public class BulkOverrideMetadataIT {
     assertEquals(List.of("c1"), constraints.getFirst().getColumns());
   }
 
+  @Test
+  void test_botKeepsUserOwners_withoutOverride(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    assertEquals(
+        List.of(shared.USER1.getId()),
+        ownerIdsAfterSourceSendsOwner(ns, "own_keep", shared.USER1_REF, false),
+        "owners from the source (ownerConfig/includeOwners) must not replace a user's owners");
+  }
+
+  @Test
+  void test_botReplacesUserOwners_withOverride(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    assertEquals(
+        List.of(shared.USER2.getId()),
+        ownerIdsAfterSourceSendsOwner(ns, "own_override", shared.USER1_REF, true),
+        "overrideMetadata=true lets the source's owners replace the stored ones");
+  }
+
+  @Test
+  void test_botFillsOwners_whenEntityHasNone(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    assertEquals(
+        List.of(shared.USER2.getId()),
+        ownerIdsAfterSourceSendsOwner(ns, "own_fill", null, false),
+        "a source owner still lands on an entity that has none");
+  }
+
+  /** A user (admin) creates the table with {@code userOwner}; ingestion re-syncs it as owned by USER2. */
+  private List<UUID> ownerIdsAfterSourceSendsOwner(
+      TestNamespace ns, String baseName, EntityReference userOwner, boolean overrideMetadata)
+      throws Exception {
+    String schemaFqn = setupSchema(ns);
+    CreateTable curated = table(ns, schemaFqn, baseName, "desc", "hash-v1");
+    if (userOwner != null) {
+      curated.setOwners(List.of(userOwner));
+    }
+    BulkApi.upsert("tables", List.of(curated), false, SdkClients.getAdminToken());
+
+    CreateTable fromSource = table(ns, schemaFqn, baseName, "desc", "hash-v2");
+    fromSource.setOwners(List.of(SharedEntities.get().USER2_REF));
+    BulkApi.upsert("tables", List.of(fromSource), overrideMetadata, BulkApi.botToken());
+
+    return getTable(schemaFqn + "." + curated.getName()).getOwners().stream()
+        .map(EntityReference::getId)
+        .toList();
+  }
+
+  @Test
+  void test_botKeepsTableRetentionPeriod_withoutOverride(TestNamespace ns) throws Exception {
+    assertTableRetentionPeriodKept(ns, "ret_off", false);
+  }
+
+  @Test
+  void test_botKeepsTableRetentionPeriod_withOverride(TestNamespace ns) throws Exception {
+    assertTableRetentionPeriodKept(ns, "ret_on", true);
+  }
+
+  private void assertTableRetentionPeriodKept(
+      TestNamespace ns, String baseName, boolean overrideMetadata) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    CreateTable curated = table(ns, schemaFqn, baseName, "desc", "hash-v1");
+    curated.setRetentionPeriod("P30D");
+    BulkApi.upsert("tables", List.of(curated), false, SdkClients.getAdminToken());
+
+    CreateTable fromSource = table(ns, schemaFqn, baseName, "desc", "hash-v2");
+    BulkApi.upsert("tables", List.of(fromSource), overrideMetadata, BulkApi.botToken());
+
+    assertEquals(
+        "P30D",
+        getTable(schemaFqn + "." + curated.getName()).getRetentionPeriod(),
+        "no source sends retentionPeriod, so a bot PUT must not blank it");
+  }
+
+  @Test
+  void test_botKeepsSchemaRetentionPeriod_withOverride(TestNamespace ns) throws Exception {
+    String databaseFqn = FullyQualifiedName.getParentFQN(setupSchema(ns));
+    CreateDatabaseSchema curated =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("ret_schema"))
+            .withDatabase(databaseFqn)
+            .withRetentionPeriod("P30D");
+    curated.setSourceHash("hash-v1");
+    BulkApi.upsert("databaseSchemas", List.of(curated), false, SdkClients.getAdminToken());
+
+    CreateDatabaseSchema fromSource =
+        new CreateDatabaseSchema().withName(curated.getName()).withDatabase(databaseFqn);
+    fromSource.setSourceHash("hash-v2");
+    BulkApi.upsert("databaseSchemas", List.of(fromSource), true, BulkApi.botToken());
+
+    DatabaseSchema schema =
+        SdkClients.adminClient().databaseSchemas().getByName(databaseFqn + "." + curated.getName());
+    assertEquals("P30D", schema.getRetentionPeriod());
+  }
+
   private TableConstraint primaryKey(String column) {
     return new TableConstraint()
         .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
@@ -505,7 +604,7 @@ public class BulkOverrideMetadataIT {
                     SdkClients.getServerUrl()
                         + "/v1/tables/name/"
                         + fqn
-                        + "?fields=columns,tags,certification,tableConstraints"))
+                        + "?fields=columns,tags,owners,certification,tableConstraints"))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .GET()
             .build();
