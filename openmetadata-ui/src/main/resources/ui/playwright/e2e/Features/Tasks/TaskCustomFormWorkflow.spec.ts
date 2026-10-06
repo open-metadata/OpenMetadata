@@ -29,6 +29,7 @@ import { expect, test } from '../../../support/fixtures/base';
 import { authenticateAdminPage } from '../../../utils/admin';
 import { getApiContext, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { type CreatedTask, getTaskCard } from '../../../utils/taskWorkflow';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 type TaskFormSchema = {
@@ -44,12 +45,6 @@ type TaskFormSchema = {
   createUiSchema?: Record<string, unknown>;
   transitionForms?: Record<string, unknown>;
   version?: number;
-};
-
-type CreatedTask = {
-  id: string;
-  taskId: string;
-  status?: string;
 };
 
 test.describe.serial(
@@ -441,12 +436,7 @@ test.describe.serial(
           .getByRole('button', { name: /tasks/i })
           .click();
         await waitForAllLoadersToDisappear(page);
-        await expect(
-          page
-            .locator('[data-testid="task-feed-card"]')
-            .filter({ visible: true })
-        ).not.toHaveCount(0);
-        await page.locator('[data-testid="task-feed-card"]').first().click();
+        await getTaskCard(page, createdTask).click();
         await expect(page.getByTestId('task-tab')).toBeVisible();
         await expect(page.getByTestId('task-payload-details')).toContainText(
           proposedDescription

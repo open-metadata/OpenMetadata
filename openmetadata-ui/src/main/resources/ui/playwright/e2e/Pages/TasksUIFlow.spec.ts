@@ -33,6 +33,8 @@ import {
   addTagSuggestion,
   approveTaskFromDetails,
   closeTaskFromDetails,
+  type CreatedTask,
+  getTaskCard,
   openEntityTasksTab,
   selectAssignee,
 } from '../../utils/taskWorkflow';
@@ -69,10 +71,12 @@ const createDescriptionTaskViaUI = async (
 
   const taskResponse = waitForTaskCreateResponse(page);
   await page.click('button[type="submit"]');
-  await taskResponse;
+  const created = await taskResponse;
 
   // Wait for navigation after task creation (page navigates to entity page with tasks tab)
   await waitForPageLoaded(page);
+
+  return (await created.json()) as CreatedTask;
 };
 
 const createTagTaskViaUI = async (
@@ -98,10 +102,12 @@ const createTagTaskViaUI = async (
 
   const taskResponse = waitForTaskCreateResponse(page);
   await page.click('button[type="submit"]');
-  await taskResponse;
+  const created = await taskResponse;
 
   // Wait for navigation after task creation (page navigates to entity page with tasks tab)
   await waitForPageLoaded(page);
+
+  return (await created.json()) as CreatedTask;
 };
 
 // isVisible() resolves immediately instead of retrying, so called right after
@@ -109,8 +115,10 @@ const createTagTaskViaUI = async (
 // click was then skipped and the resolve step ran against whatever panel was
 // open — the source of this spec's intermittent failures. Wait for the card.
 //
-const openFirstTaskCard = async (page: Page) => {
-  const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+// The card is addressed by the id of the task the step just created, so a
+// stale card left over from an earlier step can never be the one resolved.
+const openTaskCard = async (page: Page, task: CreatedTask) => {
+  const taskCard = getTaskCard(page, task);
   const taskDetailTab = page.locator('[data-testid="task-tab"]');
 
   await expect(taskCard).toBeVisible({ timeout: 30_000 });
@@ -121,14 +129,14 @@ const openFirstTaskCard = async (page: Page) => {
   await waitForPageLoaded(page);
 };
 
-const resolveTaskWithApproval = async (page: Page) => {
-  await openFirstTaskCard(page);
+const resolveTaskWithApproval = async (page: Page, task: CreatedTask) => {
+  await openTaskCard(page, task);
 
   await approveTaskFromDetails(page);
 };
 
-const resolveTaskWithRejection = async (page: Page) => {
-  await openFirstTaskCard(page);
+const resolveTaskWithRejection = async (page: Page, task: CreatedTask) => {
+  await openTaskCard(page, task);
 
   await closeTaskFromDetails(page);
 };
@@ -208,8 +216,10 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
         await waitForPageLoaded(page);
       });
 
+      let task: CreatedTask;
+
       await test.step('Create description task via UI', async () => {
-        await createDescriptionTaskViaUI(
+        task = await createDescriptionTaskViaUI(
           page,
           entityName.toLowerCase(),
           userName,
@@ -222,13 +232,13 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
         await waitForPageLoaded(page);
         await navigateToActivityFeedTasks(page);
 
-        const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+        const taskCard = getTaskCard(page, task);
         await expect(taskCard).toBeVisible();
         await expect(taskCard).toContainText('description');
       });
 
       await test.step('Resolve task with approval', async () => {
-        await resolveTaskWithApproval(page);
+        await resolveTaskWithApproval(page, task);
       });
     });
 
@@ -246,8 +256,10 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
         await waitForPageLoaded(page);
       });
 
+      let task: CreatedTask;
+
       await test.step('Create tag task via UI', async () => {
-        await createTagTaskViaUI(
+        task = await createTagTaskViaUI(
           page,
           entityName.toLowerCase(),
           userName,
@@ -260,13 +272,13 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
         await waitForPageLoaded(page);
         await navigateToActivityFeedTasks(page);
 
-        const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+        const taskCard = getTaskCard(page, task);
         await expect(taskCard).toBeVisible();
         await expect(taskCard).toContainText('tags');
       });
 
       await test.step('Reject task with comment', async () => {
-        await resolveTaskWithRejection(page);
+        await resolveTaskWithRejection(page, task);
       });
     });
   });
@@ -304,6 +316,7 @@ test.describe('Task Workflow - Table Column Tasks', () => {
   });
 
   test('Create description task for table column via UI', async ({ page }) => {
+    let task: CreatedTask;
     const userName = user.responseData?.name ?? '';
     const columnName = table.columnsName[0];
 
@@ -334,9 +347,9 @@ test.describe('Task Workflow - Table Column Tasks', () => {
       await getDescriptionBox(page).clear();
       await fillDescriptionBox(page, 'Column description test');
 
-      const taskResponse = page.waitForResponse('/api/v1/tasks');
+      const taskResponse = waitForTaskCreateResponse(page);
       await page.click('button[type="submit"]');
-      await taskResponse;
+      task = (await (await taskResponse).json()) as CreatedTask;
       await waitForPageLoaded(page);
     });
 
@@ -345,11 +358,12 @@ test.describe('Task Workflow - Table Column Tasks', () => {
       await waitForPageLoaded(page);
       await navigateToActivityFeedTasks(page);
 
-      await resolveTaskWithApproval(page);
+      await resolveTaskWithApproval(page, task);
     });
   });
 
   test('Create tag task for table column via UI', async ({ page }) => {
+    let task: CreatedTask;
     const userName = user.responseData?.name ?? '';
     const columnName = table.columnsName[0];
     const tagFQN = 'PersonalData.Personal';
@@ -386,9 +400,9 @@ test.describe('Task Workflow - Table Column Tasks', () => {
         tagTestId: `tag-${tagFQN}`,
       });
 
-      const taskResponse = page.waitForResponse('/api/v1/tasks');
+      const taskResponse = waitForTaskCreateResponse(page);
       await page.click('button[type="submit"]');
-      await taskResponse;
+      task = (await (await taskResponse).json()) as CreatedTask;
       await waitForPageLoaded(page);
     });
 
@@ -397,7 +411,7 @@ test.describe('Task Workflow - Table Column Tasks', () => {
       await waitForPageLoaded(page);
       await navigateToActivityFeedTasks(page);
 
-      await resolveTaskWithApproval(page);
+      await resolveTaskWithApproval(page, task);
     });
   });
 });
@@ -435,12 +449,13 @@ test.describe('Task Activity Feed Integration', () => {
 
   test('Verify task lifecycle in activity feed', async ({ page }) => {
     const userName = user.responseData?.name ?? '';
+    let task: CreatedTask;
 
     await test.step('Create a task', async () => {
       await table.visitEntityPage(page);
       await waitForPageLoaded(page);
 
-      await createDescriptionTaskViaUI(
+      task = await createDescriptionTaskViaUI(
         page,
         'table',
         userName,
@@ -459,7 +474,7 @@ test.describe('Task Activity Feed Integration', () => {
     });
 
     await test.step('Resolve task and verify it moves to Closed', async () => {
-      await resolveTaskWithApproval(page);
+      await resolveTaskWithApproval(page, task);
 
       // Already on the tasks panel here, so switch the filter directly.
       // Reloading and re-entering the panel hung openEntityTasksTab's loader
@@ -467,23 +482,21 @@ test.describe('Task Activity Feed Integration', () => {
       // navigation never produced the state that wait expects.
       await switchToClosedTaskFilter(page);
 
-      const closedTaskCard = page
-        .locator('[data-testid="task-feed-card"]')
-        .first();
-
-      await expect(closedTaskCard).toBeVisible({ timeout: 30_000 });
+      // The task just approved is the one that must now show under Closed.
+      await expect(getTaskCard(page, task)).toBeVisible({ timeout: 30_000 });
     });
   });
 
   test('Verify task shows correct metadata', async ({ page }) => {
     const userName = user.responseData?.name ?? '';
     const taskDescription = 'Metadata verification test';
+    let task: CreatedTask;
 
     await test.step('Create a task', async () => {
       await table.visitEntityPage(page);
       await waitForPageLoaded(page);
 
-      await createDescriptionTaskViaUI(
+      task = await createDescriptionTaskViaUI(
         page,
         'table',
         userName,
@@ -496,14 +509,14 @@ test.describe('Task Activity Feed Integration', () => {
       await waitForPageLoaded(page);
       await navigateToActivityFeedTasks(page);
 
-      const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+      const taskCard = getTaskCard(page, task);
       await expect(taskCard).toBeVisible();
 
       await expect(taskCard).toContainText('description');
     });
 
     await test.step('Cleanup - resolve task', async () => {
-      await resolveTaskWithApproval(page);
+      await resolveTaskWithApproval(page, task);
     });
   });
 });

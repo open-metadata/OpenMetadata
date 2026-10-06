@@ -264,14 +264,13 @@ test.describe('Move Assets Between Domains', () => {
       );
       await waitForAllLoadersToDisappear(page);
 
-      const domainLinks = page.locator('[data-testid="domain-link"]');
-      const count = await domainLinks.count();
-
-      if (count > 0) {
-        await expect(domainLinks.first()).toContainText(
-          subDomain.data.displayName
-        );
-      }
+      // The subdomain must be linked here -- the previous `if (count > 0)`
+      // guard let this step pass without asserting anything.
+      await expect(
+        page
+          .locator('[data-testid="domain-link"]')
+          .filter({ hasText: subDomain.data.displayName })
+      ).not.toHaveCount(0);
     } finally {
       await table.delete(apiContext);
       await subDomain.delete(apiContext);

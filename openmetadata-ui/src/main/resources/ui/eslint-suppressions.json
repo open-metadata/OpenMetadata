@@ -104,17 +104,12 @@
   },
   "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 7
+      "count": 4
     }
   },
   "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
-    }
-  },
-  "playwright/e2e/Features/DataProductDomainMigration.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
     }
   },
   "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts": {
@@ -330,11 +325,6 @@
       "count": 2
     }
   },
-  "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/e2e/Features/Tasks/TaskComments.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -347,7 +337,7 @@
   },
   "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 5
     }
   },
   "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts": {
@@ -356,11 +346,6 @@
     }
   },
   "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 6
     }
@@ -485,7 +470,7 @@
   },
   "playwright/e2e/Pages/DomainAdvanced.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Pages/DomainUIInteractions.spec.ts": {
@@ -596,9 +581,6 @@
     }
   },
   "playwright/e2e/Pages/TasksUIFlow.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    },
     "playwright/no-wait-for-selector": {
       "count": 4
     }

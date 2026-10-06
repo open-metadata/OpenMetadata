@@ -44,7 +44,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     'om-playwright/no-blanket-test-slow': 1,
     // One below main's count: replyAnnouncement targets the announcement
     // banner's title rather than the first of a list of items.
-    'om-playwright/no-positional-locator': 592,
+    'om-playwright/no-positional-locator': 569,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 18,

@@ -259,15 +259,15 @@ test.describe(
         await expect(
           userPage
             .locator(`[data-testid="app-bar-item-${SidebarItem.TAGS}"]`)
-            .first()
-        ).not.toBeVisible();
+            .filter({ visible: true })
+        ).toHaveCount(0);
 
         // Metrics is absent from saved nav's governance children — must not be visible
         await expect(
           userPage
             .locator(`[data-testid="app-bar-item-${SidebarItem.METRICS}"]`)
-            .first()
-        ).not.toBeVisible();
+            .filter({ visible: true })
+        ).toHaveCount(0);
 
         // Ontology Studio is absent from saved nav's governance children — must not be visible
         await expect(
@@ -275,8 +275,8 @@ test.describe(
             .locator(
               `[data-testid="app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}"]`
             )
-            .first()
-        ).not.toBeVisible();
+            .filter({ visible: true })
+        ).toHaveCount(0);
 
         await userPage.click('[data-testid="governance"]');
       });

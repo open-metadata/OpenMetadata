@@ -31,7 +31,7 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { selectAssignee } from '../../../utils/taskWorkflow';
+import { getTaskCard, selectAssignee } from '../../../utils/taskWorkflow';
 
 test.describe('Task Assignee Management', () => {
   const adminUser = new UserClass();
@@ -91,18 +91,19 @@ test.describe('Task Assignee Management', () => {
     await tasksMenuItem.click();
     await waitForAllLoadersToDisappear(page);
 
-    await page.locator('[data-testid="task-feed-card"]').first().click();
+    // The one task this suite seeded, named rather than taken by position.
+    await getTaskCard(page, task.responseData!).click();
 
     await expect(page.getByTestId('task-tab')).toBeVisible();
 
     await page.getByTestId('edit-assignees').click();
     await expect(page.getByTestId('select-assignee')).toBeVisible();
 
+    // The suite seeds exactly one assignee, so this resolves uniquely -- and
+    // fails loudly rather than silently picking one if that ever changes.
     const existingAssigneeRemoveButton = page
-      .locator(
-        '[data-testid="select-assignee"] .ant-select-selection-item-remove'
-      )
-      .first();
+      .getByTestId('select-assignee')
+      .locator('.ant-select-selection-item-remove');
 
     await existingAssigneeRemoveButton.click();
     await selectAssignee(page, nextAssignee.responseData.name);

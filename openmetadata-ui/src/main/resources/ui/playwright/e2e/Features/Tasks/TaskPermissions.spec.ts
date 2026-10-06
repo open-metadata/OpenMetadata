@@ -21,7 +21,11 @@ import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
-import { waitForPageLoaded } from '../../../utils/polling';
+import {
+  type CreatedTask,
+  getTaskCard,
+  openEntityTasksTab,
+} from '../../../utils/taskWorkflow';
 
 const createTaskAsAdmin = async (
   browser: Browser,
@@ -282,6 +286,10 @@ test.describe('Task Permissions - UI Button Visibility', () => {
   const nonOwnerUser = new UserClass();
   const table = new TableClass();
 
+  // The single task this describe seeds. Holding on to it lets each test name
+  // the card it means instead of taking whichever one the feed renders first.
+  let seededTask: CreatedTask;
+
   test.beforeAll('Setup test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -304,7 +312,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
       });
 
       // Create task assigned to owner
-      await apiContext.post('/api/v1/tasks', {
+      const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
@@ -315,6 +323,9 @@ test.describe('Task Permissions - UI Button Visibility', () => {
           },
         },
       });
+
+      expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
+      seededTask = (await taskResponse.json()) as CreatedTask;
     } finally {
       await afterAction();
     }
@@ -338,19 +349,11 @@ test.describe('Task Permissions - UI Button Visibility', () => {
   }) => {
     await ownerUser.signIn(page);
     await table.visitEntityPage(page);
+    await openEntityTasksTab(page);
 
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page
-      .getByTestId('global-setting-left-panel')
-      .getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, seededTask);
+    // The feed re-fetches after the API-created task, which can lag.
+    await expect(taskCard).toBeVisible({ timeout: 45000 });
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -367,19 +370,11 @@ test.describe('Task Permissions - UI Button Visibility', () => {
   }) => {
     await nonOwnerUser.signIn(page);
     await table.visitEntityPage(page);
+    await openEntityTasksTab(page);
 
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page
-      .getByTestId('global-setting-left-panel')
-      .getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, seededTask);
+    // The feed re-fetches after the API-created task, which can lag.
+    await expect(taskCard).toBeVisible({ timeout: 45000 });
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -394,19 +389,11 @@ test.describe('Task Permissions - UI Button Visibility', () => {
   test('admin should always see approve/reject buttons', async ({ page }) => {
     await adminUser.signIn(page);
     await table.visitEntityPage(page);
+    await openEntityTasksTab(page);
 
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page
-      .getByTestId('global-setting-left-panel')
-      .getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, seededTask);
+    // The feed re-fetches after the API-created task, which can lag.
+    await expect(taskCard).toBeVisible({ timeout: 45000 });
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -423,6 +410,10 @@ test.describe('Task Permissions - Team Assignment', () => {
   const nonTeamMember = new UserClass();
   const team = new TeamClass();
   const table = new TableClass();
+
+  // The single task this describe seeds. Holding on to it lets each test name
+  // the card it means instead of taking whichever one the feed renders first.
+  let seededTask: CreatedTask;
 
   test.beforeAll('Setup test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -461,7 +452,7 @@ test.describe('Task Permissions - Team Assignment', () => {
       });
 
       // Create task assigned to team
-      await apiContext.post('/api/v1/tasks', {
+      const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
@@ -472,6 +463,9 @@ test.describe('Task Permissions - Team Assignment', () => {
           },
         },
       });
+
+      expect(taskResponse.ok(), await taskResponse.text()).toBe(true);
+      seededTask = (await taskResponse.json()) as CreatedTask;
     } finally {
       await afterAction();
     }
@@ -496,19 +490,11 @@ test.describe('Task Permissions - Team Assignment', () => {
   }) => {
     await teamMember.signIn(page);
     await table.visitEntityPage(page);
+    await openEntityTasksTab(page);
 
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page
-      .getByTestId('global-setting-left-panel')
-      .getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, seededTask);
+    // The feed re-fetches after the API-created task, which can lag.
+    await expect(taskCard).toBeVisible({ timeout: 45000 });
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -521,19 +507,11 @@ test.describe('Task Permissions - Team Assignment', () => {
   test('non-team member should NOT see approve button', async ({ page }) => {
     await nonTeamMember.signIn(page);
     await table.visitEntityPage(page);
+    await openEntityTasksTab(page);
 
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page
-      .getByTestId('global-setting-left-panel')
-      .getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, seededTask);
+    // The feed re-fetches after the API-created task, which can lag.
+    await expect(taskCard).toBeVisible({ timeout: 45000 });
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -626,7 +604,7 @@ test.describe('Task Permissions - Task Creator', () => {
         assignees: [assigneeUser.responseData.name],
       },
     });
-    const task = await taskResponse.json();
+    const task = (await taskResponse.json()) as CreatedTask;
     await afterAction();
 
     // Try to close as creator user (who did NOT create this task)
@@ -635,24 +613,14 @@ test.describe('Task Permissions - Task Creator', () => {
 
     // Navigate to task and try to close
     await table.visitEntityPage(page);
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
+    await openEntityTasksTab(page);
 
-    const tasksTab = page
-      .getByTestId('global-setting-left-panel')
-      .getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
+    const taskCard = getTaskCard(page, task);
+    // The feed re-fetches after the API-created task, which can lag.
+    await expect(taskCard).toBeVisible({ timeout: 45000 });
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-
-    if (await taskCard.isVisible()) {
-      // Non-creator should NOT see close button
-      const closeBtn = taskCard.getByTestId('close-task');
-      await expect(closeBtn).not.toBeVisible();
-    }
+    // Non-creator should NOT see close button
+    await expect(taskCard.getByTestId('close-task')).not.toBeVisible();
 
     await page.close();
   });
