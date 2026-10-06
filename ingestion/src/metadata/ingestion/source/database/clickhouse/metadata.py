@@ -101,6 +101,11 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
+def _is_delta_lake_engine(engine: str | None) -> bool:
+    """True for ClickHouse DeltaLake* storage engines (e.g. DeltaLakeS3)."""
+    return bool(engine) and engine.startswith("DeltaLake")
+
+
 class ClickhouseSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
@@ -128,7 +133,7 @@ class ClickhouseSource(CommonDbSourceService):
         regular_tables = [
             TableNameAndType(
                 name=table_name,
-                type_=TableType.DeltaLake if engine.startswith("DeltaLake") else TableType.Regular,
+                type_=TableType.DeltaLake if _is_delta_lake_engine(engine) else TableType.Regular,
             )
             for table_name, engine in self.inspector.get_table_names_and_engines(schema_name) or []
         ]

@@ -10,12 +10,22 @@
 #  limitations under the License.
 """Tests for Clickhouse _get_column_type utility function."""
 
+from contextlib import contextmanager
+from types import SimpleNamespace
+
 from clickhouse_sqlalchemy.drivers.base import ischema_names as ch_ischema_names
 from sqlalchemy import types as sqltypes
 
 from metadata.generated.schema.entity.data.table import TableType
-from metadata.ingestion.source.database.clickhouse.metadata import ClickhouseSource
-from metadata.ingestion.source.database.clickhouse.utils import _get_column_type
+from metadata.ingestion.source.database.clickhouse.metadata import (
+    ClickhouseSource,
+    _is_delta_lake_engine,
+)
+from metadata.ingestion.source.database.clickhouse.utils import (
+    _get_column_type,
+    get_table_names_and_engines,
+    get_table_names_and_engines_dialect,
+)
 
 
 class MockDialect:
@@ -139,8 +149,8 @@ class TestClickhouseGeoTypes:
 class FakeInspector:
     """Stands in for the SQLAlchemy inspector (a DB boundary).
 
-    Engine strings are the real values observed against a live ClickHouse
-    instance (see K2 verification).
+    Engine strings are the real values reported by ClickHouse system.tables
+    (e.g. DeltaLakeS3, MergeTree, S3).
     """
 
     def __init__(self, table_rows, mview_names=None, view_names=None):
@@ -209,3 +219,106 @@ class TestClickhouseTableTypeByEngine:
     def test_materialized_view_maps_to_materialized_view(self):
         types = _types_by_name([], mview_names=["my_mview"])
         assert types["my_mview"] == TableType.MaterializedView
+
+
+class _Row:
+    """Row object mimicking a SQLAlchemy result row (attribute access)."""
+
+    def __init__(self, name, engine):
+        self.name = name
+        self.engine = engine
+
+
+class _RecordingDialect:
+    """Dialect whose _execute is the DB cursor boundary; records bind params
+    and returns canned rows so the real SQL-building path runs for real."""
+
+    def __init__(self, rows):
+        self._rows = rows
+        self.executed_params = None
+
+    def _execute(self, connection, query, **params):
+        self.executed_params = params
+        return self._rows
+
+
+def _fake_connection(database):
+    return SimpleNamespace(engine=SimpleNamespace(url=SimpleNamespace(database=database)))
+
+
+class TestGetTableNamesAndEnginesDialect:
+    """Exercise get_table_names_and_engines_dialect against a fake connection."""
+
+    def test_returns_name_engine_pairs_from_rows(self):
+        dialect = _RecordingDialect([_Row("delta_tbl", "DeltaLakeS3"), _Row("mt_tbl", "MergeTree")])
+        result = get_table_names_and_engines_dialect(dialect, _fake_connection("default"), schema="analytics")
+        assert result == [("delta_tbl", "DeltaLakeS3"), ("mt_tbl", "MergeTree")]
+
+    def test_uses_schema_as_database_bind_param(self):
+        dialect = _RecordingDialect([])
+        get_table_names_and_engines_dialect(dialect, _fake_connection("default"), schema="analytics")
+        assert dialect.executed_params == {"database": "analytics"}
+
+    def test_falls_back_to_connection_database_when_no_schema(self):
+        dialect = _RecordingDialect([])
+        get_table_names_and_engines_dialect(dialect, _fake_connection("default"), schema=None)
+        assert dialect.executed_params == {"database": "default"}
+
+
+class _WrapperDialect:
+    """Dialect stub for the inspector wrapper; records how it is called."""
+
+    def __init__(self, rows):
+        self._rows = rows
+        self.calls = []
+
+    def get_table_names_and_engines(self, conn, schema, info_cache=None):
+        self.calls.append((conn, schema, info_cache))
+        return self._rows
+
+
+class _FakeInspectorForWrapper:
+    def __init__(self, dialect):
+        self.dialect = dialect
+        self.info_cache = {}
+
+    @contextmanager
+    def _operation_context(self):
+        yield "the-conn"
+
+
+class TestGetTableNamesAndEnginesInspectorWrapper:
+    """Exercise the inspector wrapper delegating into the dialect."""
+
+    def test_delegates_to_dialect_within_operation_context(self):
+        dialect = _WrapperDialect([("t", "MergeTree")])
+        inspector = _FakeInspectorForWrapper(dialect)
+        result = get_table_names_and_engines(inspector, "db")
+        assert result == [("t", "MergeTree")]
+        assert dialect.calls == [("the-conn", "db", inspector.info_cache)]
+
+
+class TestTableIdentityPreservedAcrossEngine:
+    """The table NAME (identity anchor; FQN derives from it, not type_) is
+    unchanged whether the engine flips the type to DeltaLake or Regular."""
+
+    def test_name_is_preserved_regardless_of_engine(self):
+        delta = _types_by_name([("shared_name", "DeltaLakeS3")])
+        regular = _types_by_name([("shared_name", "MergeTree")])
+        assert "shared_name" in delta
+        assert "shared_name" in regular
+        assert delta["shared_name"] == TableType.DeltaLake
+        assert regular["shared_name"] == TableType.Regular
+
+
+class TestIsDeltaLakeEngine:
+    def test_deltalake_engines_are_true(self):
+        assert _is_delta_lake_engine("DeltaLakeS3")
+
+    def test_non_delta_engines_are_false(self):
+        assert not _is_delta_lake_engine("MergeTree")
+        assert not _is_delta_lake_engine("IcebergS3")
+
+    def test_empty_and_none_are_false(self):
+        assert not _is_delta_lake_engine("")
+        assert not _is_delta_lake_engine(None)
