@@ -83,6 +83,9 @@ const hasArea = ({ height, width }: TooltipSize) => height > 0 && width > 0;
 // Room past the newest and oldest runs, so their dots and the selection halo
 // are not cut at the plot edge.
 const X_AXIS_EDGE_GAP: [string, string] = ['2%', '2%'];
+// Runs at a single instant have no span, and ECharts stretches the time axis
+// to two years around them; a day centred on them keeps the axis readable.
+const SINGLE_INSTANT_X_PADDING = 12 * 60 * 60 * 1000;
 // Share of the data span left above and below the extremes, for the same
 // reason; a flat series gets a fixed step instead.
 const Y_AXIS_EDGE_SHARE = 0.04;
@@ -445,16 +448,22 @@ function TestSummaryGraph({
     [thresholdReference, activeRunTimestamp, t]
   );
 
-  const xAxis = useMemo<ChartXAxisProps>(
-    () => ({
+  const xAxis = useMemo<ChartXAxisProps>(() => {
+    const instants = new Set(plottedData.map((point) => Number(point.name)));
+    const [onlyInstant] = instants;
+
+    return {
       type: 'time',
       formatter: (value) =>
         formatDateTimeLong(Number(value), DATE_TIME_12_HOUR_FORMAT),
       axisLabel: { rotate: 45 },
       boundaryGap: X_AXIS_EDGE_GAP,
-    }),
-    []
-  );
+      ...(instants.size === 1 && {
+        min: onlyInstant - SINGLE_INSTANT_X_PADDING,
+        max: onlyInstant + SINGLE_INSTANT_X_PADDING,
+      }),
+    };
+  }, [plottedData]);
 
   const yAxis = useMemo<ChartYAxisProps>(
     () => ({

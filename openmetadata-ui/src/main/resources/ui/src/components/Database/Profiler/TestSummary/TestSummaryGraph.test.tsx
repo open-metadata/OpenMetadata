@@ -329,6 +329,24 @@ describe('TestSummaryGraph', () => {
     expect(getChartProps().xAxis?.boundaryGap).toEqual(['2%', '2%']);
   });
 
+  it('should centre a single run on a day of time axis, not two years', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(getChartProps().xAxis).toEqual(
+      expect.objectContaining({
+        min: NEWEST_RUN_TIMESTAMP - 12 * 60 * 60 * 1000,
+        max: NEWEST_RUN_TIMESTAMP + 12 * 60 * 60 * 1000,
+      })
+    );
+  });
+
+  it('should leave the time axis to fit the runs when they span time', () => {
+    render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
+
+    expect(getChartProps().xAxis).not.toHaveProperty('min');
+    expect(getChartProps().xAxis).not.toHaveProperty('max');
+  });
+
   it('should pad the y axis by a share of the data span', () => {
     render(<TestSummaryGraph {...mockProps} {...noExpectationProps} />);
 
