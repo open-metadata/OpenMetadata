@@ -103,6 +103,27 @@ export const DummyChildrenMentionsComponent = () => {
 };
 
 /**
+ * Requests mentioned tasks. The landing-page My Tasks widget is the only caller
+ * that reaches the MENTIONS task branch, and it must still be status-filtered.
+ */
+export const DummyChildrenTaskMentionsComponent = () => {
+  const { t } = useTranslation();
+  const { getTaskData } = useActivityFeedProvider();
+
+  useEffect(() => {
+    getTaskData(
+      FeedFilter.MENTIONS,
+      undefined,
+      undefined,
+      undefined,
+      TaskStatusGroup.Open
+    );
+  }, [getTaskData]);
+
+  return <p>{t(CHILDREN_LABEL)}</p>;
+};
+
+/**
  * Exposes the task list and the paging cursor so a test can observe what the
  * provider holds *between* a filter switch and the response landing.
  */

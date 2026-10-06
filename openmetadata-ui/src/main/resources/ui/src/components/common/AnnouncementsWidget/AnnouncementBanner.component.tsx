@@ -34,8 +34,8 @@ import {
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
-import { stripMarkdown } from '../../../utils/StringUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';

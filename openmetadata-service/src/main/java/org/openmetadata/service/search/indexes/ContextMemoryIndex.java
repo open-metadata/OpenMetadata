@@ -16,17 +16,31 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 public class ContextMemoryIndex implements TaggableIndex {
+
+  public static final String FIELD_STATUS = "entityStatus";
+  public static final String FIELD_ANCHOR_ID = "anchorId";
+  public static final String UNANCHORED = "unanchored";
+
+  private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
+      Set.of(
+          ContextMemoryRepository.FIELD_PRIMARY_ENTITY,
+          ContextMemoryRepository.FIELD_RELATED_ENTITIES,
+          ContextMemoryRepository.FIELD_SOURCE_FILE);
+
   final ContextMemory memory;
 
   public ContextMemoryIndex(ContextMemory memory) {
@@ -41,6 +55,13 @@ public class ContextMemoryIndex implements TaggableIndex {
   @Override
   public String getEntityTypeName() {
     return Entity.CONTEXT_MEMORY;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.addAll(REINDEX_RELATIONSHIP_FIELDS);
+    return Set.copyOf(fields);
   }
 
   @Override
@@ -73,6 +94,10 @@ public class ContextMemoryIndex implements TaggableIndex {
     return doc;
   }
 
+  public static String statusValue(ContextMemory memory) {
+    return memory.getEntityStatus() == null ? null : memory.getEntityStatus().value();
+  }
+
   private void applyShareConfig(Map<String, Object> doc) {
     doc.putAll(shareConfigFields(memory));
   }
@@ -86,7 +111,9 @@ public class ContextMemoryIndex implements TaggableIndex {
    * any divergence between them is a privacy bug rather than a cosmetic inconsistency.
    */
   public static Map<String, Object> shareConfigFields(ContextMemory memory) {
-    return shareConfigFields(memory.getShareConfig());
+    Map<String, Object> fields = shareConfigFields(memory.getShareConfig());
+    fields.put(FIELD_ANCHOR_ID, anchorId(memory));
+    return fields;
   }
 
   /**
@@ -100,6 +127,14 @@ public class ContextMemoryIndex implements TaggableIndex {
     fields.put("visibility", visibility == null ? null : visibility.value());
     fields.put("sharedWithIds", sharedWithIds(shareConfig));
     return fields;
+  }
+
+  public static String anchorId(ContextMemory memory) {
+    EntityReference anchor = memory.getPrimaryEntity();
+    // Context files and pages remain anchors: search cannot evaluate their read rules per hit.
+    return anchor == null
+        ? UNANCHORED
+        : anchor.getId() == null ? "anchored" : anchor.getId().toString();
   }
 
   private static List<String> sharedWithIds(MemoryShareConfig shareConfig) {

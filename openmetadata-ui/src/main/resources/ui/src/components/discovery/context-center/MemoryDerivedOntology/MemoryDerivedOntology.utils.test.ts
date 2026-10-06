@@ -78,6 +78,31 @@ describe('canProposeFromMemory', () => {
       canProposeFromMemory(published, { ...idle, queued: true }, viewer)
     ).toBe(false);
   });
+
+  it('blocks proposals from memories outside Approved', () => {
+    for (const status of [
+      EntityStatus.Draft,
+      EntityStatus.Archived,
+      EntityStatus.Deprecated,
+      EntityStatus.Rejected,
+    ]) {
+      const retired = {
+        ...memory(ShareVisibility.Public),
+        entityStatus: status,
+      };
+
+      expect(canProposeFromMemory(retired, idle, viewer)).toBe(false);
+    }
+  });
+
+  it('allows proposals from legacy memories without a stored status', () => {
+    const legacy = {
+      ...memory(ShareVisibility.Public),
+      entityStatus: undefined,
+    };
+
+    expect(canProposeFromMemory(legacy, idle, viewer)).toBe(true);
+  });
 });
 
 describe('getLastOutcomeMessage', () => {

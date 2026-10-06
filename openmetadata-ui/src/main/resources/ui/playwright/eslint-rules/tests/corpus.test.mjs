@@ -42,9 +42,12 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 1,
-    // One below main's count: replyAnnouncement targets the announcement
-    // banner's title rather than the first of a list of items.
-    'om-playwright/no-positional-locator': 610,
+    // Three below main's count: replyAnnouncement targets the announcement
+    // banner's title rather than the first of a list of items, and
+    // DomainFilterQueryFilter's quick-filter helpers now share one opener that
+    // reaches for `asset-filter-button` instead of the first button in the row.
+    // Two below that again: this branch deletes the S3 sample-data storage tests.
+    'om-playwright/no-positional-locator': 606,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 18,
