@@ -173,4 +173,31 @@ describe('PopoverTrigger — press (default, unchanged)', () => {
       expect(screen.getByTestId('panel')).toBeInTheDocument()
     );
   });
+  // A composite child that ignores injected props and refs — the shape most
+  // app components have. `cloneElement` cannot reach a DOM node through it, so
+  // without the wrapper the handlers are dropped and the card never opens.
+  it('opens on hover when the trigger is a component that drops props and refs', async () => {
+    const user = userEvent.setup();
+    const Opaque = ({ label }: { label: string }) => (
+      <a data-testid="anchor" href="/somewhere">
+        {label}
+      </a>
+    );
+
+    render(
+      <PopoverTrigger delay={0} trigger="hover">
+        <Opaque label="Hover me" />
+        <Popover>
+          <span data-testid="panel">Panel</span>
+        </Popover>
+      </PopoverTrigger>
+    );
+    setupPointerModality();
+
+    await user.hover(screen.getByTestId('anchor'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('panel')).toBeInTheDocument()
+    );
+  });
 });

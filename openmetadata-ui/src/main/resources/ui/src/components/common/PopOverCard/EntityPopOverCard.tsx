@@ -21,7 +21,6 @@ import { isUndefined } from 'lodash';
 import {
   FC,
   HTMLAttributes,
-  isValidElement,
   lazy,
   ReactNode,
   useCallback,
@@ -178,15 +177,7 @@ const EntityPopOverCard: FC<Props> = ({
     // antd's arrow and spacer left so the pointer could reach the panel, and
     // core draws no arrow while `closeDelay` already forgives the crossing.
     <PopoverTrigger isOpen={open} trigger="hover" onOpenChange={setOpen}>
-      {/*
-        Cloned to receive the hover handlers, so it must be an element — a bare
-        text child would get none and the card would never open.
-      */}
-      {isValidElement(children) ? (
-        children
-      ) : (
-        <span>{children as ReactNode}</span>
-      )}
+      {children as ReactNode}
       <Popover
         className="entity-popover-card tw:z-[9999]"
         containerClassName="tw:p-4"

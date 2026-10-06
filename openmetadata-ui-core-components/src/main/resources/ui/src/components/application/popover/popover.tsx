@@ -159,21 +159,34 @@ const HoverPopoverTrigger = ({
           clearTimeout(timer.current);
           setOpen(next);
         }}>
-        {isValidElement(triggerChild)
-          ? cloneElement(triggerChild, {
-              ...mergeProps(
-                triggerChild.props as Record<string, unknown>,
-                hoverProps
-              ),
-              // Captured so the Popover can anchor to it. A custom component
-              // only receives this if it forwards refs; a host element always
-              // does.
-              ref: mergeRefs(
-                (triggerChild as { ref?: never }).ref ?? null,
-                triggerRef
-              ),
-            } as Record<string, unknown>)
-          : triggerChild}
+        {/*
+          Only a host element is guaranteed to apply injected props and a ref.
+          A composite child may take a fixed prop list and drop both — the
+          handlers vanish, the card never opens, and React warns about a ref on
+          a function component. Callers pass whatever they like here, so the
+          wrapper is decided on the element's type rather than trusting them.
+          antd avoided this with `findDOMNode`, which React no longer offers.
+        */}
+        {isValidElement(triggerChild) &&
+        typeof triggerChild.type === 'string' ? (
+          cloneElement(triggerChild, {
+            ...mergeProps(
+              triggerChild.props as Record<string, unknown>,
+              hoverProps
+            ),
+            ref: mergeRefs(
+              (triggerChild as { ref?: never }).ref ?? null,
+              triggerRef
+            ),
+          } as Record<string, unknown>)
+        ) : (
+          <span
+            {...hoverProps}
+            className="tw:inline-flex"
+            ref={triggerRef as RefObject<HTMLSpanElement>}>
+            {triggerChild}
+          </span>
+        )}
         {rest}
       </AriaDialogTrigger>
     </PopoverHoverContext.Provider>

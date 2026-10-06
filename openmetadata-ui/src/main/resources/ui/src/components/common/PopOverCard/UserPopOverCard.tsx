@@ -13,7 +13,7 @@
 
 import { Popover, PopoverTrigger } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { FC, forwardRef, isValidElement, ReactNode } from 'react';
+import { FC, forwardRef, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import {
@@ -123,13 +123,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
     // and spacer so the pointer could reach it without crossing dead space.
     // Core draws no arrow, and `closeDelay` already forgives the gap.
     <PopoverTrigger trigger="hover">
-      {/*
-        The trigger is cloned to receive the hover handlers, so it has to be an
-        element. Callers pass arbitrary children here, and a bare text node
-        would silently get no handlers, leaving a card that never opens. antd
-        wrapped such children for the same reason.
-      */}
-      {isValidElement(trigger) ? trigger : <span>{trigger}</span>}
+      {trigger}
       <Popover
         className="tw:max-w-125"
         containerClassName="tw:flex tw:flex-col"
