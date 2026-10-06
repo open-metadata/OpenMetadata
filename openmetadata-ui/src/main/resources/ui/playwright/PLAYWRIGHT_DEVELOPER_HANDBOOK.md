@@ -1409,7 +1409,7 @@ not hand-edit it, run `yarn generate:playwright-rules` instead.
 | `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
 | `om-playwright/require-assertion-per-test` | error | Flag tests that only perform page interactions and verify nothing |
 | `openmetadata-playwright/no-form-sign-in` | error | Do not authenticate by driving the sign-in form; use signIn() or a page fixture |
-| `openmetadata-playwright/require-aggregation-wait-helper` | warn | Require waitForAggregation instead of waiting on search/aggregate directly |
+| `openmetadata-playwright/require-aggregation-wait-helper` | error | Require waitForAggregation instead of waiting on search/aggregate directly |
 | `playwright/missing-playwright-await` | error | Identify false positives when async Playwright APIs are not properly awaited. |
 | `playwright/no-element-handle` | error | The use of ElementHandle is discouraged, use Locator instead |
 | `playwright/no-eval` | error | The use of `page.$eval` and `page.$$eval` are discouraged, use `locator.evaluate` or `locator.evaluateAll` instead |
