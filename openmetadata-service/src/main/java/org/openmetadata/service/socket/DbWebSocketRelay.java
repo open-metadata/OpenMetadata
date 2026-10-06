@@ -263,7 +263,12 @@ public class DbWebSocketRelay implements WebSocketRelay {
 
   private void cleanupSafely() {
     try {
-      dao.deleteOlderThan(System.currentTimeMillis() - messageTtlMs);
+      // Reap relative to the DB clock (the newest createdAt), never the pod clock, so a pod whose
+      // wall clock drifts ahead cannot delete frames its peers have not yet polled.
+      long newest = dao.maxCreatedAt();
+      if (newest > 0) {
+        dao.deleteOlderThan(newest - messageTtlMs);
+      }
     } catch (Throwable t) {
       LOG.debug("DbWebSocketRelay cleanup failed", t);
     }
