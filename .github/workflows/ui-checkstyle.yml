@@ -121,6 +121,8 @@ jobs:
       bundle_build_changed_files: ${{ steps.bundle_build.outputs.changed_files }}
       bundle_budget_result: ${{ steps.bundle_budget.outcome }}
       bundle_budget_changed_files: ${{ steps.bundle_budget.outputs.changed_files }}
+      bundle_runtime_result: ${{ steps.bundle_runtime.outcome }}
+      bundle_runtime_changed_files: ${{ steps.bundle_runtime.outputs.changed_files }}
       eslint_has_findings: ${{ steps.lint_src.outputs.has_findings }}
       eslint_summary: ${{ steps.lint_src.outputs.summary }}
       eslint_details: ${{ steps.lint_src.outputs.details }}
@@ -528,6 +530,8 @@ jobs:
             openmetadata-ui/src/main/resources/ui/vite/**
             openmetadata-ui/src/main/resources/ui/index.html
             openmetadata-ui/src/main/resources/ui/scripts/check-bundle-chunks.mjs
+            openmetadata-ui/src/main/resources/ui/scripts/check-bundle-runtime.mjs
+            openmetadata-ui/src/main/resources/ui/scripts/bundle-boot-packages.json
             openmetadata-ui-core-components/src/main/resources/ui/src/**
             openmetadata-ui-core-components/src/main/resources/ui/package.json
             openmetadata-ui-core-components/src/main/resources/ui/yarn.lock
@@ -577,6 +581,26 @@ jobs:
             exit 1
           fi
           cat /tmp/bundle-check.out
+
+      # Loads every route chunk of the build in headless Chromium and fails on a
+      # chunk that still exports `undefined` after loading: a chunking change
+      # that compiles but breaks module initialisation at runtime.
+      - name: Bundle Runtime Check (route chunks load)
+        id: bundle_runtime
+        if: steps.bundle_build.outcome == 'success'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          npx playwright install --with-deps chromium > /tmp/pw-install.out 2>&1 || { tail -20 /tmp/pw-install.out; exit 1; }
+          if ! yarn bundle:runtime > /tmp/bundle-runtime.out 2>&1; then
+            cat /tmp/bundle-runtime.out
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/bundle-runtime.out | grep -E '^  src/|Bundle runtime check' | head -10 | sed 's/^/  /') || true
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          cat /tmp/bundle-runtime.out
 
       - name: Antd + Less Deprecation Guard (no new debt)
         id: tw_guard
@@ -674,9 +698,15 @@ jobs:
               },
               {
                 name:    'Bundle Budget',
-                reason:  'The entry chunk grew past its budget. Something landed on the entry graph that should be lazy — check the diff for a new top-level import.',
+                reason:  'The bootstrap or a first-view route grew past its budget, or a package not in scripts/bundle-boot-packages.json now loads on every page (the message shows the import chain). Something landed on the entry graph that should be lazy.',
                 result:  '${{ needs.checkstyle.outputs.bundle_budget_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.bundle_budget_changed_files) }} || '',
+              },
+              {
+                name:    'Bundle Runtime Check',
+                reason:  'A route chunk loads but one of its chunks still exports `undefined`: a chunking change broke module initialisation. Run `yarn build && yarn bundle:runtime` locally.',
+                result:  '${{ needs.checkstyle.outputs.bundle_runtime_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.bundle_runtime_changed_files) }} || '',
               },
               {
                 name:    'Antd + Less Deprecation Guard',
