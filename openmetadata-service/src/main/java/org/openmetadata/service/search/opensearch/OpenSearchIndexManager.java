@@ -689,6 +689,19 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     }
   }
 
+  @Override
+  public void refreshIndex(String indexName) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot refresh {}.", indexName);
+      return;
+    }
+    try {
+      client.indices().refresh(r -> r.index(indexName));
+    } catch (Exception e) {
+      LOG.error("Failed to refresh index {}: {}", indexName, e.getMessage(), e);
+    }
+  }
+
   private IndexSettings parseIndexSettingsFromJson(String settingsJson) {
     JsonParser parser =
         client

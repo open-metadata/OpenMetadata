@@ -67,6 +67,9 @@ import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.data.CreateWorksheet;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APICollection;
@@ -77,6 +80,8 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Worksheet;
+import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.ApiStatus;
@@ -98,6 +103,7 @@ import org.openmetadata.schema.type.SearchIndexDataType;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -108,20 +114,23 @@ import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 
 /**
- * Adding or removing a tag or glossary term from its Assets tab must go through the same versioned
- * update as an edit on the asset's own page: a new version, {@code updatedBy} set to the acting
- * user, and one change event per asset (collate #1526).
+ * Adding or removing assets on an Assets tab (a tag's, a glossary term's, a domain's or a data
+ * product's) must go through the same versioned update as an edit on the asset's own page: a new
+ * version, {@code updatedBy} set to the acting user, and one change event per asset (collate #1526).
  *
  * <p>Assets are created by admin and changed by {@code shared_user1}, so the change cannot be
  * consolidated into the creation version and {@code updatedBy} proves who acted.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
-public class AssetsTabTagVersioningIT {
+public class AssetsTabVersioningIT {
 
   private static final String ACTING_USER = "shared_user1";
   private static final String ADMIN_USER = "admin";
   private static final String COLUMN = "id";
+  private static final String OTHER_COLUMN = "name";
+  private static final String DOMAINS_FIELD = "domains";
+  private static final String DATA_PRODUCTS_FIELD = "dataProducts";
   private static final String TAGS_FIELD = "tags";
   private static final String COLUMN_TAGS_FIELD = "columns." + COLUMN + ".tags";
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
@@ -176,7 +185,7 @@ public class AssetsTabTagVersioningIT {
     Table table = createTable(ns, createSchema(ns, null), "tbl", null, null);
     long since = System.currentTimeMillis();
 
-    putTagAssets(SdkClients.adminClient(), tag, "add", List.of(columnRef(table)), false);
+    putTagAssets(SdkClients.adminClient(), tag, "add", List.of(columnRef(table, COLUMN)), false);
 
     Table updated = awaitTableVersion(table, FIRST_EDIT_VERSION);
     assertTrue(hasLabel(column(updated).getTags(), tag.getFullyQualifiedName()));
@@ -190,7 +199,7 @@ public class AssetsTabTagVersioningIT {
     Table table = createTable(ns, createSchema(ns, null), "tbl", null, classificationLabel(tag));
     long since = System.currentTimeMillis();
 
-    putTagAssets(SdkClients.adminClient(), tag, "remove", List.of(columnRef(table)), false);
+    putTagAssets(SdkClients.adminClient(), tag, "remove", List.of(columnRef(table, COLUMN)), false);
 
     Table updated = awaitTableVersion(table, FIRST_EDIT_VERSION);
     assertFalse(hasLabel(column(updated).getTags(), tag.getFullyQualifiedName()));
@@ -368,7 +377,8 @@ public class AssetsTabTagVersioningIT {
     Table table = createTable(ns, createSchema(ns, null), "tbl", null, null);
     long since = System.currentTimeMillis();
 
-    BulkOperationResult result = putGlossaryAssets(term, "add", List.of(columnRef(table)), false);
+    BulkOperationResult result =
+        putGlossaryAssets(term, "add", List.of(columnRef(table, COLUMN)), false);
 
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
     Table updated = fetchTable(table);
@@ -386,7 +396,7 @@ public class AssetsTabTagVersioningIT {
     long since = System.currentTimeMillis();
 
     BulkOperationResult result =
-        putGlossaryAssets(term, "remove", List.of(columnRef(table)), false);
+        putGlossaryAssets(term, "remove", List.of(columnRef(table, COLUMN)), false);
 
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
     Table updated = fetchTable(table);
@@ -454,6 +464,176 @@ public class AssetsTabTagVersioningIT {
     Table conflictingAfter = fetchTable(conflicting);
     assertEquals(CREATED_VERSION, conflictingAfter.getVersion());
     assertFalse(hasLabel(conflictingAfter.getTags(), added.getFullyQualifiedName()));
+  }
+
+  @Test
+  void columnsOfOneTable_areSavedOnceWithOneEvent(TestNamespace ns) throws Exception {
+    GlossaryTerm term = createTerm(createGlossary(ns, "cols", false), "term");
+    Table table = createTable(ns, createSchema(ns, null), "tbl", null, null);
+    long since = System.currentTimeMillis();
+
+    BulkOperationResult result =
+        putGlossaryAssets(
+            term, "add", List.of(columnRef(table, COLUMN), columnRef(table, OTHER_COLUMN)), false);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    Table updated = fetchTable(table);
+    assertEquals(FIRST_EDIT_VERSION, updated.getVersion());
+    assertTrue(hasLabel(column(updated, COLUMN).getTags(), term.getFullyQualifiedName()));
+    assertTrue(hasLabel(column(updated, OTHER_COLUMN).getTags(), term.getFullyQualifiedName()));
+    assertEquals(ACTING_USER, awaitUpdateEvent(Entity.TABLE, table.getId(), since).getUserName());
+  }
+
+  @Test
+  void aConflictingColumn_doesNotBlockTheOtherColumnsOfItsTable(TestNamespace ns) throws Exception {
+    Glossary glossary = createGlossary(ns, "mxcols", true);
+    GlossaryTerm held = createTerm(glossary, "held");
+    GlossaryTerm added = createTerm(glossary, "added");
+    Table table = createTable(ns, createSchema(ns, null), "tbl", null, glossaryLabel(held));
+    EntityReference conflicting = columnRef(table, COLUMN);
+    EntityReference clean = columnRef(table, OTHER_COLUMN);
+
+    BulkOperationResult result =
+        putGlossaryAssets(added, "add", List.of(conflicting, clean), false);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(List.of(conflicting.getId()), requestIds(result.getFailedRequest()));
+    assertEquals(List.of(clean.getId()), requestIds(result.getSuccessRequest()));
+    Table updated = fetchTable(table);
+    assertEquals(FIRST_EDIT_VERSION, updated.getVersion());
+    assertTrue(hasLabel(column(updated, OTHER_COLUMN).getTags(), added.getFullyQualifiedName()));
+    assertFalse(hasLabel(column(updated, COLUMN).getTags(), added.getFullyQualifiedName()));
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Domain and data product endpoints (sync)
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  void assetsAddedToDomain_getAVersionAndEventEach(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "add");
+    DatabaseSchema schema = createSchema(ns, null);
+    Table first = createTable(ns, schema, "first", null, null);
+    Table second = createTable(ns, schema, "second", null, null);
+    long since = System.currentTimeMillis();
+
+    BulkOperationResult result =
+        putDomainAssets(
+            domain, "add", List.of(first.getEntityReference(), second.getEntityReference()), false);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    for (Table table : List.of(first, second)) {
+      Table updated = fetchTable(table, DOMAINS_FIELD);
+      assertEquals(FIRST_EDIT_VERSION, updated.getVersion());
+      assertEquals(ACTING_USER, updated.getUpdatedBy());
+      assertTrue(holdsOwn(updated.getDomains(), domain.getId()));
+      assertUpdateEvent(Entity.TABLE, table.getId(), since, ACTING_USER, true, DOMAINS_FIELD);
+    }
+  }
+
+  @Test
+  void movingAnAssetToAnotherDomain_dropsTheOldDomainsDataProducts(TestNamespace ns)
+      throws Exception {
+    Domain from = createDomain(ns, "from");
+    Domain to = createDomain(ns, "to");
+    DataProduct product = createDataProduct(ns, from, "old");
+    Table table = createAssetTable(ns, createSchema(ns, null), "tbl", from, product);
+    long since = System.currentTimeMillis();
+
+    BulkOperationResult result =
+        putDomainAssets(to, "add", List.of(table.getEntityReference()), false);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    Table updated = fetchTable(table, DOMAINS_FIELD + "," + DATA_PRODUCTS_FIELD);
+    assertEquals(FIRST_EDIT_VERSION, updated.getVersion());
+    assertEquals(ACTING_USER, updated.getUpdatedBy());
+    assertTrue(holdsOwn(updated.getDomains(), to.getId()));
+    assertFalse(holds(updated.getDomains(), from.getId()));
+    assertFalse(holds(updated.getDataProducts(), product.getId()));
+    ChangeEvent event = awaitUpdateEvent(Entity.TABLE, table.getId(), since);
+    assertEquals(ACTING_USER, event.getUserName());
+    assertTrue(changedFields(event.getChangeDescription()).contains(DOMAINS_FIELD));
+  }
+
+  @Test
+  void assetRemovedFromItsDomain_getsAVersionAndEvent(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "rm");
+    Table table = createAssetTable(ns, createSchema(ns, null), "tbl", domain, null);
+    long since = System.currentTimeMillis();
+
+    BulkOperationResult result =
+        putDomainAssets(domain, "remove", List.of(table.getEntityReference()), false);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    Table updated = fetchTable(table, DOMAINS_FIELD);
+    assertEquals(FIRST_EDIT_VERSION, updated.getVersion());
+    assertEquals(ACTING_USER, updated.getUpdatedBy());
+    assertFalse(holds(updated.getDomains(), domain.getId()));
+    assertUpdateEvent(Entity.TABLE, table.getId(), since, ACTING_USER, false, DOMAINS_FIELD);
+  }
+
+  @Test
+  void removingAnAssetThatOnlyInheritsTheDomain_changesNothing(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "inh");
+    Table table = createTable(ns, createSchemaInDomain(ns, domain), "tbl", null, null);
+    long since = System.currentTimeMillis();
+
+    BulkOperationResult result =
+        putDomainAssets(domain, "remove", List.of(table.getEntityReference()), false);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    Table after = fetchTable(table, DOMAINS_FIELD);
+    assertEquals(CREATED_VERSION, after.getVersion());
+    assertTrue(holds(after.getDomains(), domain.getId()), "the inherited domain stays");
+    assertTrue(updateEvents(Entity.TABLE, table.getId(), since).isEmpty());
+  }
+
+  @Test
+  void dataProductAssets_getAVersionAndEventOnAttachAndDetach(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "dp");
+    DataProduct product = createDataProduct(ns, domain, "orders");
+    Table table = createAssetTable(ns, createSchema(ns, null), "tbl", domain, null);
+    long beforeAttach = System.currentTimeMillis();
+
+    BulkOperationResult attached =
+        putDataProductAssets(product, "add", List.of(table.getEntityReference()), false);
+
+    assertEquals(ApiStatus.SUCCESS, attached.getStatus());
+    Table afterAttach = fetchTable(table, DATA_PRODUCTS_FIELD);
+    assertEquals(FIRST_EDIT_VERSION, afterAttach.getVersion());
+    assertEquals(ACTING_USER, afterAttach.getUpdatedBy());
+    assertTrue(holds(afterAttach.getDataProducts(), product.getId()));
+    assertUpdateEvent(
+        Entity.TABLE, table.getId(), beforeAttach, ACTING_USER, true, DATA_PRODUCTS_FIELD);
+
+    long beforeDetach = System.currentTimeMillis();
+    BulkOperationResult detached =
+        putDataProductAssets(product, "remove", List.of(table.getEntityReference()), false);
+
+    assertEquals(ApiStatus.SUCCESS, detached.getStatus());
+    Table afterDetach = fetchTable(table, DATA_PRODUCTS_FIELD);
+    assertTrue(afterDetach.getVersion() > FIRST_EDIT_VERSION);
+    assertFalse(holds(afterDetach.getDataProducts(), product.getId()));
+    assertUpdateEvent(
+        Entity.TABLE, table.getId(), beforeDetach, ACTING_USER, false, DATA_PRODUCTS_FIELD);
+  }
+
+  @Test
+  void dataProductDryRun_writesNoVersionAndNoEvent(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "dpdry");
+    DataProduct product = createDataProduct(ns, domain, "dry");
+    Table table = createAssetTable(ns, createSchema(ns, null), "tbl", domain, null);
+    long since = System.currentTimeMillis();
+
+    BulkOperationResult result =
+        putDataProductAssets(product, "add", List.of(table.getEntityReference()), true);
+
+    assertTrue(result.getDryRun());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    Table after = fetchTable(table, DATA_PRODUCTS_FIELD);
+    assertEquals(CREATED_VERSION, after.getVersion());
+    assertFalse(holds(after.getDataProducts(), product.getId()));
+    assertTrue(updateEvents(Entity.TABLE, table.getId(), since).isEmpty());
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -525,14 +705,64 @@ public class AssetsTabTagVersioningIT {
             .withName(COLUMN)
             .withDataType(ColumnDataType.BIGINT)
             .withTags(labels(columnLabel));
+    Column otherColumn = new Column().withName(OTHER_COLUMN).withDataType(ColumnDataType.STRING);
     return SdkClients.adminClient()
         .tables()
         .create(
             new CreateTable()
                 .withName(ns.shortPrefix(name))
                 .withDatabaseSchema(schema.getFullyQualifiedName())
-                .withColumns(List.of(column))
+                .withColumns(List.of(column, otherColumn))
                 .withTags(labels(tableLabel)));
+  }
+
+  private static Table createAssetTable(
+      TestNamespace ns, DatabaseSchema schema, String name, Domain domain, DataProduct product) {
+    return SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.shortPrefix(name))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName(COLUMN).withDataType(ColumnDataType.BIGINT)))
+                .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName()))
+                .withDataProducts(
+                    product == null ? null : List.of(product.getFullyQualifiedName())));
+  }
+
+  private static DatabaseSchema createSchemaInDomain(TestNamespace ns, Domain domain) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    return SdkClients.adminClient()
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName(ns.shortPrefix("schema"))
+                .withDatabase(database.getFullyQualifiedName())
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+  }
+
+  private static Domain createDomain(TestNamespace ns, String name) {
+    return ns.trackRoot(
+        Entity.DOMAIN,
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.shortPrefix("dom_" + name))
+                    .withDomainType(DomainType.AGGREGATE)
+                    .withDescription("Assets tab versioning")));
+  }
+
+  private static DataProduct createDataProduct(TestNamespace ns, Domain domain, String name) {
+    return SdkClients.adminClient()
+        .dataProducts()
+        .create(
+            new CreateDataProduct()
+                .withName(ns.shortPrefix("dp_" + name))
+                .withDomains(List.of(domain.getFullyQualifiedName()))
+                .withDescription("Assets tab versioning"));
   }
 
   private static List<TagLabel> labels(TagLabel label) {
@@ -555,12 +785,12 @@ public class AssetsTabTagVersioningIT {
         .withState(TagLabel.State.CONFIRMED);
   }
 
-  private static EntityReference columnRef(Table table) {
+  private static EntityReference columnRef(Table table, String column) {
     // The Assets tab sends a tableColumn ref by FQN; the id only satisfies request validation.
     return new EntityReference()
         .withId(UUID.randomUUID())
         .withType(Entity.TABLE_COLUMN)
-        .withFullyQualifiedName(table.getFullyQualifiedName() + "." + COLUMN);
+        .withFullyQualifiedName(table.getFullyQualifiedName() + "." + column);
   }
 
   private static ChildAsset createChildAsset(String entityType, TestNamespace ns) {
@@ -786,7 +1016,43 @@ public class AssetsTabTagVersioningIT {
   }
 
   private static Table fetchTable(Table table) {
-    return SdkClients.adminClient().tables().get(table.getId().toString(), "columns,tags");
+    return fetchTable(table, "columns,tags");
+  }
+
+  private static Table fetchTable(Table table, String fields) {
+    return SdkClients.adminClient().tables().get(table.getId().toString(), fields);
+  }
+
+  private static BulkOperationResult putDomainAssets(
+      Domain domain, String action, List<EntityReference> assets, boolean dryRun) {
+    return putBulkAssets("/v1/domains/" + domain.getFullyQualifiedName(), action, assets, dryRun);
+  }
+
+  private static BulkOperationResult putDataProductAssets(
+      DataProduct product, String action, List<EntityReference> assets, boolean dryRun) {
+    return putBulkAssets(
+        "/v1/dataProducts/" + product.getFullyQualifiedName(), action, assets, dryRun);
+  }
+
+  private static BulkOperationResult putBulkAssets(
+      String containerPath, String action, List<EntityReference> assets, boolean dryRun) {
+    return SdkClients.user1Client()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            containerPath + "/assets/" + action,
+            new BulkAssets().withAssets(assets).withDryRun(dryRun),
+            BulkOperationResult.class);
+  }
+
+  private static boolean holds(List<EntityReference> refs, UUID id) {
+    return refs != null && refs.stream().anyMatch(ref -> id.equals(ref.getId()));
+  }
+
+  private static boolean holdsOwn(List<EntityReference> refs, UUID id) {
+    return refs != null
+        && refs.stream()
+            .anyMatch(ref -> id.equals(ref.getId()) && !Boolean.TRUE.equals(ref.getInherited()));
   }
 
   private static Table awaitTableVersion(Table table, Double version) {
@@ -816,8 +1082,12 @@ public class AssetsTabTagVersioningIT {
   }
 
   private static Column column(Table table) {
+    return column(table, COLUMN);
+  }
+
+  private static Column column(Table table, String name) {
     return table.getColumns().stream()
-        .filter(column -> COLUMN.equals(column.getName()))
+        .filter(column -> name.equals(column.getName()))
         .findFirst()
         .orElseThrow();
   }
@@ -842,6 +1112,15 @@ public class AssetsTabTagVersioningIT {
       ids.add(ref.getId());
     }
     return ids;
+  }
+
+  private static List<String> changedFields(ChangeDescription change) {
+    List<String> names = new ArrayList<>();
+    for (List<FieldChange> changes :
+        List.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())) {
+      changes.forEach(fieldChange -> names.add(fieldChange.getName()));
+    }
+    return names;
   }
 
   private static void assertChange(List<FieldChange> changes, String fieldName) {

@@ -67,6 +67,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.EntityUtil;
@@ -479,8 +480,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok()
-        .entity(
-            repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()))
+        .entity(repository.bulkAddAssets(name, request, ChangeActor.fromRequest(securityContext)))
         .build();
   }
 
@@ -512,8 +512,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok()
         .entity(
-            repository.bulkRemoveAssets(
-                name, request, securityContext.getUserPrincipal().getName()))
+            repository.bulkRemoveAssets(name, request, ChangeActor.fromRequest(securityContext)))
         .build();
   }
 

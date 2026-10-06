@@ -132,7 +132,7 @@ class SearchIndexHandlerTest {
 
     searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, Map.of());
+    verify(mockSearchRepository).updateEntitiesIndex(entities, Map.of(), false);
     verifyNoMoreInteractions(mockSearchRepository);
   }
 
@@ -141,11 +141,11 @@ class SearchIndexHandlerTest {
     List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
     doThrow(new RuntimeException("Bulk update failed"))
         .when(mockSearchRepository)
-        .updateEntitiesIndex(entities, Map.of());
+        .updateEntitiesIndex(entities, Map.of(), false);
 
     searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, Map.of());
+    verify(mockSearchRepository).updateEntitiesIndex(entities, Map.of(), false);
     verify(mockSearchRepository).updateEntityIndex(mockEntity);
     verify(mockSearchRepository).updateEntityIndex(mockEntity2);
     verifyNoMoreInteractions(mockSearchRepository);
@@ -159,7 +159,21 @@ class SearchIndexHandlerTest {
     searchIndexHandler.onEntitiesUpdated(
         entities, mockChangeDescription, mockSubjectContext, new EntityUpdateContext(revisions));
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, revisions);
+    verify(mockSearchRepository).updateEntitiesIndex(entities, revisions, false);
+    verifyNoMoreInteractions(mockSearchRepository);
+  }
+
+  @Test
+  void testOnEntitiesUpdatedForwardsSearchRefresh() {
+    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
+
+    searchIndexHandler.onEntitiesUpdated(
+        entities,
+        mockChangeDescription,
+        mockSubjectContext,
+        EntityUpdateContext.refreshingSearch());
+
+    verify(mockSearchRepository).updateEntitiesIndex(entities, Map.of(), true);
     verifyNoMoreInteractions(mockSearchRepository);
   }
 
@@ -169,12 +183,12 @@ class SearchIndexHandlerTest {
     Map<UUID, Long> revisions = Map.of(mockEntity.getId(), 11L, mockEntity2.getId(), 12L);
     doThrow(new RuntimeException("Bulk update failed"))
         .when(mockSearchRepository)
-        .updateEntitiesIndex(entities, revisions);
+        .updateEntitiesIndex(entities, revisions, false);
 
     searchIndexHandler.onEntitiesUpdated(
         entities, mockChangeDescription, mockSubjectContext, new EntityUpdateContext(revisions));
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, revisions);
+    verify(mockSearchRepository).updateEntitiesIndex(entities, revisions, false);
     verify(mockSearchRepository).updateEntityIndex(mockEntity, 11L);
     verify(mockSearchRepository).updateEntityIndex(mockEntity2, 12L);
     verifyNoMoreInteractions(mockSearchRepository);

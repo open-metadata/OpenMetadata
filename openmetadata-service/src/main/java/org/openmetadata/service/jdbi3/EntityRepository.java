@@ -551,7 +551,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomains;
-  protected final boolean supportsDataProducts;
+  @Getter protected final boolean supportsDataProducts;
   protected final boolean supportsDataContract;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
@@ -7742,7 +7742,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // one audit-log entry and avoids 100k change_event inserts on the delete hot path.
   }
 
-  private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
+  void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
     try (var ignored = phase(phasePrefix + "VersionHistory")) {
       List<UUID> historyIds = new ArrayList<>();
       List<String> historyExtensions = new ArrayList<>();
@@ -8871,18 +8871,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Create a Change Event on successful addition/removal of assets (skip when dryRun)
     if (!dryRun && result.getStatus().equals(ApiStatus.SUCCESS)) {
-      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
-      ChangeDescription change =
-          addBulkAddRemoveChangeDescription(
-              entityInterface.getVersion(), isAdd, request.getAssets(), null);
-      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
-      ChangeEvent changeEvent =
-          getChangeEvent(
-              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      recordBulkAssetsChange(fromEntity, entityId, isAdd, request.getAssets(), userName);
     }
 
     return result;
+  }
+
+  /** Records assets added to or removed from an entity as one change event on that entity. */
+  protected void recordBulkAssetsChange(
+      String fromEntity,
+      UUID entityId,
+      boolean isAdd,
+      List<EntityReference> assets,
+      String userName) {
+    EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+    ChangeDescription change =
+        addBulkAddRemoveChangeDescription(entityInterface.getVersion(), isAdd, assets, null);
+    String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
+    ChangeEvent changeEvent =
+        getChangeEvent(
+            entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 
   protected ChangeDescription addBulkAddRemoveChangeDescription(

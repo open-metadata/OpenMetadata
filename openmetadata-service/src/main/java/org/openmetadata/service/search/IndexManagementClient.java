@@ -178,6 +178,17 @@ public interface IndexManagementClient {
     throw new UnsupportedOperationException("forceMerge is not implemented for this search client");
   }
 
+  /**
+   * Makes every write already sent to an index or alias visible to search, as a write sent with
+   * {@code refresh=true} is.
+   *
+   * @param indexName the index or alias to refresh
+   */
+  default void refreshIndex(String indexName) {
+    throw new UnsupportedOperationException(
+        "refreshIndex is not implemented for this search client");
+  }
+
   record IndexStats(
       String name,
       long documents,

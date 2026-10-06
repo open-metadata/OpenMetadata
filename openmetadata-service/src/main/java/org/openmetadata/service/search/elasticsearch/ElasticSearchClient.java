@@ -337,6 +337,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void refreshIndex(String indexName) {
+    indexManager.refreshIndex(indexName);
+  }
+
+  @Override
   public Set<String> getIndicesByAlias(String aliasName) {
     return indexManager.getIndicesByAlias(aliasName);
   }

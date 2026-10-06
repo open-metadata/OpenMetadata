@@ -73,6 +73,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ODPSConverter;
 
@@ -409,7 +410,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return buildBulkOperationResponse(
-        repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()));
+        repository.bulkAddAssets(name, request, ChangeActor.fromRequest(securityContext)));
   }
 
   @PUT
@@ -446,7 +447,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return buildBulkOperationResponse(
-        repository.bulkRemoveAssets(name, request, securityContext.getUserPrincipal().getName()));
+        repository.bulkRemoveAssets(name, request, ChangeActor.fromRequest(securityContext)));
   }
 
   @PUT

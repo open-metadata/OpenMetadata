@@ -206,7 +206,8 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
         updateContext == null ? EntityUpdateContext.empty() : updateContext;
 
     try {
-      searchRepository.updateEntitiesIndex(entities, effectiveContext.relationshipRevisions());
+      searchRepository.updateEntitiesIndex(
+          entities, effectiveContext.relationshipRevisions(), effectiveContext.refreshSearch());
       LOG.debug("Successfully updated search indexes for {} entities", entities.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk update search indexes for {} entities", entities.size(), e);

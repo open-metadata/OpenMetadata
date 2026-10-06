@@ -2202,16 +2202,30 @@ public class SearchRepository {
    * @param entities List of entities to update in the search index
    */
   public void updateEntitiesIndex(List<? extends EntityInterface> entities) {
-    updateEntitiesIndexInternal(entities, Map.of());
+    updateEntitiesIndexInternal(entities, Map.of(), false);
   }
 
   public void updateEntitiesIndex(
       List<? extends EntityInterface> entities, Map<UUID, Long> relationshipRevisions) {
-    updateEntitiesIndexInternal(entities, relationshipRevisions);
+    updateEntitiesIndexInternal(entities, relationshipRevisions, false);
+  }
+
+  /**
+   * As {@link #updateEntitiesIndex(List, Map)}, and with {@code refreshSearch} each written index is
+   * refreshed before its changes are propagated, so the update is searchable when this returns and
+   * the propagation's update-by-query does not skip the documents just written as conflicts.
+   */
+  public void updateEntitiesIndex(
+      List<? extends EntityInterface> entities,
+      Map<UUID, Long> relationshipRevisions,
+      boolean refreshSearch) {
+    updateEntitiesIndexInternal(entities, relationshipRevisions, refreshSearch);
   }
 
   private void updateEntitiesIndexInternal(
-      List<? extends EntityInterface> entities, Map<UUID, Long> suppliedRelationshipRevisions) {
+      List<? extends EntityInterface> entities,
+      Map<UUID, Long> suppliedRelationshipRevisions,
+      boolean refreshSearch) {
     if (entities == null || entities.isEmpty()) {
       return;
     }
@@ -2398,6 +2412,9 @@ public class SearchRepository {
         if (bulkSink != null) {
           closeBulkSinkAndCheckQuiescent(bulkSink);
         }
+      }
+      if (refreshSearch && bulkWriteAttempted) {
+        getSearchClient().refreshIndex(getIndexMapping(entityType).getIndexName(getClusterAlias()));
       }
     }
 

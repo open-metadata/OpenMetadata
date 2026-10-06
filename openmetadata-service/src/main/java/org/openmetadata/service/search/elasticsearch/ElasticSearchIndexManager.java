@@ -655,4 +655,17 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to force-merge index {}: {}", indexName, e.getMessage(), e);
     }
   }
+
+  @Override
+  public void refreshIndex(String indexName) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot refresh {}.", indexName);
+      return;
+    }
+    try {
+      client.indices().refresh(r -> r.index(indexName));
+    } catch (Exception e) {
+      LOG.error("Failed to refresh index {}: {}", indexName, e.getMessage(), e);
+    }
+  }
 }

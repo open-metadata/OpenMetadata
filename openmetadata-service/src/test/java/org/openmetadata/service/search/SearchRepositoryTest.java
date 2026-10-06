@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -52,6 +53,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
@@ -712,6 +714,28 @@ class SearchRepositoryTest {
 
     verify(mockBulkSink).close();
     verify(realSearchRepository, never()).updateEntityIndex(any());
+  }
+
+  @Test
+  void testUpdateEntitiesIndexRefreshesTheWrittenIndexOnlyWhenAsked() throws Exception {
+    SearchRepository realSearchRepository = mock(SearchRepository.class);
+    BulkSink mockBulkSink = mock(BulkSink.class);
+    doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any(), any(), anyBoolean());
+    when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
+        .thenReturn(mockBulkSink);
+    when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
+    when(realSearchRepository.getIndexMapping("table"))
+        .thenReturn(IndexMapping.builder().indexName("table_search_index").build());
+    when(mockBulkSink.flushAndAwait(anyInt())).thenReturn(true);
+    when(mockBulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
+
+    EntityInterface entity = new MockEntityWithType("table", "table1");
+    realSearchRepository.updateEntitiesIndex(List.of(entity), Map.of(), false);
+    verify(elasticSearchClient, never()).refreshIndex(any());
+
+    realSearchRepository.updateEntitiesIndex(List.of(entity), Map.of(), true);
+    verify(elasticSearchClient).refreshIndex("table_search_index");
   }
 
   /** Mock entity that allows setting a specific entity type for testing */
