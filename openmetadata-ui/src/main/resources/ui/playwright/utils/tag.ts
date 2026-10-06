@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -243,7 +244,7 @@ export const checkAssetsCount = async (page: Page, count: number) => {
   // give it the same 30s the domain util allows instead of the default 15s.
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(count.toString(), { timeout: 30_000 });
+  ).toContainText(count.toString(), { timeout: ACTION_TIMEOUT });
 };
 
 export const setupAssetsForTag = async (page: Page) => {
