@@ -5236,6 +5236,8 @@
     "template-is-valid": "The template is valid.",
     "temporary-error-try-reloading": "We konden dit nu niet laden. Dit is meestal tijdelijk — opnieuw laden lost het vaak op.",
     "test-case-count-info": "Toont het aantal testgevallen dat is geselecteerd voor deze pipeline. 'Alle' geeft aan dat alle beschikbare testgevallen worden uitgevoerd.",
+    "test-case-first-run-scheduled": "Deze test is nog niet uitgevoerd. De resultaten verschijnen na de volgende geplande uitvoering.",
+    "test-case-has-not-run": "Deze test is nog niet uitgevoerd.",
     "test-case-insight-description": "Toegang tot een gecentraliseerde weergave van de gezondheid van uw dataset op basis van geconfigureerde testvalidaties.",
     "test-case-name-validation": "Naam mag geen dubbele dubbelpunten (::), aanhalingstekens (\") of groter-dan symbolen (>) bevatten.",
     "test-case-not-run-yet": "Deze test is nog niet uitgevoerd. Voeg deze toe aan een pipeline om resultaten te verzamelen.",

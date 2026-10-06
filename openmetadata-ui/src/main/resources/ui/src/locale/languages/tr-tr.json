@@ -5236,6 +5236,8 @@
     "template-is-valid": "The template is valid.",
     "temporary-error-try-reloading": "Bunu şu anda yükleyemedik. Genellikle geçicidir — yeniden yüklemek çoğu zaman sorunu giderir.",
     "test-case-count-info": "Bu boru hattı için seçilen test senaryosu sayısını gösterir. 'Tümü' mevcut tüm test senaryolarının çalıştırılacağını belirtir.",
+    "test-case-first-run-scheduled": "Bu test henüz çalıştırılmadı. Sonuçlar bir sonraki zamanlanmış çalıştırmadan sonra görünecek.",
+    "test-case-has-not-run": "Bu test henüz çalıştırılmadı.",
     "test-case-insight-description": "Yapılandırılmış test doğrulamalarına dayalı olarak veri setinizin sağlığının merkezi görünümüne erişin.",
     "test-case-name-validation": "Ad çift iki nokta (::), tırnak işareti (\") veya büyüktür simgesi (>) içeremez.",
     "test-case-not-run-yet": "Bu test henüz çalıştırılmadı. Sonuçları toplamaya başlamak için bir işlem hattına ekleyin.",

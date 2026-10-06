@@ -5236,6 +5236,8 @@
     "template-is-valid": "The template is valid.",
     "temporary-error-try-reloading": "No pudimos cargar esto ahora mismo. Suele ser temporal: recargar suele solucionarlo.",
     "test-case-count-info": "Muestra el número de casos de prueba seleccionados para este pipeline. 'Todos' indica que se ejecutarán todos los casos de prueba disponibles.",
+    "test-case-first-run-scheduled": "Esta prueba aún no se ha ejecutado. Los resultados aparecerán tras su próxima ejecución programada.",
+    "test-case-has-not-run": "Esta prueba aún no se ha ejecutado.",
     "test-case-insight-description": "Accede a una vista centralizada de la salud de tu conjunto de datos basada en las validaciones de prueba configuradas.",
     "test-case-name-validation": "El nombre no puede contener dos puntos dobles (::), comillas (\") o símbolos de mayor que (>).",
     "test-case-not-run-yet": "Esta prueba aún no se ha ejecutado. Añádala a un pipeline para empezar a recopilar resultados.",

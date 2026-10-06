@@ -5236,6 +5236,8 @@
     "template-is-valid": "The template is valid.",
     "temporary-error-try-reloading": "Nous n'avons pas pu charger ceci pour le moment. C'est généralement temporaire — recharger résout souvent le problème.",
     "test-case-count-info": "Affiche le nombre de cas de test sélectionnés pour ce pipeline. 'Tous' indique que tous les cas de test disponibles seront exécutés.",
+    "test-case-first-run-scheduled": "Ce test n’a pas encore été exécuté. Les résultats apparaîtront après sa prochaine exécution planifiée.",
+    "test-case-has-not-run": "Ce test n’a pas encore été exécuté.",
     "test-case-insight-description": "Accédez à une vue centralisée de la santé de votre dataset basée sur les validations de test configurées.",
     "test-case-name-validation": "Le nom ne peut pas contenir de double deux-points (::), de guillemets (\") ou de symboles supérieur à (>).",
     "test-case-not-run-yet": "Ce test n’a pas encore été exécuté. Ajoutez-le à un pipeline pour commencer à collecter des résultats.",

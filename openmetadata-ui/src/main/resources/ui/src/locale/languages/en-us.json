@@ -5236,6 +5236,8 @@
     "template-is-valid": "The template is valid.",
     "temporary-error-try-reloading": "We couldn't load this right now. It's usually temporary — reloading often fixes it.",
     "test-case-count-info": "Shows the number of test cases selected for this pipeline. 'All' indicates that all available test cases will be executed.",
+    "test-case-first-run-scheduled": "This test has not run yet. Results will appear after its next scheduled run.",
+    "test-case-has-not-run": "This test has not run yet.",
     "test-case-insight-description": "Access a centralized view of your dataset's health based on configured test validations.",
     "test-case-name-validation": "Name cannot contain double colons (::), quotes (\"), or greater-than symbols (>).",
     "test-case-not-run-yet": "This test has not run yet. Add it to a pipeline to start collecting results.",

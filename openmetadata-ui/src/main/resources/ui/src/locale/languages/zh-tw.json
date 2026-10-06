@@ -5236,6 +5236,8 @@
     "template-is-valid": "The template is valid.",
     "temporary-error-try-reloading": "我們暫時無法載入此內容。這通常是暫時性的——重新載入通常即可解決。",
     "test-case-count-info": "顯示此管道選定的測試案例數量。「全部」表示將執行所有可用的測試案例。",
+    "test-case-first-run-scheduled": "此測試尚未執行。下一次排程執行後將顯示結果。",
+    "test-case-has-not-run": "此測試尚未執行。",
     "test-case-insight-description": "根據設定的測試驗證，存取您資料集的健康狀況集中檢視。",
     "test-case-name-validation": "名稱不能包含雙冒號(::)、引號(\")或大於符號(>)。",
     "test-case-not-run-yet": "此測試尚未執行。請將其新增至管線以開始收集結果。",

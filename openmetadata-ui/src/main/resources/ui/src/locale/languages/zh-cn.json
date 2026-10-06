@@ -5236,6 +5236,8 @@
     "template-is-valid": "The template is valid.",
     "temporary-error-try-reloading": "我们暂时无法加载此内容。这通常是暂时性的——重新加载通常即可解决。",
     "test-case-count-info": "显示为此管道选择的测试用例数量。\"全部\"表示将执行所有可用的测试用例。",
+    "test-case-first-run-scheduled": "此测试尚未运行。下一次计划运行后将显示结果。",
+    "test-case-has-not-run": "此测试尚未运行。",
     "test-case-insight-description": "基于配置的测试验证，访问数据集健康状况的集中视图。",
     "test-case-name-validation": "名称不能包含双冒号(::)、引号(\")或大于符号(>)。",
     "test-case-not-run-yet": "此测试尚未运行。请将其添加到管道以开始收集结果。",

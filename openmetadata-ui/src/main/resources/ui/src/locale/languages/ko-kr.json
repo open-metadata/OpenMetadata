@@ -5236,6 +5236,8 @@
     "template-is-valid": "The template is valid.",
     "temporary-error-try-reloading": "지금은 이 항목을 불러올 수 없습니다. 대개 일시적인 문제이며, 새로고침하면 해결되는 경우가 많습니다.",
     "test-case-count-info": "이 파이프라인에 선택된 테스트 케이스 수를 표시합니다. '전체'는 사용 가능한 모든 테스트 케이스가 실행됨을 나타냅니다.",
+    "test-case-first-run-scheduled": "이 테스트는 아직 실행되지 않았습니다. 다음 예약 실행 후 결과가 표시됩니다.",
+    "test-case-has-not-run": "이 테스트는 아직 실행되지 않았습니다.",
     "test-case-insight-description": "구성된 테스트 검증을 기반으로 데이터셋 상태의 중앙 집중식 보기에 액세스합니다.",
     "test-case-name-validation": "이름에는 이중 콜론(::), 따옴표(\"), 또는 보다 큰 기호(>)를 포함할 수 없습니다.",
     "test-case-not-run-yet": "이 테스트는 아직 실행되지 않았습니다. 결과 수집을 시작하려면 파이프라인에 추가하세요.",

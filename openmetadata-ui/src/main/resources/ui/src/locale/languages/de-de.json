@@ -5236,6 +5236,8 @@
     "template-is-valid": "The template is valid.",
     "temporary-error-try-reloading": "Wir konnten dies gerade nicht laden. Das ist meist vorübergehend – ein erneutes Laden behebt es oft.",
     "test-case-count-info": "Zeigt die Anzahl der für diese Pipeline ausgewählten Testfälle an. 'Alle' bedeutet, dass alle verfügbaren Testfälle ausgeführt werden.",
+    "test-case-first-run-scheduled": "Dieser Test wurde noch nicht ausgeführt. Die Ergebnisse erscheinen nach der nächsten geplanten Ausführung.",
+    "test-case-has-not-run": "Dieser Test wurde noch nicht ausgeführt.",
     "test-case-insight-description": "Zugriff auf eine zentrale Ansicht der Gesundheit Ihres Datensatzes basierend auf konfigurierten Testvalidierungen.",
     "test-case-name-validation": "Der Name darf keine doppelten Doppelpunkte (::), Anführungszeichen (\") oder Größer-als-Symbole (>) enthalten.",
     "test-case-not-run-yet": "Dieser Test wurde noch nicht ausgeführt. Fügen Sie ihn einer Pipeline hinzu, um Ergebnisse zu erfassen.",

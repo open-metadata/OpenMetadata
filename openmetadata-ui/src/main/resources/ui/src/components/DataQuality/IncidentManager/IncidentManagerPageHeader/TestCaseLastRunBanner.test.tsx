@@ -440,6 +440,25 @@ describe('TestCaseLastRunBanner', () => {
     }
   );
 
+  it.each<[string, number | null | undefined, string]>([
+    [
+      'a run is scheduled',
+      Date.now() + 3_600_000,
+      'message.test-case-first-run-scheduled',
+    ],
+    ['nothing is scheduled', null, 'message.test-case-not-run-yet'],
+    ['the schedule is unknown', undefined, 'message.test-case-has-not-run'],
+  ])(
+    'asks for a pipeline in the not-run banner only when it knows nothing is scheduled: %s',
+    (_, nextRunTimestamp, messageKey) => {
+      renderBanner({ nextRunTimestamp });
+
+      expect(screen.getByTestId(NO_RUN_BANNER_TEST_ID)).toHaveTextContent(
+        messageKey
+      );
+    }
+  );
+
   it('does not show a negative duration when a cached next run has passed', () => {
     const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(2_000);
 
