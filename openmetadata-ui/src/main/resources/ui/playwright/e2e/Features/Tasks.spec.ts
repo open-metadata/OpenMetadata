@@ -212,15 +212,16 @@ test.describe('Task Workflow Tests', () => {
         const page = await browser.newPage();
         await adminUser.signIn(page);
 
-        // Go to home page and find the task in activity feed
-        await redirectToHomePage(page);
-        await waitForPageLoaded(page);
+        // The home KnowledgePanel.ActivityFeed widget cannot show this: its
+        // "All" tab counts conversations and activity only, and tasks live
+        // behind a separate tab (ActivityFeedTab.component.tsx:194-210). The
+        // test read a task card there behind an isVisible() guard, so it never
+        // clicked anything. The entity activity feed is the surface that
+        // renders task-feed-card.
+        await tableWithOwner.visitEntityPage(page);
+        await openEntityTasksTab(page);
 
-        // The widget must show the task just created, not whichever card the
-        // feed renders first -- the previous `if (isVisible())` let this test
-        // pass without ever clicking anything.
-        const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-        const taskItem = getTaskCard(feedWidget, task);
+        const taskItem = getTaskCard(page, task);
         await expect(taskItem).toBeVisible({ timeout: 45000 });
 
         await taskItem.getByTestId('redirect-task-button-link').click();

@@ -324,13 +324,10 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
       // Create task assigned to team
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: {
-            type: 'table',
-            id: table.entityResponseData?.id,
-            fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
-          },
-          type: 'RequestDescription',
-          assignees: [{ id: team.responseData.id, type: 'team' }],
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+          type: 'DescriptionUpdate',
+          category: 'MetadataUpdate',
+          assignees: [team.responseData.name],
           payload: {
             suggestedValue: 'Team assigned task',
           },
@@ -562,13 +559,10 @@ test.describe('Team Activity - Notifications', () => {
       // Create task assigned to team
       await apiContext.post('/api/v1/tasks', {
         data: {
-          about: {
-            type: 'table',
-            id: table.entityResponseData?.id,
-            fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
-          },
-          type: 'RequestDescription',
-          assignees: [{ id: team.responseData.id, type: 'team' }],
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+          type: 'DescriptionUpdate',
+          category: 'MetadataUpdate',
+          assignees: [team.responseData.name],
         },
       });
     } finally {
