@@ -299,6 +299,9 @@ const TeamsPage = () => {
             TabSpecificField.PARENTS,
             TabSpecificField.PROFILE,
             TabSpecificField.OWNERS,
+            // Also load `extension`, so a basic response landing after the advanced fetch
+            // keeps the custom property values it merged in.
+            TabSpecificField.EXTENSION,
           ],
           include: Include.All,
         });
@@ -332,6 +335,7 @@ const TeamsPage = () => {
             TabSpecificField.CHILDREN_COUNT,
             TabSpecificField.DESCENDANT_TEAMS,
             TabSpecificField.DOMAINS,
+            TabSpecificField.EXTENSION,
           ],
           include: Include.All,
         });
