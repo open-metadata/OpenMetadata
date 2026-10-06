@@ -175,6 +175,7 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
+import org.openmetadata.schema.CreationAudited;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
@@ -3308,6 +3309,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Domain is already validated
   }
 
+  /**
+   * Stamp who created the entity and when, derived from updatedAt/updatedBy so a freshly created
+   * entity satisfies createdAt == updatedAt and createdBy == updatedBy.
+   *
+   * <p>This is called from {@link #createNewEntity(Object)} rather than from prepare: PUT reaches
+   * the create path through {@code EntityResource.createOrUpdate}, which calls
+   * {@code prepareInternal(entity, true)}, so a prepare-time hook would skip every entity created
+   * by ingestion. createNewEntity is the one funnel all create paths share, and by then the
+   * late updatedBy override in {@code createInternal} has already been applied.
+   *
+   * <p>Entities whose schema does not declare these fields fall through to the no-op
+   * EntityInterface defaults.
+   */
+  private void setCreationAudit(T entity) {
+    if (!(entity instanceof CreationAudited audited)) {
+      return;
+    }
+    if (audited.getCreatedAt() == null) {
+      audited.setCreatedAt(
+          entity.getUpdatedAt() != null ? entity.getUpdatedAt() : System.currentTimeMillis());
+    }
+    if (nullOrEmpty(audited.getCreatedBy())) {
+      audited.setCreatedBy(entity.getUpdatedBy());
+    }
+  }
+
+  /**
+   * Creation audit is immutable. Carrying it from the stored entity onto the incoming one before any
+   * diffing means a PUT that omits it or a PATCH that rewrites it cannot move it, and no change is
+   * ever recorded against it.
+   */
+  private void carryCreationAudit(T original, T updated) {
+    if (original instanceof CreationAudited stored && updated instanceof CreationAudited incoming) {
+      incoming.setCreatedAt(stored.getCreatedAt());
+      incoming.setCreatedBy(stored.getCreatedBy());
+    }
+  }
+
   public final void storeRelationshipsInternal(T entity) {
     storeOwners(entity, entity.getOwners());
     applyTags(entity);
@@ -4208,9 +4247,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       lockManager.checkModificationsAllowed(entities);
     }
 
-    // 2. Set impersonatedBy for each entity
+    // 2. Set impersonatedBy and the creation audit for each entity
     for (T entity : entities) {
       entity.setImpersonatedBy(impersonatedBy);
+      setCreationAudit(entity);
     }
     entities.forEach(this::assignInitialEntityStatus);
 
@@ -4253,6 +4293,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T updated = updates.get(i);
       // Copy ID and version from original
       updated.setId(original.getId());
+      carryCreationAudit(original, updated);
       updated.setVersion(nextVersion(original.getVersion()));
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -5488,6 +5529,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected T createNewEntity(T entity) {
+    setCreationAudit(entity);
     createNewEntityFlush(entity);
     try (var ignored = phase("createPostCreate")) {
       postCreate(entity);
@@ -5785,6 +5827,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
+    entities.forEach(this::setCreationAudit);
     createManyEntitiesFlush(entities);
     try (var ignored = phase("postCreate")) {
       postCreate(entities);
@@ -9862,6 +9905,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
+        carryCreationAudit(original, updated);
         keepFieldsPutCannotChange();
         updateDeleted();
         compareAndUpdate(FIELD_DESCRIPTION, this::updateDescription);
@@ -9896,6 +9940,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
+        carryCreationAudit(original, updated);
         updateDeleted();
         updateDescription();
         updateDisplayName();
@@ -9924,10 +9969,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (operation.isPut()
           && !nullOrEmpty(original.getDescription())
           && updatedByBot()
-          && !overrideMetadata) {
+          && (!overrideMetadata || nullOrEmpty(updated.getDescription()))) {
         // Revert change to non-empty description if it is being updated by a bot
         // This is to prevent bots from overwriting the description. Description need to be
-        // updated with a PATCH request, or via the bulk path with overrideMetadata=true
+        // updated with a PATCH request, or via the bulk path with overrideMetadata=true. Even
+        // then an empty value never blanks it: a source with no comment omits the field, and an
+        // override run must not read that absence as "delete the description".
         updated.setDescription(original.getDescription());
         return;
       }
@@ -9964,11 +10011,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // authorizes with the coarse EDIT_ALL operation, which does not intersect that field-level
       // deny, so re-apply it here. Bots the policy allows - for example the SCIM bot syncing
       // identity attributes through the repository - fall through and update it. A bulk force-sync
-      // (overrideMetadata=true) also bypasses this guard.
+      // (overrideMetadata=true) also bypasses this guard, unless it would blank the displayName.
       boolean preserveUserDisplayName =
           updatedByBot()
               && !nullOrEmpty(original.getDisplayName())
-              && !overrideMetadata
+              && (!overrideMetadata || nullOrEmpty(updated.getDisplayName()))
               && !Objects.equals(original.getDisplayName(), updated.getDisplayName())
               && updatingBotDeniedOperation(MetadataOperation.EDIT_DISPLAY_NAME);
       if (preserveUserDisplayName) {
@@ -10582,11 +10629,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (operation.isPut()
           && !nullOrEmpty(original.getCertification())
           && updatedByBot()
-          && !overrideMetadata) {
+          && (!overrideMetadata || updatedCertification == null)) {
         // Revert change to non-empty certification if it is being updated by a bot, matching the
         // guard on description/owners: a stored value wins over anything a scheduled re-sync
         // sends. Certification can still be updated with a PATCH request, or via the bulk path
-        // with overrideMetadata=true.
+        // with overrideMetadata=true when the request carries one.
         updated.setCertification(original.getCertification());
         return;
       }

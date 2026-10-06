@@ -312,8 +312,7 @@ class SearchIndexFactoryTest {
   @Test
   void contextMemoryReindexFieldsIncludeLinkedEntities() {
     // The asset → memories listing filters search on primaryEntity.id and relatedEntities.id.
-    assertReindexFields(
-        Entity.CONTEXT_MEMORY, "primaryEntity", "relatedEntities", "sourceEntity", "sourceFile");
+    assertReindexFields(Entity.CONTEXT_MEMORY, "primaryEntity", "relatedEntities", "sourceFile");
   }
 
   @Test

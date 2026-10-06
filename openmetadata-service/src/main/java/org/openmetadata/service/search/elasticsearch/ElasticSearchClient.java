@@ -70,6 +70,7 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -406,10 +407,19 @@ public class ElasticSearchClient implements SearchClient {
       SearchSortFilter searchSortFilter,
       String q,
       String queryString,
-      SubjectContext subjectContext)
+      SubjectContext subjectContext,
+      List<EntityStatus> memoryStatuses)
       throws IOException {
     return searchManager.listWithOffset(
-        filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
+        filter,
+        limit,
+        offset,
+        index,
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext,
+        memoryStatuses);
   }
 
   @Override

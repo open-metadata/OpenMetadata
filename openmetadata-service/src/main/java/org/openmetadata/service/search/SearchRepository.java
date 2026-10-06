@@ -4306,7 +4306,8 @@ public class SearchRepository {
         searchSortFilter,
         q,
         queryString,
-        subjectContext);
+        subjectContext,
+        filter.getMemoryStatuses());
   }
 
   public SearchResultListMapper listWithDeepPagination(
