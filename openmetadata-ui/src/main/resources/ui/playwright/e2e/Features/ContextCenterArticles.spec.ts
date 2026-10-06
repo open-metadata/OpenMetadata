@@ -327,10 +327,20 @@ test.describe('Context Center Articles', () => {
     );
     await scrollListingToCard(page, articleEntity.responseData.displayName);
 
-    await verifyArticleSearch(page, 'zzznomatchzzz_playwright');
-    await expect(page.getByText('No matching results')).toBeVisible({
-      timeout: 8000,
+    const noMatchTerm = 'zzznomatchzzz_playwright';
+    const noMatchSearchResPromise = page.waitForResponse((res) => {
+      const url = new URL(res.url());
+
+      return (
+        url.pathname.includes('/api/v1/search/query') &&
+        url.searchParams.get('index') === 'page' &&
+        url.searchParams.get('q') === noMatchTerm
+      );
     });
+    await searchInput.fill(noMatchTerm);
+    const noMatchSearchRes = await noMatchSearchResPromise;
+    expect(noMatchSearchRes.status()).toBe(200);
+    await expect(page.getByText('No matching results')).toBeVisible();
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
