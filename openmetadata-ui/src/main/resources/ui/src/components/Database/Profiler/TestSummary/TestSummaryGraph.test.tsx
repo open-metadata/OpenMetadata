@@ -353,6 +353,16 @@ describe('TestSummaryGraph', () => {
     });
   });
 
+  // ECharts gives axis labels the axis line's colour unless they have their
+  // own, and the baseline is a pale track colour.
+  it('should keep the time labels legible over the pale baseline', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(getChartProps().xAxis?.axisLabel).toEqual(
+      expect.objectContaining({ color: '#606060' })
+    );
+  });
+
   it('should format the y axis as a duration for freshness tests', () => {
     render(
       <TestSummaryGraph

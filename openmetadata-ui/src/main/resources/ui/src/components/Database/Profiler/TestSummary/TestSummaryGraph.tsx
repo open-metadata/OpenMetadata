@@ -21,9 +21,11 @@ import type {
   ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
 import {
+  buildChartTheme,
   ComposedChart,
   hexToRgba,
   useChartPalette,
+  useIsDarkMode,
 } from '@openmetadata/ui-core-components/charts';
 import { useQueries } from '@tanstack/react-query';
 import { isEmpty, isNumber, isUndefined } from 'lodash';
@@ -234,6 +236,7 @@ function TestSummaryGraph({
     setSelectedRunTimestamp,
   } = useTestCaseStore();
   const plotRef = useRef<HTMLDivElement>(null);
+  const isDarkMode = useIsDarkMode(plotRef);
   const tooltipCloseTimer = useRef<ReturnType<typeof setTimeout>>();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip>();
 
@@ -556,6 +559,8 @@ function TestSummaryGraph({
         rotate: 45,
         customValues: tickValues,
         fontSize: AXIS_LABEL_FONT_SIZE,
+        // Without a colour of their own, the labels take the axis line's.
+        color: buildChartTheme({ isDark: isDarkMode }).axisText,
       },
       // ECharts' own axis grey does not follow the theme.
       axisLine: { lineStyle: { color: palette.status.neutral } },
@@ -565,7 +570,7 @@ function TestSummaryGraph({
         max: instants[0] + SINGLE_INSTANT_X_PADDING,
       }),
     };
-  }, [plottedData, palette]);
+  }, [plottedData, palette, isDarkMode]);
 
   const yAxis = useMemo<ChartYAxisProps>(
     () => ({
