@@ -162,11 +162,14 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.GitSinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkContext;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProvider;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProviderRegistry;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkResult;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository.StopRequest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
@@ -740,6 +743,46 @@ public class WorkflowDefinitionResourceIT {
   private static void assertNoSecretOrCiphertext(String response, List<String> plaintexts) {
     assertNoSecret(response, plaintexts);
     assertFalse(response.contains(Fernet.FERNET_PREFIX), "ciphertext in a response");
+  }
+
+  /**
+   * A stop request lands on an EXCEPTION instance whose process still runs, as a failed job attempt
+   * that Flowable retries leaves it, and is refused once the process itself ended with EXCEPTION,
+   * so terminate cannot answer 202 for a stop nothing would apply.
+   */
+  @Test
+  void test_terminateStopRequestIsRefusedOnceTheProcessEnded(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = ns.prefix("stopAfterEnd");
+    trackWorkflowFromJson(
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client, HttpMethod.POST, BASE_PATH, buildMinimalWorkflowRequest(workflowName))));
+    WorkflowInstanceRepository instances =
+        (WorkflowInstanceRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+    long now = System.currentTimeMillis();
+    Map<String, Object> sinkException =
+        Map.of(
+            WorkflowVariableHandler.getNamespacedVariableName(
+                Workflow.GLOBAL_NAMESPACE, Workflow.EXCEPTION_VARIABLE),
+            "sink exploded");
+    StopRequest stopRequest = new StopRequest(true, "Terminated by admin: it", "admin", now);
+    UUID endedId = UUID.randomUUID();
+    UUID retriedId = UUID.randomUUID();
+    instances.addNewWorkflowInstance(workflowName, endedId, now, Map.of());
+    instances.addNewWorkflowInstance(workflowName, retriedId, now, Map.of());
+
+    instances.recordProcessEnd(endedId, now, sinkException);
+    instances.updateWorkflowInstance(retriedId, now, sinkException);
+
+    assertFalse(instances.requestStop(endedId, stopRequest), "the process already ended");
+    assertEquals(WorkflowInstance.WorkflowStatus.EXCEPTION, instances.getById(endedId).getStatus());
+    assertTrue(instances.findStopRequest(endedId).isEmpty());
+    assertTrue(instances.requestStop(retriedId, stopRequest), "the failed job is still retried");
+    instances.recordProcessEnd(retriedId, now, Map.of());
+    WorkflowInstance stopped = instances.getById(retriedId);
+    assertEquals(WorkflowInstance.WorkflowStatus.FAILURE, stopped.getStatus());
+    assertEquals(stopRequest.reason(), stopped.getException());
   }
 
   /**

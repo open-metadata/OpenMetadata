@@ -81,7 +81,7 @@ class SubWorkflowFailureListenerTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Map<String, Object>> stored = ArgumentCaptor.forClass(Map.class);
-    verify(repository).updateWorkflowInstance(eq(instanceId), anyLong(), stored.capture());
+    verify(repository).recordProcessEnd(eq(instanceId), anyLong(), stored.capture());
     assertEquals(WorkflowInstance.WorkflowStatus.FAILURE.value(), stored.getValue().get("status"));
   }
 }

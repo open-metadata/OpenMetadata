@@ -66,7 +66,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
                 STATUS_VARIABLE_KEY, WorkflowInstance.WorkflowStatus.FAILURE.value());
             errorVariables.put("error", exc.getMessage());
             errorVariables.put("errorClass", exc.getClass().getSimpleName());
-            workflowInstanceRepository.updateWorkflowInstance(
+            workflowInstanceRepository.recordProcessEnd(
                 workflowInstanceId, System.currentTimeMillis(), errorVariables);
             LOG.debug(
                 "[WORKFLOW_INSTANCE_FAILED] Workflow: {}, InstanceId: {}",
@@ -156,7 +156,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
 
     WorkflowInstance.WorkflowStatus status = computeFinalStatus(variables);
     variables.put(STATUS_VARIABLE_KEY, status.value());
-    workflowInstanceRepository.updateWorkflowInstance(
+    workflowInstanceRepository.recordProcessEnd(
         workflowInstanceId, System.currentTimeMillis(), variables);
     LOG.debug(
         "[WORKFLOW_INSTANCE_COMPLETED] Workflow: {}, InstanceId: {}, Status: {}",

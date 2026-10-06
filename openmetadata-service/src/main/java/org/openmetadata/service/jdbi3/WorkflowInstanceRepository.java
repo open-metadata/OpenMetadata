@@ -60,16 +60,39 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
   }
 
   /**
-   * Records the end of an instance's process. Only status, endedAt and exception are written, so a
-   * stop request is never overwritten by the document read here. A stop request recorded between
-   * that read and the end write still matched a stoppable status; once a FINISHED, FAILURE or
-   * SUPERSEDED end is written no request can land, so the row read back afterwards holds every stop
-   * request the instance gets while its process runs.
+   * Records how an instance stands while its process may still run: a failed job attempt that
+   * Flowable retries, or a main workflow that terminated early. Only status, endedAt and exception
+   * are written, so a stop request is never overwritten by the document read here, and a stop
+   * request recorded between that read and the write is read back and applied.
    */
   public void updateWorkflowInstance(
       UUID workflowInstanceId, Long endedAt, Map<String, Object> variables) {
+    recordStatus(workflowInstanceId, endedAt, variables, () -> {});
+  }
+
+  /**
+   * Records the end of an instance's process, as {@link #updateWorkflowInstance} does, and marks
+   * the process ended so no stop request lands afterwards, whatever the status, an EXCEPTION
+   * included. The mark is written before the row is read back, so that row holds every stop request
+   * the instance gets while its process runs.
+   */
+  public void recordProcessEnd(
+      UUID workflowInstanceId, Long endedAt, Map<String, Object> variables) {
+    recordStatus(
+        workflowInstanceId,
+        endedAt,
+        variables,
+        () -> instanceDao.markProcessEnded(workflowInstanceId.toString()));
+  }
+
+  private void recordStatus(
+      UUID workflowInstanceId,
+      Long endedAt,
+      Map<String, Object> variables,
+      Runnable beforeReadBack) {
     WorkflowInstance beforeEnd = readInstance(workflowInstanceId);
     recordEnd(workflowInstanceId, endStateOf(beforeEnd, variables), endedAt);
+    beforeReadBack.run();
     Optional<StopRequest> missedStopRequest =
         stopRequestOf(readInstance(workflowInstanceId))
             .filter(stopRequest -> isStopRequestMissed(beforeEnd));
@@ -158,13 +181,14 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
    * Records that an administrator asked a running workflow instance to stop. The instance keeps its
    * status; a batch sink and the periodic-batch fetch loop read the request between batches, and
    * the process-end update then records the instance as FAILURE with the request's reason. Only the
-   * stop request is written, and only while the instance is RUNNING or EXCEPTION, so a FINISHED,
-   * FAILURE or SUPERSEDED end recorded concurrently is neither overwritten nor reverted. EXCEPTION
+   * stop request is written, and only while the instance is RUNNING or EXCEPTION and its process
+   * has not ended, so an end recorded concurrently is neither overwritten nor reverted. EXCEPTION
    * is accepted because a failed job attempt records it while Flowable retries the job and the
-   * process goes on running.
+   * process goes on running; an EXCEPTION the process ended with is refused, see {@link
+   * #recordProcessEnd}.
    *
-   * @return {@code false} when the instance is neither RUNNING nor EXCEPTION, so nothing was
-   *     recorded
+   * @return {@code false} when the instance is neither RUNNING nor EXCEPTION or its process has
+   *     ended, so nothing was recorded
    */
   public boolean requestStop(UUID workflowInstanceId, StopRequest stopRequest) {
     return instanceDao.requestStop(

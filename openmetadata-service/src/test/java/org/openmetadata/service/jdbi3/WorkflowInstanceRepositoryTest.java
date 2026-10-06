@@ -36,6 +36,12 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository.StopRequest;
 class WorkflowInstanceRepositoryTest {
 
   private static final String STOP_REASON = "Terminated by admin: sink running";
+  private static final String PROCESS_ENDED = "processEnded";
+  private static final Map<String, Object> SINK_EXCEPTION =
+      Map.of(
+          WorkflowVariableHandler.getNamespacedVariableName(
+              Workflow.GLOBAL_NAMESPACE, Workflow.EXCEPTION_VARIABLE),
+          "sink exploded");
 
   private final UUID workflowInstanceId = UUID.randomUUID();
   private final WorkflowInstanceTimeSeriesDAO timeSeriesDao =
@@ -44,6 +50,7 @@ class WorkflowInstanceRepositoryTest {
       mock(WorkflowInstanceStateRepository.class);
   private final AtomicReference<String> storedJson = new AtomicReference<>();
   private final AtomicReference<Runnable> beforeNextReadReturns = new AtomicReference<>();
+  private final AtomicReference<Runnable> beforeProcessEndMark = new AtomicReference<>();
 
   private MockedStatic<Entity> entity;
   private WorkflowInstanceRepository repository;
@@ -81,7 +88,8 @@ class WorkflowInstanceRepositoryTest {
 
   /**
    * The partial updates as their SQL behaves: each sets only its own paths on the stored document,
-   * and the stop request only while the stored status is one of the two statuses it is given.
+   * and the stop request only while the stored status is one of the two statuses it is given and
+   * the process is not marked ended.
    */
   private void givenPartialUpdatesWithSqlSemantics() {
     when(timeSeriesDao.requestStop(anyString(), anyString(), anyString(), anyString()))
@@ -89,14 +97,12 @@ class WorkflowInstanceRepositoryTest {
             invocation -> {
               Map<String, Object> document = storedDocument();
               Object status = document.get("status");
+              Map<String, Object> variables = storedVariables(document);
               boolean isStoppable =
-                  invocation.getArgument(2).equals(status)
-                      || invocation.getArgument(3).equals(status);
+                  (invocation.getArgument(2).equals(status)
+                          || invocation.getArgument(3).equals(status))
+                      && !variables.containsKey(PROCESS_ENDED);
               if (isStoppable) {
-                Map<String, Object> variables =
-                    document.get("variables") instanceof Map<?, ?> stored
-                        ? new HashMap<>(JsonUtils.convertValue(stored, Map.class))
-                        : new HashMap<>();
                 variables.put(
                     WorkflowInstanceRepository.STOP_REQUEST_VARIABLE_KEY,
                     JsonUtils.readValue(invocation.getArgument(1), Map.class));
@@ -104,6 +110,20 @@ class WorkflowInstanceRepositoryTest {
                 storedJson.set(JsonUtils.pojoToJson(document));
               }
               return isStoppable ? 1 : 0;
+            });
+    when(timeSeriesDao.markProcessEnded(anyString()))
+        .thenAnswer(
+            invocation -> {
+              Runnable interleaved = beforeProcessEndMark.getAndSet(null);
+              if (interleaved != null) {
+                interleaved.run();
+              }
+              Map<String, Object> document = storedDocument();
+              Map<String, Object> variables = storedVariables(document);
+              variables.put(PROCESS_ENDED, true);
+              document.put("variables", variables);
+              storedJson.set(JsonUtils.pojoToJson(document));
+              return 1;
             });
     when(timeSeriesDao.recordEnd(anyString(), anyString(), anyLong()))
         .thenAnswer(
@@ -128,6 +148,14 @@ class WorkflowInstanceRepositoryTest {
   }
 
   @SuppressWarnings("unchecked")
+  private static Map<String, Object> storedVariables(Map<String, Object> document) {
+    // The stored document is read back as an untyped Map, so its variables are one too.
+    return document.get("variables") instanceof Map<?, ?> stored
+        ? new HashMap<>(JsonUtils.convertValue(stored, Map.class))
+        : new HashMap<>();
+  }
+
+  @SuppressWarnings("unchecked")
   private Map<String, Object> storedDocument() {
     return new HashMap<>(JsonUtils.readValue(storedJson.get(), Map.class));
   }
@@ -143,7 +171,7 @@ class WorkflowInstanceRepositoryTest {
     StopRequest stopRequest = new StopRequest(true, STOP_REASON, "admin", 1L);
 
     repository.requestStop(workflowInstanceId, stopRequest);
-    repository.updateWorkflowInstance(workflowInstanceId, 42L, Map.of());
+    repository.recordProcessEnd(workflowInstanceId, 42L, Map.of());
 
     WorkflowInstance ended = storedInstance();
     assertEquals(WorkflowStatus.FAILURE, ended.getStatus());
@@ -162,7 +190,7 @@ class WorkflowInstanceRepositoryTest {
     beforeNextReadReturns.set(
         () -> isStopRecorded.set(repository.requestStop(workflowInstanceId, stopRequest)));
 
-    repository.updateWorkflowInstance(workflowInstanceId, 42L, Map.of());
+    repository.recordProcessEnd(workflowInstanceId, 42L, Map.of());
 
     assertTrue(isStopRecorded.get(), "the instance was still RUNNING when the stop landed");
     WorkflowInstance ended = storedInstance();
@@ -178,7 +206,7 @@ class WorkflowInstanceRepositoryTest {
   @Test
   void aStopRequestedAfterTheEndIsNotRecorded() {
     storeRunningInstance();
-    repository.updateWorkflowInstance(workflowInstanceId, 42L, Map.of());
+    repository.recordProcessEnd(workflowInstanceId, 42L, Map.of());
 
     boolean isStopRecorded =
         repository.requestStop(workflowInstanceId, new StopRequest(true, STOP_REASON, "admin", 1L));
@@ -239,7 +267,7 @@ class WorkflowInstanceRepositoryTest {
   void withoutAStopRequestTheEndOfAProcessRecordsItsOwnOutcome() {
     storeRunningInstance();
 
-    repository.updateWorkflowInstance(workflowInstanceId, 42L, Map.of());
+    repository.recordProcessEnd(workflowInstanceId, 42L, Map.of());
 
     assertEquals(WorkflowStatus.FINISHED, storedInstance().getStatus());
     assertEquals(Optional.empty(), repository.findStopRequest(workflowInstanceId));
@@ -252,7 +280,7 @@ class WorkflowInstanceRepositoryTest {
     repository.requestStop(workflowInstanceId, new StopRequest(true, STOP_REASON, "admin", 1L));
     repository.markInstanceAsSuperseded(workflowInstanceId, "newer run");
 
-    repository.updateWorkflowInstance(workflowInstanceId, 42L, Map.of());
+    repository.recordProcessEnd(workflowInstanceId, 42L, Map.of());
 
     assertEquals(WorkflowStatus.SUPERSEDED, storedInstance().getStatus());
   }
@@ -265,12 +293,55 @@ class WorkflowInstanceRepositoryTest {
     assertTrue(repository.requestStop(workflowInstanceId, stopRequest));
     assertEquals(WorkflowStatus.EXCEPTION, storedInstance().getStatus());
 
-    repository.updateWorkflowInstance(workflowInstanceId, 42L, Map.of());
+    repository.recordProcessEnd(workflowInstanceId, 42L, Map.of());
 
     WorkflowInstance ended = storedInstance();
     assertEquals(WorkflowStatus.FAILURE, ended.getStatus());
     assertEquals(STOP_REASON, ended.getException());
     assertEquals("kept", ended.getVariables().get("existing"));
+  }
+
+  @Test
+  void aStopRequestAfterTheProcessEndedWithAnExceptionIsNotRecorded() {
+    storeRunningInstance();
+    repository.recordProcessEnd(workflowInstanceId, 42L, SINK_EXCEPTION);
+    assertEquals(WorkflowStatus.EXCEPTION, storedInstance().getStatus());
+
+    boolean isStopRecorded =
+        repository.requestStop(workflowInstanceId, new StopRequest(true, STOP_REASON, "admin", 1L));
+
+    assertFalse(isStopRecorded);
+    assertEquals(WorkflowStatus.EXCEPTION, storedInstance().getStatus());
+    assertEquals(Optional.empty(), repository.findStopRequest(workflowInstanceId));
+  }
+
+  @Test
+  void aStopRequestAfterAFailedJobAttemptIsRecorded() {
+    storeRunningInstance();
+    repository.updateWorkflowInstance(workflowInstanceId, 42L, SINK_EXCEPTION);
+    assertEquals(WorkflowStatus.EXCEPTION, storedInstance().getStatus());
+
+    assertTrue(
+        repository.requestStop(
+            workflowInstanceId, new StopRequest(true, STOP_REASON, "admin", 1L)));
+    assertTrue(repository.findStopRequest(workflowInstanceId).isPresent());
+  }
+
+  @Test
+  void aStopRequestedBetweenTheEndWriteAndTheEndMarkEndsTheInstanceAsFailure() {
+    storeRunningInstance();
+    StopRequest stopRequest = new StopRequest(true, STOP_REASON, "admin", 1L);
+    AtomicReference<Boolean> isStopRecorded = new AtomicReference<>();
+    beforeProcessEndMark.set(
+        () -> isStopRecorded.set(repository.requestStop(workflowInstanceId, stopRequest)));
+
+    repository.recordProcessEnd(workflowInstanceId, 42L, SINK_EXCEPTION);
+
+    assertTrue(isStopRecorded.get(), "the process was not marked ended when the stop landed");
+    WorkflowInstance ended = storedInstance();
+    assertEquals(WorkflowStatus.FAILURE, ended.getStatus(), "the accepted stop is honoured");
+    assertEquals(STOP_REASON, ended.getException());
+    verify(stateRepository).markRunningStatesAsFailed(workflowInstanceId, STOP_REASON);
   }
 
   @Test
@@ -293,7 +364,7 @@ class WorkflowInstanceRepositoryTest {
   void aTriggerWhoseSinkThrewEndsAsFailure() {
     storeRunningInstance();
 
-    repository.updateWorkflowInstance(
+    repository.recordProcessEnd(
         workflowInstanceId,
         42L,
         Map.of(Workflow.FAILURE_VARIABLE, true, Workflow.EXCEPTION_VARIABLE, "sink stack trace"));
