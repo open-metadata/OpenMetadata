@@ -42,6 +42,8 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.app.App;
@@ -488,8 +490,11 @@ class AirflowRESTClientTest {
         () -> client.getLastIngestionLogs(pipeline, "cursor"));
   }
 
-  @Test
-  void runPipelineThrowsDeploymentExceptionWhenAirflowReturnsAnError() throws Exception {
+  // Response.Status has no 422, which Airflow 3 can answer with: that goes on as a bad gateway.
+  @ParameterizedTest
+  @CsvSource({"500, 500", "422, 502"})
+  void runPipelineThrowsDeploymentExceptionWhenAirflowReturnsAnError(
+      int airflowStatus, int expectedStatus) throws Exception {
     try (AirflowTestServer server = new AirflowTestServer()) {
       String basePath = "/airflow";
       String prefix = basePath + "/pluginsv2/api/v2/openmetadata";
@@ -501,7 +506,7 @@ class AirflowRESTClientTest {
           200,
           "{\"csrf_token\":\"shared-token\"}",
           cookieHeaders("session=session-shared; Path=/", "csrf_token=cookie-shared; Path=/"));
-      server.enqueue("POST", prefix + "/trigger", 500, "{\"error\":\"failed\"}");
+      server.enqueue("POST", prefix + "/trigger", airflowStatus, "{\"error\":\"failed\"}");
 
       AirflowRESTClient client = newClient(server, basePath);
       IngestionPipeline pipeline = ingestionPipeline("orders_metadata", false);
@@ -512,10 +517,12 @@ class AirflowRESTClientTest {
               () -> client.runPipeline(pipeline, null, Map.of("force", true)));
 
       // Read as the trigger it was, not a deploy, with Airflow's status kept.
-      assertEquals(500, exception.getResponse().getStatus());
+      assertEquals(expectedStatus, exception.getResponse().getStatus());
       assertEquals(
           "Failed to trigger pipeline [orders_metadata] due to"
-              + " [Airflow answered the trigger with HTTP 500].",
+              + " [Airflow answered the trigger with HTTP "
+              + airflowStatus
+              + "].",
           exception.getMessage());
     }
   }

@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 import javax.net.ssl.SSLContext;
@@ -471,7 +472,13 @@ public class AirflowRESTClient extends PipelineServiceClient {
     throw IngestionPipelineDeploymentException.triggerFailed(
         pipelineName,
         String.format("Airflow answered the trigger with HTTP %d", response.statusCode()),
-        Response.Status.fromStatusCode(response.statusCode()));
+        upstreamStatus(response.statusCode()));
+  }
+
+  // Airflow can answer with a status Response.Status does not name, such as Airflow 3's 422.
+  private static Response.Status upstreamStatus(int statusCode) {
+    return Objects.requireNonNullElse(
+        Response.Status.fromStatusCode(statusCode), Response.Status.BAD_GATEWAY);
   }
 
   // The run id goes along too: the worker reports under it, so the queued status the server records

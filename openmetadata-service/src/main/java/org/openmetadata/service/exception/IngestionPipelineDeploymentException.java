@@ -45,10 +45,7 @@ public class IngestionPipelineDeploymentException extends WebServiceException {
         Response.Status.BAD_REQUEST, errorType, buildMessageByName(name, errorMessage));
   }
 
-  /**
-   * A run the pipeline service did not start. Worded as a trigger, not a deploy, and sent with the
-   * status that says whether trying again can help: 503 when the service could not be reached.
-   */
+  /** A run the pipeline service did not start: 503 when it was not reached, so a retry may help. */
   public static IngestionPipelineDeploymentException triggerFailed(
       String name, String errorMessage, Response.Status status) {
     return new IngestionPipelineDeploymentException(
