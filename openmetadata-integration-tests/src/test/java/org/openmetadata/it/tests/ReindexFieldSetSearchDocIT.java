@@ -97,7 +97,9 @@ public class ReindexFieldSetSearchDocIT {
             .create(
                 new CreateQuery()
                     .withName(ns.prefix("query"))
-                    .withQuery("SELECT 1")
+                    // query_entity has a unique checksum of the SQL text, so the text must be
+                    // unique too: another IT creating "SELECT 1" turns this create into a 409.
+                    .withQuery("SELECT * FROM " + ns.prefix("query_users"))
                     .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName())
                     .withUsers(List.of(SharedEntities.get().USER1.getName())));
     awaitDoc(QUERY_INDEX, query.getId(), ReindexFieldSetSearchDocIT::assertQueryUserIndexed);
