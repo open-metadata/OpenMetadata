@@ -840,14 +840,26 @@ const searchInDropdown = async (page: Page, searchText: string) => {
   await aggregation;
 };
 
+// The quick-filter menu is a core Dropdown, so its items are react-aria
+// `menuitemcheckbox`es; confirm the picked filter's trigger rendered before the
+// caller opens it.
+const selectQuickFilter = async (
+  page: Page,
+  menuItem: RegExp,
+  dropdownTestId: string
+) => {
+  await page.getByTestId('asset-filter-button').click();
+  await page.getByRole('menuitemcheckbox', { name: menuItem }).click();
+  await expect(page.getByTestId(dropdownTestId)).toBeVisible();
+};
+
 const applyCheckboxFilter = async (
   page: Page,
   menuItem: RegExp,
   dropdownTestId: string,
   option: string
 ) => {
-  await page.locator('.filters-row button').first().click();
-  await page.getByRole('menuitemcheckbox', { name: menuItem }).click();
+  await selectQuickFilter(page, menuItem, dropdownTestId);
   await page.click(`[data-testid="${dropdownTestId}"]`);
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   const checkbox = page.getByTestId('drop-down-menu').getByTestId(option);
@@ -865,8 +877,7 @@ const applyTagFilter = async (
   searchTerm: string,
   tagPattern: RegExp
 ) => {
-  await page.locator('.filters-row button').first().click();
-  await page.getByRole('menuitemcheckbox', { name: /Tag/i }).click();
+  await selectQuickFilter(page, /Tag/i, 'search-dropdown-Tag');
   await page.click('[data-testid="search-dropdown-Tag"]');
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   await page
