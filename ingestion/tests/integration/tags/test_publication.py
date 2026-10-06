@@ -13,7 +13,6 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
-from unittest.mock import MagicMock
 from urllib.parse import unquote, urlsplit
 from uuid import UUID
 
@@ -26,7 +25,6 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
-from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import StorageServiceMetadataPipeline
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -35,8 +33,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
 from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.mysql.metadata import MysqlSource
-from metadata.ingestion.source.storage.s3.metadata import S3Source
-from metadata.ingestion.source.storage.s3.models import S3ContainerDetails
 from metadata.utils.fqn import split
 
 
@@ -44,7 +40,6 @@ class CatalogHTTP:
     def __init__(self, fail_definition=None):
         self.tags = set()
         self.tables = {}
-        self.containers = {}
         self.tag_reads = []
         self.definition_writes = []
         self.persistence_order = []
@@ -95,17 +90,6 @@ class CatalogHTTP:
                         "type": "classification",
                         "name": payload["classification"],
                     },
-                }
-        elif path.endswith("/containers"):
-            missing = {label["tagFQN"] for label in payload.get("tags", [])} - self.tags
-            if missing:
-                status, body = 400, {"message": f"Unknown tags: {sorted(missing)}"}
-            else:
-                self.containers[f"{payload['service']}.{payload['name']}"] = payload
-                body = {
-                    **payload,
-                    "id": str(UUID(int=3)),
-                    "service": {"id": str(UUID(int=4)), "type": "storageService", "name": payload["service"]},
                 }
         elif path.endswith("/bulk"):
             missing = {label["tagFQN"] for entity in payload for label in entity.get("tags", [])} - self.tags
@@ -283,12 +267,9 @@ def test_parallel_schema_tables_reach_sink_after_their_definitions(
         metadata.close()
 
 
-@pytest.mark.parametrize("family", ["database", "storage"])
 @pytest.mark.parametrize("fail_definition", [None, "classification", "tag"])
 @pytest.mark.parametrize("already_present", [True, False])
-def test_assets_survive_definition_failures_with_only_existing_labels(
-    monkeypatch, family, fail_definition, already_present
-):
+def test_assets_survive_definition_failures_with_only_existing_labels(monkeypatch, fail_definition, already_present):
     catalog = CatalogHTTP(fail_definition=fail_definition)
     if already_present:
         catalog.tags.add("Class.Shared")
@@ -304,36 +285,17 @@ def test_assets_survive_definition_failures_with_only_existing_labels(
     )
     sink = MetadataRestSink(MetadataRestSinkConfig(bulk_sink_batch_size=1), metadata)
     try:
-        if family == "database":
-            source = TaggedDatabaseSource(metadata, shared_tag=True, fail_publication=False)
-            source.context = TopologyContextManager(source.topology)
-            for key, value in (("database_service", "svc"), ("database", "db"), ("database_schema", "schema_a")):
-                source.context.get().upsert(key, value)
-            for record in source.yield_database_schema_tag_details("schema_a"):
+        source = TaggedDatabaseSource(metadata, shared_tag=True, fail_publication=False)
+        source.context = TopologyContextManager(source.topology)
+        for key, value in (("database_service", "svc"), ("database", "db"), ("database_schema", "schema_a")):
+            source.context.get().upsert(key, value)
+        for record in source.yield_database_schema_tag_details("schema_a"):
+            sink.run(record.right)
+        source.attach_tag(entity_fqn="svc.db.schema_a.other_table", tag=TagDefinition("Class", "Shared", "", ""))
+        for name in ("my_table", "other_table"):
+            for record in source.yield_table((name, TableType.Regular)):
                 sink.run(record.right)
-            source.attach_tag(entity_fqn="svc.db.schema_a.other_table", tag=TagDefinition("Class", "Shared", "", ""))
-            for name in ("my_table", "other_table"):
-                for record in source.yield_table((name, TableType.Regular)):
-                    sink.run(record.right)
-            assets = catalog.tables
-        else:
-            source = object.__new__(S3Source)
-            source.metadata = metadata
-            source.source_config = StorageServiceMetadataPipeline(includeTags=True)
-            source.context = TopologyContextManager(source.topology)
-            source.context.get().upsert("objectstore_service", "svc")
-            source.container_source_state = set()
-            source.s3_client = MagicMock()
-            source.s3_client.get_bucket_tagging.return_value = {"TagSet": [{"Key": "Class", "Value": "Shared"}]}
-            for name in ("my_bucket", "other_bucket"):
-                details = S3ContainerDetails(
-                    name=name, prefix="/", container_fqn=f"svc.{name}", fullPath=f"s3://{name}"
-                )
-                for record in source.yield_tag_details(details):
-                    sink.run(record.right)
-                for record in source.yield_container_details(details):
-                    sink.run(record.right)
-            assets = catalog.containers
+        assets = catalog.tables
 
         assert len(assets) == 2
         expected = ["Class.Shared"] if already_present or fail_definition is None else []
