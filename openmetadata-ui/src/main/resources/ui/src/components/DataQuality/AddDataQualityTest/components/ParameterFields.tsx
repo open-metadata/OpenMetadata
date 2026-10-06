@@ -40,6 +40,7 @@ import {
 } from '../../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
+  DIMENSION_FAILURE_POLICY_PARAM,
   getParamOptionLabelKey,
   getThresholdUnitLabelParts,
   isThresholdUnitOptionDisabled,
@@ -231,6 +232,9 @@ export interface ParameterFieldsProps {
   // Form Hint popover when any parameter field is focused so the AI modal
   // matches the classic drawer's documentation panel.
   testDefinitionDoc?: string;
+  // `dimensionFailurePolicy` rolls dimension group verdicts up into the test
+  // case status, so it only means something on a dimension-level test.
+  isDimensionalTest?: boolean;
 }
 
 const ParameterFields: React.FC<ParameterFieldsProps> = ({
@@ -238,6 +242,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   definition,
   table,
   testDefinitionDoc,
+  isDimensionalTest = false,
 }) => {
   const { t } = useTranslation();
 
@@ -380,7 +385,12 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
       type: FieldTypes.TEXT,
       required: data.required,
       rules: buildRules(data, label),
-      helperText: data.description,
+      // The policy's own description cannot carry the Others caveat: it is
+      // seeded data, and existing installs keep the copy they were seeded with.
+      helperText:
+        data.name === DIMENSION_FAILURE_POLICY_PARAM
+          ? t('message.dimension-failure-policy-helper')
+          : data.description,
       helperTextType: HelperTextType.TOOLTIP,
       // Form Hint popover shows the selected test definition's doc (matching
       // the classic drawer's doc panel); the tooltip keeps the per-param text.
@@ -475,6 +485,13 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   return (
     <>
       {params?.map((data) => {
+        if (
+          data.name === DIMENSION_FAILURE_POLICY_PARAM &&
+          !isDimensionalTest
+        ) {
+          return null;
+        }
+
         if (thresholdUnitParam) {
           if (data.name === THRESHOLD_UNIT_PARAM) {
             return null;

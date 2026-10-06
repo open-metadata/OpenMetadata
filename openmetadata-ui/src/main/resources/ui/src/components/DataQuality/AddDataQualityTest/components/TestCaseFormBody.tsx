@@ -27,7 +27,7 @@ import {
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { debounce, snakeCase } from 'lodash';
+import { debounce, isEmpty, snakeCase } from 'lodash';
 import {
   FC,
   ReactNode,
@@ -275,6 +275,7 @@ const TestTypeCard: FC<{
   computeRowCountField: FieldProp;
   dataQualityDimensionField: FieldProp;
   thresholdPreview: ReactNode;
+  isDimensionalTest: boolean;
 }> = ({
   isEditMode,
   selectedTestLevel,
@@ -294,6 +295,7 @@ const TestTypeCard: FC<{
   computeRowCountField,
   dataQualityDimensionField,
   thresholdPreview,
+  isDimensionalTest,
 }) => (
   <div
     className="form-card-section test-type-card test-type-section"
@@ -323,6 +325,7 @@ const TestTypeCard: FC<{
         <ParameterFields
           definition={selectedTestDefinition}
           form={form}
+          isDimensionalTest={isDimensionalTest}
           table={selectedTableData}
           testDefinitionDoc={getFieldDoc(
             fieldDocs[selectedTestDefinition.name ?? ''],
@@ -624,6 +627,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
     return result;
   }, [testLevelFieldValue]);
+
+  // Edit mode lets dimension columns be added to or removed from a column
+  // test without changing its test level, so only the columns tell there.
+  // Must match what the create and edit submits keep in the payload.
+  const isDimensionalTest = isEditMode
+    ? !isEmpty(unwrapSelectValues(dimensionColumnsValue))
+    : testLevelFieldValue === TestLevel.COLUMN_DIMENSION;
 
   const hasTestSuite = getHasTestSuite(testSuite, selectedTableData);
 
@@ -1471,6 +1481,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         handleCustomQueryToggle={handleCustomQueryToggle}
         isComputeRowCountFieldVisible={isComputeRowCountFieldVisible}
         isCustomQuery={isCustomQuery}
+        isDimensionalTest={isDimensionalTest}
         isEditMode={isEditMode}
         selectedTableData={selectedTableData}
         selectedTestDefinition={selectedTestDefinition}

@@ -40,8 +40,10 @@ from metadata.data_quality.validations.impact_score import (
 from metadata.data_quality.validations.models import EvaluationScopeRuntimeParameters
 from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.data_quality.validations.thresholds import (
+    DIMENSION_FAILURE_POLICY_PARAM,
     THRESHOLD_PARAM,
     THRESHOLD_UNIT_PARAM,
+    DimensionFailurePolicy,
     FailureThreshold,
     ThresholdUnit,
 )
@@ -250,6 +252,7 @@ class BaseTestValidator(ABC):
 
                     test_result.dimensionResults = test_case_dimension_results
                     logger.debug("Attached %d dimension results to main test result", len(test_case_dimension_results))
+                    self._roll_up_dimension_results(test_result, test_case_dimension_results)
                 else:
                     logger.debug("Dimensional validation completed with no results")
 
@@ -258,6 +261,59 @@ class BaseTestValidator(ABC):
                 logger.debug(traceback.format_exc())
 
         return test_result
+
+    def get_dimension_failure_policy(self) -> DimensionFailurePolicy:
+        """Read how the dimension group verdicts roll up into the test case status
+
+        A test case that does not set the parameter, or sets a value this agent does not know,
+        keeps `OVERALL_ONLY`: the status it had before the policy existed.
+        """
+        raw_policy = self.get_test_case_param_value(
+            self.test_case.parameterValues or [],
+            DIMENSION_FAILURE_POLICY_PARAM,
+            str,
+            default=DimensionFailurePolicy.OVERALL_ONLY.value,
+        )
+        try:
+            return DimensionFailurePolicy(str(raw_policy).upper())
+        except ValueError:
+            logger.warning(
+                "Unknown %s '%s' for %s. Rolling dimension results up as %s.",
+                DIMENSION_FAILURE_POLICY_PARAM,
+                raw_policy,
+                self.test_case.fullyQualifiedName,
+                DimensionFailurePolicy.OVERALL_ONLY.value,
+            )
+            return DimensionFailurePolicy.OVERALL_ONLY
+
+    def _roll_up_dimension_results(
+        self,
+        test_result: TestCaseResult,
+        dimension_results: list[TestCaseDimensionResult],
+    ) -> None:
+        """Fail a passing test case when a dimension group failed and the policy asks for it
+
+        Only a `Success` is ever turned into a `Failed`: an aborted run computed nothing to roll
+        up, and a failed one already is. The `Others` group takes part like any other group, but
+        it is the aggregate of every group beyond `topDimensions`, so those groups are only ever
+        checked together.
+        """
+        if test_result.testCaseStatus is not TestCaseStatus.Success:
+            return
+        if self.get_dimension_failure_policy() is not DimensionFailurePolicy.ANY_DIMENSION:
+            return
+
+        failed_groups = [
+            dimension_result.dimensionKey
+            for dimension_result in dimension_results
+            if dimension_result.testCaseStatus is TestCaseStatus.Failed
+        ]
+        if not failed_groups:
+            return
+
+        test_result.testCaseStatus = TestCaseStatus.Failed
+        rollup = result_messages.dimension_rollup_sentence(failed_groups)
+        test_result.result = f"{test_result.result} {rollup}" if test_result.result else rollup
 
     def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:  # noqa: B027
         """Hook for failed row sampling. No-op by default.
