@@ -10,6 +10,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -285,6 +286,44 @@ public class BulkOverrideMetadataIT {
     assertEquals(
         List.of(tags.getLast().getTagFQN()),
         tagFqns(getTable(fqn).getColumns().getFirst().getTags()));
+  }
+
+  @Test
+  void test_overrideKeepsTableTagsFromClassificationsNotSent(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<TagLabel> sourceTags = createMutuallyExclusiveTags(ns, "ovr_keep_table_src");
+    TagLabel curatedTag = createMutuallyExclusiveTags(ns, "ovr_keep_table_curated").getFirst();
+    CreateTable original = table(ns, schemaFqn, "ovr_keep_table", "desc", "hash-v1");
+    original.setTags(List.of(sourceTags.getFirst(), curatedTag));
+    BulkApi.upsert("tables", List.of(original), false, BulkApi.botToken());
+
+    CreateTable changed = table(ns, schemaFqn, "ovr_keep_table", "desc", "hash-v2");
+    changed.setTags(List.of(sourceTags.getLast()));
+    BulkApi.upsert("tables", List.of(changed), true, BulkApi.botToken());
+
+    String fqn = schemaFqn + "." + original.getName();
+    assertEquals(
+        Set.of(sourceTags.getLast().getTagFQN(), curatedTag.getTagFQN()),
+        Set.copyOf(tagFqns(getTable(fqn).getTags())));
+  }
+
+  @Test
+  void test_overrideKeepsColumnTagsFromClassificationsNotSent(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<TagLabel> sourceTags = createMutuallyExclusiveTags(ns, "ovr_keep_col_src");
+    TagLabel curatedTag = createMutuallyExclusiveTags(ns, "ovr_keep_col_curated").getFirst();
+    CreateTable original = table(ns, schemaFqn, "ovr_keep_col", "desc", "hash-v1");
+    original.getColumns().getFirst().setTags(List.of(sourceTags.getFirst(), curatedTag));
+    BulkApi.upsert("tables", List.of(original), false, BulkApi.botToken());
+
+    CreateTable changed = table(ns, schemaFqn, "ovr_keep_col", "desc", "hash-v2");
+    changed.getColumns().getFirst().setTags(List.of(sourceTags.getLast()));
+    BulkApi.upsert("tables", List.of(changed), true, BulkApi.botToken());
+
+    String fqn = schemaFqn + "." + original.getName();
+    assertEquals(
+        Set.of(sourceTags.getLast().getTagFQN(), curatedTag.getTagFQN()),
+        Set.copyOf(tagFqns(getTable(fqn).getColumns().getFirst().getTags())));
   }
 
   @Test
