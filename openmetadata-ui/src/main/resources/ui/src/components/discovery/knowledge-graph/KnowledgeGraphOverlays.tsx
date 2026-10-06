@@ -45,7 +45,6 @@ import {
   entityTile,
   InspectorGapNote,
   InspectorIdentityCard,
-  InspectorKeyValue,
   InspectorRow,
   InspectorSection,
   relationTile,
@@ -158,18 +157,6 @@ const hasIdentityCard = (node: GraphNode) =>
 const hasMappingCoverageSignal = (type: string) =>
   !COVERAGE_SIGNAL_SKIP.has(type);
 
-/** The small meta label that follows the identity card for user/tag drawers. */
-const metaFieldKeyFor = (type: string): string | null => {
-  if (USERNAME_TYPES.has(type)) {
-    return 'label.team';
-  }
-  if (FQN_TYPES.has(type)) {
-    return 'label.source';
-  }
-
-  return null;
-};
-
 interface RelationshipsSectionProps {
   node: GraphNode;
   connections: KnowledgeGraphG6Edge[];
@@ -257,25 +244,19 @@ interface IdentitySectionProps {
 
 const IdentitySection = ({ node }: IdentitySectionProps) => {
   const { t } = useTranslation();
-  const value = node.fullyQualifiedName ?? node.name ?? node.label;
   if (!hasIdentityCard(node)) {
     return null;
   }
-  const metaKey = metaFieldKeyFor(node.type);
+  const value = node.fullyQualifiedName ?? node.name ?? node.label;
 
   return (
-    <>
-      <InspectorIdentityCard
-        color={getColorSetForType(node.type).main}
-        family={getNodeTypeLabel(node.type, t)}
-        fieldLabel={t(identityFieldKey(node.type))}
-        value={value}
-        valueTestId="inspector-identity-value"
-      />
-      {metaKey && node.description && (
-        <InspectorKeyValue label={t(metaKey)} value={node.description} />
-      )}
-    </>
+    <InspectorIdentityCard
+      color={getColorSetForType(node.type).main}
+      family={getNodeTypeLabel(node.type, t)}
+      fieldLabel={t(identityFieldKey(node.type))}
+      value={value}
+      valueTestId="inspector-identity-value"
+    />
   );
 };
 
@@ -362,8 +343,7 @@ const GraphNodeInspector = ({
   onViewRelationships,
 }: NodeInspectorProps) => {
   const canShowGapNotes = hasMappingCoverageSignal(node.type);
-  const bodyDescription =
-    canShowGapNotes && node.description ? node.description : null;
+  const bodyDescription = node.description ?? null;
 
   return (
     <>
