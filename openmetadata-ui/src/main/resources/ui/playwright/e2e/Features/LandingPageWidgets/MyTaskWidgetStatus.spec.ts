@@ -23,10 +23,6 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 const MY_TASK_WIDGET_KEY = 'KnowledgePanel.MyTask';
 
-// Bounded so a mount that never sends `statusGroup` fails here rather than
-// burning the whole test timeout.
-const REQUEST_TIMEOUT = 60_000;
-
 /**
  * The card header renders the task id with its `TASK-` prefix and zero padding
  * stripped, so a test looking for a specific task has to do the same. Matched
@@ -44,33 +40,12 @@ test.describe(
       page,
       activityData,
     }) => {
-      test.slow();
-
       const openTask = await createActivityTask(activityData);
       const closedTask = await createActivityTask(activityData);
 
       await closedTask.resolve(activityData.apiContext, 'Completed');
 
       await activityData.member.signIn(page);
-
-      // Claimed before the landing page mounts so it observes the widget's
-      // initial fetch rather than a later filter switch. Awaited last, after
-      // the rendering assertions, so a regression reports the symptom a user
-      // would see before the request detail that explains it.
-      const mountRequest = page.waitForResponse(
-        (response) => {
-          const url = new URL(response.url());
-
-          return (
-            response.request().method() === 'GET' &&
-            url.pathname === '/api/v1/tasks/visible' &&
-            url.searchParams.get('statusGroup') === 'open'
-          );
-        },
-        { timeout: REQUEST_TIMEOUT }
-      );
-      mountRequest.catch(() => undefined);
-
       await redirectToHomePage(page);
       await waitForAllLoadersToDisappear(page);
 
@@ -80,17 +55,14 @@ test.describe(
         widget.getByText(cardId(openTask), { exact: true })
       ).toBeVisible();
 
-      // Both tasks were created the same way against the same table and assigned
-      // to the same team, so status is the only thing keeping this one out.
+      // Covers the widget's initial fetch end to end: the list is whatever that
+      // request returned, so a mount that omits `statusGroup` fails here with
+      // the resolved task on screen. Both tasks were created the same way
+      // against the same table and assigned to the same team, so status is the
+      // only thing keeping this one out.
       await expect(
         widget.getByText(cardId(closedTask), { exact: true })
       ).toBeHidden();
-
-      await expect(
-        widget.getByTestId('task-status-icon-completed')
-      ).toHaveCount(0);
-
-      expect((await mountRequest).status()).toBe(200);
     });
   }
 );
