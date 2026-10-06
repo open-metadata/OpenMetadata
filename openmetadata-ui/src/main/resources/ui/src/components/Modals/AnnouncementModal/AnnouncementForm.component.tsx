@@ -296,9 +296,7 @@ const AnnouncementForm = ({
                     id="title"
                     isInvalid={Boolean(fieldState.error)}
                     label={t('label.title')}
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.title'),
-                    })}
+                    placeholder={t('message.enter-title-here')}
                     value={field.value}
                     onChange={field.onChange}
                   />
@@ -381,9 +379,7 @@ const AnnouncementForm = ({
                     <RichTextEditor
                       data-testid="description"
                       initialValue={field.value}
-                      placeHolder={t('label.enter-entity-description', {
-                        entity: t('label.announcement'),
-                      })}
+                      placeHolder={t('message.enter-a-description')}
                       onTextChange={field.onChange}
                     />
                     <FieldError
