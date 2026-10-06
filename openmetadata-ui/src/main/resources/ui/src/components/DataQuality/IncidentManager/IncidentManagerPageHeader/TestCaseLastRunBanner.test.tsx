@@ -121,10 +121,11 @@ describe('TestCaseLastRunBanner', () => {
       );
       expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveClass(
         {
-          [TestCaseStatus.Aborted]: 'tw:text-warning-primary',
-          [TestCaseStatus.Failed]: 'tw:text-error-primary',
+          // The -700 steps: the -600 text tokens fall below AA on the tint.
+          [TestCaseStatus.Aborted]: 'tw:text-utility-warning-700',
+          [TestCaseStatus.Failed]: 'tw:text-utility-error-700',
           [TestCaseStatus.Queued]: 'tw:text-brand-primary',
-          [TestCaseStatus.Success]: 'tw:text-success-primary',
+          [TestCaseStatus.Success]: 'tw:text-utility-success-700',
         }[testCaseStatus]
       );
       expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
@@ -258,7 +259,7 @@ describe('TestCaseLastRunBanner', () => {
       'label.aborted'
     );
     expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveClass(
-      'tw:text-warning-primary'
+      'tw:text-utility-warning-700'
     );
     expect(
       screen.getByTestId(LAST_RUN_BANNER_TEST_IDS[TestCaseStatus.Aborted])

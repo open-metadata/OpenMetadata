@@ -61,7 +61,7 @@ const RunDuration = ({
   return (
     <Box
       align="center"
-      className="tw:ml-auto tw:text-quaternary"
+      className="tw:ml-auto tw:text-tertiary"
       data-testid="run-details-duration"
       gap={1}>
       <Clock aria-hidden className="tw:size-3.5" />
@@ -228,7 +228,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           weight="semibold">
           {t('label.run-details')}
         </Typography>
-        <Typography className="tw:text-quaternary" size="text-sm">
+        <Typography className="tw:text-tertiary" size="text-sm">
           {formatDateTime(result.timestamp)}
         </Typography>
         {!isUndefined(duration) && (

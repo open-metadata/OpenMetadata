@@ -28,12 +28,13 @@ import { getRunButtonLabelKey } from '../../../observability/TestCaseDetail/RunT
 import { useRunTestCase } from '../../../observability/TestCaseDetail/RunTestCaseButton/useRunTestCase';
 import { parseTraceback, TracebackLineKind } from './RunExecutionError.utils';
 
+// The -700 steps and tertiary grey hold AA on the trace's tinted panel.
 const TRACEBACK_LINE_CLASS: Record<TracebackLineKind, string> = {
-  header: 'tw:text-error-primary',
-  location: 'tw:text-quaternary',
-  truncated: 'tw:text-quaternary tw:italic',
+  header: 'tw:text-utility-error-700',
+  location: 'tw:text-tertiary',
+  truncated: 'tw:text-tertiary tw:italic',
   code: 'tw:text-secondary',
-  exception: 'tw:text-warning-primary',
+  exception: 'tw:text-utility-warning-700',
 };
 
 // A border rather than an outline: once focusable, the outline is the focus ring.
@@ -78,8 +79,7 @@ const RunExecutionError = ({
       gap={2}>
       <Box align="center" gap={2}>
         <Typography
-          className="tw:uppercase tw:tracking-wide"
-          color="warning"
+          className="tw:uppercase tw:tracking-wide tw:text-utility-warning-700"
           size="text-xs"
           weight="bold">
           {t('label.execution-error')}
