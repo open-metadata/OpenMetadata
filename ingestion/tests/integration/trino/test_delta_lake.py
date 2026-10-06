@@ -68,14 +68,18 @@ def create_delta_table(trino_container):
             )
             conn.commit()
         yield
-        with engine.connect() as conn:
+    finally:
+        try:
             # The delta and minio catalogs share one metastore, so leaving the schema behind
             # would expose an unreadable Delta table to every later module in this package.
-            conn.execute(text("DROP TABLE IF EXISTS delta.delta_schema.delta_sales"))
-            conn.execute(text("DROP SCHEMA IF EXISTS delta.delta_schema"))
-            conn.commit()
-    finally:
-        engine.dispose()
+            # This runs even when the setup above fails part-way, which would otherwise leak
+            # a committed table into the metastore for the rest of the package run.
+            with engine.connect() as conn:
+                conn.execute(text("DROP TABLE IF EXISTS delta.delta_schema.delta_sales"))
+                conn.execute(text("DROP SCHEMA IF EXISTS delta.delta_schema"))
+                conn.commit()
+        finally:
+            engine.dispose()
 
 
 @pytest.fixture(scope="module")

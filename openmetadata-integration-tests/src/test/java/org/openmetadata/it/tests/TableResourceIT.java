@@ -1426,9 +1426,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Test
-  void patch_tableTypeRegularToDeltaLake_keepsSameEntity(TestNamespace ns) {
-    // A connector that learns a table is Delta re-ingests it with a new tableType. The type must
-    // flip on the same entity: no new id, no new FQN, no migration.
+  void put_tableTypeRegularToDeltaLake_keepsSameEntity(TestNamespace ns) {
+    // Connectors re-ingest through PUT, so that is how a Regular table becomes Delta. The type must
+    // flip on the same entity: no new id, no new FQN. The version bump is what proves the server
+    // diffed tableType rather than ignoring the field.
     CreateTable request = createMinimalRequest(ns);
     request.setName(ns.prefix("delta_lake_table"));
     request.setTableType(TableType.Regular);
@@ -1436,13 +1437,15 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(request);
     assertEquals(TableType.Regular, table.getTableType());
 
-    table.setTableType(TableType.DeltaLake);
-    patchEntity(table.getId().toString(), table);
+    request.setTableType(TableType.DeltaLake);
+    Table updated = SdkClients.adminClient().tables().createOrUpdate(request);
 
-    Table readBack = getEntity(table.getId().toString());
-    assertEquals(table.getId(), readBack.getId());
-    assertEquals(table.getFullyQualifiedName(), readBack.getFullyQualifiedName());
-    assertEquals(TableType.DeltaLake, readBack.getTableType());
+    assertEquals(table.getId(), updated.getId());
+    assertEquals(table.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    assertEquals(TableType.DeltaLake, updated.getTableType());
+    assertTrue(
+        updated.getVersion() > table.getVersion(),
+        "tableType flip must bump the version, otherwise the server never diffed the field");
   }
 
   @Test
