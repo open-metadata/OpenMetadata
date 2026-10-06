@@ -126,7 +126,8 @@ export const formatDifference = (found: number, expected: number) => {
     return absolute;
   }
 
-  const percent = (difference / expected) * 100;
+  // Against the expected value's size, so the percent takes the difference's sign.
+  const percent = (difference / Math.abs(expected)) * 100;
 
   return `${absolute} (${withSign(percent.toFixed(1), percent)}%)`;
 };

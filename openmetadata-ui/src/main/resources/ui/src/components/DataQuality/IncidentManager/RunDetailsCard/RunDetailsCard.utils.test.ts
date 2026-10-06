@@ -55,6 +55,12 @@ describe('RunDetailsCard utils', () => {
       expect(formatDifference(10000, 10000)).toBe('0 (0.0%)');
     });
 
+    it('gives the percent the sign of the difference for a negative expected value', () => {
+      // -5 is 5 above -10: half of the expected value's size.
+      expect(formatDifference(-5, -10)).toBe('+5 (+50.0%)');
+      expect(formatDifference(-15, -10)).toBe('-5 (-50.0%)');
+    });
+
     it('drops the percent when the expected value is zero', () => {
       expect(formatDifference(12, 0)).toBe('+12');
     });
