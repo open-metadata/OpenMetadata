@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -248,54 +250,51 @@ const TestCaseResultTab = ({
   return (
     <div className="tw:@container">
       <div
-        className={`p-md test-case-result-tab tw:grid tw:w-full tw:gap-2.5 ${getResultTabGridClass(
-          isSidePanelVisible
-        )}`}
+        className={classNames(
+          'p-md test-case-result-tab tw:grid tw:w-full tw:gap-2.5',
+          getResultTabGridClass(isSidePanelVisible)
+        )}
         data-testid="test-case-result-tab-container">
-        <div className="transition-all-200ms tw:min-w-0">
-          <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
-            {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
-              AlertComponent && (
-                <div className="tw:w-full">
-                  <AlertComponent />
-                </div>
-              )}
-            {shouldRenderTestSummary(
-              testCaseData,
-              shouldRenderDefaultGraph
-            ) && (
-              // AI mode sets the result history straight on the page, as the mock
-              // does: the tiles carry the only borders in that section.
-              <div
-                className={
-                  isAiMode
-                    ? 'tw:w-full'
-                    : 'test-case-result-tab-graph tw:w-full'
-                }
-                data-testid="test-case-result-tab-graph">
-                <TestSummary data={testCaseData} />
-              </div>
+        <Box
+          className="transition-all-200ms tw:min-w-0 tw:gap-2.5"
+          direction="col">
+          {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
+            AlertComponent && (
+              <Box direction="col">
+                <AlertComponent />
+              </Box>
             )}
+          {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
+            // AI mode sets the result history straight on the page, as the mock
+            // does: the tiles carry the only borders in that section.
+            <Box
+              className={classNames({
+                'test-case-result-tab-graph': !isAiMode,
+              })}
+              data-testid="test-case-result-tab-graph"
+              direction="col">
+              <TestSummary data={testCaseData} />
+            </Box>
+          )}
 
-            {hasAdditionalComponents(additionalComponents) &&
-              additionalComponents.map(({ Component, id }) => (
-                <Component key={id} testCaseData={testCaseData} />
-              ))}
+          {hasAdditionalComponents(additionalComponents) &&
+            additionalComponents.map(({ Component, id }) => (
+              <Component key={id} testCaseData={testCaseData} />
+            ))}
 
-            {testCaseData &&
-              canEditTestCaseParameters(hasEditPermission, isParameterEdit) && (
-                <TestCaseFormDrawer
-                  showOnlyParameter
-                  open={isParameterEdit}
-                  showDocPanel={false}
-                  testCase={testCaseData}
-                  variant={editVariant}
-                  onClose={handleCancelParameter}
-                  onUpdate={setTestCase}
-                />
-              )}
-          </div>
-        </div>
+          {testCaseData &&
+            canEditTestCaseParameters(hasEditPermission, isParameterEdit) && (
+              <TestCaseFormDrawer
+                showOnlyParameter
+                open={isParameterEdit}
+                showDocPanel={false}
+                testCase={testCaseData}
+                variant={editVariant}
+                onClose={handleCancelParameter}
+                onUpdate={setTestCase}
+              />
+            )}
+        </Box>
         {isSidePanelVisible && (
           <TestCaseSidePanel
             description={description}

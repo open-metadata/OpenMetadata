@@ -185,14 +185,8 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     []
   );
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  const hasNeverRun = hasTestCaseNeverRun(data, results, !isUndefined(version));
-
   // Below the header: the results, or why there are none to show.
-  const renderResults = () => {
+  const resultsContent = useMemo(() => {
     if (isGraphLoading) {
       return <Loader />;
     }
@@ -221,7 +215,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       );
     }
 
-    if (hasNeverRun) {
+    if (hasTestCaseNeverRun(data, results, !isUndefined(version))) {
       return (
         <Box
           className="tw:relative tw:min-h-56 tw:w-full tw:rounded-xl tw:border tw:border-dashed tw:border-secondary"
@@ -253,7 +247,21 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         <RunDetailsCard results={results} testCase={data} />
       </>
     );
-  };
+  }, [
+    isGraphLoading,
+    hasLoadError,
+    handleRetry,
+    data,
+    results,
+    version,
+    selectedTimeRange,
+    testCaseFqn,
+    t,
+  ]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <Box data-testid="test-summary-container" direction="col" gap={4}>
@@ -279,7 +287,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
           onApply={handleDateRangeChange}
         />
       </Box>
-      {renderResults()}
+      {resultsContent}
     </Box>
   );
 };

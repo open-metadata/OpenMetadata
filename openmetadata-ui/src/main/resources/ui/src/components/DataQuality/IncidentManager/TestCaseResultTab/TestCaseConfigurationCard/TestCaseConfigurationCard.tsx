@@ -91,9 +91,12 @@ function ConfigurationSql({ value }: Readonly<{ value: string }>) {
  */
 function ConfigurationValue({ value }: Readonly<{ value: ReactNode }>) {
   return (
-    <span className="tw:max-w-[65%] tw:shrink-0 tw:break-words tw:text-right tw:font-mono tw:text-xs tw:font-semibold tw:text-primary">
+    <Typography
+      className="tw:max-w-[65%] tw:shrink-0 tw:break-words tw:text-right tw:font-mono tw:text-primary"
+      size="text-xs"
+      weight="semibold">
       {value}
-    </span>
+    </Typography>
   );
 }
 
