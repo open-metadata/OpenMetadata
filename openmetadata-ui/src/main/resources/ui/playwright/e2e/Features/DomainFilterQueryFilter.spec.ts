@@ -26,6 +26,7 @@ import {
   getApiContext,
   redirectToExplorePage,
   redirectToHomePage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   assignDomainToEntity,
@@ -840,14 +841,29 @@ const searchInDropdown = async (page: Page, searchText: string) => {
   await aggregation;
 };
 
+// The quick-filter menu is an antd dropdown that is still growing into place
+// when Playwright decides the item is stable, so the item slides out from under
+// the pointer between mousedown and mouseup and Chrome retargets the click to
+// the menu `<ul>` — the selection is silently dropped and the filter trigger
+// never renders. Wait out the enter animation before picking an item.
+const selectQuickFilter = async (
+  page: Page,
+  menuItem: RegExp,
+  dropdownTestId: string
+) => {
+  await page.locator('.filters-row button').first().click();
+  await waitForAntdPopupToSettle(page);
+  await page.getByRole('menuitem', { name: menuItem }).click();
+  await expect(page.getByTestId(dropdownTestId)).toBeVisible();
+};
+
 const applyCheckboxFilter = async (
   page: Page,
   menuItem: RegExp,
   dropdownTestId: string,
   option: string
 ) => {
-  await page.locator('.filters-row button').first().click();
-  await page.getByRole('menuitem', { name: menuItem }).click();
+  await selectQuickFilter(page, menuItem, dropdownTestId);
   await page.click(`[data-testid="${dropdownTestId}"]`);
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   const checkbox = page.getByTestId('drop-down-menu').getByTestId(option);
@@ -865,8 +881,7 @@ const applyTagFilter = async (
   searchTerm: string,
   tagPattern: RegExp
 ) => {
-  await page.locator('.filters-row button').first().click();
-  await page.getByRole('menuitem', { name: /Tag/i }).click();
+  await selectQuickFilter(page, /Tag/i, 'search-dropdown-Tag');
   await page.click('[data-testid="search-dropdown-Tag"]');
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   await page
