@@ -33,6 +33,8 @@ from metadata.ingestion.source.database.clickhouse.utils import (
     get_mview_names_dialect,
     get_pk_constraint,
     get_table_comment,
+    get_table_names_and_engines,
+    get_table_names_and_engines_dialect,
     get_unique_constraints,
     get_view_definition,
     get_view_names,
@@ -93,6 +95,8 @@ ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
 )
 Inspector.get_mview_names = get_mview_names
 ClickHouseDialect.get_mview_names = get_mview_names_dialect
+Inspector.get_table_names_and_engines = get_table_names_and_engines
+ClickHouseDialect.get_table_names_and_engines = get_table_names_and_engines_dialect
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
@@ -122,7 +126,11 @@ class ClickhouseSource(CommonDbSourceService):
         """
 
         regular_tables = [
-            TableNameAndType(name=table_name) for table_name in self.inspector.get_table_names(schema_name) or []
+            TableNameAndType(
+                name=table_name,
+                type_=TableType.DeltaLake if engine.startswith("DeltaLake") else TableType.Regular,
+            )
+            for table_name, engine in self.inspector.get_table_names_and_engines(schema_name) or []
         ]
         material_tables = [
             TableNameAndType(name=table_name, type_=TableType.MaterializedView)

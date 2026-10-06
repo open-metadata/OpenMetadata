@@ -22,6 +22,7 @@ from sqlalchemy.util import warn
 
 from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_TABLE_COMMENTS,
+    CLICKHOUSE_TABLE_NAMES_AND_ENGINES,
     CLICKHOUSE_VIEW_DEFINITIONS,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -139,6 +140,25 @@ def get_mview_names_dialect(self, connection, schema=None, **kw):
     database = schema or connection.engine.url.database
     rows = self._execute(connection, query, database=database)
     return [row.name for row in rows]
+
+
+def get_table_names_and_engines(self, schema=None):
+    """Return (name, engine) pairs for regular tables in `schema`.
+
+    Mirrors the base ``get_table_names`` filter but also yields the storage
+    engine so the source can flag DeltaLake-backed tables.
+    """
+
+    with self._operation_context() as conn:
+        return self.dialect.get_table_names_and_engines(conn, schema, info_cache=self.info_cache)
+
+
+@reflection.cache
+def get_table_names_and_engines_dialect(self, connection, schema=None, **kw):
+    query = text(CLICKHOUSE_TABLE_NAMES_AND_ENGINES)
+    database = schema or connection.engine.url.database
+    rows = self._execute(connection, query, database=database)
+    return [(row.name, row.engine) for row in rows]
 
 
 @reflection.cache

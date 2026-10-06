@@ -13,6 +13,8 @@
 from clickhouse_sqlalchemy.drivers.base import ischema_names as ch_ischema_names
 from sqlalchemy import types as sqltypes
 
+from metadata.generated.schema.entity.data.table import TableType
+from metadata.ingestion.source.database.clickhouse.metadata import ClickhouseSource
 from metadata.ingestion.source.database.clickhouse.utils import _get_column_type
 
 
@@ -132,3 +134,78 @@ class TestClickhouseGeoTypes:
         # All values should be distinct from NullType
         for name, t in types.items():
             assert t is not sqltypes.NullType, f"{name} resolved to NullType"
+
+
+class FakeInspector:
+    """Stands in for the SQLAlchemy inspector (a DB boundary).
+
+    Engine strings are the real values observed against a live ClickHouse
+    instance (see K2 verification).
+    """
+
+    def __init__(self, table_rows, mview_names=None, view_names=None):
+        self._table_rows = table_rows
+        self._mview_names = mview_names or []
+        self._view_names = view_names or []
+
+    def get_table_names_and_engines(self, schema):
+        return self._table_rows
+
+    def get_table_names(self, schema):
+        return [name for name, _ in self._table_rows]
+
+    def get_mview_names(self, schema):
+        return self._mview_names
+
+    def get_view_names(self, schema):
+        return self._view_names
+
+
+class _TestableClickhouseSource(ClickhouseSource):
+    """ClickhouseSource with the heavy connection __init__ bypassed and the
+    inspector property swapped for a fake, so query_table_names_and_types runs
+    for real against known engine rows."""
+
+    def __init__(self, inspector):
+        self._test_inspector = inspector
+
+    @property
+    def inspector(self):
+        return self._test_inspector
+
+
+def _types_by_name(table_rows, mview_names=None, view_names=None):
+    source = _TestableClickhouseSource(FakeInspector(table_rows, mview_names, view_names))
+    return {t.name: t.type_ for t in source.query_table_names_and_types("db")}
+
+
+class TestClickhouseTableTypeByEngine:
+    """query_table_names_and_types maps system.tables.engine to TableType."""
+
+    def test_deltalake_s3_engine_maps_to_deltalake(self):
+        types = _types_by_name([("delta_tbl", "DeltaLakeS3")])
+        assert types["delta_tbl"] == TableType.DeltaLake
+
+    def test_partitioned_deltalake_s3_engine_maps_to_deltalake(self):
+        types = _types_by_name([("delta_part", "DeltaLakeS3")])
+        assert types["delta_part"] == TableType.DeltaLake
+
+    def test_s3_engine_stays_regular(self):
+        types = _types_by_name([("s3_tbl", "S3")])
+        assert types["s3_tbl"] == TableType.Regular
+
+    def test_mergetree_engine_stays_regular(self):
+        types = _types_by_name([("mt_tbl", "MergeTree")])
+        assert types["mt_tbl"] == TableType.Regular
+
+    def test_iceberg_s3_engine_stays_regular(self):
+        types = _types_by_name([("iceberg_tbl", "IcebergS3")])
+        assert types["iceberg_tbl"] == TableType.Regular
+
+    def test_view_maps_to_view(self):
+        types = _types_by_name([], view_names=["my_view"])
+        assert types["my_view"] == TableType.View
+
+    def test_materialized_view_maps_to_materialized_view(self):
+        types = _types_by_name([], mview_names=["my_mview"])
+        assert types["my_mview"] == TableType.MaterializedView
