@@ -72,6 +72,8 @@ export interface OntologyNode {
   isDraft?: boolean;
   isOptimistic?: boolean;
   isDataModeSeed?: boolean;
+  /** Drawn from a relation's term reference; the term itself has not been loaded. */
+  isReferenceOnly?: boolean;
 }
 
 export interface OntologyEdge {

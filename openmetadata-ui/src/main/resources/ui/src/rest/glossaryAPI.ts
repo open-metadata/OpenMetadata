@@ -108,20 +108,29 @@ export const getGlossariesById = async (id: string, params?: ListParams) => {
   return response.data;
 };
 
-export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
+export const getGlossaryTerms = async (
+  params: ListGlossaryTermsParams,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
     '/glossaryTerms',
     {
       params,
+      signal,
     }
   );
 
   return response.data;
 };
 
-export const getGlossaryTermsById = async (id: string, params?: ListParams) => {
+export const getGlossaryTermsById = async (
+  id: string,
+  params?: ListParams,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<GlossaryTerm>(`/glossaryTerms/${id}`, {
     params,
+    signal,
   });
 
   return response.data;
