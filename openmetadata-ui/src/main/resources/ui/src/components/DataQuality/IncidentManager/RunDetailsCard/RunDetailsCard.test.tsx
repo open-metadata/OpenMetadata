@@ -17,6 +17,7 @@ import {
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
+import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { useTestCaseStore } from '../useTestCase.store';
 import RunDetailsCard from './RunDetailsCard';
 
@@ -126,8 +127,9 @@ describe('RunDetailsCard', () => {
       },
     ]);
 
+    // Signed like any other difference, as the mock shows it.
     expect(screen.getByTestId('run-details-difference')).toHaveTextContent(
-      '0 (0.0%)'
+      '+0 (+0.0%)'
     );
     expect(screen.getByTestId('run-details-note')).toHaveTextContent(
       'message.run-details-success-note'
@@ -209,12 +211,41 @@ describe('RunDetailsCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('hides the duration when the run has none', () => {
-    renderCard([{ ...FAILED_RUN, duration: undefined }]);
+  it('keeps the duration slot, with a dash, for a run that has none yet', () => {
+    renderCard([
+      {
+        timestamp: FAILED_RUN.timestamp,
+        testCaseStatus: TestCaseStatus.Queued,
+        testResultValue: [],
+      },
+    ]);
 
-    expect(
-      screen.queryByTestId('run-details-duration')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('run-details-duration')).toHaveTextContent('—');
+  });
+
+  it('dates the run as the banner does, without the time zone', () => {
+    renderCard([FAILED_RUN]);
+
+    const header = screen.getByTestId('run-details-date');
+
+    expect(header).toHaveTextContent(
+      customFormatDateTime(FAILED_RUN.timestamp, 'MMM d, yyyy, h:mm a')
+    );
+    expect(header).not.toHaveTextContent('UTC');
+  });
+
+  it('draws the expected value as a marker on its track, and colours the found value', () => {
+    renderCard([FAILED_RUN]);
+
+    const comparison = screen.getByTestId('run-details-comparison');
+    const marker = screen.getByTestId('run-details-expected-marker');
+
+    // 10,000 is the longer bar, so its marker sits at the end of the track.
+    expect(marker).toHaveStyle({ left: '100%' });
+    expect(comparison).toHaveTextContent('110');
+    expect(screen.getByTestId('run-details-found-value')).toHaveClass(
+      'tw:text-utility-error-700'
+    );
   });
 
   it('shows the run selected on the chart', () => {

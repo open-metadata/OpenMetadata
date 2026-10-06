@@ -51,8 +51,8 @@ describe('RunDetailsCard utils', () => {
       expect(formatDifference(10120, 10000)).toBe('+120 (+1.2%)');
     });
 
-    it('shows no sign for a zero difference', () => {
-      expect(formatDifference(10000, 10000)).toBe('0 (0.0%)');
+    it('signs a zero difference too, as the mock does', () => {
+      expect(formatDifference(10000, 10000)).toBe('+0 (+0.0%)');
     });
 
     it('gives the percent the sign of the difference for a negative expected value', () => {

@@ -25,7 +25,7 @@ import {
   TestCaseErrorDetails,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
@@ -52,11 +52,12 @@ const RunDuration = ({
   duration,
   errorDetails,
 }: {
-  duration: number;
+  duration?: number;
   errorDetails?: TestCaseErrorDetails;
 }) => {
   const { t } = useTranslation();
-  const text = formatRunDuration(duration);
+  // The slot stays for a run with no duration yet, a queued one, as in the mock.
+  const text = isUndefined(duration) ? NO_VALUE : formatRunDuration(duration);
 
   return (
     <Box
@@ -77,9 +78,11 @@ const RunDuration = ({
 const ComparisonBars = ({
   bars,
   barClassName,
+  valueClassName,
 }: {
   bars: ComparisonBar[];
   barClassName: string;
+  valueClassName: string;
 }) => {
   const { t } = useTranslation();
 
@@ -96,23 +99,40 @@ const ComparisonBars = ({
               {t(`label.${kind}`)}
             </Typography>
             <Typography
-              className="tw:font-mono tw:text-secondary"
+              className={classNames(
+                'tw:font-mono',
+                kind === 'found' ? valueClassName : 'tw:text-secondary'
+              )}
+              data-testid={`run-details-${kind}-value`}
               size="text-xs">
               {value.toLocaleString()}
             </Typography>
           </Box>
-          {/* Decorative: the numbers are already stated in text. */}
-          <div
-            aria-hidden
-            className="tw:h-2.5 tw:overflow-hidden tw:rounded-full tw:bg-quaternary">
+          {/* Decorative: the numbers are already stated in text. The found
+              value fills its track; the expected one marks its place on it. */}
+          {kind === 'found' ? (
             <div
-              className={classNames(
-                'tw:h-full tw:rounded-full',
-                kind === 'found' ? barClassName : 'tw:bg-fg-quaternary'
-              )}
-              style={{ width: `${width}%` }}
-            />
-          </div>
+              aria-hidden
+              className="tw:h-2.5 tw:overflow-hidden tw:rounded-full tw:bg-quaternary">
+              <div
+                className={classNames(
+                  'tw:h-full tw:rounded-full',
+                  barClassName
+                )}
+                style={{ width: `${width}%` }}
+              />
+            </div>
+          ) : (
+            <div
+              aria-hidden
+              className="tw:relative tw:h-2.5 tw:rounded-full tw:bg-quaternary">
+              <div
+                className="tw:absolute tw:-inset-y-0.5 tw:w-0.5 tw:-translate-x-1/2 tw:rounded-full tw:bg-fg-tertiary"
+                data-testid="run-details-expected-marker"
+                style={{ left: `${width}%` }}
+              />
+            </div>
+          )}
         </Box>
       ))}
     </Box>
@@ -210,7 +230,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
       data-testid="run-details-card">
       <Box
         align="center"
-        className="tw:border-b tw:border-inherit tw:px-4 tw:py-3"
+        className="tw:border-b tw:border-inherit tw:px-4 tw:py-4"
         gap={3}
         wrap="wrap">
         {/* White on the tinted header, as in the mock; text, border and dot keep the status colour. */}
@@ -230,12 +250,14 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           weight="semibold">
           {t('label.run-details')}
         </Typography>
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {formatDateTime(result.timestamp)}
+        {/* The banner's format: the zone and the padded day differed between the two. */}
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="run-details-date"
+          size="text-sm">
+          {customFormatDateTime(result.timestamp, 'MMM d, yyyy, h:mm a')}
         </Typography>
-        {!isUndefined(duration) && (
-          <RunDuration duration={duration} errorDetails={errorDetails} />
-        )}
+        <RunDuration duration={duration} errorDetails={errorDetails} />
       </Box>
       <Box
         className="tw:@container tw:bg-surface tw:p-4"
@@ -261,7 +283,11 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           ))}
         </div>
         {bars.length > 0 && (
-          <ComparisonBars barClassName={style.barClassName} bars={bars} />
+          <ComparisonBars
+            barClassName={style.barClassName}
+            bars={bars}
+            valueClassName={style.valueClassName}
+          />
         )}
         {status === TestCaseStatus.Aborted ? (
           <RunExecutionError

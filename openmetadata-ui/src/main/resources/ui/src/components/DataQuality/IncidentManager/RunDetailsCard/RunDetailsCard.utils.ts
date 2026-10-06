@@ -47,8 +47,9 @@ const TIMEOUT_ERROR = /time(d)?[\s_-]?out/i;
  */
 const TIMEOUT_ERROR_TYPES = new Set(['QueryCanceled']);
 
+// Zero is signed too, "+0 (+0.0%)", as the mock shows a run on target.
 const withSign = (value: string, number: number) =>
-  number > 0 ? `+${value}` : value;
+  number >= 0 ? `+${value}` : value;
 
 /** The run the chart has selected, or the newest one when it has none. */
 export const getSelectedRun = (
