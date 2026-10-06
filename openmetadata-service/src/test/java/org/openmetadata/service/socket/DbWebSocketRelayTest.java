@@ -26,11 +26,10 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
 /**
- * Exercises the DB-relay dispatch against an in-memory DAO that honours the same WHERE semantics as
- * the real SQL (senderPod &lt;&gt; self, expiresAt within the rescan window). Two relay instances
- * sharing one store model two pods. The relay is generic over scope/target, so both targeted (USER)
- * and broadcast (ALL) frames flow through the same table. Each relay uses rescanWindow == ttl, so the
- * window floor is "now" and the dispatch sees every non-expired peer frame it has not yet delivered.
+ * Exercises the DB-relay dispatch against an in-memory DAO that honours the real keyset semantics
+ * (senderPod &lt;&gt; self, {@code (createdAt, id)} &gt; the page cursor). Two relay instances sharing
+ * one store model two pods. Each relay uses overlap == ttl, so the trailing floor is 0 and every
+ * dispatch keyset-pages the whole table, delivering every unseen peer frame.
  */
 class DbWebSocketRelayTest {
 
@@ -43,8 +42,8 @@ class DbWebSocketRelayTest {
     InMemoryDao dao = new InMemoryDao();
     Capture capA = new Capture();
     Capture capB = new Capture();
-    DbWebSocketRelay podA = relay(dao, "podA", HOUR, capA);
-    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
+    DbWebSocketRelay podA = relay(dao, "podA", capA);
+    DbWebSocketRelay podB = relay(dao, "podB", capB);
     podA.start();
     podB.start();
 
@@ -70,8 +69,8 @@ class DbWebSocketRelayTest {
   void broadcastFrameUsesTheSameTableWithAllScopeAndNullTarget() {
     InMemoryDao dao = new InMemoryDao();
     Capture capB = new Capture();
-    DbWebSocketRelay podA = relay(dao, "podA", HOUR, new Capture());
-    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
+    DbWebSocketRelay podA = relay(dao, "podA", new Capture());
+    DbWebSocketRelay podB = relay(dao, "podB", capB);
     podA.start();
     podB.start();
 
@@ -92,8 +91,8 @@ class DbWebSocketRelayTest {
   void manyFramesAreWrittenInaSingleBatch() {
     InMemoryDao dao = new InMemoryDao();
     Capture capB = new Capture();
-    DbWebSocketRelay podA = relay(dao, "podA", HOUR, new Capture());
-    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
+    DbWebSocketRelay podA = relay(dao, "podA", new Capture());
+    DbWebSocketRelay podB = relay(dao, "podB", capB);
     podA.start();
     podB.start();
 
@@ -112,18 +111,44 @@ class DbWebSocketRelayTest {
   }
 
   @Test
+  void moreFramesThanThePageSizeAreAllDelivered() {
+    // The starvation case: with a fixed LIMIT and no cursor a poll would only ever return the
+    // oldest
+    // page. The keyset cursor pages until a short page, so a burst larger than one page is fully
+    // drained in a single dispatch.
+    InMemoryDao dao = new InMemoryDao();
+    Capture capB = new Capture();
+    DbWebSocketRelay podA = relay(dao, "podA", new Capture());
+    DbWebSocketRelay podB = relay(dao, "podB", capB);
+    podA.start();
+    podB.start();
+
+    int count = 2500; // > FETCH_LIMIT (1000)
+    for (int i = 0; i < count; i++) {
+      podA.publishToUser(UUID.randomUUID(), "e", "m" + i);
+    }
+    podA.flushQueue();
+
+    podB.dispatchOnce();
+    assertEquals(count, capB.rows.size(), "every frame past the page size must still be delivered");
+
+    podA.stop();
+    podB.stop();
+  }
+
+  @Test
   void aFrameIsDeliveredOnlyOnce() {
     InMemoryDao dao = new InMemoryDao();
     Capture capB = new Capture();
-    DbWebSocketRelay podA = relay(dao, "podA", HOUR, new Capture());
-    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
+    DbWebSocketRelay podA = relay(dao, "podA", new Capture());
+    DbWebSocketRelay podB = relay(dao, "podB", capB);
     podA.start();
     podB.start();
 
     podA.publishToUser(UUID.randomUUID(), "e", "m");
     podA.flushQueue();
     podB.dispatchOnce();
-    podB.dispatchOnce(); // frame still in the window, but the dedupe set skips it
+    podB.dispatchOnce(); // frame is re-read in the overlap, but the dedupe set skips it
 
     assertEquals(1, capB.rows.size());
 
@@ -133,24 +158,22 @@ class DbWebSocketRelayTest {
 
   @Test
   void aFrameVisibleOutOfInsertOrderIsStillDelivered() {
-    // Ids are assigned at INSERT but visible at COMMIT, so a lower id can surface after a higher
-    // one.
-    // The time window does not rely on id order, so both are delivered while recent.
+    // A row can become visible with a lower createdAt after a higher one (commit ordering). The
+    // trailing overlap re-reads it, so it is still delivered.
     InMemoryDao dao = new InMemoryDao();
     Capture capB = new Capture();
-    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
+    DbWebSocketRelay podB = relay(dao, "podB", capB);
     podB.start();
 
-    long later = System.currentTimeMillis() + HOUR;
     dao.insertWithId(
-        2, WebSocketRelay.SCOPE_USER, UUID.randomUUID().toString(), "e", "second", "podA", later);
-    podB.dispatchOnce(); // delivers id 2
+        2, 2, WebSocketRelay.SCOPE_USER, UUID.randomUUID().toString(), "e", "second", "podA");
+    podB.dispatchOnce(); // delivers (id=2, createdAt=2)
 
     dao.insertWithId(
-        1, WebSocketRelay.SCOPE_USER, UUID.randomUUID().toString(), "e", "first", "podA", later);
-    podB.dispatchOnce(); // id 1 becomes visible after id 2 -> still within the window, delivered
+        1, 1, WebSocketRelay.SCOPE_USER, UUID.randomUUID().toString(), "e", "first", "podA");
+    podB.dispatchOnce(); // (createdAt=1) is below the cursor but inside the overlap -> delivered
 
-    assertEquals(2, capB.rows.size(), "the out-of-order lower id must not be lost");
+    assertEquals(2, capB.rows.size(), "the out-of-order lower row must not be lost");
     assertTrue(capB.rows.stream().anyMatch(d -> "first".equals(d.payload())));
     assertTrue(capB.rows.stream().anyMatch(d -> "second".equals(d.payload())));
 
@@ -158,39 +181,13 @@ class DbWebSocketRelayTest {
   }
 
   @Test
-  void expiredFramesAreNotDelivered() {
-    InMemoryDao dao = new InMemoryDao();
-    Capture capB = new Capture();
-    // podA's TTL is negative, so every frame it inserts is already expired.
-    DbWebSocketRelay podA = relay(dao, "podA", -1L, new Capture());
-    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
-    podA.start();
-    podB.start();
-
-    podA.publishToUser(UUID.randomUUID(), "e", "m");
-    podA.flushQueue();
-    podB.dispatchOnce();
-
-    assertTrue(capB.rows.isEmpty(), "expired frame must be filtered out");
-
-    podA.stop();
-    podB.stop();
-  }
-
-  @Test
   void preStartFramesAreNotReplayed() {
     InMemoryDao dao = new InMemoryDao();
     // A frame already exists before podB starts.
-    dao.seed(
-        WebSocketRelay.SCOPE_USER,
-        UUID.randomUUID().toString(),
-        "e",
-        "m",
-        "someOtherPod",
-        System.currentTimeMillis() + HOUR);
+    dao.seed(WebSocketRelay.SCOPE_USER, UUID.randomUUID().toString(), "e", "m", "someOtherPod");
     Capture capB = new Capture();
-    DbWebSocketRelay podB = relay(dao, "podB", HOUR, capB);
-    podB.start(); // start seeds the dedupe set with in-window frames
+    DbWebSocketRelay podB = relay(dao, "podB", capB);
+    podB.start(); // seeds the cursor at the tail and the dedupe set with the overlap
 
     podB.dispatchOnce();
 
@@ -198,20 +195,30 @@ class DbWebSocketRelayTest {
     podB.stop();
   }
 
-  private DbWebSocketRelay relay(InMemoryDao dao, String id, long ttlMs, Capture capture) {
+  @Test
+  void oldFramesAreReapedByTtl() {
+    InMemoryDao dao = new InMemoryDao();
+    dao.insertWithId(1, 100, WebSocketRelay.SCOPE_USER, "u", "e", "old", "podA");
+    dao.insertWithId(2, 5000, WebSocketRelay.SCOPE_USER, "u", "e", "new", "podA");
+
+    assertEquals(1, dao.deleteOlderThan(1000), "rows older than the floor are reaped");
+    List<WsRelayDAO.RelayRow> remaining = dao.fetchAfter("podB", 0, 0, 10);
+    assertEquals(1, remaining.size(), "only the recent frame remains");
+    assertEquals("new", remaining.get(0).payload());
+  }
+
+  private DbWebSocketRelay relay(InMemoryDao dao, String id, Capture capture) {
     Consumer<WsRelayDAO.RelayRow> deliver = capture.rows::add;
-    // NEVER flush/poll in the background; tests drive flushQueue()/dispatchOnce(). rescanWindow ==
-    // ttl
-    // makes the window floor "now", so dispatch sees every non-expired peer frame not yet
-    // delivered.
-    return new DbWebSocketRelay(dao, id, NEVER, ttlMs, NEVER, NEVER, ttlMs, deliver);
+    // NEVER flush/poll in the background; tests drive flushQueue()/dispatchOnce(). overlap == ttl
+    // (HOUR) keeps the trailing floor at 0, so dispatch pages every unseen peer frame.
+    return new DbWebSocketRelay(dao, id, NEVER, HOUR, NEVER, NEVER, HOUR, deliver);
   }
 
   private static final class Capture {
     private final List<WsRelayDAO.RelayRow> rows = new CopyOnWriteArrayList<>();
   }
 
-  /** In-memory stand-in for ws_relay_message that applies the real query predicates. */
+  /** In-memory stand-in for ws_relay_message that applies the real keyset predicates. */
   private static final class InMemoryDao implements WsRelayDAO {
     private final List<Row> rows = new ArrayList<>();
     private final AtomicLong seq = new AtomicLong(0);
@@ -222,55 +229,59 @@ class DbWebSocketRelayTest {
     public synchronized void insertBatch(List<Frame> frames) {
       batchSizes.add(frames.size());
       for (Frame f : frames) {
+        long c = seq.incrementAndGet(); // id == createdAt, monotonic, like a DB-stamped insert
         rows.add(
             new Row(
-                seq.incrementAndGet(),
-                f.getScope(),
-                f.getTarget(),
-                f.getEvent(),
-                f.getPayload(),
-                f.getSenderPod(),
-                f.getExpiresAt()));
+                c, f.getScope(), f.getTarget(), f.getEvent(), f.getPayload(), f.getSenderPod(), c));
       }
     }
 
     // Append a pre-existing row (bypasses the relay) to model a frame that predates a pod's start.
     synchronized void seed(
-        String scope,
-        String target,
-        String event,
-        String payload,
-        String senderPod,
-        long expiresAt) {
-      rows.add(new Row(seq.incrementAndGet(), scope, target, event, payload, senderPod, expiresAt));
+        String scope, String target, String event, String payload, String senderPod) {
+      long c = seq.incrementAndGet();
+      rows.add(new Row(c, scope, target, event, payload, senderPod, c));
     }
 
-    // Insert with an explicit id to model rows becoming visible out of id order (commit ordering).
+    // Insert with explicit id and createdAt to model out-of-order visibility / specific ages.
     synchronized void insertWithId(
         long id,
+        long createdAt,
         String scope,
         String target,
         String event,
         String payload,
-        String senderPod,
-        long expiresAt) {
-      rows.add(new Row(id, scope, target, event, payload, senderPod, expiresAt));
+        String senderPod) {
+      rows.add(new Row(id, scope, target, event, payload, senderPod, createdAt));
     }
 
     @Override
-    public synchronized List<RelayRow> fetchRecent(String self, long recentFloor, int limit) {
+    public synchronized long maxCreatedAt() {
+      return rows.stream().mapToLong(Row::createdAt).max().orElse(0);
+    }
+
+    @Override
+    public synchronized List<RelayRow> fetchAfter(
+        String self, long afterCreatedAt, long afterId, int limit) {
       return rows.stream()
-          .filter(r -> !r.senderPod().equals(self) && r.expiresAt() > recentFloor)
-          .sorted(Comparator.comparingLong(Row::expiresAt).thenComparingLong(Row::id))
+          .filter(r -> !r.senderPod().equals(self))
+          .filter(
+              r ->
+                  r.createdAt() > afterCreatedAt
+                      || (r.createdAt() == afterCreatedAt && r.id() > afterId))
+          .sorted(Comparator.comparingLong(Row::createdAt).thenComparingLong(Row::id))
           .limit(limit)
-          .map(r -> new RelayRow(r.id(), r.scope(), r.target(), r.event(), r.payload()))
+          .map(
+              r ->
+                  new RelayRow(
+                      r.id(), r.scope(), r.target(), r.event(), r.payload(), r.createdAt()))
           .toList();
     }
 
     @Override
-    public synchronized int deleteExpired(long now) {
+    public synchronized int deleteOlderThan(long floor) {
       int before = rows.size();
-      rows.removeIf(r -> r.expiresAt() < now);
+      rows.removeIf(r -> r.createdAt() < floor);
       return before - rows.size();
     }
 
@@ -281,6 +292,6 @@ class DbWebSocketRelayTest {
         String event,
         String payload,
         String senderPod,
-        long expiresAt) {}
+        long createdAt) {}
   }
 }
