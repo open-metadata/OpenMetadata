@@ -122,6 +122,23 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
+// The incidents API 403s without ViewTests/ViewAll; the rejection counts as zero incidents.
+const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
+  canViewTests
+    ? getListTestCaseIncidentStatus({
+        originEntityFQN: tableFqn,
+        latest: true,
+        // The server picks each test case's latest status before applying this filter, so
+        // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
+        // before that and still includes resolved test cases.
+        testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
+        // `latest` is only honoured together with a time range.
+        startTs: 0,
+        endTs: Date.now(),
+        limit: DQ_INDICATOR_FETCH_LIMIT,
+      })
+    : Promise.reject();
+
 const TableDetailsPageV1: React.FC = () => {
   const {
     isTourOpen,
@@ -358,18 +375,7 @@ const TableDetailsPageV1: React.FC = () => {
             testCaseStatus: TestCaseStatus.Failed,
             limit: DQ_INDICATOR_FETCH_LIMIT,
           }),
-          getListTestCaseIncidentStatus({
-            originEntityFQN: tableFqn,
-            latest: true,
-            // The server picks each test case's latest status before applying this filter, so
-            // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
-            // before that and still includes resolved test cases.
-            testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
-            // `latest` is only honoured together with a time range.
-            startTs: 0,
-            endTs: Date.now(),
-            limit: DQ_INDICATOR_FETCH_LIMIT,
-          }),
+          fetchOpenIncidents(tableFqn, viewTestCasePermission),
           getDataQualityLineage(tableFqn, { upstreamDepth: 1 }),
         ]);
 
@@ -408,7 +414,7 @@ const TableDetailsPageV1: React.FC = () => {
             : 0,
       });
     },
-    [tableFqn, setDqLineageData]
+    [tableFqn, setDqLineageData, viewTestCasePermission]
   );
 
   const {
