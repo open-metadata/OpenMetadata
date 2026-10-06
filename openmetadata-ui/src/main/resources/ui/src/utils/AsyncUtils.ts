@@ -12,6 +12,12 @@
  */
 
 /**
+ * In-flight cap for an action applied to every row a user selected. A selection can run to
+ * hundreds of rows, and firing one request per row at once floods the server.
+ */
+export const BULK_ACTION_CONCURRENCY = 5;
+
+/**
  * Run an async worker over `items` with at most `limit` executions in flight at
  * once, instead of one-at-a-time (`for … await`) or all-at-once (`Promise.all`).
  *

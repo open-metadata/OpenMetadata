@@ -13,7 +13,6 @@
 
 import { RowProps } from 'antd/lib/grid/row';
 import { SystemChartType } from '../enums/DataInsight.enum';
-import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import {
   ChartFilter,
@@ -58,17 +57,6 @@ export const ENTITIES_CHARTS = [
   SystemChartType.PercentageOfDataAssetWithDescription,
   SystemChartType.PercentageOfDataAssetWithOwner,
   SystemChartType.TotalDataAssetsByTier,
-];
-
-export const WEB_CHARTS = [
-  {
-    chart: DataInsightChartType.PageViewsByEntities,
-    index: DataReportIndex.WebAnalyticEntityViewReportDataIndex,
-  },
-  {
-    chart: DataInsightChartType.DailyActiveUsers,
-    index: DataReportIndex.WebAnalyticUserActivityReportDataIndex,
-  },
 ];
 
 export const WEB_SUMMARY_LIST = [

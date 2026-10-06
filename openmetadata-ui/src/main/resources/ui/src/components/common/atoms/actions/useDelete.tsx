@@ -16,6 +16,10 @@ import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { deleteEntity } from '../../../../rest/miscAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../../../../utils/AsyncUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DeleteModal } from '../../DeleteModal/DeleteModal';
@@ -37,7 +41,7 @@ interface UseDeleteConfig<
  * Provides a reusable delete functionality for any entity type with:
  * - Delete icon button for triggering deletion
  * - Confirmation modal with progress tracking
- * - Bulk delete support with sequential processing
+ * - Bulk delete with a bounded number of requests in flight
  * - Error handling and toast notifications
  *
  * @example
@@ -122,23 +126,24 @@ export const useDelete = <
   const handleDelete = useCallback(async () => {
     setIsDeleting(true);
 
-    const results = await Promise.allSettled(
-      selectedEntities.map((entity) =>
+    // Each item resolves to its name when its delete fails, so one failure does not stop the rest.
+    const failedNames = await runWithConcurrencyLimit(
+      selectedEntities,
+      BULK_ACTION_CONCURRENCY,
+      (entity) =>
         deleteEntity(
           entityType,
           entity.id,
           false, // recursive: false (safe default)
           true // hardDelete: true (permanent)
+        ).then(
+          () => undefined,
+          () => getEntityName(entity)
         )
-      )
     );
-    const errors = results.reduce<string[]>((acc, result, index) => {
-      if (result.status === 'rejected') {
-        acc.push(getEntityName(selectedEntities[index]));
-      }
-
-      return acc;
-    }, []);
+    const errors = failedNames.filter(
+      (name): name is string => name !== undefined
+    );
 
     if (errors.length === 0) {
       showSuccessToast(

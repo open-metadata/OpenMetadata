@@ -210,7 +210,7 @@ export const updateSuggestionStatus = async (
 export const approveRejectAllSuggestions = async (
   userId: string,
   entityFQN: string,
-  suggestionType: SuggestionType,
+  suggestionTypes: SuggestionType[],
   action: SuggestionAction
 ): Promise<AxiosResponse> => {
   const response = await APIClient.get<PagingResponse<Task[]>>(TASKS_BASE_URL, {
@@ -229,14 +229,17 @@ export const approveRejectAllSuggestions = async (
       ? TaskResolutionType.Approved
       : TaskResolutionType.Rejected;
 
-  const filteredTasks = response.data.data.filter(
-    (task) =>
-      mapSuggestionTypeFromPayload(
-        task.payload as Record<string, unknown> | undefined
-      ) === suggestionType
-  );
+  const filteredTasks = response.data.data.filter((task) => {
+    const taskType = mapSuggestionTypeFromPayload(
+      task.payload as Record<string, unknown> | undefined
+    );
 
-  // Resolve sequentially to avoid optimistic-lock version conflicts on the entity.
+    return taskType !== undefined && suggestionTypes.includes(taskType);
+  });
+
+  // Resolve sequentially to avoid optimistic-lock version conflicts on the
+  // entity. All types go through this one loop: resolving them in parallel
+  // calls would race on the same entity.
   for (const task of filteredTasks) {
     const suggestion = taskToSuggestion(task);
     const tagLabelsValue = suggestion.tagLabels

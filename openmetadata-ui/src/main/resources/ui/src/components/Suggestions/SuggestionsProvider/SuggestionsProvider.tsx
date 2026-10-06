@@ -185,19 +185,12 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoadingReject(true);
       }
       try {
-        const promises = [
-          SuggestionType.SuggestDescription,
-          SuggestionType.SuggestTagLabel,
-        ].map((suggestionType) =>
-          approveRejectAllSuggestions(
-            activeUser.id ?? '',
-            entityFqn,
-            suggestionType,
-            status
-          )
+        await approveRejectAllSuggestions(
+          activeUser.id ?? '',
+          entityFqn,
+          [SuggestionType.SuggestDescription, SuggestionType.SuggestTagLabel],
+          status
         );
-
-        await Promise.allSettled(promises);
 
         const userSuggestionsToRemove = selectedUserSuggestions.combinedData;
 

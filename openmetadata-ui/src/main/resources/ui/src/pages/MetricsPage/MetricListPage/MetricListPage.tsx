@@ -97,6 +97,10 @@ import {
   exportMetricDetailsInCSV,
 } from '../../../rest/metricsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../../../utils/AsyncUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
@@ -593,7 +597,11 @@ const MetricListPage = () => {
   const handleBulkDelete = useCallback(async () => {
     try {
       setIsDeletingMetrics(true);
-      await Promise.all(selectedMetrics.map(({ id }) => deleteMetricAsync(id)));
+      await runWithConcurrencyLimit(
+        selectedMetrics,
+        BULK_ACTION_CONCURRENCY,
+        ({ id }) => deleteMetricAsync(id)
+      );
       showSuccessToast(
         t('message.metrics-delete-success', {
           count: selectedMetrics.length,

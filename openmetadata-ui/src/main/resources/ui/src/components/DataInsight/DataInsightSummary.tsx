@@ -16,7 +16,6 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WEB_CHARTS } from '../../constants/DataInsight.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -137,17 +136,19 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const fetchWebChartData = async () => {
     setIsLoading(true);
     try {
-      const promises = WEB_CHARTS.map((chart) => {
-        const params = {
+      const responses = await Promise.allSettled([
+        getAggregateChartData({
           ...chartFilter,
-          dataInsightChartName: chart.chart,
-          dataReportIndex: chart.index,
-        };
-
-        return getAggregateChartData(params);
-      });
-
-      const responses = await Promise.allSettled(promises);
+          dataInsightChartName: DataInsightChartType.PageViewsByEntities,
+          dataReportIndex: DataReportIndex.WebAnalyticEntityViewReportDataIndex,
+        }),
+        getAggregateChartData({
+          ...chartFilter,
+          dataInsightChartName: DataInsightChartType.DailyActiveUsers,
+          dataReportIndex:
+            DataReportIndex.WebAnalyticUserActivityReportDataIndex,
+        }),
+      ]);
 
       const chartDataList = responses
         .map((response) => {
