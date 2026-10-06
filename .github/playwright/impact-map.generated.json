@@ -4612,8 +4612,13 @@
       "specs": [
         "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
+        "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
+        "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
+        "playwright/e2e/Features/NestedColumnsExpandCollapse.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
-        "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts"
+        "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
+        "playwright/e2e/Pages/ExploreBrowse.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"
       ]
     },
     {
