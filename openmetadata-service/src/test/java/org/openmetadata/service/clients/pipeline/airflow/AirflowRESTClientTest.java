@@ -26,8 +26,11 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.time.Duration;
@@ -40,6 +43,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import javax.net.ssl.SSLHandshakeException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -525,6 +529,33 @@ class AirflowRESTClientTest {
               + "].",
           exception.getMessage());
     }
+  }
+
+  @Test
+  void aTriggerThatFailsBeforeAirflowAnswersSaysWhetherARetryCanHelp() {
+    // Not reached, or no answer in time: the same run can succeed once Airflow is back.
+    assertTriggerFailure(
+        503, "HTTP connect timed out", new HttpConnectTimeoutException("HTTP connect timed out"));
+    // Java's HTTP client can refuse a connection with no message at all.
+    assertTriggerFailure(503, "ConnectException", new ConnectException());
+    // Reached, but the TLS handshake failed: a retry fails the same way until the certificates
+    // are fixed.
+    assertTriggerFailure(
+        502, "PKIX path building failed", new SSLHandshakeException("PKIX path building failed"));
+    URISyntaxException malformedUrl =
+        new URISyntaxException("http://air flow", "Illegal character");
+    // The configured Airflow URL is malformed, which is the server's configuration to fix.
+    assertTriggerFailure(500, malformedUrl.getMessage(), malformedUrl);
+  }
+
+  private static void assertTriggerFailure(int status, String reason, Exception cause) {
+    IngestionPipelineDeploymentException exception =
+        AirflowRESTClient.triggerFailure("orders_metadata", cause);
+
+    assertEquals(status, exception.getResponse().getStatus());
+    assertEquals(
+        "Failed to trigger pipeline [orders_metadata] due to [" + reason + "].",
+        exception.getMessage());
   }
 
   @Test
