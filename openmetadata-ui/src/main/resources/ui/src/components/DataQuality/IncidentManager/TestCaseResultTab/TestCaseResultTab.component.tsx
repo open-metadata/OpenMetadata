@@ -37,6 +37,7 @@ import { ConfigurationParameterRow } from './TestCaseConfigurationCard/TestCaseC
 import { TestCaseSidePanelProps } from './TestCaseResultTab.interface';
 import {
   canEditTestCaseParameters,
+  formatParameterValue,
   getResultTabGridClass,
   hasAdditionalComponents,
   resolveIsSidePanelVisible,
@@ -215,9 +216,18 @@ const TestCaseResultTab = ({
     if (versionDiff) {
       rows = [...versionDiff.rows];
     } else if (!testCaseData?.useDynamicAssertion) {
+      const parameterTypes = new Map(
+        testDefinition?.parameterDefinition?.map(({ name, dataType }) => [
+          name,
+          dataType,
+        ])
+      );
       rows = withoutSqlParams.map((param) => ({
         label: param.name ?? '',
-        value: param.value ?? '',
+        value: formatParameterValue(
+          param.value,
+          parameterTypes.get(param.name)
+        ),
       }));
     }
 
@@ -244,6 +254,7 @@ const TestCaseResultTab = ({
     showComputeRowCount,
     computeRowCountDisplay,
     testCaseData?.dataQualityDimension,
+    testDefinition?.parameterDefinition,
     t,
   ]);
 
