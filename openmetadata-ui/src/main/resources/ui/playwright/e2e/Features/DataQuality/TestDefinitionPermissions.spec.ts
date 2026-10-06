@@ -26,17 +26,22 @@ const actionNotAllowed = async (page: Page) => {
 
   await expect(addButton).not.toBeVisible();
 
-  // Verify edit buttons are NOT visible for user test definitions
-  const editButtons = page.getByTestId(/edit-test-definition-/).first();
-  await expect(editButtons).toBeDisabled();
+  // Every row action must be disabled, not just the first one, so assert that
+  // none of them is enabled while proving the table actually rendered rows.
+  const enabled = page.locator(':enabled');
 
-  // Verify delete buttons are NOT visible
-  const deleteButtons = page.getByTestId(/delete-test-definition-/).first();
-  await expect(deleteButtons).toBeDisabled();
+  const editButtons = page.getByTestId(/^edit-test-definition-/);
+  await expect(editButtons).not.toHaveCount(0);
+  await expect(editButtons.and(enabled)).toHaveCount(0);
 
-  // Verify enabled/disabled switches are NOT interactive (no EditAll permission)
-  const firstSwitch = page.getByRole('switch').first();
-  await expect(firstSwitch).toBeDisabled();
+  const deleteButtons = page.getByTestId(/^delete-test-definition-/);
+  await expect(deleteButtons).not.toHaveCount(0);
+  await expect(deleteButtons.and(enabled)).toHaveCount(0);
+
+  // Enabled/disabled switches are not interactive without EditAll permission.
+  const switches = page.getByRole('switch');
+  await expect(switches).not.toHaveCount(0);
+  await expect(switches.and(enabled)).toHaveCount(0);
 };
 
 // Define permission policies for different roles

@@ -239,13 +239,14 @@ test.describe(
         await userPage.hover('[data-testid="left-sidebar"]');
         await userPage.click('[data-testid="governance"]');
 
-        // Wait for the governance dropdown to fully expand before checking children
-        const anyGovernanceChild = userPage
+        // Wait for the governance dropdown to fully expand before checking
+        // children. Any one of them proves the expansion, so assert on the set.
+        const governanceChildren = userPage
           .locator('[data-testid="left-sidebar"]')
           .locator('[data-testid^="app-bar-item-"]')
-          .first();
+          .filter({ visible: true });
 
-        await expect(anyGovernanceChild).toBeVisible();
+        await expect(governanceChildren).not.toHaveCount(0);
 
         // Glossary is in saved nav with isHidden: false — must be visible
         await expect(

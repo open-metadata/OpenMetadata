@@ -299,10 +299,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
 
     const exploreSwitch = page.getByTestId('navigation-switch-/explore');
-    const insightsSwitch = page
-      .locator('.ant-tree-title:has-text("Insights")')
-      .locator('[data-testid^="navigation-switch-"]')
-      .first();
+    const insightsSwitch = page.getByTestId('navigation-switch-/data-insights');
 
     await exploreSwitch.click();
     await insightsSwitch.click();

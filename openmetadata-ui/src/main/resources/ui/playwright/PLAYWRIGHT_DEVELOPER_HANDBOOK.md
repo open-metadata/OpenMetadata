@@ -8,6 +8,7 @@
 - [API Setups for Test Data](#api-setups-for-test-data)
 - [Test Data Isolation](#test-data-isolation)
 - [Locator Priority Order](#locator-priority-order)
+- [Removing a Positional Locator](#removing-a-positional-locator)
 - [Anti-Flakiness Patterns](#anti-flakiness-patterns)
 - [Waiting for Asynchronous State](#waiting-for-asynchronous-state)
 - [Test Timeouts](#test-timeouts)
@@ -560,6 +561,104 @@ When adding `data-testid` to components:
 <button data-testid="btn">Submit</button>
 <div data-testid="card">...</div>
 ```
+
+---
+
+## Removing a Positional Locator
+
+`om-playwright/no-positional-locator` bans `.first()` / `.last()` / `.nth()`, and the existing
+violations are ratcheting down through `eslint-suppressions.json`. Deleting an index *looks*
+mechanical and is not: a replacement that resolves to the wrong element still goes green locally and
+reddens a shard you never touched. Work through these before deleting one.
+
+### Prove the replacement is actually a narrowing
+
+**`hasText` with a string is a case-insensitive substring match.** `'admin'` matches a "Legal Admin"
+row, `'50'` matches "150", `'#12'` matches `'#120'`. `getByTestId` is an *exact* attribute match, so
+`filter({ has: page.getByTestId(x) })` narrows and `filter({ hasText: 'literal' })` often does not.
+Use a `RegExp` with anchors when you mean the whole string.
+
+**`*=` on a hierarchical key matches descendants.** A glossary child's `data-row-key` is the parent
+FQN plus its own name, so `[data-row-key*="Parent"]` selects the parent *and* its children. Anchor
+with `$=`. Same trap for any FQN that is a prefix of a longer one.
+
+**An attribute value can repeat across panels of one widget.** antd `RangePicker` renders two months
+and puts `title="yyyy-MM-dd"` on every cell, including greyed neighbouring-month ones — near month
+end `[title="<today>"]` matches twice. Scope with `.ant-picker-cell-in-view`.
+
+**A composite component re-announces its identity on its children.** `task-feed-card` carries
+`aria-label="#<id> <type>"`, but it *nests* a `redirect-task-button-link` and a `task-title` whose
+accessible names start with the same `#<id>` — `getByRole('button', { name: /^#24/ })` resolved to
+three. A correct accessible name does not imply a unique role selector. Require both identities:
+
+```typescript
+page
+  .getByTestId('task-feed-card')
+  .and(page.getByRole('button', { name: new RegExp(`^#${taskId}\\b`) }));
+```
+
+**A regex over every button in a container passes for the wrong reason.**
+`getByRole('button', { name: /approve|accept|resolve/i }).first()` succeeds as soon as *any* button
+matches. Name the element — the test should fail when the UI changes.
+
+### Know the ground truth before you narrow
+
+**Read the call site, not just the default.** `new GlossaryTerm(g, undefined, 'ParentToDelete')`
+bypasses the uuid-suffixed default name generator, so the name you assumed was unique is a literal.
+
+**Test ids are often generated, so grepping the literal finds nothing.** `TaskTabNew`'s
+`renderDropdownButtons(prefix)` stamps `${prefix}-primary` on a CTA and `${prefix}-trigger` on its
+caret. Grep the *component* for how its ids are built. Finding that collapsed four fallback
+locators into `[data-testid$="-task-action-primary"]` and took `taskWorkflow.ts` from 31 sites to 3.
+
+**Check the component is the only one of its kind** before migrating tests onto it:
+
+```bash
+grep -rl 'data-testid="more-actions"' src --include=*.tsx | grep -v test | wc -l
+```
+
+`more-actions` is rendered by both `PipelineActionsDropdown` and `AgentOverflowMenu` — there a
+`.first()` may be disambiguating between *components*, not list items.
+
+**Do not add a test id whose value the test cannot predict.** `domain-link-${getEntityName(domain)}`
+looked clean, but `getEntityName` is `displayName || name` over an `EntityReference` whose
+`displayName` the API does not always populate. An index you understand beats a test id you have to
+guess at.
+
+**A virtualised grid only renders what is in view.** Every react-data-grid cell carries
+`rdg-cell-<columnKey>`, but RDG virtualises columns — that class is absent until the column is
+scrolled into view, while `.rdg-cell').first()` always matches whatever is rendered leftmost.
+Existence in the template is not existence in the DOM. Rows are safe: pass `rowTestId` to
+`LazyDataGrid` and address them by `rdg-row-<id>`.
+
+```tsx
+<LazyDataGrid rowTestId={(row) => (row.id ? `rdg-row-${row.id}` : undefined)} ... />
+```
+
+Check what the row builder puts in `id` first — in the metrics flow it is a UUID, not the index.
+
+### When not to remove it at all
+
+**Is the target legitimately plural?** Toasts stack; many activity cards share a marker. Then the
+honest assertion is a count, not a laundered index:
+
+```typescript
+const toast = page.getByTestId('alert-bar').filter({ hasText: message }).filter({ visible: true });
+await expect(toast).not.toHaveCount(0, { timeout });
+```
+
+**Never de-index in front of `waitFor()`, `not.toBeVisible()`, or a swallowed
+`isVisible().catch(() => false)`.** The first two are strict-mode sensitive; the third silently flips
+control flow instead of failing, so a wrong guess changes what gets clicked with no error.
+
+**`expect(X.first()).toBeVisible()` splits two ways.** Inline inside `expect(...)` it is a pure
+existence check and safe to convert. Bound to a `const` that is clicked later, converting it breaks
+outright. In this repo that split was roughly 140 safe to 159 unsafe — check which one you have.
+
+**Shared `utils/` helpers are a stricter review class.** One bad edit to `toastNotification`
+reddened 17 shards whose spec files the branch never touched. Treat a helper change as a change to
+every spec that calls it, and dispatch the full suite rather than the files you edited.
+
 
 ---
 
@@ -1385,6 +1484,16 @@ exits non-zero, while `lint:playwright:suppressions` removes it and rewrites the
 the second after a cleanup and commit the rewritten baseline — that commit is what ratchets the count
 down. Neither will let a *new* violation through; adding to the baseline needs an explicit
 `--suppress-all`.
+
+`playwright/eslint-rules/tests/corpus.test.mjs` pins the **exact** suppression count per rule by
+design, so a cleanup that does not lower it fails CI. Lower it in the same commit that prunes the
+baseline:
+
+```bash
+yarn lint:playwright:suppressions           # prune what you fixed
+node --test playwright/eslint-rules/tests/  # tells you the new count
+make ui-checkstyle-changed
+```
 
 ### Rule Levels
 

@@ -91,7 +91,9 @@ const TermsRow: React.FC<TermsRowProps> = ({
     <div
       className="d-flex items-center gap-3"
       data-testid={`relation-row-${rowId}`}>
-      <div className="tw:w-67.5 tw:shrink-0">
+      <div
+        className="tw:w-67.5 tw:shrink-0"
+        data-testid={`relation-type-${rowId}`}>
         <Select
           className="w-full"
           fontSize="sm"

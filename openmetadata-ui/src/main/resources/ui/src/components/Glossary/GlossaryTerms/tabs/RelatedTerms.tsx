@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { groupBy, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -155,6 +155,12 @@ const RelatedTerms = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [editingRows, setEditingRows] = useState<RelationEditRow[]>([]);
+
+  // Row ids seed TermsRow's local state through the React key, so they must stay
+  // stable for the life of a row. A monotonic counter is stable and, unlike the
+  // timestamp it replaces, predictable from a test.
+  const nextRowId = useRef(0);
+  const makeRowId = useCallback(() => String(nextRowId.current++), []);
   const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
   const [termStyles, setTermStyles] = useState<Record<string, Style>>({});
 
@@ -239,10 +245,11 @@ const RelatedTerms = () => {
   );
 
   const handleStartEditing = useCallback(() => {
+    nextRowId.current = 0;
     if (isEmpty(termRelations)) {
       setEditingRows([
         {
-          id: '0',
+          id: makeRowId(),
           relationType: relationTypes[0]?.name ?? 'relatedTo',
           terms: [],
         },
@@ -250,8 +257,8 @@ const RelatedTerms = () => {
     } else {
       const grouped = groupBy(termRelations, 'relationType');
       setEditingRows(
-        Object.entries(grouped).map(([relationType, relations], idx) => ({
-          id: String(idx),
+        Object.entries(grouped).map(([relationType, relations]) => ({
+          id: makeRowId(),
           relationType,
           terms: relations
             .filter((r) => r.term?.fullyQualifiedName)
@@ -268,18 +275,19 @@ const RelatedTerms = () => {
       );
     }
     setIsEditing(true);
-  }, [termRelations, relationTypes]);
+  }, [termRelations, relationTypes, makeRowId]);
 
   const handleStartAdding = useCallback(() => {
+    nextRowId.current = 0;
     setEditingRows([
       {
-        id: String(Date.now()),
+        id: makeRowId(),
         relationType: relationTypes[0]?.name ?? 'relatedTo',
         terms: [],
       },
     ]);
     setIsAdding(true);
-  }, [relationTypes]);
+  }, [relationTypes, makeRowId]);
 
   const handleSave = useCallback(async () => {
     const rowRelations: TermRelation[] = editingRows.flatMap((row) =>
@@ -311,12 +319,12 @@ const RelatedTerms = () => {
     setEditingRows((prev) => [
       ...prev,
       {
-        id: String(Date.now()),
+        id: makeRowId(),
         relationType: relationTypes[0]?.name ?? 'relatedTo',
         terms: [],
       },
     ]);
-  }, [relationTypes]);
+  }, [relationTypes, makeRowId]);
 
   const handleRemoveRow = useCallback((rowId: string) => {
     setEditingRows((prev) => prev.filter((r) => r.id !== rowId));

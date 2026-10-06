@@ -1163,7 +1163,8 @@ export const addRelatedTerms = async (
 ) => {
   await page.getByTestId('related-term-add-button').click();
 
-  const trigger = page.locator('[data-testid^="term-picker-"]').first();
+  // The add flow opens with exactly one row, so its picker is row 0's.
+  const trigger = page.getByTestId('term-picker-0');
 
   for (const term of relatedTerms) {
     await pickGlossaryTermInField(page, trigger, {
@@ -1196,14 +1197,14 @@ export const addRelatedTermsByRelationType = async (
       await page.getByTestId('add-row-button').click();
     }
 
-    // Row ids are non-deterministic (Date.now() in handleStartAdding/handleAddRow),
-    // so identify rows by position — first when i=0, otherwise last.
-    const rowLocator =
-      i === 0
-        ? page.locator('[data-testid^="relation-row-"]').first()
-        : page.locator('[data-testid^="relation-row-"]').last();
+    // Row ids come from a monotonic counter reset when the editor opens, so the
+    // i-th row added is always relation-row-<i>.
+    const rowLocator = page.getByTestId(`relation-row-${i}`);
 
-    await rowLocator.getByRole('button').first().click();
+    await rowLocator
+      .getByTestId(`relation-type-${i}`)
+      .getByRole('button')
+      .click();
     const option = page.getByRole('option', {
       exact: true,
       name: row.relationTypeLabel,
@@ -1211,7 +1212,7 @@ export const addRelatedTermsByRelationType = async (
     await expect(option).toBeVisible();
     await option.click();
 
-    const trigger = rowLocator.locator('[data-testid^="term-picker-"]');
+    const trigger = rowLocator.getByTestId(`term-picker-${i}`);
 
     for (const term of row.terms) {
       await pickGlossaryTermInField(page, trigger, {

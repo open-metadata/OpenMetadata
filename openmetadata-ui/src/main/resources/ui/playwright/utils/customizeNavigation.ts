@@ -63,15 +63,13 @@ export const validateLeftSidebarWithHiddenItems = async (
         await page.hover('[data-testid="left-sidebar"]');
         await page.click(`[data-testid="${items[0]}"]`);
 
-        // Wait for dropdown to expand - wait for any child item of the parent to be visible
-        // This confirms the dropdown has fully expanded before checking specific items
-        // For Observability, wait for at least one of its children to be visible
-        const anyChildInDropdown = page
+        // Wait for the dropdown to expand: at least one child item visible.
+        const childrenInDropdown = page
           .locator(`[data-testid="left-sidebar"]`)
           .locator(`[data-testid^="app-bar-item-"]`)
-          .first();
+          .filter({ visible: true });
 
-        await expect(anyChildInDropdown).toBeVisible(); // Ensure at least one child is visible before proceeding
+        await expect(childrenInDropdown).not.toHaveCount(0);
 
         const childElement = page
           .locator(`[data-testid="app-bar-item-${items[1]}"]`)

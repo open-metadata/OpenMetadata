@@ -883,7 +883,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      await page.locator('[data-testid^="remove-row-"]').first().click();
+      await page.getByTestId('remove-row-0').click();
 
       const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();

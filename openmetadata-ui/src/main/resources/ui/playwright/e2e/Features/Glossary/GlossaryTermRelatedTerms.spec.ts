@@ -52,7 +52,7 @@ test.describe('Glossary Term — Related Terms', () => {
       await selectActiveGlossaryTerm(page, termA.data.displayName);
       await page.getByTestId('related-term-add-button').click();
 
-      const firstRow = page.locator('[data-testid^="relation-row-"]').first();
+      const firstRow = page.getByTestId('relation-row-0');
 
       const termBName =
         termB.responseData?.displayName ?? termB.data.displayName;
@@ -67,7 +67,7 @@ test.describe('Glossary Term — Related Terms', () => {
       );
 
       await page.getByTestId('add-row-button').click();
-      const secondRow = page.locator('[data-testid^="relation-row-"]').last();
+      const secondRow = page.getByTestId('relation-row-1');
 
       const termCName =
         termC.responseData?.displayName ?? termC.data.displayName;
@@ -130,8 +130,8 @@ test.describe('Glossary Term — Related Terms', () => {
         .getByTestId('edit-button')
         .click();
 
-      const row = page.locator('[data-testid^="relation-row-"]').first();
-      await row.getByRole('button').first().click();
+      const row = page.getByTestId('relation-row-0');
+      await row.getByTestId('relation-type-0').getByRole('button').click();
       const seeAlsoOption = page.getByRole('option', {
         exact: true,
         name: 'See Also',
@@ -200,7 +200,8 @@ test.describe('Glossary Term — Related Terms', () => {
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid^="remove-row-"]').first().click();
+      // Rows are grouped by relation type in API order, so row 0 is "Related To".
+      await page.getByTestId('remove-row-0').click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();
