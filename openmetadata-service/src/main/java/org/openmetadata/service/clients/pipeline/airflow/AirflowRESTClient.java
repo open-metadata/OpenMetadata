@@ -457,7 +457,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (response.statusCode() == 200) {
         return getResponse(200, response.body()).withRunId(runId);
       }
-    } catch (IOException | URISyntaxException e) {
+    } catch (IOException | URISyntaxException | IngestionRunnerUnavailableException e) {
+      // IngestionRunnerUnavailableException: Airflow was down when the trigger URL was built,
+      // before its API version was known.
       throw triggerFailure(pipelineName, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();

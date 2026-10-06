@@ -548,6 +548,26 @@ class AirflowRESTClientTest {
     assertTriggerFailure(500, malformedUrl.getMessage(), malformedUrl);
   }
 
+  @Test
+  void runPipelineIsA503WhenAirflowIsDownBeforeItsApiVersionIsKnown() throws Exception {
+    AirflowTestServer server = new AirflowTestServer();
+    AirflowRESTClient client = newClient(server, "/airflow");
+    server.close();
+
+    // The trigger URL needs the API version, so the run fails detecting it, not posting.
+    IngestionPipelineDeploymentException exception =
+        assertThrows(
+            IngestionPipelineDeploymentException.class,
+            () -> client.runPipeline(ingestionPipeline("orders_metadata", true), null));
+
+    assertEquals(503, exception.getResponse().getStatus());
+    assertTrue(
+        exception
+            .getMessage()
+            .startsWith(
+                "Failed to trigger pipeline [orders_metadata] due to [Unable to connect to Airflow APIs"));
+  }
+
   private static void assertTriggerFailure(int status, String reason, Exception cause) {
     IngestionPipelineDeploymentException exception =
         AirflowRESTClient.triggerFailure("orders_metadata", cause);
