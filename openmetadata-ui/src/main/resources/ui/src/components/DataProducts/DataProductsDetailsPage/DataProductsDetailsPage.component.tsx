@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Tabs } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tooltip, Typography } from 'antd';
+import {
+  Avatar,
+  Button as CoreButton,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, toLower, toString } from 'lodash';
+import { toLower, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -30,15 +35,17 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
+import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import {
   EntityTabs,
   EntityType,
   TabSpecificField,
 } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
@@ -55,6 +62,10 @@ import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEnt
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import {
+  QueryVote,
+  VotingDataProps,
+} from '../../../interface/entity/vote.interface';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   AnnouncementEntity,
@@ -95,9 +106,9 @@ import {
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
@@ -105,14 +116,11 @@ import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -125,6 +133,25 @@ import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interfac
 // file without pulling in i18next's more permissive (and here, overload-
 // ambiguous) TFunction type.
 type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
+// Reproduces the former antd look inside `.ant-btn-group.spaced` (40px tall,
+// 6/12px padding + 1px border, 12px radius, three-layer shadow). px-3.25 =
+// 12px padding + the 1px antd border that the core ::after outline no longer
+// takes; not-last:-mr-px keeps antd's `.ant-btn + .ant-btn` 1px overlap with
+// the next group button.
+const CONTRACT_RESULT_BUTTON_BASE_CLASS = [
+  'tw:h-10 tw:gap-2 tw:rounded-xl tw:px-3.25 tw:py-1.5 tw:text-sm tw:font-semibold tw:not-last:-mr-px',
+  'tw:shadow-[0px_2px_2px_-1px_var(--om-legacy-color-10-13-18-0-04),0px_4px_6px_-2px_var(--om-legacy-color-10-13-18-0-04),0px_12px_16px_-4px_var(--om-legacy-color-10-13-18-0-04)]!',
+].join(' ');
+
+const CONTRACT_RESULT_BUTTON_BORDER_CLASS: Partial<
+  Record<ContractExecutionStatus, string>
+> = {
+  [ContractExecutionStatus.Failed]: 'tw:after:outline-utility-error-200!',
+  [ContractExecutionStatus.Aborted]:
+    'tw:after:outline-(--om-legacy-color-f9dbaf)! tw:dark:after:outline-utility-orange-200!',
+  [ContractExecutionStatus.Running]: 'tw:after:outline-utility-brand-200!',
+};
 
 // Extracted from DataProductsDetailsPage's render to keep the component's
 // complexity down. Builds the "Manage" dropdown menu content from the
@@ -342,8 +369,6 @@ function DataProductActionButtons(
     manageButtonContent: ItemType[];
     showActions: boolean;
     setShowActions: (value: boolean) => void;
-    activeAnnouncement: AnnouncementEntity | undefined;
-    handleOpenAnnouncementDrawer: () => void;
   }>
 ) {
   const {
@@ -361,8 +386,6 @@ function DataProductActionButtons(
     manageButtonContent,
     showActions,
     setShowActions,
-    activeAnnouncement,
-    handleOpenAnnouncementDrawer,
   } = props;
 
   return (
@@ -407,12 +430,12 @@ function DataProductActionButtons(
               data-testid="version-button"
               icon={<Icon component={VersionIcon} />}
               onClick={handleVersionClick}>
-              <Typography.Text
+              <Typography
                 className={classNames('', {
                   'text-primary': version,
                 })}>
                 {toString(dataProduct.version)}
-              </Typography.Text>
+              </Typography>
             </Button>
           </Tooltip>
         )}
@@ -447,13 +470,6 @@ function DataProductActionButtons(
           </Dropdown>
         )}
       </ButtonGroup>
-
-      {activeAnnouncement && (
-        <AnnouncementCard
-          announcement={activeAnnouncement}
-          onClick={handleOpenAnnouncementDrawer}
-        />
-      )}
     </div>
   );
 }
@@ -540,8 +556,9 @@ const DataProductsDetailsPage = ({
   );
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] =
-    useState<AnnouncementEntity>();
+  const [activeAnnouncements, setActiveAnnouncements] = useState<
+    AnnouncementEntity[]
+  >([]);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
@@ -587,11 +604,7 @@ const DataProductsDetailsPage = ({
           dataProduct.fullyQualifiedName ?? ''
         )
       );
-      if (isEmpty(announcements.data)) {
-        setActiveAnnouncement(undefined);
-      } else {
-        setActiveAnnouncement(announcements.data[0]);
-      }
+      setActiveAnnouncements(announcements.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -965,23 +978,32 @@ const DataProductsDetailsPage = ({
         ContractExecutionStatus.Running,
       ].includes(dataContract.latestResult.status)
     ) {
-      const icon = getDataContractStatusIcon(dataContract.latestResult.status);
+      const StatusIcon = getDataContractStatusIcon(
+        dataContract.latestResult.status
+      );
 
       return (
-        <Button
+        <CoreButton
+          noTextPadding
           className={classNames(
-            'data-contract-latest-result-button',
-            toLower(dataContract.latestResult.status)
+            CONTRACT_RESULT_BUTTON_BASE_CLASS,
+            CONTRACT_RESULT_BUTTON_CLASS[dataContract.latestResult.status],
+            CONTRACT_RESULT_BUTTON_BORDER_CLASS[
+              dataContract.latestResult.status
+            ]
           )}
+          color="secondary"
           data-testid="data-contract-latest-result-btn"
-          icon={icon ? <Icon component={icon} /> : null}
-          onClick={() => {
+          iconLeading={
+            StatusIcon ? <StatusIcon className="tw:size-6.5" /> : undefined
+          }
+          onPress={() => {
             handleTabChange(EntityTabs.CONTRACT);
           }}>
           {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
             entity: t('label.contract'),
           })}
-        </Button>
+        </CoreButton>
       );
     }
 
@@ -1050,11 +1072,9 @@ const DataProductsDetailsPage = ({
             </div>
             <div className="tw:shrink-0 tw:max-w-full">
               <DataProductActionButtons
-                activeAnnouncement={activeAnnouncement}
                 canCreate={canCreate}
                 dataContractLatestResultButton={dataContractLatestResultButton}
                 dataProduct={dataProduct}
-                handleOpenAnnouncementDrawer={handleOpenAnnouncementDrawer}
                 handleVersionClick={handleVersionClick}
                 handleVoteChange={handleVoteChange}
                 isVersionsView={isVersionsView}
@@ -1069,6 +1089,13 @@ const DataProductsDetailsPage = ({
               />
             </div>
           </div>
+
+          <AnnouncementsWidgetV3Body
+            announcements={activeAnnouncements}
+            className="tw:mx-5 tw:mt-3"
+            testId="entity-header-announcements"
+            onItemClick={handleOpenAnnouncementDrawer}
+          />
 
           {dataProductClassBase.getRequestDataAccessBanner()}
 

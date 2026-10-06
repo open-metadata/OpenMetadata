@@ -22,7 +22,7 @@ import {
   HintText,
   HookForm,
 } from '@openmetadata/ui-core-components';
-import { Users01 } from '@untitledui/icons';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
 import { debounce, omit } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useWatch } from 'react-hook-form';
@@ -35,8 +35,8 @@ import {
 } from '../../../constants/DataProduct.constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   CreateDataProduct,

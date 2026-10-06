@@ -85,7 +85,7 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('expand icon is not visible for an empty folder', async () => {
       const folderRow = await revealFolderRow(page, folderName);
-      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
+      const expandBtn = folderRow.locator('button[slot="chevron"]');
       await expect(expandBtn).toHaveClass(/tw:invisible/);
     });
 
@@ -105,7 +105,7 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('expand icon is visible after uploading a file to the folder', async () => {
       const folderRow = await revealFolderRow(page, folderName);
-      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
+      const expandBtn = folderRow.locator('button[slot="chevron"]');
       await expect(expandBtn).not.toHaveClass(/tw:invisible/);
     });
 
@@ -123,14 +123,11 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('expanding folder in sidebar shows the uploaded file', async () => {
       const folderRow = await revealFolderRow(page, folderName);
-      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
+      const expandBtn = folderRow.locator('button[slot="chevron"]');
       await expandBtn.click();
 
       await expect(
-        page
-          .getByRole('treegrid')
-          .getByRole('row', { name: documentFileName })
-          .first()
+        page.getByRole('treegrid').getByRole('row', { name: documentFileName })
       ).toBeVisible();
     });
 
@@ -144,7 +141,7 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('expand icon is not visible after deleting the only file', async () => {
       const folderRow = await revealFolderRow(page, folderName);
-      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
+      const expandBtn = folderRow.locator('button[slot="chevron"]');
       await expect(expandBtn).toHaveClass(/tw:invisible/);
     });
 
@@ -159,29 +156,19 @@ test.describe('Context Center - Archive Page', () => {
 
       const searchInput = getDocumentSearchInput(page);
 
-      await expect
-        .poll(
-          async () => {
-            const searchResPromise = page.waitForResponse(
-              (res) =>
-                res.url().includes('/api/v1/search/query') &&
-                res.url().includes('index=contextFile')
-            );
-            await searchInput.fill('');
-            await searchInput.fill(documentFileName);
-            await searchResPromise;
-
-            return getDocumentRowByName(page, documentFileName)
-              .isVisible()
-              .catch(() => false);
-          },
-          {
-            intervals: [3000, 5000, 10000],
-            message: `Deleted document ${documentFileName} still appears in search after soft delete`,
-            timeout: 60000,
-          }
-        )
-        .toBe(false);
+      const searchResPromise = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === 'contextFile' &&
+          Boolean(url.searchParams.get('q')?.includes(documentFileName))
+        );
+      });
+      await searchInput.fill('');
+      await searchInput.fill(documentFileName);
+      expect((await searchResPromise).status()).toBe(200);
+      await expect(getDocumentRowByName(page, documentFileName)).toBeHidden();
     });
 
     // ── 10. Archive page — poll until first document appears ─────────────────
@@ -318,30 +305,21 @@ test.describe('Context Center - Archive Page', () => {
 
       const searchInput = getDocumentSearchInput(page);
 
-      await expect
-        .poll(
-          async () => {
-            const searchResPromise = page.waitForResponse(
-              (res) =>
-                res.url().includes('/api/v1/search/query') &&
-                res.url().includes('index=contextFile')
-            );
-            await searchInput.fill('');
-            await searchInput.fill(documentFileName);
-            await searchResPromise;
-
-            return page
-              .getByTestId(`document-row-${permanentlyDeletedId}`)
-              .isVisible()
-              .catch(() => false);
-          },
-          {
-            intervals: [3000, 5000, 10000],
-            message: `Permanently deleted document ${permanentlyDeletedId} still appears in search`,
-            timeout: 60000,
-          }
-        )
-        .toBe(false);
+      const searchResPromise = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === 'contextFile' &&
+          Boolean(url.searchParams.get('q')?.includes(documentFileName))
+        );
+      });
+      await searchInput.fill('');
+      await searchInput.fill(documentFileName);
+      expect((await searchResPromise).status()).toBe(200);
+      await expect(
+        page.getByTestId(`document-row-${permanentlyDeletedId}`)
+      ).toBeHidden();
     });
   });
 });
@@ -440,10 +418,7 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       await page.getByTestId('confirm-button').click();
       const folderDeleteRes = await folderDeleteResPromise;
       expect(folderDeleteRes.status()).toBe(200);
-      await page
-        .getByTestId('document-row-skeleton')
-        .first()
-        .waitFor({ state: 'detached' });
+      await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
     });
 
     // ── 5. File is absent from documents search ──────────────────────────────
@@ -457,29 +432,19 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
 
       const searchInput = getDocumentSearchInput(page);
 
-      await expect
-        .poll(
-          async () => {
-            const searchResPromise = page.waitForResponse(
-              (res) =>
-                res.url().includes('/api/v1/search/query') &&
-                res.url().includes('index=contextFile')
-            );
-            await searchInput.fill('');
-            await searchInput.fill(documentFileName);
-            await searchResPromise;
-
-            return getDocumentRowByName(page, documentFileName)
-              .isVisible()
-              .catch(() => false);
-          },
-          {
-            intervals: [3000, 5000, 10000],
-            message: `File ${documentFileName} still visible in search after its folder was deleted`,
-            timeout: 60000,
-          }
-        )
-        .toBe(false);
+      const searchResPromise = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === 'contextFile' &&
+          Boolean(url.searchParams.get('q')?.includes(documentFileName))
+        );
+      });
+      await searchInput.fill('');
+      await searchInput.fill(documentFileName);
+      expect((await searchResPromise).status()).toBe(200);
+      await expect(getDocumentRowByName(page, documentFileName)).toBeHidden();
     });
 
     // ── 6. Archive page UI — file row is absent ───────────────────────────────

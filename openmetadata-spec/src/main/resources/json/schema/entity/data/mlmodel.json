@@ -6,7 +6,10 @@
   "description": "This schema defines the Model entity. `Machine Learning Models` are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.MlModel",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.CreationAudited"
+  ],
   "definitions": {
     "featureType": {
       "javaType": "org.openmetadata.schema.type.MlFeatureDataType",
@@ -74,11 +77,16 @@
     "mlFeature": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.MlFeature",
+      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
       "description": "This schema defines the type for an ML Feature used in an ML Model.",
       "additionalProperties": false,
       "properties": {
         "name": {
           "$ref": "../../type/basic.json#/definitions/entityName"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this ML Feature name.",
+          "type": "string"
         },
         "dataType": {
           "description": "Data type of the column (numerical vs. categorical).",
@@ -242,6 +250,14 @@
     },
     "updatedBy": {
       "description": "User who made the update.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when this entity was created in OpenMetadata.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created this entity in OpenMetadata.",
       "type": "string"
     },
     "impersonatedBy": {

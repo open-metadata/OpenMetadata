@@ -15,8 +15,13 @@ import {
   Button as CoreButton,
   EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
+import {
+  BookOpen01,
+  Data,
+  File02,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen01, Data, File02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -28,9 +33,9 @@ import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDat
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
 import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
+import { useGlossaryCreateDrawer } from '../../../components/Glossary/hooks/useGlossaryCreateDrawer';
 import {
   ModifiedGlossary,
   useGlossaryStore,
@@ -41,7 +46,6 @@ import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
@@ -49,6 +53,7 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -57,6 +62,7 @@ import { withPageLayout } from '../../../hoc/withPageLayout';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 import {
   getGlossariesByName,
   getGlossariesList,
@@ -161,10 +167,6 @@ const GlossaryPage = () => {
     };
   }, [permissions, isGlossaryActive]);
 
-  const handleAddGlossaryClick = useCallback(() => {
-    navigate(ROUTES.ADD_GLOSSARY);
-  }, [navigate]);
-
   const fetchGlossaryList = useCallback(async () => {
     try {
       let allGlossaries: Glossary[] = [];
@@ -229,6 +231,9 @@ const GlossaryPage = () => {
       setIsMoreGlossaryLoading(false);
     }
   };
+
+  const { formDrawer: addGlossaryDrawer, openDrawer: handleAddGlossaryClick } =
+    useGlossaryCreateDrawer(fetchGlossaryList);
 
   useEffect(() => {
     if (!initialised) {
@@ -603,6 +608,7 @@ const GlossaryPage = () => {
   if (glossaries.length === 0 && !isLoading) {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
+        {addGlossaryDrawer}
         <EmptyPlaceholder
           description={t('message.glossary-empty-description')}
           features={[
@@ -684,7 +690,10 @@ const GlossaryPage = () => {
         title: t('label.glossary'),
         children: (
           <>
-            <GlossaryLeftPanel glossaries={glossaries} />
+            <GlossaryLeftPanel
+              glossaries={glossaries}
+              onAddGlossary={handleAddGlossaryClick}
+            />
             <div
               className="w-full"
               data-testid="glossary-left-panel-scroller"
@@ -710,7 +719,12 @@ const GlossaryPage = () => {
     glossaryElement
   );
 
-  return <div>{resizableLayout}</div>;
+  return (
+    <div>
+      {resizableLayout}
+      {addGlossaryDrawer}
+    </div>
+  );
 };
 
 export default withPageLayout(GlossaryPage);

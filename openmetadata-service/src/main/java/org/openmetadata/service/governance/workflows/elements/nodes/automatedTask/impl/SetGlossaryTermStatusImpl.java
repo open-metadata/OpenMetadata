@@ -19,6 +19,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -72,7 +73,8 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
 
       GlossaryTermRepository entityRepository =
           (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-      entityRepository.patch(null, glossaryTerm.getId(), user, patch);
+      entityRepository.patch(
+          null, glossaryTerm.getId(), user, patch, null, WorkflowEventConsumer.GOVERNANCE_BOT);
     }
   }
 }

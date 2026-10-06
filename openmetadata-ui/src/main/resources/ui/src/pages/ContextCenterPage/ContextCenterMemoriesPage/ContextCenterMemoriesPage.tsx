@@ -28,13 +28,12 @@ import {
   ChevronRight,
   FilePlus02,
   Plus,
-  SearchLg,
+  Search,
   Share05,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/funnel.svg';
@@ -58,13 +57,15 @@ import {
   FILTER_TABS,
   MEMORIES_PER_PAGE,
   MEMORY_FIELDS,
+  MEMORY_STATUS_LABEL_KEYS,
 } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+  ContextMemory,
+  EntityStatus,
+} from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
 import {
@@ -78,7 +79,10 @@ import {
 } from '../../../rest/contextMemoryAPI';
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
+import {
+  getFilterTabClassName,
+  getSortConfig,
+} from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -90,24 +94,60 @@ import {
   SearchOptionSource,
 } from './ContextCenterMemoriesPage.interface';
 
-const FILTER_BUTTON_BASE_CLS =
-  'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
-  ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:outline-1 tw:-outline-offset-1' +
-  ' tw:cursor-pointer tw:transition tw:duration-100' +
-  ' tw:ease-linear hover:tw:outline-brand tw:whitespace-nowrap';
-
-const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:outline-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:outline-utility-brand-100`;
-
 const getSortLabel = (
   options: Array<{ id: string; label: string }>,
   sortBy: MemorySortBy
 ): string => options.find((option) => option.id === sortBy)?.label ?? '';
 
+const MEMORY_STATUSES = [
+  EntityStatus.Approved,
+  EntityStatus.Draft,
+  EntityStatus.Deprecated,
+  EntityStatus.Rejected,
+  EntityStatus.Archived,
+];
+const CREATED_BY_ME_FILTER = 'created-by-me' as const;
+
+const getMemoryEmptyActions = (
+  canCreate: boolean,
+  newMemoryLabel: string,
+  allStatusesLabel: string,
+  onNewMemory: () => void,
+  onAllStatuses: () => void
+) => {
+  const actions: Array<{
+    color: 'primary' | 'secondary';
+    iconLeading?: typeof Plus;
+    key: string;
+    label: string;
+    onClick: () => void;
+  }> = [
+    {
+      color: 'secondary',
+      key: 'all-memory-statuses',
+      label: allStatusesLabel,
+      onClick: onAllStatuses,
+    },
+  ];
+
+  if (canCreate) {
+    actions.unshift({
+      color: 'primary',
+      iconLeading: Plus,
+      key: 'new-memory',
+      label: newMemoryLabel,
+      onClick: onNewMemory,
+    });
+  }
+
+  return actions;
+};
+
 const getMemoriesViewFlags = ({
   selectedAsset,
   selectedAuthor,
   activeFilter,
+  selectedStatuses,
   debouncedSearch,
   isMemoriesLoading,
   memoriesLength,
@@ -115,14 +155,20 @@ const getMemoriesViewFlags = ({
   selectedAsset?: DataAssetOption;
   selectedAuthor?: MemoryFilterOption;
   activeFilter: MemoryFilterTab;
+  selectedStatuses: EntityStatus[];
   debouncedSearch: string;
   isMemoriesLoading: boolean;
   memoriesLength: number;
 }) => {
-  const hasActiveFilters = Boolean(selectedAsset || selectedAuthor);
+  const hasActiveFilters = Boolean(
+    selectedAsset ||
+      selectedAuthor ||
+      selectedStatuses.length !== 1 ||
+      selectedStatuses[0] !== EntityStatus.Approved
+  );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
-    selectedAsset || selectedAuthor || (activeFilter && activeFilter !== 'all')
+    hasActiveFilters || (activeFilter && activeFilter !== 'all')
   );
   const isMemoriesFiltered = isMemoriesSearching || isMemoriesFilteredOnly;
   const showMemoriesEmptyState =
@@ -233,6 +279,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { currentUser } = useApplicationStore();
   const [searchParams, setSearchParams] = useSearchParams();
+  const memoryName = searchParams.get('memory');
   const { getResourcePermission } = usePermissionProvider();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
@@ -246,6 +293,8 @@ const ContextCenterMemoriesPage: FC = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
+  const memoryListRequestId = useRef(0);
+  const memoryCountRequestId = useRef(0);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
   const [isPinningMemoryId, setIsPinningMemoryId] = useState<string>();
   const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
@@ -255,6 +304,9 @@ const ContextCenterMemoriesPage: FC = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
+  const [selectedStatuses, setSelectedStatuses] = useState<EntityStatus[]>([
+    EntityStatus.Approved,
+  ]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
@@ -312,15 +364,29 @@ const ContextCenterMemoriesPage: FC = () => {
     currentUser?.isAdmin,
   ]);
 
+  const applyMemoryListResponse = useCallback(
+    (
+      requestId: number,
+      response: Awaited<ReturnType<typeof getListContextMemories>>
+    ) => {
+      if (requestId === memoryListRequestId.current) {
+        setMemories(response.data ?? []);
+        setTotalMemories(response.paging?.total ?? 0);
+      }
+    },
+    []
+  );
+
   const fetchMemories = useCallback(
     async (showLoader = true) => {
+      const requestId = ++memoryListRequestId.current;
       if (showLoader) {
         setIsMemoriesLoading(true);
       }
       try {
         const sortConfig = getSortConfig(sortBy);
         const authorFilter =
-          activeFilter === 'created-by-me'
+          activeFilter === CREATED_BY_ME_FILTER
             ? currentUser?.id ?? currentUser?.name
             : selectedAuthor?.id;
         const response = await getListContextMemories({
@@ -333,23 +399,29 @@ const ContextCenterMemoriesPage: FC = () => {
           pinned: activeFilter === 'pinned' ? true : undefined,
           sortBy: sortConfig.sortBy,
           sortOrder: sortConfig.sortOrder,
+          statuses: selectedStatuses.join(','),
         });
-        setMemories(response.data ?? []);
-        setTotalMemories(response.paging?.total ?? 0);
+        applyMemoryListResponse(requestId, response);
       } catch (err) {
-        showErrorToast(err as AxiosError);
+        if (requestId === memoryListRequestId.current) {
+          showErrorToast(err as AxiosError);
+        }
       } finally {
-        setIsMemoriesLoading(false);
+        if (requestId === memoryListRequestId.current) {
+          setIsMemoriesLoading(false);
+        }
       }
     },
     [
       activeFilter,
+      applyMemoryListResponse,
       currentPage,
       currentUser?.id,
       currentUser?.name,
       debouncedSearch,
       selectedAsset?.id,
       selectedAuthor?.id,
+      selectedStatuses,
       sortBy,
     ]
   );
@@ -368,23 +440,34 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const fetchMemoryCounts = useCallback(async () => {
+    const requestId = ++memoryCountRequestId.current;
     try {
       const authorFilter = currentUser?.id ?? currentUser?.name;
+      const statusFilter = { statuses: selectedStatuses.join(',') };
       const [totalVisible, pinnedVisible, createdByMeVisible] =
         await Promise.all([
-          getVisibleMemoryCount(),
+          getVisibleMemoryCount(statusFilter),
           // TODO: Unhide when pin feature releases in post-2.0
           // getVisibleMemoryCount({ pinned: true }),
           Promise.resolve(0),
           authorFilter
-            ? getVisibleMemoryCount({ author: authorFilter })
+            ? getVisibleMemoryCount({ ...statusFilter, author: authorFilter })
             : Promise.resolve(0),
         ]);
-      setMemoryCounts({ totalVisible, pinnedVisible, createdByMeVisible });
+      if (requestId === memoryCountRequestId.current) {
+        setMemoryCounts({ totalVisible, pinnedVisible, createdByMeVisible });
+      }
     } catch (err) {
-      showErrorToast(err as AxiosError);
+      if (requestId === memoryCountRequestId.current) {
+        showErrorToast(err as AxiosError);
+      }
     }
-  }, [currentUser?.id, currentUser?.name, getVisibleMemoryCount]);
+  }, [
+    currentUser?.id,
+    currentUser?.name,
+    getVisibleMemoryCount,
+    selectedStatuses,
+  ]);
 
   const fetchAuthorOptions = useCallback(async (query: string) => {
     setIsAuthorOptionsLoading(true);
@@ -457,8 +540,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
   useEffect(() => {
     fetchPermission();
+  }, [fetchPermission]);
+
+  useEffect(() => {
     fetchMemoryCounts();
-  }, [fetchPermission, fetchMemoryCounts]);
+  }, [fetchMemoryCounts]);
 
   const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
 
@@ -471,6 +557,7 @@ const ContextCenterMemoriesPage: FC = () => {
     selectedAsset,
     selectedAuthor,
     activeFilter,
+    selectedStatuses,
     debouncedSearch,
     isMemoriesLoading,
     memoriesLength: memories.length,
@@ -479,6 +566,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleClearFilters = useCallback(() => {
     setSelectedAsset(undefined);
     setSelectedAuthor(undefined);
+    setSelectedStatuses([EntityStatus.Approved]);
     setActiveFilter('all');
     setCurrentPage(1);
   }, []);
@@ -494,6 +582,21 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchValue(value);
+    setCurrentPage(1);
+  }, []);
+
+  const handleStatusChange = useCallback((status: EntityStatus) => {
+    setSelectedStatuses((current) => {
+      if (current.includes(status)) {
+        return current.length > 1
+          ? current.filter((selected) => selected !== status)
+          : current;
+      }
+
+      return MEMORY_STATUSES.filter(
+        (candidate) => candidate === status || current.includes(candidate)
+      );
+    });
     setCurrentPage(1);
   }, []);
 
@@ -570,54 +673,65 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const handleViewMemory = useCallback(
-    async (memory: ContextMemory) => {
-      const completeMemory = await fetchCompleteMemory(memory);
-      setMemoryToView(completeMemory);
-      setIsViewModalOpen(true);
+    (memory: ContextMemory) => {
       setSearchParams((prev) => {
-        if (completeMemory.name) {
-          prev.set('memory', completeMemory.name);
-        }
+        const next = new URLSearchParams(prev);
+        next.set('memory', memory.name);
 
-        return prev;
+        return next;
       });
     },
-    [fetchCompleteMemory, setSearchParams]
+    [setSearchParams]
   );
 
   const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
     setMemoryToEdit(undefined);
-  }, []);
-
-  const handleViewModalClose = useCallback(() => {
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
-    setSearchParams((prev) => {
-      prev.delete('memory');
+    if (memoryName !== null) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('memory');
 
-      return prev;
-    });
-  }, [setSearchParams]);
+        return next;
+      });
+    }
+  }, [memoryName, setSearchParams]);
 
   useEffect(() => {
-    const memoryName = searchParams.get('memory');
-    if (!memoryName || isViewModalOpen) {
+    if (!memoryName) {
+      setIsViewModalOpen(false);
+      setMemoryToView(undefined);
+
       return;
     }
 
+    let isCurrentSelection = true;
     getContextMemoryByName(memoryName, MEMORY_FIELDS)
-      .then((memory) => handleViewMemory(memory))
+      .then((memory) => {
+        if (isCurrentSelection) {
+          setMemoryToView(memory);
+          setIsViewModalOpen(true);
+        }
+      })
       .catch((err: AxiosError) => {
+        if (!isCurrentSelection) {
+          return;
+        }
         showErrorToast(err);
         setSearchParams((prev) => {
-          prev.delete('memory');
+          const next = new URLSearchParams(prev);
+          next.delete('memory');
 
-          return prev;
+          return next;
         });
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, handleViewMemory, setSearchParams]);
+
+    return () => {
+      isCurrentSelection = false;
+    };
+  }, [memoryName, setSearchParams]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
@@ -634,7 +748,7 @@ const ContextCenterMemoriesPage: FC = () => {
         icon: null,
       },
       {
-        filterKey: 'created-by-me' as const,
+        filterKey: CREATED_BY_ME_FILTER,
         label: t('label.created-by-me'),
         value: memoryCounts.createdByMeVisible,
         icon: null,
@@ -692,19 +806,16 @@ const ContextCenterMemoriesPage: FC = () => {
           {showMemoriesEmptyState ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
               <EmptyPlaceholder
-                actions={
-                  hasCreatePermission
-                    ? [
-                        {
-                          color: 'primary',
-                          iconLeading: Plus,
-                          key: 'new-memory',
-                          label: t('label.new-memory'),
-                          onClick: () => setIsCreateModalOpen(true),
-                        },
-                      ]
-                    : []
-                }
+                actions={getMemoryEmptyActions(
+                  hasCreatePermission,
+                  t('label.new-memory'),
+                  t('label.all-entity', { entity: t('label.status-plural') }),
+                  () => setIsCreateModalOpen(true),
+                  () => {
+                    setCurrentPage(1);
+                    setSelectedStatuses(MEMORY_STATUSES);
+                  }
+                )}
                 description={t(
                   'message.context-center-memories-empty-subtitle'
                 )}
@@ -750,7 +861,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         'tw:group tw:relative tw:p-4 tw:flex tw:flex-col tw:gap-1',
                         'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
                         {
-                          'tw:bg-utility-blue-50 tw:border-utility-blue-200':
+                          'tw:bg-brand-primary tw:border-utility-brand-200':
                             isActive,
                         }
                       )}
@@ -759,7 +870,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       onClick={() => handleFilterChange(filterKey)}>
                       <ChevronRight
                         className={classNames(
-                          'tw:absolute tw:top-3 tw:right-3 tw:text-brand-600 tw:transition-opacity tw:duration-150',
+                          'tw:absolute tw:top-3 tw:right-3 tw:text-fg-brand-secondary tw:transition-opacity tw:duration-150',
                           {
                             'tw:opacity-100': isActive,
                             'tw:opacity-0 tw:group-hover:opacity-100':
@@ -800,64 +911,59 @@ const ContextCenterMemoriesPage: FC = () => {
                     }))}
                     type="button-brand">
                     {(tab) => (
-                      <Tabs.Item
-                        {...tab}
-                        className={({ isSelected }) =>
-                          classNames(
-                            'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
-                            {
-                              'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
-                                isSelected,
-                              'tw:border-primary tw:bg-primary tw:text-secondary':
-                                !isSelected,
-                            }
-                          )
-                        }
-                      />
+                      <Tabs.Item {...tab} className={getFilterTabClassName} />
                     )}
                   </Tabs.List>
                 </Tabs>
 
                 <Box align="center" gap={2}>
+                  <Dropdown.Root>
+                    <Button
+                      color="secondary"
+                      data-testid="memory-status-filter"
+                      iconLeading={FunnelIcon}
+                      iconTrailing={ChevronDown}
+                      size="md">
+                      {t('label.status')}:{' '}
+                      {selectedStatuses.length === 1
+                        ? t(MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]])
+                        : `${selectedStatuses.length} ${t(
+                            'label.status-plural'
+                          )}`}
+                    </Button>
+                    <Dropdown.Popover className="tw:w-56">
+                      <Dropdown.Menu
+                        selectedKeys={selectedStatuses}
+                        selectionMode="multiple"
+                        onAction={(key) =>
+                          handleStatusChange(key as EntityStatus)
+                        }>
+                        {MEMORY_STATUSES.map((status) => (
+                          <Dropdown.Item
+                            id={status}
+                            key={status}
+                            label={t(MEMORY_STATUS_LABEL_KEYS[status])}
+                          />
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
                   <DataAssetSelectList
                     allowAllOption
                     placeholder={t('label.search-assets-by-name-or-path')}
                     popoverPlacement="bottom start"
                     renderTrigger={({ open }) => (
-                      <AriaButton
-                        className={classNames(
-                          selectedAsset
-                            ? FILTER_BUTTON_ACTIVE_CLS
-                            : FILTER_BUTTON_CLS
-                        )}
+                      <Button
+                        ellipsis
+                        className="tw:max-w-64"
+                        color="secondary"
                         data-testid="asset-filter-button"
+                        iconLeading={DatabaseIcon}
+                        iconTrailing={ChevronDown}
+                        size="md"
                         onPress={open}>
-                        <DatabaseIcon
-                          className={classNames('tw:shrink-0', {
-                            'tw:text-brand-secondary': selectedAsset,
-                            'tw:text-secondary': !selectedAsset,
-                          })}
-                          height={14}
-                          width={14}
-                        />
-                        <div className="tw:max-w-50">
-                          <Typography
-                            ellipsis
-                            className={
-                              selectedAsset
-                                ? 'tw:text-utility-brand-700'
-                                : 'tw:text-secondary'
-                            }
-                            weight="medium">
-                            {selectedAsset?.label ?? allAssetsLabel}
-                          </Typography>
-                        </div>
-                        <ChevronDown
-                          className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                          size={16}
-                          strokeWidth={2.5}
-                        />
-                      </AriaButton>
+                        {selectedAsset?.label ?? allAssetsLabel}
+                      </Button>
                     )}
                     selectionMode="single"
                     value={selectedAsset}
@@ -877,45 +983,23 @@ const ContextCenterMemoriesPage: FC = () => {
                         fetchAuthorOptions('');
                       }
                     }}>
-                    <AriaButton
-                      className={
-                        selectedAuthor
-                          ? FILTER_BUTTON_ACTIVE_CLS
-                          : FILTER_BUTTON_CLS
-                      }>
-                      <UserIcon
-                        className={classNames('tw:shrink-0', {
-                          'tw:text-brand-secondary': selectedAuthor,
-                          'tw:text-secondary': !selectedAuthor,
-                        })}
-                        height={14}
-                        width={14}
-                      />
-                      <div className="tw:max-w-50">
-                        <Typography
-                          ellipsis
-                          className={
-                            selectedAuthor
-                              ? 'tw:text-brand-secondary'
-                              : 'tw:text-secondary'
-                          }
-                          weight="medium">
-                          {selectedAuthor?.label ?? allAuthorsLabel}
-                        </Typography>
-                      </div>
-                      <ChevronDown
-                        className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                        size={16}
-                        strokeWidth={2.5}
-                      />
-                    </AriaButton>
+                    <Button
+                      ellipsis
+                      className="tw:max-w-64"
+                      color="secondary"
+                      data-testid="author-filter-button"
+                      iconLeading={UserIcon}
+                      iconTrailing={ChevronDown}
+                      size="md">
+                      {selectedAuthor?.label ?? allAuthorsLabel}
+                    </Button>
                     <Dropdown.Popover>
                       <div className="tw:p-2 tw:border-b tw:border-secondary">
                         <Input
                           // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                           autoFocus
                           className="tw:w-full"
-                          icon={SearchLg}
+                          icon={Search}
                           placeholder={t('label.search-entity', {
                             entity: t('label.author'),
                           })}
@@ -941,7 +1025,10 @@ const ContextCenterMemoriesPage: FC = () => {
                               next === selectedAuthor?.id ? undefined : option
                             );
                           }
-                          if (activeFilter === 'all') {
+                          if (
+                            activeFilter === 'all' ||
+                            activeFilter === CREATED_BY_ME_FILTER
+                          ) {
                             setActiveFilter('');
                           }
                           setCurrentPage(1);
@@ -971,7 +1058,7 @@ const ContextCenterMemoriesPage: FC = () => {
                               <span className="tw:flex-1">{opt.label}</span>
                               {selectedAuthor?.id === opt.id && (
                                 <Check
-                                  className="tw:shrink-0 tw:text-brand-600"
+                                  className="tw:shrink-0 tw:text-fg-brand-secondary"
                                   size={14}
                                   strokeWidth={2.5}
                                 />
@@ -1006,24 +1093,13 @@ const ContextCenterMemoriesPage: FC = () => {
                     </Button>
                   )}
                   <Dropdown.Root>
-                    <AriaButton className={FILTER_BUTTON_CLS}>
-                      <FunnelIcon
-                        className="tw:text-quaternary"
-                        height={14}
-                        width={14}
-                      />
-                      <Typography className="tw:text-secondary" weight="medium">
-                        {t('label.sort')}:
-                      </Typography>
-                      <Typography className="tw:text-secondary" weight="medium">
-                        {getSortLabel(SORT_OPTIONS, sortBy)}
-                      </Typography>
-                      <ChevronDown
-                        className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                        size={16}
-                        strokeWidth={2.5}
-                      />
-                    </AriaButton>
+                    <Button
+                      color="secondary"
+                      iconLeading={FunnelIcon}
+                      iconTrailing={ChevronDown}
+                      size="md">
+                      {t('label.sort')}: {getSortLabel(SORT_OPTIONS, sortBy)}
+                    </Button>
                     <Dropdown.Popover className="tw:w-56">
                       <Dropdown.Menu
                         selectedKeys={[sortBy]}
@@ -1095,7 +1171,7 @@ const ContextCenterMemoriesPage: FC = () => {
         onEditMemory={handleEditMemory}
         onModalClose={handleModalClose}
         onModalSuccess={handleModalSuccess}
-        onViewModalClose={handleViewModalClose}
+        onViewModalClose={handleModalClose}
       />
     </Box>
   );

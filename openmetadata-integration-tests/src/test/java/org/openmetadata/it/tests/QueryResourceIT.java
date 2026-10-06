@@ -62,6 +62,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   // Query API doesn't expose include parameter for soft delete operations
   {
     supportsNameLengthValidation = false;
+    supportsCreationAudit = true;
     supportsDataProducts = false;
     supportsSoftDelete = false;
     supportsListHistoryByTimestamp = true;

@@ -65,12 +65,15 @@ def test_constraint_reflection_uses_configured_catalog(prefix):
             "duplicates_index": "uq_my_table_code",
         }
     ]
+    # referred_table is the dictionary name verbatim, matching what get_table_names
+    # returns and therefore the Table entity's FQN. It used to be normalised, which
+    # made the two disagree and silently dropped every Oracle foreign key.
     assert dialect.get_foreign_keys(connection, "my_table", schema="my_schema") == [
         {
             "name": "fk_my_table_parent",
             "constrained_columns": ["parent_id"],
             "referred_schema": "parent_schema",
-            "referred_table": "parent_table",
+            "referred_table": "PARENT_TABLE",
             "referred_columns": ["id"],
             "options": {"ondelete": "CASCADE"},
         }

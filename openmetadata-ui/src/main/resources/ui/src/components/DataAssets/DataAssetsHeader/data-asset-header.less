@@ -28,7 +28,6 @@
     max-width: 148px;
 
     .domain-link-text.render-domain-lebel-style {
-      color: var(--tw-color-gray-700);
       display: inline-block;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -37,50 +36,23 @@
     }
   }
 
-  .domain-link.ant-typography,
-  span.header-owner-heading,
-  .ant-typography.no-owner-heading,
-  .extra-info-label-heading {
-    color: var(--tw-color-gray-700);
-  }
-
-  .data-contract-latest-result-button {
-    &.failed {
-      color: var(--tw-color-error-600);
-      border-color: var(--tw-color-error-200);
-      background-color: var(--tw-color-error-50);
-    }
-
-    &.aborted {
-      color: @orange-7;
-      border-color: @orange-200;
-      background-color: @orange-50;
-    }
-
-    &.running {
-      color: var(--tw-color-brand-700);
-      border-color: var(--tw-color-brand-200);
-      background-color: var(--tw-color-brand-50);
-    }
-  }
-
   .ant-btn.ant-btn-icon-only.bordered {
-    border-color: @border-light;
+    border-color: var(--om-color-border-secondary);
     background-color: transparent;
 
     &:hover,
     &:focus {
-      border-color: @border-light;
+      border-color: var(--om-color-border-secondary);
       background-color: transparent;
     }
 
     svg {
-      color: @de-active-color;
+      color: var(--om-color-text-quaternary);
     }
 
     &:hover svg,
     &:focus svg {
-      color: @de-active-color;
+      color: var(--om-color-text-quaternary);
     }
   }
 

@@ -30,7 +30,6 @@ import {
   descriptionBoxReadOnly,
   fillDescriptionBox,
   getAuthContext,
-  getToken,
   redirectToHomePage,
   toastNotification,
   visitOwnProfilePage,
@@ -64,6 +63,17 @@ export const searchUserByEmail = async (
   await expect(page.getByTestId(userName)).toBeVisible();
 };
 
+/**
+ * A signed-in page for `user`, plus an API context authenticated as them.
+ *
+ * Signs in through the API rather than the form. The nine UI interactions
+ * `UserClass.login()` performs are not what any caller of this helper is
+ * testing, and every one of them is a step that can time out — swapping the
+ * mechanism here speeds up and de-flakes every call site without any of them
+ * changing. A spec that is genuinely testing the sign-in *form* should call
+ * `signInThroughForm(page, user)` from utils/formSignIn instead of coming
+ * through here; `UserClass.login()` in a spec is a lint error.
+ */
 export const performUserLogin = async (browser: Browser, user: UserClass) => {
   const context = await browser.newContext({
     storageState: {
@@ -73,8 +83,12 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
   });
   await installServerLoadReducers(context);
   const page = await context.newPage();
-  await user.login(page);
-  const token = await getToken(page);
+  // `/`, not the default `/my-data`: callers of this helper assert where
+  // sign-in *lands* (PersonaAppLayout checks the persona's configured landing
+  // page), and the form path this replaced never chose a destination either.
+  const token = await user.signIn(page, undefined, undefined, {
+    landingPath: '/',
+  });
   const apiContext = await getAuthContext(token);
   const afterAction = async () => {
     await apiContext.dispose();
@@ -89,8 +103,8 @@ export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
     page
       .locator('[data-testid="user-profile"] [data-testid="edit-user-persona"]')
-      .first()
-  ).toBeVisible();
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await expect(page.locator('[data-testid="edit-teams-button"]')).toBeVisible();
   await expect(page.locator('[data-testid="edit-roles-button"]')).toBeVisible();
@@ -127,7 +141,9 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   const userResponse = page.waitForResponse(
     `/api/v1/users/name/${encodedUserName}?fields=*`
   );
-  await page.goto(`/users/${encodedUserName}`);
+  await page.goto(`/users/${encodedUserName}`, {
+    waitUntil: 'domcontentloaded',
+  });
 
   // A 404/5xx satisfies the wait just as a 200 does, and the page then drops
   // its loader and renders an error state. Callers that guard their assertions
@@ -140,6 +156,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   ).toBeTruthy();
 
   await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('user-email-value')).toBeVisible();
 };
 
 export const softDeleteUserProfilePage = async (
@@ -152,10 +169,7 @@ export const softDeleteUserProfilePage = async (
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
-  await page
-    .locator('.user-list-table')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.locator('.user-list-table'));
 
   await page.getByTestId(userName).click();
 
@@ -608,13 +622,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
 
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('loader')
-    .first()
-    .waitFor({
-      state: 'detached',
-    });
+  await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
@@ -733,8 +741,7 @@ export const addUser = async (
   await rolesSearchResponse;
   const roleOption = page
     .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) })
-    .first();
+    .filter({ hasText: new RegExp(`^${role}$`) });
   await expect(roleOption).toBeVisible({ timeout: 120000 });
   await roleOption.click();
   await clickOutside(page);
@@ -747,14 +754,11 @@ export const addUser = async (
       .getByTestId('personas-dropdown')
       .getByRole('combobox')
       .fill(personas[0]);
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
+    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
     const personaOption = page
       .locator('.ant-select-dropdown:visible')
       .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] })
-      .first();
+      .filter({ hasText: personas[0] });
     await personaOption.waitFor({ state: 'visible' });
     await personaOption.click();
     await clickOutside(page);
@@ -872,7 +876,7 @@ export const settingPageOperationPermissionCheck = async (page: Page) => {
       await apiResponse;
     }
 
-    await expect(page.locator('.ant-skeleton-button')).not.toBeVisible();
+    await expect(page.locator('.button-skeleton')).not.toBeVisible();
     await expect(page.getByTestId(id.button)).not.toBeVisible();
   }
 

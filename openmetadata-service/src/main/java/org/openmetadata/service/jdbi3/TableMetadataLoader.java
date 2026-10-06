@@ -16,6 +16,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecordWithId;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -113,7 +114,11 @@ public final class TableMetadataLoader {
     if (nullOrEmpty(columns)) {
       return;
     }
-    final Map<String, List<Column>> columnsByKey = indexColumnKeys(columns);
+    // Column extensions are persisted for nested children too, so hydrate the whole column tree;
+    // otherwise a nested column reads back with no extension and an unchanged re-ingest records
+    // a spurious change.
+    final Map<String, List<Column>> columnsByKey =
+        indexColumnKeys(EntityUtil.getFlattenedEntityField(columns));
     try {
       // Older rows can carry another jsonSchema; the exact persisted key is authoritative.
       for (final ExtensionRecord record :

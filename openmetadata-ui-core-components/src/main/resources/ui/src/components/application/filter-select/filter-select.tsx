@@ -12,6 +12,7 @@
  */
 import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
+import { sizes } from '@/components/base/select/select';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Typography } from '@/components/foundations/typography';
@@ -25,7 +26,7 @@ import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { ChevronDown, ChevronUp, XClose } from '@untitledui/icons';
+import { ChevronDown, ChevronUp, XClose } from '../../../icons';
 import {
   useEffect,
   useMemo,
@@ -59,6 +60,7 @@ export const TriggerButton = ({
   className,
   icon,
   bordered,
+  size = 'sm',
 }: {
   hasSelection: boolean;
   isOpen?: boolean;
@@ -71,6 +73,7 @@ export const TriggerButton = ({
   className?: string;
   icon?: FC<{ className?: string }>;
   bordered?: boolean;
+  size?: 'sm' | 'md';
 }) => {
   const countBadge =
     count !== undefined && count > 0 ? (
@@ -86,14 +89,6 @@ export const TriggerButton = ({
           // filters (4px padding, 14px chevron), so a full toolbar of them
           // fits on one row beside same-sized toolbar controls.
           !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
-          hasSelection &&
-            'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
-          // Active-filter border is brand blue in light, but neutral (gray-700)
-          // in dark per the palette guideline — dark:*_alt flips only the dark
-          // value and leaves light frozen.
-          hasSelection &&
-            bordered &&
-            'tw:after:outline-brand tw:dark:after:outline-brand_alt',
           className
         )}
         color={bordered ? 'secondary' : 'tertiary'}
@@ -111,9 +106,13 @@ export const TriggerButton = ({
     return (
       <AriaButton
         className={cx(
-          // Sized like the toolbar selects this trigger replaces: 32px tall,
-          // filling the width its container gives it (constrain via className).
-          'tw:flex tw:h-8 tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:px-3 tw:shadow-xs tw:outline-brand',
+          // Sized and outlined like the core Select, so it stands as tall as a
+          // Select, Input or Button of the same size: an outline, unlike a
+          // border, adds no height. Fills the width its container gives it
+          // (constrain via className).
+          'tw:flex tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:bg-surface tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-brand',
+          sizes[size].root,
+          isOpen && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           className
         )}
         data-testid={testId}>
@@ -151,7 +150,7 @@ export const TriggerButton = ({
         className={cx(
           'tw:size-5 tw:shrink-0 tw:transition-transform tw:duration-200',
           isOpen && 'tw:rotate-180',
-          hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+          'tw:text-fg-quaternary'
         )}
       />
     </AriaButton>
@@ -258,18 +257,18 @@ const OptionRow = ({
     <Dropdown.Item
       checkboxSize="xs"
       // Multi select: the checkbox alone conveys selection — suppress the
-      // default selected background, keeping the hover/focus tint. Single
-      // select has no checkbox, so the selected row itself goes brand: blue
-      // tint, blue label, blue icon.
+      // selected background, keeping the hover/focus tint. Single select keeps
+      // Dropdown.Item's selected style, which matches the sidebar selected item.
       className={(state) =>
         cx(
           showCheckbox &&
             state.isSelected &&
-            !state.isFocused &&
-            'tw:[&>div]:bg-transparent!',
+            (state.isFocused
+              ? 'tw:[&>div]:bg-primary_hover!'
+              : 'tw:[&>div]:bg-transparent!'),
           !showCheckbox &&
             state.isSelected &&
-            'tw:[&>div]:bg-utility-brand-50! tw:[&_svg]:text-fg-brand-primary!'
+            'tw:[&_svg]:text-fg-brand-secondary_alt!'
         )
       }
       data-testid={option.value}
@@ -284,8 +283,11 @@ const OptionRow = ({
             // Real options read at full strength whether or not they are
             // selected; only the pinned null row is muted. Single select has no
             // checkbox, so its selected row goes brand instead.
-            isNullOption ? 'tw:text-secondary' : 'tw:text-primary',
-            !showCheckbox && state.isSelected && 'tw:text-fg-brand-primary'
+            !showCheckbox && state.isSelected
+              ? 'tw:text-brand-secondary'
+              : isNullOption
+              ? 'tw:text-secondary'
+              : 'tw:text-primary'
           )}>
           {iconNode !== undefined && (
             <span aria-hidden="true" className="tw:flex tw:shrink-0">
@@ -302,7 +304,7 @@ const OptionRow = ({
               className={cx(
                 'not-prose tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
                 !showCheckbox && state.isSelected
-                  ? 'tw:border-utility-brand-200 tw:text-fg-brand-primary'
+                  ? 'tw:border-utility-brand-200 tw:text-brand-secondary'
                   : 'tw:border-secondary',
                 showCheckbox && state.isSelected && 'tw:text-tertiary',
                 !state.isSelected && 'tw:text-placeholder'
@@ -350,6 +352,7 @@ const FilterSelect = ({
   searchable,
   selectionMode = 'multiple',
   showSelectAll,
+  size = 'sm',
   triggerDisplay = 'count',
   triggerIcon,
   triggerVariant = 'chip',
@@ -558,10 +561,22 @@ const FilterSelect = ({
       return;
     }
     const closeOnOutsidePointerDown = (event: Event) => {
-      const target = event.target as Node;
+      const target = event.target as Element;
+      // React Aria's MenuTrigger only ever *opens* on press start, so pressing
+      // the trigger of an open filter must close it here — and the press must
+      // not reach the trigger, or it reopens in the same gesture. Matched on
+      // the trigger button (`aria-expanded`) so chip remove buttons inside the
+      // chips field keep the popover open.
+      const isTriggerPress = Boolean(
+        triggerWrapRef.current?.contains(target.closest('[aria-expanded]'))
+      );
+      if (isTriggerPress) {
+        event.stopPropagation();
+      }
       if (
-        triggerWrapRef.current?.contains(target) ||
-        popoverContentRef.current?.contains(target)
+        !isTriggerPress &&
+        (triggerWrapRef.current?.contains(target) ||
+          popoverContentRef.current?.contains(target))
       ) {
         return;
       }
@@ -691,6 +706,7 @@ const FilterSelect = ({
             isOpen={isOpen}
             label={label}
             placeholder={placeholder}
+            size={size}
             testId={testId}
             text={triggerText}
             variant={triggerVariant}

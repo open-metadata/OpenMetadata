@@ -89,9 +89,14 @@ for (const [
         page,
       }) => {
         const testTag = 'PII.Sensitive';
-        const { level1Key } = getNestedColumnDetails(entityType, entity);
+        const { level1Key, level2Key } = getNestedColumnDetails(
+          entityType,
+          entity
+        );
 
-        await expandNestedColumn(page, level1Key);
+        // Confirm against the child so an already-expanded row (Topic expands
+        // its whole schema) is left open instead of being toggled shut.
+        await expandNestedColumn(page, level1Key, level2Key);
 
         await expect(
           page.locator(`[data-row-key="${level1Key}"]`)
@@ -129,9 +134,12 @@ for (const [
           page,
         }) => {
           const newDisplayName = 'Customer Full Name';
-          const { level1Key } = getNestedColumnDetails(entityType, entity);
+          const { level1Key, level2Key } = getNestedColumnDetails(
+            entityType,
+            entity
+          );
 
-          await expandNestedColumn(page, level1Key);
+          await expandNestedColumn(page, level1Key, level2Key);
 
           await expect(
             page.locator(`[data-row-key="${level1Key}"]`)

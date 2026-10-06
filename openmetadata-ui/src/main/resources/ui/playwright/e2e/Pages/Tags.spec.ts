@@ -12,6 +12,7 @@
  */
 import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
@@ -73,7 +74,9 @@ const permanentDeleteModal = async (page: Page, entity: string) => {
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table = new TableClass();
+// The task flow tags the table's schema, so it owns one rather than tagging
+// the shard's shared schema.
+const table = new TableClass({ schema: new DatabaseSchemaClass() });
 const classification = new ClassificationClass({
   provider: 'system',
 });
@@ -491,9 +494,9 @@ test('Classification Page', async ({ page }) => {
 
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('side-panel-classification').first().waitFor({
-      state: 'visible',
-    });
+    await expect(
+      page.getByTestId('side-panel-classification').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Find the classification and verify term count is 0
     const classificationElement = page
@@ -538,7 +541,10 @@ test('Search tag using classification display name should work', async ({
 
   await table.visitEntityPage(page);
 
-  const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
+  // The picker loads its tag list on first open, so this is the open's own request.
+  const initialQueryResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*index=tag*'
+  );
 
   const displayNameTrigger = page
     .getByTestId('KnowledgePanel.Tags')
@@ -547,7 +553,8 @@ test('Search tag using classification display name should work', async ({
     .first();
 
   await openClassificationTagPicker(page, displayNameTrigger);
-  await initialQueryResponse;
+
+  expect((await initialQueryResponse).status()).toBe(200);
 
   const tagSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
@@ -595,9 +602,9 @@ test('Verify system classification term counts', async ({ page }) => {
 
   await classificationsResponse;
 
-  await page.getByTestId('side-panel-classification').first().waitFor({
-    state: 'visible',
-  });
+  await expect(
+    page.getByTestId('side-panel-classification').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   // Get all classification elements
   const classificationElements = await page
@@ -693,11 +700,7 @@ test('Disabled tag should not allow adding assets from Assets tab', async ({
     // Visit the disabled tag page
     await tag1.visitPage(page);
 
-    await page
-      .getByTestId('tags-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
     // Verify the disabled badge is visible
     await expect(page.getByTestId('disabled')).toBeVisible();

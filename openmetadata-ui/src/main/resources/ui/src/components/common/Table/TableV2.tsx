@@ -48,7 +48,11 @@ import {
   Table as UntitledTable,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
+import {
+  ChevronDown,
+  ChevronRight,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
 import type { ComponentProps } from 'react';
@@ -72,6 +76,7 @@ import {
   ResizableTableContainer,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { twMerge } from 'tailwind-merge';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
@@ -111,6 +116,7 @@ import {
   getColumnStickyStyle,
   getSelectedKeysSet,
   getSortDescriptorProp,
+  getStickyBodyCellClass,
   getTableContainerStyle,
   getTableLayoutClasses,
   getTableWidthStyle,
@@ -716,7 +722,8 @@ const TableToolbar = ({
       {(extraTableFilters || isCustomizeColumnEnable) && (
         <div
           className={classNames(
-            'd-flex justify-end items-center gap-5',
+            // min-w-0: else the row takes min-content width and overflows the clip.
+            'd-flex justify-end items-center gap-5 tw:min-w-0',
             extraTableFiltersClassName
           )}
           style={{ flex: 1 }}>
@@ -1757,8 +1764,9 @@ const TableV2 = <T extends object>(
 
   return (
     <div
-      className={classNames(
+      className={twMerge(
         'table-container',
+        'tw:border tw:border-utility-gray-200',
         'tw:[&_tbody_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
@@ -1788,7 +1796,7 @@ const TableV2 = <T extends object>(
         // overlay's `inset-0` resolves against the viewport instead of the
         // table, so it dims the whole page and centres the spinner wherever
         // the viewport happens to be rather than over the rows it is masking.
-        className="tw:relative tw:flex tw:flex-col tw:w-full"
+        className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:w-full"
         data-testid={dataTestId}
         ref={scrollWrapRef}
         style={scrollStyle}>
@@ -1832,6 +1840,7 @@ const TableV2 = <T extends object>(
                 'tw:table-fixed': tableLayoutClasses.fixed,
                 'tw:table-auto': tableLayoutClasses.auto,
               })}
+              containerClassName={rest.scrollContainerClassName}
               containerStyle={getTableContainerStyle(
                 scroll?.y as string | number | undefined
               )}
@@ -2050,7 +2059,7 @@ const TableV2 = <T extends object>(
                         (rest.locale?.emptyText as ReactNode) ?? (
                           <EmptyPlaceholder
                             icon={
-                              <SearchLg className="tw:text-fg-brand-primary" />
+                              <Search className="tw:text-fg-brand-primary" />
                             }
                             title={t('label.no-data')}
                             variant="blank"
@@ -2173,6 +2182,7 @@ const TableV2 = <T extends object>(
                                   'tw:align-top'
                                 ),
                               getAlignClass(colType.align),
+                              getStickyBodyCellClass(colType.fixed),
                               pingShadowClass(
                                 colType.fixed,
                                 colIdx,

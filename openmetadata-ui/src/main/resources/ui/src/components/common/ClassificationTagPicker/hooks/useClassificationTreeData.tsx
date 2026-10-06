@@ -14,7 +14,7 @@ import {
   TreeSelectDataFetcher,
   TreeSelectNode,
 } from '@openmetadata/ui-core-components';
-import { Tag as TagIcon } from '@openmetadata/ui-core-components/icons';
+import { Tag01 as TagIcon } from '@openmetadata/ui-core-components/icons';
 import axios, { AxiosError } from 'axios';
 import { useCallback } from 'react';
 import { TagLabel } from '../../../../generated/type/tagLabel';

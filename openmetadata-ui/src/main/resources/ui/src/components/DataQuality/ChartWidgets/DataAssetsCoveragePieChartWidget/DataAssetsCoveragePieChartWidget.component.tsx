@@ -17,10 +17,6 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
-import {
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-} from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -90,12 +86,12 @@ const DataAssetsCoveragePieChartWidget = ({
         {
           name: t('label.covered'),
           value: dataAssetsCoverageStates.covered,
-          color: DQ_CHART_SUCCESS_COLOR,
+          status: 'success' as const,
         },
         {
           name: t('label.not-covered'),
           value: dataAssetsCoverageStates.notCovered,
-          color: DQ_CHART_FAILED_COLOR,
+          status: 'failed' as const,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -131,6 +127,7 @@ const DataAssetsCoveragePieChartWidget = ({
         </div>
         <CustomPieChart
           showLegends
+          ariaLabel={t('label.data-asset-plural-coverage')}
           data={data}
           label={chartLabel}
           name="data-assets-coverage"

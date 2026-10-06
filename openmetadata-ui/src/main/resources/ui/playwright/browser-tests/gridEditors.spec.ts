@@ -11,13 +11,32 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { buildSync } from 'esbuild';
 import { readFileSync } from 'fs';
 import { createServer } from 'http';
 import { AddressInfo } from 'net';
-import { fillTableColumnInputDetails } from '../utils/customProperty';
 import { fillTextInputDetails, fillTierDetails } from '../utils/importUtils';
+
+// The controller harness renders a single data row, so each column class
+// resolves to exactly one cell inside the modal.
+const fillTableColumnInputDetails = async (
+  page: Page,
+  text: string,
+  columnName: string
+) => {
+  const modal = page.getByTestId('edit-table-type-property-modal');
+  const cell = modal.locator(`div.rdg-cell-${columnName}`);
+  const editor = modal.getByRole('textbox');
+
+  await cell.dblclick();
+
+  if (!(await editor.isVisible())) {
+    await cell.dblclick();
+  }
+  await editor.fill(text);
+  await cell.press('Enter', { delay: 100 });
+};
 
 const bundle = buildSync({
   stdin: {

@@ -101,7 +101,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span data-testid="chevron-icon" />,
   Columns01: () => <span data-testid="columns-icon" />,
   LayoutAlt04: () => <span data-testid="layout-icon" />,
@@ -335,51 +335,12 @@ describe('FilterChip', () => {
     expect(descriptor.onChange).toHaveBeenCalledWith('');
   });
 
-  it('should render the label above the input trigger for the input variant', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({ controlType: 'select', value: 'success' }) as any
-        }
-        variant="input"
-      />
-    );
-
-    expect(screen.getByText('Status')).toBeInTheDocument();
-    expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
-      'data-variant',
-      'input'
-    );
-    expect(screen.getByTestId('trigger-text')).toHaveTextContent('Success');
-  });
-
-  it('should size the input-variant trigger, which the core component leaves to its container', () => {
-    render(<FilterChip descriptor={baseDescriptor() as any} variant="input" />);
-
-    expect(
-      screen
-        .getByTestId('search-dropdown-status')
-        .getAttribute('data-classname')
-    ).toContain('tw:w-44');
-  });
-
-  it('should render the chip variant bordered and the input variant unbordered', () => {
-    const { rerender } = render(
-      <FilterChip descriptor={baseDescriptor() as any} />
-    );
+  it('should render the chip bordered', () => {
+    render(<FilterChip descriptor={baseDescriptor() as any} />);
 
     expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
       'data-bordered',
       'true'
-    );
-
-    rerender(
-      <FilterChip descriptor={baseDescriptor() as any} variant="input" />
-    );
-
-    expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
-      'data-bordered',
-      'false'
     );
   });
 
@@ -389,91 +350,6 @@ describe('FilterChip', () => {
     expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
       'data-variant',
       'button'
-    );
-  });
-
-  it('should render the user picker for the user control type', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            controlType: 'user',
-            label: 'Assignee',
-            key: 'assignee',
-            value: '',
-            onOwnerChange: jest.fn(),
-          }) as any
-        }
-      />
-    );
-
-    expect(screen.getByTestId('user-team-selectable-list')).toBeInTheDocument();
-    expect(screen.getByTestId('search-dropdown-assignee')).toBeInTheDocument();
-  });
-
-  it('should call onOwnerChange when an owner is selected in the user picker', () => {
-    const onOwnerChange = jest.fn();
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            controlType: 'user',
-            label: 'Assignee',
-            key: 'assignee',
-            value: '',
-            onOwnerChange,
-          }) as any
-        }
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('trigger-owner-update'));
-
-    expect(onOwnerChange).toHaveBeenCalledWith([
-      { id: 'owner-1', name: 'owner-1' },
-    ]);
-  });
-
-  it('should render the user chip trigger as a pill, like the chips beside it', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            controlType: 'user',
-            label: 'Assignee',
-            key: 'assignee',
-            value: '',
-            onOwnerChange: jest.fn(),
-          }) as any
-        }
-      />
-    );
-
-    const { className } = screen.getByTestId('search-dropdown-assignee');
-
-    expect(className).toContain('tw:shadow-xs-skeuomorphic');
-    expect(className).toContain('border-after');
-  });
-
-  it('should show the selected owner display name for the user control type', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            controlType: 'user',
-            label: 'Assignee',
-            key: 'assignee',
-            value: '',
-            selectedOwners: [{ id: 'owner-1', displayName: 'Owner One' }],
-            onOwnerChange: jest.fn(),
-          }) as any
-        }
-        variant="input"
-      />
-    );
-
-    expect(screen.getByTestId('search-dropdown-assignee')).toHaveTextContent(
-      'Owner One'
     );
   });
 });

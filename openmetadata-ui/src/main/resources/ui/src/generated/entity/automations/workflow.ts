@@ -454,6 +454,8 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude Process Chains that match the pattern.
  *
+ * Regex exclude or include pipelines that match the pattern.
+ *
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
@@ -683,6 +685,17 @@ export interface TestServiceConnectionRequest {
      * of 'schema' to avoid conflicts with Pydantic's BaseModel.schema() method.
      */
     databaseSchema?: string;
+    /**
+     * UUIDs of files uploaded to one chat conversation, analyzed instead of a warehouse
+     * service. Every file is loaded into the same in-process DuckDB session, so a query may
+     * join them; serviceName and credentials are not used.
+     */
+    fileIds?: string[];
+    /**
+     * RUNTIME FIELD - The files behind fileIds, resolved by the backend before dispatch. Never
+     * accepted from the client.
+     */
+    files?: QueryRunnerFile[];
     /**
      * RUNTIME FIELD - Automatically injected by backend from admin
      * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
@@ -993,6 +1006,8 @@ export interface RequestConnection {
  * Salesforce Data 360 Pipeline Connection Config
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
+ *
+ * Tableau Pipeline Connection Config
  *
  * MlFlow Connection Config
  *
@@ -1314,6 +1329,8 @@ export interface Connection {
      *
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
+     *
+     * Tableau Server URL.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
@@ -2234,6 +2251,11 @@ export interface Connection {
      */
     hostport?: string;
     /**
+     * Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage
+     * from the relations it reads.
+     */
+    includeMetricViews?: boolean;
+    /**
      * Enable dataflow for ingestion
      */
     dataflows?: boolean;
@@ -2685,6 +2707,8 @@ export interface Connection {
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -2695,6 +2719,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -2861,6 +2887,12 @@ export interface Connection {
      * {"S3_Connector": "my-s3-service"}
      */
     serviceMapping?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -5800,6 +5832,7 @@ export enum AirflowConnectionType {
     Superset = "Superset",
     Synapse = "Synapse",
     Tableau = "Tableau",
+    TableauPipeline = "TableauPipeline",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
     Timescale = "Timescale",
@@ -5817,6 +5850,29 @@ export enum AirflowConnectionType {
 export enum CredentialSourceType {
     Team = "team",
     User = "user",
+}
+
+/**
+ * An uploaded file resolved by the backend for in-process analysis.
+ */
+export interface QueryRunnerFile {
+    /**
+     * UUID of the uploaded file (Asset).
+     */
+    fileId: string;
+    /**
+     * Original name of the file. Its extension selects the reader.
+     */
+    fileName: string;
+    /**
+     * Short-lived readable location (presigned URL) of the file.
+     */
+    fileUri: string;
+    /**
+     * Relation name the file is registered under. A multi-sheet workbook registers one relation
+     * per sheet, named tableName_<sheet>.
+     */
+    tableName: string;
 }
 
 /**

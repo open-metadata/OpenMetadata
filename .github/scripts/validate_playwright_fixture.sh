@@ -37,7 +37,9 @@ for required_path in \
   './opensearch/nodes/' \
   './playwright-state/auth/admin.json' \
   './playwright-state/auth/admin-api-token.json' \
-  './playwright-state/entity-response-data.json'; do
+  './playwright-state/entity-response-data.json' \
+  './playwright-state/lineage-data.json' \
+  './playwright-state/shared-infra.json'; do
   if ! grep -Fq "$required_path" "$tar_listing"; then
     echo "Cached Playwright fixture is missing $required_path" >&2
     exit 1

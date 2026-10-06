@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, Response } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Locator,
+  Page,
+  Response,
+} from '@playwright/test';
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
@@ -24,14 +30,8 @@ import {
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
+import { CODE_EDITOR_CONTENT, typeInCodeEditor } from './codeEditor';
 import {
-  CODE_EDITOR,
-  CODE_EDITOR_CONTENT,
-  typeInCodeEditor,
-} from './codeEditor';
-import {
-  clickOutside,
-  descriptionBox,
   descriptionBoxReadOnly,
   fillDescriptionBox,
   getDescriptionBox,
@@ -45,6 +45,7 @@ import {
   navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
+import { waitForAntOverlayToOpen } from './waitHelpers';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -81,46 +82,303 @@ export interface CustomProperty {
   };
 }
 
-export const fillTableColumnInputDetails = async (
+/**
+ * Picks `isoDate` (yyyy-MM-dd) in the core DatePicker inside `scope`: opens the
+ * calendar, pages to the target month, clicks the day, then Apply.
+ */
+const pickDateInCorePicker = async (
   page: Page,
-  text: string,
-  columnName: string
+  scope: Locator,
+  isoDate: string
 ) => {
-  await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
+  const [year, month, day] = isoDate.split('-').map(Number);
+  // Cell labels follow the app locale ("Tuesday, 9 July 2024" or
+  // "Tuesday, July 9, 2024"); only the displayed month's days are rendered, so
+  // the day number alone identifies the cell.
+  const dayLabel = new RegExp(`(^|\\D)${day}(\\D|$)`);
 
-  const isInputVisible = await page
-    .locator(`div.rdg-editor-container.rdg-cell-${columnName}`)
-    .isVisible();
+  await scope.getByTestId('date-time-picker').getByRole('button').click();
+  const calendar = page
+    .getByRole('dialog')
+    .filter({ has: page.getByRole('grid') });
+  await expect(calendar).toBeVisible();
 
-  if (!isInputVisible) {
-    await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
-  }
-  await page
-    .getByTestId('edit-table-type-property-modal')
-    .getByRole('textbox')
-    .fill(text);
-
-  await page
-    .locator(`div.rdg-cell-${columnName}`)
-    .last()
-    .press('Enter', { delay: 100 });
-};
-
-const addTablePropertyRow = async (page: Page) => {
-  const modal = page.getByTestId('edit-table-type-property-modal');
-  const addRowButton = modal.getByTestId('add-new-row');
-  const firstColumnCell = modal.locator('div.rdg-cell-pw-column1').last();
-  const secondColumnCell = modal.locator('div.rdg-cell-pw-column2').last();
-
-  await expect(async () => {
-    if (!(await firstColumnCell.isVisible())) {
-      await expect(addRowButton).toBeEnabled();
-      await addRowButton.click();
+  const heading = calendar.getByRole('heading');
+  const targetMonth = year * 12 + (month - 1);
+  const MAX_MONTH_STEPS = 240;
+  for (let step = 0; step < MAX_MONTH_STEPS; step++) {
+    const shown = new Date(`1 ${await heading.textContent()}`);
+    const shownMonth = shown.getFullYear() * 12 + shown.getMonth();
+    if (shownMonth === targetMonth) {
+      break;
     }
-    await expect(firstColumnCell).toBeVisible({ timeout: 5_000 });
-    await expect(secondColumnCell).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
+    await calendar
+      .getByRole('button', {
+        name: shownMonth > targetMonth ? 'Previous' : 'Next',
+      })
+      .click();
+  }
+
+  await calendar
+    .getByRole('gridcell')
+    .getByRole('button', { name: dayLabel })
+    .click();
+  await calendar.getByRole('button', { name: 'Apply' }).click();
 };
+
+/** Types `HH:mm:ss` into the core TimePicker's segments inside `scope`. */
+const typeTimeInCorePicker = async (scope: Locator, time: string) => {
+  const hourSegment = scope
+    .getByTestId('time-picker')
+    .getByRole('spinbutton', { name: /hour/i });
+  await hourSegment.click();
+  // Segments auto-advance after two digits.
+  await hourSegment.page().keyboard.type(time.replace(/:/g, ''));
+};
+
+/**
+ * Edit action of a tab card or widget row: the pencil when the property has a
+ * value, or the large card's "No value yet" button (e.g. "Set duration").
+ */
+export const getCustomPropertyEditButton = (container: Locator) =>
+  container
+    .getByTestId('edit-icon')
+    .or(container.getByTestId('add-value-button'));
+
+/**
+ * Opens the custom property edit modal from a tab card or a widget row and
+ * returns the modal, which portals to document.body outside the container.
+ */
+export const openCustomPropertyEditModal = async (
+  page: Page,
+  container: Locator
+) => {
+  const editButton = getCustomPropertyEditButton(container);
+  await editButton.scrollIntoViewIfNeeded();
+  // Background async-delete notifications stack as toasts at bottom-center and
+  // intercept the click; force skips the actionability check but the event
+  // still lands on the toast, so drain the stack before clicking.
+  await waitForToastStackToClear(page);
+  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+  await editButton.click({ force: true });
+
+  const editModal = page.getByTestId('custom-property-edit-modal');
+  await expect(editModal).toBeVisible();
+
+  return editModal;
+};
+
+/**
+ * Closes a select/combobox listbox left open in the edit modal, which would
+ * otherwise cover the footer. The open combobox aria-hides the rest of the
+ * modal, hence includeHidden.
+ */
+export const closeEditModalListbox = (editModal: Locator) =>
+  editModal.getByRole('heading', { includeHidden: true }).click();
+
+const clearAssetSelection = async (scope: Page | Locator) => {
+  const chips = scope
+    .getByTestId('asset-select-list')
+    .getByTestId('autocomplete-selected-item');
+
+  for (const label of await chips.allInnerTexts()) {
+    const escaped = label.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    await chips
+      .filter({ hasText: new RegExp(`^${escaped}$`) })
+      .getByRole('button')
+      .click();
+  }
+
+  await expect(chips).toHaveCount(0);
+};
+
+/**
+ * Enters `value` in the edit modal's editor for `propertyType` and saves.
+ * Shared by every surface that edits through the modal: the Custom
+ * Properties tab, the side widget and the bulk-edit extension editor.
+ */
+export const fillCustomPropertyEditModal = async (data: {
+  page: Page;
+  editModal: Locator;
+  propertyType: string;
+  value: string;
+  /** Column names of a table-cp property, in value order. */
+  tableColumns?: string[];
+}) => {
+  const {
+    page,
+    editModal,
+    propertyType,
+    value,
+    tableColumns = ['pw-column1', 'pw-column2'],
+  } = data;
+
+  switch (propertyType) {
+    case 'markdown':
+      // Typed, not filled: the block editor only reports keyboard input.
+      await expect(getDescriptionBox(editModal)).toBeVisible();
+      await getDescriptionBox(editModal).click();
+      await page.keyboard.type(value);
+
+      break;
+
+    case 'email':
+      await expect(editModal.getByTestId('email-input')).toBeVisible();
+      await editModal.getByTestId('email-input').fill(value);
+
+      break;
+
+    case 'duration':
+      await expect(editModal.getByTestId('duration-input')).toBeVisible();
+      await editModal.getByTestId('duration-input').fill(value);
+
+      break;
+
+    case 'enum': {
+      const enumInput = editModal
+        .getByTestId('enum-select')
+        .getByRole('combobox');
+      await enumInput.fill(value);
+      await page.getByRole('option', { name: value, exact: true }).click();
+      // Multi-select keeps the listbox open over the footer.
+      await closeEditModalListbox(editModal);
+
+      break;
+    }
+
+    case 'sqlQuery':
+      await typeInCodeEditor(page, editModal, value);
+
+      break;
+
+    case 'timestamp':
+      await expect(editModal.getByTestId('timestamp-input')).toBeVisible();
+      await editModal.getByTestId('timestamp-input').fill(value);
+
+      break;
+
+    case 'timeInterval': {
+      const [startValue, endValue] = value.split(',');
+      // Epoch inputs sit behind the editor's "Enter manually" switch. Click
+      // its label: react-aria's visually hidden input overlaps the footer.
+      await editModal.getByTestId('time-interval-manual-toggle').click();
+      await expect(editModal.getByTestId('start-input')).toBeVisible();
+      await editModal.getByTestId('start-input').fill(startValue);
+      await expect(editModal.getByTestId('end-input')).toBeVisible();
+      await editModal.getByTestId('end-input').fill(endValue);
+
+      break;
+    }
+
+    case 'time-cp': {
+      await typeTimeInCorePicker(editModal, value);
+
+      break;
+    }
+
+    case 'date-cp':
+    case 'dateTime-cp': {
+      const [datePart, timePart] = value.split(' ');
+      await pickDateInCorePicker(page, editModal, datePart);
+      if (timePart) {
+        await typeTimeInCorePicker(editModal, timePart);
+      }
+
+      break;
+    }
+
+    case 'string':
+    case 'integer':
+    case 'number':
+      await expect(editModal.getByTestId('value-input')).toBeVisible();
+      await editModal.getByTestId('value-input').fill(value);
+
+      break;
+
+    case 'entityReference':
+    case 'entityReferenceList': {
+      // Single-select hides its input while a value is picked.
+      await clearAssetSelection(editModal);
+      const refValues = value.split(',');
+
+      for (const val of refValues) {
+        const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
+          val
+        )}*`;
+        const referenceInput = editModal
+          .getByTestId('asset-select-list')
+          .getByRole('combobox');
+        await page.route(searchApi, (route) => route.continue());
+        await referenceInput.clear();
+        const searchEntity = page.waitForResponse(searchApi);
+        await referenceInput.fill(val);
+        await searchEntity;
+        await page.getByRole('option').getByTestId(val).click();
+      }
+      // The results listbox stays open over the footer.
+      await closeEditModalListbox(editModal);
+
+      break;
+    }
+
+    case 'table-cp': {
+      const values = value.split(',');
+      // The inline table editor opens with one empty row.
+      for (const [index, column] of tableColumns.entries()) {
+        await editModal.getByTestId(`${column}-0`).fill(values[index]);
+      }
+
+      break;
+    }
+
+    case 'hyperlink-cp': {
+      // Value format: "url,displayText" or just "url"
+      const [url, displayText] = value.split(',');
+      await expect(editModal.getByTestId('hyperlink-url-input')).toBeVisible();
+      await editModal.getByTestId('hyperlink-url-input').fill(url);
+      if (displayText) {
+        await editModal
+          .getByTestId('hyperlink-display-text-input')
+          .fill(displayText);
+      }
+
+      break;
+    }
+  }
+
+  await editModal.getByTestId('inline-save-btn').click();
+  await expect(editModal).toBeHidden();
+};
+
+/**
+ * Opens an entity's Custom Properties tab. The page's widgets share one cached
+ * type definition, so the tab may not refetch it: wait for the cards instead
+ * of the types request.
+ */
+export const openCustomPropertiesTab = async (page: Page) => {
+  await page.getByTestId('custom_properties').click();
+  await expect(page.getByTestId('custom-properties-card')).toBeVisible();
+};
+
+/** Card of `propertyName` on the Custom Properties tab. */
+export const getCustomPropertyCard = (
+  scope: Page | Locator,
+  propertyName: string
+) => scope.getByTestId(`custom-property-${propertyName}-card`);
+
+/** Row of the Custom Properties side widget for `propertyName`. */
+export const getCustomPropertyWidgetRow = (
+  scope: Page | Locator,
+  propertyName: string
+) =>
+  scope
+    .getByTestId('custom-properties-widget')
+    .getByTestId(`custom-property-${propertyName}-row`);
+
+/** Every row edit icon in the Custom Properties side widget. */
+export const getCustomPropertyWidgetEditIcons = (scope: Page | Locator) =>
+  scope.getByTestId('custom-properties-widget').getByTestId('edit-icon');
 
 export const setValueForProperty = async (data: {
   page: Page;
@@ -132,183 +390,16 @@ export const setValueForProperty = async (data: {
   const { page, propertyName, value, propertyType, endpoint } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  const container = page.getByTestId(`custom-property-${propertyName}-card`);
+  const container = getCustomPropertyCard(page, propertyName);
 
   await expect(container.getByTestId('property-name')).toContainText(
     propertyName
   );
 
-  await expect(
-    container.locator('[data-testid="property-name"]')
-  ).toContainText(propertyName);
-
-  const editButton = container.getByTestId('edit-icon');
-  await editButton.scrollIntoViewIfNeeded();
-  // Background async-delete notifications stack as toasts at bottom-center and
-  // intercept the click; force skips the actionability check but the event
-  // still lands on the toast, so drain the stack before clicking.
-  await waitForToastStackToClear(page);
-  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-  await editButton.click({ force: true });
+  const editModal = await openCustomPropertyEditModal(page, container);
 
   const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  switch (propertyType) {
-    case 'markdown':
-      await expect(getDescriptionBox(page)).toHaveCount(1);
-      await expect(getDescriptionBox(page)).toBeVisible();
-      await page.click(descriptionBox);
-      await page.keyboard.type(value);
-      await page.locator('[data-testid="save"]').click();
-
-      break;
-
-    case 'email':
-      await expect(
-        container.locator('[data-testid="email-input"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="email-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'duration':
-      await expect(
-        container.locator('[data-testid="duration-input"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="duration-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'enum':
-      await container.locator('#enumValues').click();
-      // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-      await container.locator('#enumValues').fill(value, { force: true });
-      await container.locator('#enumValues').press('Enter');
-      await clickOutside(page);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'sqlQuery':
-      await typeInCodeEditor(page, container, value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'timestamp':
-      await expect(
-        container.locator('[data-testid="timestamp-input"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="timestamp-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'timeInterval': {
-      const [startValue, endValue] = value.split(',');
-      await expect(
-        container.locator('[data-testid="start-input"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="start-input"]').fill(startValue);
-      await expect(
-        container.locator('[data-testid="end-input"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="end-input"]').fill(endValue);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
-    case 'time-cp': {
-      await expect(
-        container.locator('[data-testid="time-picker"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="time-picker"]').click();
-      await container.locator('[data-testid="time-picker"]').fill(value);
-      await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
-    case 'date-cp':
-    case 'dateTime-cp': {
-      await expect(
-        container.locator('[data-testid="date-time-picker"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="date-time-picker"]').click();
-      await container.locator('[data-testid="date-time-picker"]').fill(value);
-      await page.keyboard.press('Enter');
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
-    case 'string':
-    case 'integer':
-    case 'number':
-      await expect(
-        container.locator('[data-testid="value-input"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="value-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'entityReference':
-    case 'entityReferenceList': {
-      const refValues = value.split(',');
-
-      for (const val of refValues) {
-        const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
-          val
-        )}*`;
-        await page.route(searchApi, (route) => route.continue());
-        await container.locator('#entityReference').clear();
-        const searchEntity = page.waitForResponse(searchApi);
-        await container.locator('#entityReference').fill(val);
-        await searchEntity;
-        await page.locator(`[data-testid="${val}"]`).click();
-      }
-
-      await clickOutside(page);
-
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
-    case 'table-cp': {
-      const values = value.split(',');
-      await addTablePropertyRow(page);
-
-      await fillTableColumnInputDetails(page, values[0], 'pw-column1');
-
-      await fillTableColumnInputDetails(page, values[1], 'pw-column2');
-
-      await page.locator('[data-testid="update-table-type-property"]').click();
-
-      break;
-    }
-
-    case 'hyperlink-cp': {
-      // Value format: "url,displayText" or just "url"
-      const [url, displayText] = value.split(',');
-      await expect(
-        container.locator('[data-testid="hyperlink-url-input"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="hyperlink-url-input"]').fill(url);
-      if (displayText) {
-        await container
-          .locator('[data-testid="hyperlink-display-text-input"]')
-          .fill(displayText);
-      }
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-  }
+  await fillCustomPropertyEditModal({ page, editModal, propertyType, value });
   const patchRequest = await patchRequestPromise;
 
   expect(patchRequest.status()).toBe(200);
@@ -323,27 +414,17 @@ export const validateValueForProperty = async (data: {
   const { page, propertyName, value, propertyType } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  const container = page.getByTestId(`custom-property-${propertyName}-card`);
-
-  const toggleBtnVisibility = await container
-    .getByTestId(`toggle-${propertyName}`)
-    .isVisible();
-
-  if (toggleBtnVisibility && propertyType !== 'table-cp') {
-    await container.getByTestId(`toggle-${propertyName}`).click();
-  }
+  const container = getCustomPropertyCard(page, propertyName);
 
   if (propertyType === 'enum') {
     await expect(container.getByTestId('enum-value')).toContainText(value);
   } else if (propertyType === 'timeInterval') {
     const [startValue, endValue] = value.split(',');
+    const interval = container.getByTestId('time-interval-value');
 
-    await expect(container.getByTestId('time-interval-value')).toContainText(
-      startValue
-    );
-    await expect(container.getByTestId('time-interval-value')).toContainText(
-      endValue
-    );
+    // The timeline shows formatted dates; the raw epoch bounds are attributes.
+    await expect(interval).toHaveAttribute('data-start', startValue);
+    await expect(interval).toHaveAttribute('data-end', endValue);
   } else if (propertyType === 'sqlQuery') {
     await expect(container.locator(CODE_EDITOR_CONTENT)).toContainText(value);
   } else if (propertyType === 'table-cp') {
@@ -354,8 +435,8 @@ export const validateValueForProperty = async (data: {
         .getByRole('row')
         .filter({ hasText: values[0] })
         .filter({ hasText: values[1] })
-        .first()
-    ).toBeVisible();
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   } else if (propertyType === 'hyperlink-cp') {
     // Value format: "url,displayText" or just "url"
     const [url, displayText] = value.split(',');
@@ -907,84 +988,100 @@ export const editCreatedProperty = async (
   propertyName: string,
   type?: string
 ) => {
-  // Fetching for edit button
-  const editButton = page.locator(
-    `[data-row-key="${propertyName}"] [data-testid="edit-button"]`
-  );
+  const propertyRow = page.locator(`[data-row-key="${propertyName}"]`);
 
   if (type === 'Enum') {
     await expect(
-      page.locator(
-        `[data-row-key="${propertyName}"] [data-testid="enum-config"]`
-      )
-    ).toContainText('["enum1","enum2","enum3"]');
+      propertyRow.getByTestId('enum-config').getByTestId('config-value')
+    ).toHaveText(['enum1', 'enum2', 'enum3']);
   }
 
   if (type === 'Table') {
-    const tableConfig = page.locator(
-      `[data-row-key="${propertyName}"] [data-testid="table-config"]`
-    );
+    const tableConfig = propertyRow.getByTestId('table-config');
     await expect(tableConfig).toBeVisible();
-    await expect(tableConfig).toContainText('Columns:');
+    await expect(tableConfig).toContainText('Columns');
     await expect(
-      tableConfig.locator('li', { hasText: 'pw-column1' })
+      tableConfig.getByTestId('config-value').filter({ hasText: 'pw-column1' })
     ).toBeVisible();
     await expect(
-      tableConfig.locator('li', { hasText: 'pw-column2' })
+      tableConfig.getByTestId('config-value').filter({ hasText: 'pw-column2' })
     ).toBeVisible();
   }
 
-  await editButton.click();
+  await selectOptionWithRetry(
+    propertyRow.getByTestId('property-actions'),
+    page.getByRole('menuitem', { name: 'Edit' })
+  );
 
-  // displayName
-  await page.fill('[data-testid="display-name"]', '');
-  await page.fill('[data-testid="display-name"]', propertyName.toUpperCase());
+  const modal = page.getByTestId('edit-custom-property-modal');
+  const displayNameInput = modal
+    .getByTestId('edit-custom-property-display-name')
+    .getByRole('textbox');
+
+  await displayNameInput.fill(propertyName.toUpperCase());
 
   await fillDescriptionBox(page, '');
   await fillDescriptionBox(page, 'This is new description');
 
   if (type === 'Enum') {
-    await page.click(String.raw`#root\/customPropertyConfig`);
-    await page.fill(String.raw`#root\/customPropertyConfig`, 'updatedValue');
-    await page.press(String.raw`#root\/customPropertyConfig`, 'Enter');
-    await clickOutside(page);
+    const enumInput = modal
+      .getByTestId('edit-custom-property-enum-config')
+      .locator('input');
+
+    await enumInput.fill('updatedValue');
+    await enumInput.press('Enter');
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
-    await page.click(String.raw`#root\/customPropertyConfig`);
-    await page.fill(String.raw`#root\/customPropertyConfig`, 'Table');
-    await page.press(String.raw`#root\/customPropertyConfig`, 'Enter');
-    await clickOutside(page);
+    await selectOptionWithRetry(
+      modal
+        .getByTestId('edit-custom-property-entity-ref-config')
+        .locator('input'),
+      page.getByRole('option', { exact: true, name: 'Table' })
+    );
+
+    // Multi-select keeps the listbox open over the footer.
+    await closeEditModalListbox(modal);
+    await expect(page.getByRole('listbox')).toBeHidden();
   }
 
   const saves = recordCustomPropertySaves(page);
 
-  await page.locator('button[type="submit"]').click();
+  await modal.getByTestId('edit-custom-property-save').click();
 
-  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
+  await expect(modal).not.toBeVisible();
   await saves.expectSaved();
 
   // Fetching for updated descriptions for the created custom property
-  await expect(
-    page.locator(
-      `[data-row-key="${propertyName}"] [data-testid="viewer-container"]`
-    )
-  ).toContainText('This is new description');
+  await expect(propertyRow.getByTestId('property-description')).toContainText(
+    'This is new description'
+  );
 
+  // The row shows the first three config values and counts the rest.
   if (type === 'Enum') {
-    await expect(
-      page.locator(
-        `[data-row-key="${propertyName}"] [data-testid="enum-config"]`
-      )
-    ).toContainText('["enum1","enum2","enum3","updatedValue"]');
+    const enumConfig = propertyRow.getByTestId('enum-config');
+
+    await expect(enumConfig.getByTestId('config-value')).toHaveText([
+      'enum1',
+      'enum2',
+      'enum3',
+    ]);
+    await expect(enumConfig.getByTestId('config-hidden-count')).toHaveText(
+      '+1'
+    );
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
-    await expect(
-      page.locator(
-        `[data-row-key="${propertyName}"] [data-testid="${propertyName}-config"]`
-      )
-    ).toContainText('["user","team","metric","table"]');
+    const entityConfig = propertyRow.getByTestId(`${propertyName}-config`);
+
+    await expect(entityConfig.getByTestId('config-value')).toHaveText([
+      'User',
+      'Team',
+      'Metric',
+    ]);
+    await expect(entityConfig.getByTestId('config-hidden-count')).toHaveText(
+      '+1'
+    );
   }
 };
 
@@ -992,25 +1089,21 @@ export const deleteCreatedProperty = async (
   page: Page,
   propertyName: string
 ) => {
-  // Fetching for delete button
-  await page
-    .locator(`[data-row-key="${propertyName}"]`)
-    .scrollIntoViewIfNeeded();
-  await page
-    .locator(`[data-row-key="${propertyName}"] [data-testid="delete-button"]`)
-    .click();
-
-  // Checking property name is present on the delete pop-up
-  await expect(page.locator('[data-testid="body-text"]')).toContainText(
-    propertyName
+  await selectOptionWithRetry(
+    page
+      .locator(`[data-row-key="${propertyName}"]`)
+      .getByTestId('property-actions'),
+    page.getByRole('menuitem', { name: 'Delete' })
   );
 
-  // Ensure the save button is visible before clicking
-  await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
+  const dialog = page.getByRole('dialog', { name: 'Delete Property' });
+
+  await waitForAntOverlayToOpen(dialog);
+  await expect(dialog.getByTestId('body-text')).toContainText(propertyName);
 
   const saves = recordCustomPropertySaves(page);
 
-  await page.locator('[data-testid="save-button"]').click();
+  await dialog.getByTestId('save-button').click();
 
   // ConfirmationModal is destroyOnClose: assert the body text unmounts so
   // the modal mask is gone before the next sidebar click in callers' loops.
@@ -1102,151 +1195,55 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   await page.getByTestId('cancel-btn').click();
 };
 
-export const editColumnCustomProperty = async (
-  page: Page,
-  propertyType: string,
-  testValue: string
-) => {
-  if (propertyType === 'markdown') {
-    const editor = page.locator('.om-block-editor[contenteditable="true"]');
-    await editor.click();
-    await page.keyboard.type(testValue);
-    await editor.blur();
-    await page.getByTestId('save').click();
-  } else if (propertyType === 'sqlQuery') {
-    const codeMirror = page.locator(
-      `.custom-properties-section-container ${CODE_EDITOR}`
-    );
-    await expect(codeMirror).toBeVisible();
-    await codeMirror.click();
-    await page.keyboard.type(testValue);
-  } else if (propertyType === 'timeInterval') {
-    const [start, end] = testValue.split(',');
-    await page.getByTestId('start-input').fill(start);
-    await page.getByTestId('end-input').fill(end);
-  } else if (propertyType === 'timestamp') {
-    await page.getByTestId('timestamp-input').fill(testValue);
-  } else if (propertyType === 'duration') {
-    await page.getByTestId('duration-input').fill(testValue);
-  } else if (propertyType === 'email') {
-    await page.getByTestId('email-input').fill(testValue);
-  } else if (propertyType === 'enum') {
-    await page.getByTestId('enum-select').click();
-    await page
-      .locator('.ant-select-item-option-content')
-      .getByText(testValue, { exact: true })
-      .click();
-  } else if (propertyType === 'table-cp') {
-    await addTablePropertyRow(page);
+/**
+ * Row of `propertyName` in a side panel's Custom Properties tab: the Explore
+ * summary panel or the column detail panel.
+ */
+export const getCustomPropertyPanelRow = (
+  scope: Page | Locator,
+  propertyName: string
+) =>
+  scope
+    .getByTestId('custom-properties-list')
+    .getByTestId(`custom-property-${propertyName}-row`);
 
-    // Fill Row
-    await page.locator('div.rdg-cell-pw-column1').last().dblclick();
-    await page
-      .getByTestId('edit-table-type-property-modal')
-      .getByRole('textbox')
-      .fill(testValue);
-    await page.keyboard.press('Enter', { delay: 100 });
+/**
+ * Text the panel row summary must contain once `value` is saved, or undefined
+ * where the row shows a derived summary (counts, durations, formatted dates,
+ * entity display names).
+ */
+const getExpectedRowSummary = (propertyType: string, value: string) => {
+  switch (propertyType) {
+    case 'string':
+    case 'integer':
+    case 'number':
+    case 'email':
+    case 'duration':
+    case 'enum':
+      return value;
+    case 'markdown':
+      return value.replaceAll(/[*_]/g, '');
+    case 'hyperlink-cp': {
+      const [url, displayText] = value.split(',');
 
-    await page.locator('div.rdg-cell-pw-column2').last().dblclick();
-    await page
-      .getByTestId('edit-table-type-property-modal')
-      .getByRole('textbox')
-      .fill('row1col2');
-    await page.keyboard.press('Enter', { delay: 100 });
-
-    await page.locator('[data-testid="update-table-type-property"]').click();
-  } else if (
-    ['entityReference', 'entityReferenceList'].includes(propertyType)
-  ) {
-    const [value] = testValue.split(',');
-    const input = page.getByTestId('asset-select-list').getByRole('combobox');
-    await input.click();
-    const assetSearchResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.status() === 200
-    );
-    await input.fill(value);
-    await assetSearchResponse;
-    await page.getByTestId(value).click();
-
-    // Verify selection is applied before saving
-    // The selection usually appears as a tag or text in the container
-    await expect(page.getByTestId('asset-select-list')).toContainText(value);
-    if (propertyType === 'entityReferenceList') {
-      await page.keyboard.press('Escape');
+      return displayText || url;
     }
-  } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
-    // Ant Design Pickers
-    const picker = page.getByTestId(
-      propertyType === 'time-cp' ? 'time-picker' : 'date-time-picker'
-    );
-    await picker.click();
-    await page.keyboard.type(testValue);
-    await page.keyboard.press('Enter');
-  } else if (['string', 'integer', 'number'].includes(propertyType)) {
-    const valueInput = page.getByTestId('value-input');
-    await expect(valueInput).toBeVisible();
-    await valueInput.fill(testValue);
-  } else if (propertyType === 'hyperlink-cp') {
-    const urlInput = page.getByTestId('hyperlink-url-input');
-    await expect(urlInput).toBeVisible();
-    const [url, displayText] = testValue.split(',');
-    await urlInput.fill(url);
-    const displayTextInput = page.getByTestId('hyperlink-display-text-input');
-    await expect(displayTextInput).toBeVisible();
-    await displayTextInput.fill(displayText);
-  }
-
-  if (propertyType !== 'table-cp' && propertyType !== 'markdown') {
-    await page
-      .locator('.custom-properties-section-container')
-      .getByTestId('inline-save-btn')
-      .click();
+    default:
+      return undefined;
   }
 };
 
-export const validateColumnCustomProperty = async (
-  page: Page,
+const validateCustomPropertyPanelRow = async (
+  row: Locator,
   propertyType: string,
-  testValue: string,
-  propertyName: string
+  value: string
 ) => {
-  const card = page.getByTestId(propertyName);
+  const summary = row.getByTestId('property-value');
+  const expected = getExpectedRowSummary(propertyType, value);
 
-  if (propertyType === 'markdown') {
-    await expect(card.getByTestId('viewer-container')).toContainText(
-      testValue.substring(3, 7)
-    );
-  } else if (propertyType === 'sqlQuery') {
-    await expect(card.getByTestId('property-value')).toContainText(testValue);
-  } else if (propertyType === 'timeInterval') {
-    const [start, end] = testValue.split(',');
-    await expect(card.getByTestId('property-value')).toContainText(start);
-    await expect(card.getByTestId('property-value')).toContainText(end);
-  } else if (propertyType === 'table-cp') {
-    await expect(
-      page
-        .getByRole('row')
-        .filter({ hasText: testValue })
-        .filter({ hasText: 'row1col2' })
-    ).toBeVisible();
-  } else if (propertyType === 'entityReference') {
-    await expect(card.getByTestId('property-value')).toContainText(testValue);
-  } else if (propertyType === 'entityReferenceList') {
-    const [value] = testValue.split(',');
-    await expect(card.getByTestId('property-value')).toContainText(value);
-  } else if (propertyType === 'hyperlink-cp') {
-    const [_, displayText] = testValue.split(',');
-    await expect(card.getByTestId('hyperlink-value')).toContainText(
-      displayText
-    );
-  } else {
-    // Generic fallback for String, Integer, Email, Duration, Timestamp, Enum, EntityRef, Date, Time
-    // Enum/Date/Time/Ref now use 'value' container with text.
-    // Ref: Part 2 test uses getByText(testValue) originally, updated to getByTestId('property-value').
-    await expect(card.getByTestId('property-value')).not.toHaveText('Not set');
-    await expect(card.getByTestId('property-value')).toContainText(testValue);
+  await expect(summary).not.toHaveText('Not set');
+  if (expected) {
+    await expect(summary).toContainText(expected);
   }
 };
 
@@ -1292,18 +1289,14 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   const customPropertiesTab = page.getByTestId('custom-properties-tab');
   await customPropertiesTab.click();
 
-  const searchbar = page
-    .locator('.custom-properties-section-container')
-    .getByTestId('search-bar-container')
-    .getByRole('textbox');
+  const searchbar = sidePanel.getByTestId('searchbar');
   await expect(searchbar).toBeVisible();
   await searchbar.fill(propertyName);
 
   // 4. Edit Value
-  const card = page.getByTestId(propertyName);
-  await card.getByTestId('edit-icon-right-panel').click();
+  const row = getCustomPropertyPanelRow(sidePanel, propertyName);
+  const editModal = await openCustomPropertyEditModal(page, row);
 
-  // Define wait for response
   const updateColumnResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/columns/name') &&
@@ -1311,22 +1304,16 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
       response.ok()
   );
 
-  // Edit logic
-  await editColumnCustomProperty(page, propertyType, testValue);
-
-  // Wait for response
+  await fillCustomPropertyEditModal({
+    page,
+    editModal,
+    propertyType,
+    value: testValue,
+  });
   await updateColumnResponse;
-
-  // CRITICAL: Wait for UI to update after API response
   await waitForAllLoadersToDisappear(page);
 
-  // Validation
-  await validateColumnCustomProperty(
-    page,
-    propertyType,
-    testValue,
-    propertyName
-  );
+  await validateCustomPropertyPanelRow(row, propertyType, testValue);
 
   const reloadColumnsResponse = columnsProfileResponse();
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -1342,13 +1329,7 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   await searchbar.clear();
   await searchbar.fill(propertyName);
 
-  // Validation Logic After Reload
-  await validateColumnCustomProperty(
-    page,
-    propertyType,
-    testValue,
-    propertyName
-  );
+  await validateCustomPropertyPanelRow(row, propertyType, testValue);
 
   // Close
   await page.getByTestId('close-button').click();
@@ -1394,27 +1375,21 @@ export const updateCustomPropertyInRightPanel = async (data: {
   // Scope everything to the panel container to avoid matching stray elements
   // elsewhere on the Explore page when tests run in parallel.
   const panelContainer = page.locator('.entity-summary-panel-container');
-  const searchContainer = panelContainer.getByTestId('search-bar-container');
-  await expect(searchContainer).toBeVisible();
-  await searchContainer.getByRole('textbox').fill(propertyName);
+  const searchbar = panelContainer.getByTestId('searchbar');
+  await expect(searchbar).toBeVisible();
+  await searchbar.fill(propertyName);
 
-  // Since the search is client side, can't wait on APIs and names are unique,
-  // waiting for only single custom property card to be visible
-  // to ensure stability of the next click operations.
+  // The search is client side, so wait for the filtered list to settle on
+  // the single matching row before interacting with it.
   await expect(
-    panelContainer.getByTestId('custom-property-right-panel-card')
+    panelContainer.getByTestId('custom-properties-list').getByRole('listitem')
   ).toHaveCount(1);
 
-  const container = panelContainer.getByTestId(propertyName);
+  const row = getCustomPropertyPanelRow(panelContainer, propertyName);
 
-  await expect(container.getByTestId('property-name')).toContainText(
-    propertyName
-  );
+  await expect(row.getByTestId('property-name')).toContainText(propertyName);
 
-  const editButton = container.getByTestId('edit-icon-right-panel');
-  await editButton.scrollIntoViewIfNeeded();
-  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-  await editButton.click({ force: true });
+  const editModal = await openCustomPropertyEditModal(page, row);
 
   const patchRequestPromise = page.waitForResponse(
     (response) =>
@@ -1422,241 +1397,10 @@ export const updateCustomPropertyInRightPanel = async (data: {
       response.request().method() === 'PATCH'
   );
 
-  switch (propertyType) {
-    case 'markdown':
-      await expect(getDescriptionBox(page)).toHaveCount(1);
-      await expect(getDescriptionBox(page)).toBeVisible();
-      await page.click(descriptionBox);
-      await page.keyboard.type(value);
-      await page.locator('[data-testid="save"]').click();
-
-      break;
-
-    case 'email':
-      await expect(page.locator('[data-testid="email-input"]')).toBeVisible();
-      await page.locator('[data-testid="email-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'duration':
-      await expect(
-        page.locator('[data-testid="duration-input"]')
-      ).toBeVisible();
-      await page.locator('[data-testid="duration-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'enum':
-      await page.click('#enumValues');
-      while (
-        (await page.locator('.ant-select-selection-item-remove').count()) > 0
-      ) {
-        await page.locator('.ant-select-selection-item-remove').first().click();
-      }
-      await page.fill('#enumValues', value);
-      await page.locator(`.ant-select-item-option[title="${value}"]`).click();
-      await clickOutside(page);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'timestamp':
-      await expect(
-        page.locator('[data-testid="timestamp-input"]')
-      ).toBeVisible();
-      await page.locator('[data-testid="timestamp-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'time-cp': {
-      await expect(page.locator('[data-testid="time-picker"]')).toBeVisible();
-      await page.locator('[data-testid="time-picker"]').click();
-      await page.locator('[data-testid="time-picker"]').fill(value);
-      await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
-    case 'timeInterval': {
-      const [startValue, endValue] = value.split(',');
-      await expect(page.locator('[data-testid="start-input"]')).toBeVisible();
-      await page.locator('[data-testid="start-input"]').fill(startValue);
-      await expect(page.locator('[data-testid="end-input"]')).toBeVisible();
-      await page.locator('[data-testid="end-input"]').fill(endValue);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
-    case 'date-cp':
-    case 'dateTime-cp': {
-      await expect(
-        page.locator('[data-testid="date-time-picker"]')
-      ).toBeVisible();
-      await page.locator('[data-testid="date-time-picker"]').click();
-      await page.locator('[data-testid="date-time-picker"]').fill(value);
-      await page.locator('[data-testid="date-time-picker"]').press('Enter');
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
-    case 'string':
-    case 'integer':
-    case 'number':
-      await expect(page.locator('[data-testid="value-input"]')).toBeVisible();
-      await page.locator('[data-testid="value-input"]').clear();
-      await page.locator('[data-testid="value-input"]').fill(value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'entityReference':
-    case 'entityReferenceList': {
-      // Clear existing values
-      while (
-        (await page.locator('.ant-select-selection-item-remove').count()) > 0
-      ) {
-        await page.locator('.ant-select-selection-item-remove').first().click();
-      }
-      const refValues = value.split(',');
-
-      for (const val of refValues) {
-        const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
-          val
-        )}*`;
-        await page.route(searchApi, (route) => route.continue());
-        await page.locator('#entityReference').clear();
-        const searchEntity = page.waitForResponse(searchApi);
-        await page.locator('#entityReference').fill(val);
-        await searchEntity;
-        await page.locator(`[data-testid="${val}"]`).click();
-      }
-
-      await clickOutside(page);
-
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
-    case 'table-cp': {
-      const values = value.split(',');
-      await page.locator('[data-testid="add-new-row"]').click();
-
-      // Editor grid to be visible
-      await page.locator('.om-rdg').waitFor({ state: 'visible' });
-
-      await fillTableColumnInputDetails(page, values[0], 'pw-column1');
-
-      await fillTableColumnInputDetails(page, values[1], 'pw-column2');
-
-      await page
-        .locator('[data-testid="update-table-type-property"]')
-        // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-        .click({ force: true });
-
-      break;
-    }
-
-    case 'sqlQuery':
-      await typeInCodeEditor(page, container, value);
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-
-    case 'hyperlink-cp': {
-      const values = value.split(',');
-      await page.getByTestId('hyperlink-url-input').fill(values[0]);
-      await page.getByTestId('hyperlink-display-text-input').fill(values[1]);
-
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-  }
+  await fillCustomPropertyEditModal({ page, editModal, propertyType, value });
 
   const patchRequest = await patchRequestPromise;
   expect(patchRequest.status()).toBe(200);
 
-  // Validate
-  const toggleBtnVisibility = await container
-    .locator(`[data-testid="toggle-${propertyName}"]`)
-    .isVisible();
-
-  if (toggleBtnVisibility && propertyType !== 'table-cp') {
-    await container.locator(`[data-testid="toggle-${propertyName}"]`).click();
-  }
-
-  if (propertyType === 'enum') {
-    await expect(container.getByTestId('property-value')).toContainText(value);
-  } else if (propertyType === 'timeInterval') {
-    const [startValue, endValue] = value.split(',');
-
-    await expect(container.getByTestId('property-value')).toContainText(
-      startValue
-    );
-    await expect(container.getByTestId('property-value')).toContainText(
-      endValue
-    );
-  } else if (propertyType === 'table-cp') {
-    const values = value.split(',');
-
-    await expect(
-      page
-        .getByRole('row')
-        .filter({ hasText: values[0] })
-        .filter({ hasText: values[1] })
-        .first()
-    ).toBeVisible();
-  } else if (propertyType === 'markdown') {
-    // For markdown, remove * and _ as they are formatting characters
-    await expect(
-      container.locator(descriptionBoxReadOnly).last()
-    ).toContainText(value.replaceAll(/[*_]/gi, ''));
-  } else if (propertyType === 'hyperlink-cp') {
-    const displayText = value.split(',');
-    await expect(page.getByTestId('hyperlink-value')).toContainText(
-      displayText[1]
-    );
-  } else if (
-    ![
-      'entityReference',
-      'entityReferenceList',
-      'date-cp',
-      'dateTime-cp',
-    ].includes(propertyType)
-  ) {
-    // For other types (string, integer, number, duration), match exact value without transformation
-    await waitForAllLoadersToDisappear(page);
-    await expect(container.getByTestId('property-value')).toContainText(value);
-  } else if ('entityReferenceList' === propertyType) {
-    const refValues = value.split(',');
-
-    for (const val of refValues) {
-      const links = await container.locator('a').all();
-
-      for (const link of links) {
-        const href = await link.getAttribute('href');
-        if (href?.toLowerCase().includes(val.trim().toLowerCase())) {
-          await expect(link).toBeVisible();
-          break;
-        }
-      }
-
-      await expect(container.getByTestId('no-data')).not.toBeVisible();
-    }
-  } else if ('entityReference' === propertyType) {
-    await expect(container.getByRole('link')).toContainText(value, {
-      ignoreCase: true,
-    });
-    await expect(container.getByTestId('no-data')).not.toBeVisible();
-  } else {
-    await expect(container.getByTestId('property-value')).toBeVisible();
-    await expect(container.getByTestId('no-data')).not.toBeVisible();
-  }
+  await validateCustomPropertyPanelRow(row, propertyType, value);
 };

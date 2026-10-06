@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
   XClose,
-} from '@untitledui/icons';
-import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
+} from '@openmetadata/ui-core-components/icons';
+import { Card, Drawer, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -33,6 +33,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { LineageData } from '../../../interface/lineage.interface';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
@@ -65,7 +66,6 @@ import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPa
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
 import LineageTabContent from '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent';
-import { LineageData } from '../../Lineage/Lineage.interface';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import {
@@ -760,7 +760,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             entityText: t('label.column-plural'),
           })}
           entityData={toEntityData(activeColumn)}
-          entityType={entityType}
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={hasEditPermission.customProperties}
           isEntityDataLoading={false}
@@ -788,7 +787,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           className="tw:inline-flex tw:items-center tw:min-w-0"
           key={breadcrumb.fullyQualifiedName}>
           <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
-            <Typography.Text
+            <Typography
               className={classNames('tw:text-xs tw:truncate', {
                 'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
                   isLastItem,
@@ -800,7 +799,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 isLastItem ? undefined : () => handleBreadcrumbClick(breadcrumb)
               }>
               {getEntityName(breadcrumb)}
-            </Typography.Text>
+            </Typography>
             {index < breadcrumbPath.length - 1 && (
               <ChevronRight
                 className="tw:text-gray-400 tw:shrink-0"
@@ -853,12 +852,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Typography.Text
+      <Typography
         className="tw:text-gray-400 tw:text-xs"
         data-testid="entity-name"
         ellipsis={{ tooltip: true }}>
         {renderHighlightedText(activeColumn.name || '')}
-      </Typography.Text>
+      </Typography>
     );
   }
 
@@ -920,7 +919,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     placement="topLeft"
                     title={getEntityName(activeColumn)}
                     trigger="hover">
-                    <Typography.Text
+                    <Typography
                       ellipsis
                       className="entity-title-link"
                       data-testid="entity-link">
@@ -930,7 +929,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                           activeColumn.name ||
                           ''
                       )}
-                    </Typography.Text>
+                    </Typography>
                   </Tooltip>
 
                   {renderEditDisplayNameButton()}
@@ -995,10 +994,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Typography.Text className="pagination-header-text tw:font-medium">
+      <Typography className="pagination-header-text tw:font-medium">
         {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
         {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
-      </Typography.Text>
+      </Typography>
     );
   }
 

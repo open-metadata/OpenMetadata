@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
+import { Button, Col, Popover, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -36,9 +37,9 @@ import {
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -179,9 +180,12 @@ const PoliciesListPage = () => {
                   }
                   overlayClassName="w-40 text-center"
                   trigger="click">
-                  <Tag className="m-l-xss" data-testid="plus-more-count">{`+${
-                    listLength - LIST_CAP
-                  } more`}</Tag>
+                  <Badge
+                    className="tw:inline-flex tw:mr-2 m-l-xss"
+                    color="gray"
+                    data-testid="plus-more-count"
+                    size="sm"
+                    type="color">{`+${listLength - LIST_CAP} more`}</Badge>
                 </Popover>
               )}
             </Space>

@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Collapse,
-  Form,
-  Row,
-  Select,
-  Switch,
-  TreeSelect,
-  Typography,
-} from 'antd';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Collapse, Form, Row, Select, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -280,8 +271,8 @@ const ProfilerConfigurationPage = () => {
                             <Col className="d-flex justify-between" span={3}>
                               <Form.Item
                                 name={[name, 'disabled']}
-                                valuePropName="checked">
-                                <Switch data-testid="disabled-switch" />
+                                valuePropName="isSelected">
+                                <Toggle data-testid="disabled-switch" />
                               </Form.Item>
                               <Form.Item>
                                 <Button
@@ -338,21 +329,21 @@ const ProfilerConfigurationPage = () => {
                   <Col span={24}>
                     <Row align="middle" justify="space-between" wrap={false}>
                       <Col flex="auto">
-                        <Typography.Text strong>
+                        <Typography weight="semibold">
                           {t('label.enable-storing-of-sample-data')}
-                        </Typography.Text>
-                        <Typography.Paragraph className="text-grey-muted m-b-0">
+                        </Typography>
+                        <Typography as="p" className="m-b-0" color="secondary">
                           {t('message.enable-storing-sample-data-description')}
-                        </Typography.Paragraph>
+                        </Typography>
                       </Col>
                       <Col className="p-l-lg" flex="none">
                         <Form.Item
                           name={['sampleDataConfig', 'storeSampleData']}
-                          valuePropName="checked">
-                          <Switch
+                          valuePropName="isSelected">
+                          <Toggle
                             data-testid="store-sample-data-switch"
-                            onChange={(checked) => {
-                              if (checked) {
+                            onChange={(isSelected) => {
+                              if (isSelected) {
                                 form.setFieldValue(
                                   ['sampleDataConfig', 'readSampleData'],
                                   true
@@ -367,18 +358,18 @@ const ProfilerConfigurationPage = () => {
                   <Col span={24}>
                     <Row align="middle" justify="space-between" wrap={false}>
                       <Col flex="auto">
-                        <Typography.Text strong>
+                        <Typography weight="semibold">
                           {t('label.enable-reading-of-sample-data')}
-                        </Typography.Text>
-                        <Typography.Paragraph className="text-grey-muted m-b-0">
+                        </Typography>
+                        <Typography as="p" className="m-b-0" color="secondary">
                           {t('message.enable-reading-sample-data-description')}
-                        </Typography.Paragraph>
+                        </Typography>
                       </Col>
                       <Col className="p-l-lg" flex="none">
                         <Form.Item
                           name={['sampleDataConfig', 'readSampleData']}
-                          valuePropName="checked">
-                          <Switch data-testid="read-sample-data-switch" />
+                          valuePropName="isSelected">
+                          <Toggle data-testid="read-sample-data-switch" />
                         </Form.Item>
                       </Col>
                     </Row>

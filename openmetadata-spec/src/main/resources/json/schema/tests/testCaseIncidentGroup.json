@@ -17,6 +17,23 @@
         {"name": "Owner"}
       ]
     },
+    "incidentStatusCount": {
+      "description": "Number of the group's open incidents currently sitting in one status.",
+      "javaType": "org.openmetadata.schema.tests.type.IncidentStatusCount",
+      "type": "object",
+      "properties": {
+        "status": {
+          "description": "Current status the incidents are in.",
+          "$ref": "./testCaseResolutionStatus.json#/definitions/testCaseResolutionStatusTypes"
+        },
+        "count": {
+          "description": "Number of the group's open incidents in that status.",
+          "type": "integer"
+        }
+      },
+      "required": ["status", "count"],
+      "additionalProperties": false
+    },
     "incidentTrendDirection": {
       "description": "Direction of the group's incident-creation trend, comparing the second half of the `trend` buckets against the first half.",
       "javaType": "org.openmetadata.schema.tests.type.IncidentTrendDirection",
@@ -62,15 +79,29 @@
       "description": "Most actionable current status across the group's open incidents, in the order Assigned > Ack > New.",
       "$ref": "./testCaseResolutionStatus.json#/definitions/testCaseResolutionStatusTypes"
     },
+    "statusCounts": {
+      "description": "Number of the group's open incidents in each current status, most actionable first. A status no incident sits in is left out, and `Resolved` never appears — a resolved incident leaves the group.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/incidentStatusCount"
+      }
+    },
     "assignees": {
-      "description": "Distinct names of the current assignees of the group's open incidents.",
+      "description": "Distinct names of the current assignees of the group's open incidents, one per incident at most.",
       "type": "array",
       "items": {
         "type": "string"
       }
     },
+    "assigneeReferences": {
+      "description": "The distinct current assignees of the group's open incidents as users and teams, one per incident at most, in the order of `assignees`. A name no user or team holds any more is left out.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/entityReference.json"
+      }
+    },
     "assigneeCount": {
-      "description": "Number of distinct current assignees across the group's open incidents.",
+      "description": "Number of distinct current assignees across the group's open incidents, each of which has one at most.",
       "type": "integer"
     },
     "firstSeen": {
@@ -91,6 +122,28 @@
     "trendDirection": {
       "description": "Direction of the incident-creation trend for the group.",
       "$ref": "#/definitions/incidentTrendDirection"
+    },
+    "tableCount": {
+      "description": "Number of distinct tables the group's open incidents were raised on.",
+      "type": "integer"
+    },
+    "tables": {
+      "description": "Tables the group's open incidents were raised on, the one with the most open incidents first. Capped at a handful; `tableCount` holds the full count.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/entityReference.json"
+      }
+    },
+    "testDefinitionCount": {
+      "description": "Number of distinct test definitions across the group's open incidents.",
+      "type": "integer"
+    },
+    "testDefinitions": {
+      "description": "Test definitions of the group's open incidents, the one with the most open incidents first. Capped at a handful; `testDefinitionCount` holds the full count.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/entityReference.json"
+      }
     }
   },
   "required": ["groupBy", "name", "incidentCount"],

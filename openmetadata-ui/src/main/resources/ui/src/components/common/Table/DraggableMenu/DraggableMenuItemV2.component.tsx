@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Dropdown, Typography } from '@openmetadata/ui-core-components';
-import { Eye, EyeOff } from '@untitledui/icons';
+import { Eye, EyeOff } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useCallback, useMemo, type MouseEvent } from 'react';
 import { useDrag, useDrop } from 'react-dnd';

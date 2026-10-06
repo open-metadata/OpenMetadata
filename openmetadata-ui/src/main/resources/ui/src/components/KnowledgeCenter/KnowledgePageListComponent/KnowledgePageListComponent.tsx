@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
+import {
+  EmptyPlaceholder,
+  Skeleton,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
+import {
+  File06 as Articles,
+  Lock01 as Lock,
+} from '@openmetadata/ui-core-components/icons';
+import { Button, Col, Dropdown, MenuProps, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -31,7 +38,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
   PAGE_SIZE_MEDIUM,
@@ -45,6 +51,7 @@ import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 import {
   CreateKnowledgePage,
   KnowledgeCenterPageProps,
@@ -97,36 +104,22 @@ const KnowledgePageListSkeleton = () => (
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <Space>
-              <Skeleton avatar paragraph={{ rows: 1 }} title={false} />
-              <Skeleton paragraph={{ rows: 1, width: 150 }} title={false} />
+              <div className="tw:flex tw:items-center tw:gap-4">
+                <Skeleton animation={false} variant="circular" width={40} />
+                <Skeleton animation={false} height={16} width={100} />
+              </div>
+              <Skeleton animation={false} height={16} width={150} />
             </Space>
           </Col>
           <Col span={24}>
-            <Skeleton
-              active
-              className="m-b-sm"
-              paragraph={{ rows: 1 }}
-              title={false}
-            />
-            <Skeleton active paragraph={{ rows: 2 }} title={false} />
+            <SkeletonParagraph className="m-b-sm" rows={1} title={false} />
+            <SkeletonParagraph rows={2} title={false} />
           </Col>
           <Col span={24}>
             <Space>
-              <Skeleton
-                active
-                paragraph={{ rows: 1, width: 100 }}
-                title={false}
-              />
-              <Skeleton
-                active
-                paragraph={{ rows: 1, width: 100 }}
-                title={false}
-              />
-              <Skeleton
-                active
-                paragraph={{ rows: 1, width: 100 }}
-                title={false}
-              />
+              <Skeleton height={16} width={100} />
+              <Skeleton height={16} width={100} />
+              <Skeleton height={16} width={100} />
             </Space>
           </Col>
         </Row>

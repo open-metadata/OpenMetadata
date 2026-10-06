@@ -25,13 +25,14 @@ import {
   RefreshCcw01,
   ThumbsDown,
   ThumbsUp,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
@@ -47,6 +48,7 @@ import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
+import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
@@ -68,6 +70,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
@@ -90,6 +93,7 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
@@ -105,7 +109,6 @@ import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadc
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
-import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -168,6 +171,7 @@ export const DataAssetsHeader = ({
   onUpdateRetentionPeriod,
   extraDropdownContent,
   badge,
+  headerActions,
   isDqAlertSupported = false,
   isCustomizedView = false,
   disableRunAgentsButton = true,
@@ -615,7 +619,8 @@ export const DataAssetsHeader = ({
         <Button
           className={classNames(
             'data-contract-latest-result-button',
-            toLower(dataContract?.latestResult?.status)
+            toLower(dataContract?.latestResult?.status),
+            CONTRACT_RESULT_BUTTON_CLASS[dataContract.latestResult.status]
           )}
           color="secondary"
           data-testid="data-contract-latest-result-btn"
@@ -707,8 +712,9 @@ export const DataAssetsHeader = ({
   ]);
 
   const sourceUrlButton = useMemo(() => {
-    const sourceUrl =
-      get(dataAsset, 'sourceUrl') ?? get(dataAsset, 'endpointURL');
+    const sourceUrl = getSafeHttpUrl(
+      get(dataAsset, 'sourceUrl') ?? get(dataAsset, 'endpointURL')
+    );
     if (!sourceUrl) {
       return null;
     }
@@ -841,7 +847,7 @@ export const DataAssetsHeader = ({
           className={classNames(
             'tw:relative tw:flex tw:size-9 tw:shrink-0 tw:items-center',
             'tw:justify-center tw:overflow-hidden tw:rounded-full',
-            'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+            'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
           )}>
           {serviceLogoUrl ? (
             <img
@@ -850,7 +856,7 @@ export const DataAssetsHeader = ({
               src={serviceLogoUrl}
             />
           ) : (
-            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-blue-700">
+            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-utility-blue-700">
               {entityIcon}
             </span>
           )}
@@ -983,8 +989,9 @@ export const DataAssetsHeader = ({
           entityId={dataAsset.id ?? ''}
           entityType={entityType}
           hasPermission={editDomainPermission}
+          labelClassName="tw:text-secondary!"
           multiple={entityRules.canAddMultipleDomains}
-          textClassName="render-domain-lebel-style"
+          textClassName="render-domain-lebel-style tw:text-secondary!"
         />
       )}
 
@@ -993,7 +1000,6 @@ export const DataAssetsHeader = ({
       <Owner
         showDashPlaceholder
         avatarSize={24}
-        className="header-owner-heading"
         hasPermission={editOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
@@ -1031,28 +1037,35 @@ export const DataAssetsHeader = ({
                 currentTier={tier?.tagFQN}
                 footerActionButtonsClassName="p-x-md"
                 updateTier={onTierUpdate}>
-                <EditIconButton
-                  newLook
-                  data-testid="edit-tier"
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity: t('label.tier'),
-                  })}
-                />
+                <Pressable>
+                  <EditIconButton
+                    newLook
+                    data-testid="edit-tier"
+                    size="small"
+                    title={t('label.edit-entity', {
+                      entity: t('label.tier'),
+                    })}
+                  />
+                </Pressable>
               </TierCard>
             )}
           </div>
           {(() => {
-            const tierValue = tier ? (
-              <ClassificationTag
-                color={tier.style?.color}
-                data-testid="Tier"
-                href={getTagRedirectLink(tier)}
-                icon={tier.style?.iconURL}
-                label={getTagName(tier)}
-                size="sm"
-              />
-            ) : (
+            if (tier) {
+              // The chip is a link to the tag, so it is not also a tier trigger.
+              return (
+                <ClassificationTag
+                  color={tier.style?.color}
+                  data-testid="Tier"
+                  href={getTagRedirectLink(tier)}
+                  icon={tier.style?.iconURL}
+                  label={getTagName(tier)}
+                  size="sm"
+                />
+              );
+            }
+
+            const placeholder = (
               <Typography
                 as="span"
                 className="tw:cursor-pointer tw:text-primary"
@@ -1065,15 +1078,22 @@ export const DataAssetsHeader = ({
 
             return editTierPermission ? (
               <TierCard
-                currentTier={tier?.tagFQN}
                 footerActionButtonsClassName="p-x-md"
                 updateTier={onTierUpdate}>
-                <span className="tw:inline-flex tw:cursor-pointer">
-                  {tierValue}
-                </span>
+                <Pressable>
+                  <span
+                    aria-label={t('label.edit-entity', {
+                      entity: t('label.tier'),
+                    })}
+                    className="tw:inline-flex tw:cursor-pointer"
+                    role="button"
+                    tabIndex={0}>
+                    {placeholder}
+                  </span>
+                </Pressable>
               </TierCard>
             ) : (
-              tierValue
+              placeholder
             );
           })()}
         </div>
@@ -1182,7 +1202,6 @@ export const DataAssetsHeader = ({
           className="tw:mt-3"
           testId="entity-header-announcements"
           onItemClick={handleOpenAnnouncementDrawer}
-          onViewAll={handleOpenAnnouncementDrawer}
         />
       )}
 
@@ -1251,6 +1270,7 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
+            {headerActions}
             {renderManageButton()}
           </div>
         </div>

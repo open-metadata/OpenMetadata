@@ -13,12 +13,13 @@
 import {
   Box,
   Button,
+  Divider,
   PageHeader,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Divider, Space } from 'antd';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -64,7 +65,6 @@ import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePa
 import AssetsTabs, {
   AssetsTabRef,
 } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import IconColorModal from '../../components/Modals/IconColorModal/IconColorModal';
@@ -82,12 +82,11 @@ import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../enums/Assets.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
@@ -625,7 +624,7 @@ const TagPage = () => {
           />
         ),
         key: EntityTabs.OVERVIEW,
-        children: <GenericTab type={PageType.Tag} />,
+        children: <GenericTab type={PageType.Tag} variant="flat" />,
       },
       {
         label: (
@@ -797,7 +796,7 @@ const TagPage = () => {
 
     const disabledBadge = tagItem.disabled ? (
       <>
-        <Divider className="m-x-xs h-6" type="vertical" />
+        <Divider className="m-x-xs h-6 tw:self-center" orientation="vertical" />
         <StatusBadge
           dataTestId="disabled"
           label={t('label.disabled')}

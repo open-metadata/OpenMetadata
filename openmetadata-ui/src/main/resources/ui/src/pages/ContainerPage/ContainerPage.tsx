@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { PageLoader } from '../../components/common/Loader/Loader';
@@ -27,13 +28,11 @@ import { ContainerChildrenCountContext } from '../../components/Container/Contai
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
@@ -42,6 +41,7 @@ import {
   FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
@@ -52,6 +52,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   containerQueryFn,
@@ -914,4 +915,4 @@ const ContainerPage = () => {
   );
 };
 
-export default withActivityFeed(ContainerPage);
+export default withSuggestions(withActivityFeed(ContainerPage));

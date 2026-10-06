@@ -19,7 +19,12 @@ import {
   PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, FlipBackward, Plus, Stars01 } from '@untitledui/icons';
+import {
+  ChevronDown,
+  FlipBackward,
+  Plus,
+  Stars01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -50,10 +55,8 @@ import {
   RECENT_DASHBOARD_MEMORIES_LIMIT,
 } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
@@ -83,6 +86,7 @@ import {
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const ContextCenterDashboardPage: FC = () => {
@@ -300,11 +304,10 @@ const ContextCenterDashboardPage: FC = () => {
   const handleOpenKnowledgePage = useCallback(
     (page: Pick<KnowledgePage, 'pageType' | 'page' | 'fullyQualifiedName'>) => {
       if (page.pageType === PageType.QUICK_LINK) {
-        window.open(
-          (page.page as QuickLink).url,
-          '_blank',
-          'noopener,noreferrer'
-        );
+        const safeUrl = getSafeHttpUrl((page.page as QuickLink).url);
+        if (safeUrl) {
+          window.open(safeUrl, '_blank', 'noopener,noreferrer');
+        }
 
         return;
       }

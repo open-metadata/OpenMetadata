@@ -13,7 +13,6 @@
 import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { cloneDeep, isEqual, omit } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import {
   DEFAULT_PERSONA_CONTEXT_DEFINITION,
   DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
@@ -28,6 +27,7 @@ import {
   ContextRule,
   PersonaContextDefinition,
 } from '../generated/type/personaContextDefinition';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
 import type { TreeNode } from './queryBuilder/url';
@@ -278,6 +278,7 @@ interface ComparableDefinition {
   cacheTtlMinutes?: number;
   characterBudget?: number;
   enabled: boolean;
+  prompt?: string;
   rules: ContextRule[];
 }
 
@@ -287,6 +288,7 @@ const comparableDefinition = (
   cacheTtlMinutes: definition?.cacheTtlMinutes,
   characterBudget: definition?.characterBudget,
   enabled: definition?.enabled ?? true,
+  prompt: definition?.prompt || undefined,
   rules: [...(definition?.rules ?? [])]
     .map((rule) => omit(rule, RULE_DERIVED_FIELDS) as ContextRule)
     .sort((a, b) => (a.id ?? '').localeCompare(b.id ?? '')),
@@ -405,6 +407,14 @@ const diffEnabledChange = (
   return null;
 };
 
+const diffPromptChange = (
+  previous?: PersonaContextDefinition,
+  current?: PersonaContextDefinition
+): PersonaContextVersionChange | null =>
+  (previous?.prompt || undefined) === (current?.prompt || undefined)
+    ? null
+    : { key: 'message.persona-context-history-prompt' };
+
 const diffContextSettings = (
   previous?: PersonaContextDefinition,
   current?: PersonaContextDefinition
@@ -413,6 +423,7 @@ const diffContextSettings = (
     diffCharacterBudgetChange(previous, current),
     diffCacheTtlChange(previous, current),
     diffEnabledChange(previous, current),
+    diffPromptChange(previous, current),
   ].filter((change): change is PersonaContextVersionChange => change != null);
 
 const parseVersionSnapshot = (snapshot: unknown): Persona | undefined => {

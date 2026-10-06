@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { ItemType } from 'antd/lib/menu/hooks/useItems';
+import type { FC } from 'react';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -47,6 +47,7 @@ import { StorageService } from '../../generated/entity/services/storageService';
 import { Type } from '../../generated/entity/type';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
@@ -56,38 +57,20 @@ export type UrlParams = {
   tab: string;
 };
 
-export type ExploreSearchIndex =
-  | SearchIndex.DATA_PRODUCT
-  | SearchIndex.TABLE
-  | SearchIndex.COLUMN
-  | SearchIndex.PIPELINE
-  | SearchIndex.DASHBOARD
-  | SearchIndex.DATABASE
-  | SearchIndex.DATABASE_SCHEMA
-  | SearchIndex.CHART
-  | SearchIndex.MLMODEL
-  | SearchIndex.TOPIC
-  | SearchIndex.CONTAINER
-  | SearchIndex.GLOSSARY_TERM
-  | SearchIndex.TAG
-  | SearchIndex.SEARCH_INDEX
-  | SearchIndex.STORED_PROCEDURE
-  | SearchIndex.DASHBOARD_DATA_MODEL
-  | SearchIndex.API_COLLECTION
-  | SearchIndex.API_ENDPOINT
-  | SearchIndex.METRIC
-  | SearchIndex.DIRECTORY
-  | SearchIndex.FILE
-  | SearchIndex.SPREADSHEET
-  | SearchIndex.WORKSHEET
-  | SearchIndex.KNOWLEDGE_PAGE_INDEX;
-
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
+
+export type ExploreTabItem = {
+  key: string;
+  label: string;
+  icon: FC<{ className?: string }>;
+  iconClassName?: string;
+  count: number;
+};
 
 export interface ExploreProps {
   aggregations?: Aggregations;
   activeTabKey: SearchIndex;
-  tabItems: ItemType[];
+  tabItems: ExploreTabItem[];
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
   showRankingDetails?: boolean;
@@ -131,6 +114,8 @@ export interface ExploreProps {
 
 import type { ExploreQuickFilterField } from '../../interface/quickFilter.interface';
 
+// Re-exported because consumers outside this repository import it from this path.
+export type { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 export type { ExploreQuickFilterField };
 
 // Type for all the explore tab entities

@@ -17,8 +17,8 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Copy01, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { ReactNode, useCallback, useMemo } from 'react';
@@ -38,6 +38,7 @@ import {
   shouldFetchNextRun,
 } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.utils';
 import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
@@ -136,8 +137,13 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     }),
   });
 
+  const renderedActiveTab = useMemo(
+    () => getRenderedActiveTab(tabs, activeTab),
+    [tabs, activeTab]
+  );
+
   const activeTabContent = useMemo(() => {
-    const currentTab = tabs.find(({ key }) => key === activeTab) ?? tabs.at(0);
+    const currentTab = tabs.find(({ key }) => key === renderedActiveTab);
 
     if (!currentTab) {
       return null;
@@ -159,8 +165,8 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 }
                 incidentTask={incidentHeaderData.incidentTask}
                 nextRunTimestamp={nextRunTimestamp}
-                parameterValues={testCase?.parameterValues}
                 taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                testCase={testCase}
                 testCaseResult={testCase?.testCaseResult}
                 testCaseStatus={testCase?.testCaseStatus}
                 testCaseStatusData={incidentHeaderData.testCaseStatusData}
@@ -173,7 +179,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     );
   }, [
     tabs,
-    activeTab,
+    renderedActiveTab,
     isTabExpanded,
     dimensionKey,
     isVersionPage,
@@ -183,9 +189,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     incidentHeaderData.testCaseStatusData,
     incidentHeaderData.hasEditStatusPermission,
     incidentHeaderData.handleAcknowledgeIncident,
-    testCase?.parameterValues,
-    testCase?.testCaseResult,
-    testCase?.testCaseStatus,
+    testCase,
   ]);
 
   const breadcrumbItems = useMemo(() => {
@@ -409,10 +413,10 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                     className={classNames(
                       'tw:relative tw:size-9 tw:shrink-0',
                       'tw:overflow-hidden tw:rounded-full',
-                      'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                      'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                     )}
                     justify="center">
-                    <TestCaseIcon className="tw:size-5" />
+                    <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
                   </Box>
                   <Box
                     align="center"
@@ -490,7 +494,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
             <Tabs
               className="tw:w-fit"
               data-testid="tabs"
-              selectedKey={activeTab}
+              selectedKey={renderedActiveTab}
               onSelectionChange={(key) => handleTabChange(String(key))}>
               <Tabs.List size="sm" type="underline">
                 {tabs.map(({ labelProps, key, isBeta }) => (

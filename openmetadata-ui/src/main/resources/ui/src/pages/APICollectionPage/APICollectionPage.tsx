@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, Skeleton, Tabs } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -33,15 +32,14 @@ import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
@@ -51,6 +49,7 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   patchApiCollection,
@@ -636,14 +635,11 @@ const APICollectionPage: FunctionComponent = () => {
       <Box direction="col" gap={3}>
         <div>
           {isCollectionDataFetching || !apiCollection ? (
-            <Skeleton
-              active
-              className="m-b-md"
-              paragraph={{
-                rows: 2,
-                width: ['20%', '80%'],
-              }}
-            />
+            <div className="tw:flex tw:flex-col tw:gap-3 m-b-md">
+              <Skeleton height={16} width="38%" />
+              <Skeleton height={16} width="20%" />
+              <Skeleton height={16} width="80%" />
+            </div>
           ) : (
             <DataAssetsHeader
               isRecursiveDelete

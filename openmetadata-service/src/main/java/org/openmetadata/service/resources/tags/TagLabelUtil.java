@@ -160,6 +160,35 @@ public class TagLabelUtil {
     return Entity.getEntityByName(Entity.GLOSSARY_TERM, glossaryTermFqn, "", NON_DELETED);
   }
 
+  /**
+   * Resolve the {@link TagSource} for a tag FQN that arrives without a source hint — e.g. an ODPS
+   * import, where classification tags and glossary terms share one flat {@code tags} list. An FQN
+   * that resolves to an existing glossary term is {@code GLOSSARY}; anything else stays {@code
+   * CLASSIFICATION}, so a genuinely missing tag still surfaces the normal validation error.
+   */
+  public static TagSource resolveTagSource(String tagFqn) {
+    TagSource source = TagSource.CLASSIFICATION;
+    if (!nullOrEmpty(tagFqn) && isExistingGlossaryTerm(tagFqn)) {
+      source = TagSource.GLOSSARY;
+    }
+    return source;
+  }
+
+  /**
+   * Correct each label's {@link TagSource} in place for labels built from a source-less flat list
+   * (see {@link #resolveTagSource}). Classification labels are left unchanged.
+   */
+  public static void resolveTagSourcesByFqn(List<TagLabel> labels) {
+    for (TagLabel label : listOrEmpty(labels)) {
+      label.setSource(resolveTagSource(label.getTagFQN()));
+    }
+  }
+
+  private static boolean isExistingGlossaryTerm(String tagFqn) {
+    return Entity.getEntityRepository(Entity.GLOSSARY_TERM).findByNameOrNull(tagFqn, NON_DELETED)
+        != null;
+  }
+
   public static void applyTagCommonFields(TagLabel label) {
     if (label.getSource() == TagSource.CLASSIFICATION) {
       Tag tag = getTag(label.getTagFQN());

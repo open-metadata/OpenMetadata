@@ -12,7 +12,6 @@
  */
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
@@ -29,8 +28,8 @@ import AddCustomProperty from '../../components/Settings/CustomProperty/AddCusto
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
 import { ENTITY_PATH } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Type } from '../../generated/entity/type';
 import { CustomProperty } from '../../generated/type/customProperty';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
@@ -246,7 +245,7 @@ const CustomEntityDetailV1 = () => {
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <Card data-testid="entity-custom-fields">
+          <div data-testid="entity-custom-fields">
             <CustomPropertyTable
               customProperties={customProperties ?? []}
               hasAccess={editPermission}
@@ -255,7 +254,7 @@ const CustomEntityDetailV1 = () => {
               onDeleteProperty={handlePropertyDelete}
               onUpdateProperty={handlePropertyUpdate}
             />
-          </Card>
+          </div>
         ),
       },
       {

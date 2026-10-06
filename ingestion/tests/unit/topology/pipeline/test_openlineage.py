@@ -2,13 +2,17 @@ import contextlib
 import copy
 import hashlib
 import json
+import time
 import unittest
+from functools import partial
+from itertools import chain, repeat
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from cachetools import LRUCache
+from cachetools import LRUCache, TTLCache
+from confluent_kafka import KafkaError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
@@ -19,6 +23,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     ConsumerOffsets,
     SecurityProtocol,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
+    Kafka as KafkaBrokerConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
     ConsumerOffsets as ConsumerOffsets1,
@@ -46,6 +53,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
     KPL_AGGREGATED_MAGIC,
+    MISSING_ENTITY_CACHE_TTL_SECONDS,
     RESOLUTION_CACHE_MAXSIZE,
     OpenlineageSource,
     deaggregate_kinesis_record,
@@ -226,6 +234,8 @@ class OpenLineageUnitTest(unittest.TestCase):
     def setup_mock_consumer_with_kafka_event(self, event):
         mock_msg = MagicMock()
         mock_msg.error.return_value = None
+        mock_msg.partition.return_value = 0
+        mock_msg.offset.return_value = 0
         mock_msg.value.return_value = json.dumps(event).encode()
         self.mock_consumer.poll.side_effect = [
             mock_msg,
@@ -703,6 +713,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         an unfielded call could silently starve a later, differently-fielded
         call of the data it asked for."""
         self.open_lineage_source._entity_cache = LRUCache(maxsize=10)
+        self.open_lineage_source._missing_entity_cache = TTLCache(maxsize=10, ttl=60)
         bare_table = Mock()
         full_table = Mock()
         full_table.columns = [Mock()]
@@ -2005,7 +2016,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "redshift_prod.warehouse.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
             # MySQL namespace -> scheme resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
@@ -2060,7 +2071,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "mysql_cluster_b.db.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
             # cluster-a namespace -> mapping resolves to mysql_cluster_a
             result_a = source._get_table_fqn(table, namespace="mysql://cluster-a:3306/db")
             assert result_a == "mysql_cluster_a.db.analytics.user_stat"
@@ -2105,7 +2116,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "custom_lakehouse.lake.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
             # mysql:// namespace -> scheme matches Mysql -> resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
@@ -2150,9 +2161,12 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         import logging
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):  # noqa: SIM117
-            with self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm:
-                result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata"),
+            self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm,
+        ):
+            result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
 
         assert result is None
         # The handler now logs the AmbiguousServiceException message itself
@@ -3086,6 +3100,218 @@ class TestKinesisMultiShardPolling(unittest.TestCase):
         events = list(source._poll_kinesis(broker))
 
         assert len(events) == 2
+
+
+class TestKafkaOffsetCommit:
+    """Issue #29757: a Kafka message's offset is stored only once the event it
+    carries has been processed, and polling survives the consumer being evicted
+    from its group while a long event is processed."""
+
+    BROKER = KafkaBrokerConfig(
+        brokersUrl="broker:9092",
+        topicName="openlineage",
+        consumerGroupName="openlineage",
+        poolTimeout=0.1,
+        sessionTimeout=1,
+    )
+
+    @staticmethod
+    def _message(offset, job_name="job", partition=0, event_type="COMPLETE"):
+        message = MagicMock()
+        message.error.return_value = None
+        message.partition.return_value = partition
+        message.offset.return_value = offset
+        message.value.return_value = json.dumps(
+            {
+                "run": {"facets": {}},
+                "inputs": [],
+                "outputs": [],
+                "eventType": event_type,
+                "job": {"name": job_name, "namespace": "ns"},
+            }
+        ).encode()
+        return message
+
+    @staticmethod
+    def _error(code):
+        message = MagicMock()
+        message.error.return_value = KafkaError(code)
+        return message
+
+    @staticmethod
+    def _source(*poll_results, then=None):
+        """Source whose consumer returns ``poll_results`` and then ``then`` forever,
+        plus the (partition, offset) pairs it stores on the consumer."""
+        stored = []
+        consumer = MagicMock()
+        consumer.poll.side_effect = chain(poll_results, repeat(then))
+        consumer.store_offsets.side_effect = lambda message: stored.append((message.partition(), message.offset()))
+        source = object.__new__(OpenlineageSource)
+        source.client = consumer
+        return source, stored
+
+    def test_offset_is_stored_only_after_the_event_is_processed(self):
+        source, stored = self._source(self._message(0, "job_0"))
+        events = source._poll_kafka(self.BROKER)
+
+        assert next(events).job["name"] == "job_0"
+        # The topology is still writing this event's pipeline and lineage.
+        assert stored == []
+
+        assert list(events) == []
+        assert stored == [(0, 0)]
+
+    def test_filtered_and_unparseable_messages_are_stored(self):
+        unparseable = self._message(1)
+        unparseable.value.return_value = b"not json"
+        source, stored = self._source(self._message(0, event_type="FAIL"), unparseable)
+
+        assert list(source._poll_kafka(self.BROKER)) == []
+        assert stored == [(0, 0), (0, 1)]
+
+    def test_polling_continues_after_max_poll_interval_eviction(self):
+        source, _ = self._source(
+            self._message(0, "job_0"),
+            self._error(KafkaError._MAX_POLL_EXCEEDED),
+            self._message(1, "job_1"),
+        )
+
+        assert [event.job["name"] for event in source._poll_kafka(self.BROKER)] == ["job_0", "job_1"]
+
+    def test_event_redelivered_after_rejoin_is_not_processed_again(self):
+        # Evicted while job_1 was processed, the consumer drops the offset stored
+        # for it and, once it rejoins, resumes from the last committed offset.
+        source, stored = self._source(
+            self._message(0, "job_0"),
+            self._message(1, "job_1"),
+            self._error(KafkaError._MAX_POLL_EXCEEDED),
+            self._message(1, "job_1"),
+            self._message(2, "job_2"),
+        )
+
+        assert [event.job["name"] for event in source._poll_kafka(self.BROKER)] == ["job_0", "job_1", "job_2"]
+        assert stored == [(0, 0), (0, 1), (0, 1), (0, 2)]
+
+    def test_redelivery_check_is_per_partition(self):
+        source, _ = self._source(
+            self._message(5, "partition_0_job", partition=0),
+            self._message(0, "partition_1_job", partition=1),
+        )
+
+        assert [event.job["name"] for event in source._poll_kafka(self.BROKER)] == [
+            "partition_0_job",
+            "partition_1_job",
+        ]
+
+    def test_consumer_errors_end_the_session_after_the_inactivity_timeout(self):
+        source, _ = self._source(then=self._error(KafkaError._TRANSPORT))
+
+        assert list(source._poll_kafka(self.BROKER)) == []
+
+
+class TestTableResolutionAcrossSameTypeServices:
+    """
+    Issue #22013: a three-part dataset name carries the database, so fqn.build
+    returns a constructed FQN for every configured service, including services
+    that never ingested the table. Only the service holding the table may match,
+    otherwise the table is reported as ambiguous or looked up in the wrong
+    service and the lineage edge is dropped.
+    """
+
+    TABLE_ID = UUID("aaaa1111-1111-1111-1111-111111111111")
+    PIPELINE_ID = UUID("cccc3333-3333-3333-3333-333333333333")
+    TABLE_FQN = "postgres1.postgres.public.source"
+
+    @staticmethod
+    def _spark_write_event(namespace: str) -> OpenLineageEvent:
+        """The Spark JDBC write from the issue: no inputs, one Postgres output."""
+        return OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"namespace": "default", "name": "spark_shell"}}}},
+            job={"namespace": "default", "name": "spark_shell.execute_save_into_data_source_command.public_source"},
+            event_type="COMPLETE",
+            inputs=[],
+            outputs=[{"namespace": namespace, "name": "postgres.public.source", "facets": {}}],
+        )
+
+    def _source(self, db_service_names: list[str], clock=time.monotonic) -> OpenlineageSource:
+        """
+        A prepared source whose server has two Postgres services, only postgres1
+        holding the table. The server holds the FQNs in ``ingested_tables``, which
+        a test can change between events, and records every table it is asked for
+        in ``requested_tables``. ``clock`` drives the expiry of cached misses.
+        """
+        table = Mock()
+        table.id.root = self.TABLE_ID
+        table.fullyQualifiedName.root = self.TABLE_FQN
+        pipeline = Mock()
+        pipeline.id.root = self.PIPELINE_ID
+        self.ingested_tables: set[str] = {self.TABLE_FQN}
+        self.requested_tables: list[str] = []
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table:
+                self.requested_tables.append(fqn)
+                return table if fqn in self.ingested_tables else None
+            return pipeline if entity == Pipeline else None
+
+        metadata = MagicMock()
+        metadata.client.get.return_value = {"serviceType": "Postgres"}
+        metadata.es_search_from_fqn.side_effect = lambda entity_type, fqn_search_string, **kwargs: (
+            [table] if fqn_search_string in self.ingested_tables else None
+        )
+        metadata.get_by_name.side_effect = get_by_name
+        metadata.get_lineage_by_id.return_value = None
+
+        with patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"):
+            source = OpenlineageSource.create(MOCK_OL_CONFIG["source"], metadata)
+        source.source_config.lineageInformation = LineageInformation(dbServiceNames=db_service_names)
+        source.context.get().pipeline = "default-spark_shell"
+        source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
+        with patch(
+            "metadata.ingestion.source.pipeline.openlineage.metadata.TTLCache",
+            partial(TTLCache, timer=clock),
+        ):
+            source.prepare()
+        return source
+
+    def _lineage_edges(self, source: OpenlineageSource, namespace: str) -> list[tuple[UUID, UUID]]:
+        results = source.yield_pipeline_lineage_details(self._spark_write_event(namespace))
+        return [
+            (result.right.edge.fromEntity.id.root, result.right.edge.toEntity.id.root)
+            for result in results
+            if isinstance(result.right, AddLineageRequest)
+        ]
+
+    def test_scheme_resolved_services_match_only_the_service_holding_the_table(self):
+        source = self._source(["postgres1", "postgres2"])
+
+        assert self._lineage_edges(source, "postgres://pg1:5432") == [(self.PIPELINE_ID, self.TABLE_ID)]
+
+    def test_unresolved_namespace_walks_past_services_without_the_table(self):
+        source = self._source(["postgres2", "postgres1"])
+
+        assert self._lineage_edges(source, "pg1") == [(self.PIPELINE_ID, self.TABLE_ID)]
+
+    def test_repeated_events_request_a_missing_table_once(self):
+        source = self._source(["postgres1", "postgres2"])
+
+        for _ in range(2):
+            assert self._lineage_edges(source, "postgres://pg1:5432") == [(self.PIPELINE_ID, self.TABLE_ID)]
+
+        assert self.requested_tables.count("postgres2.postgres.public.source") == 1
+
+    def test_table_ingested_during_the_run_is_linked_once_the_cached_miss_expires(self):
+        now = [0.0]
+        source = self._source(["postgres1", "postgres2"], clock=lambda: now[0])
+        self.ingested_tables.clear()
+
+        assert self._lineage_edges(source, "postgres://pg1:5432") == []
+
+        self.ingested_tables.add(self.TABLE_FQN)
+        assert self._lineage_edges(source, "postgres://pg1:5432") == []
+
+        now[0] += MISSING_ENTITY_CACHE_TTL_SECONDS + 1
+        assert self._lineage_edges(source, "postgres://pg1:5432") == [(self.PIPELINE_ID, self.TABLE_ID)]
 
 
 if __name__ == "__main__":

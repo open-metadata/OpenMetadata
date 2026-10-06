@@ -778,6 +778,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // filter — e.g. a listing request in flight when the user typed a query —
       // is discarded so it cannot repopulate or clear the table against the
       // user's current intent.
+      // Only the latest request may write; a stale page re-collapses rows.
+      if (requestSeq !== fetchRequestSeqRef.current) {
+        return;
+      }
+
       if (
         isStaleFetchResponse(
           data,
@@ -1514,7 +1519,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return (
       <>
         <Input
-          className="tw:mr-auto tw:w-80"
+          // min-w-0: w-80 is a hard floor otherwise, pushing Customize out of the row.
+          className="tw:mr-auto tw:w-80 tw:min-w-0"
           inputDataTestId="search-glossary-terms-input"
           placeholder={t('label.search-entity', {
             entity: t('label.term-plural'),
@@ -2019,12 +2025,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const renderTableSection = () =>
     glossaryTerms.length > 0 ? (
       <TableCard.Root
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:border tw:border-secondary tw:outline-0"
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:border tw:border-subtle tw:outline-0"
         size="sm">
         <Table
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
-          containerClassName="glossary-terms-table drop-over-background tw:!border-0 tw:!rounded-none tw:min-h-0 tw:flex-1 tw:!overflow-auto"
+          // Flex column so the scroll region below has a bounded box to fill.
+          containerClassName="glossary-terms-table drop-over-background tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:min-h-0 tw:flex-1"
           data-testid="glossary-terms-table"
           dataSource={filteredGlossaryTerms}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
@@ -2036,6 +2043,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
           scroll={GLOSSARY_TABLE_SCROLL}
+          // Fill the panel rather than the rows' height, so the horizontal
+          // scrollbar sits at the bottom instead of floating above empty space.
+          scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:max-h-none"
           size="small"
           staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
         />
@@ -2077,11 +2087,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // Show empty state within the table container when search returns no results
       // This keeps the search bar and filters visible
       <TableCard.Root
-        className="tw:border tw:border-secondary tw:outline-0"
+        className="tw:border tw:border-subtle tw:outline-0"
         size="sm">
         <Table
           columns={columns}
-          containerClassName="glossary-terms-table tw:!border-0 tw:!rounded-none"
+          containerClassName="glossary-terms-table tw:border-0 tw:rounded-none"
           data-testid="glossary-terms-table"
           dataSource={[]}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}

@@ -398,7 +398,9 @@ export const deleteEdge = async (
 
   await addPipeline.dispatchEvent('click');
 
-  await expect(page.getByRole('dialog').first()).toBeVisible();
+  await expect(
+    page.getByRole('dialog').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await page
     .locator(
@@ -406,7 +408,9 @@ export const deleteEdge = async (
     )
     .dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(
+    page.locator('[role="dialog"]').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   const sceneRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -792,9 +796,12 @@ export const editPipelineEdgeDescription = async (
   await page.locator('.edge-info-drawer').isVisible();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
-  await page.locator('.ProseMirror').first().click();
-  await page.locator('.ProseMirror').first().clear();
-  await page.locator('.ProseMirror').first().fill(description);
+  // The drawer opened two lines up owns the only editor in play; scoping to it
+  // beats indexing into every ProseMirror instance on the page.
+  const descriptionEditor = page.locator('.edge-info-drawer .ProseMirror');
+  await descriptionEditor.click();
+  await descriptionEditor.clear();
+  await descriptionEditor.fill(description);
   const descRes = page.waitForResponse('/api/v1/lineage');
   await page.getByTestId('save').click();
   await descRes;
@@ -1508,4 +1515,69 @@ export const generateColumns = (count: number, prefix: string) => {
     dataTypeDisplay: 'varchar',
     description: `Test column ${i}`,
   }));
+};
+
+export const expectLineageNodeVisible = async (
+  page: Page,
+  fqn: string | undefined
+) => {
+  if (!fqn) {
+    throw new Error(
+      'expectLineageNodeVisible was given no fully qualified name'
+    );
+  }
+
+  const node = page.getByTestId(`lineage-node-${fqn}`);
+
+  await expect(async () => {
+    if ((await node.count()) === 0) {
+      if ((await page.getByTestId('fit-screen').count()) > 0) {
+        await fitToScreen(page);
+      } else {
+        await performZoomOut(page);
+      }
+    }
+
+    await expect(node).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
+};
+
+export const openLineageNodeDrawer = async (
+  page: Page,
+  fqn: string | undefined
+) => {
+  // A node testid built from `undefined` matches nothing, and the retry below
+  // would spend its whole budget re-fitting for it. Say so immediately.
+  if (!fqn) {
+    throw new Error('openLineageNodeDrawer called without a node FQN');
+  }
+
+  const trigger = page
+    .getByTestId(`lineage-node-${fqn}`)
+    .getByTestId('entity-header-display-name')
+    .getByRole('button');
+
+  // Recover when the click fails, not when the node is missing from the DOM.
+  // Attachment is not proof the trigger can be pressed: the canvas can keep an
+  // attached node clipped outside the viewport, and React Flow transforms
+  // rather than scrolls, so Playwright's scroll-into-view cannot reach it.
+  // Gating recovery on `count() === 0` skipped that case and re-clicked the
+  // same unreachable trigger until the 90s budget ran out.
+  //
+  // The escalation is the one verifyNodePresent uses, for the same reason: a
+  // fit is capped at the band's minZoom floor (0.9 in the Field band), so on a
+  // tall scene it cannot widen the view far enough, and re-fitting on every
+  // attempt throws away the zoom-out that can. Press first -- the node is
+  // usually right there -- then fit, then widen progressively.
+  let attempt = 0;
+  await expect(async () => {
+    if (attempt === 1) {
+      await fitToScreen(page);
+    } else if (attempt > 1) {
+      await performZoomOut(page, 3);
+    }
+    attempt += 1;
+
+    await trigger.click({ timeout: 10_000 });
+  }).toPass({ timeout: 90_000 });
 };

@@ -25,9 +25,7 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
-import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -63,10 +61,8 @@ import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.api.data.MetricObservability;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -85,9 +81,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.metrics.MetricResource;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -123,6 +117,8 @@ public class MetricRepository extends EntityRepository<Metric> {
         UPDATE_FIELDS);
     supportsSearch = true;
     renameAllowed = true;
+    onlyReviewersDeleteInReview = true;
+    approvalTaskReviewsEntityStatus = true;
 
     // Asset relationships are served and mutated only through the bounded /assets APIs. Keeping
     // this relationship-derived model property out of generic fields also prevents fields=assets
@@ -265,13 +261,8 @@ public class MetricRepository extends EntityRepository<Metric> {
    * there is no reviewer inheritance — a metric's parent does not lend it reviewers.
    */
   @Override
-  protected void setDefaultStatus(Metric entity, boolean update) {
-    if (!update
-        || entity.getEntityStatus() == null
-        || entity.getEntityStatus() == EntityStatus.UNPROCESSED) {
-      entity.setEntityStatus(
-          nullOrEmpty(entity.getReviewers()) ? EntityStatus.APPROVED : EntityStatus.DRAFT);
-    }
+  protected EntityStatus initialEntityStatus(Metric entity) {
+    return nullOrEmpty(entity.getReviewers()) ? EntityStatus.APPROVED : EntityStatus.DRAFT;
   }
 
   private void validateCustomUnitOfMeasurement(Metric metric) {
@@ -1705,65 +1696,5 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (!sameReferenceById(original.getMetricGroup(), updated.getMetricGroup())) {
       refreshMetricGroup(updated.getMetricGroup());
     }
-    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
-      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
-        closeApprovalTask(updated, "Approved the metric");
-      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
-        closeApprovalTask(updated, "Rejected the metric");
-      }
-    }
-
-    // Handle case where task goes from DRAFT to IN_REVIEW to DRAFT quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT,
-    // but there will be a task created. This handles that case scenario.
-    if (original.getEntityStatus() != EntityStatus.DRAFT
-        && updated.getEntityStatus() == EntityStatus.DRAFT) {
-      try {
-        closeApprovalTask(updated, "Closed due to metric going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-        // No ApprovalTask is present, so we don't need to worry about this.
-      }
-    }
-  }
-
-  @Override
-  protected void preDelete(Metric entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
-  }
-
-  public static void checkUpdatedByReviewer(Metric metric, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = metric.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
-    }
-  }
-
-  private void closeApprovalTask(Metric entity, String comment) {
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 }

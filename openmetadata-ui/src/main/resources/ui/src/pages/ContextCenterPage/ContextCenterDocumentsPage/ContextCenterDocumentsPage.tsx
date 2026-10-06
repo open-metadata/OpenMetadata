@@ -16,7 +16,7 @@ import {
   EmptyPlaceholder,
   PageLayout,
 } from '@openmetadata/ui-core-components';
-import { Stars01 } from '@untitledui/icons';
+import { Stars01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
@@ -49,10 +49,8 @@ import {
 } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
@@ -618,6 +616,10 @@ const ContextCenterDocumentsPage: FC = () => {
     }
   }, [fileToDelete, t, fetchFolders]);
 
+  const handleFileUpdated = useCallback((file: ContextFile) => {
+    setAllDocuments((prev) => prev.map((d) => (d.id === file.id ? file : d)));
+  }, []);
+
   const handleFileMoved = useCallback(
     (file: ContextFile, targetFolderId: string | null) => {
       if (targetFolderId === null) {
@@ -963,6 +965,7 @@ const ContextCenterDocumentsPage: FC = () => {
                     onDeleteFile={handleDeleteFile}
                     onDownload={handleAssetDownload}
                     onFileMoved={handleFileMoved}
+                    onFileUpdated={handleFileUpdated}
                     onLoadMoreFolders={fetchMoreFolders}
                     onOpenPreview={setFilePreviewModalFile}
                     onPreview={handlePreview}

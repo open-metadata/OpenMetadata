@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -81,7 +82,10 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
@@ -501,6 +505,23 @@ class SearchRepositoryBehaviorTest {
         "cluster_table_search_index,cluster_domain_search_index",
         repository.getIndexOrAliasName("table, ,domain"));
     assertEquals(", ,", repository.getIndexOrAliasName(", ,"));
+  }
+
+  @Test
+  void getEntityTypesForIndexUsesRegisteredMappings() {
+    SearchRepository resolver =
+        newRepository(
+            Map.of(
+                Entity.TABLE, TABLE_MAPPING,
+                Entity.TABLE_COLUMN, COLUMN_MAPPING,
+                Entity.DOMAIN, DOMAIN_MAPPING,
+                Entity.MLMODEL_SERVICE, MLMODEL_SERVICE_MAPPING),
+            "cluster");
+    assertEquals(
+        List.of("domain", "table"),
+        resolver.getEntityTypesForIndex("table,domain,table_search_index"));
+    assertEquals(List.of("mlmodelService"), resolver.getEntityTypesForIndex("mlModelService"));
+    assertEquals(List.of(), resolver.getEntityTypesForIndex("unknown"));
   }
 
   @Test
@@ -1783,6 +1804,213 @@ class SearchRepositoryBehaviorTest {
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "databaseSchema.id", schema.getId().toString())));
+  }
+
+  @Test
+  void tableWritesIndexColumnsOnlyWhileColumnIndexingIsOn() throws IOException {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    Table table = tableWithOneColumn();
+    String tableId = table.getId().toString();
+    when(searchIndexFactory.buildIndex(Entity.TABLE, table))
+        .thenReturn(new MapBackedSearchIndex(table, Map.of("name", "orders")));
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      repo.createEntityIndex(table);
+      repo.deleteEntityIndex(table);
+    }
+
+    verify(searchClient).createEntity(eq("cluster_table_search_index"), eq(tableId), anyString());
+    verify(searchClient, never()).createEntities(eq("cluster_column_search_index"), anyList());
+    verify(searchClient, never())
+        .deleteEntityByFields(eq(List.of("cluster_column_search_index")), anyList());
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      repo.createEntityIndex(table);
+    }
+
+    verify(searchClient).createEntities(eq("cluster_column_search_index"), anyList());
+  }
+
+  @Test
+  void tableChildUpdatesSkipTheColumnAliasWhileColumnIndexingIsOff() throws Exception {
+    IndexMapping tableWithChildren =
+        IndexMapping.builder()
+            .indexName("table_search_index")
+            .alias("table")
+            .childAliases(List.of(Entity.TEST_CASE, Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+            .build();
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, tableWithChildren, Entity.TABLE_COLUMN, COLUMN_MAPPING),
+            "cluster");
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      repo.deleteEntityIndex(table);
+    }
+
+    verify(searchClient)
+        .deleteEntityByFields(
+            List.of("cluster_testCase"),
+            List.of(
+                new org.apache.commons.lang3.tuple.ImmutablePair<>(
+                    "table.id", table.getId().toString())));
+  }
+
+  @Test
+  void onlyTheColumnIndexIsDisabledAndOnlyWhileColumnIndexingIsOff() {
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      assertTrue(repository.isIndexDisabled(Entity.TABLE_COLUMN));
+      assertFalse(repository.isIndexDisabled(Entity.TABLE));
+    }
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      assertFalse(repository.isIndexDisabled(Entity.TABLE_COLUMN));
+    }
+  }
+
+  @Test
+  void indexListsLeaveOutTheColumnIndexWhileColumnIndexingIsOff() {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      assertEquals(List.of("table"), repo.getEntityTypesForIndex("table,tableColumn"));
+      assertEquals(Set.of("table"), repo.getIndexedEntityTypes());
+    }
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      assertEquals(
+          List.of("table", "tableColumn"), repo.getEntityTypesForIndex("table,tableColumn"));
+      assertEquals(Set.of("table", "tableColumn"), repo.getIndexedEntityTypes());
+    }
+  }
+
+  @Test
+  void columnOnlySearchesGetNoHitsWhileColumnIndexingIsOff() throws IOException {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    AggregationRequest aggregation = new AggregationRequest().withIndex("column_search_index");
+
+    Response search;
+    Response aggregate;
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      search = repo.search(new SearchRequest().withIndex(Entity.TABLE_COLUMN), null);
+      aggregate = repo.aggregate(aggregation);
+      repo.search(new SearchRequest().withIndex(Entity.TABLE), null);
+    }
+
+    for (Response response : List.of(search, aggregate)) {
+      JsonNode body = JsonUtils.readTree((String) response.getEntity());
+      assertEquals(0, body.at("/hits/total/value").asInt());
+      assertTrue(body.at("/hits/hits").isEmpty());
+      assertTrue(body.get("aggregations").isObject());
+    }
+    verify(searchClient, never())
+        .search(eq(new SearchRequest().withIndex(Entity.TABLE_COLUMN)), any());
+    verify(searchClient, never()).aggregate(aggregation);
+    verify(searchClient).search(eq(new SearchRequest().withIndex(Entity.TABLE)), any());
+  }
+
+  @Test
+  void deleteIndexDeletesTheRebuiltIndexBehindAnAliasedCanonicalName() {
+    // Elasticsearch reports an alias name as existing, but refuses to delete an index through it.
+    when(searchClient.indexExists("cluster_column_search_index")).thenReturn(true);
+    when(searchClient.getIndicesByAlias("cluster_column_search_index"))
+        .thenReturn(Set.of("cluster_column_search_index_rebuild_1"));
+
+    repository.deleteIndex(COLUMN_MAPPING);
+
+    verify(searchClient).deleteIndex("cluster_column_search_index_rebuild_1");
+    verify(searchClient, never()).deleteIndex(COLUMN_MAPPING);
+  }
+
+  @Test
+  void reconcileDeletesTheColumnIndexWhileColumnIndexingIsOff() {
+    SearchRepository repo = newRepository(Map.of(Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    when(searchClient.indexExists("cluster_column_search_index")).thenReturn(true);
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      repo.reconcileColumnIndex();
+    }
+
+    verify(searchClient).deleteIndex(COLUMN_MAPPING);
+    verify(searchClient, never()).createIndex(any(IndexMapping.class), any());
+  }
+
+  @Test
+  void reconcileCreatesAMissingColumnIndexWithItsAliasesWhileColumnIndexingIsOn() {
+    SearchRepository repo = newRepository(Map.of(Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    when(searchClient.indexExists("cluster_column_search_index")).thenReturn(false);
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      repo.reconcileColumnIndex();
+    }
+
+    verify(searchClient).createIndex(eq(COLUMN_MAPPING), any(String.class));
+    verify(searchClient).createAliases(COLUMN_MAPPING);
+    verify(searchClient, never()).deleteIndex(COLUMN_MAPPING);
+  }
+
+  @Test
+  void reconcileLeavesAnExistingColumnIndexAloneWhileColumnIndexingIsOn() {
+    SearchRepository repo = newRepository(Map.of(Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    when(searchClient.indexExists("cluster_column_search_index")).thenReturn(true);
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      repo.reconcileColumnIndex();
+    }
+
+    verify(searchClient, never()).createIndex(any(IndexMapping.class), any());
+    verify(searchClient, never()).deleteIndex(COLUMN_MAPPING);
+  }
+
+  @Test
+  void startupCreatesTheColumnIndexOnlyWhileColumnIndexingIsOn() {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      repo.createMissingIndexes();
+    }
+
+    verify(searchClient).createIndex(eq(TABLE_MAPPING), any(String.class));
+    verify(searchClient, never()).createIndex(eq(COLUMN_MAPPING), any(String.class));
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      repo.createMissingIndexes();
+    }
+
+    verify(searchClient).createIndex(eq(COLUMN_MAPPING), any(String.class));
+  }
+
+  private static MockedStatic<SettingsCache> columnIndexing(boolean enabled) {
+    MockedStatic<SettingsCache> settingsCache = mockStatic(SettingsCache.class);
+    settingsCache.when(() -> SettingsCache.isColumnIndexingEnabled()).thenReturn(enabled);
+    return settingsCache;
+  }
+
+  private static Table tableWithOneColumn() {
+    UUID tableId = UUID.randomUUID();
+    Table table = mock(Table.class);
+    when(table.getId()).thenReturn(tableId);
+    when(table.getName()).thenReturn("orders");
+    when(table.getFullyQualifiedName()).thenReturn("svc.db.schema.orders");
+    when(table.getEntityReference())
+        .thenReturn(
+            new EntityReference().withId(tableId).withType(Entity.TABLE).withName("orders"));
+    when(table.getColumns())
+        .thenReturn(
+            List.of(
+                new Column()
+                    .withName("id")
+                    .withFullyQualifiedName("svc.db.schema.orders.id")
+                    .withDataType(ColumnDataType.INT)));
+    return table;
   }
 
   @Test
@@ -3480,6 +3708,7 @@ class SearchRepositoryBehaviorTest {
     SubjectContext subjectContext = mock(SubjectContext.class);
 
     when(filter.getCondition(Entity.TABLE)).thenReturn("status = 'Active'");
+    when(filter.getMemoryStatuses()).thenReturn(List.of(EntityStatus.DEPRECATED));
     when(searchClient.listWithOffset(
             "status = 'Active'", 25, 10, "cluster_table_search_index", sortFilter, "orders", null))
         .thenReturn(listMapper);
@@ -3491,7 +3720,8 @@ class SearchRepositoryBehaviorTest {
             sortFilter,
             "orders",
             "query",
-            subjectContext))
+            subjectContext,
+            List.of(EntityStatus.DEPRECATED)))
         .thenReturn(listMapper);
     when(searchClient.listWithDeepPagination(
             "cluster_table_search_index",

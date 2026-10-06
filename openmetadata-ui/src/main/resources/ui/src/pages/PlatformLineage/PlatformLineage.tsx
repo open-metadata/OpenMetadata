@@ -16,7 +16,11 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { Expand05, Home02, Minimize02 } from '@untitledui/icons';
+import {
+  Expand05,
+  Home02,
+  Minimize02,
+} from '@openmetadata/ui-core-components/icons';
 import { Card, Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
@@ -31,10 +35,10 @@ import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
 import LineageConfigModal from '../../components/Entity/EntityLineage/LineageConfigModal';
-import Lineage from '../../components/Lineage/Lineage.component';
+import LineageComponent from '../../components/Lineage/Lineage.component';
+import { Lineage } from '../../components/Lineage/Lineage/Lineage';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
@@ -48,16 +52,16 @@ import {
 } from '../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
-import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
+import { LineagePlatformView } from '../../hooks/lineage/types';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
+import { LineageConfig } from '../../interface/lineage.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
@@ -85,10 +89,9 @@ const PlatformLineage = () => {
   const [defaultValue, setDefaultValue] = useState<string | undefined>(
     decodedFqn || undefined
   );
-  // Config lives in the Zustand store — LineageProvider's fetch effect
-  // depends on it, so writing here triggers a refetch. Local useState here
-  // would leave the store untouched and the depth change would never
-  // reach the network.
+  // Config lives in the Zustand store — Lineage's fetch effect depends on
+  // it, so writing here triggers a refetch. Local useState here would leave
+  // the store untouched and the depth change would never reach the network.
   const lineageConfig = useLineageStore((state) => state.lineageConfig);
   const setLineageConfig = useLineageStore((state) => state.setLineageConfig);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -248,7 +251,7 @@ const PlatformLineage = () => {
       viewport: getViewportForLineageExport([], LINEAGE_EXPORT_SELECTOR),
       onExport: async () => '',
     });
-  }, []);
+  }, [showModal, t]);
 
   useEffect(() => {
     init();
@@ -329,12 +332,13 @@ const PlatformLineage = () => {
       </div>
     );
   }, [
-    isFullScreen,
+    isSearchLoading,
     options,
+    t,
     defaultValue,
     debouncedSearch,
-    isSearchLoading,
     handleExport,
+    isFullScreen,
     navigate,
     queryParams,
   ]);
@@ -345,17 +349,21 @@ const PlatformLineage = () => {
     }
 
     return (
-      <LineageProvider>
-        <Lineage
+      <Lineage
+        isPlatformLineage
+        entity={selectedEntity}
+        entityFqn={decodedFqn}
+        entityType={entityType}>
+        <LineageComponent
           isPlatformLineage
           entity={selectedEntity}
           entityType={entityType}
           hasEditAccess={canEditLineage}
           platformHeader={header}
         />
-      </LineageProvider>
+      </Lineage>
     );
-  }, [selectedEntity, loading, canEditLineage, entityType, header]);
+  }, [selectedEntity, loading, canEditLineage, entityType, header, decodedFqn]);
 
   return (
     <PageLayoutV1
