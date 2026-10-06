@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { mergeProps } from '@react-aria/utils';
-import type { DOMAttributes, ReactNode } from 'react';
+import type { DOMAttributes, ReactNode, RefObject } from 'react';
 import {
   Children,
   cloneElement,
@@ -34,6 +34,7 @@ import {
   Popover as AriaPopover,
 } from 'react-aria-components';
 import { useHover } from 'react-aria';
+import { mergeRefs } from '@react-aria/utils';
 import { cx } from '@/utils/cx';
 
 /**
@@ -45,9 +46,20 @@ import { cx } from '@/utils/cx';
  * here and the Popover re-attaches them to the panel, which makes the pair
  * behave as one hover region.
  */
-const PopoverHoverContext = createContext<DOMAttributes<HTMLElement> | null>(
-  null
-);
+interface PopoverHoverValue {
+  hoverProps: DOMAttributes<HTMLElement>;
+  /**
+   * The trigger's DOM node, for the Popover to anchor against.
+   *
+   * react-aria's `DialogTrigger` only wires a trigger ref through a `Button`
+   * child. A hover popover's trigger is whatever the caller renders — a link,
+   * a chip, a span — so without this the panel has nothing to position
+   * against and lands in the page corner instead of beside the trigger.
+   */
+  triggerRef: RefObject<HTMLElement>;
+}
+
+const PopoverHoverContext = createContext<PopoverHoverValue | null>(null);
 
 export interface PopoverProps extends Omit<AriaPopoverProps, 'children'> {
   /**
@@ -104,6 +116,7 @@ const HoverPopoverTrigger = ({
 }: PopoverTriggerProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen ?? false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  const triggerRef = useRef<HTMLElement>(null);
 
   const open = controlledOpen ?? isOpen;
 
@@ -138,7 +151,7 @@ const HoverPopoverTrigger = ({
   const [triggerChild, ...rest] = Children.toArray(children);
 
   return (
-    <PopoverHoverContext.Provider value={hoverProps}>
+    <PopoverHoverContext.Provider value={{ hoverProps, triggerRef }}>
       <AriaDialogTrigger
         {...props}
         isOpen={open}
@@ -147,13 +160,19 @@ const HoverPopoverTrigger = ({
           setOpen(next);
         }}>
         {isValidElement(triggerChild)
-          ? cloneElement(
-              triggerChild,
-              mergeProps(
+          ? cloneElement(triggerChild, {
+              ...mergeProps(
                 triggerChild.props as Record<string, unknown>,
                 hoverProps
-              )
-            )
+              ),
+              // Captured so the Popover can anchor to it. A custom component
+              // only receives this if it forwards refs; a host element always
+              // does.
+              ref: mergeRefs(
+                (triggerChild as { ref?: never }).ref ?? null,
+                triggerRef
+              ),
+            } as Record<string, unknown>)
           : triggerChild}
         {rest}
       </AriaDialogTrigger>
@@ -195,13 +214,14 @@ export const Popover = ({
   ...popoverProps
 }: PopoverProps) => {
   // Null under a press trigger, which is why this costs nothing there.
-  const hoverProps = useContext(PopoverHoverContext);
+  const hover = useContext(PopoverHoverContext);
 
   return (
     <AriaPopover
-      {...hoverProps}
-      isNonModal={hoverProps ? true : undefined}
+      {...hover?.hoverProps}
+      isNonModal={hover ? true : undefined}
       offset={offset}
+      triggerRef={hover?.triggerRef}
       {...popoverProps}
       className={(state) =>
         cx(

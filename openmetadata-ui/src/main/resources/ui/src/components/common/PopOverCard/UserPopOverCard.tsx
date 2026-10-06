@@ -13,7 +13,7 @@
 
 import { Popover, PopoverTrigger } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { FC, isValidElement, ReactNode } from 'react';
+import { FC, forwardRef, isValidElement, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import {
@@ -30,37 +30,59 @@ import { UserPopOverCardProps } from './UserPopOverCard.interface';
 /**
  * The link rendered when a caller passes no children. Extracted so the card
  * itself stays under the complexity limit.
+ *
+ * `...rest` and the forwarded ref are both load-bearing. PopoverTrigger clones
+ * this element to merge the hover handlers in, and react-aria anchors the panel
+ * to the trigger's DOM node. A plain function component swallows both: the card
+ * never opens, and once it does it renders in the page corner instead of beside
+ * the trigger. A host element would get them applied for free.
  */
-const DefaultTrigger = ({
-  className,
-  displayName,
-  profilePicture,
-  showUserName,
-  showUserProfile,
-  type,
-  userName,
-}: Pick<
-  UserPopOverCardProps,
-  'className' | 'displayName' | 'showUserName' | 'showUserProfile' | 'userName'
-> & { profilePicture: JSX.Element; type: OwnerType }) => (
-  <Link
-    className={classNames(
-      'assignee-item d-flex gap-1 cursor-pointer items-center',
-      { 'm-r-xs': !showUserName && showUserProfile },
-      className
-    )}
-    data-testid={userName}
-    to={
-      type === OwnerType.TEAM
-        ? getTeamAndUserDetailsPath(userName)
-        : getUserPath(userName ?? '')
-    }>
-    {showUserProfile ? profilePicture : null}
-    {showUserName ? (
-      <span className="truncate">{displayName ?? userName}</span>
-    ) : null}
-  </Link>
+const DefaultTrigger = forwardRef<
+  HTMLAnchorElement,
+  Pick<
+    UserPopOverCardProps,
+    | 'className'
+    | 'displayName'
+    | 'showUserName'
+    | 'showUserProfile'
+    | 'userName'
+  > & { profilePicture: JSX.Element; type: OwnerType }
+>(
+  (
+    {
+      className,
+      displayName,
+      profilePicture,
+      showUserName,
+      showUserProfile,
+      type,
+      userName,
+      ...rest
+    },
+    ref
+  ) => (
+    <Link
+      {...rest}
+      className={classNames(
+        'assignee-item d-flex gap-1 cursor-pointer items-center',
+        { 'm-r-xs': !showUserName && showUserProfile },
+        className
+      )}
+      data-testid={userName}
+      ref={ref}
+      to={
+        type === OwnerType.TEAM
+          ? getTeamAndUserDetailsPath(userName)
+          : getUserPath(userName ?? '')
+      }>
+      {showUserProfile ? profilePicture : null}
+      {showUserName ? (
+        <span className="truncate">{displayName ?? userName}</span>
+      ) : null}
+    </Link>
+  )
 );
+DefaultTrigger.displayName = 'DefaultTrigger';
 
 const UserPopOverCard: FC<UserPopOverCardProps> = ({
   userName,
