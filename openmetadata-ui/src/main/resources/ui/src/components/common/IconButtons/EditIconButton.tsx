@@ -34,6 +34,7 @@ export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       <Tooltip title={title}>
         {newLook ? (
           <Button
+            aria-label={title}
             className={classNames('bordered', className)}
             icon={<EditIcon />}
             ref={ref}
@@ -42,6 +43,7 @@ export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
           />
         ) : (
           <Button
+            aria-label={title}
             className={className}
             icon={<EditIcon className="table-action-icon" />}
             ref={ref}
@@ -66,6 +68,7 @@ export const RequestIconButton = ({
     <Tooltip title={title}>
       {newLook ? (
         <Button
+          aria-label={title}
           className={classNames('bordered', className)}
           icon={<RequestIcon />}
           size={size}
@@ -93,6 +96,7 @@ export const CommentIconButton = ({
     <Tooltip title={title}>
       {newLook ? (
         <Button
+          aria-label={title}
           className={classNames('bordered', className)}
           icon={<CommentIcon />}
           size={size}
@@ -138,6 +142,7 @@ export const CardExpandCollapseIconButton = ({
 }: IconButtonProps) => {
   const button = (
     <Button
+      aria-label={title}
       className={classNames('bordered', className)}
       disabled={disabled}
       icon={<CardExpandCollapseIcon />}
