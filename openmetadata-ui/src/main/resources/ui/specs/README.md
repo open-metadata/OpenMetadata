@@ -10,8 +10,8 @@ Machine- and human-readable specifications for the OpenMetadata design system.
 | **Go-forward** ✅ | UntitledUI + Tailwind | `tw:` utility classes | `globals.css` `@theme` → [tokens/tailwind-utility-reference.md](tokens/tailwind-utility-reference.md) | `yarn tw-audit` |
 | **Legacy** ⚠️ (deprecated) | Ant Design + Less | `.less` + `var(--om-*)` | [tokens/token-reference.md](tokens/token-reference.md) | `yarn token-audit` |
 
-**New work uses UntitledUI + Tailwind. Do not add new Antd components or new
-`.less` files** — `yarn tw-guard` blocks new debt. Never hardcode a value in
+**New work uses UntitledUI + Tailwind. Do not add new Antd components, new
+`.less` files, or new `assets/svg/` raw-SVG files/imports** — `yarn tw-guard` blocks new debt. Never hardcode a value in
 either stack: use a `tw:` token utility (or `var(--color-*)`) in TSX, and
 `var(--om-*)` in existing `.less`. The `--om-*` layer below documents the
 **deprecated** Antd/Less side (still maintained during the migration).
@@ -56,7 +56,7 @@ a violation; new work should prefer `var(--om-*)`.
 | --- | --- |
 | `yarn tw-audit` | **(go-forward)** Lint `.tsx`/`.ts` for hardcoded values. Explicit `tw:dark:*` and `--ai-*` usage are review warnings; resolvable arbitrary values remain errors. |
 | `yarn tw-audit:report` | Full inventory + which token each raw hex matches + Antd/Less debt count. |
-| `yarn tw-guard` | Fails on NEW `antd` imports / NEW `.less` files (deprecation). |
+| `yarn tw-guard` | Fails on NEW `antd` imports / NEW `assets/svg/` raw-SVG files or imports / NEW `.less` files (deprecation). |
 | `yarn token-audit` | _(legacy)_ Lint CSS/LESS for hardcoded values. **Exit 1 on any error.** CI-ready. |
 | `yarn token-audit:report` | Full grouped inventory of every value + its suggested token. |
 | `yarn token-migrate` | Codemod raw values → `var(--om-*)` tokens (safe, idempotent). |

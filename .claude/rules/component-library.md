@@ -15,7 +15,7 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   `openmetadata-ui/src/main/resources/ui/specs/`: start at `specs/README.md` (it declares the two
   stacks — go-forward **UntitledUI + Tailwind (`tw:`)** vs legacy **Ant Design + Less**, deprecated),
   then read `specs/untitled/<component>.md` for the component you touch. `yarn tw-guard` blocks new
-  `antd` imports and new `.less` files.
+  `antd` imports, new `assets/svg/` raw-SVG files/imports, and new `.less` files.
 - Available components (all under
   `openmetadata-ui-core-components/src/main/resources/ui/src/components/`): Button, Input, Select,
   Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle,
