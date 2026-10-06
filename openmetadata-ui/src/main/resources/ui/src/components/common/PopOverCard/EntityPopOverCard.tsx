@@ -21,8 +21,8 @@ import { isUndefined } from 'lodash';
 import {
   FC,
   HTMLAttributes,
-  lazy,
   isValidElement,
+  lazy,
   ReactNode,
   useCallback,
   useEffect,
