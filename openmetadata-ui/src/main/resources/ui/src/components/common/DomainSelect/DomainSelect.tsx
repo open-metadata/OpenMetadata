@@ -26,7 +26,6 @@ import {
   DEFAULT_DOMAIN_VALUE,
   PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
-import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import {
@@ -54,10 +53,6 @@ import {
   treeNodesToEntityReferences,
   withDomainIcon,
 } from './DomainSelect.utils';
-
-// Only what a row needs: the label and the chevron. The parent join the
-// listing page asks for is dead weight here.
-const PICKER_DOMAIN_FIELDS = [TabSpecificField.CHILDREN_COUNT];
 
 const DomainSelect: FC<DomainSelectProps> = ({
   selectedDomain,
@@ -135,7 +130,10 @@ const DomainSelect: FC<DomainSelectProps> = ({
   );
 
   // One level, one page. `parentId` is the parent's FQN, except for the
-  // synthetic "All Domains" row, whose children are the root listing.
+  // synthetic "All Domains" row, whose children are the root listing. That id
+  // is only synthetic when we put it there, so the check is gated on
+  // `showAllDomains` — a real domain named "All Domains" must list its own
+  // children, not the roots.
   const fetchChildPage = useCallback(
     async (
       parentId: string,
@@ -145,33 +143,39 @@ const DomainSelect: FC<DomainSelectProps> = ({
     ) => {
       const offset = decodeDomainCursor(after);
       const parentFqn =
-        parentId === DEFAULT_DOMAIN_VALUE ? undefined : parentId;
+        showAllDomains && parentId === DEFAULT_DOMAIN_VALUE
+          ? undefined
+          : parentId;
 
       const { data, paging } = await getDomainChildrenPaginated(
         parentFqn,
         pageSize ?? PAGE_SIZE_LARGE,
         offset,
-        signal,
-        PICKER_DOMAIN_FIELDS
+        signal
       );
 
-      // The server's offset, so it counts what the server returned — not what
-      // the allow-list left behind, or the next page would skip rows.
-      const nextOffset = offset + (data?.length ?? 0);
-      const hasMore = nextOffset < (paging?.total ?? 0);
+      // Advance by what the server returned, so the next page resumes at the
+      // right row. An empty page also ends the branch: without that guard the
+      // cursor would not move and "Show more" would refetch it forever — which
+      // a concurrent delete can produce while `total` still exceeds `offset`.
+      const received = data?.length ?? 0;
+      const nextOffset = offset + received;
+      const hasMore = received > 0 && nextOffset < (paging?.total ?? 0);
 
       return {
         nodes: toNodes(data, parentFqn !== undefined),
         hasMore,
-        // Withheld under a restriction: `total` counts the server's rows while
-        // `nodes` counts what survived the allow-list, so reporting it would
-        // promise rows the user cannot see. The row then reads "Show N more"
-        // without the "· N remaining" suffix.
-        total: allowedFqns.length === 0 ? paging?.total : undefined,
+        // Safe to report even for a domain-restricted user: `/domains/hierarchy`
+        // applies the same restriction server-side (`applyDomainSelfRestriction`
+        // → `id IN (allowed) OR fqnHash LIKE 'allowed.%'`), which is exactly the
+        // rule `filterAllowedNodes` applies. The client filter is kept as
+        // defence in depth, so in practice it prunes nothing and `total` matches
+        // what the user can see.
+        total: paging?.total,
         nextCursor: hasMore ? encodeDomainCursor(nextOffset) : undefined,
       };
     },
-    [allowedFqns, toNodes]
+    [showAllDomains, toNodes]
   );
 
   // Scope-switcher: a single "All Domains" row that owns every root domain as a
@@ -196,13 +200,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
     async (signal?: AbortSignal) => {
       const data = await fetchAllDomainChildren(
         (offset, limit) =>
-          getDomainChildrenPaginated(
-            undefined,
-            limit,
-            offset,
-            signal,
-            PICKER_DOMAIN_FIELDS
-          ),
+          getDomainChildrenPaginated(undefined, limit, offset, signal),
         PAGE_SIZE_LARGE
       );
 

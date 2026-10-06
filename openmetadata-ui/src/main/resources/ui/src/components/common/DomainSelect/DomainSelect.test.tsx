@@ -12,7 +12,6 @@
  */
 import { render } from '@testing-library/react';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
-import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getDomainChildrenPaginated,
@@ -147,8 +146,7 @@ describe('DomainSelect', () => {
       undefined,
       PAGE_SIZE_LARGE,
       0,
-      undefined,
-      [TabSpecificField.CHILDREN_COUNT]
+      undefined
     );
     expect(nodes).toHaveLength(1);
     expect(nodes[0].id).toBe('Finance');
@@ -164,8 +162,7 @@ describe('DomainSelect', () => {
       'Finance',
       PAGE_SIZE_LARGE,
       0,
-      undefined,
-      [TabSpecificField.CHILDREN_COUNT]
+      undefined
     );
   });
 
@@ -251,12 +248,13 @@ describe('DomainSelect', () => {
       'Finance',
       PAGE_SIZE_LARGE,
       50,
-      undefined,
-      [TabSpecificField.CHILDREN_COUNT]
+      undefined
     );
   });
 
-  it('should withhold the total when a restriction prunes the page', async () => {
+  // `/domains/hierarchy` applies the same restriction server-side, so the page
+  // the client receives is already scoped and the count is honest.
+  it('should still report the total for a domain-restricted user', async () => {
     mockGetChildren.mockResolvedValue({
       data: pageOf(PAGE_SIZE_LARGE),
       paging: { total: 120 },
@@ -269,7 +267,41 @@ describe('DomainSelect', () => {
     });
 
     expect(response.hasMore).toBe(true);
-    expect(response.total).toBeUndefined();
+    expect(response.total).toBe(120);
+  });
+
+  // A concurrent delete can leave `total` above `offset` with nothing left to
+  // return; without the guard the cursor would not move and "Show more" would
+  // refetch the same empty page forever.
+  it('should end the branch on an empty page even when total exceeds the offset', async () => {
+    mockGetChildren.mockResolvedValue({ data: [], paging: { total: 120 } });
+    renderSelect();
+
+    const response = await lastProps().fetchData({
+      parentId: 'Finance',
+      pageSize: PAGE_SIZE_LARGE,
+      after: '50',
+    });
+
+    expect(response.hasMore).toBe(false);
+    expect(response.nextCursor).toBeUndefined();
+  });
+
+  // The synthetic id is only ours when showAllDomains put it there.
+  it('should expand a real domain named "All Domains" as itself, not the root listing', async () => {
+    renderSelect({ showAllDomains: false });
+
+    await lastProps().fetchData({
+      parentId: 'All Domains',
+      pageSize: PAGE_SIZE_LARGE,
+    });
+
+    expect(mockGetChildren).toHaveBeenCalledWith(
+      'All Domains',
+      PAGE_SIZE_LARGE,
+      0,
+      undefined
+    );
   });
 
   it('should let a failed page reject so the branch stays resumable', async () => {
@@ -339,8 +371,7 @@ describe('DomainSelect', () => {
       undefined,
       PAGE_SIZE_LARGE,
       0,
-      undefined,
-      [TabSpecificField.CHILDREN_COUNT]
+      undefined
     );
     expect(response.nodes[0].id).toBe('Finance');
   });

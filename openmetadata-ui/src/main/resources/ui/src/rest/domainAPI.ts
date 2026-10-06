@@ -134,18 +134,13 @@ export const getDomainChildrenPaginated = async (
   parentFQN?: string,
   pageSize = 15,
   offset = 0,
-  signal?: AbortSignal,
-  // A picker needs the name and the chevron, not the parent join.
-  fields: TabSpecificField[] = [
-    TabSpecificField.PARENT,
-    TabSpecificField.CHILDREN_COUNT,
-  ]
+  signal?: AbortSignal
 ) => {
   const apiUrl = `${BASE_URL}/hierarchy`;
   const requestParams: Record<string, string | number | string[]> = {
     limit: pageSize,
     offset,
-    fields,
+    fields: [TabSpecificField.PARENT, TabSpecificField.CHILDREN_COUNT],
   };
 
   if (parentFQN) {
