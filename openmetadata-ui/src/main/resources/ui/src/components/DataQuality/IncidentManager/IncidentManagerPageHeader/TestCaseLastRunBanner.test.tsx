@@ -120,7 +120,7 @@ describe('TestCaseLastRunBanner', () => {
       // Inherits the page's Inter: tw:font-sans is the system UI font.
       expect(screen.getByTestId(bannerTestId)).not.toHaveClass('tw:font-sans');
       expect(screen.getByTestId(bannerTestId)).toHaveTextContent(
-        `label.last-run label.${testCaseStatus.toLowerCase()}`
+        `label.last-run-sentence label.${testCaseStatus.toLowerCase()}`
       );
       expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveClass(
         {
@@ -231,7 +231,7 @@ describe('TestCaseLastRunBanner', () => {
 
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 
-        expect(viewIncidentButton).toHaveTextContent('label.view-entity');
+        expect(viewIncidentButton).toHaveTextContent('label.view-incident');
         expect(incidentActions).toHaveClass('tw:justify-end');
         expect(viewIncidentButton).toHaveClass(TEXT_XS_CLASS, 'tw:shrink-0');
         expect(viewIncidentButton).not.toHaveAttribute('href');
@@ -398,7 +398,7 @@ describe('TestCaseLastRunBanner', () => {
     ).toHaveLength(1);
     expect(
       screen.getByTestId(LAST_RUN_BANNER_TEST_IDS[TestCaseStatus.Queued])
-    ).toHaveTextContent('label.last-run label.queued');
+    ).toHaveTextContent('label.last-run-sentence label.queued');
     expect(
       screen.queryByTestId(RESULT_EXPECTED_TEST_ID)
     ).not.toBeInTheDocument();
@@ -422,7 +422,9 @@ describe('TestCaseLastRunBanner', () => {
     const banner = screen.getByTestId(NO_RUN_BANNER_TEST_ID);
 
     expect(screen.getAllByTestId(NO_RUN_BANNER_TEST_ID)).toHaveLength(1);
-    expect(banner).toHaveTextContent('label.last-run label.not-run-yet');
+    expect(banner).toHaveTextContent(
+      'label.last-run-sentence label.not-run-yet'
+    );
     expect(banner).toHaveTextContent('message.test-case-not-run-yet');
     expect(banner).toHaveTextContent('label.next · label.not-scheduled');
     expect(

@@ -81,6 +81,10 @@ describe('RunDetailsCard', () => {
     expect(screen.getByTestId('run-details-definition')).toHaveTextContent(
       'tableRowCountToEqual'
     );
+    // Sentence case, as the mock labels the card.
+    expect(
+      screen.getByText('label.test-definition-sentence')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('run-details-expected')).toHaveTextContent(
       '10,000'
     );

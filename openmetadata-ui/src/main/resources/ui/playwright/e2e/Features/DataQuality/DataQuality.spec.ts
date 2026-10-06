@@ -793,7 +793,7 @@ test.describe(
           const banner = await verifyTestCaseLastRunBanner(page, 'not-run-yet');
 
           await expect(banners).toHaveCount(1);
-          await expect(banner).toContainText('Last Run Not run yet');
+          await expect(banner).toContainText('Last run Not run yet');
           await expect(banner).toContainText(
             'This test has not run yet. Add it to a pipeline to start collecting results.'
           );
@@ -842,7 +842,7 @@ test.describe(
 
             await expect(banners).toHaveCount(1);
             await expect(banner).toContainText(
-              `Last Run ${runResult.testCaseStatus}`
+              `Last run ${runResult.testCaseStatus}`
             );
             await expect(banner).toContainText(runResult.result);
 
@@ -921,7 +921,7 @@ test.describe(
         ).toBeVisible();
         await expect(
           banner.getByTestId('test-case-last-run-prefix')
-        ).toHaveText('Last Run');
+        ).toHaveText('Last run');
         await expect(
           banner.getByTestId('test-case-last-run-status')
         ).toHaveText('Failed');
@@ -963,7 +963,7 @@ test.describe(
 
         const viewIncidentButton = incident.getByTestId('view-incident-button');
 
-        await expect(viewIncidentButton).toHaveText('View Incident');
+        await expect(viewIncidentButton).toHaveText('View incident');
         await viewIncidentButton.click();
         await expect(page).toHaveURL(/\/issues$/);
         await expect(page.getByTestId('issue-tab-container')).toBeVisible();

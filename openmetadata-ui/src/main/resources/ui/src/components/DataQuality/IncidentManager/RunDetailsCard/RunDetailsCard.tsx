@@ -176,7 +176,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
     {
       // A camel-case name may break anywhere; numbers below only between words.
       className: 'tw:break-words tw:font-medium tw:text-primary',
-      labelKey: 'label.test-definition',
+      labelKey: 'label.test-definition-sentence',
       testId: 'run-details-definition',
       value: testCase.testDefinition?.name ?? NO_VALUE,
     },

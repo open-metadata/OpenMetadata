@@ -50,7 +50,7 @@ const LastRunBannerLayout = ({
               <span
                 className="tw:text-base tw:font-medium tw:text-primary"
                 data-testid="test-case-last-run-prefix">
-                {t('label.last-run')}
+                {t('label.last-run-sentence')}
               </span>{' '}
               <span
                 className={`tw:font-semibold ${config.statusClassName}`}
