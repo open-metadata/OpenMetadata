@@ -27,6 +27,7 @@ import type {
   ChartReferenceLine,
   ChartTheme,
   ChartTooltipProps,
+  ChartYAxisProps,
 } from '../types';
 import { mergeOption } from './merge';
 
@@ -63,6 +64,35 @@ export const hexToRgba = (hex: string, alpha: number): string => {
   return `rgba(${channel(0)}, ${channel(2)}, ${channel(4)}, ${alpha})`;
 };
 
+const RGB_PATTERN =
+  /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/i;
+
+const alphaOf = (raw?: string): number => {
+  if (raw === undefined) {
+    return 1;
+  }
+
+  return raw.endsWith('%') ? Number.parseFloat(raw) / 100 : Number(raw);
+};
+
+/**
+ * `color` at `alpha` opacity, as `rgba()`. Takes hex (`#RGB`, `#RRGGBB`) and
+ * `rgb()` / `rgba()`; an rgba colour's own alpha is multiplied in. Any other
+ * format is returned unchanged.
+ */
+export const withAlpha = (color: string, alpha: number): string => {
+  if (color.startsWith('#')) {
+    return hexToRgba(color, alpha);
+  }
+  const match = RGB_PATTERN.exec(color.trim());
+  if (!match) {
+    return color;
+  }
+  const [, r, g, b, a] = match;
+
+  return `rgba(${r}, ${g}, ${b}, ${alphaOf(a) * alpha})`;
+};
+
 /** Area fill: the series colour at 20% opacity fading to transparent. */
 export const areaGradient = (color: string): LinearGradient => ({
   type: 'linear',
@@ -71,10 +101,15 @@ export const areaGradient = (color: string): LinearGradient => ({
   x2: 0,
   y2: 1,
   colorStops: [
-    { offset: 0, color: hexToRgba(color, 0.2) },
-    { offset: 1, color: hexToRgba(color, 0) },
+    { offset: 0, color: withAlpha(color, 0.2) },
+    { offset: 1, color: withAlpha(color, 0) },
   ],
 });
+
+const BARE_TOOLTIP: Pick<
+  TooltipComponentOption,
+  'padding' | 'borderWidth' | 'backgroundColor'
+> = { padding: 0, borderWidth: 0, backgroundColor: 'transparent' };
 
 export const tooltipConfig = (
   trigger: 'axis' | 'item',
@@ -88,8 +123,13 @@ export const tooltipConfig = (
   backgroundColor: theme.tooltipBg,
   borderColor: theme.tooltipBorder,
   textStyle: { color: theme.tooltipText },
-  extraCssText: `max-height:${TOOLTIP_MAX_HEIGHT}px;overflow:auto;`,
+  // A bare tooltip's content brings its own card; a scroll box would clip
+  // that card's shadow.
+  extraCssText: props.bare
+    ? 'box-shadow:none;'
+    : `max-height:${TOOLTIP_MAX_HEIGHT}px;overflow:auto;`,
   valueFormatter: (value) => formatTooltipValue(value),
+  ...(props.bare ? BARE_TOOLTIP : {}),
   ...(props.formatter ? { formatter: props.formatter } : {}),
 });
 
@@ -133,12 +173,17 @@ export const categoryAxis = (
 
 export const valueAxis = (
   theme: ChartTheme,
-  props: ChartAxisProps<YAXisComponentOption> = {},
+  props: ChartYAxisProps = {},
   position: 'left' | 'right' | 'bottom' = 'left'
 ): YAXisComponentOption => {
   const vertical = position !== 'bottom';
+  const isCategory = props.type === 'category';
+  // Category ticks are the values themselves; K/M/B only suits numbers.
+  const formatter =
+    props.formatter ??
+    (isCategory ? undefined : (value: number) => formatYAxisTick(value));
   const base = {
-    type: 'value',
+    type: isCategory ? 'category' : 'value',
     position,
     name: props.label,
     nameLocation: 'middle',
@@ -147,7 +192,7 @@ export const valueAxis = (
     nameTextStyle: { color: theme.axisTitle, fontSize: 12, fontWeight: 500 },
     axisLabel: {
       color: theme.axisTick,
-      formatter: props.formatter ?? ((value: number) => formatYAxisTick(value)),
+      ...(formatter ? { formatter } : {}),
     },
     // A right-hand axis would draw a second, misaligned set of grid lines.
     splitLine: { show: position !== 'right', lineStyle: { color: theme.grid } },
@@ -201,19 +246,36 @@ export const gridFor = ({
   };
 };
 
+export interface ZoomLayout extends Omit<GridLayout, 'hasZoom'> {
+  /**
+   * Formats the slider's edge labels. Without it ECharts shows the raw
+   * category, which is an id rather than a label when the axis formats ticks.
+   */
+  labelFormatter?: (value: string) => string;
+}
+
 export const dataZoomFor = (
   pointCount: number,
-  { legend, horizontal }: Omit<GridLayout, 'hasZoom'>
+  { legend, horizontal, labelFormatter }: ZoomLayout,
+  visiblePoints = DATAZOOM_THRESHOLD
 ): DataZoomComponentOption[] => {
-  const end = Math.min(100, (DATAZOOM_THRESHOLD / pointCount) * 100);
+  const end = Math.min(100, (visiblePoints / pointCount) * 100);
   const legendBottom = Boolean(legend?.show) && legend?.top !== 0;
   const axis = horizontal ? { yAxisIndex: 0 } : { xAxisIndex: 0 };
-  const slider = horizontal
-    ? { right: SLIDER_GAP, width: SLIDER_HEIGHT }
-    : {
-        bottom: (legendBottom ? LEGEND_BAND : 0) + SLIDER_GAP,
-        height: SLIDER_HEIGHT,
-      };
+  const slider = {
+    ...(horizontal
+      ? { right: SLIDER_GAP, width: SLIDER_HEIGHT }
+      : {
+          bottom: (legendBottom ? LEGEND_BAND : 0) + SLIDER_GAP,
+          height: SLIDER_HEIGHT,
+        }),
+    ...(labelFormatter
+      ? {
+          labelFormatter: (_value: number, valueStr: string) =>
+            labelFormatter(valueStr),
+        }
+      : {}),
+  };
 
   // Fixed ids let a re-render re-apply the user's window (applyZoomWindow).
   return [
@@ -260,7 +322,7 @@ export const referenceLinesToMarkLine = (
       color: theme.axisText,
     },
     lineStyle: {
-      color: line.color ?? theme.axisText,
+      color: line.status ? theme.palette.status[line.status] : theme.axisText,
       type: 'dashed',
       width: 1,
     },

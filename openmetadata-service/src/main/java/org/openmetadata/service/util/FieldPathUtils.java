@@ -15,6 +15,7 @@ package org.openmetadata.service.util;
 
 import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -309,14 +310,17 @@ public class FieldPathUtils {
       }
     }
 
-    // Search recursively in children
-    for (Object item : fieldList) {
-      List<?> children = getFieldListFromObject(item, "children");
-      if (children != null && !children.isEmpty()) {
-        if (setDescriptionInList(children, fieldName, description)) {
-          return true;
-        }
-      }
+    // Search the immediate children of every sibling. The recursive "descend into the first
+    // matching subtree" shape used to short-circuit on the first sibling whose children
+    // contained fieldName, so a bare leaf shared by two siblings' subtrees silently wrote to
+    // whichever sibling was iterated first and reported success. Collecting every hit across
+    // siblings first turns that first-match write into a detectable, refusable ambiguity.
+    List<Object> nestedHits = findNestedHits(fieldList, fieldName);
+    if (nestedHits.size() > 1) {
+      return false;
+    }
+    if (nestedHits.size() == 1) {
+      return setDescription(nestedHits.get(0), description);
     }
 
     LOG.warn("[FieldPathUtils] Field '{}' not found in list", fieldName);
@@ -349,14 +353,14 @@ public class FieldPathUtils {
       }
     }
 
-    for (Object item : fieldList) {
-      List<?> children = getFieldListFromObject(item, "children");
-      if (children != null && !children.isEmpty()) {
-        Optional<String> description = getDescriptionFromList(children, fieldName);
-        if (description.isPresent()) {
-          return description;
-        }
-      }
+    // Mirror setDescriptionInList: collect the immediate-children match from every sibling so a
+    // bare leaf shared by two siblings' subtrees is refused instead of returning the first hit.
+    List<Object> nestedHits = findNestedHits(fieldList, fieldName);
+    if (nestedHits.size() > 1) {
+      return Optional.empty();
+    }
+    if (nestedHits.size() == 1) {
+      return getDescription(nestedHits.get(0));
     }
 
     LOG.warn("[FieldPathUtils] Field '{}' not found in list", fieldName);
@@ -377,15 +381,15 @@ public class FieldPathUtils {
   }
 
   /**
-   * Locate a field POJO in a list by name, recursing into `children` for dotted paths and any
-   * nested subtrees, mirroring {@link #setDescriptionInList}.
+   * Locate a field POJO in a list by name, traversing `children` for dotted paths and the
+   * immediate-children fallback, mirroring {@link #setDescriptionInList}.
    */
   @SuppressWarnings("unchecked")
   private static Optional<Object> findFieldInList(List<?> fieldList, String fieldName) {
     // The tag path resolves through here (TaskWorkflowHandler.patchFieldTags), so an approved
     // `columns.<name>.tags` on an apiEndpoint would otherwise write onto whichever of the request
-    // and response schemas holds that name first. Returning early also keeps the recursive
-    // branches below from picking a grandchild of the same name.
+    // and response schemas holds that name first. The isAmbiguous guard handles the same-list
+    // form; findNestedHits below handles the cross-subtree form.
     if (isAmbiguous(fieldList, fieldName)) {
       return Optional.empty();
     }
@@ -409,14 +413,16 @@ public class FieldPathUtils {
       }
     }
 
-    for (Object item : fieldList) {
-      List<?> children = getFieldListFromObject(item, "children");
-      if (children != null && !children.isEmpty()) {
-        Optional<Object> hit = findFieldInList(children, fieldName);
-        if (hit.isPresent()) {
-          return hit;
-        }
-      }
+    // Mirror the description walkers: collect the immediate-children match from every sibling
+    // so a bare leaf shared by two siblings' subtrees is refused instead of resolving to the
+    // first sibling's child POJO. Without this, an approved `columns.<name>.tags` suggestion
+    // would write onto whichever of the two schemas' same-named fields came first.
+    List<Object> nestedHits = findNestedHits(fieldList, fieldName);
+    if (nestedHits.size() > 1) {
+      return Optional.empty();
+    }
+    if (nestedHits.size() == 1) {
+      return Optional.of(nestedHits.get(0));
     }
 
     return Optional.empty();
@@ -431,6 +437,28 @@ public class FieldPathUtils {
       }
     }
     return Optional.empty();
+  }
+
+  /**
+   * Collect every immediate {@code children} entry named {@code fieldName} across the siblings in
+   * {@code fieldList}, so the caller can refuse an ambiguous name instead of writing to the first
+   * match.
+   *
+   * <p>Only the immediate {@code children} lists are scanned (one level deep). The previous
+   * depth-first "descend into the first matching subtree" fallback resolved a bare leaf shared by
+   * two siblings' subtrees to whichever sibling was iterated first and reported success;
+   * collecting every sibling's hit first turns that silent first-match write into a detectable
+   * ambiguity (size {@code > 1}) the callers refuse to guess.
+   */
+  private static List<Object> findNestedHits(List<?> fieldList, String fieldName) {
+    List<Object> hits = new ArrayList<>();
+    for (Object item : fieldList) {
+      List<?> children = getFieldListFromObject(item, "children");
+      if (children != null && !children.isEmpty()) {
+        findFieldByName(children, fieldName).ifPresent(hits::add);
+      }
+    }
+    return hits;
   }
 
   /**

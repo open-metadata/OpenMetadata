@@ -483,6 +483,7 @@ const BulkEditEntity = ({
               : operationClass;
           }}
           rowHeight={52}
+          rowTestId={(row) => (row.id ? `rdg-row-${row.id}` : undefined)}
           rows={dataSourceWithOperations}
           onCellClick={(args: CellClickArgs<Record<string, string>>) => {
             const colType = (args.column.key.split('.').pop() ?? '').replace(

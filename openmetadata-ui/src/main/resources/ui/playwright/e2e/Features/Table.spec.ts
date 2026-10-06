@@ -101,11 +101,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.click('[data-testid="test-cases"]');
 
     await listTestCasesResponse;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     await page.getByText('Name', { exact: true }).click();
     await page.locator('[data-testid="searchbar-component"] input').click();
@@ -126,11 +122,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .fill(searchTerm);
 
     await testSearchResponse;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
@@ -146,11 +138,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.click('[data-testid="test-cases"]');
 
     await listTestCasesResponse;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     await page.getByText('Name', { exact: true }).click();
 
@@ -163,11 +151,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.getByTitle('Queued').locator('div').click();
 
     await filteredResults;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     // Migration static data seeds test cases across every status (including
     // Queued), so the status filter alone no longer yields an empty list.
@@ -188,11 +172,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .locator('[data-testid="searchbar-component"] input')
       .fill(noMatchSearch);
     await emptySearchResponse;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
@@ -515,13 +495,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId('search-bar-container')
       .getByTestId('searchbar')
       .fill('customer_id');
-    await page
-      .getByTestId('entity-table')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
+    await waitForAllLoadersToDisappear(page.getByTestId('entity-table'));
 
     await expect(
       page
