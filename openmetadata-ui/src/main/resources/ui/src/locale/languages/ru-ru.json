@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "стандартное отклонение {{column}}",
     "result-metric-column-sum": "сумма {{column}}",
     "result-metric-column-value-length": "длина значений {{column}}",
+    "result-metric-column-values": "значения {{column}}",
     "result-metric-duplicate-count": "Число дубликатов",
     "result-metric-inserted-row-count": "Число вставленных строк",
     "result-metric-null-count": "Число пустых значений",

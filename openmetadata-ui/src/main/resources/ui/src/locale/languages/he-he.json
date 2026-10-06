@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "סטיית תקן של {{column}}",
     "result-metric-column-sum": "סכום של {{column}}",
     "result-metric-column-value-length": "אורך ערכים ב-{{column}}",
+    "result-metric-column-values": "ערכי {{column}}",
     "result-metric-duplicate-count": "מספר כפילויות",
     "result-metric-inserted-row-count": "מספר שורות שנוספו",
     "result-metric-null-count": "מספר ערכי null",

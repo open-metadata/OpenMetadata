@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "{{column}} standard deviation",
     "result-metric-column-sum": "{{column}} sum",
     "result-metric-column-value-length": "{{column}} value length",
+    "result-metric-column-values": "{{column}} values",
     "result-metric-duplicate-count": "Duplicate count",
     "result-metric-inserted-row-count": "Inserted row count",
     "result-metric-null-count": "Null count",

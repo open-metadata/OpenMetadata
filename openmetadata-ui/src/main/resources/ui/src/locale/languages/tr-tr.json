@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "{{column}} standart sapma",
     "result-metric-column-sum": "{{column}} toplam",
     "result-metric-column-value-length": "{{column}} değer uzunluğu",
+    "result-metric-column-values": "{{column}} değerleri",
     "result-metric-duplicate-count": "Yinelenen sayısı",
     "result-metric-inserted-row-count": "Eklenen satır sayısı",
     "result-metric-null-count": "Boş değer sayısı",

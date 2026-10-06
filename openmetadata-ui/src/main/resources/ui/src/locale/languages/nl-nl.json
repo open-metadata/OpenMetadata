@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "{{column}} standaardafwijking",
     "result-metric-column-sum": "{{column}} som",
     "result-metric-column-value-length": "{{column}} waardelengte",
+    "result-metric-column-values": "{{column}} waarden",
     "result-metric-duplicate-count": "Aantal duplicaten",
     "result-metric-inserted-row-count": "Aantal ingevoegde rijen",
     "result-metric-null-count": "Aantal nullwaarden",

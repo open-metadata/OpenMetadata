@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "{{column}} 표준 편차",
     "result-metric-column-sum": "{{column}} 합계",
     "result-metric-column-value-length": "{{column}} 값 길이",
+    "result-metric-column-values": "{{column}} 값",
     "result-metric-duplicate-count": "중복 수",
     "result-metric-inserted-row-count": "삽입된 행 수",
     "result-metric-null-count": "Null 수",

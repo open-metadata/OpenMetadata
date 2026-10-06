@@ -564,8 +564,25 @@ describe('TestSummary component', () => {
       ),
     ],
     [
-      'Values vs. learned range (auto)',
-      shape('columnValuesToBeBetween', {}, { useDynamicAssertion: true }),
+      'customer_id values vs. learned range (auto)',
+      shape(
+        'columnValuesToBeBetween',
+        {},
+        {
+          entityLink: '<#E::table::svc.db.schema.orders::columns::customer_id>',
+          useDynamicAssertion: true,
+        }
+      ),
+    ],
+    [
+      'customer_id values vs. allowed range 1–3,489',
+      shape(
+        'columnValuesToBeBetween',
+        { minValue: '1', maxValue: '3489' },
+        {
+          entityLink: '<#E::table::svc.db.schema.orders::columns::customer_id>',
+        }
+      ),
     ],
     [
       'Query result vs. threshold 0',

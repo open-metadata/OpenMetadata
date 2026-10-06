@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "desvio padrão de {{column}}",
     "result-metric-column-sum": "soma de {{column}}",
     "result-metric-column-value-length": "comprimento dos valores de {{column}}",
+    "result-metric-column-values": "valores de {{column}}",
     "result-metric-duplicate-count": "Número de duplicados",
     "result-metric-inserted-row-count": "Número de linhas inseridas",
     "result-metric-null-count": "Número de nulos",

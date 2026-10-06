@@ -90,7 +90,11 @@ describe('getResultHistoryCaption', () => {
         )
       )
     ).toEqual({
-      metric: { key: 'label.result-metric-values' },
+      // Named for its column, as its static form is (V-42).
+      metric: {
+        key: 'label.result-metric-column-values',
+        values: { column: 'customer_id' },
+      },
       comparison: { key: 'label.caption-learned-range' },
     });
   });
@@ -138,6 +142,22 @@ describe('getResultHistoryCaption', () => {
         testCase('tableRowCountToBeBetween', { minValue: '500' })
       ).comparison
     ).toEqual({ key: 'label.caption-allowed-min', values: { value: '500' } });
+  });
+
+  it('should name the column of a between-values test, not one of its two series', () => {
+    // It checks every value, and ingestion reports the column's min and max.
+    expect(
+      getResultHistoryCaption(
+        testCase(
+          'columnValuesToBeBetween',
+          { minValue: '1', maxValue: '3489' },
+          { entityLink: columnLink('customer_id') }
+        )
+      ).metric
+    ).toEqual({
+      key: 'label.result-metric-column-values',
+      values: { column: 'customer_id' },
+    });
   });
 
   it('should fall back to values for a definition it does not know', () => {

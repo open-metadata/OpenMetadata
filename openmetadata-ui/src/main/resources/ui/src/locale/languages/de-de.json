@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "{{column}} Standardabweichung",
     "result-metric-column-sum": "{{column}} Summe",
     "result-metric-column-value-length": "{{column}} Wertlänge",
+    "result-metric-column-values": "{{column}} Werte",
     "result-metric-duplicate-count": "Anzahl Duplikate",
     "result-metric-inserted-row-count": "Anzahl eingefügter Zeilen",
     "result-metric-null-count": "Anzahl Nullwerte",

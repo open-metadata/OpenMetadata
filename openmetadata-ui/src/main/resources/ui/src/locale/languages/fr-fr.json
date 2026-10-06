@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "écart type de {{column}}",
     "result-metric-column-sum": "somme de {{column}}",
     "result-metric-column-value-length": "longueur des valeurs de {{column}}",
+    "result-metric-column-values": "valeurs de {{column}}",
     "result-metric-duplicate-count": "Nombre de doublons",
     "result-metric-inserted-row-count": "Nombre de lignes insérées",
     "result-metric-null-count": "Nombre de valeurs nulles",

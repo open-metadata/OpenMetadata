@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "desviación estándar de {{column}}",
     "result-metric-column-sum": "suma de {{column}}",
     "result-metric-column-value-length": "longitud de valores de {{column}}",
+    "result-metric-column-values": "valores de {{column}}",
     "result-metric-duplicate-count": "Número de duplicados",
     "result-metric-inserted-row-count": "Número de filas insertadas",
     "result-metric-null-count": "Número de nulos",

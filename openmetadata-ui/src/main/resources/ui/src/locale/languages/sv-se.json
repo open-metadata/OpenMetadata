@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "{{column}} standardavvikelse",
     "result-metric-column-sum": "{{column}} summa",
     "result-metric-column-value-length": "{{column}} värdelängd",
+    "result-metric-column-values": "{{column}} värden",
     "result-metric-duplicate-count": "Antal dubbletter",
     "result-metric-inserted-row-count": "Antal infogade rader",
     "result-metric-null-count": "Antal nullvärden",

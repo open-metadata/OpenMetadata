@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "{{column}} 標準差",
     "result-metric-column-sum": "{{column}} 總和",
     "result-metric-column-value-length": "{{column}} 值長度",
+    "result-metric-column-values": "{{column}} 值",
     "result-metric-duplicate-count": "重複數",
     "result-metric-inserted-row-count": "插入列數",
     "result-metric-null-count": "空值數",

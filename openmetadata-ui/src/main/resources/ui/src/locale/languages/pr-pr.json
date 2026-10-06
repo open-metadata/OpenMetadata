@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "انحراف معیار {{column}}",
     "result-metric-column-sum": "مجموع {{column}}",
     "result-metric-column-value-length": "طول مقادیر {{column}}",
+    "result-metric-column-values": "مقادیر {{column}}",
     "result-metric-duplicate-count": "تعداد موارد تکراری",
     "result-metric-inserted-row-count": "تعداد ردیف‌های درج‌شده",
     "result-metric-null-count": "تعداد مقادیر تهی",

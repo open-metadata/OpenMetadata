@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "{{column}} मानक विचलन",
     "result-metric-column-sum": "{{column}} बेरीज",
     "result-metric-column-value-length": "{{column}} मूल्य लांबी",
+    "result-metric-column-values": "{{column}} मूल्ये",
     "result-metric-duplicate-count": "डुप्लिकेट संख्या",
     "result-metric-inserted-row-count": "घातलेल्या पंक्तींची संख्या",
     "result-metric-null-count": "रिक्त मूल्य संख्या",

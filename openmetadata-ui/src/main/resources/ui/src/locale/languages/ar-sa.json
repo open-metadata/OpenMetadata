@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "الانحراف المعياري لـ {{column}}",
     "result-metric-column-sum": "مجموع {{column}}",
     "result-metric-column-value-length": "طول قيم {{column}}",
+    "result-metric-column-values": "قيم {{column}}",
     "result-metric-duplicate-count": "عدد التكرارات",
     "result-metric-inserted-row-count": "عدد الصفوف المُدرجة",
     "result-metric-null-count": "عدد القيم الفارغة",

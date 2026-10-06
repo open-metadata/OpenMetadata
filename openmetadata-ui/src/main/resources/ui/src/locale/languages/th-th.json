@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "ส่วนเบี่ยงเบนมาตรฐานของ {{column}}",
     "result-metric-column-sum": "ผลรวมของ {{column}}",
     "result-metric-column-value-length": "ความยาวค่าของ {{column}}",
+    "result-metric-column-values": "ค่าของ {{column}}",
     "result-metric-duplicate-count": "จำนวนค่าซ้ำ",
     "result-metric-inserted-row-count": "จำนวนแถวที่เพิ่ม",
     "result-metric-null-count": "จำนวนค่าว่าง",

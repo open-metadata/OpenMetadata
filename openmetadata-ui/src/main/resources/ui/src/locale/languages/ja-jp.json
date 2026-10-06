@@ -2671,6 +2671,7 @@
     "result-metric-column-std-dev": "{{column}} の標準偏差",
     "result-metric-column-sum": "{{column}} の合計",
     "result-metric-column-value-length": "{{column}} の値の長さ",
+    "result-metric-column-values": "{{column}} の値",
     "result-metric-duplicate-count": "重複数",
     "result-metric-inserted-row-count": "挿入行数",
     "result-metric-null-count": "NULL 数",
