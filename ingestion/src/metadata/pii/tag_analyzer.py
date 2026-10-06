@@ -36,10 +36,6 @@ from metadata.pii.algorithms.presidio_utils import (
     explain_recognition_results,
     load_nlp_engine,
 )
-from metadata.pii.default_identifier_policy import (
-    default_non_sensitive_family,
-    qualifies_for_default_non_sensitive,
-)
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
@@ -136,7 +132,6 @@ class TagAnalyzer:
         self._column = column
         self._nlp_engine = nlp_engine
         self._language = language
-        self._default_business_by_recognizer_id: dict[str, Name] = {}
 
     def should_skip_recognizer(self, exception_list: list[RecognizerException]):
         blacklisted_entities = {ex.entityLink.root for ex in exception_list}
@@ -173,8 +168,6 @@ class TagAnalyzer:
 
             created = PresidioRecognizerFactory.create_recognizer(recognizer)
             if created is not None and self._supports_language(created):
-                if family := default_non_sensitive_family(self.tag, recognizer):
-                    self._default_business_by_recognizer_id[created.id] = family
                 recognizers.append(created)
 
         return recognizers
@@ -294,22 +287,7 @@ class TagAnalyzer:
                     context=context,
                     result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
                 )
-                eligible_evidence: list[_RecognitionEvidence] = []
-                for item in content_evidence:
-                    recognizer_id = (item.result.recognition_metadata or {}).get(
-                        presidio_constants.RECOGNIZER_METADATA_IDENTIFIER
-                    )
-                    family = (
-                        self._default_business_by_recognizer_id.get(recognizer_id)
-                        if isinstance(recognizer_id, str)
-                        else None
-                    )
-                    if family is not None and not qualifies_for_default_non_sensitive(
-                        family, self._column_name, item.value, item.result.start, item.result.end
-                    ):
-                        continue
-                    eligible_evidence.append(item)
-                content_results = _corroborated_content_results(eligible_evidence)
+                content_results = _corroborated_content_results(content_evidence)
                 # Use the maximum individual recogniser score rather than the average over all
                 # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
                 # number among 50 sampled rows would score 0.85 / 50 = 0.017 — far below any

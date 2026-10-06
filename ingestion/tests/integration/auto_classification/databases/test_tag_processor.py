@@ -203,15 +203,25 @@ def test_it_returns_the_expected_classifications(
 @pytest.mark.parametrize(
     "language,table_name,expected",
     [
-        (ClassificationLanguage.en, "identifier_en", ("iban", "uen", "abn", "acn", "sg_nric")),
-        (ClassificationLanguage.es, "identifier_es", ("nif", "nie")),
-        (ClassificationLanguage.it, "identifier_it", ("partita_iva",)),
+        (
+            ClassificationLanguage.en,
+            "identifier_en",
+            {
+                "iban": ["PII.Sensitive"],
+                "uen": ["PII.Sensitive"],
+                "abn": ["PII.Sensitive"],
+                "acn": ["PII.Sensitive"],
+                "sg_nric": ["PII.Sensitive"],
+            },
+        ),
+        (ClassificationLanguage.es, "identifier_es", {"nif": ["PII.Sensitive"], "nie": ["PII.Sensitive"]}),
+        (ClassificationLanguage.it, "identifier_it", {"partita_iva": ["PII.Sensitive"]}),
     ],
 )
 def test_identifier_formats_are_persisted_by_classification_workflow(
     language: ClassificationLanguage,
     table_name: str,
-    expected: tuple[str, ...],
+    expected: dict[str, list[str]],
     db_service: DatabaseService,
     metadata: OpenMetadata,
     load_metadata: MetadataWorkflow,
@@ -226,12 +236,12 @@ def test_identifier_formats_are_persisted_by_classification_workflow(
     run_workflow(AutoClassificationWorkflow, config)
 
     columns = metadata.get_table_columns(
-        f"{db_service.fullyQualifiedName.root}.test_db.public.{table_name}",
+        f"{db_service.fullyQualifiedName.root}.{db_service.connection.config.database}.public.{table_name}",
         fields=["tags"],
     )
     by_name = {column.name.root: column for column in columns}
-    for name in expected:
-        assert [label.tagFQN.root for label in by_name[name].tags] == ["PII.Sensitive"]
+    for name, tag_fqns in expected.items():
+        assert [label.tagFQN.root for label in by_name[name].tags] == tag_fqns
 
     if language is ClassificationLanguage.en:
         assert "SgFinRecognizer" in by_name["sg_nric"].tags[0].reason

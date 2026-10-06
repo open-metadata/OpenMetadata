@@ -72,48 +72,6 @@
           "target": "content"
         },
         {
-          "name": "AuAbnRecognizer",
-          "displayName": "Au Abn Recognizer",
-          "description": "Recognizes Australian Business Numbers (ABNs) using complete format and checksum validation. Default NonSensitive classification additionally requires family-identifying column context.",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "predefined",
-            "name": "AuAbnRecognizer",
-            "supportedLanguage": "en"
-          },
-          "confidenceThreshold": 0.6,
-          "target": "content"
-        },
-        {
-          "name": "ItVatCodeRecognizer",
-          "displayName": "It Vat Code Recognizer",
-          "description": "Recognizes Italian VAT codes using complete format and checksum validation. Default NonSensitive classification additionally requires family-identifying column context or an explicit IT prefix.",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "predefined",
-            "name": "ItVatCodeRecognizer",
-            "supportedLanguage": "it"
-          },
-          "confidenceThreshold": 0.6,
-          "target": "content"
-        },
-        {
-          "name": "SgUenRecognizer",
-          "displayName": "Singaporean UEN recognizer",
-          "description": "Recognizes Singapore UEN values using supported formats and validation. Default NonSensitive classification additionally requires family-identifying column context.",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "predefined",
-            "name": "SgUenRecognizer",
-            "supportedLanguage": "en"
-          },
-          "confidenceThreshold": 0.6,
-          "target": "content"
-        },
-        {
           "name": "SpacyRecognizer",
           "displayName": "Recognizer using spaCy NLP model",
           "description": "Recognize PII entities using a spaCy NLP model.",
@@ -428,6 +386,34 @@
           "target": "content"
         },
         {
+          "name": "AuAbnRecognizer",
+          "displayName": "Au Abn Recognizer",
+          "description": "Recognizes Australian Business Number (\"ABN\").<br/><br/>The Australian Business Number (ABN) is a unique 11 digit identifier issued to all entities registered in the Australian Business Register (ABR). The 11 digit ABN is structured as a 9 digit identifier<br/><br/>with two leading check digits.<br/><br/>The leading check digits are derived using a modulus 89 calculation.<br/><br/>This recognizer identifies ABN using regex, context words and checksum.<br/><br/>Reference: https://abr.business.gov.au/Help/AbnFormat",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "predefined",
+            "name": "AuAbnRecognizer",
+            "supportedLanguage": "en"
+          },
+          "confidenceThreshold": 0.6,
+          "target": "content"
+        },
+        {
+          "name": "AuAcnRecognizer",
+          "displayName": "Au Acn Recognizer",
+          "description": "Recognizes Australian Company Number (\"ACN\").<br/><br/>The Australian Company Number (ACN) is a nine digit number with the last digit being a check digit calculated using a modified modulus 10 calculation.<br/><br/>This recognizer identifies ACN using regex, context words, and checksum.<br/><br/>Reference: https://asic.gov.au/",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "predefined",
+            "name": "AuAcnRecognizer",
+            "supportedLanguage": "en"
+          },
+          "confidenceThreshold": 0.6,
+          "target": "content"
+        },
+        {
           "name": "AuTfnRecognizer",
           "displayName": "Au Tfn Recognizer",
           "description": "Recognizes Australian Tax File Numbers (\"TFN\").<br/><br/>The tax file number (TFN) is a unique identifier issued by the Australian Taxation Office to each taxpaying entity \\u2014 an individual, company,<br/><br/>superannuation fund, partnership, or trust.<br/><br/>The TFN consists of a nine digit number, usually presented in the format NNN NNN NNN.<br/><br/>TFN includes a check digit for detecting erroneous number based on simple modulo 11.<br/><br/>This recognizer uses regex, context words,<br/><br/>and checksum to identify TFN.<br/><br/>Reference: https://www.ato.gov.au/individuals/tax-file-number/",
@@ -562,6 +548,20 @@
           "recognizerConfig": {
             "type": "predefined",
             "name": "ItFiscalCodeRecognizer",
+            "supportedLanguage": "it"
+          },
+          "confidenceThreshold": 0.6,
+          "target": "content"
+        },
+        {
+          "name": "ItVatCodeRecognizer",
+          "displayName": "It Vat Code Recognizer",
+          "description": "Recognizes Italian VAT code using regex and checksum.<br/><br/>For more information about italian VAT code:<br/><br/>https://en.wikipedia.org/wiki/VAT_identification_number#:~:text=%5B2%5D)-,Italy,-Partita%20IVA",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "predefined",
+            "name": "ItVatCodeRecognizer",
             "supportedLanguage": "it"
           },
           "confidenceThreshold": 0.6,
@@ -720,6 +720,19 @@
             "type": "predefined",
             "name": "FiPersonalIdentityCodeRecognizer",
             "supportedLanguage": "fi"
+          },
+          "confidenceThreshold": 0.6,
+          "target": "content"
+        },
+        {
+          "name": "SgUenRecognizer",
+          "displayName": "Singaporean UEN recognizer",
+          "description": "Recognize Singapore UEN (Unique Entity Number) using regex.",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "predefined",
+            "name": "SgUenRecognizer"
           },
           "confidenceThreshold": 0.6,
           "target": "content"

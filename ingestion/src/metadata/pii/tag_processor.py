@@ -25,7 +25,6 @@ from metadata.pii.classification_manager import (
     ClassificationManagerInterface,
 )
 from metadata.pii.conflict_resolver import ConflictResolver
-from metadata.pii.default_identifier_policy import prepare_default_pii_tags
 from metadata.pii.models import ScoredTag
 from metadata.utils.logger import profiler_logger
 
@@ -72,9 +71,7 @@ class TagProcessor(AutoClassificationProcessor):
         self.enabled_classifications = self.run_manager.get_enabled_classifications(filter_names=classification_filter)
 
         # Get all enabled tags with recognizers from enabled classifications
-        self.candidate_tags = prepare_default_pii_tags(
-            self.run_manager.get_enabled_tags(classifications=self.enabled_classifications)
-        )
+        self.candidate_tags = self.run_manager.get_enabled_tags(classifications=self.enabled_classifications)
 
         # Service that runs analyzers
         if score_tags_for_column is None:
