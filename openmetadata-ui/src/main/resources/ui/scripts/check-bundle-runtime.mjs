@@ -92,42 +92,50 @@ const failures = [];
 const checkPage = async ({ module, file }) => {
   const context = await browser.newContext();
   const page = await context.newPage();
+  // Taken from the network, not Resource Timing: the browser keeps only 250
+  // resource entries per page, and heavy routes load more chunks than that.
+  const loaded = new Set();
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.origin === origin && url.pathname.endsWith('.js')) {
+      loaded.add(url.pathname);
+    }
+  });
   try {
     await page.goto(`${origin}/signin`, { waitUntil: 'load' });
-    const result = await page.evaluate(async (chunkUrl) => {
+    const importError = await page.evaluate(async (chunkUrl) => {
       try {
         await import(chunkUrl);
-      } catch (error) {
-        return { importError: String(error) };
-      }
-      const loaded = [
-        ...new Set(
-          performance
-            .getEntriesByType('resource')
-            .map(({ name }) => new URL(name).pathname)
-            .filter((pathname) => pathname.endsWith('.js'))
-        ),
-      ];
-      const undefinedExports = [];
-      for (const pathname of loaded) {
-        const namespace = await import(pathname);
-        for (const key of Object.keys(namespace)) {
-          if (namespace[key] === undefined) {
-            undefinedExports.push([pathname, key]);
-          }
-        }
-      }
 
-      return { undefinedExports };
+        return null;
+      } catch (error) {
+        return String(error);
+      }
     }, `/${file}`);
 
-    if (result.importError) {
-      failures.push(`${module}: importing ${file} threw ${result.importError}`);
+    if (importError) {
+      failures.push(`${module}: importing ${file} threw ${importError}`);
 
       return;
     }
+    const undefinedExports = await page.evaluate(
+      async (pathnames) => {
+        const found = [];
+        for (const pathname of pathnames) {
+          const namespace = await import(pathname);
+          for (const key of Object.keys(namespace)) {
+            if (namespace[key] === undefined) {
+              found.push([pathname, key]);
+            }
+          }
+        }
+
+        return found;
+      },
+      [...loaded]
+    );
     const perChunk = new Map();
-    for (const [pathname, key] of result.undefinedExports) {
+    for (const [pathname, key] of undefinedExports) {
       const name = chunkName(pathname);
       perChunk.set(name, [...(perChunk.get(name) ?? []), key]);
     }
