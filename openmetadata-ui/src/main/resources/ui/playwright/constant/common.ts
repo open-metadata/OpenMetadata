@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/** Bound for a single UI action or response wait, so a miss fails here instead of hanging the test. */
+export const ACTION_TIMEOUT = 30_000;
+
+/** Test timeout for specs that build their fixtures through the API before touching the UI. */
+export const API_FIXTURE_TEST_TIMEOUT = 120_000;
+
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
   MAX_LENGTH: 'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890ab',

@@ -14,6 +14,10 @@
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { Query } from '../../../src/generated/entity/data/query';
+import {
+  ACTION_TIMEOUT,
+  API_FIXTURE_TEST_TIMEOUT,
+} from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -105,7 +109,7 @@ const expectQueryVisibleForDomain = async (
 
 test.describe('Domain Filter - User Behavior Tests', () => {
   // API fixture build needs more than the 60s default.
-  test.describe.configure({ timeout: 120_000 });
+  test.describe.configure({ timeout: API_FIXTURE_TEST_TIMEOUT });
 
   test('Assets from selected domain should be visible in explore page', async ({
     page,
@@ -807,9 +811,6 @@ const HIERARCHY_TABLES: Record<
 
 const HIERARCHY_TABLE_KEYS = Object.keys(HIERARCHY_TABLES) as HierarchyTable[];
 
-// Bound filter clicks so a missed locator fails instead of hanging.
-const FILTER_ACTION_TIMEOUT = 30_000;
-
 // The open dropdown is capped at 10 buckets ordered by key, so a crowded facet hides the option; typing re-queries for it.
 const searchInDropdown = async (page: Page, searchText: string) => {
   const aggregation = waitForAggregation(page, { value: searchText });
@@ -820,15 +821,15 @@ const searchInDropdown = async (page: Page, searchText: string) => {
   await aggregation;
 };
 
-/** Opens the assets-tab filter menu and picks a facet. */
+/** Opens the assets-tab filter menu. Clicks are bounded so a missed locator fails instead of hanging. */
 const openAssetFilterMenu = async (page: Page, menuItem: RegExp) => {
   await page
     .locator('.filters-row')
     .getByTestId('asset-filter-button')
-    .click({ timeout: FILTER_ACTION_TIMEOUT });
+    .click({ timeout: ACTION_TIMEOUT });
   await page
     .getByRole('menuitem', { name: menuItem })
-    .click({ timeout: FILTER_ACTION_TIMEOUT });
+    .click({ timeout: ACTION_TIMEOUT });
 };
 
 const applyCheckboxFilter = async (
@@ -846,7 +847,7 @@ const applyCheckboxFilter = async (
   await checkbox.click();
   const filterRes = page.waitForResponse('/api/v1/search/query?*index=all*');
   await page.click('[data-testid="update-btn"]', {
-    timeout: FILTER_ACTION_TIMEOUT,
+    timeout: ACTION_TIMEOUT,
   });
   await filterRes;
   await waitForAllLoadersToDisappear(page);
@@ -867,7 +868,7 @@ const applyTagFilter = async (
   await page.getByRole('menuitemcheckbox', { name: tagPattern }).click();
   const filterRes = page.waitForResponse('/api/v1/search/query?*index=all*');
   await page.click('[data-testid="update-btn"]', {
-    timeout: FILTER_ACTION_TIMEOUT,
+    timeout: ACTION_TIMEOUT,
   });
   await filterRes;
   await waitForAllLoadersToDisappear(page);
@@ -1018,7 +1019,7 @@ const HIERARCHY_SCENARIOS: {
 
 test.describe('Domain Filter - Multi-nested domain hierarchy', () => {
   // Six tagged tables, each waited on until searchable.
-  test.describe.configure({ timeout: 120_000 });
+  test.describe.configure({ timeout: API_FIXTURE_TEST_TIMEOUT });
 
   let rootDomain: Domain;
   let subDomains: Record<HierarchySubDomain, SubDomain>;

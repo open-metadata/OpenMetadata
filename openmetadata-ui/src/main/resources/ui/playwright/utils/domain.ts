@@ -19,6 +19,7 @@ import test, {
 } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { LONG_DESCRIPTION_END_TEXT } from '../constant/domain';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
@@ -2210,7 +2211,7 @@ export const selectDomainFromNavbar = async (
         unescaped(params.get('q')).includes(searchTerm)
       );
     },
-    { timeout: 30_000 }
+    { timeout: ACTION_TIMEOUT }
   );
 
   await domainSearch.click();
@@ -2244,7 +2245,7 @@ const runExploreSearch = async (page: Page, searchTerm: string) => {
         params.get('track_total_hits') === 'true'
       );
     },
-    { timeout: 30_000 }
+    { timeout: ACTION_TIMEOUT }
   );
 
   await searchBox.fill(searchTerm);
