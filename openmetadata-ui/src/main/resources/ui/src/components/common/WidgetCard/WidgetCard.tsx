@@ -98,7 +98,6 @@ const WidgetCard = ({
                   )}
                   color="tertiary"
                   data-testid="expand-collapse-icon"
-                  disabled={isExpandDisabled}
                   icon={<CardExpandCollapseIcon className="tw:h-4 tw:w-4" />}
                   tooltip={t(isExpanded ? 'label.collapse' : 'label.expand')}
                   onClick={handleExpandClick}

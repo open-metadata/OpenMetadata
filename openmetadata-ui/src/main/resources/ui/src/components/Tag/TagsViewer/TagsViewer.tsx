@@ -144,8 +144,8 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
           key={tag.tagFQN}
           title={getTagTooltip(tag.tagFQN, tag.description)}>
           <TagComponent
-            // The chip draws its border with an outline; on keyboard focus the
-            // ring replaces it.
+            // `.tag-tinted` sets `outline: none`, so the chip has no focus ring
+            // of its own; this one is drawn outside its border.
             className="tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring"
             color={tag.style?.color}
             data-testid={`tag-${tag.tagFQN}`}

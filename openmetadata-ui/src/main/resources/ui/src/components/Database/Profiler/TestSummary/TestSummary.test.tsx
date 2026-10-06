@@ -494,7 +494,7 @@ describe('TestSummary component', () => {
 
       expect(placeholder).toHaveTextContent('No runs recorded yet');
       expect(placeholder).toHaveTextContent(
-        "This test hasn't run yet. Results will be plotted here after its first run."
+        'This test has not run yet. Results will be plotted here after its first run.'
       );
       expect(screen.getByText('Result history')).toBeInTheDocument();
       expect(screen.getByText('DqDateRangeFilter')).toBeInTheDocument();

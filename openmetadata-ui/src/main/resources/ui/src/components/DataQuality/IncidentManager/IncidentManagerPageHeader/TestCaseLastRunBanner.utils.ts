@@ -127,6 +127,10 @@ export const getIncidentTitle = (
  * The not-run banner's line. It asks for a pipeline only when the test is
  * known to have no scheduled run; while the schedule is unknown it says no
  * more than that the test has not run.
+ *
+ * Like getNextRunLabel, it compares the clock at render with a next run that
+ * is fetched once: a page left open past that run reads it as unscheduled on
+ * its next render, until the page is loaded again.
  */
 export const getNotRunMessageKey = (
   nextRunTimestamp: number | null | undefined,
