@@ -131,11 +131,21 @@
 
   // Design: the list takes a little over a third of the pane, capped so the
   // graph above keeps room for the subject and its direct neighbours.
+  // `display: flex` + the `min-height: 0` cascade on children is load-bearing:
+  // without them the inner `tw:flex-1 tw:overflow-auto` table body cannot
+  // resolve its height, so the whole drawer expands to its content and the
+  // canvas above gets squeezed out.
   .kg-details {
+    display: flex;
+    flex-direction: column;
     height: ~'clamp(calc(var(--om-space-40) * 5.5), 36vh, calc(var(--om-space-40) * 8.5))';
     max-height: calc(var(--om-space-40) * 8.5);
     min-height: calc(var(--om-space-40) * 5.5);
     overflow: hidden;
+
+    > * {
+      min-height: 0;
+    }
   }
 
   .kg-details-tabs [role='tablist'] {
@@ -343,13 +353,16 @@
   inset: 0;
   padding: var(--om-space-16);
   background: var(--tw-background-color-primary);
-  overflow: auto;
+  // `overflow: hidden` keeps the fullscreen fixed to the viewport so the inner
+  // drawer scrolls instead of pushing the whole page past the window; combined
+  // with `flex: 1 1 0` on the container the canvas can shrink to let the drawer
+  // sit at its clamped height.
+  overflow: hidden;
   z-index: var(--om-z-900);
 
   .knowledge-graph-container {
-    flex: 1 0 auto;
-    height: 100%;
-    min-height: min-content;
+    flex: 1 1 0;
+    min-height: 0;
     width: 100%;
   }
 

@@ -251,7 +251,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     setExpanded([]);
     setDrawer(null);
     setRelationshipScope(null);
-  }, [entity?.id, entityType]);
+  }, [entity?.id, entityType, mode]);
 
   const handleRefresh = useCallback(() => setRefresh((value) => value + 1), []);
   const handleModeChange = useCallback(
