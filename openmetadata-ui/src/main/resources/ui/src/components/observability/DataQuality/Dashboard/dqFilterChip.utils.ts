@@ -19,32 +19,30 @@ import classNames from 'classnames';
  * stay a plain element and cannot be a `FilterSelect`. These classes reproduce
  * what `FilterSelect` renders for a `bordered` `triggerVariant="button"` (core
  * `Button`, `secondary`, size `md`), so the owner chip carries the same pill
- * treatment as the FilterSelect chips beside it.
+ * treatment as the FilterSelect chips beside it. The label colour and outline
+ * are either neutral or brand (once a value is picked), never both: `classNames`
+ * does not resolve Tailwind conflicts, so stacking them leaves the winner to
+ * stylesheet order.
  */
-export const chipTriggerClassName = classNames(
-  'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center',
-  'tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-surface tw:px-3.5 tw:py-2.5',
-  'tw:text-sm tw:font-medium tw:text-secondary tw:shadow-xs-skeuomorphic',
-  'tw:relative tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
-  borderAfter,
-  'tw:after:outline-primary',
-  'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover'
-);
-
-/**
- * Brand treatment the `FilterSelect` trigger takes once a value is picked —
- * light mode only, dark keeps it neutral.
- */
-export const chipTriggerSelectedClassName = classNames(
-  'tw:not-dark:text-fg-brand-primary tw:not-dark:hover:text-fg-brand-primary',
-  'tw:not-dark:after:outline-brand'
-);
+export const chipTriggerClassName = (hasSelection: boolean) =>
+  classNames(
+    'tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center',
+    'tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-surface tw:px-3.5 tw:py-2.5',
+    'tw:text-sm tw:font-medium tw:shadow-xs-skeuomorphic',
+    'tw:relative tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
+    borderAfter,
+    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised',
+    hasSelection
+      ? 'tw:text-fg-brand-primary tw:after:outline-brand tw:dark:after:outline-fg-brand-primary_alt'
+      : 'tw:text-secondary tw:hover:text-secondary_hover tw:after:outline-primary'
+  );
 
 /** Chevron for a trigger built by hand, branded with it like `FilterSelect`. */
 export const chipChevronClassName = (hasSelection: boolean) =>
-  classNames('tw:size-5 tw:shrink-0 tw:text-fg-quaternary', {
-    'tw:not-dark:text-fg-brand-primary': hasSelection,
-  });
+  classNames(
+    'tw:size-5 tw:shrink-0',
+    hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+  );
 
 /** Matches the count badge `FilterSelect` renders on its own trigger. */
 export const chipCountBadgeClassName = classNames(

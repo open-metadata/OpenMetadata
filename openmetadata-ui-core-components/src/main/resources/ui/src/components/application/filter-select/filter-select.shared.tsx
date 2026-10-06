@@ -27,13 +27,14 @@ export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
 
 /**
  * Brand label, icons and (bordered) outline a button trigger takes once a value
- * is picked. Light mode only: dark keeps the trigger neutral and lets the count
- * badge carry the state.
+ * is picked. The outline matches the selected tab underline in dark, whose
+ * brand is lighter than `outline-brand` there.
  */
 export const selectedTriggerClassName = (bordered?: boolean) =>
   cx(
-    'tw:not-dark:text-fg-brand-primary tw:not-dark:hover:text-fg-brand-primary tw:not-dark:*:data-icon:text-fg-brand-primary',
-    bordered && 'tw:not-dark:after:outline-brand'
+    'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary tw:hover:*:data-icon:text-fg-brand-primary',
+    bordered &&
+      'tw:after:outline-brand tw:dark:after:outline-fg-brand-primary_alt'
   );
 
 export const TriggerCountBadge = ({ count }: { count: number }) => (

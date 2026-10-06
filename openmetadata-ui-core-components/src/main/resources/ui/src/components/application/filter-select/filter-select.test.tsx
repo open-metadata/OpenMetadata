@@ -421,7 +421,7 @@ describe('FilterSelect', () => {
     );
   });
 
-  it('brands the button trigger in light mode only once a value is selected', () => {
+  it('brands the button trigger once a value is selected', () => {
     const renderTrigger = (selectedValues: string[]) => (
       <FilterSelect
         bordered
@@ -434,17 +434,19 @@ describe('FilterSelect', () => {
       />
     );
     const { rerender } = render(renderTrigger(['snowflake']));
-    const trigger = screen.getByTestId('trigger-test');
+    const selected = screen.getByTestId('trigger-test').className;
 
-    // Scoped to light: dark mode keeps the trigger neutral.
-    expect(trigger.className).toContain('tw:not-dark:text-fg-brand-primary');
-    expect(trigger.className).toContain('tw:not-dark:after:outline-brand');
-    expect(trigger.className).not.toMatch(/(^|\s)tw:(dark:)?text-fg-brand/);
+    expect(selected).toContain('tw:text-fg-brand-primary');
+    expect(selected).toContain('tw:after:outline-brand');
+    expect(selected).toContain('tw:dark:after:outline-fg-brand-primary_alt');
+    // The brand set replaces the Button's neutral colours rather than racing them.
+    expect(selected).not.toContain('tw:text-secondary ');
+    expect(selected).not.toContain('tw:after:outline-primary');
 
     rerender(renderTrigger([]));
 
     expect(screen.getByTestId('trigger-test').className).not.toContain(
-      'not-dark:'
+      'text-fg-brand-primary'
     );
   });
 

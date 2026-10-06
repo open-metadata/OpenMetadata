@@ -152,8 +152,7 @@ export const TriggerButton = ({
         className={cx(
           'tw:size-5 tw:shrink-0 tw:transition-transform tw:duration-200',
           isOpen && 'tw:rotate-180',
-          'tw:text-fg-quaternary',
-          hasSelection && 'tw:not-dark:text-fg-brand-primary'
+          hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
         )}
       />
     </AriaButton>
