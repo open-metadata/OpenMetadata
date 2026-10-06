@@ -30,6 +30,7 @@ import {
 import {
   assignDomainToEntity,
   checkAssetsCount,
+  domainQueryFilter,
   navigateToSubDomain,
   searchAndExpectEntityNotVisible,
   searchAndExpectEntityVisible,
@@ -39,6 +40,7 @@ import {
 } from '../../utils/domain';
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -102,6 +104,15 @@ const expectQueryVisibleForDomain = async (
 };
 
 test.describe('Domain Filter - User Behavior Tests', () => {
+  // Every test here builds its own fixture through the API -- three or four
+  // tables, each of which is a service + database + schema + table -- before it
+  // touches the UI at all, and then waits for those documents to be searchable.
+  // That is real work the 60s default never had headroom for, which is how a
+  // healthy run still produced bare "Test timeout of 60000ms exceeded" failures
+  // with no failing assertion attached. The waits below are all event-driven, so
+  // this ceiling is headroom for a loaded runner, not a sleep budget.
+  test.describe.configure({ timeout: 120_000 });
+
   test('Assets from selected domain should be visible in explore page', async ({
     page,
   }) => {
@@ -148,26 +159,8 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await secondDomain.create(apiContext);
       await firstTable.create(apiContext);
       await secondTable.create(apiContext);
-      await firstTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains',
-            value: [{ id: firstDomain.responseData.id, type: 'domain' }],
-          },
-        ],
-      });
-      await secondTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains',
-            value: [{ id: secondDomain.responseData.id, type: 'domain' }],
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, firstTable, firstDomain);
+      await assignDomainToEntity(apiContext, secondTable, secondDomain);
 
       const response = await apiContext.post('/api/v1/queries', {
         data: {
@@ -180,7 +173,24 @@ test.describe('Domain Filter - User Behavior Tests', () => {
           service: firstTable.serviceResponseData.name,
         },
       });
-      queryId = (await okJson<Query>(response, 'create multi-table query')).id;
+      const query = await okJson<Query>(response, 'create multi-table query');
+      queryId = query.id;
+
+      // Domain inheritance is resolved when the query document is built, so
+      // both inherited domains have to be on the indexed document before the
+      // UI can be asked about either of them.
+      for (const domain of [firstDomain, secondDomain]) {
+        await waitForSearchIndexed(
+          apiContext,
+          query.fullyQualifiedName,
+          'query_search_index',
+          {
+            queryFilter: domainQueryFilter(
+              domain.responseData.fullyQualifiedName ?? ''
+            ),
+          }
+        );
+      }
 
       // The same query must remain discoverable under both inherited domains,
       // including when the selected domain came from its other associated table.
@@ -381,32 +391,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
-      // Select SubDomain from navbar (requires expanding parent domain tree)
-      await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('domain-dropdown-search').waitFor({
-        state: 'visible',
-      });
-
-      const searchDomainRes6 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain')
-      );
-      // Search the sub-domain directly; the server-side domain search returns
-      // sub-domains too, so no manual parent-tree expansion is needed.
-      await page
-        .getByTestId('domain-dropdown-search')
-        .fill(subDomain.responseData.name);
-      await searchDomainRes6;
-
-      await waitForAllLoadersToDisappear(page);
-
-      const tagSelector6 = page.getByTestId(
-        `tree-node-${subDomain.responseData.fullyQualifiedName}`
-      );
-      await tagSelector6.waitFor({ state: 'visible' });
-      await tagSelector6.click();
-      await waitForAllLoadersToDisappear(page);
+      // The server-side domain search returns sub-domains too, so selecting one
+      // needs no manual parent-tree expansion.
+      await selectDomainFromNavbar(page, subDomain.responseData);
 
       await searchAndExpectEntityVisible(page, subDomainTable);
       await searchAndExpectEntityVisible(page, subSubDomainTable);
@@ -554,7 +541,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
   test('Quick filters should persist when domain filter is applied and cleared', async ({
     page,
   }) => {
-    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainTable1 = new TableClass();
@@ -830,6 +816,11 @@ const HIERARCHY_TABLES: Record<
 
 const HIERARCHY_TABLE_KEYS = Object.keys(HIERARCHY_TABLES) as HierarchyTable[];
 
+// Bound every filter interaction. Unbounded clicks inherit the test timeout,
+// which turns one missed locator into a two-minute hang reported as a bare
+// "Test timeout exceeded" with no indication of which click never landed.
+const FILTER_ACTION_TIMEOUT = 30_000;
+
 // The open dropdown is capped at 10 buckets ordered by key, so a crowded facet hides the option; typing re-queries for it.
 const searchInDropdown = async (page: Page, searchText: string) => {
   const aggregation = waitForAggregation(page, { value: searchText });
@@ -840,14 +831,35 @@ const searchInDropdown = async (page: Page, searchText: string) => {
   await aggregation;
 };
 
+/**
+ * Opens the assets-tab filter menu and picks a facet.
+ *
+ * Targeted by test id, not by position: the filter trigger is not rendered at
+ * all until the tab reports a non-zero asset count, so `.filters-row button`
+ * + `.first()` resolved to whatever other button the row happened to hold
+ * before the list settled, clicked that, and left the menu closed. The
+ * follow-up click then waited on a `menuitem` that was never going to appear,
+ * and because an unbounded click inherits the *test* timeout that surfaced as
+ * a bare "Test timeout of 120000ms exceeded" pointing at the wrong line. The
+ * explicit timeouts keep a miss here a legible locator failure.
+ */
+const openAssetFilterMenu = async (page: Page, menuItem: RegExp) => {
+  await page
+    .locator('.filters-row')
+    .getByTestId('asset-filter-button')
+    .click({ timeout: FILTER_ACTION_TIMEOUT });
+  await page
+    .getByRole('menuitem', { name: menuItem })
+    .click({ timeout: FILTER_ACTION_TIMEOUT });
+};
+
 const applyCheckboxFilter = async (
   page: Page,
   menuItem: RegExp,
   dropdownTestId: string,
   option: string
 ) => {
-  await page.locator('.filters-row button').first().click();
-  await page.getByRole('menuitem', { name: menuItem }).click();
+  await openAssetFilterMenu(page, menuItem);
   await page.click(`[data-testid="${dropdownTestId}"]`);
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   const checkbox = page.getByTestId('drop-down-menu').getByTestId(option);
@@ -855,7 +867,9 @@ const applyCheckboxFilter = async (
   await checkbox.waitFor({ state: 'visible' });
   await checkbox.click();
   const filterRes = page.waitForResponse('/api/v1/search/query?*index=all*');
-  await page.click('[data-testid="update-btn"]');
+  await page.click('[data-testid="update-btn"]', {
+    timeout: FILTER_ACTION_TIMEOUT,
+  });
   await filterRes;
   await waitForAllLoadersToDisappear(page);
 };
@@ -865,8 +879,7 @@ const applyTagFilter = async (
   searchTerm: string,
   tagPattern: RegExp
 ) => {
-  await page.locator('.filters-row button').first().click();
-  await page.getByRole('menuitem', { name: /Tag/i }).click();
+  await openAssetFilterMenu(page, /Tag/i);
   await page.click('[data-testid="search-dropdown-Tag"]');
   await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   await page
@@ -875,7 +888,9 @@ const applyTagFilter = async (
     .fill(searchTerm);
   await page.getByRole('menuitemcheckbox', { name: tagPattern }).click();
   const filterRes = page.waitForResponse('/api/v1/search/query?*index=all*');
-  await page.click('[data-testid="update-btn"]');
+  await page.click('[data-testid="update-btn"]', {
+    timeout: FILTER_ACTION_TIMEOUT,
+  });
   await filterRes;
   await waitForAllLoadersToDisappear(page);
 };
@@ -1024,6 +1039,10 @@ const HIERARCHY_SCENARIOS: {
 ];
 
 test.describe('Domain Filter - Multi-nested domain hierarchy', () => {
+  // `beforeAll` builds six tables with domains and tags and blocks on all of
+  // them being searchable; the per-scenario tests are short by comparison.
+  test.describe.configure({ timeout: 120_000 });
+
   let rootDomain: Domain;
   let subDomains: Record<HierarchySubDomain, SubDomain>;
   let tables: Record<HierarchyTable, TableClass>;
@@ -1053,7 +1072,7 @@ test.describe('Domain Filter - Multi-nested domain hierarchy', () => {
         const { domain, tags } = HIERARCHY_TABLES[key];
         await tables[key].create(apiContext);
         await assignDomainToEntity(apiContext, tables[key], domains[domain]);
-        await tables[key].patch({
+        const { entity } = await tables[key].patch({
           apiContext,
           patchData: tags.map((tagFQN, index) => ({
             op: 'add',
@@ -1061,6 +1080,15 @@ test.describe('Domain Filter - Multi-nested domain hierarchy', () => {
             value: { tagFQN, source: 'Classification', labelType: 'Manual' },
           })),
         });
+
+        // Every scenario below filters on these tags, so the tagged revision --
+        // not just the domain-carrying one -- has to be the indexed one.
+        await waitForSearchIndexed(
+          apiContext,
+          entity.fullyQualifiedName,
+          'all',
+          { minVersion: entity.version }
+        );
       })
     );
 

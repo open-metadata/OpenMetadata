@@ -61,6 +61,7 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
+import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
 
@@ -2169,6 +2170,16 @@ export const renameDomain = async (page: Page, newName: string) => {
 };
 
 /**
+ * `q` as the test typed it.
+ *
+ * The UI escapes ES-reserved characters before sending the query, so a table
+ * named `pw-table-<uuid>` travels as `pw\-table\-<uuid>`. Comparing against
+ * the raw term would never match and the wait would burn its whole timeout.
+ */
+const unescapeSearchQuery = (query: string | null): string =>
+  (query ?? '').replace(/\\(.)/g, '$1');
+
+/**
  * Selects a domain from the navbar dropdown.
  * Clicks the domain dropdown, searches for the domain, and selects it.
  */
@@ -2183,16 +2194,96 @@ export const selectDomainFromNavbar = async (
   await domainDropdown.click();
   await domainSearch.waitFor({ state: 'visible' });
 
+  // `pressSequentially` fires one debounced search per keystroke and the tree
+  // re-renders on each response, so clicking as soon as the node appears can
+  // land on a row that a later response is about to replace. Matching on the
+  // *complete* term resolves only on the last of those responses, after which
+  // the tree is settled.
+  const domainSearchResponse = page.waitForResponse(
+    (response) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith('/api/v1/search/query') &&
+        url.searchParams.get('index')?.includes('domain') === true &&
+        unescapeSearchQuery(url.searchParams.get('q')).includes(searchTerm)
+      );
+    },
+    { timeout: 30_000 }
+  );
+
   await domainSearch.click();
   await page.keyboard.press('Control+a');
   await domainSearch.pressSequentially(searchTerm);
+  await domainSearchResponse;
 
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
+  const domainNode = page.getByTestId(`tree-node-${domain.fullyQualifiedName}`);
+  await domainNode.waitFor({ state: 'visible' });
+  await domainNode.click();
+
+  // The dropdown label is rendered from the same store the Explore query reads
+  // its domain filter out of. Waiting on it is what makes the *next* search
+  // provably carry the filter -- `waitForAllLoadersToDisappear` cannot, it is
+  // satisfied by the frames before the refetch has even started.
+  await expect(domainDropdown).toContainText(searchTerm);
   await waitForAllLoadersToDisappear(page);
 };
 
 /**
+ * Runs one Explore search and resolves on that search's own response.
+ *
+ * The loader helper cannot stand in for this. It asserts the loader count is
+ * 0, which is already true in the frames between the keypress and the loader
+ * mounting, so it returns before the request is in flight and the caller then
+ * reads the *previous* query's result list. That is why the assertions below
+ * used to be wrapped in blind 30s retry loops: with nothing synchronising on
+ * the response, re-typing was the only way to eventually catch up -- and a
+ * test that needs three of those loops has no budget left inside the 60s test
+ * timeout when any one of them is slow.
+ */
+const runExploreSearch = async (page: Page, searchTerm: string) => {
+  const searchBox = page.getByTestId('searchBox');
+  const searchResponse = page.waitForResponse(
+    (response) => {
+      const url = new URL(response.url());
+      // Explore fires a second `size=0` query for the per-tab counts carrying
+      // the same `q`; resolving on that one would hand back a body with no
+      // hits in it and release the caller before the result list request.
+      const size = Number(url.searchParams.get('size') ?? '0');
+
+      return (
+        url.pathname.endsWith('/api/v1/search/query') &&
+        unescapeSearchQuery(url.searchParams.get('q')).includes(searchTerm) &&
+        size > 0 &&
+        response.status() === 200
+      );
+    },
+    { timeout: 30_000 }
+  );
+
+  await searchBox.fill(searchTerm);
+  await searchBox.press('Enter');
+  const response = await searchResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  const body = await response.json();
+
+  return (
+    (body?.hits?.hits ?? []) as { _source?: { fullyQualifiedName?: string } }[]
+  )
+    .map((hit) => hit._source?.fullyQualifiedName)
+    .filter((fqn): fqn is string => Boolean(fqn));
+};
+
+/**
  * Searches for an entity in the explore page and verifies it is visible.
+ *
+ * Deliberately a single search rather than a retry loop: callers reach here
+ * only after the entity's search document has been confirmed at the API layer
+ * (`assignDomainToEntity`, `waitForSearchIndexed`), so re-typing the same term
+ * cannot surface anything the first search did not. Re-typing only hid the
+ * missing response wait, and it did so by spending the test's whole timeout
+ * budget on the way.
  */
 export const searchAndExpectEntityVisible = async (
   page: Page,
@@ -2213,22 +2304,20 @@ export const searchAndExpectEntityVisible = async (
   const fqn = entity.entityResponseData.fullyQualifiedName;
   const card = page.locator(`[data-testid="table-data-card_${fqn}"]`);
 
-  await expect
-    .poll(
-      async () => {
-        await page.getByTestId('searchBox').fill(name);
-        await page.getByTestId('searchBox').press('Enter');
-        await waitForAllLoadersToDisappear(page);
+  await runExploreSearch(page, name);
 
-        return await card.isVisible().catch(() => false);
-      },
-      { timeout: timeout ?? 30_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toBe(true);
+  await expect(card).toBeVisible({ timeout: timeout ?? 15_000 });
 };
 
 /**
  * Searches for an entity in the explore page and verifies it is NOT visible.
+ *
+ * The absence is only meaningful once the entity is actually searchable: an
+ * asset that has not been indexed yet is absent from every result list, so
+ * asserting "not visible" straight after creating it passes for the wrong
+ * reason and would keep passing even if the domain filter were removed
+ * entirely. Block on the unfiltered document first, then the only thing left
+ * that can hide the card is the filter under test.
  */
 export const searchAndExpectEntityNotVisible = async (
   page: Page,
@@ -2240,6 +2329,18 @@ export const searchAndExpectEntityNotVisible = async (
     };
   }
 ) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      entity.entityResponseData.fullyQualifiedName,
+      'all'
+    );
+  } finally {
+    await afterAction();
+  }
+
   const name = get(
     entity,
     'entityResponseData.displayName',
@@ -2248,32 +2349,47 @@ export const searchAndExpectEntityNotVisible = async (
   const fqn = entity.entityResponseData.fullyQualifiedName;
   const card = page.locator(`[data-testid="table-data-card_${fqn}"]`);
 
-  await expect
-    .poll(
-      async () => {
-        await page.getByTestId('searchBox').fill(name);
-        await page.getByTestId('searchBox').press('Enter');
-        await waitForAllLoadersToDisappear(page);
+  const hitFqns = await runExploreSearch(page, name);
 
-        return await card.isVisible().catch(() => false);
-      },
-      { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toBe(false);
+  // Assert on the response the page actually rendered from, not just on the
+  // DOM: `toHaveCount(0)` is satisfied by a result list that has not re-rendered
+  // yet, so on its own it can pass a frame too early.
+  expect(hitFqns).not.toContain(fqn);
+  await expect(card).toHaveCount(0);
 };
 
+/** `query_filter` matching a single domain by exact FQN. */
+export const domainQueryFilter = (domainFqn: string) =>
+  JSON.stringify({
+    query: {
+      bool: {
+        must: [{ term: { 'domains.fullyQualifiedName': domainFqn } }],
+      },
+    },
+  });
+
 /**
- * Assigns a domain to an entity via API patch.
+ * Assigns a domain to an entity via API patch and blocks until the search
+ * document carries it.
+ *
+ * The PATCH returns as soon as the DB write lands; the search document is
+ * updated asynchronously. Every caller drives Explore or a domain assets tab
+ * straight afterwards, so without this wait the UI assertion races the index:
+ * the asset is searchable but still domain-less, the domain filter drops it,
+ * and the test fails on timing alone. Counts are worse than the card
+ * assertions -- the assets-tab count is fetched once on mount and never
+ * refreshed, so a stale read cannot recover by polling the page.
  */
 export const assignDomainToEntity = async (
   apiContext: APIRequestContext,
   entity: {
+    entityResponseData?: { fullyQualifiedName?: string };
     patch: (options: {
       apiContext: APIRequestContext;
       patchData: Operation[];
-    }) => Promise<void>;
+    }) => Promise<unknown>;
   },
-  domain: { responseData: { id?: string } }
+  domain: { responseData: { id?: string; fullyQualifiedName?: string } }
 ) => {
   await entity.patch({
     apiContext,
@@ -2290,6 +2406,19 @@ export const assignDomainToEntity = async (
       },
     ],
   });
+
+  const domainFqn = domain.responseData.fullyQualifiedName;
+
+  if (!domainFqn) {
+    throw new Error('assignDomainToEntity: domain has no fullyQualifiedName');
+  }
+
+  await waitForSearchIndexed(
+    apiContext,
+    entity.entityResponseData?.fullyQualifiedName,
+    'all',
+    { queryFilter: domainQueryFilter(domainFqn) }
+  );
 };
 
 export const verifyDescriptionRequiresScroll = async (
