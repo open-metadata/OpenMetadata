@@ -212,11 +212,6 @@ public final class ClassConverterFactory {
                       "authType", List.of(basicAuth.class),
                       "sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
-              NatsConnection.class,
-              new NestedConfigClassConverter(
-                  NatsConnection.class,
-                  Map.of("tlsConfig", List.of(ValidateSSLClientConfig.class)))),
-          Map.entry(
               OmniConnection.class,
               new NestedConfigClassConverter(
                   OmniConnection.class,
