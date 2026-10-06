@@ -385,9 +385,9 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
     for (final ToolCall toolCall : sparqlToolCalls()) {
       final ToolOutcome outcome = call(token, toolCall.tool(), toolCall.arguments());
 
-      assertThat(outcome.error()).as(toolCall.tool()).isTrue();
+      assertThat(outcome.error()).as("%s: %s", toolCall.tool(), outcome.payload()).isTrue();
       assertThat(outcome.statusCode())
-          .as(toolCall.tool())
+          .as("%s: %s", toolCall.tool(), outcome.payload())
           .isEqualTo(Integer.parseInt(FORBIDDEN_STATUS));
     }
   }

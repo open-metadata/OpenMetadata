@@ -14,6 +14,7 @@
 package org.openmetadata.it.util;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 
@@ -60,6 +62,7 @@ public final class RdfAccessFixtures implements AutoCloseable {
   private final String prefix;
   private final OpenMetadataClient admin = SdkClients.adminClient();
   private final Deque<Runnable> cleanup = new ArrayDeque<>();
+  private final List<String> principals = new ArrayList<>();
 
   public RdfAccessFixtures(final String prefix) {
     this.prefix = prefix;
@@ -89,6 +92,7 @@ public final class RdfAccessFixtures implements AutoCloseable {
                     .withEmail(userName + "@test.openmetadata.org")
                     .withRoles(roleIds));
     cleanup.push(() -> admin.users().delete(user.getId()));
+    principals.add(userName);
     final String email = userName + "@test.openmetadata.org";
     return JwtAuthProvider.tokenFor(email, email, new String[] {}, TOKEN_TTL_SECONDS);
   }
@@ -112,6 +116,7 @@ public final class RdfAccessFixtures implements AutoCloseable {
                                 new JWTAuthMechanism()
                                     .withJWTTokenExpiry(JWTTokenExpiry.Unlimited))));
     cleanup.push(() -> admin.users().delete(botUser.getId()));
+    principals.add(botUser.getName());
     final Bot bot =
         admin
             .bots()
@@ -199,6 +204,7 @@ public final class RdfAccessFixtures implements AutoCloseable {
         rule -> {
           policy.getRules().remove(rule);
           admin.policies().update(policy.getId(), policy);
+          refreshPrincipalPermissions();
         });
     return grant;
   }
@@ -207,6 +213,24 @@ public final class RdfAccessFixtures implements AutoCloseable {
     final Policy current = admin.policies().getByName(DATA_CONSUMER_POLICY, "rules");
     current.getRules().add(grant);
     admin.policies().update(current.getId(), current);
+    refreshPrincipalPermissions();
+  }
+
+  /**
+   * Reads each created principal's effective permissions straight after a policy edit. Without this
+   * a principal that had been authorized before the edit kept being evaluated against the removed
+   * rule when the test called a tool next; with it every principal sees the edit. The reason is not
+   * established, so the reads are a test-side workaround, not a statement about the product.
+   */
+  private void refreshPrincipalPermissions() {
+    for (final String principal : principals) {
+      admin
+          .getHttpClient()
+          .executeForString(HttpMethod.GET, "/v1/permissions/rdf?user=" + principal, null);
+      admin
+          .getHttpClient()
+          .executeForString(HttpMethod.GET, "/v1/permissions/debug/user/" + principal, null);
+    }
   }
 
   @FunctionalInterface
