@@ -53,6 +53,7 @@ import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
@@ -96,7 +97,6 @@ import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.mapping.Property;
-import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
@@ -513,7 +513,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SearchSortFilter searchSortFilter,
       String q,
       String queryString,
-      SubjectContext subjectContext)
+      SubjectContext subjectContext,
+      List<EntityStatus> statuses)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -567,7 +568,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
     }
 
-    applyContextMemoryVisibility(subjectContext, requestBuilder);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -1149,14 +1150,22 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
+    applyContextMemoryVisibility(
+        subjectContext, requestBuilder, ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      OpenSearchRequestBuilder requestBuilder,
+      List<EntityStatus> statuses) {
     OMQueryBuilder visibilityBuilder =
-        contextMemoryVisibility.buildVisibilityFilter(subjectContext);
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses);
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
-    // Admins get no filter but are still resolved. An unidentifiable subject is NOT resolved, so
-    // OpenSearchRequestBuilder#build falls back to its org-wide-only default instead of running the
-    // search unfiltered.
+    // Admins skip visibility but keep the status filter. An unidentifiable subject is NOT
+    // resolved, so OpenSearchRequestBuilder#build falls back to its org-wide-only default
+    // instead of running the search unfiltered.
     if (contextMemoryVisibility.isSubjectResolvable(subjectContext)) {
       requestBuilder.contextMemoryVisibilityResolved();
     }
@@ -1998,44 +2007,14 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   /**
-   * Fallback to basic query_string search when NLQ transformation fails or is unavailable.
-   * Uses the new Java API client for query execution.
+   * Answers an NLQ request that could not be translated with the regular keyword search, so it gets
+   * the configured fields, boosts, filters and clause budget of /search/query.
    */
   private Response fallbackToBasicSearch(
       org.openmetadata.schema.search.SearchRequest request, SubjectContext subjectContext) {
     try {
-      LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
-
-      OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
-
-      // Build basic query_string query using new API
-      Query queryStringQuery =
-          Query.of(
-              q -> q.queryString(qs -> qs.query(request.getQuery()).defaultOperator(Operator.And)));
-
-      requestBuilder.query(queryStringQuery);
-      requestBuilder.from(request.getFrom());
-      requestBuilder.size(request.getSize());
-
-      // Apply RBAC constraints using applyRbacQueryWithCaching
-      applyRbacQueryWithCaching(subjectContext, requestBuilder);
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
-
-      // Add aggregations for fallback NLQ search
-      addAggregationsToNLQQuery(requestBuilder, request.getIndex());
-
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
-      SearchResponse<JsonData> searchResponse;
-      try {
-        searchResponse = client.search(searchRequest, JsonData.class);
-      } finally {
-        if (searchTimerSample != null) {
-          RequestLatencyContext.endSearchOperation(searchTimerSample);
-        }
-      }
-
-      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
+      LOG.debug("Falling back to keyword search for NLQ: {}", request.getQuery());
+      return search(request, subjectContext);
     } catch (Exception e) {
       LOG.error("Error in fallback search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

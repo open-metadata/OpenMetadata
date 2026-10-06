@@ -25,11 +25,17 @@ describe('SectionWithEdit', () => {
       <SectionWithEdit title="My Title">Content</SectionWithEdit>
     );
 
-    expect(container.querySelector('.section-with-edit')).toBeInTheDocument();
-    expect(container.querySelector('.section-header')).toBeInTheDocument();
-    expect(container.querySelector('.section-content')).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-testid="section-with-edit"]')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-testid="section-header"]')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-testid="section-content"]')
+    ).toBeInTheDocument();
 
-    const titleEl = container.querySelector('.section-title');
+    const titleEl = container.querySelector('[data-testid="section-title"]');
 
     expect(titleEl).toBeInTheDocument();
     expect(titleEl).toHaveTextContent('My Title');
@@ -44,7 +50,7 @@ describe('SectionWithEdit', () => {
     );
 
     expect(screen.getByTestId('custom-title')).toBeInTheDocument();
-    expect(container.querySelector('.section-title')).toBeNull();
+    expect(container.querySelector('[data-testid="section-title"]')).toBeNull();
   });
 
   it('shows edit button when showEditButton is true and onEdit provided', () => {
@@ -93,8 +99,36 @@ describe('SectionWithEdit', () => {
       </SectionWithEdit>
     );
 
-    expect(container.querySelector('.section-with-edit')).toHaveClass('wrap');
-    expect(container.querySelector('.section-header')).toHaveClass('hdr');
-    expect(container.querySelector('.section-content')).toHaveClass('cnt');
+    expect(
+      container.querySelector('[data-testid="section-with-edit"]')
+    ).toHaveClass('wrap');
+    expect(
+      container.querySelector('[data-testid="section-header"]')
+    ).toHaveClass('hdr');
+    expect(
+      container.querySelector('[data-testid="section-content"]')
+    ).toHaveClass('cnt');
+  });
+
+  it('renders titleExtra beside the title and lets titleClassName override the header layout', () => {
+    render(
+      <SectionWithEdit
+        title="Title"
+        titleClassName="tw:justify-start"
+        titleExtra={<span data-testid="count">13</span>}>
+        Content
+      </SectionWithEdit>
+    );
+
+    const titleGroup = screen.getByTestId('section-title').parentElement;
+
+    expect(titleGroup).toContainElement(screen.getByTestId('count'));
+    expect(titleGroup).toHaveClass('tw:gap-2');
+    expect(screen.getByTestId('section-header')).toHaveClass(
+      'tw:justify-start'
+    );
+    expect(screen.getByTestId('section-header')).not.toHaveClass(
+      'tw:justify-between'
+    );
   });
 });

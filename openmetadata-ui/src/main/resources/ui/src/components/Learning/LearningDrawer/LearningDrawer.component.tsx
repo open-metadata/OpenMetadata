@@ -20,6 +20,10 @@ import {
   getLearningResourcesByContext,
   LearningResource,
 } from '../../../rest/learningResourceAPI';
+import {
+  opensInNewTab,
+  openUrlInNewTab,
+} from '../../../utils/platform/learning.utils';
 import { LearningResourceCard } from '../LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../ResourcePlayer/ResourcePlayerModal.component';
 import './learning-drawer.less';
@@ -68,6 +72,11 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
 
   const handleResourceClick = useCallback(
     (resource: LearningResource) => {
+      if (opensInNewTab(resource.resourceType)) {
+        openUrlInNewTab(resource.source.url);
+
+        return;
+      }
       setSelectedResource(resource);
       setPlayerOpen(true);
       onClose();

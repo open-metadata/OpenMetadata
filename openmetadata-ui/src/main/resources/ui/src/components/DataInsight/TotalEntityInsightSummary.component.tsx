@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useChartPalette } from '@openmetadata/ui-core-components/charts';
 import { Button, Col, Row } from 'antd';
 import { Gutter } from 'antd/lib/grid/row';
 import classNames from 'classnames';
@@ -17,7 +18,7 @@ import { includes, startCase, toLower } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import { entityChartColor } from '../../utils/ColorUtils';
+import { dataInsightColor } from '../../utils/DataInsightChartUtils';
 import { sortEntityByValue } from '../../utils/DataInsightPureUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import CustomStatistic from './CustomStatistic';
@@ -47,6 +48,7 @@ const TotalEntityInsightSummary = ({
   onActiveKeyMouseHover,
 }: TotalEntityInsightSummaryProps) => {
   const { t } = useTranslation();
+  const palette = useChartPalette();
   const [searchEntityKeyWord, setSearchEntityKeyWord] = useState('');
 
   const sortedEntitiesByValue = useMemo(() => {
@@ -99,7 +101,7 @@ const TotalEntityInsightSummary = ({
         })}
         span={24}>
         <Row gutter={[8, 8]}>
-          {rightSideEntityList.map((entity, i) => {
+          {rightSideEntityList.map((entity) => {
             const progress = (latestData[entity] / Number(total)) * 100;
 
             return (
@@ -119,7 +121,11 @@ const TotalEntityInsightSummary = ({
                   }
                   label={latestData[entity]}
                   progress={progress}
-                  strokeColor={entityChartColor(i)}
+                  strokeColor={dataInsightColor(
+                    palette,
+                    sortedEntitiesByValue,
+                    entity
+                  )}
                 />
               </Col>
             );

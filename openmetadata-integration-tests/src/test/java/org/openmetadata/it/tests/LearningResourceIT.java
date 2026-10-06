@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.learning.LearningResource;
 import org.openmetadata.schema.entity.learning.LearningResourceContext;
 import org.openmetadata.schema.entity.learning.LearningResourceSource;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.learning.LearningResourceService;
@@ -38,6 +39,7 @@ import org.openmetadata.sdk.services.learning.LearningResourceService;
 public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLearningResource> {
 
   public LearningResourceIT() {
+    supportsEntityStatus = false;
     supportsPatch = true;
     supportsFollowers = false;
     supportsTags = true;
@@ -268,6 +270,25 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
     }
   }
 
+  @Test
+  void post_linkAndPdfWithNonWebUrl_400(TestNamespace ns) {
+    List<CreateLearningResource.ResourceType> webOnlyTypes =
+        List.of(CreateLearningResource.ResourceType.LINK, CreateLearningResource.ResourceType.PDF);
+    List<String> nonWebUrls = List.of("javascript:alert(1)", "ftp://files.example.com/guide.pdf");
+
+    for (CreateLearningResource.ResourceType type : webOnlyTypes) {
+      for (String url : nonWebUrls) {
+        CreateLearningResource request = newTypedRequest(ns, "non-web-url", type, url);
+
+        InvalidRequestException error =
+            assertThrows(InvalidRequestException.class, () -> createEntity(request));
+        assertTrue(
+            error.getMessage().contains("requires an http or https URL"),
+            "Expected " + url + " to be rejected for " + type.value() + ", got: " + error);
+      }
+    }
+  }
+
   // ===================================================================
   // DIFFICULTY TESTS
   // ===================================================================
@@ -387,6 +408,29 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
     assertTrue(
         history.getVersions().size() >= 3,
         "Should have at least 3 versions: create + 2 status updates");
+  }
+
+  @Test
+  void put_resourceTypeOnlyChange_persistsAfterGet(TestNamespace ns) {
+    CreateLearningResource request =
+        newTypedRequest(
+            ns,
+            "type-only-update",
+            CreateLearningResource.ResourceType.VIDEO,
+            "https://example.com/type-only-update");
+    LearningResource resource = createEntity(request);
+
+    request.withResourceType(CreateLearningResource.ResourceType.LINK);
+    getLearningResourceService().put(request);
+
+    LearningResource fetched = getEntity(resource.getId().toString());
+    assertEquals(
+        CreateLearningResource.ResourceType.LINK.value(),
+        fetched.getResourceType().value(),
+        "Resource type should persist after a type-only PUT update");
+    assertTrue(
+        fetched.getVersion() > resource.getVersion(),
+        "Version should be incremented after resource type change");
   }
 
   // ===================================================================
@@ -821,6 +865,44 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
   }
 
   @Test
+  void test_listFilterByResourceType_linkAndPdf(TestNamespace ns) {
+    LearningResource link =
+        createEntity(
+            newTypedRequest(
+                ns,
+                "rt-link",
+                CreateLearningResource.ResourceType.LINK,
+                "https://example.com/rt-link"));
+    LearningResource pdf =
+        createEntity(
+            newTypedRequest(
+                ns,
+                "rt-pdf",
+                CreateLearningResource.ResourceType.PDF,
+                "https://example.com/rt-guide.pdf"));
+    createEntity(
+        newTypedRequest(
+            ns,
+            "rt-video-excluded",
+            CreateLearningResource.ResourceType.VIDEO,
+            "https://example.com/rt-video-excluded"));
+
+    ListResponse<LearningResource> response =
+        listEntities(new ListParams().setLimit(100).addFilter("resourceType", "Link,PDF"));
+
+    List<String> webOnlyTypes =
+        List.of(
+            CreateLearningResource.ResourceType.LINK.value(),
+            CreateLearningResource.ResourceType.PDF.value());
+    List<String> returnedNames =
+        response.getData().stream().map(LearningResource::getName).toList();
+    assertTrue(returnedNames.containsAll(List.of(link.getName(), pdf.getName())));
+    assertTrue(
+        response.getData().stream()
+            .allMatch(r -> webOnlyTypes.contains(r.getResourceType().value())));
+  }
+
+  @Test
   void test_listFilterByStatus_single(TestNamespace ns) {
     createEntity(
         new CreateLearningResource()
@@ -1216,5 +1298,16 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
 
   private LearningResourceService getLearningResourceService() {
     return new LearningResourceService(SdkClients.adminClient().getHttpClient());
+  }
+
+  private CreateLearningResource newTypedRequest(
+      TestNamespace ns, String name, CreateLearningResource.ResourceType type, String url) {
+    return new CreateLearningResource()
+        .withName(ns.prefix(name + "-" + type.value().toLowerCase()))
+        .withDescription(type.value() + " resource")
+        .withResourceType(type)
+        .withCategories(List.of(ResourceCategory.DISCOVERY))
+        .withSource(new LearningResourceSource().withUrl(URI.create(url)))
+        .withContexts(List.of(new LearningResourceContext().withPageId("explore")));
   }
 }

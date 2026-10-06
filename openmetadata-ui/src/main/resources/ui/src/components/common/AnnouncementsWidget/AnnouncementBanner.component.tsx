@@ -78,47 +78,91 @@ const OVER_OVERLAY_CLASS = 'tw:relative tw:z-20';
 /**
  * The trigger `Typography` generates for `ellipsis.tooltip` is a `<button>`, and
  * the host is the only handle on it — `className` reaches the innermost span.
- * It carries `min-w-0` so the trigger can shrink below its content and actually
- * ellipsize. (Alignment used to need fixing here too; core now gives the trigger
- * `[text-align:inherit]`, so it follows the host on its own.)
+ *
+ * `min-w-0` lets the trigger shrink below its content and actually ellipsize.
+ * `text-start` is what positions it: core gives the trigger
+ * `[text-align:inherit]`, which cures the UA `text-align: center` a button is
+ * born with but then follows whatever the ancestors say. The trigger is
+ * `inline-flex`, so once it is narrower than this host — which happens the
+ * moment the host stretches, as it does in the expanded and landing layouts —
+ * that inherited value decides where it sits, and the expanded title drifted to
+ * the middle. Stating it here keeps the label left wherever the banner is
+ * dropped, rather than depending on the page around it.
  */
-const ELLIPSIS_HOST_CLASS = 'tw:block tw:min-w-0';
+const ELLIPSIS_HOST_CLASS = 'tw:block tw:min-w-0 tw:text-start';
 
 /**
- * Just a truncated label with the built-in overflow tooltip. The `onClick` is a
- * pointer convenience for the text itself — the text sits above the overlay, so
- * it would otherwise be the one place on the banner that did not open it.
- * Keyboard users reach the action through the overlay button, not here.
+ * Collapsed, the title shares one line with the description, so it truncates and
+ * carries the overflow tooltip. Expanded there is room to wrap, so it shows in
+ * full — no ellipsis, and no tooltip repeating text that is already on screen.
+ *
+ * That also means no generated trigger in the expanded layouts: `Typography`
+ * only builds the `<button>` when it has a tooltip to anchor, so the untruncated
+ * title is a plain span and needs none of the trigger plumbing below.
+ *
+ * The `onClick` is a pointer convenience for the text itself — it sits above the
+ * overlay, so it would otherwise be the one place on the banner that did not
+ * open it. Keyboard users reach the action through the overlay button.
  */
 const AnnouncementTitle = ({
   className,
   size = 'text-sm',
+  truncate = true,
   onClick,
   title,
 }: {
   className: string;
   size?: 'text-sm' | 'text-xl';
+  truncate?: boolean;
   onClick?: () => void;
   title: string;
-}) => (
-  <span
-    className={classNames(
-      ELLIPSIS_HOST_CLASS,
-      OVER_OVERLAY_CLASS,
-      onClick && 'tw:cursor-pointer'
-    )}>
-    <Typography
-      as="span"
-      className={className}
-      data-testid="announcement-title-btn"
-      ellipsis={{ tooltip: title }}
-      size={size}
-      weight="semibold"
-      onClick={onClick}>
-      {title}
-    </Typography>
-  </span>
-);
+}) => {
+  const clickable = onClick && 'tw:cursor-pointer';
+
+  if (!truncate) {
+    return (
+      <Typography
+        as="span"
+        // Nothing clips this one, so it has to fit by wrapping. A flex item's
+        // minimum is its min-content width, so without `min-w-0` a title with no
+        // break points — an FQN, a URL, a bare identifier — cannot shrink, and
+        // without `break-words` it has nowhere to break: on the landing banner it
+        // pushed itself and the badge beside it past the banner's edge.
+        className={classNames(
+          className,
+          OVER_OVERLAY_CLASS,
+          'tw:min-w-0 tw:break-words',
+          clickable
+        )}
+        data-testid="announcement-title-btn"
+        size={size}
+        weight="semibold"
+        onClick={onClick}>
+        {title}
+      </Typography>
+    );
+  }
+
+  return (
+    <span
+      className={classNames(
+        ELLIPSIS_HOST_CLASS,
+        OVER_OVERLAY_CLASS,
+        clickable
+      )}>
+      <Typography
+        as="span"
+        className={className}
+        data-testid="announcement-title-btn"
+        ellipsis={{ tooltip: title }}
+        size={size}
+        weight="semibold"
+        onClick={onClick}>
+        {title}
+      </Typography>
+    </span>
+  );
+};
 
 const AnnouncementFooter = ({
   announcement,
@@ -337,6 +381,7 @@ const ExpandedBody = ({
     <AnnouncementTitle
       className={titleClassName}
       title={title}
+      truncate={false}
       onClick={onClick}
     />
 
@@ -389,6 +434,7 @@ const FullBody = ({
           className={titleClassName}
           size="text-xl"
           title={title}
+          truncate={false}
           onClick={onClick}
         />
         <TypeBadge badgeColor={badgeColor} label={label} />

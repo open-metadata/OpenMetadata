@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { sumBy } from 'lodash';
+import { castArray, isString, isUndefined, sumBy } from 'lodash';
+import { ParsedQs } from 'qs';
 import {
   IncidentGroupBy,
   IncidentStatusCount,
@@ -19,21 +20,31 @@ import {
   Severities,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
-import Fqn from '../../../../utils/Fqn';
+import {
+  ListIncidentGroupsParams,
+  OpenIncidentStatus,
+} from '../../../../rest/incidentManagerAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
+  DEFAULT_INCIDENT_GROUP_SORT,
+  DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_BY_OPTIONS,
-  INCIDENT_GROUP_MAX_AVATARS,
   INCIDENT_GROUP_SEPARATOR,
+  INCIDENT_GROUP_STATUS_OPTIONS,
+  INCIDENT_SEVERITY_FILTER_OPTIONS,
   INCIDENT_TREND_COLORS,
   SPARKLINE_HEIGHT,
   SPARKLINE_INSET,
   SPARKLINE_WIDTH,
 } from './IncidentGroups.constants';
 import {
-  IncidentGroupAssignees,
   IncidentGroupByOption,
+  IncidentGroupFilters,
+  IncidentGroupSort,
   IncidentGroupStatusSegment,
+  IncidentSeverityFilter,
   IncidentTrendTone,
 } from './IncidentGroups.types';
 
@@ -46,6 +57,84 @@ export const parseIncidentGroupBy = (value: unknown): IncidentGroupBy =>
   Object.values(IncidentGroupBy).find((dimension) => dimension === value) ??
   DEFAULT_INCIDENT_GROUP_BY;
 
+const readText = (value: unknown) =>
+  isString(value) && value !== '' ? value : undefined;
+
+const readTimestamp = (value: unknown) => {
+  const timestamp = Number(readText(value));
+
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+};
+
+const isOpenIncidentStatus = (value: unknown): value is OpenIncidentStatus =>
+  INCIDENT_GROUP_STATUS_OPTIONS.includes(value as OpenIncidentStatus);
+
+const isSeverityFilter = (value: unknown): value is IncidentSeverityFilter =>
+  INCIDENT_SEVERITY_FILTER_OPTIONS.includes(value as IncidentSeverityFilter);
+
+/**
+ * The grouped view's filters out of the query string. A value the endpoint
+ * would reject — `Resolved`, an unknown status, a non-numeric timestamp, a
+ * repeated single-value param — is dropped rather than sent.
+ */
+export const parseIncidentGroupFilters = (
+  params: ParsedQs
+): IncidentGroupFilters => ({
+  testCaseFQN: readText(params.testCaseFQN),
+  assignee: readText(params.assignee),
+  status: [...new Set(castArray(params.status ?? []))].filter(
+    isOpenIncidentStatus
+  ),
+  severity: [...new Set(castArray(params.severity ?? []))].filter(
+    isSeverityFilter
+  ),
+  dateField:
+    params.dateField === 'updatedAt'
+      ? 'updatedAt'
+      : DEFAULT_INCIDENT_LIST_DATE_FIELD,
+  startTs: readTimestamp(params.startTs),
+  endTs: readTimestamp(params.endTs),
+});
+
+/** Whether any filter narrows the groups down from every open incident. */
+export const hasActiveIncidentGroupFilters = (
+  filters: IncidentGroupFilters
+): boolean =>
+  [filters.testCaseFQN, filters.assignee, filters.startTs, filters.endTs].some(
+    (value) => !isUndefined(value)
+  ) ||
+  filters.status.length > 0 ||
+  filters.severity.length > 0 ||
+  filters.dateField !== DEFAULT_INCIDENT_LIST_DATE_FIELD;
+
+/**
+ * The filters as groups endpoint params. The date field only means something
+ * next to a range, and the endpoint names the opening time `createdAt` where
+ * the URL says `timestamp`.
+ */
+export const getIncidentGroupsQuery = ({
+  testCaseFQN,
+  assignee,
+  status,
+  severity,
+  dateField,
+  startTs,
+  endTs,
+}: IncidentGroupFilters): Partial<ListIncidentGroupsParams> => {
+  const hasRange = !isUndefined(startTs) || !isUndefined(endTs);
+  const rangeDateField = dateField === 'updatedAt' ? 'updatedAt' : 'createdAt';
+
+  return {
+    testCaseFQN,
+    assignee,
+    status: status.length > 0 ? status : undefined,
+    severity: severity.length > 0 ? severity : undefined,
+    dateField: hasRange ? rangeDateField : undefined,
+    startTs,
+    endTs,
+  };
+};
+
 export const getIncidentGroupByOption = (
   groupBy: IncidentGroupBy
 ): IncidentGroupByOption =>
@@ -53,32 +142,28 @@ export const getIncidentGroupByOption = (
   INCIDENT_GROUP_BY_OPTIONS[0];
 
 /**
- * Sub-line under the group name: everything in the FQN above the group itself,
- * which for a table group is its service, database and schema.
- *
- * Only a table is placed in a hierarchy. A test definition is named by its FQN
- * alone, and an owner's FQN is the user or team name — `adam.matthews` is one
- * name, not a name under `adam` — so both are left without a sub-line rather
- * than split on a dot that means nothing there.
- *
- * The table FQN is split on the quoting rules rather than on `.` so a part that
- * contains a dot stays whole; each part is then unquoted, as the quotes are
- * chrome of the encoding rather than part of the name.
+ * Sub-line under the group name: the related entities its open incidents span —
+ * the test definitions of a table group, the tables of any other. It lists what
+ * the server-capped array holds; the related column carries the full count.
  */
-export const getIncidentGroupSubLine = (
+const getSubLineEntities = (group: TestCaseIncidentGroup) =>
+  (group.groupBy === IncidentGroupBy.Table
+    ? group.testDefinitions
+    : group.tables) ?? [];
+
+export const getIncidentGroupSubLine = (group: TestCaseIncidentGroup): string =>
+  getSubLineEntities(group).map(getEntityName).join(INCIDENT_GROUP_SEPARATOR);
+
+/**
+ * The sub-line's entities by FQN, one per line, for its hover title: tables
+ * of the same name in two services read alike on the sub-line itself.
+ */
+export const getIncidentGroupSubLineTitle = (
   group: TestCaseIncidentGroup
-): string => {
-  const fullyQualifiedName = group.fullyQualifiedName;
-
-  if (group.groupBy !== IncidentGroupBy.Table || !fullyQualifiedName) {
-    return '';
-  }
-
-  return Fqn.split(fullyQualifiedName)
-    .slice(0, -1)
-    .map((part) => Fqn.unquoteName(part))
-    .join(INCIDENT_GROUP_SEPARATOR);
-};
+): string =>
+  getSubLineEntities(group)
+    .map((entity) => entity.fullyQualifiedName ?? getEntityName(entity))
+    .join('\n');
 
 /**
  * The owner dimension carries one group for the incidents on test cases nobody
@@ -88,6 +173,32 @@ export const getIncidentGroupSubLine = (
  */
 export const isUnownedIncidentGroup = (group: TestCaseIncidentGroup): boolean =>
   group.groupBy === IncidentGroupBy.Owner && !group.id;
+
+/**
+ * The key the groups endpoint narrows the listing to one group by: a table
+ * group's FQN, any other group's entity id, and empty for the owner bucket of
+ * no entity.
+ */
+export const getIncidentGroupFilterKey = (
+  group: TestCaseIncidentGroup
+): string =>
+  group.groupBy === IncidentGroupBy.Table
+    ? group.fullyQualifiedName ?? group.name
+    : group.id ?? '';
+
+/** Identity of a group across reads: its entity id, else what names it. */
+export const getIncidentGroupKey = (group: TestCaseIncidentGroup): string =>
+  group.id ?? group.fullyQualifiedName ?? group.name;
+
+/**
+ * The group's display name. The owner bucket of no entity has no name of its
+ * own, so the caller names it.
+ */
+export const getIncidentGroupName = (
+  group: TestCaseIncidentGroup,
+  unownedName: string
+): string =>
+  isUnownedIncidentGroup(group) ? unownedName : getEntityName(group);
 
 /**
  * The group's open incidents split into the slices of the status bar. The
@@ -106,21 +217,6 @@ export const getIncidentGroupStatusSegments = (
     count,
     share: (count / total) * 100,
   }));
-};
-
-/**
- * Assignees to draw, and how many more the group has. The count comes from
- * `assigneeCount` — the `assignees` array is capped server-side, so its length
- * would under-report the overflow (and read as 0 once the cap is reached).
- */
-export const getIncidentGroupAssignees = (
-  group: TestCaseIncidentGroup
-): IncidentGroupAssignees => {
-  const assignees = group.assignees ?? [];
-  const visible = assignees.slice(0, INCIDENT_GROUP_MAX_AVATARS);
-  const total = group.assigneeCount ?? assignees.length;
-
-  return { visible, overflowCount: Math.max(0, total - visible.length) };
 };
 
 /**
@@ -191,3 +287,30 @@ export const getIncidentTrendPoints = (trend: number[]): string => {
     })
     .join(' ');
 };
+
+/**
+ * The page to read instead of `page` when it came back empty though it is not
+ * the first: a refresh resolved the last rows on it. Steps back at least one
+ * page, so a total that lags behind the rows cannot pin it in place.
+ */
+export const getPageAfterEmptyRead = (
+  rowCount: number,
+  page: number,
+  pageSize: number,
+  total = 0
+): number | undefined =>
+  rowCount === 0 && page > 1
+    ? Math.min(page - 1, Math.max(1, computeTotalPages(pageSize, total)))
+    : undefined;
+
+/**
+ * Sort params for the groups request. The endpoint's own default field is
+ * left out, so the usual request stays bare.
+ */
+export const getIncidentGroupSortQuery = ({
+  field,
+  type,
+}: IncidentGroupSort) => ({
+  sortType: type,
+  sortField: field === DEFAULT_INCIDENT_GROUP_SORT.field ? undefined : field,
+});

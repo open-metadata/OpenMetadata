@@ -47,6 +47,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnnouncement> {
 
   public AnnouncementResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = false;
     supportsDomains = true;

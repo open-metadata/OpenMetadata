@@ -517,6 +517,24 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'), '$.rules')
   AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('ViewAll')), '$.rules');
 
+-- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
+-- the result polls, the credentials) that can reach different servers, so its state lives here
+-- rather than in one server's memory. pending_state holds the candidate configuration with its
+-- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
+CREATE TABLE IF NOT EXISTS sso_test_login_session (
+    test_session_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    admin_principal VARCHAR(256) NOT NULL,
+    protocol VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    pending_state MEDIUMTEXT,
+    result MEDIUMTEXT,
+    credentials_submitted_at BIGINT,
+    expires_at BIGINT NOT NULL,
+    PRIMARY KEY (test_session_id),
+    INDEX idx_sso_test_login_session_admin (admin_principal, credentials_submitted_at),
+    INDEX idx_sso_test_login_session_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
 -- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
 -- version is reprocessed statement-by-statement against SERVER_MIGRATION_SQL_LOGS, and the
@@ -550,6 +568,70 @@ SET @announcement_type_default_ddl = (
 PREPARE announcement_type_default_stmt FROM @announcement_type_default_ddl;
 EXECUTE announcement_type_default_stmt;
 DEALLOCATE PREPARE announcement_type_default_stmt;
+
+-- Direct-child container listings (issue #22530). "Children of <fqn>" was expressed as
+-- `fqnHash LIKE '<parent>.%' AND fqnHash NOT LIKE '<parent>.%.%'`. Neither predicate is an
+-- indexable equality, so with the listing's `ORDER BY name, id LIMIT n` the optimizer prefers
+-- idx_storage_container_entity_deleted_name_id -- which already delivers that order -- and
+-- scans container rows until the page fills. A container near the root of a deep tree has few
+-- direct children, so the scan runs to completion: cost is O(containers in the deployment),
+-- not O(direct children). Measured on a 14-level, 10k-container S3 tree whose root has one
+-- direct child: 10,376 rows scanned / 90ms, rising to 50,376 rows / 169ms once unrelated
+-- containers were added -- while the answer stayed a single row.
+--
+-- parentFqnHash materialises the fqnHash prefix above the last segment, turning the listing
+-- into an index equality. Derived by stripping the final '.'-separated segment rather than a
+-- fixed 33-character suffix, so it holds regardless of hash width. VIRTUAL keeps the ALTER
+-- metadata-only (no table rebuild); the index below materialises the value.
+--
+-- Both statements are guarded so a re-run is a no-op, like the rest of this file. The
+-- prepared-statement names are unique on purpose: the runner records each statement by
+-- (version, hash of its text) and skips text it has already run, so a second block reusing
+-- `PREPARE stmt FROM @ddl; EXECUTE stmt;` would be skipped rather than executed.
+SET @container_parent_fqn_hash_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'storage_container_entity'
+        AND column_name = 'parentFqnHash'
+    ),
+    'SELECT 1',
+    'ALTER TABLE storage_container_entity ADD COLUMN parentFqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin GENERATED ALWAYS AS (CASE WHEN LOCATE(''.'', REVERSE(fqnHash)) = 0 THEN '''' ELSE LEFT(fqnHash, CHAR_LENGTH(fqnHash) - LOCATE(''.'', REVERSE(fqnHash))) END) VIRTUAL'
+  )
+);
+PREPARE container_parent_fqn_hash_column_stmt FROM @container_parent_fqn_hash_column_ddl;
+EXECUTE container_parent_fqn_hash_column_stmt;
+DEALLOCATE PREPARE container_parent_fqn_hash_column_stmt;
+
+-- (parentFqnHash, deleted) answers the filter; (name, id) supplies the listing's sort order,
+-- so the common non-deleted page needs neither a filesort nor a row lookup per candidate.
+-- Column order deviates from the table_entity/stored_procedure_entity precedent in 1.10.0,
+-- which leads with `deleted`: the container listing's `include` is tri-state, and on
+-- include=ALL there is no `deleted` predicate at all, which would strand a deleted-leading
+-- index. Leading with parentFqnHash keeps the equality usable in all three include modes.
+--
+-- No CONCURRENTLY equivalent is needed here (and MySQL has none): InnoDB builds a secondary
+-- index with ALGORITHM=INPLACE and permits concurrent DML, and the VIRTUAL column add above
+-- is metadata-only, so neither statement blocks traffic. The PostgreSQL companion has to
+-- build CONCURRENTLY and still pays an ACCESS EXCLUSIVE table rewrite for its STORED column.
+SET @container_parent_children_index_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'storage_container_entity'
+        AND index_name = 'idx_storage_container_entity_parent_children'
+    ),
+    'SELECT 1',
+    'ALTER TABLE storage_container_entity ADD INDEX idx_storage_container_entity_parent_children (parentFqnHash, deleted, name, id)'
+  )
+);
+PREPARE container_parent_children_index_stmt FROM @container_parent_children_index_ddl;
+EXECUTE container_parent_children_index_stmt;
+DEALLOCATE PREPARE container_parent_children_index_stmt;
 
 -- Announcement status is derived from startTime/endTime on every read and the ?status= filter
 -- compares the window directly. Nothing rewrote the stored value when the window opened or

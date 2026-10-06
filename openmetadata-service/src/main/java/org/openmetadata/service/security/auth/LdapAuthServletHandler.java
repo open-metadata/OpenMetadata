@@ -237,6 +237,11 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
     }
   }
 
+  @Override
+  public void close() {
+    authenticator.close();
+  }
+
   private LoginRequest parseLoginRequest(HttpServletRequest req) throws IOException {
     if ("POST".equalsIgnoreCase(req.getMethod())) {
       StringBuilder sb = new StringBuilder();

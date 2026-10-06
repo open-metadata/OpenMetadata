@@ -225,13 +225,40 @@ describe('AnnouncementBanner', () => {
     renderBanner({ onClick: jest.fn() });
 
     // The trigger is a `<button>`, whose UA `text-align: center` preflight does
-    // not reset — core gives it `[text-align:inherit]` so it follows the host
-    // instead of centring short text. This used to need a fix at this call site.
+    // not reset. Core gives it `[text-align:inherit]`, which cures that but then
+    // follows the ancestors — so the host has to state the alignment, or the
+    // title drifts to the middle wherever the host stretches.
     const trigger = screen
       .getByTestId('announcement-description')
       .closest('button');
 
     expect(trigger).toHaveClass('tw:[text-align:inherit]');
+    expect(trigger?.parentElement).toHaveClass('tw:text-start');
+  });
+
+  it('should show the expanded title in full, with no tooltip trigger', () => {
+    renderBanner({ expanded: true, onClick: jest.fn() });
+
+    const title = screen.getByTestId('announcement-title-btn');
+
+    // Expanded there is room to wrap, so the title is not truncated and needs no
+    // tooltip repeating text already on screen. No tooltip means Typography
+    // builds no trigger `<button>` — which is also what kept centring it, since
+    // a button's UA `text-align: center` beats an inherited value.
+    expect(title.closest('button')).toBeNull();
+    expect(title).not.toHaveClass('tw:truncate');
+    // Nothing clips it now, so it has to fit by wrapping — a title with no break
+    // points would otherwise push itself and the badge past the banner's edge.
+    expect(title).toHaveClass('tw:min-w-0', 'tw:break-words');
+  });
+
+  it('should still truncate the collapsed title and keep its tooltip', () => {
+    renderBanner({ onClick: jest.fn() });
+
+    const title = screen.getByTestId('announcement-title-btn');
+
+    expect(title).toHaveClass('tw:truncate');
+    expect(title.closest('button')).not.toBeNull();
   });
 
   it('should make the whole banner clickable through a separate overlay', () => {

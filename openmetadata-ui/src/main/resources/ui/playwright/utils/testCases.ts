@@ -864,7 +864,8 @@ export const performE2EExportImportFlow = async (
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     // Update display name for first test case (existing test case)
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
@@ -884,7 +885,8 @@ export const performE2EExportImportFlow = async (
     await page.keyboard.press('Enter');
 
     // First test case - add tag
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     await page
       .locator('.rdg-row')
       .nth(0)
