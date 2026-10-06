@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from sqlalchemy import types as sqltypes
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -31,6 +31,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     search_cache,
     search_table_entities,
 )
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.starrocks.lineage import (
     StarRocksLineageSource,
 )
@@ -186,6 +187,39 @@ class TestStarRocksIcebergMapping(TestCase):
         from metadata.ingestion.source.database.starrocks.metadata import RELKIND_MAP
 
         assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
+
+
+class TestStarRocksDeltaLakeDetection:
+    """`ENGINE` for an external catalog table is the catalog type, upper-cased.
+
+    Verified on StarRocks 3.2.16 against a `deltalake` external catalog:
+    `SELECT ENGINE, HEX(ENGINE) FROM <catalog>.information_schema.tables` returns
+    `DELTALAKE` / `44454C54414C414B45`.
+    """
+
+    @staticmethod
+    def _source(rows):
+        source = Mock()
+        source.connection.execute.return_value = rows
+        return source
+
+    @pytest.mark.parametrize(
+        "engine, expected",
+        [
+            ("DELTALAKE", TableType.DeltaLake),
+            # StarRocks emits upper case; anything else must fall through to the default
+            ("DeltaLake", TableType.Regular),
+            ("ICEBERG", TableType.Iceberg),
+            ("HIVE", TableType.External),
+            ("TABLE", TableType.Regular),
+        ],
+    )
+    def test_engine_decides_the_table_type(self, engine, expected):
+        source = self._source([("delta_sales", engine)])
+
+        result = StarRocksSource.query_table_names_and_types(source, "delta_schema")
+
+        assert result == [TableNameAndType(name="delta_sales", type_=expected)]
 
 
 mock_starrocks_lineage_config = {

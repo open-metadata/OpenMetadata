@@ -36,7 +36,6 @@ jest.mock('./ClampedText', () => ({
 }));
 
 jest.mock('constants/Task.constant', () => ({
-  TASK_TYPES: {},
   TASK_ENTITY_TYPES: {
     RequestApproval: 'message.request-approval-message',
     GlossaryApproval: 'message.request-approval-message',

@@ -123,11 +123,38 @@ export const getIncidentTitle = (
     .trim();
 };
 
+/**
+ * The not-run banner's line. It asks for a pipeline only when the test is
+ * known to have no scheduled run; while the schedule is unknown it says no
+ * more than that the test has not run.
+ *
+ * Like getNextRunLabel, it compares the clock at render with a next run that
+ * is fetched once: a page left open past that run reads it as unscheduled on
+ * its next render, until the page is loaded again.
+ */
+export const getNotRunMessageKey = (
+  nextRunTimestamp: number | null | undefined,
+  now = Date.now()
+) => {
+  if (isUndefined(nextRunTimestamp)) {
+    return 'message.test-case-has-not-run';
+  }
+
+  return nextRunTimestamp && nextRunTimestamp > now
+    ? 'message.test-case-first-run-scheduled'
+    : 'message.test-case-not-run-yet';
+};
+
 export const getNextRunLabel = (
-  nextRunTimestamp: number | undefined,
+  nextRunTimestamp: number | null | undefined,
   inLabel: string,
   notScheduledLabel: string
 ) => {
+  // Unknown while the schedule loads or after it failed to, which is not the
+  // same as unscheduled.
+  if (isUndefined(nextRunTimestamp)) {
+    return NO_VALUE;
+  }
   if (!nextRunTimestamp) {
     return notScheduledLabel;
   }

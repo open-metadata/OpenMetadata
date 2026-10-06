@@ -73,6 +73,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.SEARCH_INDEX,
           Entity.API_ENDPOINT,
           Entity.API_COLLECTION,
+          Entity.FILE,
+          Entity.DIRECTORY,
+          Entity.SPREADSHEET,
+          Entity.WORKSHEET,
           Entity.DATABASE_SERVICE,
           Entity.DASHBOARD_SERVICE,
           Entity.MESSAGING_SERVICE,
@@ -82,6 +86,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.SEARCH_SERVICE,
           Entity.API_SERVICE,
           Entity.METADATA_SERVICE,
+          Entity.DRIVE_SERVICE,
+          Entity.LLM_SERVICE,
+          Entity.MCP_SERVICE,
+          Entity.SECURITY_SERVICE,
           Entity.DOMAIN,
           Entity.DATA_PRODUCT,
           Entity.GLOSSARY,
@@ -103,7 +111,11 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.PAGE,
           Entity.AI_APPLICATION,
           Entity.LLM_MODEL,
-          Entity.MCP_SERVER);
+          Entity.MCP_SERVER,
+          Entity.PROMPT_TEMPLATE,
+          Entity.AI_GOVERNANCE_POLICY,
+          Entity.AI_GOVERNANCE_FRAMEWORK,
+          Entity.AI_FRAMEWORK_CONTROL);
 
   private static final Registry<Function<ChangeEvent, Map<String, Object>>> handlerRegistry =
       new Registry<>(WorkflowEventConsumer::defaultHandler);

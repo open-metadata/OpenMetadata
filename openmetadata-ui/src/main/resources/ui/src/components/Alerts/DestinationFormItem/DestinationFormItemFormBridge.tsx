@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import DestinationFormItem from './DestinationFormItem.component';
+import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from './DestinationFormItem.constants';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
 
 export type DestinationFormFields = Pick<
@@ -131,8 +132,10 @@ function DestinationFormItemFormBridge({
 
     if (isDestinationMissing) {
       // Controlled bridge resets can clear child errors before the parent
-      // validates, so the submit boundary owns the final visible error.
-      setError('destinations', {
+      // validates, so the submit boundary owns the final visible error. The
+      // `root.*` namespace keeps this manual array-level error separate from
+      // nested `destinations.*` field errors so row add/remove cannot wipe them.
+      setError(DESTINATIONS_MIN_COUNT_ERROR_PATH, {
         message: minimumDestinationError,
         type: 'manual',
       });
