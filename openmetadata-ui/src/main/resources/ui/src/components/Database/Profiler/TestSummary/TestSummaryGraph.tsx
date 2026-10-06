@@ -75,6 +75,8 @@ type PlottedPoint = TestCaseChartDataType['data'][number];
 // The tooltip is the app's own React component, so ECharts draws none.
 const MULTI_SERIES_EMPHASIS = { emphasis: { focus: 'series' as const } };
 const TOOLTIP_OFF = { show: false };
+// ECharts centres its legend; the status key under it starts at the edge.
+const LEGEND_AT_EDGE = { legend: { left: 0 } };
 
 // Aborted is drawn as a ring, matching the status key: a run that produced no
 // value and one that has not run yet must differ by shape, not only by colour.
@@ -630,6 +632,7 @@ function TestSummaryGraph({
           data={plottedData}
           height={minHeight ?? 400}
           legend={legend}
+          option={LEGEND_AT_EDGE}
           pointAriaLabel={pointAriaLabel}
           referenceLines={referenceLines}
           series={series}

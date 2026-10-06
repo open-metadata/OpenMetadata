@@ -272,6 +272,13 @@ describe('TestSummaryGraph', () => {
     expect(getChartProps().legend).toEqual({ show: true });
   });
 
+  // Centred, it sat out of line with the status key under it.
+  it('should start the series legend at the chart edge, above the status key', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(getChartProps().option).toEqual({ legend: { left: 0 } });
+  });
+
   it('should hide the legend for a single series', () => {
     render(
       <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
