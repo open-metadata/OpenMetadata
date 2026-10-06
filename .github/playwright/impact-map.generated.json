@@ -53,6 +53,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/EntityDataConsumer.spec.ts",
         "playwright/e2e/Pages/EntityDataSteward.spec.ts",
