@@ -400,20 +400,6 @@
           "target": "content"
         },
         {
-          "name": "AuAcnRecognizer",
-          "displayName": "Au Acn Recognizer",
-          "description": "Recognizes Australian Company Number (\"ACN\").<br/><br/>The Australian Company Number (ACN) is a nine digit number with the last digit being a check digit calculated using a modified modulus 10 calculation.<br/><br/>This recognizer identifies ACN using regex, context words, and checksum.<br/><br/>Reference: https://asic.gov.au/",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "predefined",
-            "name": "AuAcnRecognizer",
-            "supportedLanguage": "en"
-          },
-          "confidenceThreshold": 0.6,
-          "target": "content"
-        },
-        {
           "name": "AuTfnRecognizer",
           "displayName": "Au Tfn Recognizer",
           "description": "Recognizes Australian Tax File Numbers (\"TFN\").<br/><br/>The tax file number (TFN) is a unique identifier issued by the Australian Taxation Office to each taxpaying entity \\u2014 an individual, company,<br/><br/>superannuation fund, partnership, or trust.<br/><br/>The TFN consists of a nine digit number, usually presented in the format NNN NNN NNN.<br/><br/>TFN includes a check digit for detecting erroneous number based on simple modulo 11.<br/><br/>This recognizer uses regex, context words,<br/><br/>and checksum to identify TFN.<br/><br/>Reference: https://www.ato.gov.au/individuals/tax-file-number/",

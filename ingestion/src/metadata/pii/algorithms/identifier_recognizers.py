@@ -199,7 +199,7 @@ class ValidatedSgFinRecognizer(_IdentifierRecognizer, SgFinRecognizer):
     _predefined_name = "SgFinRecognizer"
     PATTERNS: ClassVar[list[Pattern]] = [Pattern("NRIC/FIN", r"(?<![\w-])[SsTtFfGgMm][0-9]{7}[A-Za-z](?![\w-])", 0.5)]
 
-    def validate_result(self, pattern_text: str) -> bool | None:
+    def validate_result(self, pattern_text: str) -> bool:
         value = pattern_text.upper()
         if not re.fullmatch(r"[STFGM][0-9]{7}[A-Z]", value):
             return False
@@ -213,4 +213,4 @@ class ValidatedSgFinRecognizer(_IdentifierRecognizer, SgFinRecognizer):
             "G": "XWUTRQPNMLK",
             "M": "XWUTRQPNJLK",
         }[value[0]]
-        return None if value[-1] == table[(weighted_sum + offset) % 11] else False
+        return value[-1] == table[(weighted_sum + offset) % 11]

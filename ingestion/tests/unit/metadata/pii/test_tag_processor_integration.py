@@ -730,7 +730,6 @@ def shipped_pii_tags() -> tuple[Classification, list[Tag]]:
         (ClassificationLanguage.es, "nie", ["x1234567l"], "ES_NIE"),
         (ClassificationLanguage.en, "uen", ["t15lp0010d"], "SG_UEN"),
         (ClassificationLanguage.en, "abn", ["51-824-753-556"], "AU_ABN"),
-        (ClassificationLanguage.en, "acn", ["004-085-616"], "AU_ACN"),
         (ClassificationLanguage.it, "partita_iva", ["IT 12345678903"], "IT_VAT_CODE"),
         (ClassificationLanguage.en, "sg_nric", ["S1234567D", "S1234567E"], "SG_NRIC_FIN"),
     ],
@@ -765,12 +764,75 @@ def test_shipped_pii_recognizers_preserve_entity_evidence_and_final_tag(
     assert [label.tagFQN.root for label in labels] == ["PII.Sensitive"]
 
 
+def test_shipped_acn_recognizer_retains_evidence_without_default_pii_tag(
+    shipped_pii_tags: tuple[Classification, list[Tag]],
+):
+    classification, tags = shipped_pii_tags
+    column = Column(name="acn", fullyQualifiedName="database.schema.table.acn", dataType=DataType.VARCHAR)
+    sensitive = next(tag for tag in tags if tag.name.root == "Sensitive").model_copy(deep=True)
+    assert all(rec.name.root != "AuAcnRecognizer" for rec in sensitive.recognizers)
+    legacy_default = Recognizer.model_validate(
+        {
+            "name": "AuAcnRecognizer",
+            "enabled": True,
+            "isSystemDefault": True,
+            "target": "content",
+            "confidenceThreshold": 0.6,
+            "recognizerConfig": {"type": "predefined", "name": "AuAcnRecognizer", "supportedLanguage": "en"},
+        }
+    )
+    sensitive.recognizers.append(legacy_default)
+    tags = [sensitive if tag.name.root == "Sensitive" else tag for tag in tags]
+    analysis = TagAnalyzer(
+        sensitive, column, load_nlp_engine(classification_language=ClassificationLanguage.en), ClassificationLanguage.en
+    ).analyze(["004-085-616"])
+    assert all(result.entity_type != "AU_ACN" for result in analysis.recognizer_results)
+
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
+    processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+    assert processor.create_column_tag_labels(column, ["004-085-616"]) == []
+
+    custom = legacy_default.model_copy(update={"isSystemDefault": False})
+    sensitive.recognizers = [custom]
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, ["004-085-616"])] == [
+        "PII.Sensitive"
+    ]
+
+    configured_default = legacy_default.model_copy(deep=True)
+    configured_default.recognizerConfig.root.context = ["acn"]
+    sensitive.recognizers = [configured_default]
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, ["004-085-616"])] == [
+        "PII.Sensitive"
+    ]
+
+    operations = ClassificationFactory.create(
+        fqn="Operations", mutuallyExclusive=False, autoClassificationConfig__enabled=True
+    )
+    identifier = TagFactory.create(tag_name="Identifier", tag_classification=operations, recognizers=[legacy_default])
+    general_processor = TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((operations, [identifier])),
+        classification_filter=["Operations"],
+    )
+    assert [label.tagFQN.root for label in general_processor.create_column_tag_labels(column, ["004-085-616"])] == [
+        "Operations.Identifier"
+    ]
+    assert general_processor.create_column_tag_labels(column, ["004-085-617"]) == []
+
+
 @pytest.mark.parametrize(
     "language,column_name,valid,wrong,entity,recognizer_name",
     [
         (ClassificationLanguage.es, "invoice_ref", "12345678Z", "12345678A", "ES_NIF", "EsNifRecognizer"),
         (ClassificationLanguage.es, "batch_ref", "X1234567L", "X1234567A", "ES_NIE", "EsNieRecognizer"),
-        (ClassificationLanguage.en, "order_ref", "004-085-616", "004-085-617", "AU_ACN", "AuAcnRecognizer"),
         (
             ClassificationLanguage.it,
             "supplier_reference",
@@ -830,8 +892,8 @@ def test_invalid_fin_cannot_be_promoted_by_shipped_context(
     assert all(result.entity_type != "SG_NRIC_FIN" for result in analysis.recognizer_results)
 
 
-@pytest.mark.parametrize("column_name", ["sku", "ticket_id"])
-def test_valid_fin_in_operational_column_does_not_receive_sensitive_tag(
+@pytest.mark.parametrize("column_name", ["sku", "ticket_id", "sg_nric"])
+def test_valid_fin_in_any_column_receives_sensitive_tag(
     shipped_pii_tags: tuple[Classification, list[Tag]], column_name: str
 ):
     classification, tags = shipped_pii_tags
@@ -842,7 +904,7 @@ def test_valid_fin_in_operational_column_does_not_receive_sensitive_tag(
     analysis = TagAnalyzer(
         sensitive, column, load_nlp_engine(classification_language=ClassificationLanguage.en), ClassificationLanguage.en
     ).analyze(["F2601815M"])
-    assert all(result.entity_type != "SG_NRIC_FIN" for result in analysis.recognizer_results)
+    assert any(result.entity_type == "SG_NRIC_FIN" and result.score == 1.0 for result in analysis.recognizer_results)
 
     config = Mock(spec=OpenMetadataWorkflowConfig)
     config.source = Mock(spec=SourceConfig)
@@ -853,9 +915,11 @@ def test_valid_fin_in_operational_column_does_not_receive_sensitive_tag(
         metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
         classification_manager=FakeClassificationManager((classification, tags)),
     )
-    assert processor.create_column_tag_labels(column, ["F2601815M"]) == []
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, ["F2601815M"])] == [
+        "PII.Sensitive"
+    ]
     sample = ["F2601815M", *(f"F{number:07d}Z" for number in range(39))]
-    assert processor.create_column_tag_labels(column, sample) == []
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, sample)] == ["PII.Sensitive"]
 
 
 def test_shipped_competitors_keep_email_and_valid_fin_in_mixed_content(
@@ -905,7 +969,9 @@ def test_identifier_adapter_works_in_non_pii_classification():
     neutral_column = Column(
         name="reference", fullyQualifiedName="database.schema.table.reference", dataType=DataType.VARCHAR
     )
-    assert processor.create_column_tag_labels(neutral_column, ["S1234567D"]) == []
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(neutral_column, ["S1234567D"])] == [
+        "Operations.Identifier"
+    ]
     column = Column(name="sg_nric", fullyQualifiedName="database.schema.table.sg_nric", dataType=DataType.VARCHAR)
     assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, ["S1234567D"])] == [
         "Operations.Identifier"

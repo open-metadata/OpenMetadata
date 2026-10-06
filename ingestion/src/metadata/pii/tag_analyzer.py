@@ -19,8 +19,8 @@ from metadata.generated.schema.type import recognizer, tagLabelRecognizerMetadat
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
-from metadata.generated.schema.type.predefinedRecognizer import Name
-from metadata.generated.schema.type.recognizer import RecognizerException
+from metadata.generated.schema.type.predefinedRecognizer import Name, PredefinedRecognizer
+from metadata.generated.schema.type.recognizer import Recognizer, RecognizerException
 from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_patches import (
@@ -70,6 +70,23 @@ def _normalized_match(evidence: _RecognitionEvidence) -> str:
     if not 0 <= result.start < result.end <= len(evidence.value):
         return ""
     return " ".join(evidence.value[result.start : result.end].casefold().split())
+
+
+def _is_legacy_default_acn_sensitive(tag: Tag, entry: Recognizer) -> bool:
+    """Retire the untouched stored PII default while honoring configured ACN recognizers."""
+    config = entry.recognizerConfig.root
+    return (
+        tag.fullyQualifiedName == "PII.Sensitive"
+        and entry.isSystemDefault is True
+        and entry.name.root == "AuAcnRecognizer"
+        and entry.confidenceThreshold == 0.6
+        and entry.target is recognizer.Target.content
+        and isinstance(config, PredefinedRecognizer)
+        and config.name is Name.AuAcnRecognizer
+        and config.supportedLanguage is ClassificationLanguage.en
+        and not config.context
+        and not config.supportedEntities
+    )
 
 
 def _corroborated_content_results(evidence: Sequence[_RecognitionEvidence]) -> list[RecognizerResult]:
@@ -163,6 +180,7 @@ class TagAnalyzer:
                 recognizer.target is not target
                 or recognizer.enabled is False
                 or self.should_skip_recognizer(recognizer.exceptionList or [])
+                or _is_legacy_default_acn_sensitive(self.tag, recognizer)
             ):
                 continue
 
