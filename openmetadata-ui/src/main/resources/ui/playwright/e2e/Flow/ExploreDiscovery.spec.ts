@@ -20,7 +20,9 @@ import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { getJsonTreeObject } from '../../utils/exploreDiscovery';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -322,9 +324,11 @@ test.describe('Explore Assets Discovery', () => {
     const ownerSearchText = user.responseData.displayName.toLowerCase();
     await page.click('[data-testid="search-dropdown-Owners"]');
 
-    const searchResOwner = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*deleted=true*`
-    );
+    const searchResOwner = waitForAggregation(page, {
+      deleted: true,
+      field: 'ownerDisplayName',
+      value: ownerSearchText,
+    });
 
     await page.fill('[data-testid="search-input"]', ownerSearchText);
     await searchResOwner;
@@ -335,26 +339,35 @@ test.describe('Explore Assets Discovery', () => {
       page.getByTestId('drop-down-menu').getByTestId(ownerSearchText)
     ).toBeAttached();
 
+    // Arm before applying: clicking Update fires the query
+    const fetchWithOwner = page.waitForResponse(
+      `/api/v1/search/query?*deleted=true*ownerDisplayName*${ownerSearchText}*`
+    );
     await page
       .getByTestId('drop-down-menu')
       .getByTestId(ownerSearchText)
       .click();
-
-    const fetchWithOwner = page.waitForResponse(
-      `/api/v1/search/query?*deleted=true*ownerDisplayName*${ownerSearchText}*`
-    );
-    await page.getByTestId('update-btn').click();
+    await clickUpdateButtonIfVisible(page);
     await fetchWithOwner;
 
     await waitForAllLoadersToDisappear(page);
+
+    // Update closes the dropdown; wait for it to fully detach before opening the
+    // next one so the trigger click can't land mid-close and get swallowed
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(ownerSearchText)
+      .waitFor({ state: 'detached' });
 
     // The domain should be visible in the domains filter when the deleted switch is on
     const domainSearchText = domain.responseData.displayName.toLowerCase();
     await page.click('[data-testid="search-dropdown-Domains"]');
 
-    const searchResDomain = page.waitForResponse(
-      `/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*deleted=true*`
-    );
+    const searchResDomain = waitForAggregation(page, {
+      deleted: true,
+      field: 'domains.displayName.keyword',
+      value: domainSearchText,
+    });
 
     await page.fill('[data-testid="search-input"]', domainSearchText);
     await searchResDomain;
@@ -365,25 +378,32 @@ test.describe('Explore Assets Discovery', () => {
       page.getByTestId('drop-down-menu').getByTestId(domainSearchText)
     ).toBeAttached();
 
-    await page
-      .getByTestId('drop-down-menu')
-      .getByTestId(domainSearchText)
-      .click();
-
+    // Arm before applying: clicking Update fires the query
     const fetchWithDomain = page.waitForResponse(
       `/api/v1/search/query?*deleted=true*domains.displayName.keyword*${getEncodedFqn(
         domainSearchText,
         true
       )}*`
     );
-    await page.getByTestId('update-btn').click();
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(domainSearchText)
+      .click();
+    await clickUpdateButtonIfVisible(page);
     await fetchWithDomain;
 
     await waitForAllLoadersToDisappear(page);
 
+    // Close the Domains dropdown before opening the Data Assets one
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(domainSearchText)
+      .waitFor({ state: 'detached' });
+
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
     await page.click('[data-testid="search-dropdown-Data Assets"]');
+    await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
     await expect(
       page.getByTestId('drop-down-menu').getByTestId('table')
