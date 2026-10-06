@@ -32,6 +32,13 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import RunTestCaseButton from './RunTestCaseButton';
 
 const mockUseEntityPermissions = jest.fn();
+const mockUseParams = jest.fn().mockReturnValue({});
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: () => mockUseParams(),
+}));
+
 const mockResourcePermissions: {
   ingestionPipeline?: Partial<OperationPermission>;
 } = {};
@@ -126,6 +133,7 @@ const setPipelinePermission = (
 describe('RunTestCaseButton', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseParams.mockReturnValue({});
     delete mockResourcePermissions.ingestionPipeline;
   });
 
@@ -182,6 +190,19 @@ describe('RunTestCaseButton', () => {
     expect(
       screen.queryByTestId('run-test-case-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('is not offered on the version page, without reading the pipelines', () => {
+    mockUseParams.mockReturnValue({ version: '0.2' });
+    setPipelines([pipeline()]);
+    setPipelinePermission(true);
+
+    renderWithQueryClient(<RunTestCaseButton testCase={testCase} />);
+
+    expect(
+      screen.queryByTestId('run-test-case-button')
+    ).not.toBeInTheDocument();
+    expect(getIngestionPipelines).not.toHaveBeenCalled();
   });
 
   it('disables the button when there is no runnable pipeline but the user may trigger pipelines', async () => {
