@@ -116,17 +116,23 @@ const isPointerInRect = ({ clientX, clientY }: MouseEvent, rect: DOMRect) =>
   clientY >= rect.top &&
   clientY <= rect.bottom;
 
+// react-grid-layout applies the layout it hands to onDragStop, so taking a
+// widget out of it keeps the widget out of the grid it was dragged from.
+const removeFromLayout = (layout: Layout[], widgetId: string) =>
+  layout.splice(
+    layout.findIndex(({ i }) => i === widgetId),
+    1
+  );
+
 export type CustomizeTabWidgetProps = WidgetCommonProps;
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 
-interface CrossPanelDrop {
-  widget: WidgetConfig;
-  row: number;
-  // Left (0) or right (0.5) half of the panel, for a drop into it.
-  x: number;
-  intoLeftPanel: boolean;
-}
+type CrossPanelDrop =
+  // Into the left panel, in its left (0) or right (0.5) half.
+  | { kind: 'in'; widget: WidgetConfig; row: number; x: number }
+  // Out of the left panel, into the column beside it.
+  | { kind: 'out'; widget: WidgetConfig; row: number };
 
 export const CustomizeTabWidget = () => {
   const { currentPage, currentPageType, updateCurrentPage } =
@@ -151,6 +157,8 @@ export const CustomizeTabWidget = () => {
   // re-renders, with the dropped widget already removed from its grid. A widget
   // dropped across the left panel edge is handed to that call so it commits in
   // the same update, instead of the call overwriting it with the stale layout.
+  // Both handlers take it before anything else, so a call that does not apply
+  // it cannot leave it behind for a later, unrelated layout change.
   const crossPanelDropRef = useRef<CrossPanelDrop | null>(null);
 
   const tabLayouts = useMemo(() => {
@@ -278,6 +286,8 @@ export const CustomizeTabWidget = () => {
 
   const handleSideLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
+      const drop = crossPanelDropRef.current;
+      crossPanelDropRef.current = null;
       if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
         const newLayout = cloneDeep(tabLayouts);
         const sidePanelLayout = newLayout.find((layout) =>
@@ -290,26 +300,21 @@ export const CustomizeTabWidget = () => {
           );
         }
 
-        const drop = crossPanelDropRef.current;
-        const isDropOutOfPanel = drop && !drop.intoLeftPanel;
-        if (isDropOutOfPanel) {
-          crossPanelDropRef.current = null;
-        }
-
         updateCurrentPage({
           ...currentPage,
           tabs: items.map((item) =>
             item.id === activeKey
               ? {
                   ...item,
-                  layout: isDropOutOfPanel
-                    ? placeWidgetBesideLeftPanel(
-                        newLayout,
-                        drop.widget,
-                        drop.row,
-                        TAB_GRID_MAX_COLUMNS
-                      )
-                    : newLayout,
+                  layout:
+                    drop?.kind === 'out'
+                      ? placeWidgetBesideLeftPanel(
+                          newLayout,
+                          drop.widget,
+                          drop.row,
+                          TAB_GRID_MAX_COLUMNS
+                        )
+                      : newLayout,
                 }
               : item
           ),
@@ -402,14 +407,11 @@ export const CustomizeTabWidget = () => {
       return;
     }
 
-    layout.splice(
-      layout.findIndex(({ i }) => i === newItem.i),
-      1
-    );
+    removeFromLayout(layout, newItem.i);
     crossPanelDropRef.current = {
+      kind: 'out',
       widget,
-      x: 0,
-      intoLeftPanel: false,
+      // Unlike the panel's grid, the tab grid has no padding to take off.
       row: leftPanelWidget.y + getGridRowAt(event.clientY - panelRect.top),
     };
   };
@@ -484,16 +486,13 @@ export const CustomizeTabWidget = () => {
    */
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
+      const drop = crossPanelDropRef.current;
+      crossPanelDropRef.current = null;
       if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
         const layout = mergeGridLayout(
           getUniqueFilteredLayout(updatedLayout),
           tabLayouts
         );
-        const drop = crossPanelDropRef.current;
-        const isDropIntoPanel = drop?.intoLeftPanel;
-        if (isDropIntoPanel) {
-          crossPanelDropRef.current = null;
-        }
 
         updateCurrentPage({
           ...currentPage,
@@ -501,15 +500,16 @@ export const CustomizeTabWidget = () => {
             item.id === activeKey
               ? {
                   ...item,
-                  layout: isDropIntoPanel
-                    ? placeWidgetInLeftPanel(
-                        layout,
-                        drop.widget,
-                        drop.row,
-                        drop.x,
-                        TAB_GRID_MAX_COLUMNS
-                      )
-                    : layout,
+                  layout:
+                    drop?.kind === 'in'
+                      ? placeWidgetInLeftPanel(
+                          layout,
+                          drop.widget,
+                          drop.row,
+                          drop.x,
+                          TAB_GRID_MAX_COLUMNS
+                        )
+                      : layout,
                 }
               : item
           ),
@@ -544,13 +544,10 @@ export const CustomizeTabWidget = () => {
       return;
     }
 
-    layout.splice(
-      layout.findIndex(({ i }) => i === newItem.i),
-      1
-    );
+    removeFromLayout(layout, newItem.i);
     crossPanelDropRef.current = {
+      kind: 'in',
       widget,
-      intoLeftPanel: true,
       // The panel's grid starts one margin of padding below its top.
       row: getGridRowAt(event.clientY - panelRect.top - GRID_VERTICAL_MARGIN),
       x: event.clientX < panelRect.left + panelRect.width / 2 ? 0 : 0.5,
