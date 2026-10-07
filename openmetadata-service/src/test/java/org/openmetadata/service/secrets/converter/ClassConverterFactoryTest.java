@@ -2,7 +2,12 @@ package org.openmetadata.service.secrets.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -12,6 +17,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
@@ -76,5 +82,40 @@ public class ClassConverterFactoryTest {
     ClassConverterFactory.getConverter(AirflowConnection.class);
     ClassConverterFactory.getConverter(BigQueryConnection.class);
     assertEquals(originalSize, ClassConverterFactory.getConverterMap().size());
+  }
+
+  @Test
+  void testMergeDisjointReturnsTheUnion() {
+    Map<Class<?>, ClassConverter> merged =
+        ClassConverterFactory.mergeDisjoint(
+            Map.of(MysqlConnection.class, new MysqlConnectionClassConverter()),
+            Map.of(PostgresConnection.class, new PostgresConnectionClassConverter()));
+
+    assertEquals(2, merged.size());
+    assertInstanceOf(MysqlConnectionClassConverter.class, merged.get(MysqlConnection.class));
+    assertInstanceOf(PostgresConnectionClassConverter.class, merged.get(PostgresConnection.class));
+  }
+
+  @Test
+  void testMergeDisjointRejectsAClassClaimedTwice() {
+    // The NatsConnection case: a dedicated converter that also types authType, and a
+    // generic one that only types tlsConfig. Merging used to let the generic one win in
+    // silence, leaving the auth token unencrypted and unmasked.
+    Map<Class<?>, ClassConverter> dedicated =
+        Map.of(NatsConnection.class, new NatsConnectionClassConverter());
+    Map<Class<?>, ClassConverter> nested =
+        Map.of(
+            NatsConnection.class,
+            new NestedConfigClassConverter(
+                NatsConnection.class, Map.of("tlsConfig", List.of(ValidateSSLClientConfig.class))));
+
+    IllegalStateException thrown =
+        assertThrows(
+            IllegalStateException.class,
+            () -> ClassConverterFactory.mergeDisjoint(dedicated, nested));
+
+    assertTrue(
+        thrown.getMessage().contains(NatsConnection.class.getName()),
+        "the message has to name the class so the duplicate can be found: " + thrown.getMessage());
   }
 }

@@ -286,8 +286,8 @@ public final class ClassConverterFactory {
                       "sslConfig", List.of(ValidateSSLClientConfig.class)))));
 
   static {
-    Map<Class<?>, ClassConverter> converters =
-        new HashMap<>(
+    converterMap =
+        mergeDisjoint(
             Map.ofEntries(
                 Map.entry(AirbyteConnection.class, new AirbyteConnectionClassConverter()),
                 Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
@@ -347,19 +347,30 @@ public final class ClassConverterFactory {
                 Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
                 Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
                 Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
-                Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter())));
-    // A key in both maps used to be downgraded here in silence: the generic entry won
-    // and whatever the dedicated converter did beyond re-typing properties was dropped.
-    // That is how NatsConnection lost its authType conversion, storing a token in the
-    // clear, so a duplicate now fails at class load instead -- in CI, not in a release.
-    NESTED_CONFIG_CONVERTERS.forEach(
+                Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter())),
+            NESTED_CONFIG_CONVERTERS);
+  }
+
+  /**
+   * The union of two converter registries, which must not both claim the same class.
+   *
+   * <p>Merging the nested registry over the dedicated one used to let a generic entry win in
+   * silence, dropping whatever the dedicated converter did beyond re-typing properties. That is how
+   * {@code NatsConnection} lost its {@code authType} conversion and persisted a token in the clear,
+   * so a class claimed twice fails here instead. The caller is a static initializer that every test
+   * touching this factory triggers, so the failure lands in CI rather than in a release.
+   */
+  static Map<Class<?>, ClassConverter> mergeDisjoint(
+      Map<Class<?>, ClassConverter> dedicated, Map<Class<?>, ClassConverter> nested) {
+    Map<Class<?>, ClassConverter> merged = new HashMap<>(dedicated);
+    nested.forEach(
         (clazz, converter) -> {
-          if (converters.putIfAbsent(clazz, converter) != null) {
+          if (merged.putIfAbsent(clazz, converter) != null) {
             throw new IllegalStateException(
                 "Duplicate ClassConverter registration for " + clazz.getName());
           }
         });
-    converterMap = Map.copyOf(converters);
+    return Map.copyOf(merged);
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
