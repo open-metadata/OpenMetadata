@@ -148,10 +148,7 @@ class SqlLineageTest(TestCase):
         )
 
         # Then: only (region→region) and (amount→total) — nb→* has no column match and is skipped
-        pairs = {
-            (c.fromColumns[0].root.split(".")[-1], c.toColumn.root.split(".")[-1])
-            for c in col_lineage
-        }
+        pairs = {(c.fromColumns[0].root.split(".")[-1], c.toColumn.root.split(".")[-1]) for c in col_lineage}
         self.assertIn(("region", "region"), pairs)
         self.assertIn(("amount", "total"), pairs)
         # SELECT * expansion must NOT have fired — target only has 3 columns and
@@ -168,7 +165,7 @@ class SqlLineageTest(TestCase):
         column_lineage_map = {
             "testdb.public.target": {
                 "testdb.public.sales": [
-                    ("nb", "*"),     # COUNT(*) — first element, triggers old bug
+                    ("nb", "*"),  # COUNT(*) — first element, triggers old bug
                     ("region", "region"),
                     ("total", "amount"),
                 ]
@@ -223,8 +220,8 @@ class SqlLineageTest(TestCase):
         column_lineage_map = {
             "testdb.public.target": {
                 "testdb.public.sales": [
-                    ("name_upper", "name"),   # SELECT upper(name) AS name_upper
-                    ("*", "*"),               # SELECT *
+                    ("name_upper", "name"),  # SELECT upper(name) AS name_upper
+                    ("*", "*"),  # SELECT *
                 ]
             }
         }
@@ -255,10 +252,7 @@ class SqlLineageTest(TestCase):
             column_lineage_map=column_lineage_map,
         )
 
-        pairs = {
-            (c.fromColumns[0].root.split(".")[-1], c.toColumn.root.split(".")[-1])
-            for c in col_lineage
-        }
+        pairs = {(c.fromColumns[0].root.split(".")[-1], c.toColumn.root.split(".")[-1]) for c in col_lineage}
         # Explicit non-wildcard pair must be present
         self.assertIn(("name", "name_upper"), pairs)
         # Wildcard expansion must also be present

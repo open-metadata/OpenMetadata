@@ -668,20 +668,16 @@ def get_column_lineage(
         List[ColumnLineage]
     """
     column_lineage = []
-    if column_lineage_map.get(to_table_raw_name) and column_lineage_map.get(to_table_raw_name).get(from_table_raw_name):
-        # Select all: only when a ("*", "*") wildcard pair is present.
-        # A pair like ("nb", "*") from COUNT(*) AS nb must NOT trigger this path.
-        # Preserve any explicit non-wildcard pairs (e.g. from SELECT upper(name) AS x, *).
-        if ("*", "*") in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name):
-            pairs = column_lineage_map[to_table_raw_name][from_table_raw_name]
+    pairs = column_lineage_map.get(to_table_raw_name, {}).get(from_table_raw_name, [])
+    if pairs:
+        # COUNT(*) yields ("alias", "*"), which must not expand source columns.
+        if ("*", "*") in pairs:
             explicit = [p for p in pairs if p != ("*", "*")]
             expanded = [(c.name.root, c.name.root) for c in from_entity.columns]
-            column_lineage_map[to_table_raw_name][from_table_raw_name] = list(
-                dict.fromkeys(explicit + expanded)
-            )
+            pairs = list(dict.fromkeys(explicit + expanded))
+            column_lineage_map[to_table_raw_name][from_table_raw_name] = pairs
 
-        # Other cases
-        for to_col, from_col in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name):
+        for to_col, from_col in pairs:
             to_col_fqn = get_column_fqn(to_entity, to_col)
             from_col_fqn = get_column_fqn(from_entity, from_col)
             if to_col_fqn and from_col_fqn:
