@@ -15,11 +15,13 @@ import { expect } from '@playwright/test';
 import { escapeRegExp, isUndefined } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { ignoreClosedTarget } from '../../../support/fixtures/serverLoad';
 import { performAdminLogin } from '../../../utils/admin';
 import { selectOptionWithRetry } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
+  expectRunTestCaseDisabledWithReason,
   openTestCaseDetailsPage,
   verifyTestCaseLastRunBanner,
 } from '../../../utils/testCases';
@@ -875,6 +877,170 @@ test.describe(
             '[data-testid^="test-summary-point-"][data-status="Aborted"]'
           )
       ).toHaveCount(2);
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Missing and failed results',
+  { tag: ['@Observability'] },
+  () => {
+    let statesTable: TableClass;
+    let neverRunFqn: string;
+    let ranFqn: string;
+
+    const serverError = {
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 500, message: 'Internal Server Error' }),
+    };
+    const isResultsList = (url: URL) =>
+      url.pathname.includes('/dataQuality/testCases/testCaseResults/') &&
+      url.searchParams.has('startTs');
+
+    test.beforeAll(
+      'Create a scheduled test that never ran, and one with a failed run',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        statesTable = new TableClass();
+        await statesTable.create(apiContext);
+        // An hourly suite pipeline, so the test that never ran has a next run.
+        await statesTable.createTestSuiteAndPipelines(apiContext);
+
+        const rowCountTest = {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        };
+        const neverRun = await statesTable.createTestCase(
+          apiContext,
+          rowCountTest
+        );
+        neverRunFqn = neverRun.fullyQualifiedName as string;
+
+        const ran = await statesTable.createTestCase(apiContext, rowCountTest);
+        ranFqn = ran.fullyQualifiedName as string;
+        await statesTable.addTestCaseResult(apiContext, ranFqn, {
+          result: 'Found rowCount=110 vs. the expected 10000',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '110' }],
+          timestamp: getCurrentMillis(),
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await statesTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('says a test that has never run has no runs yet, and that its scheduled run brings them', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, neverRunFqn);
+
+      await test.step('The result history has no tiles or run card', async () => {
+        const history = page.getByTestId('test-summary-container');
+
+        await expect(
+          history.getByTestId('test-summary-never-run')
+        ).toContainText('No runs recorded yet');
+        await expect(history.getByTestId('run-summary-tiles')).toHaveCount(0);
+        await expect(history.getByTestId('run-details-card')).toHaveCount(0);
+      });
+
+      await test.step('The banner asks for no pipeline: one is scheduled', async () => {
+        const banner = page.getByTestId(
+          'test-case-last-run-banner-not-run-yet'
+        );
+
+        await expect(banner).toContainText(
+          'This test has not run yet. Results will appear after its next scheduled run.'
+        );
+        await expect(banner.getByTestId('test-case-next-run')).toContainText(
+          'Next · in '
+        );
+      });
+    });
+
+    test('shows a failed results request as an error, and loads the run on retry', async ({
+      page,
+    }) => {
+      // Every results read fails until Retry, however many the page makes
+      // (a dev build mounts its effects twice).
+      let failResults = true;
+      await page.route(isResultsList, (route) =>
+        ignoreClosedTarget(route, () =>
+          failResults ? route.fulfill(serverError) : route.continue()
+        )
+      );
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, ranFqn);
+
+      const history = page.getByTestId('test-summary-container');
+      const loadError = history.getByTestId('test-summary-load-error');
+
+      await test.step('The failure reads as one, not as an empty range', async () => {
+        await expect(loadError).toContainText(
+          'Error while fetching Test Case Results'
+        );
+        await expect(history.getByTestId('run-summary-tiles')).toHaveCount(0);
+      });
+
+      await test.step('Retry loads the run in place', async () => {
+        const resultsResponse = page.waitForResponse(
+          (response) =>
+            isResultsList(new URL(response.url())) &&
+            response.request().method() === 'GET'
+        );
+        failResults = false;
+        await loadError.getByRole('button', { name: 'Retry' }).click();
+        expect((await resultsResponse).status()).toBe(200);
+
+        await expect(
+          history.getByTestId('run-summary-runs').locator('[data-value]')
+        ).toHaveText('1');
+        await expect(loadError).toHaveCount(0);
+      });
+    });
+
+    test('says why Run now is disabled when the pipelines could not be read', async ({
+      page,
+    }) => {
+      await page.route(
+        (url) =>
+          url.pathname.endsWith('/api/v1/services/ingestionPipelines') &&
+          url.searchParams.get('pipelineType') === 'TestSuite',
+        // A poll can still be in flight when the page closes.
+        (route) => ignoreClosedTarget(route, () => route.fulfill(serverError))
+      );
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, ranFqn);
+
+      await expectRunTestCaseDisabledWithReason(
+        page,
+        "Pipelines couldn't be loaded"
+      );
+    });
+
+    test('names every rail button, and nests none in another', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, ranFqn);
+
+      const rail = page.getByTestId('test-case-rail');
+
+      await expect(rail.getByTestId('edit-description')).toBeVisible();
+      await expect(rail.locator('button button')).toHaveCount(0);
+
+      for (const button of await rail.getByRole('button').all()) {
+        await expect(button).toHaveAccessibleName(/\S/);
+      }
     });
   }
 );

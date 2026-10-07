@@ -22,6 +22,7 @@ import {
   AlertDetails,
   ObservabilityCreationDetails,
 } from '../../constant/alert.interface';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -106,7 +107,7 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(EXTENDED_TEST_TIMEOUT);
   table1 = new TableClass();
   table2 = new TableClass();
   pipeline = new PipelineClass();

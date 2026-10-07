@@ -22,6 +22,7 @@ import { randomUUID } from 'crypto';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { toLower } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
@@ -844,7 +845,7 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await page
     .getByTestId('glossary-left-panel')
     .getByRole('link', { name: glossaryName, exact: true })
-    .click({ timeout: 30000 });
+    .click({ timeout: ACTION_TIMEOUT });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -1019,7 +1020,7 @@ export const verifyDomainPropagation = async (
   }
 
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
-  await expect(entityCard).toBeVisible({ timeout: 30_000 });
+  await expect(entityCard).toBeVisible({ timeout: ACTION_TIMEOUT });
   await expect(entityCard).toContainText(domain.displayName);
 };
 

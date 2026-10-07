@@ -12,6 +12,7 @@
  */
 import base, { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -2779,7 +2780,9 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('rename-button-title').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       await page.locator('#name').clear();
       await page.locator('#name').fill(domain2.responseData.name);
@@ -3772,8 +3775,8 @@ test.describe('Domain assets — glossary and inherited glossary term', () => {
       `table-data-card_${inheritedTerm.responseData.fullyQualifiedName}`
     );
 
-    await expect(glossaryCard).toBeVisible({ timeout: 30_000 });
-    await expect(inheritedTermCard).toBeVisible({ timeout: 30_000 });
+    await expect(glossaryCard).toBeVisible({ timeout: ACTION_TIMEOUT });
+    await expect(inheritedTermCard).toBeVisible({ timeout: ACTION_TIMEOUT });
   });
 });
 
