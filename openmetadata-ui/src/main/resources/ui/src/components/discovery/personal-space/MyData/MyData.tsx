@@ -32,6 +32,7 @@ import {
   IncidentSeverity,
 } from '../../../../rest/incidentManagerAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { fetchAllPages } from '../../../../utils/AsyncUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import MyDataAssetsList from './components/MyDataAssetsList';
@@ -73,6 +74,21 @@ const ZERO_HEALTH: HealthStats = { requireAttention: 0 };
 
 // Batch size for paging through open incidents to count Severity1 accurately.
 const INCIDENT_PAGE_SIZE = 100;
+
+const fetchOpenIncidentPage = async (assignee?: string, after?: string) => {
+  const res = await getListTestCaseIncidentStatus({
+    assignee,
+    limit: INCIDENT_PAGE_SIZE,
+    latest: true,
+    after,
+  });
+
+  // Stop on an empty page even if a cursor is echoed back, so a stale
+  // `after` from the backend can't spin this into an infinite loop.
+  return res.data.length > 0
+    ? res
+    : { ...res, paging: { ...res.paging, after: undefined } };
+};
 
 // Cap on the owned-table ids used to scope the query count. Queries relate to
 // data via `queryUsedIn.id` (the tables they touch), not via ownership, so we
@@ -184,28 +200,18 @@ const MyDataPage: React.FC = () => {
     // single request instead of paging through all incidents here.
     const incidentsTask = (async () => {
       try {
-        let after: string | undefined;
-        let total = 0;
-        let severity1 = 0;
-        do {
-          const res = await getListTestCaseIncidentStatus({
-            assignee: userData?.id,
-            limit: INCIDENT_PAGE_SIZE,
-            latest: true,
-            after,
-          });
-          const items = res.data ?? [];
-          total = res.paging?.total ?? total + items.length;
-          severity1 += items.filter(
-            (r: TestCaseResolutionStatus) =>
-              (r.severity as unknown as IncidentSeverity) ===
-              IncidentSeverity.Severity1
-          ).length;
-          // Stop on an empty page even if a cursor is echoed back, so a stale
-          // `after` from the backend can't spin this into an infinite loop.
-          after = items.length > 0 ? res.paging?.after : undefined;
-        } while (after);
-        setIncidentStats({ total, severity1 });
+        const { data: incidents, paging } = await fetchAllPages((after) =>
+          fetchOpenIncidentPage(userData?.id, after)
+        );
+        const severity1 = incidents.filter(
+          (r: TestCaseResolutionStatus) =>
+            (r.severity as unknown as IncidentSeverity) ===
+            IncidentSeverity.Severity1
+        ).length;
+        setIncidentStats({
+          total: paging?.total ?? incidents.length,
+          severity1,
+        });
       } catch {
         setIncidentStats(ZERO_INCIDENT);
       }

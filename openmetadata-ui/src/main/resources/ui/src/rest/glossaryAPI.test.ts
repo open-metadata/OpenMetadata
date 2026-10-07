@@ -12,9 +12,11 @@
  */
 
 import { Provenance, Status } from '../generated/api/data/updateTermRelation';
+import { BULK_ACTION_CONCURRENCY } from '../utils/AsyncUtils';
 import APIClient from './axiosClient';
 import {
   getGlossaryTermAssets,
+  getGlossaryTermsByIds,
   getOntologyDataGraph,
   getOntologySummary,
   removeTermRelationById,
@@ -124,5 +126,35 @@ describe('glossaryAPI stable relationship operations', () => {
         signal: controller.signal,
       }
     );
+  });
+});
+
+describe('getGlossaryTermsByIds', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('requests at most 100 ids per batch and keeps at most BULK_ACTION_CONCURRENCY batches in flight', async () => {
+    const ids = Array.from({ length: 2000 }, (_, index) => `term-${index}`);
+    let inFlight = 0;
+    let maxInFlight = 0;
+    mockedApiClient.get.mockImplementation(
+      async (_url: string, config?: { params?: { ids: string } }) => {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await Promise.resolve();
+        inFlight -= 1;
+
+        return {
+          data: (config?.params?.ids ?? '').split(',').map((id) => ({ id })),
+        };
+      }
+    );
+
+    const terms = await getGlossaryTermsByIds(ids);
+
+    expect(mockedApiClient.get).toHaveBeenCalledTimes(20);
+    expect(maxInFlight).toBe(BULK_ACTION_CONCURRENCY);
+    expect(terms.map((term) => term.id)).toEqual(ids);
   });
 });

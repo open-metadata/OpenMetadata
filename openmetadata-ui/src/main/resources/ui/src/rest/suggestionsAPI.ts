@@ -20,6 +20,7 @@ import {
   SuggestionStatus,
   SuggestionType,
 } from '../types/taskSuggestion';
+import { runWithConcurrencyLimit } from '../utils/AsyncUtils';
 import EntityLink from '../utils/EntityLink';
 import APIClient from './axiosClient';
 import {
@@ -237,10 +238,10 @@ export const approveRejectAllSuggestions = async (
     return taskType !== undefined && suggestionTypes.includes(taskType);
   });
 
-  // Resolve sequentially to avoid optimistic-lock version conflicts on the
-  // entity. All types go through this one loop: resolving them in parallel
+  // Resolve one at a time to avoid optimistic-lock version conflicts on the
+  // entity. All types go through this one queue: resolving them in parallel
   // calls would race on the same entity.
-  for (const task of filteredTasks) {
+  await runWithConcurrencyLimit(filteredTasks, 1, (task) => {
     const suggestion = taskToSuggestion(task);
     const tagLabelsValue = suggestion.tagLabels
       ? JSON.stringify(suggestion.tagLabels)
@@ -251,10 +252,10 @@ export const approveRejectAllSuggestions = async (
         : tagLabelsValue;
 
     // Mirror Promise.allSettled behavior: one failure must not block remaining tasks.
-    await resolveTask(task.id, { resolutionType, newValue }).catch(
+    return resolveTask(task.id, { resolutionType, newValue }).catch(
       () => undefined
     );
-  }
+  });
 
   return { data: {} } as AxiosResponse;
 };
