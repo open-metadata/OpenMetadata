@@ -185,6 +185,7 @@ def test_engine_connect_args_inject_impersonated_client(mock_common, mock_get_cl
         project_id=expected_project,
         impersonate_service_account=TARGET_SA,
         lifetime=1800,
+        location="us",
     )
 
 
@@ -209,6 +210,7 @@ def test_billing_project_id_scopes_impersonated_client(mock_common, mock_get_cli
         project_id="billing-proj",
         impersonate_service_account=TARGET_SA,
         lifetime=3600,
+        location="us",
     )
 
 
@@ -241,6 +243,7 @@ def test_credentials_path_scopes_impersonated_client(mock_common, mock_get_clien
         project_id="proj-path",
         impersonate_service_account=TARGET_SA,
         lifetime=3600,
+        location="us",
     )
 
 
@@ -272,6 +275,7 @@ def test_unresolved_project_id_logs_warning(mock_common, mock_get_client, mock_l
         project_id=None,
         impersonate_service_account=TARGET_SA,
         lifetime=3600,
+        location="us",
     )
 
 
