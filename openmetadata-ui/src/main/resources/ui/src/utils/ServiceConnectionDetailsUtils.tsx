@@ -46,8 +46,10 @@ export const renderConnectionDetailLabel = (
   label = '',
   description?: string
 ) => (
-  <Box align="center" className="tw:w-1/3 tw:shrink-0" gap={1}>
-    <Typography color="secondary">{label}:</Typography>
+  <Box align="center" className="tw:w-1/3 tw:shrink-0 tw:pr-2" gap={1}>
+    <Typography className="tw:min-w-0 tw:break-all" color="secondary">
+      {label}:
+    </Typography>
     {description && (
       <Tooltip placement="bottom" title={description}>
         <InfoCircle className="tw:size-3.5 tw:text-fg-quaternary" />
