@@ -150,7 +150,7 @@ class ColumnValuesToMatchRegexValidator(
             results_data.append(
                 {
                     DIMENSION_VALUE_KEY: dimension_value,
-                    Metrics.valuesCount.name: row_count,
+                    Metrics.valuesCount.name: count_value,
                     Metrics.regexCount.name: regex_count,
                     Metrics.rowCount.name: row_count,
                     DIMENSION_TOTAL_COUNT_KEY: row_count,
