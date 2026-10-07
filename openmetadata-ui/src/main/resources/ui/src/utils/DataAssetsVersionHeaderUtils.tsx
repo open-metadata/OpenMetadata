@@ -50,14 +50,8 @@ export const VersionExtraInfoLink = ({
       orientation="vertical"
     />
     <div className="d-flex items-center text-xs">
-      <Typography>
-        {href ? (
-          <a href={href} style={{ fontSize: '12px' }}>
-            {stringToHTML(value)}
-          </a>
-        ) : (
-          <span style={{ fontSize: '12px' }}>{stringToHTML(value)}</span>
-        )}
+      <Typography size="text-xs">
+        {href ? <a href={href}>{stringToHTML(value)}</a> : stringToHTML(value)}
       </Typography>
     </div>
   </>
@@ -121,15 +115,11 @@ export const getExtraInfoSourceUrl = (
             orientation="vertical"
           />
           <div className="d-flex items-center text-xs">
-            <Typography>
+            <Typography size="text-xs">
               {safeSourceUrl ? (
-                <a href={safeSourceUrl} style={{ fontSize: '12px' }}>
-                  {getEntityName(pipelineDetails)}{' '}
-                </a>
+                <a href={safeSourceUrl}>{getEntityName(pipelineDetails)} </a>
               ) : (
-                <span style={{ fontSize: '12px' }}>
-                  {getEntityName(pipelineDetails)}
-                </span>
+                getEntityName(pipelineDetails)
               )}
             </Typography>
             {safeSourceUrl && (
