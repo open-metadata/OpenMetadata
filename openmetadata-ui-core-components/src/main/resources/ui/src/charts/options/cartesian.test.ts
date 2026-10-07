@@ -339,39 +339,7 @@ describe('buildLineOption', () => {
     expect(wed).toEqual({ value: 4, symbol: 'none' });
   });
 
-  it('sizes, rings and colours a point as its pointStyle asks', () => {
-    const option = buildLineOption(
-      {
-        ...base,
-        series: [
-          {
-            key: 'passed',
-            name: 'Passed',
-            pointStyle: () => ({
-              status: 'failed',
-              color: '#d92d20',
-              size: 6.8,
-              ringWidth: 1.6,
-            }),
-          },
-        ],
-      },
-      LIGHT_CHART_THEME
-    );
-    const [first] = seriesOf(option)[0].data as Array<{
-      symbolSize: number;
-      itemStyle: Record<string, unknown>;
-    }>;
-
-    expect(first.symbolSize).toBe(6.8);
-    expect(first.itemStyle).toEqual({
-      color: '#d92d20',
-      borderColor: LIGHT_CHART_THEME.segmentBorder,
-      borderWidth: 1.6,
-    });
-  });
-
-  it('rings a selected point in its own colour, 5px out from its dot', () => {
+  it('rings a selected point in its own colour, 4px out from its dot', () => {
     const option = buildLineOption(
       {
         ...base,
@@ -382,7 +350,6 @@ describe('buildLineOption', () => {
             status: 'info',
             pointStyle: (row) => ({
               selected: (row as unknown as Row).day === 'Tue',
-              size: 6.8,
             }),
           },
         ],
@@ -400,7 +367,7 @@ describe('buildLineOption', () => {
       data: [
         {
           coord: [1, 5],
-          symbolSize: 16.8,
+          symbolSize: 16,
           itemStyle: { borderColor: LIGHT_CHART_PALETTE.status.info },
         },
       ],
@@ -435,7 +402,7 @@ describe('buildLineOption', () => {
     };
 
     expect(data).toEqual([
-      expect.objectContaining({ coord: [2000, 3], symbolSize: 18 }),
+      expect.objectContaining({ coord: [2000, 3], symbolSize: 16 }),
     ]);
   });
 
@@ -696,20 +663,13 @@ describe('buildLineOption', () => {
     ]);
   });
 
-  it('draws a reference line in its own colour, dash and width, when asked', () => {
+  it('draws a reference line solid, when asked', () => {
     const option = buildLineOption(
       {
         ...base,
         referenceLines: [
           { axis: 'y', value: 80, label: 'Target' },
-          {
-            axis: 'y',
-            value: 60,
-            label: 'Expected',
-            color: '#475467',
-            lineType: [5, 4],
-            width: 1.5,
-          },
+          { axis: 'y', value: 60, label: 'Expected', lineType: 'solid' },
         ],
       },
       LIGHT_CHART_THEME
@@ -731,9 +691,9 @@ describe('buildLineOption', () => {
       width: 1,
     });
     expect(styled.lineStyle).toEqual({
-      color: '#475467',
-      type: [5, 4],
-      width: 1.5,
+      color: LIGHT_CHART_THEME.axisText,
+      type: 'solid',
+      width: 1,
     });
   });
 

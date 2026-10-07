@@ -147,9 +147,9 @@ const barSeries = <T extends object>(
 
 const POINT_SIZE = 8;
 const POINT_RING_WIDTH = 2;
-// A selected point's ring, from the design mock: 5px out from the dot, 2px
-// wide, at 30% of the dot's colour.
-const SELECTION_RING_GAP = 5;
+// A selected point's ring: 4px out from the dot, 2px wide, at 30% of the
+// dot's colour.
+const SELECTION_RING_GAP = 4;
 const SELECTION_RING = {
   silent: true,
   animation: false,
@@ -162,9 +162,7 @@ const pointColorOf = <T extends object>(
   ctx: SeriesContext<T>,
   style: ChartPointStyle,
   color: string
-) =>
-  style.color ??
-  (style.status ? ctx.theme.palette.status[style.status] : color);
+) => (style.status ? ctx.theme.palette.status[style.status] : color);
 
 const pointItem = <T extends object>(
   ctx: SeriesContext<T>,
@@ -182,11 +180,11 @@ const pointItem = <T extends object>(
   return {
     value,
     symbol: 'circle',
-    symbolSize: style.size ?? POINT_SIZE,
+    symbolSize: POINT_SIZE,
     itemStyle: {
       color: style.hollow ? 'transparent' : pointColor,
       borderColor: style.hollow ? pointColor : ctx.theme.segmentBorder,
-      borderWidth: style.ringWidth ?? (style.hollow ? POINT_RING_WIDTH : 1),
+      borderWidth: style.hollow ? POINT_RING_WIDTH : 1,
     },
   };
 };
@@ -220,7 +218,7 @@ const selectionRings = <T extends object>(
     return [
       {
         coord: ringCoord(ctx, value, index),
-        symbolSize: (style.size ?? POINT_SIZE) + 2 * SELECTION_RING_GAP,
+        symbolSize: POINT_SIZE + 2 * SELECTION_RING_GAP,
         itemStyle: { borderColor: pointColorOf(ctx, style, color) },
       },
     ];

@@ -115,12 +115,6 @@ export interface ChartPointStyle {
   hollow?: boolean;
   /** A faint ring around the dot, e.g. for the selected point. */
   selected?: boolean;
-  /** Colour of the dot, over its status colour, e.g. to match the page. */
-  color?: string;
-  /** Diameter of the dot in px; 8 by default. */
-  size?: number;
-  /** Width of the dot's ring in px; 1 by default, 2 when hollow. */
-  ringWidth?: number;
 }
 
 export interface ChartSeries {
@@ -226,12 +220,8 @@ export interface ChartReferenceLine {
   labelPosition?: 'start' | 'end';
   /** Status colour of the line. Defaults to the axis text colour. */
   status?: ChartStatus;
-  /** Colour of the line, over its status colour. */
-  color?: string;
-  /** `'dashed'` by default; a number array is the dash pattern. */
-  lineType?: 'solid' | 'dashed' | number[];
-  /** Width of the line in px; 1 by default. */
-  width?: number;
+  /** `'dashed'` by default. */
+  lineType?: 'solid' | 'dashed';
 }
 
 export interface CartesianBuildInput<T extends object> {

@@ -77,8 +77,6 @@ type PlottedPoint = TestCaseChartDataType['data'][number];
 // The tooltip is the app's own React component, so ECharts draws none.
 const MULTI_SERIES_EMPHASIS = { emphasis: { focus: 'series' as const } };
 const TOOLTIP_OFF = { show: false };
-// ECharts centres its legend; the status key under it starts at the edge.
-const LEGEND_AT_EDGE = { legend: { left: 0 } };
 
 // Aborted is drawn as a ring, matching the status key: a run that produced no
 // value and one that has not run yet must differ by shape, not only by colour.
@@ -101,31 +99,9 @@ const FLAT_SERIES_MIN_PADDING = 1;
 // The padded extremes are padding, not data: a label there printed values like
 // "10.58K" on top of the "10K" tick.
 const Y_AXIS_LABEL = { showMinLabel: false, showMaxLabel: false };
-// The mock's dots: r3.4 in a 1.6px ring, the newest run's r5.4 in a 2.4px
-// one, an aborted run's ring 1.5px.
-const POINT_SIZE = 6.8;
-const POINT_RING_WIDTH = 1.6;
-const NEWEST_POINT_SIZE = 10.8;
-const NEWEST_POINT_RING_WIDTH = 2.4;
-const HOLLOW_POINT_RING_WIDTH = 1.5;
-// The mock's guide to the selected run, drawn in the run's status colour.
-const SELECTION_GUIDE = { lineType: 'solid', width: 1.5 } as const;
-// The mock's expectation line.
-const EXPECTATION_LINE: Pick<ChartReferenceLine, 'lineType' | 'width'> = {
-  lineType: [5, 4],
-  width: 1.5,
-};
 // One series reads as data under a 2px line and a faint brand wash.
 const SINGLE_SERIES_LINE_WIDTH = 2;
 const SINGLE_SERIES_WASH = 0.05;
-
-const pointRingWidth = (isHollow: boolean, isNewest: boolean) => {
-  if (isHollow) {
-    return HOLLOW_POINT_RING_WIDTH;
-  }
-
-  return isNewest ? NEWEST_POINT_RING_WIDTH : POINT_RING_WIDTH;
-};
 
 interface AxisExtent {
   min: number;
@@ -386,20 +362,18 @@ function TestSummaryGraph({
   // the refetched data no longer holds falls back to the newest run as well.
   // A point's `name` is typed as the union of every field the tooltip reads,
   // so it is narrowed back to its timestamp.
-  const newestRunTimestamp = useMemo(() => {
+  const activeRunTimestamp = useMemo(() => {
+    if (
+      !isUndefined(selectedRunTimestamp) &&
+      plottedData.some((point) => point.name === selectedRunTimestamp)
+    ) {
+      return selectedRunTimestamp;
+    }
+
     const latestPointName = plottedData[plottedData.length - 1]?.name;
 
     return isNumber(latestPointName) ? latestPointName : undefined;
-  }, [plottedData]);
-
-  const activeRunTimestamp = useMemo(
-    () =>
-      !isUndefined(selectedRunTimestamp) &&
-      plottedData.some((point) => point.name === selectedRunTimestamp)
-        ? selectedRunTimestamp
-        : newestRunTimestamp,
-    [plottedData, selectedRunTimestamp, newestRunTimestamp]
-  );
+  }, [plottedData, selectedRunTimestamp]);
 
   const handleRunSelect = useCallback(
     (timestamp: number) => setSelectedRunTimestamp(timestamp),
@@ -420,21 +394,14 @@ function TestSummaryGraph({
       : [];
     // A row a series holds no value for - a run that produced nothing, or one
     // whose value was placed off the line - draws no dot.
-    const pointStyleOf = (key: string) => (point: Record<string, unknown>) => {
-      if (isUndefined(point[key])) {
-        return undefined;
-      }
-      const isHollow = point.status === POINT_STATUS_HOLLOW;
-      const isNewest = point.name === newestRunTimestamp;
-
-      return {
-        status: getStatusChartStatus(point.status as TestCaseStatus),
-        hollow: isHollow,
-        selected: point.name === activeRunTimestamp,
-        size: isNewest ? NEWEST_POINT_SIZE : POINT_SIZE,
-        ringWidth: pointRingWidth(isHollow, isNewest),
-      };
-    };
+    const pointStyleOf = (key: string) => (point: Record<string, unknown>) =>
+      isUndefined(point[key])
+        ? undefined
+        : {
+            status: getStatusChartStatus(point.status as TestCaseStatus),
+            hollow: point.status === POINT_STATUS_HOLLOW,
+            selected: point.name === activeRunTimestamp,
+          };
     const lines = seriesLabels.map<ChartSeries>((label) => ({
       key: label,
       name: label,
@@ -486,7 +453,6 @@ function TestSummaryGraph({
     seriesLabels,
     isSingleSeries,
     activeRunTimestamp,
-    newestRunTimestamp,
     palette,
     t,
   ]);
@@ -503,7 +469,6 @@ function TestSummaryGraph({
               }),
               // The selection guide opens on the newest run, at the right end.
               labelPosition: 'start' as const,
-              ...EXPECTATION_LINE,
             },
           ]
         : []),
@@ -513,11 +478,12 @@ function TestSummaryGraph({
             {
               axis: 'x' as const,
               value: activeRunTimestamp,
+              // Solid, in the selected run's status colour.
+              lineType: 'solid' as const,
               status: getStatusChartStatus(
                 plottedData.find((point) => point.name === activeRunTimestamp)
                   ?.status as TestCaseStatus
               ),
-              ...SELECTION_GUIDE,
             },
           ]),
     ],
@@ -623,7 +589,6 @@ function TestSummaryGraph({
           data={plottedData}
           height={minHeight ?? 400}
           legend={legend}
-          option={LEGEND_AT_EDGE}
           pointAriaLabel={pointAriaLabel}
           referenceLines={referenceLines}
           series={series}

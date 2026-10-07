@@ -323,11 +323,9 @@ export const referenceLinesToMarkLine = (
       color: theme.axisText,
     },
     lineStyle: {
-      color:
-        line.color ??
-        (line.status ? theme.palette.status[line.status] : theme.axisText),
+      color: line.status ? theme.palette.status[line.status] : theme.axisText,
       type: line.lineType ?? 'dashed',
-      width: line.width ?? 1,
+      width: 1,
     },
   })),
 });

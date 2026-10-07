@@ -272,13 +272,6 @@ describe('TestSummaryGraph', () => {
     expect(getChartProps().legend).toEqual({ show: true });
   });
 
-  // Centred, it sat out of line with the status key under it.
-  it('should start the series legend at the chart edge, above the status key', () => {
-    render(<TestSummaryGraph {...mockProps} />);
-
-    expect(getChartProps().option).toEqual({ legend: { left: 0 } });
-  });
-
   it('should hide the legend for a single series', () => {
     render(
       <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
@@ -466,14 +459,6 @@ describe('TestSummaryGraph', () => {
     );
   });
 
-  it('should draw the expectation as the mock does: 1.5px, dashed 5 4', () => {
-    render(<TestSummaryGraph {...mockProps} />);
-
-    expect(getReferenceLine('y')).toEqual(
-      expect.objectContaining({ lineType: [5, 4], width: 1.5 })
-    );
-  });
-
   it('should wash a single series in 5% brand blue, under a 2px line', () => {
     render(
       <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
@@ -557,13 +542,12 @@ describe('TestSummaryGraph', () => {
   it('should guide to the newest run until one is selected', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
-    // The mock's guide: solid, 1.5px, in the selected run's status colour.
+    // Solid, in the selected run's status colour.
     expect(getReferenceLine('x')).toEqual({
       axis: 'x',
       value: NEWEST_RUN_TIMESTAMP,
       status: 'success',
       lineType: 'solid',
-      width: 1.5,
     });
   });
 
@@ -616,15 +600,7 @@ describe('TestSummaryGraph', () => {
         },
         0
       )
-    ).toEqual(
-      expect.objectContaining({
-        status: 'warning',
-        hollow: true,
-        selected: false,
-        // An aborted run's ring, as in the mock.
-        ringWidth: 1.5,
-      })
-    );
+    ).toEqual({ status: 'warning', hollow: true, selected: false });
   });
 
   // An aborted run has no value: drawn on the line, it read as a measured
@@ -673,34 +649,7 @@ describe('TestSummaryGraph', () => {
         },
         0
       )
-    ).toEqual({
-      status: 'success',
-      hollow: false,
-      selected: false,
-      // The mock's r3.4 dot in a 1.6px ring.
-      size: 6.8,
-      ringWidth: 1.6,
-    });
-  });
-
-  // The newest run is the one the banner above reports on.
-  it('should draw the newest run larger, as the mock does', () => {
-    render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
-
-    const { pointStyle } = getSeries('min');
-
-    expect(
-      pointStyle?.(
-        { name: NEWEST_RUN_TIMESTAMP, status: TestCaseStatus.Success, min: 1 },
-        1
-      )
-    ).toEqual(expect.objectContaining({ size: 10.8, ringWidth: 2.4 }));
-    expect(
-      pointStyle?.(
-        { name: NEWEST_RUN_TIMESTAMP, status: TestCaseStatus.Aborted, min: 1 },
-        1
-      )
-    ).toEqual(expect.objectContaining({ size: 10.8, ringWidth: 1.5 }));
+    ).toEqual({ status: 'success', hollow: false, selected: false });
   });
 
   it('should start the status key at the chart edge, not inset from it', () => {
