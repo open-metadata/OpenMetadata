@@ -778,7 +778,7 @@ export const updateDescriptionForChildren = async (
   // The edit-button is a hover-revealed icon whose position shifts as sibling
   // icons settle, so a single click can land without dispatching (target moves
   // between mousedown and mouseup) and the modal never opens. Retry until it does.
-  const modal = page.getByTestId('markdown-editor');
+  const modal = page.getByTestId('editor');
   await clickUntilVisible(editButton, modal);
 
   // Wait for editor to be ready
