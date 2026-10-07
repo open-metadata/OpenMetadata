@@ -287,7 +287,7 @@ const FileActions: FC<FileActionsProps> = ({
       hasPermission={!isSharing}
       popoverProps={{
         open: isSharePickerOpen,
-        placement: 'bottomRight',
+        placement: 'bottom end',
         // Opened by the menu's Shared option only; a press on the anchor opens the menu instead.
         onOpenChange: (open) => !open && setIsSharePickerOpen(false),
       }}

@@ -23,19 +23,11 @@ jest.mock(
     __esModule: true,
     default: ({
       userName,
-      trigger,
       children,
     }: {
       userName: string;
-      trigger: string | string[];
       children: ReactNode;
-    }) => (
-      <div
-        data-testid={`user-card-${userName}`}
-        data-trigger={[trigger].flat().join(',')}>
-        {children}
-      </div>
-    ),
+    }) => <div data-testid={`user-card-${userName}`}>{children}</div>,
   })
 );
 
@@ -43,22 +35,19 @@ const renderPopover = (node: ReactNode) =>
   render(<MemoryRouter>{node}</MemoryRouter>);
 
 describe('AuthorPopover', () => {
-  // A keyboard reaches the name, and its focus opens the card.
-  it('links a named author to their profile and opens the card on focus too', () => {
+  // A keyboard reaches the name; the shared card opens on its focus.
+  it('links a named author to their profile, in the tab order', () => {
     renderPopover(<AuthorPopover userName="priya.sharma">Priya</AuthorPopover>);
 
     const trigger = screen.getByTestId('author-popover-trigger');
 
     expect(trigger).toHaveAttribute('href', expect.stringContaining('priya'));
     expect(trigger).not.toHaveAttribute('tabindex');
-    expect(screen.getByTestId('user-card-priya.sharma')).toHaveAttribute(
-      'data-trigger',
-      'hover,focus'
-    );
+    expect(screen.getByTestId('user-card-priya.sharma')).toBeInTheDocument();
   });
 
   // The avatar repeats the name beside it, so it stays out of the tab order.
-  it('keeps a decorative avatar out of the tab order and hover only', () => {
+  it('keeps a decorative avatar out of the tab order and screen readers', () => {
     renderPopover(
       <AuthorPopover decorative userName="priya.sharma">
         P
@@ -69,10 +58,6 @@ describe('AuthorPopover', () => {
 
     expect(trigger).toHaveAttribute('tabindex', '-1');
     expect(trigger).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByTestId('user-card-priya.sharma')).toHaveAttribute(
-      'data-trigger',
-      'hover'
-    );
   });
 
   // An event with no actor has no user to look up.

@@ -44,8 +44,6 @@ export interface TeamPopoverTitleProps {
   profilePicture: JSX.Element;
 }
 
-type PopoverTrigger = 'hover' | 'focus' | 'click';
-
 export interface UserPopOverCardProps extends HTMLAttributes<HTMLDivElement> {
   userName: string;
   displayName?: ReactNode;
@@ -54,8 +52,6 @@ export interface UserPopOverCardProps extends HTMLAttributes<HTMLDivElement> {
   showUserProfile?: boolean;
   profileWidth?: number;
   className?: string;
-  // What opens the card; hover by default. Add 'focus' for a keyboard trigger.
-  trigger?: PopoverTrigger | PopoverTrigger[];
   /**
    * Overrides the built-in link destination. Defaults to the legacy user/team
    * route; pass a hash location to navigate inside the personal-space modal.

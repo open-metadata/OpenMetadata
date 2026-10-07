@@ -11,7 +11,85 @@
  *  limitations under the License.
  */
 
-import type { NotificationView } from './Notification.types';
+import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
+import type { UIPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import type { NotificationSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
+import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
+import type { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
+import type {
+  NotificationIcon,
+  NotificationLandingCard,
+  NotificationView,
+} from './Notification.types';
+
+const NOTIFICATIONS_PREFIX = `${GlobalSettingsMenuCategory.NOTIFICATIONS}.`;
+
+/**
+ * Strip the `notifications.` category prefix from a global-settings menu key,
+ * leaving the option suffix a section contribution is keyed by
+ * (e.g. `notifications.weekly-emails` → `weekly-emails`).
+ */
+export const toSectionKey = (menuKey: string): string =>
+  menuKey.startsWith(NOTIFICATIONS_PREFIX)
+    ? menuKey.slice(NOTIFICATIONS_PREFIX.length)
+    : menuKey;
+
+/**
+ * Items of the global-settings Notifications category for this user. The real
+ * admin flag matters: the class base gates admin-only items on it via
+ * `isProtected`, so passing `true` would show them to everyone.
+ */
+export const getNotificationMenuItems = (
+  permissions: UIPermission,
+  isAdminUser: boolean
+): SettingMenuItem[] =>
+  globalSettingsClassBase
+    .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+    .find(
+      (category: SettingMenuItem) =>
+        category.key === GlobalSettingsMenuCategory.NOTIFICATIONS
+    )?.items ?? [];
+
+/**
+ * Whether a contributed section may be shown: it needs a Notifications menu
+ * item the user is allowed to see. The landing cards and a deep-linked section
+ * use this one rule, so a hidden card cannot be reached by URL.
+ */
+export const isNotificationMenuItemVisible = (
+  item?: SettingMenuItem
+): item is SettingMenuItem => Boolean(item) && item?.isProtected !== false;
+
+/**
+ * Landing cards for contributed sections: one per Notifications menu item the
+ * user may see that has a registered section to render into. The card icon is
+ * the contribution's, falling back to the menu item's.
+ */
+export const buildSectionCards = (
+  items: SettingMenuItem[],
+  contributions: NotificationSectionContribution[]
+): NotificationLandingCard[] => {
+  const byKey = new Map(
+    contributions.map((contribution) => [contribution.key, contribution])
+  );
+
+  return items.reduce<NotificationLandingCard[]>((cards, item) => {
+    const key = toSectionKey(item.key);
+    const contribution = byKey.get(key);
+
+    if (isNotificationMenuItemVisible(item) && contribution) {
+      cards.push({
+        id: key,
+        icon: (contribution.icon ?? item.icon) as NotificationIcon,
+        title: item.category ?? item.label ?? key,
+        description: item.description,
+        view: { type: 'section', key },
+        isBeta: item.isBeta,
+      });
+    }
+
+    return cards;
+  }, []);
+};
 
 export function hashSubPathToView(subPath: string): NotificationView {
   if (!subPath) {
@@ -19,6 +97,10 @@ export function hashSubPathToView(subPath: string): NotificationView {
   }
 
   const parts = subPath.split('/');
+
+  if (parts[0] === 'section' && parts[1]) {
+    return { type: 'section', key: parts.slice(1).join('/') };
+  }
 
   if (parts[0] === 'alerts') {
     if (!parts[1]) {
@@ -51,7 +133,32 @@ export function viewToSubPath(view: NotificationView): string | undefined {
       return `alerts/edit/${view.fqn}`;
     case 'detail':
       return `alerts/${view.fqn}`;
+    case 'section':
+      return `section/${[view.key, view.subPath].filter(Boolean).join('/')}`;
     default:
       return undefined;
   }
+}
+
+/**
+ * Split the raw path after `section/` into the registered section key and the
+ * section's own sub-path. Keys may themselves contain `/` (e.g.
+ * `weekly-emails/preferences`), so the longest registered key that prefixes the
+ * path wins. An unregistered path is returned whole as the key.
+ */
+export function splitSectionPath(
+  rest: string,
+  keys: string[]
+): { key: string; subPath?: string } {
+  const key = keys
+    .filter((k) => rest === k || rest.startsWith(`${k}/`))
+    .sort((a, b) => b.length - a.length)[0];
+
+  if (!key) {
+    return { key: rest };
+  }
+
+  const subPath = rest.slice(key.length + 1);
+
+  return subPath ? { key, subPath } : { key };
 }

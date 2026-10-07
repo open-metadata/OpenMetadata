@@ -34,9 +34,7 @@ const AuthorPopover = ({
   decorative = false,
 }: AuthorPopoverProps) =>
   userName ? (
-    <UserPopOverCard
-      trigger={decorative ? 'hover' : ['hover', 'focus']}
-      userName={userName}>
+    <UserPopOverCard userName={userName}>
       <Link
         aria-hidden={decorative || undefined}
         className="tw:text-inherit tw:no-underline"

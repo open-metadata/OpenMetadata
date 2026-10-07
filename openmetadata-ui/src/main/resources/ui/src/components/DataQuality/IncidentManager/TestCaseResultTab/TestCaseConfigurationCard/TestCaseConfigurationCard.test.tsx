@@ -16,16 +16,6 @@ import { TestDefinition } from '../../../../../generated/tests/testDefinition';
 import TestCaseConfigurationCard from './TestCaseConfigurationCard';
 import { TestCaseConfigurationCardProps } from './TestCaseConfigurationCard.types';
 
-jest.mock('../../../../common/IconButtons/EditIconButton', () => ({
-  // `newLook`/`size`/`title` are the real button's own props — keep them off the
-  // DOM node so they don't surface as React unknown-prop warnings.
-  EditIconButton: jest.fn(({ onClick, 'data-testid': dataTestId }) => (
-    <button data-testid={dataTestId} onClick={onClick}>
-      edit
-    </button>
-  )),
-}));
-
 const COLUMN_ENTITY_LINK =
   '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>';
 const TABLE_ENTITY_LINK =
@@ -179,7 +169,13 @@ describe('TestCaseConfigurationCard', () => {
     unmount();
     renderCard({ showEditButton: true });
 
-    fireEvent.click(screen.getByTestId('edit-parameter-icon'));
+    const editButton = screen.getByRole('button', {
+      name: 'label.edit-entity',
+    });
+
+    expect(editButton).toHaveAttribute('data-testid', 'edit-parameter-icon');
+
+    fireEvent.click(editButton);
 
     expect(mockOnEditParameter).toHaveBeenCalledTimes(1);
   });

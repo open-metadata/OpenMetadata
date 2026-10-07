@@ -183,9 +183,20 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
       await expect(page.getByTestId('failed-events-count')).toHaveText(
         /^Failed Events: \d+$/
       );
+      // A failed event carries its change event inside, which is the id the page shows.
+      const changeEventIdOf = (event: {
+        status: string;
+        data: Array<{ id?: string; changeEvent?: { id?: string } }>;
+      }) =>
+        event.status === 'failed'
+          ? event.data[0].changeEvent?.id
+          : event.data[0].id;
+
       await expect(
         events.length > 0
-          ? recentEvents.getByTestId(`event-collapse-${events[0].data[0].id}`)
+          ? recentEvents.getByTestId(
+              `event-collapse-${changeEventIdOf(events[0])}`
+            )
           : recentEvents.getByText('No recent events')
       ).toBeVisible();
 

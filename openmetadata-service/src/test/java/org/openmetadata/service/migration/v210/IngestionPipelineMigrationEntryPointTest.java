@@ -32,6 +32,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
@@ -69,7 +70,9 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<MlFeatureTagBackfill> mlFeatureTagBackfill =
             mockStatic(MlFeatureTagBackfill.class);
         MockedStatic<SearchTermBoostRepair> searchTermBoostRepair =
-            mockStatic(SearchTermBoostRepair.class)) {
+            mockStatic(SearchTermBoostRepair.class);
+        MockedStatic<AlertBacklogMigration> alertBacklogMigration =
+            mockStatic(AlertBacklogMigration.class)) {
       migration.runDataMigration();
 
       ingestionPipelineMigration.verify(
