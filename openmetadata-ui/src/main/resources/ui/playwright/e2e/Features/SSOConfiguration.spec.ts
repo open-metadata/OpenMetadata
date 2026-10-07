@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Page } from '@playwright/test';
 import path from 'path';
 
 import {
@@ -20,6 +21,10 @@ import {
   SSO_COMMON_FIELDS,
 } from '../../constant/ssoConfiguration';
 import { redirectToHomePage } from '../../utils/common';
+import {
+  MockSettingSource,
+  mockSettingsSource,
+} from '../../utils/settingsSource';
 import {
   enableSSOEditMode,
   selectSSOProvider,
@@ -1105,5 +1110,219 @@ test.describe('SSO Back Navigation', () => {
     await expect(page.locator('.provider-selector-container')).toBeVisible();
 
     expect(page.url()).not.toContain('provider=');
+  });
+});
+
+test.describe('SSO configuration source', () => {
+  const AUTHORIZER_CONFIGURATION = {
+    className: 'org.openmetadata.service.security.DefaultAuthorizer',
+    containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+    adminPrincipals: ['admin'],
+    principalDomain: 'open-metadata.org',
+    enforcePrincipalDomain: false,
+    enableSecureSocketConnection: false,
+  };
+
+  const OKTA_CONFIG = {
+    authenticationConfiguration: {
+      provider: 'okta',
+      providerName: 'Okta',
+      clientType: 'confidential',
+      authority: 'https://test.okta.com',
+      clientId: 'okta-client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      publicKeyUrls: [],
+      jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
+      enableSelfSignup: false,
+      oidcConfiguration: {
+        type: 'okta',
+        id: 'okta-client-id',
+        secret: '*********',
+        discoveryUri: 'https://test.okta.com/.well-known/openid-configuration',
+        callbackUrl: 'http://localhost:8585/callback',
+        serverUrl: 'http://localhost:8585',
+      },
+    },
+    authorizerConfiguration: AUTHORIZER_CONFIGURATION,
+  };
+
+  const BASIC_CONFIG = {
+    authenticationConfiguration: {
+      provider: 'basic',
+      providerName: 'basic',
+      authority: '',
+      clientId: '',
+      callbackUrl: '',
+      publicKeyUrls: [],
+      jwtPrincipalClaims: [],
+      enableSelfSignup: true,
+    },
+    authorizerConfiguration: AUTHORIZER_CONFIGURATION,
+  };
+
+  const envSecuritySources = (
+    authenticationPaths: string[],
+    authorizerPaths: string[]
+  ): MockSettingSource[] => [
+    {
+      configType: 'authenticationConfiguration',
+      source: 'ENV',
+      sourceVariable: 'SECURITY_CONFIG_SOURCE',
+      editable: false,
+      managedPaths: authenticationPaths,
+    },
+    {
+      configType: 'authorizerConfiguration',
+      source: 'ENV',
+      sourceVariable: 'SECURITY_CONFIG_SOURCE',
+      editable: false,
+      managedPaths: authorizerPaths,
+    },
+  ];
+
+  const CLIENT_ID_FIELD =
+    '[id="root/authenticationConfiguration/oidcConfiguration/id"]';
+  const CLIENT_SECRET_FIELD =
+    '[id="root/authenticationConfiguration/oidcConfiguration/secret"]';
+
+  // Every write is answered locally: no test here may change how the shared server signs users in.
+  const serveSecurityConfig = (page: Page, config: object) =>
+    page.route('**/api/v1/system/security/config', (route) =>
+      route.fulfill({ json: config })
+    );
+
+  const openSsoSettings = async (page: Page) => {
+    await page.goto('/settings/sso', { waitUntil: 'domcontentloaded' });
+  };
+
+  test('locks the fields the deployment configuration owns', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, OKTA_CONFIG);
+    await mockSettingsSource(
+      page,
+      envSecuritySources(
+        [
+          '/provider',
+          '/clientType',
+          '/enableSelfSignup',
+          '/oidcConfiguration/id',
+          '/oidcConfiguration/discoveryUri',
+        ],
+        ['/adminPrincipals']
+      )
+    );
+    await openSsoSettings(page);
+
+    await test.step('One banner names the variable for both settings', async () => {
+      await expect(page.getByTestId('settings-source-env-alert')).toContainText(
+        'SECURITY_CONFIG_SOURCE=ENV'
+      );
+      await expect(page.getByTestId('settings-source-env-alert')).toHaveCount(
+        1
+      );
+    });
+
+    await test.step('Self signup cannot be switched', async () => {
+      await expect(
+        page.locator('.enable-sso-card-container').getByRole('switch')
+      ).toBeDisabled();
+    });
+
+    await test.step('Only the managed fields are read-only', async () => {
+      await page.getByRole('tab', { name: 'Configure' }).click();
+
+      await expect(page.locator(CLIENT_SECRET_FIELD)).toBeEnabled();
+      await expect(page.locator(CLIENT_ID_FIELD)).toBeDisabled();
+      await expect(page.locator(CLIENT_ID_FIELD)).toHaveValue('okta-client-id');
+      await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
+    });
+  });
+
+  test('shows the configuration read-only when the deployment owns all of it', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, OKTA_CONFIG);
+    await mockSettingsSource(page, envSecuritySources(['/'], ['/']));
+    await openSsoSettings(page);
+
+    await expect(page.getByTestId('settings-source-env-alert')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Configure' }).click();
+
+    await expect(page.locator(CLIENT_ID_FIELD)).toHaveValue('okta-client-id');
+    await expect(page.locator(CLIENT_ID_FIELD)).toBeDisabled();
+    await expect(page.locator(CLIENT_SECRET_FIELD)).toBeDisabled();
+    await expect(page.getByTestId('save-sso-configuration')).not.toBeVisible();
+  });
+
+  test('offers no provider to choose when the deployment sets the provider', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, BASIC_CONFIG);
+    await mockSettingsSource(page, envSecuritySources(['/provider'], []));
+    await openSsoSettings(page);
+
+    await expect(page.getByTestId('settings-source-env-alert')).toContainText(
+      'SECURITY_CONFIG_SOURCE=ENV'
+    );
+    await expect(
+      page.locator('.provider-selector-container')
+    ).not.toBeVisible();
+  });
+
+  test('replaces saved values with the deployment values on request', async ({
+    page,
+  }) => {
+    await serveSecurityConfig(page, OKTA_CONFIG);
+    const adoptRequests = await mockSettingsSource(page, [
+      {
+        configType: 'authenticationConfiguration',
+        source: 'AUTO',
+        sourceVariable: 'SECURITY_CONFIG_SOURCE',
+        editable: true,
+        overriddenFields: [
+          {
+            path: '/oidcConfiguration/clientAuthenticationMethod',
+            envVariable: 'OIDC_CLIENT_AUTH_METHOD',
+          },
+        ],
+      },
+    ]);
+    await openSsoSettings(page);
+
+    const overriddenAlert = page.getByTestId(
+      'settings-source-overridden-alert'
+    );
+
+    await expect(overriddenAlert).toContainText(
+      '/oidcConfiguration/clientAuthenticationMethod (set by OIDC_CLIENT_AUTH_METHOD)'
+    );
+
+    await overriddenAlert
+      .getByRole('button', { name: 'Use deployment value' })
+      .click();
+
+    const configReload = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().endsWith('/api/v1/system/security/config')
+    );
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Use deployment value' })
+      .click();
+    await configReload;
+
+    await expect
+      .poll(() => adoptRequests)
+      .toEqual([
+        {
+          configType: 'authenticationConfiguration',
+          paths: ['/oidcConfiguration/clientAuthenticationMethod'],
+        },
+      ]);
+    await expect(page.getByRole('tab', { name: 'Configure' })).toBeVisible();
+    await expect(overriddenAlert).not.toBeVisible();
   });
 });

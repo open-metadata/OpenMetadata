@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { TransportationStrategy } from '../generated/email/smtpSettings';
+import {
+  SMTPSettings,
+  TransportationStrategy,
+} from '../generated/email/smtpSettings';
 
 export const TRANSPORTATION_STRATEGY_OPTIONS = Object.values(
   TransportationStrategy
@@ -21,3 +24,16 @@ export const TRANSPORTATION_STRATEGY_OPTIONS = Object.values(
 }));
 
 export const NOT_INCLUDE_EMAIL_CONFIG_VALUE = ['templates'];
+
+/** The fields the email configuration form lets an admin edit. */
+export const EMAIL_CONFIG_FORM_FIELDS: (keyof SMTPSettings)[] = [
+  'username',
+  'password',
+  'senderMail',
+  'serverEndpoint',
+  'serverPort',
+  'emailingEntity',
+  'enableSmtpServer',
+  'supportUrl',
+  'transportationStrategy',
+];

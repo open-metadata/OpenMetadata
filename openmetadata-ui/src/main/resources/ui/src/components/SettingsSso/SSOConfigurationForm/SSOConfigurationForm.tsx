@@ -68,6 +68,11 @@ import {
   transformErrors,
 } from '../../../utils/formPureUtils';
 import {
+  applyManagedPathsToUiSchema,
+  isPointerManaged,
+  pinManagedFields,
+} from '../../../utils/platform/settingsSource.utils';
+import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,
   clearFieldError,
@@ -116,6 +121,7 @@ import { useSsoTestLogin } from '../SsoTestLogin/useSsoTestLogin';
 import './sso-configuration-form.less';
 import {
   FormData,
+  SecurityManagedPaths,
   SSOConfigurationFormProps,
   UISchemaObject,
 } from './SSOConfigurationForm.interface';
@@ -178,6 +184,36 @@ const widgets = {
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
+const NO_MANAGED_PATHS: string[] = [];
+
+// Fields a SAML metadata upload overwrites.
+const SAML_METADATA_POINTERS = [
+  '/samlConfiguration/idp/entityId',
+  '/samlConfiguration/idp/ssoLoginUrl',
+  '/samlConfiguration/idp/idpX509Certificate',
+];
+
+/** What the deployment configuration leaves the admin free to change on this form. */
+const getFormLocks = (
+  managedPaths: SecurityManagedPaths | undefined,
+  isReadOnly: boolean
+) => {
+  const authenticationManagedPaths =
+    managedPaths?.authenticationConfiguration ?? NO_MANAGED_PATHS;
+  const isSamlMetadataManaged = SAML_METADATA_POINTERS.some((pointer) =>
+    isPointerManaged(authenticationManagedPaths, pointer)
+  );
+
+  return {
+    authenticationManagedPaths,
+    authorizerManagedPaths:
+      managedPaths?.authorizerConfiguration ?? NO_MANAGED_PATHS,
+    canChangeProvider:
+      !isReadOnly && !isPointerManaged(authenticationManagedPaths, '/provider'),
+    canUploadSamlMetadata: !isReadOnly && !isSamlMetadataManaged,
+  };
+};
+
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
   onChangeProvider,
@@ -185,6 +221,8 @@ const SSOConfigurationFormRJSF = ({
   selectedProvider,
   hideBorder = false,
   securityConfig,
+  managedPaths,
+  isReadOnly = false,
 }: SSOConfigurationFormProps) => {
   const { t } = useTranslation();
   const { setIsAuthenticated, setCurrentUser } = useApplicationStore();
@@ -699,6 +737,29 @@ const SSOConfigurationFormRJSF = ({
     hideBorder,
   ]);
 
+  const {
+    authenticationManagedPaths,
+    authorizerManagedPaths,
+    canChangeProvider,
+    canUploadSamlMetadata,
+  } = getFormLocks(managedPaths, isReadOnly);
+
+  // Fields the deployment configuration owns are shown but cannot be edited: a change to one
+  // would be rejected on save.
+  const lockedUiSchema = useMemo(
+    () =>
+      applyManagedPathsToUiSchema(
+        applyManagedPathsToUiSchema(
+          uiSchema,
+          authenticationManagedPaths,
+          'authenticationConfiguration'
+        ),
+        authorizerManagedPaths,
+        'authorizerConfiguration'
+      ),
+    [uiSchema, authenticationManagedPaths, authorizerManagedPaths]
+  );
+
   // Handle form data changes
   const clearErrorsForChangedFields = (newFormData: FormData) => {
     // Clear field-specific errors for changed fields
@@ -843,14 +904,25 @@ const SSOConfigurationFormRJSF = ({
         return false;
       }
 
-      const allPatches = compare(savedData, cleanedFormData);
+      const candidate = pinManagedFields(
+        pinManagedFields(
+          cleanedFormData,
+          savedData,
+          authenticationManagedPaths,
+          'authenticationConfiguration'
+        ),
+        savedData,
+        authorizerManagedPaths,
+        'authorizerConfiguration'
+      );
+      const allPatches = compare(savedData, candidate);
       if (allPatches.length > 0) {
         await patchSecurityConfiguration(allPatches);
       }
 
       return true;
     },
-    [savedData]
+    [savedData, authenticationManagedPaths, authorizerManagedPaths]
   );
 
   // Helper: Save new configuration with validation
@@ -1190,7 +1262,7 @@ const SSOConfigurationFormRJSF = ({
     ) : null;
 
   const renderFormActions = () =>
-    isEditMode ? (
+    isEditMode && !isReadOnly ? (
       <>
         {renderConfigAlerts()}
         <div className="form-actions-bottom">
@@ -1255,8 +1327,11 @@ const SSOConfigurationFormRJSF = ({
 
   const isSamlProvider = currentProvider === AuthProvider.Saml;
 
-  const renderSamlUpload = () =>
-    isEditMode && showForm && isSamlProvider ? (
+  const renderSamlUpload = () => {
+    const isUploadVisible =
+      isEditMode && showForm && isSamlProvider && canUploadSamlMetadata;
+
+    return isUploadVisible ? (
       <div className="m-b-md">
         {metadataUploadStatus === null && (
           <Upload.Dragger
@@ -1309,6 +1384,7 @@ const SSOConfigurationFormRJSF = ({
         )}
       </div>
     ) : null;
+  };
 
   const renderSsoForm = () =>
     isEditMode && showForm ? (
@@ -1317,6 +1393,7 @@ const SSOConfigurationFormRJSF = ({
         noHtml5Validate
         className="rjsf no-header"
         customValidate={customValidate}
+        disabled={isReadOnly}
         fields={customFields}
         formContext={{
           clearFieldError: handleClearFieldError,
@@ -1338,7 +1415,7 @@ const SSOConfigurationFormRJSF = ({
         }}
         transformErrors={transformErrors}
         uiSchema={{
-          ...uiSchema,
+          ...lockedUiSchema,
           'ui:submitButtonOptions': {
             submitText: '',
             norender: true,
@@ -1421,7 +1498,7 @@ const SSOConfigurationFormRJSF = ({
             {getProviderDisplayName(currentProvider)} {t('label.set-up')}
           </Typography>
         </div>
-        {hasExistingConfig && onChangeProvider && (
+        {hasExistingConfig && onChangeProvider && canChangeProvider && (
           <Button
             data-testid="change-provider-button"
             type="link"
