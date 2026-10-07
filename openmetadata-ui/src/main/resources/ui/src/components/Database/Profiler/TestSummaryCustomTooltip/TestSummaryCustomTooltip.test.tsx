@@ -152,10 +152,11 @@ describe('Test TestSummaryCustomTooltip component', () => {
       (await screen.findByTestId('failedRowsPercentage')).textContent
     ).toBe('40%');
     expect(screen.queryByText('name')).not.toBeInTheDocument();
-    // The run time as the banner and the run details card write it.
+    // The run time as the banner and the run details card write it, in the
+    // reader's time zone.
     expect(formatDateTimeLong).toHaveBeenCalledWith(
       expect.anything(),
-      'MMM d, yyyy, h:mm a'
+      "MMM d, yyyy, h:mm a '(UTC'ZZ')'"
     );
   });
 

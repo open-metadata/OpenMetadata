@@ -935,7 +935,10 @@ test.describe(
           '0 / 1 – 100'
         );
         await expect(banner.getByTestId('test-case-last-run-time')).toHaveText(
-          customFormatDateTime(failedTimestamp, 'MMM d, yyyy, h:mm a')
+          customFormatDateTime(
+            failedTimestamp,
+            "MMM d, yyyy, h:mm a '(UTC'ZZ')'"
+          )
         );
         await expect(banner.getByTestId('test-case-next-run')).toContainText(
           'Next · in '

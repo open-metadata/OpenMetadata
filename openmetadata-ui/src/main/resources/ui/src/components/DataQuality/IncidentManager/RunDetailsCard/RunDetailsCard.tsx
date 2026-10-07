@@ -30,7 +30,7 @@ import {
 import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   NO_VALUE,
-  RUN_TIME_FORMAT,
+  RUN_TIME_WITH_ZONE_FORMAT,
 } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
@@ -270,7 +270,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           className="tw:text-tertiary"
           data-testid="run-details-date"
           size="text-sm">
-          {customFormatDateTime(result.timestamp, RUN_TIME_FORMAT)}
+          {customFormatDateTime(result.timestamp, RUN_TIME_WITH_ZONE_FORMAT)}
         </Typography>
         {isOlderRunSelected && (
           <Box align="center" gap={2}>

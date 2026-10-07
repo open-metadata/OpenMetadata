@@ -237,15 +237,18 @@ describe('RunDetailsCard', () => {
     expect(screen.getByTestId('run-details-duration')).toHaveTextContent('—');
   });
 
-  it('dates the run as the banner does, without the time zone', () => {
+  it("dates the run as the banner does, in the reader's time zone", () => {
     renderCard([FAILED_RUN]);
 
     const header = screen.getByTestId('run-details-date');
 
     expect(header).toHaveTextContent(
-      customFormatDateTime(FAILED_RUN.timestamp, 'MMM d, yyyy, h:mm a')
+      customFormatDateTime(
+        FAILED_RUN.timestamp,
+        "MMM d, yyyy, h:mm a '(UTC'ZZ')'"
+      )
     );
-    expect(header).not.toHaveTextContent('UTC');
+    expect(header).toHaveTextContent('(UTC');
   });
 
   it('draws the expected value as a marker on its track, and colours the found value', () => {

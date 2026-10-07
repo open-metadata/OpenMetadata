@@ -25,6 +25,7 @@ import {
   MOCK_TEST_CASE_DATA,
   MOCK_TEST_CASE_RESOLUTION_STATUS,
 } from '../../../../mocks/TestCase.mock';
+import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import TestCaseLastRunBanner from './TestCaseLastRunBanner.component';
 import type { TestCaseLastRunBannerProps } from './TestCaseLastRunBanner.interface';
 
@@ -90,6 +91,24 @@ jest.mock('../../../../utils/FqnUtils', () => ({
 }));
 
 describe('TestCaseLastRunBanner', () => {
+  it("writes the run's time in the reader's time zone, as the run details card does", () => {
+    renderBanner({
+      testCaseResult: {
+        testCaseStatus: TestCaseStatus.Failed,
+        result: 'Found 110 rows',
+        timestamp: TEST_CASE_RESULT_TIMESTAMP,
+      },
+      testCaseStatus: TestCaseStatus.Failed,
+    });
+
+    expect(screen.getByTestId('test-case-last-run-time')).toHaveTextContent(
+      customFormatDateTime(
+        TEST_CASE_RESULT_TIMESTAMP,
+        "MMM d, yyyy, h:mm a '(UTC'ZZ')'"
+      )
+    );
+  });
+
   beforeEach(() => {
     mockNavigate.mockClear();
     (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
