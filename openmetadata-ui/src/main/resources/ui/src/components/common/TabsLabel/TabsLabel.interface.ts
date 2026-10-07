@@ -24,7 +24,8 @@ export interface TabProps {
 export interface TabsLabelProps {
   name: string;
   id: string;
-  count?: number;
+  // A string carries a formatted count, e.g. `219+` for a lower bound.
+  count?: number | string;
   isActive?: boolean;
   description?: string;
   isBeta?: boolean;

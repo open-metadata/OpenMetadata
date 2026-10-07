@@ -23,6 +23,11 @@ export type ActivityFeedTabLabelProps = TabsLabelProps & {
   entityLink: string;
 };
 
+// A capped Activity fetch holds only the newest events, so its total is a
+// lower bound: shown as `219+`, as the feed's own badge marks it.
+const getTabCount = (total: number, isCapped: boolean) =>
+  isCapped ? `${total}+` : total;
+
 const ActivityFeedCountLabel: React.FC<ActivityFeedTabLabelProps> = ({
   entityLink,
   ...labelProps
@@ -39,7 +44,13 @@ const ActivityFeedCountLabel: React.FC<ActivityFeedTabLabelProps> = ({
     <TabsLabel
       {...labelProps}
       // Hidden until the activity arrives, rather than a number that moves.
-      count={activityCount && activityCount.total + taskCounts[taskStatus]}
+      count={
+        activityCount &&
+        getTabCount(
+          activityCount.total + taskCounts[taskStatus],
+          activityCount.isCapped
+        )
+      }
     />
   );
 };

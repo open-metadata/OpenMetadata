@@ -34,7 +34,7 @@ jest.mock('./useActivityFeedCounts', () => ({
 
 jest.mock('../../common/TabsLabel/TabsLabel.component', () => ({
   __esModule: true,
-  default: ({ name, count }: { name: string; count?: number }) => (
+  default: ({ name, count }: { name: string; count?: number | string }) => (
     <span data-testid="tab-label">{`${name}:${count ?? 'none'}`}</span>
   ),
 }));
@@ -78,6 +78,17 @@ describe('ActivityFeedTabLabel', () => {
     renderLabel();
 
     expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:28');
+  });
+
+  // Past the fetch's cap the total is a lower bound, marked as the feed does.
+  it('marks the count as a lower bound when the activity is capped', () => {
+    mockUseActivityFeedCounts.mockReturnValue({
+      activityCount: { total: 200, isCapped: true },
+      taskCounts: { all: 27, open: 19, closed: 8 },
+    });
+    renderLabel();
+
+    expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:219+');
   });
 
   it('shows no count until the activity arrives', () => {
