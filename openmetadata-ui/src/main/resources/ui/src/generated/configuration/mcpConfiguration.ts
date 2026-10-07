@@ -35,6 +35,11 @@ export interface MCPConfiguration {
      */
     enabled?: boolean;
     /**
+     * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
+     * it bounds how much of the MCP client's context one call can use.
+     */
+    maxResponseChars?: number;
+    /**
      * Name of the MCP server
      */
     mcpServerName?: string;

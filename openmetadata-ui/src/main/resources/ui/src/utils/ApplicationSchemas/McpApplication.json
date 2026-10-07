@@ -25,6 +25,13 @@
         "http://localhost:8585",
         "http://localhost:9090"
       ]
+    },
+    "maxResponseChars": {
+      "title": "Max Response Characters",
+      "description": "Largest MCP tool response, in characters. Tools return fewer items to stay under it, so it bounds how much of the MCP client's context one call can use. Lower it for clients with a small context window; raise it for ones with a large window. Default: 100,000 (about 25,000 tokens).",
+      "type": "integer",
+      "minimum": 10000,
+      "default": 100000
     }
   },
   "required": ["allowedOrigins"],

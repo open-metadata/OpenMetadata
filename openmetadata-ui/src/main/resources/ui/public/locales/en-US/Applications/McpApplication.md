@@ -24,3 +24,10 @@ $$section
 Origins allowed to call the MCP OAuth endpoints from a browser (CORS allowlist). An empty list rejects every cross-origin request, which stops browser-based MCP clients from connecting. Use exact origins in production; `*` is accepted but not recommended.
 
 $$
+
+$$section
+### Max Response Characters $(id="maxResponseChars")
+
+Largest MCP tool response, in characters. Tools return fewer items to stay under it, so it bounds how much of the MCP client's context one call can use. Lower it for clients with a small context window; raise it for ones with a large window. Default: 100,000 (about 25,000 tokens).
+
+$$

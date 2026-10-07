@@ -700,7 +700,7 @@ public class GetEntityTool implements McpTool {
    * durable fix for genuinely un-representable columns is index-backed sub-column paging.
    */
   private static boolean columnExceedsBudget(int overhead, Object column) {
-    long available = (long) (McpResponseTrim.MAX_RESPONSE_CHARS * COLUMN_BUDGET_FACTOR) - overhead;
+    long available = (long) (McpResponseTrim.maxResponseChars() * COLUMN_BUDGET_FACTOR) - overhead;
     return McpResponseTrim.serializedLength(column) + 1 > available;
   }
 
@@ -721,7 +721,7 @@ public class GetEntityTool implements McpTool {
    * advances by at least one column instead of re-requesting the same offset forever.
    */
   private static int fitToBudget(int overhead, List<?> columns, int start, int end) {
-    long available = (long) (McpResponseTrim.MAX_RESPONSE_CHARS * COLUMN_BUDGET_FACTOR) - overhead;
+    long available = (long) (McpResponseTrim.maxResponseChars() * COLUMN_BUDGET_FACTOR) - overhead;
     long used = 0;
     int fitEnd = start;
     for (int i = start; i < end && used <= available; i++) {
