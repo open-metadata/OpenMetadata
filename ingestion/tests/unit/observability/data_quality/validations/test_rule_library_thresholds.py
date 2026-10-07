@@ -107,6 +107,15 @@ def query_runner():
 
 
 @pytest.fixture
+def empty_query_runner():
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    yield QueryRunner(session=session, dataset=Order, raw_dataset=Order.__table__)
+    session.close()
+
+
+@pytest.fixture
 def pandas_runner():
     rows = pd.DataFrame(order_rows())
     chunks = [rows.iloc[:4], rows.iloc[4:]]
@@ -342,3 +351,49 @@ def test_row_split_is_left_out_when_the_rule_returns_more_rows_than_the_table(re
     assert result.testResultValue[0].value == str(TOTAL_ROWS * TOTAL_ROWS)
     assert result.failedRows is None
     assert result.passedRows is None
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected_status"),
+    [
+        pytest.param(
+            "SELECT COUNT(*) AS order_count FROM {{ table_name }} HAVING COUNT(*) = 0",
+            TestCaseStatus.Failed,
+            id="aggregate-returns-a-row",
+        ),
+        pytest.param(TABLE_SQL, TestCaseStatus.Success, id="no-rows-returned"),
+    ],
+)
+def test_percentage_on_an_empty_table(empty_query_runner, expression, expected_status):
+    """An empty table has no share to tolerate: any row the rule returns fails, none passes"""
+    test_case = build_test_case(TABLE_LINK, expression, EntityType.TABLE, threshold="100", unit="PERCENTAGE")
+
+    result = SQATableValidator(empty_query_runner, test_case, EXECUTION_DATE).run_validation()
+
+    assert result.testCaseStatus == expected_status
+
+
+@pytest.mark.parametrize(
+    ("validator_class", "entity_link", "expression", "entity_type"),
+    [
+        pytest.param(PandasColumnValidator, COLUMN_LINK, PANDAS_COLUMN_EXPRESSION, EntityType.COLUMN, id="column"),
+        pytest.param(PandasTableValidator, TABLE_LINK, PANDAS_TABLE_EXPRESSION, EntityType.TABLE, id="table"),
+    ],
+)
+def test_pandas_reads_the_dataset_once(validator_class, entity_link, expression, entity_type):
+    """The denominator is counted while the expression runs, not in a second pass over the files"""
+    rows = pd.DataFrame(order_rows())
+    calls = []
+
+    def dataset():
+        calls.append(1)
+        return iter([rows.iloc[:4], rows.iloc[4:]])
+
+    runner = PandasRunner(dataset=dataset, raw_dataset=dataset)
+    test_case = build_test_case(entity_link, expression, entity_type, threshold="30", unit="PERCENTAGE")
+
+    result = validator_class(runner, test_case, EXECUTION_DATE).run_validation()
+
+    assert len(calls) == 1
+    assert result.testCaseStatus == TestCaseStatus.Success
+    assert f"out of {TOTAL_ROWS} evaluated (30.00%)" in result.result

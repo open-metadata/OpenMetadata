@@ -19,6 +19,7 @@ from metadata.data_quality.validations.models import (
 from metadata.data_quality.validations.thresholds import (
     THRESHOLD_UNIT_PARAM,
     FailureThreshold,
+    ThresholdUnit,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
 
@@ -64,6 +65,11 @@ class RuleLibraryThresholdMixin(BaseTestValidator):
         """
         row_count = self._run_row_count() if self._needs_row_count() else None
         matched = self._apply_row_threshold(violations, row_count)
+        if violations and not row_count and self.get_failure_threshold().unit is ThresholdUnit.PERCENTAGE:
+            # The shared helper passes an empty denominator as having nothing to violate, but a
+            # rule's SQL can still return rows from an empty table (an aggregate, a HAVING clause).
+            # Those rows are not a share of anything, so no percentage can tolerate them.
+            matched = False
         message = f"{subject}: " + result_messages.violation_sentence(
             violations,
             row_count,
