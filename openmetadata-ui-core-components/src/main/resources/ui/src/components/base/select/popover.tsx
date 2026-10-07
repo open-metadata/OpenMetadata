@@ -1,6 +1,7 @@
 import { mergeRefs } from '@react-aria/utils';
 import type { Ref, RefAttributes } from 'react';
-import { useContext, useEffect, useRef } from 'react';
+import { useContext, useRef } from 'react';
+import { useInteractOutside } from 'react-aria';
 import type { PopoverProps as AriaPopoverProps } from 'react-aria-components';
 import {
   Popover as AriaPopover,
@@ -16,62 +17,32 @@ interface PopoverProps extends AriaPopoverProps, RefAttributes<HTMLElement> {
 export const Popover = (props: PopoverProps) => {
   const state = useContext(OverlayTriggerStateContext);
   const popoverRef = useRef<HTMLElement>(null);
-  // Select and ComboBox hand the trigger down through PopoverContext.
+  // Select and ComboBox hand their trigger down through PopoverContext.
   const contextTriggerRef = (
     useContext(PopoverContext) as { triggerRef?: Ref<Element> } | null
   )?.triggerRef;
   const triggerRef = props.triggerRef ?? contextTriggerRef;
 
-  // `isNonModal` below also switches off react-aria's outside-press dismissal
+  // `isNonModal` below switches off react-aria's own outside-press dismissal
   // (`usePopover` derives `isDismissable: !isNonModal`), and the blur-based
   // dismissal left over ignores a blur whose relatedTarget is null — exactly a
-  // press on any non-focusable part of the page. Nor does the trigger close the
-  // popup itself: `useMenuTrigger` only ever *opens* on press start, relying on
-  // the modal underlay to swallow the press. So dismissal is owned here, as
-  // filter-select and tree-select already do for the same reason.
-  useEffect(() => {
-    if (!state?.isOpen) {
-      return;
-    }
-    const closeOnOutsidePointerDown = (event: Event) => {
-      const target = event.target as Element | null;
-      // react-aria renders this subtree a second time, detached, to build its
-      // collection; that copy has no popover element and borrows whatever
-      // overlay state is in scope, so it must not dismiss anything.
-      if (!popoverRef.current || !target?.isConnected) {
-        return;
-      }
-      // Inside this popover, or an overlay opened from it.
-      if (target.closest('[data-react-aria-top-layer]')) {
-        return;
-      }
+  // press on a non-focusable part of the page. So run the same primitive here.
+  useInteractOutside({
+    ref: popoverRef,
+    isDisabled: !state?.isOpen,
+    onInteractOutside: (event) => {
+      const target = event.target as Element;
       const triggerEl =
         triggerRef && 'current' in triggerRef ? triggerRef.current : null;
-      const toggle = target.closest('[aria-expanded]');
-      // A ComboBox input carries `aria-expanded` too, so only a button counts.
-      const isTogglePress = Boolean(
-        toggle && triggerEl?.contains(toggle) && toggle.tagName !== 'INPUT'
-      );
-      if (isTogglePress) {
-        // The press must not reach the trigger, or it reopens what we close.
-        event.stopPropagation();
-      } else if (triggerEl?.contains(target)) {
-        // Caret moves and chip removals are not a dismissal.
+      // A press inside the trigger is the trigger's own business — except on a
+      // button, which `useMenuTrigger` only ever opens with. Pressing the
+      // ComboBox/TagSelect input it also covers just moves the caret.
+      if (triggerEl?.contains(target) && !target.closest('button')) {
         return;
       }
-      state.close();
-    };
-    // Capture: an overlay stopping propagation would otherwise hide the press.
-    document.addEventListener('pointerdown', closeOnOutsidePointerDown, true);
-
-    return () => {
-      document.removeEventListener(
-        'pointerdown',
-        closeOnOutsidePointerDown,
-        true
-      );
-    };
-  }, [state, triggerRef]);
+      state?.close();
+    },
+  });
 
   return (
     <AriaPopover

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button, Dialog, DialogTrigger, Modal } from 'react-aria-components';
 import { describe, expect, it, vi } from 'vitest';
@@ -85,9 +85,6 @@ describe('Select dismissal', () => {
     );
   });
 
-  // jsdom has no PointerEvent, so react-aria falls back to mouse events and
-  // `user.click` would reopen from the mousedown our handler does not see.
-  // Dispatching the press the browser would send keeps the assertion honest.
   it('closes when pressing the trigger of an open popup', async () => {
     const user = userEvent.setup();
     renderSelect();
@@ -96,16 +93,13 @@ describe('Select dismissal', () => {
     await user.click(trigger);
     expect(await screen.findByRole('listbox')).toBeVisible();
 
-    const press = new Event('pointerdown', { bubbles: true });
-    const reachedTrigger = vi.fn();
-    trigger.addEventListener('pointerdown', reachedTrigger);
-    trigger.dispatchEvent(press);
+    // `useMenuTrigger` only ever opens on press, so the press must not reopen
+    // what this dismissal closes.
+    await user.click(trigger);
 
     await waitFor(() =>
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     );
-    // Stopped in the capture phase, so the press cannot reopen the popup.
-    expect(reachedTrigger).not.toHaveBeenCalled();
   });
 
   it('keeps the list open when pressing inside a ComboBox trigger', async () => {
@@ -122,22 +116,20 @@ describe('Select dismissal', () => {
     await user.click(input);
     expect(await screen.findByRole('listbox')).toBeVisible();
 
-    // react-aria marks the input itself aria-expanded; pressing it only moves
-    // the caret, and `menuTrigger="focus"` would not reopen an already
-    // focused input.
-    await act(async () => {
-      input.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-    });
+    // Pressing the input only moves the caret, and `menuTrigger="focus"` would
+    // not reopen an already focused input.
+    await user.click(input);
 
     expect(screen.getByRole('listbox')).toBeVisible();
   });
 
-  it('leaves an unrelated expanded element its own press', async () => {
+  it('leaves an unrelated element its own press', async () => {
     const user = userEvent.setup();
+    const pressed = vi.fn();
     render(
       <>
-        <button aria-expanded="true" type="button">
-          Expanded section
+        <button type="button" onClick={pressed}>
+          Elsewhere
         </button>
         <Select
           aria-label="Entity type"
@@ -150,14 +142,11 @@ describe('Select dismissal', () => {
     await user.click(screen.getByRole('button', { name: /Entity type/ }));
     expect(await screen.findByRole('listbox')).toBeVisible();
 
-    const unrelated = screen.getByRole('button', { name: 'Expanded section' });
-    const reached = vi.fn();
-    unrelated.addEventListener('pointerdown', reached);
-    unrelated.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
 
     await waitFor(() =>
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     );
-    expect(reached).toHaveBeenCalled();
+    expect(pressed).toHaveBeenCalled();
   });
 });
