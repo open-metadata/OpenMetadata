@@ -253,8 +253,7 @@ const openAutoClassificationAgentForm = async (
   }
 
   await page.getByTestId('add-new-ingestion-button').click();
-  await page.locator('[data-menu-id*="autoClassification"]').waitFor();
-  await page.locator('[data-menu-id*="autoClassification"]').click();
+  await page.getByTestId('agent-item-autoClassification').click();
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('add-ingestion-container').waitFor();
 };

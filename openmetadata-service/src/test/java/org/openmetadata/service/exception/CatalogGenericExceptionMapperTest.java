@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.sdk.PipelineServiceClientInterface.DEPLOYMENT_ERROR;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
 import jakarta.ws.rs.core.Response;
@@ -66,6 +67,36 @@ class CatalogGenericExceptionMapperTest {
     assertEquals(400, response.getStatus());
     assertTrue(
         response.getEntity() instanceof ErrorMessage, "Neighboring endpoints keep ErrorMessage");
+  }
+
+  @Test
+  void aFailedRunIsSentWithTheStatusItWasRaisedWith() {
+    // Airflow unreachable, Airflow answering 500, and the cluster rejecting the job.
+    assertSentAs(503, triggerFailed(Response.Status.SERVICE_UNAVAILABLE));
+    assertSentAs(500, triggerFailed(Response.Status.INTERNAL_SERVER_ERROR));
+    assertSentAs(400, triggerFailed(Response.Status.BAD_REQUEST));
+  }
+
+  @Test
+  void aFailedDeployIsStillABadRequest() {
+    assertSentAs(
+        400,
+        IngestionPipelineDeploymentException.byMessage(
+            "orders_metadata", DEPLOYMENT_ERROR, "Connection refused"));
+  }
+
+  private static IngestionPipelineDeploymentException triggerFailed(Response.Status status) {
+    return IngestionPipelineDeploymentException.triggerFailed(
+        "orders_metadata", "Connection refused", status);
+  }
+
+  private static void assertSentAs(int status, RuntimeException exception) {
+    Response response = new CatalogGenericExceptionMapper().toResponse(exception);
+
+    assertEquals(status, response.getStatus());
+    ErrorMessage error = (ErrorMessage) response.getEntity();
+    assertEquals(status, error.getCode());
+    assertEquals(exception.getMessage(), error.getMessage());
   }
 
   private static CatalogGenericExceptionMapper mapperForAgentPath() {

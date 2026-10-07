@@ -220,12 +220,16 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await plusMoreButton.click();
         const combinedPoliciesText = [
           await roleRow.textContent(),
-          await page.locator('.ant-popover-content').textContent(),
+          await page.getByRole('dialog').textContent(),
         ]
           .filter(Boolean)
           .join(' ');
         expect(combinedPoliciesText).toContain(policies.dataConsumerPolicy);
         expect(combinedPoliciesText).toContain(policies.dataStewardPolicy);
+
+        // The popover's underlay blocks clicks on the page until it closes.
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toBeHidden();
       } else {
         await expect(roleRow).toContainText(policies.dataConsumerPolicy);
       }

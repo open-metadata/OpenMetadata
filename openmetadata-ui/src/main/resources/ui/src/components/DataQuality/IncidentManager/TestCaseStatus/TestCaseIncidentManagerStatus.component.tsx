@@ -97,6 +97,9 @@ const TestCaseIncidentManagerStatus = ({
               icon={<EditIcon width="12px" />}
               newLook={newLook}
               size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.status'),
+              })}
               onClick={onEditStatus}
             />
           )}

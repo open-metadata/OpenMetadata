@@ -194,11 +194,7 @@ class ServiceBaseClass {
 
     await page.click('[data-testid="add-new-ingestion-button"]');
 
-    await page
-      .locator('.ant-dropdown:visible [data-menu-id*="metadata"]')
-      .waitFor();
-
-    await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
+    await page.getByTestId('agent-item-metadata').click();
 
     // Add ingestion page
     await waitForIngestionWorkflowForm(page);

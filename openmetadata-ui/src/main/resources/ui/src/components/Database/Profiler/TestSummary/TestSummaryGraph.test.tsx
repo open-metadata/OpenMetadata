@@ -329,6 +329,24 @@ describe('TestSummaryGraph', () => {
     expect(getChartProps().xAxis?.boundaryGap).toEqual(['2%', '2%']);
   });
 
+  it('should centre a single run on a day of time axis, not two years', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(getChartProps().xAxis).toEqual(
+      expect.objectContaining({
+        min: NEWEST_RUN_TIMESTAMP - 12 * 60 * 60 * 1000,
+        max: NEWEST_RUN_TIMESTAMP + 12 * 60 * 60 * 1000,
+      })
+    );
+  });
+
+  it('should leave the time axis to fit the runs when they span time', () => {
+    render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
+
+    expect(getChartProps().xAxis).not.toHaveProperty('min');
+    expect(getChartProps().xAxis).not.toHaveProperty('max');
+  });
+
   it('should pad the y axis by a share of the data span', () => {
     render(<TestSummaryGraph {...mockProps} {...noExpectationProps} />);
 
@@ -369,6 +387,31 @@ describe('TestSummaryGraph', () => {
     expect(max({ min: 5, max: 5 })).toBe(6);
   });
 
+  it('should pad a flat series by a share of its value, so its ticks read apart', () => {
+    render(<TestSummaryGraph {...mockProps} {...noExpectationProps} />);
+
+    const { min, max } = getYAxisBounds();
+
+    expect(min({ min: 10000, max: 10000 })).toBe(9000);
+    expect(max({ min: 10000, max: 10000 })).toBe(11000);
+  });
+
+  it('should label no padded y axis extreme, only the ticks inside it', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(getChartProps().yAxis).toEqual(
+      expect.objectContaining({
+        axisLabel: { showMinLabel: false, showMaxLabel: false },
+      })
+    );
+  });
+
+  it('should label the expectation at the line start, clear of the selection guide', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(getReferenceLine('y')?.labelPosition).toBe('start');
+  });
+
   it('should format the y axis as a number for other tests', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
@@ -394,6 +437,7 @@ describe('TestSummaryGraph', () => {
       axis: 'y',
       value: 10000,
       label: `label.expected-value ${(10000).toLocaleString()}`,
+      labelPosition: 'start',
     });
   });
 

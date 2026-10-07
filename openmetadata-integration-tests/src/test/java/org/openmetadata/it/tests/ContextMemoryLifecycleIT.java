@@ -174,10 +174,30 @@ public class ContextMemoryLifecycleIT {
   }
 
   @Test
-  void creatingWithoutStatus_defaultsToActive(TestNamespace ns) {
-    ContextMemory memory = admin().create(memory(ns, "default-active"));
+  void creatingWithoutStatus_defaultsToUnprocessed(TestNamespace ns) {
+    ContextMemory memory = admin().create(memory(ns, "default-unprocessed").withEntityStatus(null));
 
-    assertEquals(EntityStatus.APPROVED, memory.getEntityStatus());
+    assertEquals(EntityStatus.UNPROCESSED, memory.getEntityStatus());
+  }
+
+  @Test
+  void approvingAndAmending_preservesApprovalUntilExplicitlyRequeued(TestNamespace ns) {
+    ContextMemory pending = admin().create(memory(ns, "reviewed-memory").withEntityStatus(null));
+    ContextMemory approved = admin().patch(idOf(pending), status(EntityStatus.APPROVED));
+    ContextMemory amended =
+        admin()
+            .patch(
+                idOf(approved),
+                JsonUtils.readTree(
+                    """
+                    [{"op":"replace","path":"/answer","value":"The user-approved definition."}]"""));
+
+    assertEquals(EntityStatus.APPROVED, amended.getEntityStatus());
+    assertEquals("The user-approved definition.", amended.getAnswer());
+
+    ContextMemory requeued = admin().patch(idOf(amended), status(EntityStatus.UNPROCESSED));
+    assertEquals(EntityStatus.UNPROCESSED, requeued.getEntityStatus());
+    assertEquals(amended.getAnswer(), requeued.getAnswer());
   }
 
   @Test
@@ -270,7 +290,11 @@ public class ContextMemoryLifecycleIT {
             idOf(original), JsonUtils.readTree(ADD_DISPUTE.formatted(other.getId(), "Conflicts")));
 
     ContextMemory updated =
-        admin().put(memory(ns, "put-lifecycle").withAnswer("Re-extracted answer"));
+        admin()
+            .put(
+                memory(ns, "put-lifecycle")
+                    .withEntityStatus(null)
+                    .withAnswer("Re-extracted answer"));
 
     assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus());
     assertEquals(keeper.getId(), updated.getSupersededBy().getId());
@@ -413,6 +437,7 @@ public class ContextMemoryLifecycleIT {
   private static CreateContextMemory memory(TestNamespace ns, String name) {
     return new CreateContextMemory()
         .withName(ns.prefix(name))
+        .withEntityStatus(EntityStatus.APPROVED)
         .withQuestion("Which table holds the canonical orders?")
         .withAnswer("sales.orders is the canonical orders table.");
   }
