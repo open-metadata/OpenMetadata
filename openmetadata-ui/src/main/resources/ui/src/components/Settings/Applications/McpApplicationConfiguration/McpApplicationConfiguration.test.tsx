@@ -222,10 +222,10 @@ describe('McpApplication form schema', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('should reject a response cap under the 10,000 character minimum', () => {
+  it('should reject a response cap under the 25,000 character minimum', () => {
     expect(
       validator.validateFormData(
-        { ...editableSubset, maxResponseChars: 5000 },
+        { ...editableSubset, maxResponseChars: 20000 },
         formSchema
       ).errors.length
     ).toBeGreaterThan(0);

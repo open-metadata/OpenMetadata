@@ -28,6 +28,6 @@ $$
 $$section
 ### Max Response Characters $(id="maxResponseChars")
 
-Largest MCP tool response, in characters. Tools return fewer items to stay under it, so it bounds how much of the MCP client's context one call can use. Lower it for clients with a small context window; raise it for ones with a large window. Default: 100,000 (about 25,000 tokens).
+Largest MCP tool response, in characters. Tools return fewer items to stay under it, so it bounds how much of the MCP client's context one call can use. Lower it for clients with a small context window; raise it for ones with a large window. Default: 100,000 (about 25,000 tokens); minimum 25,000. A saved change applies right away on the server that handled the save; other servers in a cluster pick it up on restart.
 
 $$
