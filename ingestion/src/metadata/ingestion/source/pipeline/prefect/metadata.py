@@ -409,11 +409,13 @@ class PrefectSource(PipelineServiceSource):
         latest_run = self.client.get_flow_runs(flow_id, limit=1)
         task_runs = self.client.get_task_runs(latest_run[0].id) if latest_run else []
         pipeline_fqn = self.get_pipeline_fqn(pipeline_details)
-        attachments = [(pipeline_fqn, self._get_all_tags(deployments))]
+        attachments = {pipeline_fqn: set(self._get_all_tags(deployments))}
         task_names = _stable_task_names(task_runs)
-        attachments.extend((f"{pipeline_fqn}.{fqn.quote_name(task_names[run.id])}", run.tags) for run in task_runs)
-        for entity_fqn, tags in attachments:
-            for tag_name in tags:
+        for run in task_runs:
+            entity_fqn = f"{pipeline_fqn}.{fqn.quote_name(task_names[run.id])}"
+            attachments.setdefault(entity_fqn, set()).update(run.tags)
+        for entity_fqn, tags in attachments.items():
+            for tag_name in sorted(tags):
                 yield from self.register_tag(
                     entity_fqn=entity_fqn,
                     definition=TagDefinition(

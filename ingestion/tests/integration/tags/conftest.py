@@ -101,17 +101,18 @@ def tagged_prefect(prefect_server):  # noqa: F811
         flow = create("flows/", {"name": name})
         create("deployments/", {"flow_id": flow["id"], "name": "my_deployment", "tags": [pipeline_tag]})
         run = create("flow_runs/", {"flow_id": flow["id"], "state": {"type": "COMPLETED", "name": "Completed"}})
-        create(
-            "task_runs/",
-            {
-                "flow_run_id": run["id"],
-                "task_key": "extract",
-                "name": "extract",
-                "dynamic_key": "0",
-                "tags": [task_tag],
-                "state": {"type": "COMPLETED", "name": "Completed"},
-            },
-        )
+        for dynamic_key in ("0", "1"):
+            create(
+                "task_runs/",
+                {
+                    "flow_run_id": run["id"],
+                    "task_key": "extract",
+                    "name": "extract",
+                    "dynamic_key": dynamic_key,
+                    "tags": [task_tag],
+                    "state": {"type": "COMPLETED", "name": "Completed"},
+                },
+            )
     return {"type": "Prefect", "hostPort": prefect_server, "authType": {"authString": ""}}, names
 
 

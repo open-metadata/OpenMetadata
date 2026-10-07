@@ -424,7 +424,7 @@ class TestPrefectSource:
         prefect_source.client.get_flow_runs.return_value = [MOCK_FLOW_RUNS[0]]
         prefect_source.client.get_task_runs.return_value = [
             PrefectTaskRun(id="tr-1", flow_run_id="run-1", task_key="extract", tags=["urgent", "shared"]),
-            PrefectTaskRun(id="tr-2", flow_run_id="run-1", task_key="extract", tags=["pii"]),
+            PrefectTaskRun(id="tr-2", flow_run_id="run-1", task_key="extract", tags=["pii", "urgent"]),
             PrefectTaskRun(id="tr-3", flow_run_id="run-1", task_key="load", tags=[]),
         ]
         records = list(prefect_source.yield_tag_details(MOCK_FLOWS[0]))
@@ -432,11 +432,11 @@ class TestPrefectSource:
         (request,) = [record.right for record in prefect_source.yield_pipeline_details(MOCK_FLOWS[0])]
         assert {label.tagFQN.root for label in request.tags} == {"PrefectTags.nightly", "PrefectTags.shared"}
         tasks = {task.name: task for task in request.tasks}
-        assert {label.tagFQN.root for label in tasks["extract"].tags} == {
-            "PrefectTags.urgent",
-            "PrefectTags.shared",
+        assert sorted(label.tagFQN.root for label in tasks["extract"].tags) == [
             "PrefectTags.pii",
-        }
+            "PrefectTags.shared",
+            "PrefectTags.urgent",
+        ]
         assert tasks["load"].tags is None
         assert prefect_source.tags_registry.stats()["live_entities"] == 0
 
