@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Dropdown, Modal, Row, Space, Tooltip } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Dropdown,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
+import { Button, Card, Col, Modal, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -267,66 +273,45 @@ const PoliciesDetailPage = () => {
   const getRuleActionElement = useCallback(
     (rule: Rule) => {
       return (
-        <Dropdown
-          menu={{
-            items: [
-              {
-                label: (
-                  <Space align="center" data-testid="edit-rule">
-                    <Icon
-                      className="align-middle"
-                      component={EditIcon}
-                      style={{ fontSize: '14px' }}
-                    />
-
-                    {t('label.edit')}
-                  </Space>
-                ),
-                key: 'edit-button',
-              },
-              {
-                label: (
-                  <Space align="center" data-testid="delete-rule">
-                    <Icon
-                      className="align-middle"
-                      component={IconDelete}
-                      style={{ fontSize: '14px' }}
-                    />
-
-                    {t('label.delete')}
-                  </Space>
-                ),
-                key: 'delete-button',
-              },
-            ],
-            onClick: (menuInfo) => {
-              if (menuInfo.key === 'edit-button') {
-                navigate(getEditPolicyRulePath(fqn, rule.name || ''));
-              } else if (menuInfo.key === 'delete-button') {
-                handleRuleDelete(rule);
-              } else {
-                return;
-              }
-            },
-          }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Tooltip
-            placement="topRight"
-            title={t('label.manage-entity', {
+        <Dropdown.Root>
+          <ButtonUtility
+            color="tertiary"
+            data-testid={`manage-button-${rule.name}`}
+            icon={DotsVertical}
+            size="xs"
+            tooltip={t('label.manage-entity', {
               entity: t('label.rule'),
-            })}>
-            <Button
-              data-testid={`manage-button-${rule.name}`}
-              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
-              size="small"
-              type="text"
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            />
-          </Tooltip>
-        </Dropdown>
+            })}
+            tooltipPlacement="top end"
+          />
+          <Dropdown.Popover className="tw:w-auto">
+            <Dropdown.Menu
+              aria-label={t('label.manage-entity', {
+                entity: t('label.rule'),
+              })}
+              selectionMode="none"
+              onAction={(key) => {
+                if (key === 'edit-button') {
+                  navigate(getEditPolicyRulePath(fqn, rule.name || ''));
+                } else if (key === 'delete-button') {
+                  handleRuleDelete(rule);
+                }
+              }}>
+              <Dropdown.Item
+                icon={EditIcon}
+                id="edit-button"
+                textValue={t('label.edit')}>
+                <span data-testid="edit-rule">{t('label.edit')}</span>
+              </Dropdown.Item>
+              <Dropdown.Item
+                icon={IconDelete}
+                id="delete-button"
+                textValue={t('label.delete')}>
+                <span data-testid="delete-rule">{t('label.delete')}</span>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       );
     },
     [policy]

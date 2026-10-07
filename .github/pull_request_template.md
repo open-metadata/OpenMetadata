@@ -74,6 +74,7 @@ List the user-visible scenarios this PR exercises. Example:
 #### Ingestion integration tests
 <!--
 - [ ] I added/updated ingestion integration tests for connector changes.
+- [ ] I ran the integration tests covering my changed files locally (PR CI runs only unit tests; the merge queue runs `tests/integration/`).
 - [ ] Not applicable (no ingestion changes).
 - Files added/updated:
 -->
@@ -83,7 +84,17 @@ List the user-visible scenarios this PR exercises. Example:
 - [ ] I added Playwright E2E tests under `openmetadata-ui/.../ui/playwright/` for UI changes.
 - [ ] Not applicable (no UI changes).
 - Files added/updated:
+
+PR checks do not run Playwright; the merge queue runs the full suite. Before requesting review, run
+the specs impacted by this PR locally (selected from `.github/playwright/impact-map.json`):
+
+  make playwright_affected                            # list the impacted specs + the command
+  make playwright_affected_run ARGS="--update-pr"     # run them and fill the block below
+
+Without `gh`, drop `--update-pr` and paste `playwright/output/local-pr-results.md` between the markers.
 -->
+<!-- local-playwright-results:start -->
+<!-- local-playwright-results:end -->
 
 #### Manual testing performed
 <!--

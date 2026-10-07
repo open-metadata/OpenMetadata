@@ -48,6 +48,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.findEntityByNameOrNull;
@@ -175,6 +176,7 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
+import org.openmetadata.schema.CreationAudited;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
@@ -3308,6 +3310,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Domain is already validated
   }
 
+  /**
+   * Stamp who created the entity and when, derived from updatedAt/updatedBy so a freshly created
+   * entity satisfies createdAt == updatedAt and createdBy == updatedBy.
+   *
+   * <p>This is called from {@link #createNewEntity(Object)} rather than from prepare: PUT reaches
+   * the create path through {@code EntityResource.createOrUpdate}, which calls
+   * {@code prepareInternal(entity, true)}, so a prepare-time hook would skip every entity created
+   * by ingestion. createNewEntity is the one funnel all create paths share, and by then the
+   * late updatedBy override in {@code createInternal} has already been applied.
+   *
+   * <p>Entities whose schema does not declare these fields fall through to the no-op
+   * EntityInterface defaults.
+   */
+  private void setCreationAudit(T entity) {
+    if (!(entity instanceof CreationAudited audited)) {
+      return;
+    }
+    if (audited.getCreatedAt() == null) {
+      audited.setCreatedAt(
+          entity.getUpdatedAt() != null ? entity.getUpdatedAt() : System.currentTimeMillis());
+    }
+    if (nullOrEmpty(audited.getCreatedBy())) {
+      audited.setCreatedBy(entity.getUpdatedBy());
+    }
+  }
+
+  /**
+   * Creation audit is immutable. Carrying it from the stored entity onto the incoming one before any
+   * diffing means a PUT that omits it or a PATCH that rewrites it cannot move it, and no change is
+   * ever recorded against it.
+   */
+  private void carryCreationAudit(T original, T updated) {
+    if (original instanceof CreationAudited stored && updated instanceof CreationAudited incoming) {
+      incoming.setCreatedAt(stored.getCreatedAt());
+      incoming.setCreatedBy(stored.getCreatedBy());
+    }
+  }
+
   public final void storeRelationshipsInternal(T entity) {
     storeOwners(entity, entity.getOwners());
     applyTags(entity);
@@ -4208,9 +4248,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       lockManager.checkModificationsAllowed(entities);
     }
 
-    // 2. Set impersonatedBy for each entity
+    // 2. Set impersonatedBy and the creation audit for each entity
     for (T entity : entities) {
       entity.setImpersonatedBy(impersonatedBy);
+      setCreationAudit(entity);
     }
     entities.forEach(this::assignInitialEntityStatus);
 
@@ -4253,6 +4294,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T updated = updates.get(i);
       // Copy ID and version from original
       updated.setId(original.getId());
+      carryCreationAudit(original, updated);
       updated.setVersion(nextVersion(original.getVersion()));
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -5484,6 +5526,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected T createNewEntity(T entity) {
+    setCreationAudit(entity);
     createNewEntityFlush(entity);
     try (var ignored = phase("createPostCreate")) {
       postCreate(entity);
@@ -5781,6 +5824,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
+    entities.forEach(this::setCreationAudit);
     createManyEntitiesFlush(entities);
     try (var ignored = phase("postCreate")) {
       postCreate(entities);
@@ -9845,6 +9889,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
+        carryCreationAudit(original, updated);
         updateDeleted();
         compareAndUpdate(FIELD_DESCRIPTION, this::updateDescription);
         compareAndUpdate(FIELD_DISPLAY_NAME, this::updateDisplayName);
@@ -9877,6 +9922,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
+        carryCreationAudit(original, updated);
         updateDeleted();
         updateDescription();
         updateDisplayName();
@@ -9901,14 +9947,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Default implementation. Override this to add any entity specific field updates
     }
 
+    /**
+     * Whether a bot write must keep a non-empty description. A bot PUT never changes it without
+     * overrideMetadata; with it (a bulk force-sync) a real source value may replace it, but an empty
+     * one must not blank it - a connector that finds no comment omits the field, and that absence
+     * is not "delete the description". An ingestion-bot PATCH follows the same rule: pre-2.0
+     * clients still patch existing tables with the source's empty column comments under
+     * overrideMetadata. App bots are exempt, since some (the Automator's remove-description action)
+     * clear descriptions on purpose.
+     */
+    protected final boolean keepsStoredDescription(String stored, String incoming) {
+      boolean botPut =
+          operation.isPut() && updatedByBot() && (!overrideMetadata || nullOrEmpty(incoming));
+      boolean ingestionPatchBlanking =
+          operation.isPatch()
+              && INGESTION_BOT_NAME.equals(updatingUser.getName())
+              && nullOrEmpty(incoming);
+      return !nullOrEmpty(stored) && (botPut || ingestionPatchBlanking);
+    }
+
     private void updateDescription() {
-      if (operation.isPut()
-          && !nullOrEmpty(original.getDescription())
-          && updatedByBot()
-          && !overrideMetadata) {
-        // Revert change to non-empty description if it is being updated by a bot
-        // This is to prevent bots from overwriting the description. Description need to be
-        // updated with a PATCH request, or via the bulk path with overrideMetadata=true
+      if (keepsStoredDescription(original.getDescription(), updated.getDescription())) {
         updated.setDescription(original.getDescription());
         return;
       }
@@ -9945,11 +10004,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // authorizes with the coarse EDIT_ALL operation, which does not intersect that field-level
       // deny, so re-apply it here. Bots the policy allows - for example the SCIM bot syncing
       // identity attributes through the repository - fall through and update it. A bulk force-sync
-      // (overrideMetadata=true) also bypasses this guard.
+      // (overrideMetadata=true) also bypasses this guard, unless it would blank the displayName.
       boolean preserveUserDisplayName =
           updatedByBot()
               && !nullOrEmpty(original.getDisplayName())
-              && !overrideMetadata
+              && (!overrideMetadata || nullOrEmpty(updated.getDisplayName()))
               && !Objects.equals(original.getDisplayName(), updated.getDisplayName())
               && updatingBotDeniedOperation(MetadataOperation.EDIT_DISPLAY_NAME);
       if (preserveUserDisplayName) {
@@ -9994,16 +10053,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateOwners() {
-      // A bot whose policy denies EditOwners (e.g. the ingestion bot via DefaultBotPolicy /
-      // IngestionBotPolicy) must not clobber user-curated owners. A PUT or bulk update authorizes
-      // with the coarse EDIT_ALL operation, which does not intersect that field-level deny, so
-      // re-apply it here. Bots the policy allows fall through and update owners as before. A bulk
-      // force-sync (overrideMetadata=true) also bypasses this guard.
+      // A bot PUT only fills owners on an entity that has none: owners sent by ingestion
+      // (ownerConfig, includeOwners) must not replace the ones a user assigned, as includeOwners
+      // documents. This can't be left to the bot policy - no shipped bot policy denies EditOwners,
+      // so a policy check never fired. A PATCH, or a bulk run with overrideMetadata=true, still
+      // reassigns them.
       boolean preserveUserOwners =
-          updatedByBot()
-              && !nullOrEmpty(original.getOwners())
-              && !overrideMetadata
-              && updatingBotDeniedOperation(MetadataOperation.EDIT_OWNERS);
+          operation.isPut()
+              && updatedByBot()
+              && !nullOrEmpty(getEntityReferences(original.getOwners()))
+              && !overrideMetadata;
       if (preserveUserOwners) {
         updated.setOwners(original.getOwners());
         return;
@@ -10097,6 +10156,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         checkMutuallyExclusive(updatedTags);
       } else {
         // PATCH and an explicit PUT override replace tags.
+        if (operation.isPut()) {
+          keepTagsOutsideRequestedClassifications(origTags, updatedTags);
+        }
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         List<TagLabel> persistableUpdatedTags = getNonDerivedTags(updatedTags);
         Set<String> updatedTagKeys = createTagKeySet(persistableUpdatedTags);
@@ -10150,6 +10212,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
           new ArrayList<>(),
           tagLabelMatch);
       updatedTags.sort(compareTagLabel);
+    }
+
+    /**
+     * An override run replaces tags only within the classifications and glossaries it sends. Tier,
+     * automator-propagated and user-applied tags from any other one are never emitted by a source,
+     * so their absence from the request must not delete them.
+     */
+    private void keepTagsOutsideRequestedClassifications(
+        List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      Set<String> requestedRoots =
+          getNonDerivedTags(updatedTags).stream()
+              .map(tag -> FullyQualifiedName.getRoot(tag.getTagFQN()))
+              .collect(Collectors.toSet());
+      EntityUtil.mergeTags(
+          updatedTags,
+          origTags.stream()
+              .filter(tag -> !requestedRoots.contains(FullyQualifiedName.getRoot(tag.getTagFQN())))
+              .toList());
     }
 
     protected void updateTagsForImport(
@@ -10501,6 +10581,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    /**
+     * Updates a field only users set and no connector sends, such as retentionPeriod. A bot PUT
+     * always omits it, so - override or not - that absence keeps the stored value instead of
+     * blanking it.
+     */
+    protected final <V> void updateUserOnlyField(
+        String fieldName, V origValue, V updatedValue, Consumer<V> setUpdated) {
+      if (operation.isPut() && updatedByBot() && updatedValue == null && origValue != null) {
+        setUpdated.accept(origValue);
+        return;
+      }
+      recordChange(fieldName, origValue, updatedValue);
+    }
+
     private void updateLifeCycle() {
       if (!supportsLifeCycle) {
         return;
@@ -10557,11 +10651,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (operation.isPut()
           && !nullOrEmpty(original.getCertification())
           && updatedByBot()
-          && !overrideMetadata) {
+          && (!overrideMetadata || updatedCertification == null)) {
         // Revert change to non-empty certification if it is being updated by a bot, matching the
         // guard on description/owners: a stored value wins over anything a scheduled re-sync
         // sends. Certification can still be updated with a PATCH request, or via the bulk path
-        // with overrideMetadata=true.
+        // with overrideMetadata=true when the request carries one.
         updated.setCertification(original.getCertification());
         return;
       }
@@ -11524,14 +11618,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateColumnDescription(
         String fieldPrefix, Column origColumn, Column updatedColumn) {
-      // A bot PUT preserves a non-empty column description. A bulk force-sync
-      // (overrideMetadata=true) may replace it with a real source comment, but must never blank
-      // it: a connector that finds no comment on the column omits the field entirely, and an
-      // override run must not read that absence as "delete the description".
-      if (operation.isPut()
-          && !nullOrEmpty(origColumn.getDescription())
-          && updatedByBot()
-          && (!overrideMetadata || nullOrEmpty(updatedColumn.getDescription()))) {
+      if (keepsStoredDescription(origColumn.getDescription(), updatedColumn.getDescription())) {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }

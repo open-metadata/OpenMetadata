@@ -44,6 +44,15 @@ export interface Table {
      */
     compressionStrategy?: CompressionStrategy;
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * List of Custom Metrics registered for a table.
      */
     customMetrics?: CustomMetric[];
@@ -1706,6 +1715,7 @@ export interface Partitioning {
  * This schema defines the type used for describing different types of tables.
  */
 export enum TableType {
+    DeltaLake = "DeltaLake",
     Dynamic = "Dynamic",
     External = "External",
     Foreign = "Foreign",

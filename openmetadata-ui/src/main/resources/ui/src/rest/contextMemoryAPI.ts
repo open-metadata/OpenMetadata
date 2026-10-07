@@ -31,6 +31,7 @@ export type ContextMemoryListParams = ListParams & {
   sortBy?: 'updatedAt' | 'usageCount' | 'updatedBy';
   sortOrder?: 'asc' | 'desc';
   offset?: number;
+  statuses?: string;
 };
 
 export const getListContextMemories = async (

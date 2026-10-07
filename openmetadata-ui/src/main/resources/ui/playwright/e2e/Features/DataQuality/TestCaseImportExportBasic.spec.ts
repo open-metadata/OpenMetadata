@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
@@ -261,7 +262,7 @@ test.describe(
           await expect(
             page.getByText(/INVALID_HEADER/i).filter({ visible: true })
           ).not.toHaveCount(0, {
-            timeout: 30000,
+            timeout: ACTION_TIMEOUT,
           });
         });
       } finally {

@@ -1,6 +1,5 @@
 package org.openmetadata.service.governance.workflows;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
@@ -74,6 +73,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.SEARCH_INDEX,
           Entity.API_ENDPOINT,
           Entity.API_COLLECTION,
+          Entity.FILE,
+          Entity.DIRECTORY,
+          Entity.SPREADSHEET,
+          Entity.WORKSHEET,
           Entity.DATABASE_SERVICE,
           Entity.DASHBOARD_SERVICE,
           Entity.MESSAGING_SERVICE,
@@ -83,6 +86,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.SEARCH_SERVICE,
           Entity.API_SERVICE,
           Entity.METADATA_SERVICE,
+          Entity.DRIVE_SERVICE,
+          Entity.LLM_SERVICE,
+          Entity.MCP_SERVICE,
+          Entity.SECURITY_SERVICE,
           Entity.DOMAIN,
           Entity.DATA_PRODUCT,
           Entity.GLOSSARY,
@@ -104,7 +111,11 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.PAGE,
           Entity.AI_APPLICATION,
           Entity.LLM_MODEL,
-          Entity.MCP_SERVER);
+          Entity.MCP_SERVER,
+          Entity.PROMPT_TEMPLATE,
+          Entity.AI_GOVERNANCE_POLICY,
+          Entity.AI_GOVERNANCE_FRAMEWORK,
+          Entity.AI_FRAMEWORK_CONTROL);
 
   private static final Registry<Function<ChangeEvent, Map<String, Object>>> handlerRegistry =
       new Registry<>(WorkflowEventConsumer::defaultHandler);
@@ -116,16 +127,8 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType()
-        == SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT) {
-
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-    } else {
-      throw new IllegalArgumentException(
-          String.format(
-              "WorkflowEventConsumer does not work with %s.", subscriptionDestination.getType()));
-    }
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
   }
 
   private static boolean isTransientDatabaseError(Throwable e) {
@@ -199,11 +202,11 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(
-              GOVERNANCE_WORKFLOW_CHANGE_EVENT, event, exc.getMessage());
+              subscriptionDestination.getType(), event, exc.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
           CatalogExceptionMessage.eventPublisherFailedToPublish(
-              GOVERNANCE_WORKFLOW_CHANGE_EVENT, exc.getMessage()),
+              subscriptionDestination.getType(), exc.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
   }

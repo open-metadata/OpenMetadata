@@ -12,7 +12,6 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
@@ -102,7 +101,9 @@ const TaskListV1 = ({
   }
 
   return (
-    <div className={classNames('activity-feed-tab-padding')} id="taskData">
+    // Padding lives here, not in .activity-feed-tab-padding: that rule's stylesheet
+    // is not loaded on every page that renders this list (e.g. the incident tab).
+    <div className="tw:p-5" id="taskData">
       {tasks}
     </div>
   );

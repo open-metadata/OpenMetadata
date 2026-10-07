@@ -194,6 +194,7 @@ const DomainsWidget = ({
                         className="domain-card-full-name font-semibold"
                         ellipsis={{
                           tooltip: true,
+                          excludeTriggerFromTabOrder: true,
                         }}>
                         {domain.displayName || domain.name}
                       </Typography>
@@ -214,7 +215,10 @@ const DomainsWidget = ({
                       </div>
                       <Typography
                         className="domain-card-name"
-                        ellipsis={{ tooltip: true }}>
+                        ellipsis={{
+                          tooltip: true,
+                          excludeTriggerFromTabOrder: true,
+                        }}>
                         {domain.displayName || domain.name}
                       </Typography>
                     </span>

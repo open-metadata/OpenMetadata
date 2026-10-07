@@ -319,7 +319,7 @@ const EntityTitleColumn = ({
             'm-r-xs': hasGlossaryTermStatus,
           })}
           data-testid="entity-link"
-          state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
+          state={{ breadcrumbData: breadcrumbs }}
           target={searchClassBase.getSearchEntityLinkTarget(
             source,
             openEntityInNewPage
@@ -825,7 +825,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         searchClassBase.getEntityBreadcrumbs(
           source,
           source.entityType as EntityType,
-          false
+          true
         ),
       [source]
     );

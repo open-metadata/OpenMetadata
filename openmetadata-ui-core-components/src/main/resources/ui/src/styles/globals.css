@@ -1824,6 +1824,12 @@ Badge's own default neutral border/background instead of the tint. */
   color: var(--tag-color);
 }
 
+.tag-tinted:hover,
+.tag-tinted:focus {
+  outline: none;
+  text-decoration: none;
+}
+
 .tag-accent {
   outline: none;
   border: 1px solid color-mix(in srgb, var(--tag-color) 16%, transparent);
@@ -1833,6 +1839,12 @@ Badge's own default neutral border/background instead of the tint. */
   of stylesheet load order. */
   background-color: transparent !important;
   color: var(--tag-color);
+}
+
+.tag-accent:hover,
+.tag-accent:focus {
+  outline: none;
+  text-decoration: none;
 }
 
 .tag-tinted__close-icon button,

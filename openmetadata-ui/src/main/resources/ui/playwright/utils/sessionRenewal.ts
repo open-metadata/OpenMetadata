@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { BrowserContext, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { ProviderConfigOverride } from './ssoAuth';
 import { APP_STATE_KEY, OIDC_TOKEN_KEY } from './tokenStorage';
 
@@ -132,7 +133,7 @@ export const expireStoredToken = async (
   await page.waitForFunction(
     () => Boolean(navigator.serviceWorker?.controller),
     undefined,
-    { timeout: 30_000 }
+    { timeout: ACTION_TIMEOUT }
   );
 
   return page.evaluate(
