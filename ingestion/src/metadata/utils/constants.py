@@ -126,6 +126,12 @@ NO_ACCESS_TOKEN = "no_token"
 
 SAMPLE_DATA_DEFAULT_COUNT = 50
 
+# Auto-classification may read up to SAMPLE_DATA_MAX_COUNT rows, but only
+# SAMPLE_DATA_MAX_STORED_COUNT of them are persisted, so raising the classification
+# budget never grows the stored sample. Bounds rows returned, not database scan cost.
+SAMPLE_DATA_MAX_COUNT = 1_000
+SAMPLE_DATA_MAX_STORED_COUNT = 50
+
 # Max length for any individual cell value in sample data.
 # Prevents OOM when tables contain large TEXT/CLOB columns.
 SAMPLE_DATA_MAX_CELL_LENGTH = 5_000
