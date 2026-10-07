@@ -13,7 +13,7 @@
 
 import { APIRequestContext, Page } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
-import { test as base, expect } from '../../support/fixtures/base';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
