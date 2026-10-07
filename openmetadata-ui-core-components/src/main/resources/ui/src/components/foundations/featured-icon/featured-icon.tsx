@@ -1,4 +1,5 @@
 import type { FC, ReactNode, Ref } from 'react';
+import { forwardRef } from 'react';
 import { isValidElement } from 'react';
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
@@ -164,9 +165,11 @@ interface FeaturedIconProps {
   bgColor?: 'colored' | 'white';
 }
 
-export const FeaturedIcon = (props: FeaturedIconProps) => {
+export const FeaturedIcon = forwardRef<
+  HTMLDivElement,
+  Omit<FeaturedIconProps, 'ref'>
+>(function FeaturedIcon(props, ref) {
   const {
-    ref,
     className,
     children,
     size = 'sm',
@@ -202,4 +205,6 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
       {children}
     </div>
   );
-};
+});
+
+FeaturedIcon.displayName = 'FeaturedIcon';

@@ -16,6 +16,7 @@ import {
   TaskDetailDescriptor,
   TaskStatTilesProps,
 } from '../components/discovery/personal-space/InboxPage/taskDetail.types';
+import { ProfileHeaderOverride } from '../components/discovery/personal-space/Profile/profileNavConfig';
 import { PluginRouteProps } from '../components/Settings/Applications/plugins/AppPlugin';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
@@ -127,6 +128,13 @@ export interface PluginEntityDetailsContext {
    * (e.g. a compact vs. table layout) via `condition`.
    */
   isAiMode?: boolean;
+  /**
+   * Allows a contributed tab to override the ProfilePage header (breadcrumbs,
+   * title, actions) without needing a separate route. Only provided by
+   * ProfilePage when it maps contributed tabs; other consumers leave it absent.
+   * Pass `null` to clear the override and restore the default header.
+   */
+  onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
 // ============================================================================
@@ -194,6 +202,19 @@ export interface TabContribution {
 
   /** Whether the tab is hidden (alternative to condition) */
   isHidden?: boolean;
+
+  /**
+   * Sidebar group this tab belongs to. Consumers that render tabs in a grouped
+   * side-nav (e.g. ProfilePage) use this to place the item under the right
+   * section header. Defaults to 'credentials' when omitted.
+   */
+  group?: string;
+
+  /**
+   * When true, the host page skips its standard content scroll wrapper and lets
+   * the tab manage its own layout (e.g. a page that needs a sticky footer).
+   */
+  selfContainedLayout?: boolean;
 }
 
 /**

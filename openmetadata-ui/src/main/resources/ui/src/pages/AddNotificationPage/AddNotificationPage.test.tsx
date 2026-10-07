@@ -27,6 +27,7 @@ jest.mock('../../utils/AlertsClassBase', () => ({
     getModifiedAlertDataForForm: (...args: unknown[]) =>
       mockGetModifiedAlertDataForForm(...args),
     getAddAlertFormExtraWidgets: jest.fn().mockReturnValue({}),
+    getSourceNameSearch: jest.fn().mockReturnValue({}),
     getAddAlertFormExtraButtons: jest.fn().mockReturnValue({}),
   },
 }));
