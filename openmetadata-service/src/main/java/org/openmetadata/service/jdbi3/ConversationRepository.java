@@ -110,6 +110,7 @@ public class ConversationRepository {
       SecurityContext securityContext,
       Authorizer authorizer,
       String entityLink,
+      boolean includeFields,
       UUID userId,
       ConversationFilterType filterType,
       Boolean resolved,
@@ -125,6 +126,7 @@ public class ConversationRepository {
         buildFilter(
             securityContext,
             entityLink,
+            includeFields,
             userId,
             filterType,
             resolved,
@@ -568,6 +570,7 @@ public class ConversationRepository {
   private ConversationFilter buildFilter(
       SecurityContext securityContext,
       String entityLink,
+      boolean includeFields,
       UUID userId,
       ConversationFilterType filterType,
       Boolean resolved,
@@ -586,6 +589,7 @@ public class ConversationRepository {
                 .toList();
     return ConversationFilter.builder()
         .entityLink(entityLink)
+        .includeFields(includeFields)
         .userId(userId)
         .filterType(filterType)
         .resolved(resolved)

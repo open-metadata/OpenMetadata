@@ -129,6 +129,36 @@ class ConversationResourceIT {
   }
 
   @Test
+  void testListingIncludesFieldConversationsOnRequest(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "fields");
+    String about = entityLink(table);
+    String columnAbout =
+        "<#E::table::"
+            + table.getFullyQualifiedName()
+            + "::columns::"
+            + table.getColumns().getFirst().getName()
+            + ">";
+    Conversation onTable = createConversation(about, "About the table");
+    Conversation onColumn = createConversation(columnAbout, "About a column");
+
+    assertEquals(
+        List.of(onTable.getId()),
+        listConversations(about, 10, null, null, null).getData().stream()
+            .map(Conversation::getId)
+            .toList(),
+        "Without includeFields the link matches exactly");
+    assertEquals(
+        List.of(onColumn.getId(), onTable.getId()),
+        listConversationsWithFields(about).getData().stream().map(Conversation::getId).toList());
+    assertEquals(
+        List.of(onColumn.getId()),
+        listConversationsWithFields(columnAbout).getData().stream()
+            .map(Conversation::getId)
+            .toList(),
+        "A field link does not widen to its entity");
+  }
+
+  @Test
   void testListingFiltersAndKeysetPagination(TestNamespace ns) throws Exception {
     Table table = createTestTable(ns, "listing");
     String about = entityLink(table);
@@ -617,6 +647,19 @@ class ConversationResourceIT {
         client
             .getHttpClient()
             .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options.build());
+    return MAPPER.readValue(json, ConversationList.class);
+  }
+
+  private static ConversationList listConversationsWithFields(String about) throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", about)
+            .queryParam("includeFields", "true")
+            .build();
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options);
     return MAPPER.readValue(json, ConversationList.class);
   }
 
