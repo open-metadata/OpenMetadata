@@ -19,6 +19,7 @@ import {
   MAX_COLUMN_NAVIGATION_RETRIES,
   RDG_ACTIVE_CELL_SELECTOR,
 } from '../constant/bulkImportExport';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
@@ -334,7 +335,7 @@ const clickMarkdownEditorSave = async (page: Page) => {
 
 export const waitForImportGridLoadMaskToDisappear = async (
   page: Page,
-  timeout = 30000
+  timeout = ACTION_TIMEOUT
 ) => {
   await expect(page.locator(IMPORT_GRID_LOAD_MASK_SELECTOR)).toHaveCount(0, {
     timeout,

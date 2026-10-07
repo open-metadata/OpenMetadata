@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -113,7 +114,7 @@ const openFirstTaskCard = async (page: Page) => {
   const taskCard = page.locator('[data-testid="task-feed-card"]').first();
   const taskDetailTab = page.locator('[data-testid="task-tab"]');
 
-  await expect(taskCard).toBeVisible({ timeout: 30_000 });
+  await expect(taskCard).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   await taskCard.click();
   await expect(taskDetailTab).toBeVisible();
@@ -471,7 +472,7 @@ test.describe('Task Activity Feed Integration', () => {
         .locator('[data-testid="task-feed-card"]')
         .first();
 
-      await expect(closedTaskCard).toBeVisible({ timeout: 30_000 });
+      await expect(closedTaskCard).toBeVisible({ timeout: ACTION_TIMEOUT });
     });
   });
 

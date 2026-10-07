@@ -14,6 +14,8 @@
 package org.openmetadata.it.bootstrap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import io.dropwizard.configuration.ConfigurationException;
@@ -49,12 +51,15 @@ import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
@@ -158,6 +163,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
+  private static ServerStallWatchdog STALL_WATCHDOG;
   private static Jdbi jdbi;
 
   private static String searchHost;
@@ -237,12 +243,58 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       System.setProperty("IT_BASE_URL", "http://localhost:" + APP.getLocalPort() + "/api");
 
       SharedEntities.initialize(SdkClients.adminClient());
+      excludeGlossaryStatusFixturesFromApproval();
+      startStallWatchdog();
 
     } catch (Exception e) {
       LOG.error("Failed to start test infrastructure", e);
       cleanup();
       throw new RuntimeException("TestSuiteBootstrap initialization failed", e);
     }
+  }
+
+  // Status and search tests seed their own stages. Exclude their marked glossaries before any
+  // tests run so queued approval events cannot overwrite them or require draining the event stream.
+  private static void excludeGlossaryStatusFixturesFromApproval() {
+    String exclusion =
+        JsonUtils.pojoToJson(
+            Map.of(
+                "in",
+                List.of(
+                    GlossaryTestFactory.STATUS_TEST_GLOSSARY_PREFIX + "__",
+                    Map.of("var", "fullyQualifiedName"))));
+    ArrayNode patch = JsonNodeFactory.instance.arrayNode();
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/trigger/config/filter/glossaryTerm")
+        .put("value", exclusion);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/governance/workflowDefinitions/name/GlossaryTermApprovalWorkflow",
+            patch);
+  }
+
+  /** Leaves a wedged lane a thread dump and the database's lock picture to be diagnosed from. */
+  private static void startStallWatchdog() {
+    STALL_WATCHDOG =
+        ServerStallWatchdog.forEmbeddedServer(
+            stallProbe(),
+            Path.of(System.getProperty("integrationTests.diagnosticsDir", "target/ci-diagnostics")),
+            Duration.ofSeconds(Long.getLong("integrationTests.stallThresholdSeconds", 180)));
+    STALL_WATCHDOG.start();
+  }
+
+  private static ServerStallWatchdog.DatabaseProbe stallProbe() {
+    return "mysql".equalsIgnoreCase(databaseType)
+        ? ServerStallWatchdog.DatabaseProbe.mysql(
+            DATABASE_CONTAINER.getJdbcUrl(), DATABASE_CONTAINER.getPassword())
+        : ServerStallWatchdog.DatabaseProbe.postgres(
+            DATABASE_CONTAINER.getJdbcUrl(),
+            DATABASE_CONTAINER.getUsername(),
+            DATABASE_CONTAINER.getPassword());
   }
 
   @Override
@@ -873,6 +925,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   private void cleanup() {
+    if (STALL_WATCHDOG != null) {
+      STALL_WATCHDOG.close();
+    }
     try {
       if (SharedEntities.isInitialized()) {
         SharedEntities.cleanup(SdkClients.adminClient());

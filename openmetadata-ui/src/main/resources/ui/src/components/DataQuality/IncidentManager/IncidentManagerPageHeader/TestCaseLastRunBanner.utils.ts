@@ -11,9 +11,22 @@
  *  limitations under the License.
  */
 
-import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { isUndefined } from 'lodash';
+import {
+  TestCase,
+  TestCaseResult,
+  TestCaseStatus,
+} from '../../../../generated/tests/testCase';
+import { toFiniteNumber } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { convertMillisecondsToHumanReadableFormat } from '../../../../utils/date-time/DateTimeUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
+import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
+import {
+  formatExpectation,
+  getFoundValue,
+  getRunExpectation,
+} from '../RunDetailsCard/RunDetailsCard.utils';
 import {
   INCIDENT_RUN_STATUSES,
   INCIDENT_STATUS_CONFIG,
@@ -22,18 +35,21 @@ import {
 import type { TestCaseLastRunBannerProps } from './TestCaseLastRunBanner.interface';
 import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
-type TestResultValues = NonNullable<
-  TestCaseLastRunBannerProps['testCaseResult']
->['testResultValue'];
+const getExpectedText = (
+  testCase: TestCase | undefined,
+  testCaseResult: TestCaseResult
+) => {
+  const predicted = toFiniteNumber(
+    testCaseResult.testResultValue?.[0]?.predictedValue
+  );
 
-const formatMetricValue = (value?: string) => {
-  if (!value) {
-    return undefined;
+  if (!isUndefined(predicted)) {
+    return formatNumber(predicted);
   }
 
-  const numericValue = Number(value);
-
-  return Number.isFinite(numericValue) ? numericValue.toLocaleString() : value;
+  return testCase
+    ? formatExpectation(getRunExpectation(testCase, testCaseResult))
+    : NO_VALUE;
 };
 
 export const getRunDescription = (
@@ -49,27 +65,26 @@ export const getIncidentLink = (
   testCaseStatus: TestCaseStatus
 ) => (INCIDENT_RUN_STATUSES.has(testCaseStatus) ? taskLinkInfo : null);
 
+/**
+ * The latest run's RESULT / EXPECTED pair, read through the run details card's
+ * helpers so the two cannot disagree. A result is rarely named like its
+ * parameter (`rowCount` against `value`), so there is no name lookup.
+ */
 export const getMetricSummary = (
-  parameterValues: TestCaseLastRunBannerProps['parameterValues'],
-  testResultValue: TestResultValues,
+  testCase: TestCase | undefined,
+  testCaseResult: TestCaseResult,
   testCaseStatus: TestCaseStatus
 ) => {
-  const metric = testResultValue?.[0];
-  const resultValue = formatMetricValue(metric?.value);
-  const matchingParameter = parameterValues?.find(
-    ({ name }) => name === metric?.name
-  );
-  const expectedValue = formatMetricValue(
-    metric?.predictedValue ?? matchingParameter?.value
-  );
+  const found = getFoundValue(testCaseResult);
+  const expectedValue = getExpectedText(testCase, testCaseResult);
 
   return {
     expectedValue,
-    resultValue,
+    resultValue: isUndefined(found) ? undefined : formatNumber(found),
     show:
       METRIC_RUN_STATUSES.has(testCaseStatus) &&
-      resultValue !== undefined &&
-      expectedValue !== undefined,
+      !isUndefined(found) &&
+      expectedValue !== NO_VALUE,
   };
 };
 
@@ -108,11 +123,38 @@ export const getIncidentTitle = (
     .trim();
 };
 
+/**
+ * The not-run banner's line. It asks for a pipeline only when the test is
+ * known to have no scheduled run; while the schedule is unknown it says no
+ * more than that the test has not run.
+ *
+ * Like getNextRunLabel, it compares the clock at render with a next run that
+ * is fetched once: a page left open past that run reads it as unscheduled on
+ * its next render, until the page is loaded again.
+ */
+export const getNotRunMessageKey = (
+  nextRunTimestamp: number | null | undefined,
+  now = Date.now()
+) => {
+  if (isUndefined(nextRunTimestamp)) {
+    return 'message.test-case-has-not-run';
+  }
+
+  return nextRunTimestamp && nextRunTimestamp > now
+    ? 'message.test-case-first-run-scheduled'
+    : 'message.test-case-not-run-yet';
+};
+
 export const getNextRunLabel = (
-  nextRunTimestamp: number | undefined,
+  nextRunTimestamp: number | null | undefined,
   inLabel: string,
   notScheduledLabel: string
 ) => {
+  // Unknown while the schedule loads or after it failed to, which is not the
+  // same as unscheduled.
+  if (isUndefined(nextRunTimestamp)) {
+    return NO_VALUE;
+  }
   if (!nextRunTimestamp) {
     return notScheduledLabel;
   }

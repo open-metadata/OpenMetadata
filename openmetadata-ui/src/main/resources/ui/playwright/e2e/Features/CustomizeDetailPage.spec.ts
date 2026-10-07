@@ -34,6 +34,7 @@ import {
 import {
   getCustomizeDetailsDefaultTabs,
   getCustomizeDetailsEntity,
+  openPlaceholderWidgetPicker,
 } from '../../utils/customizeDetails';
 import {
   checkDefaultStateForNavigationTree,
@@ -46,21 +47,6 @@ import {
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
-
-const openPlaceholderWidgetPicker = async (page: Page) => {
-  await page.getByRole('dialog').waitFor({ state: 'hidden' });
-  await page.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
-  const addWidgetButton = page
-    .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-    .getByTestId('add-widget-button');
-
-  // Focus can scroll this grid after the pointer position has been measured.
-  // Complete both transitions before dispatching the single click.
-  await addWidgetButton.scrollIntoViewIfNeeded();
-  await addWidgetButton.focus();
-  await addWidgetButton.click();
-  await expect(page.getByTestId('widget-info-tabs')).toBeVisible();
-};
 
 const persona = new PersonaClass();
 // Keeping it separate so that it won't affect other tests
@@ -419,8 +405,11 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       });
 
       await test.step(`should show all the tabs & widget as default when no customization is done`, async () => {
-        const personaListResponse =
-          adminPage.waitForResponse(`/api/v1/personas?*`);
+        const personaListResponse = waitForResponseWithStatus(
+          adminPage,
+          (response) => response.url().includes('/api/v1/personas?'),
+          200
+        );
         await settingClick(adminPage, GlobalSettingOptions.PERSONA);
         await personaListResponse;
 
@@ -439,11 +428,21 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         const expectedTabs = getCustomizeDetailsDefaultTabs(type);
 
+        for (const tabName of expectedTabs) {
+          await expect(
+            adminPage
+              .getByTestId('customize-tab-card')
+              .getByTestId(`tab-${tabName}`)
+          ).toBeVisible();
+        }
+
         const tabs = adminPage
           .getByTestId('customize-tab-card')
           .getByRole('button')
           .filter({ hasNotText: 'Add Tab' });
 
+        // The tab card has rendered (asserted above), so this one-shot count
+        // reads the final state rather than a still-mounting card.
         const knowledgeGraphTab = adminPage
           .getByTestId('customize-tab-card')
           .getByTestId(`tab-${EntityTabs.KNOWLEDGE_GRAPH}`);
@@ -456,14 +455,6 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
             : 0);
 
         await expect(tabs).toHaveCount(expectedTabCount);
-
-        for (const tabName of expectedTabs) {
-          await expect(
-            adminPage
-              .getByTestId('customize-tab-card')
-              .getByTestId(`tab-${tabName}`)
-          ).toBeVisible();
-        }
       });
 
       await test.step('apply customization', async () => {
@@ -824,16 +815,26 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+      await expect(
+        adminPage
+          .getByRole('dialog')
+          .filter({ hasNot: adminPage.getByRole('menu') })
+      ).toBeVisible();
 
-      await adminPage.getByRole('dialog').getByRole('textbox').clear();
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
+        .getByRole('textbox')
+        .clear();
+      await adminPage
+        .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('textbox')
         .fill('Sample Data Updated');
 
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('button', { name: 'Ok' })
         .click();
 
@@ -923,16 +924,26 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+      await expect(
+        adminPage
+          .getByRole('dialog')
+          .filter({ hasNot: adminPage.getByRole('menu') })
+      ).toBeVisible();
 
-      await adminPage.getByRole('dialog').getByRole('textbox').clear();
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
+        .getByRole('textbox')
+        .clear();
+      await adminPage
+        .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('textbox')
         .fill('Access Policy');
 
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('button', { name: 'Ok' })
         .click();
 

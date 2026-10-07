@@ -174,7 +174,10 @@ export type ChartYAxisProps = ChartAxisProps<YAXisComponentOption> & {
 
 export interface ChartTooltipProps {
   show?: boolean;
-  /** Formats one value. Receives the series key of the value. */
+  /**
+   * Formats one value. Receives the series key of the value. Not applied to
+   * `tooltip.render`, which receives raw values and formats its own.
+   */
   valueFormatter?: (value: number | string, seriesKey: string) => string;
   /** Replaces the whole tooltip body. */
   formatter?: (params: TooltipComponentFormatterCallbackParams) => string;
@@ -210,6 +213,11 @@ export interface ChartReferenceLine {
   axis: 'x' | 'y';
   value: number | string;
   label?: string;
+  /**
+   * Which end of the line carries its label. Defaults to `'end'`; `'start'`
+   * keeps it clear of a guide drawn at the newest point.
+   */
+  labelPosition?: 'start' | 'end';
   /** Status colour of the line. Defaults to the axis text colour. */
   status?: ChartStatus;
 }
@@ -225,7 +233,10 @@ export interface CartesianBuildInput<T extends object> {
   tooltip?: ChartTooltipProps;
   legend?: ChartLegendProps;
   referenceLines?: ChartReferenceLine[];
-  /** `'auto'` turns zoom on above 15 points. Defaults to false. */
+  /**
+   * `'auto'` turns zoom on above `zoomVisiblePoints` points (15 by default).
+   * Defaults to false.
+   */
   zoom?: boolean | 'auto';
   /**
    * With zoom on, how many points the window shows at first; `'auto'` turns

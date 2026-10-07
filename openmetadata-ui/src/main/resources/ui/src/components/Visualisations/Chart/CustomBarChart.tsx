@@ -90,7 +90,7 @@ const CustomBarChart = ({
   }
 
   return (
-    <div className="w-full" id={`${name}_graph`}>
+    <div className="tw:w-full" id={`${name}_graph`}>
       <BarChart
         ariaLabel={ariaLabel}
         data={data}

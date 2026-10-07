@@ -35,6 +35,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
 
   // Bot has special requirements
   {
+    supportsEntityStatus = false;
     supportsFieldsQueryParam = false;
     supportsTags = false;
     supportsOwners = false; // Bot has bot user, not owners

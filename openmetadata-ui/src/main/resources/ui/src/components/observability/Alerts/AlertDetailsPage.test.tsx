@@ -410,6 +410,13 @@ const getFormState = () => ({
     },
   ],
   loadingState: { alerts: false, functions: false, templates: false },
+  // What the server says the alert's sources support.
+  selection: {
+    support: {
+      supportedFilters: [{ name: 'filter' }],
+      supportedTriggers: [{ name: 'action' }],
+    },
+  },
   templates: [],
 });
 
@@ -479,6 +486,10 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByTestId('form-name')).toHaveTextContent('test-alert');
     expect(screen.getByTestId('filters-count')).toHaveTextContent('1');
     expect(screen.getByTestId('triggers-count')).toHaveTextContent('1');
+    // The configuration view asks about every source the alert watches.
+    expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table'] })
+    );
   });
 
   it('renders the header meta row with owner and event stats', () => {
