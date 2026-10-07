@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import React, { useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import EntityLink from '../../../utils/EntityLink';
@@ -22,6 +22,7 @@ import {
   ActivityFeedTabs,
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ActivityFeed, { ActivityFeedView } from './ActivityFeed';
+import { useTaskStatusParam } from './useTaskStatusParam';
 
 export type ActivityFeedEntityTabProps = ActivityFeedTabProps & {
   // The entity the page shows, e.g. `<#E::table::fqn>`.
@@ -38,7 +39,10 @@ const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
 }) => {
   const isAiMode = useIsAiMode();
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { subTab } = useParams<{ subTab?: string }>();
+  // In the URL, so the page's tab label counts the same Status.
+  const [taskStatus, setTaskStatus] = useTaskStatusParam();
   const { onUpdateEntityDetails, onFeedUpdate } = tabProps;
   // The route names the view, as it does for today's tab, so a link to
   // …/activity_feed/tasks opens on Tasks and a switch can be shared.
@@ -48,15 +52,19 @@ const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
   const handleViewChange = useCallback(
     (next: ActivityFeedView) =>
       navigate(
-        entityUtilClassBase.getEntityLink(
-          EntityLink.getEntityType(entityLink),
-          EntityLink.getEntityFqn(entityLink),
-          EntityTabs.ACTIVITY_FEED,
-          next === 'tasks' ? ActivityFeedTabs.TASKS : ActivityFeedTabs.ALL
-        ),
+        {
+          pathname: entityUtilClassBase.getEntityLink(
+            EntityLink.getEntityType(entityLink),
+            EntityLink.getEntityFqn(entityLink),
+            EntityTabs.ACTIVITY_FEED,
+            next === 'tasks' ? ActivityFeedTabs.TASKS : ActivityFeedTabs.ALL
+          ),
+          // Keeps the Tasks Status across the switch.
+          search,
+        },
         { replace: true }
       ),
-    [navigate, entityLink]
+    [navigate, entityLink, search]
   );
 
   // A resolved task can change the entity (an approved description, a new
@@ -70,8 +78,10 @@ const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
   return isAiMode && entityLink ? (
     <ActivityFeed
       entityLink={entityLink}
+      taskStatus={taskStatus}
       view={view}
       onTaskChange={handleTaskChange}
+      onTaskStatusChange={setTaskStatus}
       onViewChange={handleViewChange}
     />
   ) : (

@@ -21,6 +21,12 @@ jest.mock('../../../hooks/useAppMode', () => ({
   useIsAiMode: () => mockIsAiMode,
 }));
 
+let mockTaskStatus = 'open';
+
+jest.mock('./useTaskStatusParam', () => ({
+  useTaskStatusParam: () => [mockTaskStatus, jest.fn()],
+}));
+
 jest.mock('./useActivityFeedCounts', () => ({
   useActivityFeedCounts: (...args: unknown[]) =>
     mockUseActivityFeedCounts(...args),
@@ -46,6 +52,7 @@ const renderLabel = (entityLink = TABLE_LINK) =>
 describe('ActivityFeedTabLabel', () => {
   beforeEach(() => {
     mockIsAiMode = true;
+    mockTaskStatus = 'open';
     mockUseActivityFeedCounts.mockReturnValue({
       activityCount: { total: 20, isCapped: false },
       taskCounts: { all: 27, open: 19, closed: 8 },
@@ -63,6 +70,14 @@ describe('ActivityFeedTabLabel', () => {
         endTs: expect.any(Number),
       })
     );
+  });
+
+  // The Tasks view's Status is in the URL, so the page's count follows it.
+  it('counts the tasks of the chosen Status', () => {
+    mockTaskStatus = 'closed';
+    renderLabel();
+
+    expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:28');
   });
 
   it('shows no count until the activity arrives', () => {

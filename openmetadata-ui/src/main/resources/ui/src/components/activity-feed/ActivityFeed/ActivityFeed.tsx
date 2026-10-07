@@ -40,6 +40,9 @@ export interface ActivityFeedProps {
   defaultView?: ActivityFeedView;
   view?: ActivityFeedView;
   onViewChange?: (view: ActivityFeedView) => void;
+  // The Tasks Status, which the Tasks badge counts; or control it with these.
+  taskStatus?: TaskStatusFilter;
+  onTaskStatusChange?: (status: TaskStatusFilter) => void;
   // After a task action changed the task, and possibly its entity.
   onTaskChange?: () => void;
 }
@@ -54,6 +57,8 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   defaultView = 'activity',
   view: controlledView,
   onViewChange,
+  taskStatus: controlledTaskStatus,
+  onTaskStatusChange,
   onTaskChange,
 }) => {
   const { t } = useTranslation();
@@ -70,7 +75,15 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   );
   // The Tasks badge counts the Status chosen in the Tasks view, which keeps it
   // when the view switches away and back.
-  const [taskStatus, setTaskStatus] = useState<TaskStatusFilter>('open');
+  const [ownTaskStatus, setOwnTaskStatus] = useState<TaskStatusFilter>('open');
+  const taskStatus = controlledTaskStatus ?? ownTaskStatus;
+  const handleTaskStatusChange = useCallback(
+    (next: TaskStatusFilter) => {
+      setOwnTaskStatus(next);
+      onTaskStatusChange?.(next);
+    },
+    [onTaskStatusChange]
+  );
   // Read when the feed mounts, so a page left open keeps a current window.
   const [dateRange, setDateRange] = useState<InboxDateRange>(() => ({
     ...getDefaultInboxDateRange(),
@@ -123,7 +136,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
           leading={viewSwitch}
           scope={taskScope}
           status={taskStatus}
-          onStatusChange={setTaskStatus}
+          onStatusChange={handleTaskStatusChange}
           onTaskChange={onTaskChange}
         />
       )}

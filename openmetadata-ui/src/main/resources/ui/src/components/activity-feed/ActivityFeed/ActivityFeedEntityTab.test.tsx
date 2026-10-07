@@ -23,9 +23,16 @@ jest.mock('../../../hooks/useAppMode', () => ({
   useIsAiMode: () => mockIsAiMode,
 }));
 
+const mockSetTaskStatus = jest.fn();
+
 jest.mock('react-router-dom', () => ({
   useParams: () => ({ subTab: mockSubTab }),
   useNavigate: () => mockNavigate,
+  useLocation: () => ({ search: '?taskStatus=closed' }),
+}));
+
+jest.mock('./useTaskStatusParam', () => ({
+  useTaskStatusParam: () => ['closed', mockSetTaskStatus],
 }));
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
@@ -48,17 +55,26 @@ jest.mock('./ActivityFeed', () => ({
   default: ({
     entityLink,
     view,
+    taskStatus,
     onTaskChange,
+    onTaskStatusChange,
     onViewChange,
   }: {
     entityLink: string;
     view: string;
+    taskStatus: string;
     onTaskChange: () => void;
+    onTaskStatusChange: (status: string) => void;
     onViewChange: (view: string) => void;
   }) => (
-    <div data-link={entityLink} data-testid="activity-feed" data-view={view}>
+    <div
+      data-link={entityLink}
+      data-task-status={taskStatus}
+      data-testid="activity-feed"
+      data-view={view}>
       <button onClick={onTaskChange}>task-changed</button>
       <button onClick={() => onViewChange('tasks')}>to-tasks</button>
+      <button onClick={() => onTaskStatusChange('all')}>to-all</button>
     </div>
   ),
 }));
@@ -138,8 +154,25 @@ describe('ActivityFeedEntityTab', () => {
     fireEvent.click(screen.getByText('to-tasks'));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/table/svc.db.schema.customers/activity_feed/tasks',
+      {
+        pathname: '/table/svc.db.schema.customers/activity_feed/tasks',
+        search: '?taskStatus=closed',
+      },
       { replace: true }
     );
+  });
+
+  // The page's tab label reads the same Status from the URL.
+  it('keeps the Tasks Status in the URL', () => {
+    renderTab();
+
+    expect(screen.getByTestId('activity-feed')).toHaveAttribute(
+      'data-task-status',
+      'closed'
+    );
+
+    fireEvent.click(screen.getByText('to-all'));
+
+    expect(mockSetTaskStatus).toHaveBeenCalledWith('all');
   });
 });
