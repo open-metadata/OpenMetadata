@@ -594,6 +594,13 @@ const STUDIO_EDGE_LABEL_PADDING: [number, number, number, number] = [
   2, 7, 2, 7,
 ];
 const STUDIO_EDGE_BORDER_BY_COLOR: Record<string, string> = {
+  // Built-in foregrounds use utility-700; their badge border uses the same palette's utility-200.
+  ...Object.fromEntries(
+    Object.values(COLOR_META_BY_HEX).map(({ color }) => [
+      color,
+      color.replace('-700)', '-200)'),
+    ])
+  ),
   '#079455': 'var(--tw-color-utility-success-200)',
   '#0e9384': 'var(--tw-color-utility-teal-200)',
   '#1570ef': 'var(--tw-color-utility-brand-200)',

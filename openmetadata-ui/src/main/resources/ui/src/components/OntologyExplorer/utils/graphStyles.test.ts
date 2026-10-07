@@ -34,7 +34,10 @@ jest.mock('@antv/g6', () => ({
 
 import { PaletteKey } from '../../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../../mocks/Ontology.mock';
-import { RELATION_META } from '../OntologyExplorer.constants';
+import {
+  COLOR_META_BY_HEX,
+  RELATION_META,
+} from '../OntologyExplorer.constants';
 import {
   buildComboStyle,
   buildDataModeAssetNodeStyle,
@@ -72,6 +75,34 @@ const resolveSemanticColor = (color: string, fallback: string): string =>
   }[color] ?? fallback);
 
 describe('theme-aware graph styles', () => {
+  it('finds palette backgrounds for both saved hex colors and built-in theme tokens', () => {
+    expect(COLOR_META_BY_HEX['#1570ef'].color).toBe(
+      RELATION_META.relatedTo.color
+    );
+
+    for (const { color, background } of Object.values(RELATION_META)) {
+      expect(COLOR_META_BY_HEX[color]).toMatchObject({ color, background });
+    }
+  });
+
+  it('keeps a built-in studio badge border in the relation palette', () => {
+    const colors: Record<string, string> = {
+      'var(--tw-color-utility-error-200)': 'rgb(145, 32, 24)',
+      'var(--tw-color-utility-error-700)': 'rgb(249, 112, 102)',
+    };
+    const style = getEdgeRelationLabelStyle(
+      'SYNONYM',
+      'synonym',
+      RELATION_META.synonym.color,
+      true,
+      (color, fallback) =>
+        colors[color] ?? resolveSemanticColor(color, fallback)
+    );
+
+    expect(style.labelBackgroundStroke).toBe('rgb(145, 32, 24)');
+    expect(style.labelFill).toBe('rgb(249, 112, 102)');
+  });
+
   it('uses the active canvas surface for studio relation badges', () => {
     const style = getEdgeRelationLabelStyle(
       'RELATED TO',

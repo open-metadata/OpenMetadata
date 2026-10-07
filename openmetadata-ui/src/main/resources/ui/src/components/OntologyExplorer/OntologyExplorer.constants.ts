@@ -357,6 +357,12 @@ export const COLOR_META_BY_HEX: Record<
   },
 };
 
+// Persisted palettes use hex keys, while built-in relations now supply theme tokens.
+// Both forms must find the same badge background and palette metadata.
+for (const meta of Object.values(COLOR_META_BY_HEX)) {
+  COLOR_META_BY_HEX[meta.color] = meta;
+}
+
 const BORDER_PRIMARY_TOKEN = 'var(--tw-color-border-primary)';
 const BORDER_PRIMARY_FALLBACK = '#D5D7DA';
 const BORDER_SECONDARY_TOKEN = 'var(--tw-color-border-secondary)';
