@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
@@ -849,7 +850,7 @@ test.describe('Context Center Permissions', () => {
             return names.has(childDN) && names.has(parentDN);
           },
           [childDisplayName, parentDisplayName],
-          { timeout: 30000, polling: 2000 }
+          { timeout: ACTION_TIMEOUT, polling: 2000 }
         );
 
         await navigateToArticles(createAllPage);
@@ -967,7 +968,7 @@ test.describe('Context Center Permissions', () => {
             return names.has(childDN) && names.has(parentDN);
           },
           [childDisplayName, parentDisplayName],
-          { timeout: 30000, polling: 2000 }
+          { timeout: ACTION_TIMEOUT, polling: 2000 }
         );
 
         await navigateToArticles(editAllPage);

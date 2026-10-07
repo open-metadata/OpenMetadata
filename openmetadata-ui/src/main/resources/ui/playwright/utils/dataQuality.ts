@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, Response } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage, uuid } from './common';
@@ -637,7 +638,7 @@ export const verifyBundleSuitePageLoaded = async (
     .getByRole('row');
 
   await expect(testCaseRows).toHaveCount(expectedTestCaseCount, {
-    timeout: 30000,
+    timeout: ACTION_TIMEOUT,
   });
 };
 

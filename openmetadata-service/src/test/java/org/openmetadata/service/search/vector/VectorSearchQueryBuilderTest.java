@@ -3,7 +3,6 @@ package org.openmetadata.service.search.vector;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -80,6 +80,73 @@ class VectorSearchQueryBuilderTest {
             .path("must");
     assertTrue(termClauseExists(must, "sourceType", "FileExtraction"));
     assertTrue(termClauseExists(must, "visibility", MemoryVisibility.SHARED.value()));
+  }
+
+  @Test
+  void testMemoryStatusFilterReachesBothVectorEngines() throws Exception {
+    Map<String, List<String>> filters =
+        Map.of("entityStatus", List.of(EntityStatus.APPROVED.value()));
+    float[] vector = {0.1f, 0.2f};
+
+    JsonNode openSearchMust =
+        MAPPER
+            .readTree(VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0))
+            .path("query")
+            .path("knn")
+            .path("embedding")
+            .path("filter")
+            .path("bool")
+            .path("must");
+    JsonNode elasticMust =
+        MAPPER
+            .readTree(VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, filters))
+            .path("knn")
+            .path("filter")
+            .path("bool")
+            .path("must");
+
+    assertTrue(termClauseExists(openSearchMust, "entityStatus", EntityStatus.APPROVED.value()));
+    assertTrue(termClauseExists(elasticMust, "entityStatus", EntityStatus.APPROVED.value()));
+    JsonNode openSearchScope =
+        memoryVisibilityClause(
+            MAPPER
+                .readTree(VectorSearchQueryBuilder.build(vector, 10, 0, 100, Map.of(), 0.0))
+                .path("query"));
+    JsonNode elasticScope =
+        memoryVisibilityClause(
+            MAPPER.readTree(
+                VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of())));
+    assertTrue(openSearchScope.toString().contains("\"entityStatus\":\"Approved\""));
+    assertTrue(elasticScope.toString().contains("\"entityStatus\":\"Approved\""));
+  }
+
+  @Test
+  void testCallerStatusFilterCannotBypassApprovedMemoryConstraint() throws Exception {
+    JsonNode query =
+        MAPPER.readTree(
+            VectorSearchQueryBuilder.build(
+                new float[] {0.1f},
+                10,
+                0,
+                100,
+                Map.of("entityStatus", List.of(EntityStatus.DEPRECATED.value())),
+                0.0));
+
+    assertTrue(
+        termClauseExists(
+            query
+                .path("query")
+                .path("knn")
+                .path("embedding")
+                .path("filter")
+                .path("bool")
+                .path("must"),
+            "entityStatus",
+            EntityStatus.DEPRECATED.value()));
+    assertTrue(
+        memoryVisibilityClause(query.path("query"))
+            .toString()
+            .contains("\"entityStatus\":\"Approved\""));
   }
 
   private static boolean termClauseExists(JsonNode mustClauses, String field, String value) {
@@ -1138,9 +1205,34 @@ class VectorSearchQueryBuilderTest {
 
     JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
     assertNotNull(clause, "every vector query must carry a memory visibility clause");
+    JsonNode unanchoredOnly =
+        clause
+            .path("bool")
+            .path("should")
+            .get(1)
+            .path("bool")
+            .path("must")
+            .get(1)
+            .path("bool")
+            .path("should")
+            .get(0)
+            .path("bool")
+            .path("must");
+    assertTrue(
+        termClauseExists(
+            unanchoredOnly.get(0).path("bool").path("should"),
+            "visibility",
+            MemoryVisibility.ENTITY.value()));
+    assertTrue(
+        termClauseExists(
+            unanchoredOnly.get(0).path("bool").path("should"),
+            "visibility",
+            MemoryVisibility.PUBLIC.value()));
+    assertTrue(termClauseExists(unanchoredOnly, "anchorId", "unanchored"));
     String rendered = clause.toString();
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()), "org-wide memories still match");
     assertTrue(rendered.contains(MemoryVisibility.PUBLIC.value()), "public memories still match");
+    assertTrue(rendered.contains("\"anchorId\":\"unanchored\""));
     assertFalse(rendered.contains("owners.id"), "no subject means no owner branch");
     assertFalse(rendered.contains("sharedWithIds"), "no subject means no shared branch");
     assertFalse(
@@ -1160,6 +1252,7 @@ class VectorSearchQueryBuilderTest {
     assertTrue(rendered.contains(MemoryVisibility.SHARED.value()));
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()));
     assertTrue(rendered.contains(MemoryVisibility.PUBLIC.value()));
+    assertTrue(rendered.contains("\"anchorId\":\"unanchored\""));
   }
 
   @Test
@@ -1214,11 +1307,14 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
-  void testOmitsMemoryClauseForAdminSubject() throws Exception {
+  void testAdminSubjectStillGetsApprovedMemoryClause() throws Exception {
     String query =
         VectorSearchQueryBuilder.buildQuery(new float[] {0.1f}, 10, Map.of(), 0.0, adminSubject());
 
-    assertNull(memoryVisibilityClause(MAPPER.readTree(query)), "admins bypass memory visibility");
+    JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
+    assertNotNull(clause, "admin search must also exclude retired memories");
+    assertTrue(clause.toString().contains("\"entityStatus\":\"Approved\""));
+    assertFalse(clause.toString().contains("visibility"), "admins bypass visibility");
   }
 
   /** Elasticsearch is a separate public method; a miss here leaks on every ES deployment. */

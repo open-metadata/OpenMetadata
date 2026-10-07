@@ -64,6 +64,35 @@ export const hexToRgba = (hex: string, alpha: number): string => {
   return `rgba(${channel(0)}, ${channel(2)}, ${channel(4)}, ${alpha})`;
 };
 
+const RGB_PATTERN =
+  /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/i;
+
+const alphaOf = (raw?: string): number => {
+  if (raw === undefined) {
+    return 1;
+  }
+
+  return raw.endsWith('%') ? Number.parseFloat(raw) / 100 : Number(raw);
+};
+
+/**
+ * `color` at `alpha` opacity, as `rgba()`. Takes hex (`#RGB`, `#RRGGBB`) and
+ * `rgb()` / `rgba()`; an rgba colour's own alpha is multiplied in. Any other
+ * format is returned unchanged.
+ */
+export const withAlpha = (color: string, alpha: number): string => {
+  if (color.startsWith('#')) {
+    return hexToRgba(color, alpha);
+  }
+  const match = RGB_PATTERN.exec(color.trim());
+  if (!match) {
+    return color;
+  }
+  const [, r, g, b, a] = match;
+
+  return `rgba(${r}, ${g}, ${b}, ${alphaOf(a) * alpha})`;
+};
+
 /** Area fill: the series colour at 20% opacity fading to transparent. */
 export const areaGradient = (color: string): LinearGradient => ({
   type: 'linear',
@@ -72,8 +101,8 @@ export const areaGradient = (color: string): LinearGradient => ({
   x2: 0,
   y2: 1,
   colorStops: [
-    { offset: 0, color: hexToRgba(color, 0.2) },
-    { offset: 1, color: hexToRgba(color, 0) },
+    { offset: 0, color: withAlpha(color, 0.2) },
+    { offset: 1, color: withAlpha(color, 0) },
   ],
 });
 
@@ -289,7 +318,8 @@ export const referenceLinesToMarkLine = (
     label: {
       show: Boolean(line.label),
       formatter: line.label,
-      position: 'insideEndTop',
+      position:
+        line.labelPosition === 'start' ? 'insideStartTop' : 'insideEndTop',
       color: theme.axisText,
     },
     lineStyle: {

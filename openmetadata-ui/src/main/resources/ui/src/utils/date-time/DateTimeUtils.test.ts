@@ -23,6 +23,7 @@ import {
   formatMonth,
   formatTimeDurationFromSeconds,
   getElapsedTime,
+  getRelativeCalendar,
   getScheduleDescriptionTexts,
   isValidDateFormat,
 } from './DateTimeUtils';
@@ -751,6 +752,22 @@ describe('getScheduleDescriptionTexts', () => {
     expect(typeof result1.descriptionSecondPart).toBe('string');
     expect(typeof result2.descriptionFirstPart).toBe('string');
     expect(typeof result2.descriptionSecondPart).toBe('string');
+  });
+});
+
+describe('getRelativeCalendar', () => {
+  const twoDaysAgo = Date.UTC(2026, 8, 30, 12);
+  const base = Date.UTC(2026, 9, 2, 12);
+
+  // Luxon's default picks the largest differing unit: across a month boundary
+  // two days back reads as last month.
+  it('reads across a month boundary by its largest unit by default', () => {
+    expect(getRelativeCalendar(twoDaysAgo, base)).toBe('Last month');
+  });
+
+  it('counts in days when asked to', () => {
+    expect(getRelativeCalendar(twoDaysAgo, base, 'days')).toBe('2 days ago');
+    expect(getRelativeCalendar(base, base, 'days')).toBe('Today');
   });
 });
 

@@ -54,7 +54,10 @@ const Chip = ({
         {icon}
         <Typography
           className="text-left chip-tag-link chip-name"
-          ellipsis={{ tooltip: getEntityName(item) }}>
+          ellipsis={{
+            tooltip: getEntityName(item),
+            excludeTriggerFromTabOrder: true,
+          }}>
           {getEntityName(item)}
         </Typography>
       </Link>

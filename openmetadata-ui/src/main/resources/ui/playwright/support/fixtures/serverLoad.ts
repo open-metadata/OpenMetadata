@@ -373,6 +373,33 @@ const serveStaticAsset = async (route: Route) => {
 };
 
 /**
+ * `BrowserContext.close()` disposes `context.request` — which runs every
+ * `route.fetch()` and owns its response — as its first step, before a single
+ * page is closed, so `page.isClosed()` is still false when the in-flight fetch
+ * ("Request context disposed") or body read ("Response has been disposed")
+ * fails. That check alone let a `beforeAll` that closes its own
+ * `browser.newPage()` fail the first test of the describe. A disposal only
+ * counts as teardown once the context's `close` event proves it; on a live
+ * context it is still an error.
+ */
+const CONTEXT_CLOSE_TIMEOUT_MS = 30_000;
+
+const isContextClosing = async (route: Route) => {
+  const page = route.request().frame().page();
+
+  return (
+    page.isClosed() ||
+    page
+      .context()
+      .waitForEvent('close', { timeout: CONTEXT_CLOSE_TIMEOUT_MS })
+      .then(
+        () => true,
+        () => false
+      )
+  );
+};
+
+/**
  * Playwright rethrows out of a route handler (`RouteHandler._handleImpl`) and
  * `BrowserContext._onRoute` does not catch it, so a handler that throws fails
  * whichever test owns the route. Losing the target mid-flight is routine here
@@ -386,23 +413,25 @@ const serveStaticAsset = async (route: Route) => {
  * propagates — a cache that is broken for a real reason must not be
  * silent.
  */
-const ignoreClosedTarget = async (route: Route, serve: () => Promise<void>) => {
+export const ignoreClosedTarget = async (
+  route: Route,
+  serve: () => Promise<void>
+) => {
   try {
     await serve();
   } catch (error) {
     if (/has been closed|Route is already handled/.test(String(error))) {
       return;
     }
-    // Closing a context disposes route.fetch's response store before its body
-    // reader resumes. A disposed response on a live page is still an error.
-    if (
-      /Response has been disposed/.test(String(error)) &&
-      route.request().frame().page().isClosed()
-    ) {
-      return;
-    }
 
-    throw error;
+    const disposedByClose =
+      /Response has been disposed|Request context disposed/.test(
+        String(error)
+      ) && (await isContextClosing(route));
+
+    if (!disposedByClose) {
+      throw error;
+    }
   }
 };
 

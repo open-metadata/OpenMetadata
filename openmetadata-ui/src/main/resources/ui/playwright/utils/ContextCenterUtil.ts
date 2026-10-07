@@ -18,6 +18,7 @@ import {
   Page,
   Response,
 } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
@@ -1099,7 +1100,7 @@ export const waitForArticleInFollows = async (
   apiContext: APIRequestContext,
   userId: string,
   articleId: string,
-  timeout = 30_000,
+  timeout = ACTION_TIMEOUT,
   interval = 1_000
 ) => {
   const start = Date.now();

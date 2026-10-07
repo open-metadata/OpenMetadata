@@ -22,6 +22,7 @@ import {
   selectSortOrder,
   verifyEntitiesAreSorted,
 } from '../../utils/explore';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.describe(
@@ -42,9 +43,10 @@ test.describe(
         await page.getByTestId('search-dropdown-Data Assets').click();
         await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
-        const dataAssetDropdownRequest = page.waitForResponse(
-          '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-        );
+        const dataAssetDropdownRequest = waitForAggregation(page, {
+          field: 'entityType.keyword',
+          value: filter.toLowerCase(),
+        });
         await page
           .getByTestId('drop-down-menu')
           .getByTestId('search-input')

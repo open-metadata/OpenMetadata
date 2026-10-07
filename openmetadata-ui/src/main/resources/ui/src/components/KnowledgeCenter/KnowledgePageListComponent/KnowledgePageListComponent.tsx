@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import {
+  Button as CoreButton,
+  Dropdown,
   EmptyPlaceholder,
   Skeleton,
   SkeletonParagraph,
@@ -19,8 +20,9 @@ import {
 import {
   File06 as Articles,
   Lock01 as Lock,
+  Plus,
 } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Dropdown, MenuProps, Row, Space } from 'antd';
+import { Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -167,10 +169,16 @@ const KnowledgePageNoSearchResults = () => {
   );
 };
 
+interface KnowledgePageAddItem {
+  key: string;
+  label: string;
+  onClick: () => void;
+}
+
 interface KnowledgePageEmptyStateProps {
   addQuickLinkModalElement: ReactNode;
   hideAddButton: boolean;
-  items: MenuProps['items'];
+  items: KnowledgePageAddItem[];
   /** Derived Create flag rather than the raw OperationPermission object. */
   canCreate: boolean;
   theme: { primaryColor: string };
@@ -206,18 +214,32 @@ const KnowledgePageEmptyState = ({
         footer={
           <>
             {canCreate && !hideAddButton && (
-              <LimitWrapper resource="knowledgeCenter">
-                <Dropdown menu={{ items }} trigger={['click']}>
-                  <Button
-                    ghost
-                    className="p-x-lg"
+              <Dropdown.Root>
+                <LimitWrapper resource="knowledgeCenter">
+                  <CoreButton
+                    className="tw:text-brand-secondary tw:after:outline-brand"
+                    color="secondary"
                     data-testid="add-knowledge-page-btn"
-                    type="primary">
-                    <PlusOutlined />
+                    iconLeading={<Plus size={14} />}
+                    size="sm">
                     {t('label.add')}
-                  </Button>
-                </Dropdown>
-              </LimitWrapper>
+                  </CoreButton>
+                </LimitWrapper>
+                <Dropdown.Popover className="tw:w-auto">
+                  <Dropdown.Menu
+                    aria-label={t('label.add')}
+                    selectionMode="none">
+                    {items.map((item) => (
+                      <Dropdown.Item
+                        id={item.key}
+                        key={item.key}
+                        onAction={item.onClick}>
+                        {item.label}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             )}
             {addQuickLinkModalElement}
           </>
@@ -613,7 +635,7 @@ const KnowledgePageListComponent = forwardRef<
       hasViewPermission,
     ]);
 
-    const items: MenuProps['items'] = [
+    const items: KnowledgePageAddItem[] = [
       {
         label: t('label.article'),
         key: PageType.ARTICLE,

@@ -13,6 +13,10 @@
 import { render, screen } from '@testing-library/react';
 import { Form, FormInstance } from 'antd';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem';
 
@@ -32,6 +36,19 @@ const mockSupportedFilters = MOCK_FILTER_RESOURCES.reduce(
   [] as EventFilterRule[]
 );
 
+const selectionOf = (sources: string[]): AlertSelection => ({
+  sources,
+  support: { supportedFilters: mockSupportedFilters },
+  capabilities: { loading: false },
+  loading: false,
+  search: {
+    indexes: [],
+    containerEntities: [],
+    byName: jest.fn(),
+    byId: jest.fn(),
+  },
+});
+
 describe('ObservabilityFormFiltersItem', () => {
   it('should renders without crashing', () => {
     const setFieldValue = jest.fn();
@@ -48,7 +65,9 @@ describe('ObservabilityFormFiltersItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormFiltersItem supportedFilters={mockSupportedFilters} />
+      <AlertSelectionProvider value={selectionOf(['container'])}>
+        <ObservabilityFormFiltersItem />
+      </AlertSelectionProvider>
     );
 
     expect(screen.getByText('label.filter-plural')).toBeInTheDocument();
@@ -75,7 +94,9 @@ describe('ObservabilityFormFiltersItem', () => {
     useWatchMock.mockImplementation(() => []);
 
     render(
-      <ObservabilityFormFiltersItem supportedFilters={mockSupportedFilters} />
+      <AlertSelectionProvider value={selectionOf([])}>
+        <ObservabilityFormFiltersItem />
+      </AlertSelectionProvider>
     );
 
     const addButton = screen.getByTestId('add-filters');
@@ -98,7 +119,9 @@ describe('ObservabilityFormFiltersItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormFiltersItem supportedFilters={mockSupportedFilters} />
+      <AlertSelectionProvider value={selectionOf(['container'])}>
+        <ObservabilityFormFiltersItem />
+      </AlertSelectionProvider>
     );
 
     const addButton = screen.getByTestId('add-filters');
