@@ -535,6 +535,27 @@ CREATE TABLE IF NOT EXISTS sso_test_login_session (
     INDEX idx_sso_test_login_session_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
+-- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
+-- reconciled with. Comparing against that snapshot is how a server start tells a value changed in
+-- the deployment from a value changed in the UI (#31786). NULL until the server first reconciles.
+SET @settings_deployment_snapshot_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'openmetadata_settings'
+        AND column_name = 'deployment_snapshot'
+    ),
+    'SELECT 1',
+    'ALTER TABLE openmetadata_settings ADD COLUMN deployment_snapshot JSON NULL'
+  )
+);
+PREPARE settings_deployment_snapshot_column_stmt FROM @settings_deployment_snapshot_column_ddl;
+EXECUTE settings_deployment_snapshot_column_stmt;
+DEALLOCATE PREPARE settings_deployment_snapshot_column_stmt;
+
 -- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
 -- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
 -- version is reprocessed statement-by-statement against SERVER_MIGRATION_SQL_LOGS, and the

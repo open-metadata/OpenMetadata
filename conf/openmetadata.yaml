@@ -429,6 +429,27 @@ migrationConfiguration:
   nativePath: "./bootstrap/sql/migrations/native"
   extensionPath: ""
 
+# Where settings that exist both in this file and in the database (Settings in the UI) take their
+# values from. The database copy is seeded from this file on first start.
+#   AUTO: a value you change here is applied on the next start, unless the same value was changed
+#         in the UI since; then the UI value is kept and the server logs a warning.
+#   ENV:  this file is authoritative. Fields it defines are rewritten on every start and are
+#         read-only in the UI and the API.
+#   DB:   the database is authoritative. This file only fills fields the database does not have.
+# Use ./bootstrap/openmetadata-ops.sh remove-security-config to reset the stored security settings
+# to this file.
+configSource:
+  security: ${SECURITY_CONFIG_SOURCE:-AUTO}
+  email: ${EMAIL_CONFIG_SOURCE:-AUTO}
+  serverUrl: ${SERVER_URL_CONFIG_SOURCE:-AUTO}
+  scim: ${SCIM_CONFIG_SOURCE:-AUTO}
+  mcp: ${MCP_CONFIG_SOURCE:-AUTO}
+  app: ${APP_CONFIG_SOURCE:-DB}
+  # The first start in ENV mode refuses to replace an identity provider configured in the UI with
+  # a different one from this file unless this is true.
+  confirmProviderChange: ${SECURITY_CONFIG_SOURCE_CONFIRM_PROVIDER_CHANGE:-false}
+  watchIntervalSeconds: ${CONFIG_SOURCE_WATCH_INTERVAL_SECONDS:-10}
+
 # Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
