@@ -41,6 +41,12 @@ const TabsLabel = withSuspenseFallback(
   lazy(() => import('../components/common/TabsLabel/TabsLabel.component'))
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedEntityTab = withSuspenseFallback(
   lazy(
     () =>
@@ -283,6 +289,11 @@ export const getTableDetailPageBaseTabs = ({
   isViewTableType,
   labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
+  const entityFeedLink = getEntityFeedLink(
+    EntityType.TABLE,
+    tableDetails?.fullyQualifiedName
+  );
+
   return [
     {
       label: (
@@ -298,8 +309,9 @@ export const getTableDetailPageBaseTabs = ({
     },
     {
       label: (
-        <TabsLabel
+        <ActivityFeedTabLabel
           count={feedCount.totalCount}
+          entityLink={entityFeedLink}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={get(
@@ -315,10 +327,7 @@ export const getTableDetailPageBaseTabs = ({
           refetchFeed
           columns={tableDetails?.columns}
           entityFeedTotalCount={feedCount.totalCount}
-          entityLink={getEntityFeedLink(
-            EntityType.TABLE,
-            tableDetails?.fullyQualifiedName
-          )}
+          entityLink={entityFeedLink}
           entityType={EntityType.TABLE}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}

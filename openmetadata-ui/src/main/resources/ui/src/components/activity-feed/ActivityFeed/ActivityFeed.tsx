@@ -11,15 +11,10 @@
  *  limitations under the License.
  */
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFillAvailableHeight } from '../../../hooks/useFillAvailableHeight';
 import {
-  getActivityScope,
-  getTaskListScope,
-} from '../../discovery/personal-space/InboxPage/activityScope';
-import {
-  ActivityFilter,
   DEFAULT_INBOX_DATE_PRESET,
   getDefaultInboxDateRange,
   getInboxDateRange,
@@ -28,9 +23,8 @@ import {
   INBOX_DATE_RANGE_OPTIONS,
 } from '../../discovery/personal-space/InboxPage/inbox.utils';
 import ActivityTab from '../../discovery/personal-space/InboxPage/tabs/ActivityTab';
-import { useInboxActivityCounts } from '../../discovery/personal-space/InboxPage/useInboxActivity';
-import { useTaskStatusCounts } from '../../discovery/personal-space/InboxPage/useTaskQueue';
 import ActivityFeedTasks from './ActivityFeedTasks';
+import { useActivityFeedCounts } from './useActivityFeedCounts';
 
 export type ActivityFeedView = 'activity' | 'tasks';
 
@@ -78,17 +72,9 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
     ...getDefaultInboxDateRange(),
     key: DEFAULT_INBOX_DATE_PRESET,
   }));
-  const activityScope = useMemo(
-    () => getActivityScope(entityLink),
-    [entityLink]
-  );
-  const taskScope = useMemo(() => getTaskListScope(entityLink), [entityLink]);
-
   // Both counts read the queries their lists use, so neither is fetched twice.
-  const activityCount = useInboxActivityCounts(dateRange, activityScope)[
-    ActivityFilter.All
-  ];
-  const taskCounts = useTaskStatusCounts(taskScope);
+  const { activityScope, taskScope, activityCount, taskCounts } =
+    useActivityFeedCounts(entityLink, dateRange);
 
   const handleDatePresetChange = useCallback((key: string) => {
     setDateRange({
