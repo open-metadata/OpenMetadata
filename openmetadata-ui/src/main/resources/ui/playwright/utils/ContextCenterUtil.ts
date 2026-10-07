@@ -889,13 +889,11 @@ export const scrollHierarchyToNode = async (
     const response = await responsePromise.catch(() => null);
     if (response) {
       const json = await response.json().catch(() => null);
-      if (json?.total !== undefined) {
-        total = json.total;
-      }
-      if (Array.isArray(json?.data)) {
-        fetched += json.data.length;
+      if (json?.paging?.total !== undefined) {
+        total = json.paging.total;
       }
     }
+    fetched = await nodes.count();
 
     await expect
       .poll(() => nodes.count(), { timeout: 5000 })
@@ -1056,13 +1054,11 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
     const response = await responsePromise.catch(() => null);
     if (response) {
       const json = await response.json().catch(() => null);
-      if (json?.total !== undefined) {
-        total = json.total;
-      }
-      if (Array.isArray(json?.data)) {
-        fetched += json.data.length;
+      if (json?.paging?.total !== undefined) {
+        total = json.paging.total;
       }
     }
+    fetched = await cards.count();
 
     // Wait for the loader to appear then disappear (loader may flash quickly)
     await expect(loader)
