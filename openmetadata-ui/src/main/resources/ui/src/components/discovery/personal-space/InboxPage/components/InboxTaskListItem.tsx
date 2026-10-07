@@ -65,10 +65,7 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
         </Box>
       )}
       {assetName && (
-        <Badge
-          className="tw:max-w-40 tw:text-tertiary tw:font-medium"
-          size="sm"
-          type="modern">
+        <Badge className="tw:max-w-40" size="sm" type="modern">
           <span className="tw:truncate">{assetName}</span>
         </Badge>
       )}

@@ -251,7 +251,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
           'tw:relative tw:z-10 tw:-mx-3 tw:px-3 tw:py-3 tw:transition-shadow',
           isScrolled && 'tw:shadow-md'
         )}>
-        <div className="tw:mx-auto tw:w-full tw:max-w-220">
+        <div className="tw:mx-auto tw:w-full tw:max-w-230">
           <ActivityToolbar
             counts={counts}
             datePreset={dateRange?.key ?? DEFAULT_INBOX_DATE_PRESET}
@@ -272,7 +272,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
         data-testid="inbox-activity-tab"
         ref={scrollRef}
         onScroll={onScroll}>
-        <div className="tw:mx-auto tw:w-full tw:max-w-220">
+        <div className="tw:mx-auto tw:w-full tw:max-w-230">
           {activityContent}
         </div>
       </div>

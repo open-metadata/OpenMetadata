@@ -59,6 +59,7 @@ import {
   getActivityChange,
   getActivityEventLabel,
   getFeedSortTimestamp,
+  getInboxTabBadge,
   isSameLocalDay,
   isTaskOpen,
   pairFieldChanges,
@@ -245,6 +246,18 @@ describe('inbox.utils', () => {
     // never more than the list shows.
     it('marks a floor under the cap with a plus, not as 99+', () => {
       expect(formatInboxCount({ total: 30, isCapped: true })).toBe('30+');
+    });
+  });
+
+  describe('getInboxTabBadge', () => {
+    it('formats a count for the tab', () => {
+      expect(getInboxTabBadge({ total: 128, isCapped: false })).toBe('99+');
+    });
+
+    // A tab with nothing to count shows no badge, not a "0".
+    it('drops the badge when there is nothing to count', () => {
+      expect(getInboxTabBadge({ total: 0, isCapped: false })).toBeUndefined();
+      expect(getInboxTabBadge(undefined)).toBeUndefined();
     });
   });
 

@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import React, { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityIcon } from '../../../../../utils/EntityIconUtils';
@@ -108,15 +112,17 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
             </Typography>
           </Box>
         </Box>
-        <Link
-          className="tw:shrink-0 tw:text-sm tw:font-semibold! tw:text-brand-secondary tw:no-underline! tw:hover:underline!"
+        <Button
+          className="tw:shrink-0"
+          color="link-color"
           data-testid="task-open-asset"
-          to={getEntityLinkFromType(
+          href={getEntityLinkFromType(
             aboutRef.fullyQualifiedName,
             aboutRef.type as EntityType
-          )}>
+          )}
+          size="sm">
           {t('label.open-asset')}
-        </Link>
+        </Button>
       </Box>
 
       <StatTiles about={about} isLoading={isLoading} task={task} />

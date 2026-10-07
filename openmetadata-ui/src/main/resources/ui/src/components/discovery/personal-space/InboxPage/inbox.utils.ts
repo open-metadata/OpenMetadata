@@ -408,6 +408,10 @@ export const formatInboxCount = ({ total, isCapped }: InboxCount): string => {
   return isCapped ? `${total}+` : String(total);
 };
 
+// A tab's `badge`: the formatted count, or none when there is nothing to count.
+export const getInboxTabBadge = (count?: InboxCount): string | undefined =>
+  count?.total ? formatInboxCount(count) : undefined;
+
 /**
  * Whether a millis timestamp falls inside the selected Inbox date window.
  * An undefined range (or undefined bound) means "no constraint".

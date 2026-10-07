@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import {
   Calendar,
   Clock,
@@ -25,7 +25,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -104,11 +103,9 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
 
     case 'link':
       return (
-        <Link
-          className="tw:text-sm tw:font-semibold! tw:text-brand-secondary tw:no-underline! tw:hover:underline!"
-          to={value.to}>
+        <Button color="link-color" href={value.to} size="sm">
           {value.label}
-        </Link>
+        </Button>
       );
 
     default:

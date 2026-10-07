@@ -142,11 +142,6 @@ const matchAssetToken = (
   return null;
 };
 
-// The title reads as plain text in the heading's weight and colour; only the
-// hover underline says it links to the asset.
-const TITLE_LINK_CLASS =
-  'tw:font-semibold! tw:text-inherit tw:no-underline! tw:hover:underline!';
-
 interface AssetSpan {
   index: number;
   end: number;
@@ -203,10 +198,7 @@ const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
     return (
       <>
         {titleText.slice(0, assetIndex)}
-        <Link
-          className={TITLE_LINK_CLASS}
-          data-testid="task-about-link"
-          to={aboutPath}>
+        <Link data-testid="task-about-link" to={aboutPath}>
           {titleText.slice(assetIndex, assetEnd)}
         </Link>
         {titleText.slice(assetEnd)}
@@ -215,13 +207,9 @@ const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
   }
 
   if (aboutPath) {
-    // No asset token in the title — keep the whole title in normal colour
-    // (still clickable), so the header never turns fully blue.
+    // No asset token in the title: the whole title links to the asset.
     return (
-      <Link
-        className={TITLE_LINK_CLASS}
-        data-testid="task-about-link"
-        to={aboutPath}>
+      <Link data-testid="task-about-link" to={aboutPath}>
         {titleText}
       </Link>
     );

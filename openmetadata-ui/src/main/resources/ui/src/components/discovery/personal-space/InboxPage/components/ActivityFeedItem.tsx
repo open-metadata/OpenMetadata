@@ -223,6 +223,10 @@ const getRepliesToggleLabel = (
     : t('label.number-reply-plural', { number: count });
 };
 
+// A toggle (Like, the replies thread) reads brand while it is on.
+const getToggleColor = (isOn: boolean) =>
+  isOn ? ('link-color' as const) : ('tertiary' as const);
+
 interface RepliesToggleProps {
   isOpen: boolean;
   count: number;
@@ -247,11 +251,9 @@ const RepliesToggle = ({
 
   return count > 0 || isOpen ? (
     <Button
+      boxed
       aria-expanded={isOpen}
-      className={classNames({
-        'tw:bg-brand-primary tw:text-brand-secondary': isOpen,
-      })}
-      color="tertiary"
+      color={getToggleColor(isOpen)}
       data-testid="activity-replies-toggle"
       iconLeading={
         <span className="tw:flex tw:items-center tw:-space-x-1">
@@ -544,12 +546,9 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
         <Box align="center" className="inbox-feed-actions tw:ml-13 tw:gap-2">
           <Button
+            boxed
             aria-pressed={isLiked}
-            className={classNames({
-              'tw:text-brand-secondary tw:*:data-icon:text-fg-brand-secondary':
-                isLiked,
-            })}
-            color="tertiary"
+            color={getToggleColor(isLiked)}
             data-testid="activity-like"
             iconLeading={ThumbsUp}
             size="sm"

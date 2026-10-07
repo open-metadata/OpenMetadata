@@ -12,17 +12,8 @@
  */
 
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-} from '@openmetadata/ui-core-components/icons';
+import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
-
-// The design's toolbar triggers: 16px icons and 10/8px padding, so the
-// sub-tabs and all three filters share one row.
-export const ACTIVITY_TRIGGER_CLASS_NAME =
-  'tw:gap-1.5 tw:py-2 tw:pr-2 tw:pl-2.5 tw:whitespace-nowrap tw:*:data-icon:size-4';
 
 export interface ActivityToolbarMenuOption {
   value: string;
@@ -61,12 +52,13 @@ const ActivityToolbarMenu = ({
   return (
     <Dropdown.Root onOpenChange={setIsOpen}>
       <Button
-        className={ACTIVITY_TRIGGER_CLASS_NAME}
         color="secondary"
         data-testid={testId}
         iconLeading={triggerIcon}
         iconTrailing={isOpen ? ChevronUp : ChevronDown}
-        size="sm">
+        // The size FilterSelect gives its bordered trigger, so the Type filter
+        // beside these menus stands as tall as they do.
+        size="md">
         {triggerLabel ?? selected?.label}
       </Button>
       <Dropdown.Popover className="tw:w-56" placement="bottom end">
@@ -81,21 +73,11 @@ const ActivityToolbarMenu = ({
             </Dropdown.SectionHeader>
             {options.map((option) => (
               <Dropdown.Item
-                // The check marks the choice, so the row keeps no tint.
-                className="tw:[&>div]:bg-transparent! tw:hover:[&>div]:bg-primary_hover!"
                 icon={option.icon}
                 id={option.value}
                 key={option.value}
-                textValue={option.label}>
-                {({ isSelected }) => (
-                  <span className="tw:flex tw:items-center tw:justify-between tw:gap-2">
-                    {option.label}
-                    {isSelected && (
-                      <Check className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary" />
-                    )}
-                  </span>
-                )}
-              </Dropdown.Item>
+                label={option.label}
+              />
             ))}
           </Dropdown.Section>
         </Dropdown.Menu>
