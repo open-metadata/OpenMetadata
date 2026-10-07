@@ -60,6 +60,15 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @Getter @JsonProperty private String basePath;
 
+  /**
+   * Optional CDN prefix for the UI bundle. When set, IndexResource substitutes {@code
+   * ${cdnBaseUrl}} in {@code index.html} and injects {@code window.__CDN_BASE_URL__} so Vite's
+   * CDN split-serve build (`vite.config.cdn.ts` in the collate-ui repo) resolves initial asset
+   * URLs and dynamic chunk imports from the CDN. Unset / empty → placeholders substitute to {@code
+   * ""} and the UI falls back to same-origin asset loading from the JAR.
+   */
+  @Getter @JsonProperty private String cdnBaseUrl;
+
   @Getter
   @JsonProperty("assets")
   private Map<String, String> assets;

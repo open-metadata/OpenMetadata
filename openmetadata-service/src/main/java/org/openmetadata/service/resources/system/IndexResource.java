@@ -65,6 +65,10 @@ public class IndexResource {
     configuredBasePath = (basePath != null && !basePath.isEmpty()) ? basePath : "/";
     SentryConfiguration sentryConfig = catalogConfig.getSentryConfiguration();
     String clusterName = catalogConfig.getClusterName();
+    // CDN prefix for the UI bundle under the split-serve build. Baked here at
+    // initialize time (constant for the process); empty when unset so initial
+    // asset URLs collapse to `/assets/...` and the UI loads from the JAR.
+    String cdnBaseUrl = catalogConfig.getCdnBaseUrl();
     configProcessedHtml =
         rawIndexHtml
             .replace("${sentryEnabled}", String.valueOf(sentryConfig.getEnabled()))
@@ -75,7 +79,8 @@ public class IndexResource {
                 escapeJs(String.valueOf(sentryConfig.getTracesSampleRate())))
             .replace("${clusterName}", escapeJs(clusterName != null ? clusterName : "openmetadata"))
             .replace(
-                "${appVersion}", escapeJs(new VersionResource().getCatalogVersion().getVersion()));
+                "${appVersion}", escapeJs(new VersionResource().getCatalogVersion().getVersion()))
+            .replace("${cdnBaseUrl}", cdnBaseUrl != null ? cdnBaseUrl : "");
     // Re-init may bake new values into the template — drop any cached ETags so the next
     // request computes a fresh hash against the new body.
     ETAG_CACHE.invalidateAll();

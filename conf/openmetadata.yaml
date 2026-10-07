@@ -19,6 +19,11 @@ assets:
   uriPath: /
 
 basePath: ${BASE_PATH:-/}
+# Optional CDN prefix for the UI bundle. See IndexResource — Vite's
+# split-serve build emits `${cdnBaseUrl}` placeholders; this value is
+# baked into index.html at initialize. Unset / empty → assets load
+# same-origin from the JAR.
+cdnBaseUrl: ${CDN_BASE_URL:-""}
 
 server:
   applicationContextPath: ${BASE_PATH:-/}
