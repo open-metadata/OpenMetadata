@@ -397,3 +397,54 @@ def test_pandas_reads_the_dataset_once(validator_class, entity_link, expression,
     assert len(calls) == 1
     assert result.testCaseStatus == TestCaseStatus.Success
     assert f"out of {TOTAL_ROWS} evaluated (30.00%)" in result.result
+
+
+def hundred_orders(negative: int) -> list[dict]:
+    return [{"id": i, "amount": -i if i <= negative else i, "status": "ok"} for i in range(1, 101)]
+
+
+def runner_for(runner_kind: str, rows: list[dict]):
+    if runner_kind == "pandas":
+        frame = pd.DataFrame(rows)
+        return PandasRunner(dataset=lambda: iter([frame]), raw_dataset=lambda: iter([frame]))
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    session.add_all(Order(**row) for row in rows)
+    session.commit()
+    return QueryRunner(session=session, dataset=Order, raw_dataset=Order.__table__)
+
+
+@pytest.mark.parametrize(
+    ("validator_class", "runner_kind", "entity_link", "expression", "entity_type"),
+    [
+        pytest.param(SQAColumnValidator, "sqa", COLUMN_LINK, COLUMN_SQL, EntityType.COLUMN, id="sqa-column"),
+        pytest.param(SQATableValidator, "sqa", TABLE_LINK, TABLE_SQL, EntityType.TABLE, id="sqa-table"),
+        pytest.param(
+            PandasColumnValidator,
+            "pandas",
+            COLUMN_LINK,
+            PANDAS_COLUMN_EXPRESSION,
+            EntityType.COLUMN,
+            id="pandas-column",
+        ),
+        pytest.param(
+            PandasTableValidator, "pandas", TABLE_LINK, PANDAS_TABLE_EXPRESSION, EntityType.TABLE, id="pandas-table"
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    ("negative", "expected_status"),
+    [pytest.param(7, TestCaseStatus.Success, id="at-threshold"), pytest.param(8, TestCaseStatus.Failed, id="above")],
+)
+def test_percentage_boundary_is_inclusive(
+    validator_class, runner_kind, entity_link, expression, entity_type, negative, expected_status
+):
+    """7 of 100 rows at 7% sits exactly on the threshold and passes; 8 does not"""
+    runner = runner_for(runner_kind, hundred_orders(negative))
+    test_case = build_test_case(entity_link, expression, entity_type, threshold="7", unit="PERCENTAGE")
+
+    result = validator_class(runner, test_case, EXECUTION_DATE).run_validation()
+
+    assert result.testCaseStatus == expected_status
+    assert f"out of 100 evaluated ({negative}.00%)" in result.result

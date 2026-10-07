@@ -21,6 +21,7 @@ import time
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from decimal import Decimal
 from typing import (
     TYPE_CHECKING,
     TypedDict,
@@ -566,7 +567,11 @@ class BaseTestValidator(ABC):
         if threshold.unit is ThresholdUnit.PERCENTAGE:
             if not denominator:
                 return True
-            return violations / denominator * 100 <= threshold.value
+            # Compare rows to the rows the percentage allows. Dividing the violations first goes
+            # through an inexact float (7 / 100 * 100 is 7.000000000000001) and fails a count
+            # sitting exactly on the threshold; Decimal keeps a typed 7 or 2.9 exact.
+            allowed = Decimal(str(threshold.value)) * denominator / 100
+            return violations <= allowed
 
         return violations <= threshold.value
 
