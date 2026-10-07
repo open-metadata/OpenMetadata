@@ -217,10 +217,10 @@ public final class RdfAccessFixtures implements AutoCloseable {
   }
 
   /**
-   * Reads each created principal's effective permissions straight after a policy edit. Without this
-   * a principal that had been authorized before the edit kept being evaluated against the removed
-   * rule when the test called a tool next; with it every principal sees the edit. The reason is not
-   * established, so the reads are a test-side workaround, not a statement about the product.
+   * Reads each created principal's effective permissions straight after a policy edit. A principal
+   * authorized before the edit can keep the removed rule in its per-user policy cache
+   * ({@code SubjectCache}) when its first request after the edit arrives via /mcp; this read forces
+   * a fresh evaluation. A test-side workaround, not a statement about the product; see #34826.
    */
   private void refreshPrincipalPermissions() {
     for (final String principal : principals) {
