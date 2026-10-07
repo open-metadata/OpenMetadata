@@ -16,8 +16,8 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
-import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getRecentlyViewedData } from '../../../utils/RecentActivityUtils';
 
