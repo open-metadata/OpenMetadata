@@ -918,8 +918,15 @@ test.describe('Context Center Articles', () => {
     );
 
     await observerElement.scrollIntoViewIfNeeded();
-    await paginationResponse;
-    await waitForAllLoadersToDisappear(page);
+    const resp = await paginationResponse;
+
+    expect(resp.status()).toBe(200);
+
+    const paginationLoader = page.getByTestId('knowledge-page-loader');
+    await expect(paginationLoader)
+      .toBeVisible({ timeout: 3000 })
+      .catch(() => null);
+    await paginationLoader.waitFor({ state: 'hidden' });
 
     await expect.poll(() => cards.count()).toBeGreaterThan(initialCardCount);
   });
@@ -1448,7 +1455,10 @@ test.describe('Context Center Articles', () => {
               `/api/v1/conversations/${createdConversation.id}/reaction/rocket`
             ) && response.request().method() === 'PUT'
       );
-      await page.locator('[title="rocket"]:visible').click();
+      await page
+        .getByTestId('feed-reactions-popover')
+        .getByRole('button', { name: 'rocket', exact: true })
+        .click();
       await reactionResponse;
       await mainMessage.getByTestId('emoji-button').hover();
       await expect(
