@@ -1271,6 +1271,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -3121,6 +3127,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -7067,6 +7079,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -7761,6 +7779,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -12461,6 +12485,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -15051,6 +15081,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -21055,6 +21091,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -28735,6 +28777,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -30975,6 +31023,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -32382,6 +32436,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -33107,6 +33167,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -39686,6 +39752,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -40410,6 +40482,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -41602,6 +41680,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -44023,6 +44107,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -45873,6 +45963,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -49819,6 +49915,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -50513,6 +50615,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -55213,6 +55321,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -57803,6 +57917,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -63807,6 +63927,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -71487,6 +71613,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -73727,6 +73859,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -75134,6 +75272,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -75859,6 +76003,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -82438,6 +82588,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -83162,6 +83318,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -84354,6 +84516,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false

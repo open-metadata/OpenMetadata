@@ -16,7 +16,7 @@ Source connection helper
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, Optional
+from typing import Any
 
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from pydantic import BaseModel
@@ -59,7 +59,7 @@ def with_https_scheme(endpoint: str) -> str:
     return f"https://{endpoint}"
 
 
-def get_api_endpoint(service_connection: BigQueryConnection) -> Optional[str]:  # noqa: UP045
+def get_api_endpoint(service_connection: BigQueryConnection) -> str | None:
     """
     Resolve the BigQuery API endpoint override for a custom GCP universe domain,
     or ``None`` when the default `googleapis.com` universe applies.
@@ -137,7 +137,7 @@ def get_impersonate_client_kwargs(service_connection: BigQueryConnection) -> dic
     return kwargs
 
 
-def get_data_catalog_client_options(service_connection: BigQueryConnection) -> Optional[dict]:  # noqa: UP045
+def get_data_catalog_client_options(service_connection: BigQueryConnection) -> dict | None:
     """
     Build ``client_options`` for the Data Catalog (Policy Tag) client on a custom
     GCP universe domain, or ``None`` when the default `googleapis.com` universe
