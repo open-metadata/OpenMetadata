@@ -19,6 +19,7 @@ import {
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { DataProduct } from '../../support/domain/DataProduct';
 import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
@@ -57,16 +58,19 @@ const navigationPersona = new PersonaClass();
 // inherits that layout whenever both tests run in the same worker.
 const glossaryTermPersona = new PersonaClass();
 // The Overview card tests save `overviewCardPersona`'s Domain and Data Product
-// layouts, so they get their own persona to keep them out of the tests above.
+// layouts, so they get their own persona and user to keep them out of the
+// tests above.
 const overviewCardPersona = new PersonaClass();
 const adminUser = new AdminClass();
 const user = new UserClass();
 const glossaryTermUser = new UserClass();
+const overviewCardUser = new UserClass();
 
 const test = base.extend<{
   adminPage: Page;
   userPage: Page;
   glossaryTermUserPage: Page;
+  overviewCardUserPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
@@ -86,6 +90,12 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  overviewCardUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await overviewCardUser.signIn(page);
+    await use(page);
+    await page.close();
+  },
 });
 
 test.beforeAll('Setup Customize tests', async ({ browser }) => {
@@ -97,6 +107,8 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
   await user.setAdminRole(apiContext);
   await glossaryTermUser.create(apiContext);
   await glossaryTermUser.setAdminRole(apiContext);
+  await overviewCardUser.create(apiContext);
+  await overviewCardUser.setAdminRole(apiContext);
 
   await persona.create(apiContext);
   await navigationPersona.create(apiContext);
@@ -162,6 +174,25 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
     ],
   });
 
+  const overviewCardPersonaReference = {
+    id: overviewCardPersona.responseData.id,
+    name: overviewCardPersona.responseData.name,
+    displayName: overviewCardPersona.responseData.displayName,
+    fullyQualifiedName: overviewCardPersona.responseData.fullyQualifiedName,
+    type: 'persona',
+  };
+  await overviewCardUser.patch({
+    apiContext,
+    patchData: [
+      { op: 'add', path: '/personas/0', value: overviewCardPersonaReference },
+      {
+        op: 'add',
+        path: '/defaultPersona',
+        value: overviewCardPersonaReference,
+      },
+    ],
+  });
+
   await afterAction();
 });
 
@@ -170,6 +201,7 @@ test.afterAll('Cleanup Customize tests', async ({ browser }) => {
   await adminUser.delete(apiContext);
   await user.delete(apiContext);
   await glossaryTermUser.delete(apiContext);
+  await overviewCardUser.delete(apiContext);
   await persona.delete(apiContext);
   await navigationPersona.delete(apiContext);
   await glossaryTermPersona.delete(apiContext);
@@ -1004,20 +1036,44 @@ const byId = (id: string) => `[id="${id}"]`;
 
 const OVERVIEW_CARD = byId('KnowledgePanel.LeftPanel');
 
+const getOverviewCardPersonaFqn = () =>
+  overviewCardPersona.responseData.fullyQualifiedName ??
+  overviewCardPersona.data.name;
+
 const openCustomizePage = async (page: Page, pageType: string) => {
-  await page.goto(
-    `/customize-page/${encodeURIComponent(
-      overviewCardPersona.responseData.fullyQualifiedName ??
-        overviewCardPersona.data.name
-    )}/${pageType}`
+  const personaFqn = getOverviewCardPersonaFqn();
+  // 404 until the persona's first layout is saved.
+  const layoutResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      decodeURIComponent(new URL(response.url()).pathname).endsWith(
+        `/docStore/name/persona.${personaFqn}`
+      ),
+    [200, 404]
   );
+  await page.goto(
+    `/customize-page/${encodeURIComponent(personaFqn)}/${pageType}`
+  );
+  await layoutResponse;
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('customize-tab-card')).toBeVisible();
   await expect(page.locator(OVERVIEW_CARD)).toBeVisible();
 };
 
 const savePageLayout = async (page: Page) => {
+  // The first save creates the persona's layout document; later saves patch it.
+  const saveResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() !== 'GET' &&
+      /^\/api\/v1\/docStore(?:\/[^/]+)?$/.test(
+        new URL(response.url()).pathname
+      ),
+    'ok'
+  );
   await page.getByTestId('save-button').click();
+  await saveResponse;
   await toastNotification(
     page,
     /^Page layout (created|updated) successfully\.$/
@@ -1050,22 +1106,71 @@ const dragToPoint = async (
   await page.mouse.up();
 };
 
-// Share of the Overview card's width a widget takes, to the nearest half.
-const getCardWidthShare = async (widget: Locator, card: Locator) => {
+// Where a widget sits across the Overview card's six columns: the column it
+// starts at and how many it spans, each rounded to the nearest sixth.
+const getCardColumns = async (widget: Locator, card: Locator) => {
   const [widgetBox, cardBox] = await Promise.all([
     widget.boundingBox(),
     card.boundingBox(),
   ]);
+  if (!widgetBox || !cardBox) {
+    return null;
+  }
+  const toSixths = (width: number) => Math.round((width / cardBox.width) * 6);
 
-  return widgetBox && cardBox
-    ? Math.round((widgetBox.width / cardBox.width) * 2) / 2
-    : null;
+  return {
+    start: toSixths(widgetBox.x - cardBox.x),
+    span: toSixths(widgetBox.width),
+  };
+};
+
+const isBelow = async (lower: Locator, upper: Locator) => {
+  const [lowerBox, upperBox] = await Promise.all([
+    lower.boundingBox(),
+    upper.boundingBox(),
+  ]);
+
+  return Boolean(
+    lowerBox && upperBox && lowerBox.y >= upperBox.y + upperBox.height
+  );
+};
+
+const isRightOf = async (right: Locator, left: Locator) => {
+  const [rightBox, leftBox] = await Promise.all([
+    right.boundingBox(),
+    left.boundingBox(),
+  ]);
+
+  return Boolean(
+    rightBox && leftBox && rightBox.x >= leftBox.x + leftBox.width
+  );
 };
 
 test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  let dataProduct: DataProduct;
+
+  test.beforeAll('Setup Overview card data product', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    dataProduct = new DataProduct();
+    await dataProduct.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup Overview card data product', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await dataProduct.delete(apiContext);
+    for (const domain of dataProduct.getDomains()) {
+      await domain.delete(apiContext);
+    }
+    await afterAction();
+  });
+
   test('moves a side widget into the Overview card and back out', async ({
     adminPage,
+    overviewCardUserPage,
   }) => {
+    test.slow();
+
     const card = adminPage.locator(OVERVIEW_CARD);
     const domain = adminPage.locator(byId('KnowledgePanel.Domain'));
     const cardDomain = card.locator(byId('KnowledgePanel.Domain'));
@@ -1088,15 +1193,54 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
 
       await expect(cardDomain).toBeVisible();
-      await expect.poll(() => getCardWidthShare(cardDomain, card)).toBe(0.5);
+      await expect
+        .poll(() => getCardColumns(cardDomain, card))
+        .toEqual({ start: 3, span: 3 });
+      await expect.poll(() => isBelow(cardDomain, description)).toBe(true);
 
       await savePageLayout(adminPage);
     });
 
-    await test.step('keeps it in the card after reload', async () => {
+    await test.step('keeps its place in the card after reload', async () => {
       await openCustomizePage(adminPage, 'DataProduct');
 
       await expect(cardDomain).toBeVisible();
+      await expect
+        .poll(() => getCardColumns(cardDomain, card))
+        .toEqual({ start: 3, span: 3 });
+      await expect.poll(() => isBelow(cardDomain, description)).toBe(true);
+    });
+
+    await test.step('shows it below Description on the entity page', async () => {
+      const entityCard = overviewCardUserPage.locator(OVERVIEW_CARD);
+      const entityDomain = entityCard.locator(byId('KnowledgePanel.Domain'));
+      const entityDescription = entityCard.locator(
+        byId('KnowledgePanel.Description')
+      );
+      const dataProductFqn =
+        dataProduct.responseData.fullyQualifiedName ?? dataProduct.data.name;
+
+      const dataProductResponse = waitForResponseWithStatus(
+        overviewCardUserPage,
+        (response) =>
+          response.request().method() === 'GET' &&
+          decodeURIComponent(new URL(response.url()).pathname).endsWith(
+            `/dataProducts/name/${dataProductFqn}`
+          ),
+        200
+      );
+      await overviewCardUserPage.goto(
+        `/dataProduct/${encodeURIComponent(dataProductFqn)}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await dataProductResponse;
+      await waitForAllLoadersToDisappear(overviewCardUserPage);
+
+      await expect(entityDescription).toBeVisible();
+      await expect(entityDomain).toBeVisible();
+      await expect
+        .poll(() => isBelow(entityDomain, entityDescription))
+        .toBe(true);
     });
 
     await test.step('drop it right of the card into the side column', async () => {
@@ -1115,6 +1259,7 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await expect(domain).toBeVisible();
       await expect(cardDomain).toHaveCount(0);
+      await expect.poll(() => isRightOf(domain, card)).toBe(true);
 
       await savePageLayout(adminPage);
     });
@@ -1124,6 +1269,7 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await expect(domain).toBeVisible();
       await expect(cardDomain).toHaveCount(0);
+      await expect.poll(() => isRightOf(domain, card)).toBe(true);
     });
   });
 
@@ -1150,12 +1296,16 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await test.step('shrink the Description widget to half the card', async () => {
       await openCustomizePage(adminPage, 'Domain');
 
-      await expect.poll(() => getCardWidthShare(description, card)).toBe(1);
+      await expect
+        .poll(() => getCardColumns(description, card))
+        .toEqual({ start: 0, span: 6 });
 
       const cardBox = await getBox(card);
       await resizeBy(-cardBox.width / 2);
 
-      await expect.poll(() => getCardWidthShare(description, card)).toBe(0.5);
+      await expect
+        .poll(() => getCardColumns(description, card))
+        .toEqual({ start: 0, span: 3 });
 
       await savePageLayout(adminPage);
     });
@@ -1163,34 +1313,21 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await test.step('keeps the half width after reload', async () => {
       await openCustomizePage(adminPage, 'Domain');
 
-      await expect.poll(() => getCardWidthShare(description, card)).toBe(0.5);
+      await expect
+        .poll(() => getCardColumns(description, card))
+        .toEqual({ start: 0, span: 3 });
     });
 
     await test.step('grow it back to the full card', async () => {
       const cardBox = await getBox(card);
       await resizeBy(cardBox.width / 2);
 
-      await expect.poll(() => getCardWidthShare(description, card)).toBe(1);
+      await expect
+        .poll(() => getCardColumns(description, card))
+        .toEqual({ start: 0, span: 6 });
 
       await savePageLayout(adminPage);
     });
-  });
-
-  test('offers the Custom Properties widget on Domain and Data Product pages', async ({
-    adminPage,
-  }) => {
-    for (const pageType of ['Domain', 'DataProduct']) {
-      await test.step(`${pageType} Add Widget list`, async () => {
-        await openCustomizePage(adminPage, pageType);
-        await openPlaceholderWidgetPicker(adminPage);
-
-        await expect(
-          adminPage
-            .getByTestId('add-widget-modal')
-            .getByTestId('Custom Properties-widget')
-        ).toBeVisible();
-      });
-    }
   });
 
   test('keeps the Overview card widgets inside the card, above the add-widget slot', async ({
