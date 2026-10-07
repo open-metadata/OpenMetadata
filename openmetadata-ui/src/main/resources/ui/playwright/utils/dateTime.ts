@@ -68,14 +68,20 @@ export const pickDateInCorePicker = async (
   // the day number alone identifies the cell.
   const dayLabel = new RegExp(`(^|\\D)${day}(\\D|$)`);
 
-  await trigger.click();
   // The form this picker sits in is itself a dialog, so the calendar is
   // singled out by the grid only it contains.
   const calendar = page
     .getByRole('dialog')
     .filter({ has: page.getByRole('grid') });
 
-  await expect(calendar).toBeVisible();
+  // Nothing of a previous field may still be mounted: react-aria animates the
+  // popover out, and a page-wide match would otherwise see two calendars and
+  // fail strict mode on the second date in a form.
+  await expect(calendar).toHaveCount(0);
+
+  await trigger.click();
+
+  await expect(calendar).toHaveCount(1);
 
   const heading = calendar.getByRole('heading');
   const targetMonth = year * 12 + (month - 1);
@@ -98,4 +104,8 @@ export const pickDateInCorePicker = async (
     .getByRole('button', { name: dayLabel })
     .click();
   await calendar.getByRole('button', { name: 'Apply' }).click();
+
+  // Apply commits and closes. Waiting the popover out here is what lets the
+  // next field open cleanly, rather than leaving the race for the caller.
+  await expect(calendar).toHaveCount(0);
 };
