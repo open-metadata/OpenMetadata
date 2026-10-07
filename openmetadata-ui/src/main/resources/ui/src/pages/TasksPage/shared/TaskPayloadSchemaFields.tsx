@@ -103,7 +103,7 @@ const ClampedText = ({ text }: { text: string }) => {
       </p>
       {!expanded && isClamped && (
         <span className="tw:absolute tw:bottom-0 tw:right-0 tw:flex tw:items-end">
-          <span className="tw:inline-block tw:w-8 tw:h-5 tw:bg-linear-to-r tw:from-white/0 tw:to-white" />
+          <span className="tw:inline-block tw:w-8 tw:h-5 tw:bg-linear-to-r tw:from-transparent tw:to-bg-primary" />
           <span className="tw:bg-primary tw:text-sm tw:text-primary tw:select-none tw:pr-0.5">
             …
           </span>
@@ -318,11 +318,11 @@ const TaskPayloadSchemaFields = ({
             src={iconSrc}
           />
         )}
-        <Typography className="tw:text-tertiary" size="text-sm">
+        <Typography color="secondary" size="text-sm">
           {label}
         </Typography>
       </Box>
-      <Typography className="tw:text-tertiary" size="text-sm">
+      <Typography color="secondary" size="text-sm">
         :
       </Typography>
       <div className="tw:min-w-0 tw:overflow-hidden tw:wrap-break-word">
@@ -449,7 +449,7 @@ const TaskPayloadSchemaFields = ({
           onChange={(value) => updateField(fieldName, value)}
         />
         {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
+          <Typography as="p" className="tw:mb-0 tw:mt-1" color="secondary">
             {description}
           </Typography>
         ) : null}
@@ -503,7 +503,7 @@ const TaskPayloadSchemaFields = ({
           }}
         />
         {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
+          <Typography as="p" className="tw:mb-0 tw:mt-1" color="secondary">
             {description}
           </Typography>
         ) : null}
@@ -534,7 +534,7 @@ const TaskPayloadSchemaFields = ({
           onChange={(newTags) => updateField(fieldName, newTags)}
         />
         {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
+          <Typography as="p" className="tw:mb-0 tw:mt-1" color="secondary">
             {description}
           </Typography>
         ) : null}

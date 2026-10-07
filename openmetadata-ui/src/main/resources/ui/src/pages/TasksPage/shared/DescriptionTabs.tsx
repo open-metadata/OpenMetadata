@@ -85,7 +85,7 @@ export const DescriptionTabs = ({
               markdown={description}
             />
           ) : (
-            <Typography color="tertiary">
+            <Typography color="secondary">
               {t('label.no-entity', { entity: t('label.description') })}
             </Typography>
           )}
@@ -93,7 +93,7 @@ export const DescriptionTabs = ({
       </Tabs.Panel>
       <Tabs.Panel id="2">
         <DiffView
-          className="border border-main rounded-4 p-sm m-t-sm"
+          className="tw:mt-3 tw:rounded-md tw:border tw:border-primary tw:p-3"
           diffArr={diffs}
         />
       </Tabs.Panel>

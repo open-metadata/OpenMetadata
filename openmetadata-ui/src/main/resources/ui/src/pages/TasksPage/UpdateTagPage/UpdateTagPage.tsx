@@ -75,7 +75,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
 import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
-import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateTag = () => {
@@ -255,7 +254,7 @@ const UpdateTag = () => {
         wrapInCard: false,
         allowScroll: true,
         children: (
-          <Card className="max-width-md m-x-auto">
+          <Card className="tw:mx-auto tw:max-w-3xl">
             <Card.Content>
               <Box direction="col" gap={4}>
                 <TitleBreadcrumb
@@ -270,11 +269,8 @@ const UpdateTag = () => {
                     },
                   ]}
                 />
-                <div className="m-t-0 request-tags" key="update-tags">
-                  <Typography
-                    as="p"
-                    className="text-base"
-                    data-testid="form-title">
+                <div key="update-tags">
+                  <Typography as="p" data-testid="form-title" size="text-md">
                     {t('label.create-entity', {
                       entity: t('label.task'),
                     })}
