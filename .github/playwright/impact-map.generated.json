@@ -185,6 +185,7 @@
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
+        "playwright/e2e/Flow/LandingPageTopicWidgets.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/Navbar.spec.ts",
@@ -807,6 +808,7 @@
         "playwright/e2e/Features/TableSearch.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
+        "playwright/e2e/Flow/LandingPageTopicWidgets.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
@@ -2559,7 +2561,6 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/persona/PersonaClass.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
@@ -3544,6 +3545,7 @@
         "playwright/e2e/Flow/FrequentlyJoined.spec.ts",
         "playwright/e2e/Flow/GlobalSearch.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
+        "playwright/e2e/Flow/LandingPageTopicWidgets.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/MetricListSearch.spec.ts",
@@ -3715,7 +3717,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
-        "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
@@ -3724,6 +3725,7 @@
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/LandingPageTopicWidgets.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
       ]
@@ -4063,6 +4065,7 @@
         "playwright/e2e/Flow/FrequentlyJoined.spec.ts",
         "playwright/e2e/Flow/GlobalSearch.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
+        "playwright/e2e/Flow/LandingPageTopicWidgets.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Flow/MetricListSearch.spec.ts",
         "playwright/e2e/Flow/MetricSearch.spec.ts",
@@ -5143,7 +5146,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
-        "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts"
       ]
     },
@@ -5215,7 +5217,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts"
       ]
     },
@@ -5224,7 +5225,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedList/TaskListV1.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts"
       ]
     },
@@ -7674,6 +7674,22 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/HomeLandingPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/LandingPageTopicWidgets.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/TopicsSectionHeader.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/LandingPageTopicWidgets.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/LeftSidebar/LeftSidebar.component.tsx"
       ],
       "specs": [
@@ -7710,27 +7726,10 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/Common/WidgetHeader/WidgetHeader.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ActivityFeed.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/Common/WidgetMoreOptions/WidgetMoreOptions.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ActivityFeed.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/Common/WidgetSortFilter/WidgetSortFilter.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
-        "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts"
       ]
     },
@@ -11320,6 +11319,7 @@
         "playwright/e2e/Flow/FrequentlyJoined.spec.ts",
         "playwright/e2e/Flow/GlobalSearch.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
+        "playwright/e2e/Flow/LandingPageTopicWidgets.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/MetricListSearch.spec.ts",
