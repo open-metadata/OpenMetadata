@@ -23,6 +23,7 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURA
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.configuration.ConfigSourceMode;
@@ -181,6 +182,23 @@ class SettingsMergeTest {
 
     assertEquals("s3cret", result.stored().at("/oidcConfiguration/secret").asText());
     assertTrue(result.report().has(MergeOutcome.KEPT_OVER_BLANK));
+  }
+
+  /**
+   * Compose files pass unset variables as {@code ""}, which differs from the file default. Such a
+   * blank value is not an override the UI hides, so it is never reported, on any start.
+   */
+  @Test
+  void aBlankDeploymentValueIsNeverReportedAsOverriddenByTheStoredValue() {
+    String deployment = "{'provider':'basic','maxActiveSessionsPerUser':''}";
+    String stored = "{'provider':'basic'}";
+
+    for (String lastApplied : Arrays.asList(null, deployment)) {
+      MergeResult result = auth(ConfigSourceMode.AUTO, deployment, stored, lastApplied);
+
+      assertFalse(result.report().has(MergeOutcome.DRIFT), "last applied " + lastApplied);
+      assertFalse(result.storedChanged());
+    }
   }
 
   @Test

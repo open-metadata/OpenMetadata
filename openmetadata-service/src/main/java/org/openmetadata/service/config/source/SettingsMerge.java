@@ -135,9 +135,12 @@ public final class SettingsMerge {
         && !same(deploymentValue, context.effectiveStoredValue(unit));
   }
 
+  /** A blank deployment value means "unset" here as everywhere else, so nothing overrides it. */
   private void reportDrift(MergeContext context, MergeUnit unit) {
+    JsonNode deploymentValue = context.deploymentValue(unit);
     if (context.isDeliberate(unit)
-        && !same(context.effectiveStoredValue(unit), context.deploymentValue(unit))) {
+        && !isBlank(deploymentValue)
+        && !same(context.effectiveStoredValue(unit), deploymentValue)) {
       context.record(DRIFT, unit);
     }
   }
