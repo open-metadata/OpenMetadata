@@ -842,14 +842,29 @@ export const cleanupCurrentArticle = async (page: Page) => {
   await afterAction();
 };
 
-export const verifyArticleSearch = async (page: Page, searchTerm: string) => {
+// Waits for the search/query response for the given article display name.
+// `displayName` must be the card's exact display name — partial terms will
+// produce a predicate mismatch and a 30 s timeout.
+export const waitForArticleSearchResponse = (page: Page, displayName: string) =>
+  page.waitForResponse((res) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname.includes('/api/v1/search/query') &&
+      url.searchParams.get('index') === 'page' &&
+      url.searchParams.get('q') ===
+        displayName.replaceAll(/["']/g, String.raw`\$&`)
+    );
+  });
+
+export const verifyArticleSearch = async (page: Page, displayName: string) => {
   const header = page.getByTestId('context-center-header');
   const searchInput = header
     .getByTestId('search-input')
     .getByLabel('Search Articles');
   const card = page
     .getByTestId('knowledge-page-listing')
-    .getByTestId(`knowledge-card-${searchTerm}`);
+    .getByTestId(`knowledge-card-${displayName}`);
 
   await expect(async () => {
     const currentValue = await searchInput.inputValue();
@@ -867,17 +882,8 @@ export const verifyArticleSearch = async (page: Page, searchTerm: string) => {
       await clearResPromise;
     }
 
-    const searchResPromise = page.waitForResponse((res) => {
-      const url = new URL(res.url());
-
-      return (
-        url.pathname.includes('/api/v1/search/query') &&
-        url.searchParams.get('index') === 'page' &&
-        url.searchParams.get('q') ===
-          searchTerm.replaceAll(/["']/g, String.raw`\$&`)
-      );
-    });
-    await searchInput.fill(searchTerm);
+    const searchResPromise = waitForArticleSearchResponse(page, displayName);
+    await searchInput.fill(displayName);
     const searchRes = await searchResPromise;
     expect(searchRes.status()).toBe(200);
     await expect(card).toBeVisible({ timeout: 3000 });

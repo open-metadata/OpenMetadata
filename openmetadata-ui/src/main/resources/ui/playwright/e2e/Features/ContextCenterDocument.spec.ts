@@ -1218,7 +1218,8 @@ test.describe('Context Center - Documents Page', () => {
         res.request().method() === 'GET'
     );
     await folderRow.getByRole('button', { name: 'Expand' }).click();
-    await folderFilesResPromise;
+    const folderFilesRes = await folderFilesResPromise;
+    expect(folderFilesRes.status()).toBe(200);
 
     await expect(folderRow).toHaveAttribute('aria-expanded', 'true');
     await expect(tree.getByText(fileName, { exact: true })).toBeVisible();

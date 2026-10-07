@@ -51,6 +51,7 @@ import {
   scrollListingToCard,
   verifyArticleSearch,
   waitForArticleInFollows,
+  waitForArticleSearchResponse,
   waitForDraftPersisted,
   waitForRecentlyViewed,
 } from '../../utils/ContextCenterUtil';
@@ -329,15 +330,10 @@ test.describe('Context Center Articles', () => {
     await scrollListingToCard(page, articleEntity.responseData.displayName);
 
     const noMatchTerm = 'zzznomatchzzz_playwright';
-    const noMatchSearchResPromise = page.waitForResponse((res) => {
-      const url = new URL(res.url());
-
-      return (
-        url.pathname.includes('/api/v1/search/query') &&
-        url.searchParams.get('index') === 'page' &&
-        url.searchParams.get('q') === noMatchTerm
-      );
-    });
+    const noMatchSearchResPromise = waitForArticleSearchResponse(
+      page,
+      noMatchTerm
+    );
     await searchInput.fill(noMatchTerm);
     const noMatchSearchRes = await noMatchSearchResPromise;
     expect(noMatchSearchRes.status()).toBe(200);
