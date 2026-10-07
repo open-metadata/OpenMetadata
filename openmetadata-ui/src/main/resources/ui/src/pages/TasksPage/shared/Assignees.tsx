@@ -67,6 +67,7 @@ const Assignees = ({
   // Selected identities must survive when a remote search replaces the option page.
   const availableOptions = uniqBy([...options, ...assignees], 'value');
 
+  // Form rules validate selected identities; the search query clears after selection.
   return (
     <Autocomplete
       {...rest}
@@ -77,6 +78,7 @@ const Assignees = ({
       multiple={!isSingleSelect}
       placeholder={rest.placeholder ?? t('label.select-to-search')}
       selectedItems={assignees.map(toItem)}
+      validationBehavior="aria"
       onItemCleared={(key) =>
         onChange(assignees.filter((option) => option.value !== key))
       }

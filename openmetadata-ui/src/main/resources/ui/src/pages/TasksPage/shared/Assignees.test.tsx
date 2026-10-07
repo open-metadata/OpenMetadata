@@ -51,6 +51,26 @@ const mockProps = {
 };
 
 describe('Test assignees component', () => {
+  it('allows a required assignee selection with an empty search query to submit', () => {
+    const { container } = render(
+      <form>
+        <Assignees
+          {...mockProps}
+          isRequired
+          label="Assignees"
+          value={[mockOptions[0]]}
+        />
+      </form>
+    );
+
+    expect(screen.getByRole('combobox')).toHaveValue('');
+    expect(container.querySelector('form')?.checkValidity()).toBe(true);
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'aria-required',
+      'true'
+    );
+  });
+
   it('preserves the selected assignee label and identity', async () => {
     const onChange = jest.fn();
     render(<Assignees {...mockProps} value={[]} onChange={onChange} />);
