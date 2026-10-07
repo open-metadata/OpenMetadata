@@ -42,7 +42,7 @@ for (const variant of [
         <button data-testid="${prefix}-primary" onclick="openModal('${
         primaryIsEdit ? 'edit' : 'accept'
       }')">${primaryLabel}</button>
-        <button data-testid="${prefix}-trigger" aria-label="down" onclick="document.getElementById('menu').hidden=false">Open</button>
+        <button data-testid="${prefix}-trigger" aria-label="More Actions" onclick="document.getElementById('menu').hidden=false">Open</button>
       </div></div></div>
       <div id="menu" hidden class="task-action-dropdown"><div role="menu">
         <button role="menuitem" onclick="openModal('edit')">Edit suggestion</button>

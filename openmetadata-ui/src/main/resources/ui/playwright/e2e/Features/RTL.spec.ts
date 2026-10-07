@@ -13,6 +13,7 @@
 
 import { expect } from '@playwright/test';
 import { toLower } from 'lodash';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import {
   clickOutside,
@@ -45,7 +46,7 @@ test.describe('Verify RTL Layout for landing page', () => {
     // wait for translation to reflect in the UI
     await expect(page.getByTestId('domain-selector')).toHaveText(
       'כל הדומיינים',
-      { timeout: 30_000 }
+      { timeout: ACTION_TIMEOUT }
     );
   });
 

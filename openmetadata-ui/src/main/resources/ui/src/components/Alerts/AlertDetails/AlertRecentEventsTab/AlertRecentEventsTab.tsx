@@ -13,16 +13,17 @@
 
 import {
   Box,
+  Button,
+  Dropdown,
   EmptyPlaceholder,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Collapse, Dropdown, Row, Tooltip } from 'antd';
+import { Col, Collapse, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
@@ -93,7 +94,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   );
 
   const handleFilterSelect = useCallback(
-    (item: MenuInfo) => setFilter(item.key as AlertRecentEventFilters),
+    (key: Key) => setFilter(key as AlertRecentEventFilters),
     [filter]
   );
 
@@ -342,18 +343,12 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
             </Row>
           </Col>
           <Col>
-            <Dropdown
-              menu={{
-                items: filterMenuItems,
-                selectedKeys: [filter],
-                onClick: handleFilterSelect,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
+            <Dropdown.Root>
               <Button
-                className="flex-center"
+                color="secondary"
                 data-testid="filter-button"
-                icon={<FilterIcon height={16} />}>
+                iconLeading={<FilterIcon height={16} width={16} />}
+                size="sm">
                 {filter !== AlertRecentEventFilters.ALL && (
                   <Typography
                     className="font-medium"
@@ -362,7 +357,21 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                   )}`}</Typography>
                 )}
               </Button>
-            </Dropdown>
+              <Dropdown.Popover className="tw:w-auto">
+                <Dropdown.Menu
+                  aria-label={t('label.filter-plural')}
+                  selectedKeys={[filter]}
+                  onAction={handleFilterSelect}>
+                  {filterMenuItems.map((item) => (
+                    <Dropdown.Item
+                      id={item.key}
+                      key={item.key}
+                      label={item.label}
+                    />
+                  ))}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
           </Col>
         </Row>
       </Col>

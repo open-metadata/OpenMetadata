@@ -1341,6 +1341,7 @@ describe('AlertAi form field components', () => {
         shouldShowActionsSection
         shouldShowFiltersSection
         filterResources={[{ name: 'table' }]}
+        recipientCategories={[SubscriptionCategory.Owners]}
         value={value}
         onChange={onChange}
       />

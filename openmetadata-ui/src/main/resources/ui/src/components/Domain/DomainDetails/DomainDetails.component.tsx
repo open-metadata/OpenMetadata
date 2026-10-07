@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import {
   Avatar,
   Box,
+  Button as CoreButton,
+  Dropdown,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import { Button, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, toString } from 'lodash';
@@ -31,7 +33,6 @@ import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/an
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
@@ -118,6 +119,10 @@ import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -807,7 +812,7 @@ const DomainDetails = ({
 
   // Wrapped in an IIFE so the permission-driven ternaries are scoped to
   // their own function for cyclomatic-complexity purposes.
-  const manageButtonContent: ItemType[] = (() => [
+  const manageButtonContent: ManageMenuItem[] = (() => [
     ...(editAllPermission
       ? ([
           {
@@ -826,7 +831,7 @@ const DomainDetails = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ] as ManageMenuItem[])
       : []),
     ...(editDisplayNamePermission
       ? ([
@@ -848,7 +853,7 @@ const DomainDetails = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ] as ManageMenuItem[])
       : []),
     ...(editAllPermission
       ? ([
@@ -870,7 +875,7 @@ const DomainDetails = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ] as ManageMenuItem[])
       : []),
     ...(deletePermission
       ? ([
@@ -895,7 +900,7 @@ const DomainDetails = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
+        ] as ManageMenuItem[])
       : []),
   ])();
 
@@ -1044,22 +1049,29 @@ const DomainDetails = ({
                 justify="end"
                 wrap="wrap">
                 {!isVersionsView && addButtonContent.length > 0 && (
-                  <Dropdown
-                    data-testid="domain-details-add-button-menu"
-                    menu={{
-                      items: addButtonContent,
-                    }}
-                    placement="bottomRight"
-                    trigger={['click']}>
-                    <Button
+                  <Dropdown.Root>
+                    <CoreButton
                       data-testid="domain-details-add-button"
-                      type="primary">
-                      <Space>
-                        {t('label.add')}
-                        <DownOutlined />
-                      </Space>
-                    </Button>
-                  </Dropdown>
+                      iconTrailing={<ChevronDown size={14} />}
+                      size="sm">
+                      {t('label.add')}
+                    </CoreButton>
+                    <Dropdown.Popover className="tw:w-auto">
+                      <Dropdown.Menu
+                        aria-label={t('label.add')}
+                        data-testid="domain-details-add-button-menu"
+                        selectionMode="none">
+                        {addButtonContent.map((item) => (
+                          <Dropdown.Item
+                            id={item.key}
+                            key={item.key}
+                            onAction={item.onClick}>
+                            {item.label}
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
                 )}
 
                 <ButtonGroup className="spaced" size="small">
@@ -1098,33 +1110,15 @@ const DomainDetails = ({
                   )}
 
                   {!isVersionsView && manageButtonContent.length > 0 && (
-                    <Dropdown
-                      align={{ targetOffset: [-12, 0] }}
-                      className="m-l-xs"
-                      menu={{
-                        items: manageButtonContent,
-                      }}
-                      open={showActions}
-                      overlayClassName="domain-manage-dropdown-list-container"
-                      overlayStyle={{ width: '350px' }}
-                      placement="bottomRight"
-                      trigger={['click']}
-                      onOpenChange={setShowActions}>
-                      <Tooltip
-                        placement="topRight"
-                        title={t('label.manage-entity', {
-                          entity: t('label.domain'),
-                        })}>
-                        <Button
-                          className="domain-manage-dropdown-button tw-px-1.5"
-                          data-testid="manage-button"
-                          icon={
-                            <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                          }
-                          onClick={() => setShowActions(true)}
-                        />
-                      </Tooltip>
-                    </Dropdown>
+                    <ManageMenu
+                      isOpen={showActions}
+                      items={manageButtonContent}
+                      label={t('label.manage-entity', {
+                        entity: t('label.domain'),
+                      })}
+                      triggerClassName="m-l-xs"
+                      onOpenChange={setShowActions}
+                    />
                   )}
                 </ButtonGroup>
               </Box>

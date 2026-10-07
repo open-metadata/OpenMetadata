@@ -16,7 +16,11 @@ import {
   ArrowRightOutlined,
   DownOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import {
+  Button as CoreButton,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -93,23 +97,27 @@ const NextPreviousWithOffset = ({
         <ArrowRightOutlined />
       </Button>
       {onShowSizeChange && (
-        <Dropdown
-          disabled={isLoading}
-          menu={{
-            items: pageSizeOptions.map((size) => ({
-              label: `${size} / ${t('label.page')}`,
-              value: size,
-              key: size,
-              onClick: () => onShowSizeChange(size),
-            })),
-          }}>
-          <Button
+        <Dropdown.Root>
+          <CoreButton
+            color="secondary"
             data-testid="page-size-change-button"
-            onClick={(e) => e.preventDefault()}>
+            iconTrailing={<DownOutlined />}
+            isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
-            <DownOutlined />
-          </Button>
-        </Dropdown>
+          </CoreButton>
+          <Dropdown.Popover className="tw:w-auto">
+            <Dropdown.Menu
+              aria-label={t('label.size')}
+              selectionMode="none"
+              onAction={(key) => onShowSizeChange(Number(key))}>
+              {pageSizeOptions.map((size) => (
+                <Dropdown.Item id={String(size)} key={size}>
+                  {`${size} / ${t('label.page')}`}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       )}
     </div>
   );

@@ -318,7 +318,8 @@ export const referenceLinesToMarkLine = (
     label: {
       show: Boolean(line.label),
       formatter: line.label,
-      position: 'insideEndTop',
+      position:
+        line.labelPosition === 'start' ? 'insideStartTop' : 'insideEndTop',
       color: theme.axisText,
     },
     lineStyle: {

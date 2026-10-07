@@ -33,6 +33,7 @@
         "SecureView",
         "MaterializedView",
         "Iceberg",
+        "DeltaLake",
         "Local",
         "Partitioned",
         "Foreign",
@@ -62,6 +63,9 @@
         },
         {
           "name": "Iceberg"
+        },
+        {
+          "name": "DeltaLake"
         },
         {
           "name": "Local"
