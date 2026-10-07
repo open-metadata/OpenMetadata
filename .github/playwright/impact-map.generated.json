@@ -2272,6 +2272,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts"
       ]
     },
