@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/alertSourceCapability.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AlertSourceCapability",
+  "description": "One source of an alert type, as it relates to a selection of sources.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.AlertSourceCapability",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "../alertCatalogSource.json#/definitions/sourceKind"
+    },
+    "selected": {
+      "type": "boolean",
+      "default": false
+    },
+    "canJoin": {
+      "description": "False when adding this source to the selection would break a rule. The form disables it and shows the reason.",
+      "type": "boolean",
+      "default": true
+    },
+    "reason": {
+      "description": "Why the source cannot join the selection.",
+      "type": "string"
+    },
+    "warning": {
+      "description": "For a selected source: why, with what has been chosen so far, it can never produce a match. The alert still saves.",
+      "type": "string"
+    }
+  },
+  "required": ["name", "kind"],
+  "additionalProperties": false
+}
