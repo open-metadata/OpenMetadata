@@ -54,6 +54,7 @@ import {
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
 import {
+  DEFAULT_MEMORY_STATUSES,
   FILTER_TABS,
   MEMORIES_PER_PAGE,
   MEMORY_FIELDS,
@@ -101,6 +102,7 @@ const getSortLabel = (
 
 const MEMORY_STATUSES = [
   EntityStatus.Approved,
+  EntityStatus.Unprocessed,
   EntityStatus.Draft,
   EntityStatus.Deprecated,
   EntityStatus.Rejected,
@@ -163,8 +165,10 @@ const getMemoriesViewFlags = ({
   const hasActiveFilters = Boolean(
     selectedAsset ||
       selectedAuthor ||
-      selectedStatuses.length !== 1 ||
-      selectedStatuses[0] !== EntityStatus.Approved
+      selectedStatuses.length !== DEFAULT_MEMORY_STATUSES.length ||
+      DEFAULT_MEMORY_STATUSES.some(
+        (status) => !selectedStatuses.includes(status)
+      )
   );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
@@ -304,9 +308,9 @@ const ContextCenterMemoriesPage: FC = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
-  const [selectedStatuses, setSelectedStatuses] = useState<EntityStatus[]>([
-    EntityStatus.Approved,
-  ]);
+  const [selectedStatuses, setSelectedStatuses] = useState<EntityStatus[]>(
+    DEFAULT_MEMORY_STATUSES
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
@@ -566,7 +570,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleClearFilters = useCallback(() => {
     setSelectedAsset(undefined);
     setSelectedAuthor(undefined);
-    setSelectedStatuses([EntityStatus.Approved]);
+    setSelectedStatuses(DEFAULT_MEMORY_STATUSES);
     setActiveFilter('all');
     setCurrentPage(1);
   }, []);

@@ -152,7 +152,16 @@ const ProfilePage: React.FC = () => {
       });
       // Ignore a stale response superseded by a newer target.
       if (reqId === requestRef.current) {
-        setUserData(res);
+        // isAdmin is not in the fields list but is used by contributed-tab
+        // conditions (e.g. billing tab). Keep the fetched value when present;
+        // fall back to the logged-in user's flag only for your own profile so
+        // viewing another user's profile doesn't overwrite their isAdmin with ours.
+        setUserData({
+          ...res,
+          isAdmin:
+            res.isAdmin ??
+            (isViewingOtherUser ? undefined : currentUserRef.current?.isAdmin),
+        });
       }
     } catch (error) {
       if (reqId !== requestRef.current) {
@@ -240,11 +249,16 @@ const ProfilePage: React.FC = () => {
 
         return {
           id: tab.key as ProfileNavId,
-          group: 'credentials' as ProfileNavGroup,
+          group: (tab.group ?? 'credentials') as ProfileNavGroup,
           label: typeof tab.label === 'string' ? tab.label : tab.key,
           description: tab.description ?? '',
           icon: (tab.icon ?? Link01) as FC<{ className?: string }>,
-          render: () => <TabComponent {...context} />,
+          selfContainedLayout: tab.selfContainedLayout,
+          render: ({
+            onHeaderChange,
+          }: {
+            onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
+          }) => <TabComponent {...context} onHeaderChange={onHeaderChange} />,
         };
       });
 
