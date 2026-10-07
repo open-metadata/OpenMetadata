@@ -14,6 +14,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -41,7 +42,6 @@ public class ListFilter extends Filter<ListFilter> {
 
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
-  private static final String ANNOUNCEMENT_TABLE = "announcement_entity";
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
@@ -134,8 +134,10 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
-    conditions.add(getActiveCondition(tableName));
+    conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
+    conditions.add(getAnnouncementStatusCondition());
+    conditions.add(getSystemAnnouncementCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -498,9 +500,30 @@ public class ListFilter extends Filter<ListFilter> {
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
-  private String getActiveCondition(String tableName) {
+  /**
+   * Both announcement conditions key off their query parameter alone rather than the table name:
+   * the generic list and count paths call {@link Filter#getCondition()}, which passes a null table
+   * name, so a name-based guard silently drops the predicate. Only {@code AnnouncementResource}
+   * sets these parameters, and {@code startTime}/{@code endTime} exist only on that table.
+   */
+  /**
+   * Whether any condition in this filter is derived from the wall clock rather than from stored
+   * state. {@code announcementStatus} and {@code active} both compare an announcement's window
+   * against {@code System.currentTimeMillis()}, so the same query returns different rows as
+   * announcements cross their start and end times — with no write to invalidate a cached count.
+   *
+   * <p>{@link org.openmetadata.service.cache.ListCountCache} hashes only {@code queryParams}, so
+   * such a count would be computed once and reused indefinitely; its TTL is refreshed by any write
+   * to the same entity type, and its invalidation hooks only fire on create/delete/restore. These
+   * filters therefore have to skip the cache rather than populate it.
+   */
+  public boolean isTimeDependent() {
+    return queryParams.containsKey("announcementStatus") || queryParams.containsKey("active");
+  }
+
+  private String getActiveCondition() {
     String active = queryParams.get("active");
-    if (active == null || !ANNOUNCEMENT_TABLE.equals(tableName)) {
+    if (active == null) {
       return "";
     }
 
@@ -516,6 +539,43 @@ public class ListFilter extends Filter<ListFilter> {
   private String getAnnouncementTypeCondition() {
     String announcementType = queryParams.get("announcementType");
     return announcementType == null ? "" : "type = :announcementType";
+  }
+
+  /** A system announcement is one with no entityLink; only AnnouncementResource sets this. */
+  private String getSystemAnnouncementCondition() {
+    String systemAnnouncement = queryParams.get("systemAnnouncement");
+    String condition = "";
+    if (systemAnnouncement != null) {
+      condition =
+          Boolean.parseBoolean(systemAnnouncement)
+              ? "entityLink IS NULL"
+              : "entityLink IS NOT NULL";
+    }
+    return condition;
+  }
+
+  /**
+   * An announcement's stored {@code status} is only a snapshot of its last write, so the generated
+   * {@code status} column still reads {@code Active} once the window has closed. Deriving the
+   * status from the window instead keeps the filter honest, and both {@code startTime} and {@code
+   * endTime} are indexed.
+   *
+   * <p>Read from {@code announcementStatus} rather than {@code status} so the generic status
+   * condition, which other resources share, keeps matching the column it means.
+   */
+  private String getAnnouncementStatusCondition() {
+    String status = queryParams.get("announcementStatus");
+    if (status == null) {
+      return "";
+    }
+
+    long now = System.currentTimeMillis();
+
+    return switch (AnnouncementStatus.fromValue(status)) {
+      case Active -> String.format("(startTime <= %d AND endTime >= %d)", now, now);
+      case Expired -> String.format("endTime < %d", now);
+      case Scheduled -> String.format("startTime > %d", now);
+    };
   }
 
   private String getEntityStatusCondition(String tableName) {
@@ -1439,15 +1499,15 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix, String paramName) {
-    String prefix = FullyQualifiedName.buildHash(fqnPrefix) + Entity.SEPARATOR;
+    String hash = FullyQualifiedName.buildHash(fqnPrefix);
+    String prefix = hash + Entity.SEPARATOR;
     queryParams.put(paramName + "Hash", prefix + "%");
-    // Companion bind for "exclude descendants below the immediate level" — used by listings
-    // that need direct children only (e.g. ContainerDAO root listings, ContainerRepository
-    // listChildren). fqnHash uses fixed-width MD5 segments joined by '.', so a fqnHash that
-    // matches `<prefix>.%.%` has at least two segments below the prefix and is therefore not
-    // a direct child. Always bound — most queries don't reference it; the cost is one map
-    // entry. Avoids threading an extra param through every listing site.
-    queryParams.put(paramName + "HashChild", prefix + "%.%");
+    // Companion bind for "direct children of this prefix only" — used by listings that need
+    // the immediate level (e.g. ContainerDAO root listings). Matched against the generated
+    // `parentFqnHash` column, so the depth test is an indexed equality rather than a
+    // negated LIKE the planner can't use. Always bound — most queries don't reference it;
+    // the cost is one map entry. Avoids threading an extra param through every listing site.
+    queryParams.put(paramName + "HashExact", hash);
     return tableName == null
         ? String.format("fqnHash LIKE :%s", paramName + "Hash")
         : String.format("%s.fqnHash LIKE :%s", tableName, paramName + "Hash");

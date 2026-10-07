@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -313,7 +313,7 @@ public final class OntologyMemoryDerivationService {
     INACTIVE(
         "Memory is not active",
         Response.Status.BAD_REQUEST,
-        (memory, user) -> memory.getStatus() != ContextMemoryStatus.ACTIVE),
+        (memory, user) -> memory.getEntityStatus() != EntityStatus.APPROVED),
     RESTRICTED(
         "Restricted memory requires an owner-initiated job",
         Response.Status.BAD_REQUEST,

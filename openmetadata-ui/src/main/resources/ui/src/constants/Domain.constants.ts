@@ -78,6 +78,7 @@ export const DOMAIN_DEFAULT_QUICK_FILTERS = [
   EntityFields.CLASSIFICATION_TAGS,
   EntityFields.GLOSSARY_TERMS,
   EntityFields.DOMAIN_TYPE,
+  EntityFields.ENTITY_STATUS,
 ];
 
 export const SUBDOMAIN_DEFAULT_QUICK_FILTERS = [
@@ -103,6 +104,10 @@ export const DOMAIN_FILTERS = [
   {
     label: 'label.domain-type',
     key: EntityFields.DOMAIN_TYPE,
+  },
+  {
+    label: 'label.status',
+    key: EntityFields.ENTITY_STATUS,
   },
 ];
 

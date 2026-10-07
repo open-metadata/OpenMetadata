@@ -27,6 +27,7 @@
  */
 
 import { expect } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { DriveServiceClass } from '../../../support/entity/service/DriveServiceClass';
@@ -68,7 +69,7 @@ test.describe(
       let deletedDatabase = '';
 
       test.beforeAll(async ({ browser }) => {
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         service = new DatabaseServiceClass();
         owner = new UserClass();

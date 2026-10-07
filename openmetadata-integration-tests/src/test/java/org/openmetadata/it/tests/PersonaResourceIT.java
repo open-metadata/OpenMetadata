@@ -41,6 +41,7 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
 
   // Persona has special characteristics
   {
+    supportsEntityStatus = false;
     supportsOwners = false;
     supportsFollowers = false;
     supportsTags = false;

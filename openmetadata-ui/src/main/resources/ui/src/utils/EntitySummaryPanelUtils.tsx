@@ -65,6 +65,7 @@ import {
 import entityUtilClassBase from './EntityUtilClassBase';
 import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
+import { getSafeHttpUrl } from './StringUtils';
 
 const APIEndpointSummary = withSuspenseFallback(
   lazy(
@@ -155,7 +156,7 @@ export const getTitle = (
   const title = highlightedTitle
     ? renderHighlightedText(highlightedTitle)
     : getEntityName(listItem) || NO_DATA_PLACEHOLDER;
-  const sourceUrl = (listItem as Chart | Task).sourceUrl;
+  const sourceUrl = getSafeHttpUrl((listItem as Chart | Task).sourceUrl);
 
   if ((listItem as EntityReference).type === SummaryEntityType.DASHBOARD) {
     return (
@@ -175,7 +176,7 @@ export const getTitle = (
   }
 
   return sourceUrl ? (
-    <Link target="_blank" to={sourceUrl}>
+    <Link rel="noopener noreferrer" target="_blank" to={sourceUrl}>
       <div className="d-flex items-center">
         <Typography
           className="entity-title text-link-color font-medium m-r-xss"

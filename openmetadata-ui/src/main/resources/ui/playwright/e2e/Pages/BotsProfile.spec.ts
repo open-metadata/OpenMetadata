@@ -14,7 +14,11 @@
 import { Page } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  redirectToHomePage,
+  selectOptionWithRetry,
+  uuid,
+} from '../../utils/common';
 import { enableAiAppMode } from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -125,8 +129,10 @@ test.describe('Bots Panel in AI Profile Modal', { tag: '@basic' }, () => {
       .getByRole('textbox')
       .fill(formBotName);
 
-    await page.getByTestId('token-expiry').getByRole('button').click();
-    await page.getByRole('option', { name: '1 hour' }).click();
+    await selectOptionWithRetry(
+      page.getByTestId('token-expiry').getByRole('button'),
+      page.getByRole('option', { name: '1 hour' })
+    );
 
     const userResponsePromise = page.waitForResponse(
       (response) =>

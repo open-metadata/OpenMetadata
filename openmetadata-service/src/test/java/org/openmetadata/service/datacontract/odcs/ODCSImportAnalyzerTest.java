@@ -15,6 +15,7 @@ package org.openmetadata.service.datacontract.odcs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -312,6 +313,41 @@ class ODCSImportAnalyzerTest {
     assertTrue(
         report.getQualityRules().stream()
             .allMatch(rule -> rule.getReason().contains("only on tables")));
+  }
+
+  @Test
+  void missingValuesWithPercentUnitIsReportedAsNotExecutableWithAReason()
+      throws JsonProcessingException {
+    String withMissingPercent =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: 4f5b0c52-9f1e-4e89-a6a4-0e0b7a3a1c14
+        name: accounts
+        version: 1.0.0
+        status: active
+        schema:
+          - name: accounts
+            logicalType: object
+            properties:
+              - name: region
+                logicalType: string
+                quality:
+                  - name: Five percent missing
+                    metric: missingValues
+                    mustBe: 5
+                    unit: percent
+        """;
+
+    ODCSQualityRuleOutcome missing =
+        analyze(withMissingPercent, options(true, true), passing())
+            .getOdcsImportReport()
+            .getQualityRules()
+            .getFirst();
+
+    assertEquals(ODCSQualityRuleOutcome.Outcome.NOT_EXECUTED, missing.getOutcome());
+    assertTrue(missing.getReason().contains("percentage"));
+    assertNull(missing.getTestCaseName());
   }
 
   @Test

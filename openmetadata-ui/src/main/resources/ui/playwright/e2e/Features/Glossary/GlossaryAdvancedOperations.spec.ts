@@ -45,6 +45,7 @@ import {
   saveGlossaryFormExpectingError,
 } from '../../../utils/glossaryForm';
 import { sidebarClick } from '../../../utils/sidebar';
+import { clickUntilVisible } from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -230,10 +231,12 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit owner
-      await page
-        .getByTestId('glossary-right-panel-owner-link')
-        .getByTestId('edit-owner')
-        .click();
+      await clickUntilVisible(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId('edit-owner'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear existing owner
@@ -313,7 +316,10 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit reviewer
-      await page.click('[data-testid="edit-reviewer-button"]');
+      await clickUntilVisible(
+        page.getByTestId('edit-reviewer-button'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear existing reviewer
@@ -605,15 +611,13 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      // Clear all synonyms by clicking each remove button
-      const removeButtons = page.locator(
-        '.ant-select-selection-item .ant-select-selection-item-remove'
-      );
-      // Removing an item re-indexes the list, so walk it back-to-front: the
-      // elements before the one being removed keep their position.
-      for (const removeButton of (await removeButtons.all()).reverse()) {
-        await removeButton.click();
+      for (const synonym of ['Synonym1', 'Synonym2', 'Synonym3']) {
+        await page.getByTestId(`remove-synonym-${synonym}`).click();
       }
+
+      await expect(
+        page.getByTestId('synonyms-select').getByRole('button')
+      ).toHaveCount(0);
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-synonym-btn').click();
@@ -947,7 +951,10 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit owner button
-      await page.getByTestId('edit-owner').click();
+      await clickUntilVisible(
+        page.getByTestId('edit-owner'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear all owners
@@ -1013,7 +1020,10 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit reviewer button
-      await page.getByTestId('edit-reviewer-button').click();
+      await clickUntilVisible(
+        page.getByTestId('edit-reviewer-button'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear all reviewers
