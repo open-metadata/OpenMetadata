@@ -147,8 +147,8 @@ const IncidentManagerDetailPage = ({
                     }
                     incidentTask={incidentHeaderData.incidentTask}
                     nextRunTimestamp={nextRunTimestamp}
-                    parameterValues={testCase?.parameterValues}
                     taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                    testCase={testCase}
                     testCaseResult={testCase?.testCaseResult}
                     testCaseStatus={testCase?.testCaseStatus}
                     testCaseStatusData={incidentHeaderData.testCaseStatusData}
@@ -171,9 +171,7 @@ const IncidentManagerDetailPage = ({
       isVersionPage,
       nextRunTimestamp,
       tabs,
-      testCase?.parameterValues,
-      testCase?.testCaseResult,
-      testCase?.testCaseStatus,
+      testCase,
     ]
   );
 

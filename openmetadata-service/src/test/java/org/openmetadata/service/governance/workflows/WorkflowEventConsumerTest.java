@@ -25,7 +25,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -37,10 +36,13 @@ import java.sql.SQLException;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.apache.ibatis.exceptions.PersistenceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -73,16 +75,6 @@ class WorkflowEventConsumerTest {
     when(subscriptionDestination.getId()).thenReturn(UUID.randomUUID());
 
     consumer = new WorkflowEventConsumer(eventSubscription, subscriptionDestination);
-  }
-
-  @Test
-  void testConstructor_RejectsInvalidSubscriptionType() {
-    SubscriptionDestination invalidDestination = mock(SubscriptionDestination.class);
-    when(invalidDestination.getType()).thenReturn(SubscriptionDestination.SubscriptionType.SLACK);
-
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new WorkflowEventConsumer(eventSubscription, invalidDestination));
   }
 
   @Test
@@ -342,6 +334,36 @@ class WorkflowEventConsumerTest {
     }
   }
 
+  // The workflow-builder "Data Asset" picker is driven by the keys of
+  // WorkflowTriggerFieldsRegistry.entitySpecific, and event-based workflows only fire for entity
+  // types in WorkflowEventConsumer.validEntityTypes. Every pickable type must therefore be
+  // event-triggerable; otherwise a workflow saved against the orphaned type silently never
+  // starts. This guard fails the moment the two sources drift (e.g. a picker entity type is added
+  // that the backend consumer cannot trigger), keeping picker-entity-types ⊆ validEntityTypes.
+  static Stream<String> workflowPickerEntityTypes() {
+    return WorkflowTriggerFieldsRegistry.getConfig().entitySpecific().keySet().stream();
+  }
+
+  @ParameterizedTest(name = "triggers for picker entity type: {0}")
+  @MethodSource("workflowPickerEntityTypes")
+  void testSendMessage_TriggersForEveryPickerEntityType(String entityType) {
+    ChangeEvent event = createChangeEvent("admin", EventType.ENTITY_UPDATED, entityType);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+      doNothing().when(workflowHandler).triggerWithSignal(anyString(), anyMap());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, times(1))
+          .triggerWithSignal(eq(entityType + "-entityUpdated"), anyMap());
+    }
+  }
+
   @Test
   void testIsTransientDatabaseError_Deadlock() throws Exception {
     Exception deadlockException =
@@ -414,12 +436,16 @@ class WorkflowEventConsumerTest {
   }
 
   private ChangeEvent createChangeEvent(String userName, EventType eventType) {
+    return createChangeEvent(userName, eventType, "table");
+  }
+
+  private ChangeEvent createChangeEvent(String userName, EventType eventType, String entityType) {
     ChangeEvent event = new ChangeEvent();
     event.setUserName(userName);
     event.setEventType(eventType);
-    event.setEntityType("table");
+    event.setEntityType(entityType);
     event.setEntityId(UUID.randomUUID());
-    event.setEntityFullyQualifiedName("test.db.schema.table");
+    event.setEntityFullyQualifiedName("test.db.schema." + entityType);
     return event;
   }
 

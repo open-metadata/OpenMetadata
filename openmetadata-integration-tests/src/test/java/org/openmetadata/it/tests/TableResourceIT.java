@@ -153,6 +153,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Table CSV export exports columns from a specific table, not tables from a schema
     // Enable import/export for table column CSV testing
     supportsImportExport = true;
+    supportsCreationAudit = true;
     supportsCsvImportSessionConsolidationRegression = true;
     supportsBatchImport = true;
     supportsRecursiveImport = false; // Tables don't support recursive import
@@ -1422,6 +1423,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table updated = patchEntity(table.getId().toString(), table);
     assertEquals(TableType.Regular, updated.getTableType());
     assertEquals(1, updated.getTableConstraints().size());
+  }
+
+  @Test
+  void put_tableTypeRegularToDeltaLake_keepsSameEntity(TestNamespace ns) {
+    // Connectors re-ingest through PUT, so that is how a Regular table becomes Delta. The type must
+    // flip on the same entity: no new id, no new FQN. The version bump is what proves the server
+    // diffed tableType rather than ignoring the field.
+    CreateTable request = createMinimalRequest(ns);
+    request.setName(ns.prefix("delta_lake_table"));
+    request.setTableType(TableType.Regular);
+
+    Table table = createEntity(request);
+    assertEquals(TableType.Regular, table.getTableType());
+
+    request.setTableType(TableType.DeltaLake);
+    Table updated = SdkClients.adminClient().tables().createOrUpdate(request);
+
+    assertEquals(table.getId(), updated.getId());
+    assertEquals(table.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    assertEquals(TableType.DeltaLake, updated.getTableType());
+    assertTrue(
+        updated.getVersion() > table.getVersion(),
+        "tableType flip must bump the version, otherwise the server never diffed the field");
   }
 
   @Test
@@ -4351,12 +4375,156 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
   }
 
+  // #34656: rewriting an edge's column mappings for a column delete must keep the edge's
+  // SQL. Reindex rebuilds upstreamLineage from the stored edge, so a query lost here vanishes from
+  // search only after the next reindex.
+  @Test
+  void test_deletedColumnKeepsLineageSqlQuery(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table source =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("sql_keep_src"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            ColumnBuilder.of("keep_col", "BIGINT").build(),
+                            ColumnBuilder.of("drop_col", "BIGINT").build())));
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("sql_keep_tgt"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build())));
+    String keepColFqn = source.getFullyQualifiedName() + ".keep_col";
+    String dropColFqn = source.getFullyQualifiedName() + ".drop_col";
+    String sqlQuery = "INSERT INTO sql_keep_tgt SELECT keep_col + drop_col FROM sql_keep_src";
+    addLineage(
+        client,
+        source,
+        target,
+        new LineageDetails()
+            .withSqlQuery(sqlQuery)
+            .withColumnsLineage(
+                List.of(
+                    new ColumnLineage()
+                        .withFromColumns(List.of(keepColFqn, dropColFqn))
+                        .withToColumn(target.getFullyQualifiedName() + ".tgt_col"))));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, target.getId().toString())
+                      .contains(dropColFqn));
+
+      source.setColumns(List.of(ColumnBuilder.of("keep_col", "BIGINT").build()));
+      client.tables().update(source.getId().toString(), source);
+
+      // Settle the deferred search flush first, so no live write lands after the reindex below.
+      Awaitility.await("Wait for deleted column lineage to be removed from search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, target.getId().toString())
+                      .contains(dropColFqn));
+
+      JsonNode live = readDocumentSource(searchClient, tableDocPath(target));
+      assertEquals(sqlQuery, resolveLineageSqlQuery(live));
+
+      JsonNode reindexed = reindexAndReadSource(client, searchClient, target);
+      assertEquals(1, reindexed.path("upstreamLineage").size());
+      assertEquals(sqlQuery, resolveLineageSqlQuery(reindexed));
+
+      JsonNode storedEdge = getStoredLineageEdge(client, source, target);
+      assertEquals(
+          JsonUtils.valueToTree(List.of(keepColFqn)),
+          storedEdge.at("/columnsLineage/0/fromColumns"));
+      assertEquals(sqlQuery, storedEdge.path("sqlQuery").asText(null));
+    }
+  }
+
+  // #34656: the rename leg, on the downstream side of the edge. A case-only rename populates
+  // the rename map (see test_renamedColumnLineagePropagatesInSearch).
+  @Test
+  void test_renamedColumnKeepsLineageSqlQuery(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table source =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("sql_ren_src"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("src_col", "BIGINT").build())));
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("sql_ren_tgt"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build())));
+    String sqlQuery = "INSERT INTO sql_ren_tgt (tgt_col) SELECT src_col FROM sql_ren_src";
+    addLineage(
+        client,
+        source,
+        target,
+        new LineageDetails()
+            .withSqlQuery(sqlQuery)
+            .withColumnsLineage(
+                List.of(
+                    new ColumnLineage()
+                        .withFromColumns(List.of(source.getFullyQualifiedName() + ".src_col"))
+                        .withToColumn(target.getFullyQualifiedName() + ".tgt_col"))));
+
+    target.setColumns(List.of(ColumnBuilder.of("TGT_COL", "BIGINT").build()));
+    client.tables().update(target.getId().toString(), target);
+
+    JsonNode storedEdge = getStoredLineageEdge(client, source, target);
+    assertEquals(
+        target.getFullyQualifiedName() + ".TGT_COL",
+        storedEdge.at("/columnsLineage/0/toColumn").asText());
+    assertEquals(sqlQuery, storedEdge.path("sqlQuery").asText(null));
+  }
+
   private static void addColumnLineage(
       OpenMetadataClient client,
       Table sourceTable,
       Table targetTable,
       String fromColumnFqn,
       String toColumnFqn)
+      throws Exception {
+    addLineage(
+        client,
+        sourceTable,
+        targetTable,
+        new LineageDetails()
+            .withColumnsLineage(
+                List.of(
+                    new ColumnLineage()
+                        .withFromColumns(List.of(fromColumnFqn))
+                        .withToColumn(toColumnFqn))));
+  }
+
+  private static void addLineage(
+      OpenMetadataClient client,
+      Table sourceTable,
+      Table targetTable,
+      LineageDetails lineageDetails)
       throws Exception {
     client
         .lineage()
@@ -4374,13 +4542,57 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                                 .withId(targetTable.getId())
                                 .withType("table")
                                 .withFullyQualifiedName(targetTable.getFullyQualifiedName()))
-                        .withLineageDetails(
-                            new LineageDetails()
-                                .withColumnsLineage(
-                                    List.of(
-                                        new ColumnLineage()
-                                            .withFromColumns(List.of(fromColumnFqn))
-                                            .withToColumn(toColumnFqn))))));
+                        .withLineageDetails(lineageDetails)));
+  }
+
+  /** The stored edge from the relationship table — what reindex reads and the edge drawer shows. */
+  private static JsonNode getStoredLineageEdge(
+      OpenMetadataClient client, Table sourceTable, Table targetTable) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/lineage/getLineageEdge/" + sourceTable.getId() + "/" + targetTable.getId(),
+                null);
+    return JsonUtils.readTree(response).path("edge");
+  }
+
+  /**
+   * Rebuilds {@code table}'s search document from the database through the per-entity reindex and
+   * returns its source. The live document is deleted first, so the await can only observe the
+   * rebuilt one.
+   */
+  private JsonNode reindexAndReadSource(
+      OpenMetadataClient client, Rest5Client searchClient, Table table) throws Exception {
+    String docPath = tableDocPath(table);
+    searchClient.performRequest(new Request("DELETE", docPath + "?refresh=true"));
+    client.search().reindexEntities(List.of(table.getEntityReference()));
+    return Awaitility.await("Wait for " + table.getName() + " to be reindexed")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> readDocumentSource(searchClient, docPath), JsonNode::isObject);
+  }
+
+  private String tableDocPath(Table table) {
+    return "/" + getTableSearchIndexName() + "/_doc/" + table.getId();
+  }
+
+  private static JsonNode readDocumentSource(Rest5Client searchClient, String docPath)
+      throws Exception {
+    Response response = searchClient.performRequest(new Request("GET", docPath));
+    try (InputStream content = response.getEntity().getContent()) {
+      String body = new String(content.readAllBytes(), StandardCharsets.UTF_8);
+      return JsonUtils.readTree(body).path("_source");
+    }
+  }
+
+  /** The SQL of the document's first upstream edge, inline or through the doc-level dedup map. */
+  private static String resolveLineageSqlQuery(JsonNode source) {
+    JsonNode edge = source.path("upstreamLineage").path(0);
+    JsonNode dedupedSql = source.path("lineageSqlQueries").path(edge.path("sqlQueryKey").asText());
+    return edge.path("sqlQuery").asText(dedupedSql.asText(null));
   }
 
   private static Column structColumn(String name, String... childNames) {

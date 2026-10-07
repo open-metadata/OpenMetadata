@@ -337,17 +337,22 @@ const NavBar = () => {
         }
       }
 
-      const newVersion = await getVersion();
-      const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
+      try {
+        const newVersion = await getVersion();
+        const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
 
-      // Update the cache timestamp
-      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
-        expires: new Date(Date.now() + ONE_HOUR_MS),
-      });
+        // Update the cache timestamp
+        cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+          expires: new Date(Date.now() + ONE_HOUR_MS),
+        });
 
-      // Compare version only if version is set previously to have fair comparison
-      if (version && version !== cleanedVersion) {
-        setShowVersionMissMatchAlert(true);
+        // Compare version only if version is set previously to have fair comparison
+        if (version && version !== cleanedVersion) {
+          setShowVersionMissMatchAlert(true);
+        }
+      } catch {
+        // Best-effort background check: focus right after sleep often fires before the
+        // network is back. Timestamp stays unset, so the next focus retries.
       }
     };
 

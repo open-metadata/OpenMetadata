@@ -16,6 +16,7 @@ package org.openmetadata.service;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -723,6 +724,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
 
     int createdIndexCount = searchRepository.createMissingIndexes();
+    // Drops a column index left behind while column indexing was off, e.g. one a server with a
+    // stale settings cache recreated by writing to it.
+    searchRepository.reconcileColumnIndex();
     searchRepository.createOrUpdateIndexTemplates(createdIndexCount);
 
     LOG.info("Core search infrastructure initialization completed");
@@ -947,9 +951,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   public void reinitializeAuthSystem(
       OpenMetadataApplicationConfig config, Environment environment) {
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    AuthServeletHandler previousHandler =
+        AuthServeletHandlerRegistry.getHandler(contextHandler.getServletContext());
+    AuthenticatorHandler previousAuthenticator = authenticatorHandler;
     try {
       LOG.info("Starting authentication system reinitialization");
-      MutableServletContextHandler contextHandler = environment.getApplicationContext();
       SessionService sessionService =
           AuthServeletHandlerRegistry.getSessionService(contextHandler.getServletContext());
       if (sessionService == null) {
@@ -993,6 +1000,41 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Trigger rollback in AuthenticationConfigurationManager
       // Rollback is handled internally by SecurityConfigurationManager
       throw new RuntimeException("Authentication system reinitialization failed", e);
+    } finally {
+      closeReplacedAuthHandlers(
+          previousHandler,
+          AuthServeletHandlerRegistry.getHandler(contextHandler.getServletContext()),
+          previousAuthenticator,
+          authenticatorHandler);
+    }
+  }
+
+  /**
+   * Closes the handlers a security reload swapped out, including when the reload failed after the
+   * swap: nothing routes to them any more, and an LDAP one would otherwise keep its pool probing
+   * the directory it was built for. A handler the reload never replaced is still serving logins
+   * and stays open. Every reload builds new instances, so identity tells the two apart.
+   */
+  @VisibleForTesting
+  static void closeReplacedAuthHandlers(
+      AuthServeletHandler previousHandler,
+      AuthServeletHandler currentHandler,
+      AuthenticatorHandler previousAuthenticator,
+      AuthenticatorHandler currentAuthenticator) {
+    if (previousHandler != currentHandler) {
+      closeQuietly(previousHandler::close);
+    }
+    if (previousAuthenticator != currentAuthenticator) {
+      closeQuietly(previousAuthenticator::close);
+    }
+  }
+
+  /** A failed close must neither hide the reload's own error nor fail a reload that worked. */
+  private static void closeQuietly(Runnable close) {
+    try {
+      close.run();
+    } catch (RuntimeException e) {
+      LOG.warn("Could not close an auth handler replaced by a security reload", e);
     }
   }
 

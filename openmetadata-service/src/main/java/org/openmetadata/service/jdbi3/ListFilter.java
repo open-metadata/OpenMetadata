@@ -137,6 +137,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAnnouncementStatusCondition());
+    conditions.add(getSystemAnnouncementCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -538,6 +539,19 @@ public class ListFilter extends Filter<ListFilter> {
   private String getAnnouncementTypeCondition() {
     String announcementType = queryParams.get("announcementType");
     return announcementType == null ? "" : "type = :announcementType";
+  }
+
+  /** A system announcement is one with no entityLink; only AnnouncementResource sets this. */
+  private String getSystemAnnouncementCondition() {
+    String systemAnnouncement = queryParams.get("systemAnnouncement");
+    String condition = "";
+    if (systemAnnouncement != null) {
+      condition =
+          Boolean.parseBoolean(systemAnnouncement)
+              ? "entityLink IS NULL"
+              : "entityLink IS NOT NULL";
+    }
+    return condition;
   }
 
   /**
@@ -1485,15 +1499,15 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix, String paramName) {
-    String prefix = FullyQualifiedName.buildHash(fqnPrefix) + Entity.SEPARATOR;
+    String hash = FullyQualifiedName.buildHash(fqnPrefix);
+    String prefix = hash + Entity.SEPARATOR;
     queryParams.put(paramName + "Hash", prefix + "%");
-    // Companion bind for "exclude descendants below the immediate level" — used by listings
-    // that need direct children only (e.g. ContainerDAO root listings, ContainerRepository
-    // listChildren). fqnHash uses fixed-width MD5 segments joined by '.', so a fqnHash that
-    // matches `<prefix>.%.%` has at least two segments below the prefix and is therefore not
-    // a direct child. Always bound — most queries don't reference it; the cost is one map
-    // entry. Avoids threading an extra param through every listing site.
-    queryParams.put(paramName + "HashChild", prefix + "%.%");
+    // Companion bind for "direct children of this prefix only" — used by listings that need
+    // the immediate level (e.g. ContainerDAO root listings). Matched against the generated
+    // `parentFqnHash` column, so the depth test is an indexed equality rather than a
+    // negated LIKE the planner can't use. Always bound — most queries don't reference it;
+    // the cost is one map entry. Avoids threading an extra param through every listing site.
+    queryParams.put(paramName + "HashExact", hash);
     return tableName == null
         ? String.format("fqnHash LIKE :%s", paramName + "Hash")
         : String.format("%s.fqnHash LIKE :%s", tableName, paramName + "Hash");

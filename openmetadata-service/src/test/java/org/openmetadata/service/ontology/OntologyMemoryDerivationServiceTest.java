@@ -171,9 +171,13 @@ class OntologyMemoryDerivationServiceTest {
     assertThrows(
         BadRequestException.class,
         () -> OntologyMemoryDerivationService.requireEligible(List.of(restricted), "bob"));
-    assertThrows(
-        BadRequestException.class,
-        () -> OntologyMemoryDerivationService.requireEligible(List.of(archived), "alice"));
+    for (EntityStatus status :
+        List.of(EntityStatus.ARCHIVED, EntityStatus.DEPRECATED, EntityStatus.REJECTED)) {
+      archived.setEntityStatus(status);
+      assertThrows(
+          BadRequestException.class,
+          () -> OntologyMemoryDerivationService.requireEligible(List.of(archived), "alice"));
+    }
     final ClientErrorException conflict =
         assertThrows(
             ClientErrorException.class,

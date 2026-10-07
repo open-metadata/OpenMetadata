@@ -10,24 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import {
   Divider,
   Owner,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Form,
-  Input,
-  MenuProps,
-  Row,
-  Space,
-  Tooltip,
-} from 'antd';
+import { Button, Col, Form, Input, Row, Space, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
@@ -40,7 +30,6 @@ import {
   orderBy,
   startCase,
 } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   lazy,
   useCallback,
@@ -167,6 +156,9 @@ import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
+import TaskActionSplitButton, {
+  TaskActionSplitButtonItem,
+} from './TaskActionSplitButton';
 import { TaskTabProps } from './TaskTab.interface';
 
 const FeedbackApprovalTask = withSuspenseFallback(
@@ -742,42 +734,15 @@ export const TaskTabNew = ({
     computeTaskOwnershipFlags(owners, task, currentUser);
 
   const getFormattedMenuOptions = (
-    options: TaskAction[],
-    onItemClick?: (info: MenuInfo) => void
-  ) => {
-    return options.map((item) => ({
-      ...item,
-      label: (
-        <span
-          data-testid={`task-action-menu-item-${item.key}`}
-          role="presentation"
-          onClick={
-            onItemClick
-              ? (event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onItemClick({ key: item.key } as MenuInfo);
-                }
-              : undefined
-          }>
-          {item.label}
-        </span>
-      ),
-      icon: <Icon component={item.icon} height={16} />,
+    options: TaskAction[]
+  ): TaskActionSplitButtonItem[] =>
+    options.map((item) => ({
+      key: item.key,
+      label: item.label,
+      textValue: item.label,
+      icon: item.icon,
+      'data-testid': `task-action-menu-item-${item.key}`,
     }));
-  };
-
-  const renderDropdownButtons =
-    (testIdPrefix: string) => (buttons: React.ReactNode[]) =>
-      buttons.map((button, index) =>
-        React.isValidElement(button)
-          ? React.cloneElement(button, {
-              'data-testid': `${testIdPrefix}-${
-                index === 0 ? 'primary' : 'trigger'
-              }`,
-            })
-          : button
-      );
 
   const handleTaskLinkClick = useCallback(() => {
     navigate({
@@ -1110,10 +1075,10 @@ export const TaskTabNew = ({
     }
   };
 
-  const handleMenuItemClick: MenuProps['onClick'] = (info) => {
-    if (info.key === TaskActionMode.EDIT) {
+  const handleMenuItemClick = (key: string) => {
+    if (key === TaskActionMode.EDIT) {
       setShowEditTaskModel(true);
-    } else if (info.key === TaskActionMode.CLOSE) {
+    } else if (key === TaskActionMode.CLOSE) {
       onTaskReject();
     } else {
       onTaskResolve();
@@ -1123,7 +1088,7 @@ export const TaskTabNew = ({
         ...TASK_ACTION_LIST,
         ...GLOSSARY_TASK_ACTION_LIST,
         ...INCIDENT_TASK_ACTION_LIST,
-      ].find((action) => action.key === info.key) ?? TASK_ACTION_LIST[0]
+      ].find((action) => action.key === key) ?? TASK_ACTION_LIST[0]
     );
   };
 
@@ -1199,12 +1164,12 @@ export const TaskTabNew = ({
     }
   };
 
-  const handleTaskMenuClick = (info: MenuInfo) => {
+  const handleTaskMenuClick = (key: string) => {
     setTaskAction(
-      INCIDENT_TASK_ACTION_LIST.find((action) => action.key === info.key) ??
+      INCIDENT_TASK_ACTION_LIST.find((action) => action.key === key) ??
         INCIDENT_TASK_ACTION_LIST[0]
     );
-    switch (info.key) {
+    switch (key) {
       case TaskActionMode.RE_ASSIGN:
         setIsEditAssignee(true);
 
@@ -1220,16 +1185,16 @@ export const TaskTabNew = ({
     if (taskAction.key === TaskActionMode.RESOLVE) {
       setShowEditTaskModel(true);
     } else {
-      handleTaskMenuClick({ key: taskAction.key } as MenuInfo);
+      handleTaskMenuClick(taskAction.key);
     }
   };
 
-  const handleGlossaryTaskMenuClick = (info: MenuInfo) => {
+  const handleGlossaryTaskMenuClick = (key: string) => {
     setTaskAction(
-      GLOSSARY_TASK_ACTION_LIST.find((action) => action.key === info.key) ??
+      GLOSSARY_TASK_ACTION_LIST.find((action) => action.key === key) ??
         GLOSSARY_TASK_ACTION_LIST[0]
     );
-    switch (info.key) {
+    switch (key) {
       case TaskActionMode.RESOLVE:
         onTaskResolve();
 
@@ -1242,21 +1207,21 @@ export const TaskTabNew = ({
     }
   };
 
-  const handleNoSuggestionMenuItemClick: MenuProps['onClick'] = (info) => {
-    if (info.key === TaskActionMode.EDIT) {
+  const handleNoSuggestionMenuItemClick = (key: string) => {
+    if (key === TaskActionMode.EDIT) {
       setShowEditTaskModel(true);
     } else {
       onTaskClose();
     }
     setTaskAction(
-      noSuggestionTaskMenuOptions.find((action) => action.key === info.key) ??
+      noSuggestionTaskMenuOptions.find((action) => action.key === key) ??
         noSuggestionTaskMenuOptions[0]
     );
   };
 
   const onTaskDropdownClick = () => {
     if (taskAction.key === TaskActionMode.RESOLVE) {
-      handleMenuItemClick({ key: taskAction.key } as MenuInfo);
+      handleMenuItemClick(taskAction.key);
     } else {
       onTaskReject();
     }
@@ -1264,7 +1229,7 @@ export const TaskTabNew = ({
 
   const onNoSuggestionTaskDropdownClick = () => {
     if (taskAction.key === TaskActionMode.EDIT) {
-      handleNoSuggestionMenuItemClick({ key: taskAction.key } as MenuInfo);
+      handleNoSuggestionMenuItemClick(taskAction.key);
     } else {
       onTaskClose();
     }
@@ -1276,14 +1241,13 @@ export const TaskTabNew = ({
     }
 
     const hasWorkflowAccess = hasEditAccess || isCreator;
-    const menuItems = task.availableTransitions.map((transition) => ({
-      key: transition.id,
-      label: (
-        <span data-testid={`workflow-transition-menu-item-${transition.id}`}>
-          {transition.label}
-        </span>
-      ),
-    }));
+    const menuItems: TaskActionSplitButtonItem[] =
+      task.availableTransitions.map((transition) => ({
+        key: transition.id,
+        label: transition.label,
+        textValue: transition.label,
+        'data-testid': `workflow-transition-menu-item-${transition.id}`,
+      }));
 
     const handleWorkflowTransitionSelect = (transitionId: string) => {
       const transition = task.availableTransitions?.find(
@@ -1338,27 +1302,21 @@ export const TaskTabNew = ({
         className="items-end justify-end"
         data-testid="task-cta-buttons"
         size="small">
-        <Dropdown.Button
-          buttonsRender={renderDropdownButtons('workflow-task-action')}
-          className="task-action-button"
+        <TaskActionSplitButton
           data-testid="workflow-task-action-dropdown"
-          disabled={!hasWorkflowAccess}
-          icon={<DownOutlined />}
-          loading={isActionLoading}
-          menu={{
-            items: menuItems,
-            selectable: true,
-            selectedKeys: selectedTransition ? [selectedTransition.id] : [],
-            onClick: ({ key }) => handleWorkflowTransitionSelect(String(key)),
-          }}
-          overlayClassName="task-action-dropdown"
-          onClick={() => {
+          isDisabled={!hasWorkflowAccess}
+          isLoading={isActionLoading}
+          items={menuItems}
+          label={selectedTransition?.label ?? t('label.resolve')}
+          selectedKey={selectedTransition?.id}
+          testIdPrefix="workflow-task-action"
+          onAction={handleWorkflowTransitionSelect}
+          onPrimaryPress={() => {
             if (selectedTransition) {
               handleWorkflowTransitionSelect(selectedTransition.id);
             }
-          }}>
-          {selectedTransition?.label ?? t('label.resolve')}
-        </Dropdown.Button>
+          }}
+        />
       </Space>
     );
   }, [
@@ -1388,27 +1346,18 @@ export const TaskTabNew = ({
               ? ''
               : t('message.only-reviewers-can-approve-or-reject')
           }>
-          <Dropdown.Button
-            buttonsRender={renderDropdownButtons('glossary-task-action')}
-            className="task-action-button"
-            data-testid="glossary-accept-reject-task-dropdown"
-            disabled={!hasApprovalAccess}
-            icon={<DownOutlined />}
-            menu={{
-              items: getFormattedMenuOptions(
-                GLOSSARY_TASK_ACTION_LIST,
-                handleGlossaryTaskMenuClick
-              ),
-              selectable: true,
-              selectedKeys: [taskAction.key],
-              onClick: handleGlossaryTaskMenuClick,
-            }}
-            overlayClassName="task-action-dropdown"
-            onClick={() =>
-              handleGlossaryTaskMenuClick({ key: taskAction.key } as MenuInfo)
-            }>
-            {taskAction.label}
-          </Dropdown.Button>
+          <span className="tw:inline-flex">
+            <TaskActionSplitButton
+              data-testid="glossary-accept-reject-task-dropdown"
+              isDisabled={!hasApprovalAccess}
+              items={getFormattedMenuOptions(GLOSSARY_TASK_ACTION_LIST)}
+              label={taskAction.label}
+              selectedKey={taskAction.key}
+              testIdPrefix="glossary-task-action"
+              onAction={handleGlossaryTaskMenuClick}
+              onPrimaryPress={() => handleGlossaryTaskMenuClick(taskAction.key)}
+            />
+          </span>
         </Tooltip>
       </Space>
     );
@@ -1434,26 +1383,17 @@ export const TaskTabNew = ({
 
     return (
       <div className=" d-flex justify-end items-center gap-4">
-        <Dropdown.Button
-          buttonsRender={renderDropdownButtons('incident-task-action')}
-          className="w-auto task-action-button"
+        <TaskActionSplitButton
           data-testid="task-cta-buttons"
-          icon={<DownOutlined />}
-          loading={isActionLoading}
-          menu={{
-            items: getFormattedMenuOptions(
-              INCIDENT_TASK_ACTION_LIST,
-              handleTaskMenuClick
-            ),
-            selectable: true,
-            selectedKeys: [taskAction.key],
-            onClick: handleTaskMenuClick,
-            disabled: !hasApprovalAccess,
-          }}
-          overlayClassName="task-action-dropdown"
-          onClick={onTestCaseTaskDropdownClick}>
-          {taskAction.label}
-        </Dropdown.Button>
+          isLoading={isActionLoading}
+          isMenuDisabled={!hasApprovalAccess}
+          items={getFormattedMenuOptions(INCIDENT_TASK_ACTION_LIST)}
+          label={taskAction.label}
+          selectedKey={taskAction.key}
+          testIdPrefix="incident-task-action"
+          onAction={handleTaskMenuClick}
+          onPrimaryPress={onTestCaseTaskDropdownClick}
+        />
       </div>
     );
   }, [
@@ -1494,48 +1434,26 @@ export const TaskTabNew = ({
           <>
             {showAddSuggestionButton ? (
               <div className="d-flex justify-end gap-2">
-                <Dropdown.Button
-                  buttonsRender={renderDropdownButtons(
-                    'no-suggestion-task-action'
-                  )}
-                  className="task-action-button"
+                <TaskActionSplitButton
                   data-testid="add-close-task-dropdown"
-                  icon={<DownOutlined />}
-                  menu={{
-                    items: getFormattedMenuOptions(
-                      noSuggestionTaskMenuOptions,
-                      handleNoSuggestionMenuItemClick
-                    ),
-                    selectable: true,
-                    selectedKeys: [taskAction.key],
-                    onClick: handleNoSuggestionMenuItemClick,
-                  }}
-                  overlayClassName="task-action-dropdown"
-                  onClick={onNoSuggestionTaskDropdownClick}>
-                  {taskAction.label}
-                </Dropdown.Button>
+                  items={getFormattedMenuOptions(noSuggestionTaskMenuOptions)}
+                  label={taskAction.label}
+                  selectedKey={taskAction.key}
+                  testIdPrefix="no-suggestion-task-action"
+                  onAction={handleNoSuggestionMenuItemClick}
+                  onPrimaryPress={onNoSuggestionTaskDropdownClick}
+                />
               </div>
             ) : (
-              <Dropdown.Button
-                buttonsRender={renderDropdownButtons('edit-accept-task-action')}
-                className="task-action-button"
+              <TaskActionSplitButton
                 data-testid="edit-accept-task-dropdown"
-                icon={<DownOutlined />}
-                menu={{
-                  items: getFormattedMenuOptions(
-                    TASK_ACTION_LIST,
-                    handleMenuItemClick
-                  ),
-                  selectable: true,
-                  selectedKeys: [taskAction.key],
-                  onClick: handleMenuItemClick,
-                }}
-                overlayClassName="task-action-dropdown"
-                onClick={() =>
-                  handleMenuItemClick({ key: taskAction.key } as MenuInfo)
-                }>
-                {taskAction.label}
-              </Dropdown.Button>
+                items={getFormattedMenuOptions(TASK_ACTION_LIST)}
+                label={taskAction.label}
+                selectedKey={taskAction.key}
+                testIdPrefix="edit-accept-task-action"
+                onAction={handleMenuItemClick}
+                onPrimaryPress={() => handleMenuItemClick(taskAction.key)}
+              />
             )}
           </>
         )}

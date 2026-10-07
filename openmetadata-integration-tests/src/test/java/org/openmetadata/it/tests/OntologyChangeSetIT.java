@@ -49,6 +49,7 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
@@ -59,6 +60,7 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.type.OntologyEditLock;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -130,6 +132,7 @@ public class OntologyChangeSetIT {
             memories.create(
                 new CreateContextMemory()
                     .withName(ns.prefix("revenueMemory"))
+                    .withEntityStatus(EntityStatus.APPROVED)
                     .withDescription("Subscription revenue definition")
                     .withQuestion("What is monthly recurring revenue?")
                     .withAnswer("Recurring subscription revenue in a month.")));
@@ -197,6 +200,65 @@ public class OntologyChangeSetIT {
                 OntologyMemoryProposalStatus.class)
             .getProposals()
             .isEmpty());
+
+    memories.patch(
+        memory.getId().toString(),
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Rejected\"}]"));
+    assertEquals(
+        Set.of(memory.getId()), client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
+    assertEquals(
+        List.of(termId),
+        memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities().stream()
+            .map(ref -> ref.getId())
+            .toList());
+  }
+
+  @Test
+  void cannotApplyAProposalAfterItsSourceMemoryIsRejected(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
+    ContextMemory memory =
+        ns.trackRoot(
+            "contextMemory",
+            memories.create(
+                new CreateContextMemory()
+                    .withName(ns.prefix("retiredSource"))
+                    .withEntityStatus(EntityStatus.APPROVED)
+                    .withQuestion("What is the canonical orders table?")
+                    .withAnswer("sales.orders is canonical.")));
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    UUID termId = UUID.randomUUID();
+    OntologyChangeOperation operation =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_TERM)
+            .withTerm(
+                new GlossaryTerm()
+                    .withId(termId)
+                    .withName(ns.prefix("ordersTable"))
+                    .withDescription("Canonical orders table")
+                    .withGlossary(glossary.getEntityReference())
+                    .withVersion(0.1))
+            .withSourceMemoryIds(Set.of(memory.getId()))
+            .withState(OntologyChangeOperationState.ACTIVE);
+    OntologyChangeSet changeSet = createChangeSet(client, glossary, operation, ns);
+    memories.patch(
+        memory.getId().toString(),
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Rejected\"}]"));
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("retiredSourceEditor"));
+
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            client
+                .ontologyChangeSets()
+                .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease)));
+    assertEquals(
+        OntologyChangeSetState.DRAFT,
+        client.ontologyChangeSets().get(changeSet.getId()).getState());
+    assertEquals(EntityStatus.REJECTED, memories.get(memory.getId().toString()).getEntityStatus());
   }
 
   @Test
@@ -340,7 +402,40 @@ public class OntologyChangeSetIT {
   }
 
   @Test
-  void appliesADraftWhoseSourceMemoryWasDeleted(TestNamespace ns) {
+  void appliesAProposalThatAnotherApprovedSourceStillGrounds(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
+    ContextMemory rejected =
+        ns.trackRoot(
+            "contextMemory", memories.create(memoryRequest(ns.prefix("rejectedCoSource"))));
+    ContextMemory approved =
+        ns.trackRoot(
+            "contextMemory", memories.create(memoryRequest(ns.prefix("approvedCoSource"))));
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    UUID termId = UUID.randomUUID();
+    OntologyChangeOperation operation =
+        termFromMemory(glossary, termId, rejected, ns)
+            .withSourceMemoryIds(Set.of(rejected.getId(), approved.getId()));
+    OntologyChangeSet changeSet = createChangeSet(client, glossary, operation, ns);
+    memories.patch(
+        rejected.getId().toString(),
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Rejected\"}]"));
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("coSourceEditor"));
+
+    OntologyChangeSet applied =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+    assertEquals(
+        Set.of(rejected.getId(), approved.getId()),
+        client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
+  }
+
+  @Test
+  void cannotApplyADraftWhoseSourceMemoryWasDeleted(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
     ContextMemory memory = memories.create(memoryRequest(ns.prefix("deletedSourceMemory")));
@@ -351,13 +446,13 @@ public class OntologyChangeSetIT {
     memories.delete(memory.getId().toString(), Map.of("hardDelete", "true"));
     OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("orphanEditor"));
 
-    OntologyChangeSet applied =
-        client
-            .ontologyChangeSets()
-            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
-
-    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
-    assertEquals(termId, client.glossaryTerms().get(termId.toString()).getId());
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            client
+                .ontologyChangeSets()
+                .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease)));
+    assertThrows(OpenMetadataException.class, () -> client.glossaryTerms().get(termId.toString()));
   }
 
   @Test
@@ -436,6 +531,7 @@ public class OntologyChangeSetIT {
   private static CreateContextMemory memoryRequest(String name) {
     return new CreateContextMemory()
         .withName(name)
+        .withEntityStatus(EntityStatus.APPROVED)
         .withDescription("Memory behind an ontology draft")
         .withQuestion("What is an active subscriber?")
         .withAnswer("A customer with a paid subscription this month.");

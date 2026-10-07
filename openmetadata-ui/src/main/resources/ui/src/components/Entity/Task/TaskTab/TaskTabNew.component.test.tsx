@@ -936,7 +936,8 @@ describe('TaskTabNew Component', () => {
     );
 
     expect(dropdown).toBeInTheDocument();
-    expect(dropdown).toHaveStyle('pointer-events: none');
+    expect(screen.getByTestId('glossary-task-action-primary')).toBeDisabled();
+    expect(screen.getByTestId('glossary-task-action-trigger')).toBeDisabled();
   });
 
   it('should render posts/comments when available', async () => {

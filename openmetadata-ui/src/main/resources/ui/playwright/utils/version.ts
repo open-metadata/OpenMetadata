@@ -23,6 +23,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -81,7 +82,7 @@ export const visitVersionedEntityPage = async (
   });
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('version-button')).toBeVisible({
-    timeout: 30000,
+    timeout: ACTION_TIMEOUT,
   });
 };
 

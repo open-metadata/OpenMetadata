@@ -97,3 +97,48 @@ ruleTester.run(
     ],
   }
 );
+
+ruleTester.run(
+  'no-nested-ellipsis-tooltip-trigger',
+  uiPatternsPlugin.rules['no-nested-ellipsis-tooltip-trigger'],
+  {
+    valid: [
+      // Not nested in anything interactive.
+      {
+        code: '<div><Typography ellipsis={{ tooltip: true }}>x</Typography></div>;',
+      },
+      // Opted into the span trigger.
+      {
+        code: '<Link to="/x"><Typography ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>x</Typography></Link>;',
+      },
+      // No tooltip means no trigger.
+      {
+        code: '<a href="/x"><Typography ellipsis={{ rows: 2 }}>x</Typography></a>;',
+      },
+      { code: '<a href="/x"><Typography ellipsis>x</Typography></a>;' },
+      // A clickable div is not an interactive element: no nested-button issue.
+      {
+        code: '<div onClick={f}><Typography ellipsis={{ tooltip: true }}>x</Typography></div>;',
+      },
+    ],
+    invalid: [
+      {
+        code: '<Link to="/x"><Typography ellipsis={{ tooltip: true }}>x</Typography></Link>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'Link' } }],
+      },
+      {
+        code: '<Button><span><Typography ellipsis={{ tooltip: true, rows: 2 }}>x</Typography></span></Button>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'Button' } }],
+      },
+      {
+        code: '<div role="button" onClick={f}><Typography ellipsis={{ tooltip: name }}>x</Typography></div>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'div' } }],
+      },
+      // An explicit `false` is not an opt-out.
+      {
+        code: '<a href="/x"><Typography ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: false }}>x</Typography></a>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'a' } }],
+      },
+    ],
+  }
+);

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { getParameterBounds } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
@@ -136,3 +136,15 @@ export const getResultHistoryCaption = (
     ...(comparison && { comparison }),
   };
 };
+
+/**
+ * Whether the test has never run: nothing in the range and no latest result.
+ * A version's snapshot carries no latest result, so on the version page a
+ * test whose runs are all outside the range would read as never run; that
+ * page keeps the range's own empty state.
+ */
+export const hasTestCaseNeverRun = (
+  testCase: Pick<TestCase, 'testCaseResult'>,
+  results: unknown[],
+  isVersionPage: boolean
+) => !isVersionPage && isEmpty(results) && isUndefined(testCase.testCaseResult);
