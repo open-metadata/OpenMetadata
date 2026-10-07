@@ -46,6 +46,7 @@ export function domainToTreeNode(
     data: getEntityReferenceFromEntity<Domain>(domain, EntityType.DOMAIN),
     isLeaf: childrenCount === 0 && !hasLoadedChildren,
     lazyLoad: childrenCount > 0 && !hasLoadedChildren,
+    count: childrenCount || undefined,
     children: hasLoadedChildren
       ? loadedChildren.map(domainToTreeNode)
       : undefined,
@@ -128,16 +129,19 @@ export function withDomainIcon(
 }
 
 /**
- * Upper bound on how many domains one level of the picker will pull in. The
- * hierarchy endpoint pages, and a single page silently hid everything past it —
- * for a domain-restricted user that meant an allowed domain outside the first
- * page never appeared at all. Paging is bounded rather than unbounded so a very
- * large catalogue cannot stall the dropdown; past this the user searches.
+ * Upper bound on how many domains the **root** listing will pull in. Every other
+ * level pages honestly behind a "Show N more" row, but the core TreeSelect has
+ * no load-more for the root listing, so a single page there would silently hide
+ * everything past it — for a domain-restricted user that meant an allowed domain
+ * outside the first page never appeared at all. Draining is bounded rather than
+ * unbounded so a very large catalogue cannot stall the dropdown; past this the
+ * user searches. The scope switcher does not pay this cost: its "All Domains"
+ * row is a real branch, so the roots under it page like any other level.
  */
 export const MAX_DOMAIN_NODES = 500;
 
 /**
- * Page through the hierarchy endpoint until the level is exhausted or
+ * Page through the hierarchy endpoint until the root listing is exhausted or
  * MAX_DOMAIN_NODES is reached.
  */
 export async function fetchAllDomainChildren(
@@ -170,6 +174,21 @@ export async function fetchAllDomainChildren(
   }
 
   return collected.slice(0, MAX_DOMAIN_NODES);
+}
+
+/**
+ * The hierarchy endpoint pages by offset, the tree pages by an opaque cursor it
+ * echoes back as `after`. These two keep the translation in one place so a
+ * malformed cursor restarts the branch rather than requesting NaN rows.
+ */
+export function encodeDomainCursor(offset: number): string {
+  return String(offset);
+}
+
+export function decodeDomainCursor(after?: string): number {
+  const offset = Number(after);
+
+  return Number.isInteger(offset) && offset > 0 ? offset : 0;
 }
 
 /** FQN-set equality, so a no-change Apply does not fire a GET + PATCH. */
