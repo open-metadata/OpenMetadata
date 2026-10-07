@@ -114,4 +114,17 @@ describe('Test Announcement drawer component', () => {
 
     expect(await screen.findByText('AddAnnouncementModal')).toBeInTheDocument();
   });
+
+  it('Should stack the scrim over app chrome that carries its own z-index', () => {
+    render(<AnnouncementDrawer {...mockProps} />);
+
+    // The library's slideout overlay has no z-index of its own, so the fixed
+    // nav rail and the docked assistant bar painted straight through the
+    // scrim. Stacked here, as the other drawers in this app do.
+    const scrim = screen
+      .getByTestId('announcement-drawer')
+      .closest('.tw\\:fixed');
+
+    expect(scrim).toHaveClass('tw:z-50');
+  });
 });

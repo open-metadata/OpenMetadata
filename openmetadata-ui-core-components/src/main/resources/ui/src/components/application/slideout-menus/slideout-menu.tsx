@@ -27,13 +27,7 @@ export const ModalOverlay = (props: ModalOverlayProps) => {
       {...props}
       className={(state) =>
         cx(
-          // `z-50`, as `Modal`'s overlay has. React Aria portals this to the end
-          // of `body`, but DOM order only decides the paint order among elements
-          // whose z-index is `auto` — so without one the scrim covers the page
-          // content and still renders *under* any app chrome that carries its own
-          // (a fixed nav rail, a docked assistant bar, a sticky banner). Callers
-          // were each patching that with their own `tw:z-999`/`tw:z-9999`.
-          'tw:fixed tw:inset-0 tw:z-50 tw:flex tw:min-h-dvh tw:w-full tw:items-center tw:justify-end tw:bg-overlay/70 tw:pl-6 tw:outline-hidden tw:ease-linear tw:md:pl-10',
+          'tw:fixed tw:inset-0 tw:flex tw:min-h-dvh tw:w-full tw:items-center tw:justify-end tw:bg-overlay/70 tw:pl-6 tw:outline-hidden tw:ease-linear tw:md:pl-10',
           state.isEntering && 'tw:duration-300 tw:animate-in tw:fade-in',
           state.isExiting && 'tw:duration-500 tw:animate-out tw:fade-out',
           typeof props.className === 'function'
