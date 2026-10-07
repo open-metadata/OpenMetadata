@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 SCRIPT_PATH = Path(__file__).with_name("plan_local_java_tests.py")
 SPEC = importlib.util.spec_from_file_location("plan_local_java_tests", SCRIPT_PATH)
 assert SPEC is not None and SPEC.loader is not None
@@ -18,12 +20,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 IMPACT_MAP = json.loads((REPO_ROOT / PLANNER.IMPACT_MAP).read_text(encoding="utf-8"))
 REPO = PLANNER.Repo(REPO_ROOT, IMPACT_MAP)
 SERVICE = "openmetadata-service/src/main/java/org/openmetadata/service"
-IT_TESTS = "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests"
+IT_ROOT = "openmetadata-integration-tests/src/test/java/org/openmetadata/it"
+IT_TESTS = f"{IT_ROOT}/tests"
+TABLE_REPOSITORY = f"{SERVICE}/jdbi3/TableRepository.java"
+RESILIENCE_IT = "org/openmetadata/it/tests/TestCaseDeleteResilienceIT.java"
 
 
-def plan_for(*changed: str):
+def plan_for(*changed: str, methods: dict[str, set[str]] | None = None):
     planner = PLANNER.Planner(REPO, IMPACT_MAP)
-    return planner, planner.plan(list(changed))
+    return planner, planner.plan(list(changed), changed_methods=methods)
 
 
 def its(plan) -> dict[str, list[str]]:
@@ -37,27 +42,43 @@ def it_commands(plan) -> list[list[str]]:
     return [command.argv for command in plan.commands if command.kind == "integration"]
 
 
-def test_impact_map_reaches_every_integration_test() -> None:
+def lane_its() -> set[str]:
+    return {
+        REPO.it_classes[relative]
+        for relative in PLANNER.Planner(REPO, IMPACT_MAP)._lane_its()
+    }
+
+
+def test_impact_map_owns_every_test_and_production_file() -> None:
     assert PLANNER.audit_impact_map(REPO, IMPACT_MAP) == []
 
 
-def test_audit_reports_unbucketed_tests_dead_patterns_and_unknown_engines() -> None:
+def test_audit_reports_single_tests_unowned_code_and_dead_patterns() -> None:
     broken = json.loads(json.dumps(IMPACT_MAP))
-    databases = next(
-        mapping for mapping in broken["mappings"] if mapping["name"] == "databases"
-    )
-    databases["tests"].remove("StoredProcedureResourceIT")
-    databases["tests"].append("NoSuchResourceIT")
+    databases = next(area for area in broken["areas"] if area["name"] == "databases")
+    databases["tests"] = ["StoredProcedureResourceIT", "NoSuch*IT"]
+    databases["sources"].append(f"{SERVICE}/nowhere/**")
     databases["engines"] = ["oracle-solr"]
+    broken["areas"] = [area for area in broken["areas"] if area["name"] != "search"]
 
     problems = PLANNER.audit_impact_map(REPO, broken)
 
-    assert any(problem.startswith("StoredProcedureResourceIT ") for problem in problems)
     assert (
-        "bucket 'databases': test pattern 'NoSuchResourceIT' matches no test class"
+        "area 'databases': 'StoredProcedureResourceIT' names a single test; match tests by pattern"
         in problems
     )
+    assert (
+        "area 'databases': test pattern 'NoSuch*IT' matches no test class" in problems
+    )
+    assert (
+        f"area 'databases': source '{SERVICE}/nowhere/**' matches no file" in problems
+    )
     assert any("'oracle-solr'" in problem for problem in problems)
+    assert any(problem.startswith("AccentInsensitiveSearchIT ") for problem in problems)
+    assert any(
+        problem.startswith("no area owns") and f"{SERVICE}/search/ " in problem
+        for problem in problems
+    )
 
 
 def test_lane_membership_is_read_from_the_it_pom() -> None:
@@ -72,29 +93,127 @@ def test_lane_membership_is_read_from_the_it_pom() -> None:
     assert planner.lane_for(by_name["TableResourceIT"]) == "parallel"
 
 
-def test_repository_change_selects_its_entity_tests_and_the_unit_tests_using_it() -> (
-    None
-):
-    _, plan = plan_for(f"{SERVICE}/jdbi3/TableRepository.java")
+def test_classes_no_lane_runs_are_read_from_the_code_and_the_pom() -> None:
+    by_name = {name: relative for relative, name in REPO.it_classes.items()}
 
-    selected = its(plan)
-    assert selected["TableResourceIT"] == ["mysql-elasticsearch"]
-    assert "DatabaseSchemaResourceIT" in selected
+    assert by_name["BaseEntityIT"] in REPO.never_run  # abstract
     assert (
-        "entity Table"
+        by_name["ChangeEventParserResourceIT"] in REPO.never_run
+    )  # class-level @Disabled
+    assert (
+        by_name["StaticDatasetSeedIT"] in REPO.never_run
+    )  # the search-it profile excludes it
+    assert REPO.conditional[by_name["RdfCatalogScaleIT"]] == "rdfCatalogScale"
+    assert by_name["TableResourceIT"] not in REPO.never_run
+
+
+def test_a_change_runs_the_tests_that_name_it_and_its_callers_tests() -> None:
+    # The review case: TestCaseDeleteResilienceIT guards TableRepository's delete cleanup
+    # from outside the databases area, and the old map missed it.
+    _, plan = plan_for(TABLE_REPOSITORY)
+
+    reasons = plan.integration_tests[RESILIENCE_IT].reasons
+    assert "uses TableRepository" in reasons
+    assert "called from entity TestCase" in reasons
+    assert (
+        "area databases"
         in plan.integration_tests[
             "org/openmetadata/it/tests/TableResourceIT.java"
         ].reasons
     )
     assert "EntityRepositoryRestoreTest" in plan.unit_tests["openmetadata-service"]
-    assert plan.unmapped_files == []
+    assert plan.unmapped_files == [] and not plan.full_suite
+
+
+def test_changed_methods_narrow_the_callers_and_name_regression_tests() -> None:
+    _, whole = plan_for(TABLE_REPOSITORY)
+    _, cleanup = plan_for(
+        TABLE_REPOSITORY, methods={TABLE_REPOSITORY: {"entitySpecificCleanup"}}
+    )
+
+    assert (
+        "uses entitySpecificCleanup" in cleanup.integration_tests[RESILIENCE_IT].reasons
+    )
+    assert len(cleanup.integration_tests) < len(whole.integration_tests)
+
+
+def test_a_method_counts_only_where_its_class_is_named_too() -> None:
+    # BaseEntityIT's own createEntity helpers are not EntityRepository's createEntity.
+    planner = PLANNER.Planner(REPO, IMPACT_MAP)
+    anchored = PLANNER.Plan(changed_files=[])
+    unanchored = PLANNER.Plan(changed_files=[])
+
+    planner._add_referencing_its(
+        anchored,
+        TABLE_REPOSITORY,
+        "entitySpecificCleanup",
+        set(),
+        True,
+        "TableRepository",
+    )
+    planner._add_referencing_its(
+        unanchored,
+        TABLE_REPOSITORY,
+        "entitySpecificCleanup",
+        set(),
+        True,
+        "NoSuchClass",
+    )
+
+    assert RESILIENCE_IT in anchored.integration_tests
+    assert unanchored.integration_tests == {}
+
+
+def test_methods_using_finds_the_methods_whose_bodies_name_a_symbol() -> None:
+    source = """
+    class Helper {
+      // JobDAO in a comment is not a use
+      public static void waitForJobs(String name) {
+        JobDAO dao = lookup("JobDAO in a string");
+        if (dao != null) { dao.poll(); }
+      }
+
+      private int unrelated() { return 1; }
+
+      void other() {
+        unrelated();
+      }
+    }
+    """
+
+    assert PLANNER.methods_using(source, "JobDAO") == {"waitForJobs"}
+    assert PLANNER.methods_using(source, "unrelated") == {"other"}
+
+
+def test_a_helper_most_its_use_is_followed_only_through_its_methods() -> None:
+    # TestSuiteBootstrap names K8sPipelineClient; following the bootstrap by its class
+    # name selected all 201 ITs that use it.
+    _, plan = plan_for(f"{SERVICE}/clients/pipeline/k8s/K8sPipelineClient.java")
+
+    assert not plan.full_suite
+    assert len(plan.integration_tests) < 60
+
+
+def test_a_change_to_a_helper_most_its_use_selects_by_its_changed_methods() -> None:
+    sdk_clients = f"{IT_ROOT}/util/SdkClients.java"
+
+    _, unknown = plan_for(sdk_clients)
+    _, narrow = plan_for(sdk_clients, methods={sdk_clients: {"dataStewardClient"}})
+
+    assert unknown.full_suite == {"SdkClients is used by most ITs": {sdk_clients}}
+    assert not narrow.full_suite
+    assert any(
+        "uses dataStewardClient" in selection.reasons
+        for selection in narrow.integration_tests.values()
+    )
+    assert len(narrow.integration_tests) < 50
 
 
 def test_every_it_command_pins_an_engine_profile_and_skips_unit_tests() -> None:
     # Without an explicit -P<engine> a lane run executes zero tests and still prints
     # BUILD SUCCESS; without the -Dtest filter `-am` runs every upstream unit suite.
     _, plan = plan_for(
-        f"{SERVICE}/jdbi3/TableRepository.java",
+        f"{IT_TESTS}/TableResourceIT.java",
         f"{IT_TESTS}/SystemResourceIT.java",
         f"{IT_TESTS}/RdfResourceIT.java",
         f"{IT_TESTS}/search/ReindexStatsIT.java",
@@ -115,18 +234,7 @@ def test_every_it_command_pins_an_engine_profile_and_skips_unit_tests() -> None:
     assert "-Psearch-it" in lanes["-Dit.test=ReindexStatsIT"]
 
 
-def test_postgres_migration_runs_the_migration_tests_on_postgres_only() -> None:
-    _, plan = plan_for(
-        "bootstrap/sql/migrations/native/2.1.0/postgres/schemaChanges.sql"
-    )
-
-    selected = its(plan)
-    assert selected["ContinuousMigrationIT"] == ["postgres-opensearch"]
-    assert selected["ConversationSchemaMigrationIT"] == ["postgres-opensearch"]
-    assert all("-Pmysql-elasticsearch" not in argv for argv in it_commands(plan))
-
-
-def test_engine_specific_search_change_runs_search_it_on_that_engine() -> None:
+def test_engine_specific_search_change_runs_its_tests_on_that_engine() -> None:
     opensearch = next(
         path for path in REPO.files if path.startswith(f"{SERVICE}/search/opensearch/")
     )
@@ -141,10 +249,204 @@ def test_engine_specific_search_change_runs_search_it_on_that_engine() -> None:
 
     assert its(os_plan)["ReindexAliasSwapIT"] == ["postgres-opensearch"]
     assert its(es_plan)["ReindexAliasSwapIT"] == ["mysql-elasticsearch"]
-    assert its(os_plan)["SearchResourceIT"] == [
-        "mysql-elasticsearch",
-        "postgres-opensearch",
+    assert its(os_plan)["SearchResourceIT"] == ["postgres-opensearch"]
+
+
+def test_it_helper_selects_the_its_that_reach_it_through_other_helpers() -> None:
+    _, plan = plan_for(f"{IT_TESTS}/MergedMetricMigrationFixture.java")
+
+    assert "uses MergedMetricMigrationFixture" in (
+        plan.integration_tests[
+            "org/openmetadata/it/tests/MetricMigrationIT.java"
+        ].reasons
+    )
+    assert plan.unmapped_files == []
+
+
+def test_smoke_runs_for_any_code_change_but_not_for_a_changed_test_alone() -> None:
+    _, code = plan_for(f"{SERVICE}/util/AsciiTable.java")
+    _, test = plan_for(f"{IT_TESTS}/TableResourceIT.java")
+
+    assert set(IMPACT_MAP["smoke"]) <= set(its(code))
+    assert set(its(test)) == {"TableResourceIT"}
+
+
+def test_root_pom_runs_every_unit_suite_and_the_full_it_suite() -> None:
+    _, plan = plan_for("pom.xml")
+
+    assert set(plan.full_unit_modules) == set(IMPACT_MAP["maven"]["unitTestModules"])
+    assert plan.full_suite == {"shared infrastructure": {"pom.xml"}}
+    assert set(its(plan)) == lane_its()
+    unit = [command for command in plan.commands if command.kind == "unit"]
+    assert len(unit) == 1
+    selector = next(arg for arg in unit[0].argv if arg.startswith("-Dtest="))
+    assert "org/openmetadata/mcp/**/*Test.java" in selector
+    assert "org/openmetadata/service/**/*Test.java" in selector
+
+
+def test_the_full_suite_is_what_the_merge_queue_runs() -> None:
+    _, plan = plan_for("pom.xml")
+    selected = set(its(plan))
+
+    assert "ReindexStatsIT" not in selected  # search-it runs nightly, not in the queue
+    assert "ChangeEventParserResourceIT" not in selected  # @Disabled
+    assert "RdfCatalogScaleIT" not in selected  # needs -DrdfCatalogScale=true
+    assert "SimpleReindexTriggerUIIT" not in selected
+    assert plan.not_run_locally == {}
+
+
+def test_core_framework_change_runs_the_full_suite() -> None:
+    _, plan = plan_for(f"{SERVICE}/jdbi3/EntityRepository.java")
+
+    assert "area core" in plan.full_suite
+    assert set(its(plan)) >= lane_its()
+
+
+def test_a_file_no_area_owns_is_a_gap_that_runs_the_full_suite() -> None:
+    unowned = f"{SERVICE}/brandnewpackage/Thing.java"
+
+    _, plan = plan_for(unowned)
+
+    assert plan.unmapped_files == [unowned]
+    assert plan.full_suite == {"no area owns the file": {unowned}}
+
+
+def test_author_additions_need_a_reason_and_are_recorded() -> None:
+    planner = PLANNER.Planner(REPO, IMPACT_MAP)
+    ui_only = ["openmetadata-ui/src/main/resources/ui/src/App.tsx"]
+
+    with pytest.raises(SystemExit):
+        planner.plan(ui_only, add_its=["SystemResourceIT"])
+    plan = planner.plan(
+        ui_only,
+        add_its=["SystemResourceIT"],
+        add_units=["AsciiTableTest"],
+        add_areas=["lineage"],
+        reason="the change alters lineage edges",
+    )
+
+    label = "added by author: the change alters lineage edges"
+    assert its(plan)["SystemResourceIT"] == ["mysql-elasticsearch"]
+    assert (
+        label
+        in plan.integration_tests[
+            "org/openmetadata/it/tests/LineageResourceIT.java"
+        ].reasons
+    )
+    assert plan.unit_tests == {"openmetadata-service": {"AsciiTableTest": {label}}}
+    assert plan.triggers[label] == {
+        "SystemResourceIT",
+        "AsciiTableTest",
+        "area lineage",
+    }
+
+
+def test_changed_methods_come_from_hunk_headers_and_changed_declarations(
+    tmp_path: Path,
+) -> None:
+    def git(*args: str) -> None:
+        isolated = ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"]
+        subprocess.run(
+            ["git", *isolated, *args], cwd=tmp_path, check=True, capture_output=True
+        )
+
+    source = tmp_path / "Foo.java"
+    source.write_text(
+        "class Foo {\n  public int alpha() {\n    return 1;\n  }\n\n"
+        "  public int beta() {\n    return 2;\n  }\n}\n"
+    )
+    git("init", "-q")
+    git("add", "Foo.java")
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init")
+    source.write_text(
+        "class Foo {\n  public int alpha() {\n    return 10;\n  }\n\n"
+        "  public int beta() {\n    return 2;\n  }\n\n"
+        "  public int gamma() {\n    return 3;\n  }\n}\n"
+    )
+
+    methods = PLANNER.collect_changed_methods(tmp_path, "HEAD", ["Foo.java"])
+
+    assert {"alpha", "gamma"} <= methods["Foo.java"]
+
+
+def test_ci_run_stands_in_only_for_a_passed_it_workflow_run_on_head(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mysql = IMPACT_MAP["maven"]["ciWorkflows"]["mysql-elasticsearch"]["workflow"]
+    lane = [{"name": "Integration Test Lane (parallel)", "conclusion": "success"}]
+    # A workflow whose lanes were skipped by its change detection still concludes success.
+    skipped = [
+        {
+            "name": "Integration Test Lane (${{ matrix.lane.name }})",
+            "conclusion": "skipped",
+        }
     ]
+    runs = {
+        "1": ("abc", "success", mysql, lane),
+        "2": ("old", "success", mysql, lane),
+        "3": ("abc", "failure", mysql, lane),
+        "4": ("abc", "success", "Playwright", lane),
+        "5": ("abc", "success", mysql, skipped),
+    }
+
+    def gh_run_view(argv, **_):
+        head, conclusion, workflow, jobs = runs[argv[3]]
+        run = {"headSha": head, "status": "completed", "conclusion": conclusion}
+        run |= {"url": f"https://ci/{argv[3]}", "workflowName": workflow, "jobs": jobs}
+        return subprocess.CompletedProcess(argv, 0, stdout=json.dumps(run), stderr="")
+
+    monkeypatch.setattr(PLANNER.subprocess, "run", gh_run_view)
+    workflows = IMPACT_MAP["maven"]["ciWorkflows"]
+
+    assert PLANNER.ci_evidence(REPO_ROOT, ["1"], "abc", workflows) == {
+        "mysql-elasticsearch": "https://ci/1"
+    }
+    for unusable in ("2", "3", "4", "5"):
+        with pytest.raises(SystemExit):
+            PLANNER.ci_evidence(REPO_ROOT, [unusable], "abc", workflows)
+
+
+def test_lane_steps_a_ci_run_covers_are_not_run_locally(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _, plan = plan_for(f"{SERVICE}/util/AsciiTable.java")
+    ran: list[list[str]] = []
+
+    def run(argv, **_):
+        ran.append(argv)
+        return subprocess.CompletedProcess(argv, 0)
+
+    monkeypatch.setattr(PLANNER.subprocess, "run", run)
+    lanes = set(IMPACT_MAP["maven"]["lanes"])
+    results = PLANNER.run_commands(
+        tmp_path, plan, True, {"mysql-elasticsearch": "https://ci/1"}, lanes
+    )
+
+    covered = [
+        result
+        for result in results
+        if result.command.engine == "mysql-elasticsearch"
+        and result.command.lane in lanes
+    ]
+    assert covered and all(result.ci_url == "https://ci/1" for result in covered)
+    assert not any("-Pmysql-elasticsearch" in argv for argv in ran)
+
+
+def test_commands_in_the_pr_abbreviate_long_class_lists() -> None:
+    argv = ["mvn", "-Dit.test=" + ",".join(f"C{i}IT" for i in range(40)), "-Pmysql"]
+
+    assert PLANNER.display_command(argv) == "mvn '-Dit.test=<40 classes>' -Pmysql"
+
+
+def test_postgres_migration_runs_the_migration_tests_on_postgres_only() -> None:
+    _, plan = plan_for(
+        "bootstrap/sql/migrations/native/2.1.0/postgres/schemaChanges.sql"
+    )
+
+    selected = its(plan)
+    assert selected["ContinuousMigrationIT"] == ["postgres-opensearch"]
+    assert selected["ConversationSchemaMigrationIT"] == ["postgres-opensearch"]
+    assert all("-Pmysql-elasticsearch" not in argv for argv in it_commands(plan))
 
 
 def test_changed_search_it_class_runs_on_the_search_it_engine() -> None:
@@ -169,13 +471,6 @@ def test_nightly_and_never_run_classes_are_reported_not_run() -> None:
         "SimpleReindexTriggerUIIT",
         "ReindexBenchmarkIT",
     }
-
-
-def test_it_helper_selects_the_its_that_reach_it_through_other_helpers() -> None:
-    _, plan = plan_for(f"{IT_TESTS}/MergedMetricMigrationFixture.java")
-
-    assert its(plan) == {"MetricMigrationIT": ["mysql-elasticsearch"]}
-    assert plan.unmapped_files == []
 
 
 def test_it_helper_no_test_reaches_is_a_gap_that_falls_back_to_smoke() -> None:
@@ -234,28 +529,6 @@ def test_ui_and_docs_only_change_selects_nothing() -> None:
     assert plan.commands == []
 
 
-def test_root_pom_runs_every_unit_suite_and_the_smoke_tests() -> None:
-    planner, plan = plan_for("pom.xml")
-
-    assert set(plan.full_unit_modules) == set(IMPACT_MAP["maven"]["unitTestModules"])
-    assert set(its(plan)) == set(IMPACT_MAP["smoke"])
-    unit = [command for command in plan.commands if command.kind == "unit"]
-    assert len(unit) == 1
-    selector = next(arg for arg in unit[0].argv if arg.startswith("-Dtest="))
-    assert "org/openmetadata/mcp/**/*Test.java" in selector
-    assert "org/openmetadata/service/**/*Test.java" in selector
-
-
-def test_unmapped_production_file_is_a_gap_that_falls_back_to_smoke() -> None:
-    unmapped = f"{SERVICE}/util/AsciiTable.java"
-
-    _, plan = plan_for(unmapped)
-
-    assert plan.unmapped_files == [unmapped]
-    assert set(its(plan)) == set(IMPACT_MAP["smoke"])
-    assert "AsciiTableTest" in plan.unit_tests["openmetadata-service"]
-
-
 def test_heavily_shared_class_escalates_to_the_full_unit_suite() -> None:
     _, plan = plan_for(
         "openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json"
@@ -266,33 +539,16 @@ def test_heavily_shared_class_escalates_to_the_full_unit_suite() -> None:
     assert "GlossaryTermResourceIT" in its(plan)
 
 
-def test_author_additions_run_in_their_own_lane_and_are_recorded() -> None:
-    planner = PLANNER.Planner(REPO, IMPACT_MAP)
-
-    plan = planner.plan(
-        ["openmetadata-ui/src/main/resources/ui/src/App.tsx"],
-        add_its=["SystemResourceIT", "LineageResourceIT"],
-        add_units=["AsciiTableTest"],
+def test_tests_that_need_one_backend_run_only_there() -> None:
+    _, plan = plan_for(
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/vector/VectorIndexService.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/cache/CacheConfig.java",
     )
 
-    assert its(plan) == {
-        "SystemResourceIT": ["mysql-elasticsearch"],
-        "LineageResourceIT": ["mysql-elasticsearch"],
-    }
-    assert plan.unit_tests == {
-        "openmetadata-service": {"AsciiTableTest": {"added by author"}}
-    }
-    assert plan.triggers["added by author"] == {
-        "SystemResourceIT",
-        "LineageResourceIT",
-        "AsciiTableTest",
-    }
-    assert [
-        command.label for command in plan.commands if command.kind == "integration"
-    ] == [
-        "mysql-elasticsearch · parallel",
-        "mysql-elasticsearch · isolated",
-    ]
+    selected = its(plan)
+    assert selected["PatchTableEmbeddingIT"] == ["postgres-opensearch"]
+    assert selected["UncachedReadIT"] == ["cache-tests"]
+    assert "cache-tests" in selected["EntityCacheInvalidationIT"]
 
 
 def test_reports_count_failures_and_selected_classes_that_never_ran(
@@ -449,18 +705,6 @@ def test_a_step_whose_tests_all_skipped_is_not_a_pass(tmp_path: Path) -> None:
 
     assert result.all_skipped_classes == ["PatchTableEmbeddingIT"]
     assert not result.passed
-
-
-def test_tests_that_need_one_backend_run_only_there() -> None:
-    _, plan = plan_for(
-        "openmetadata-service/src/main/java/org/openmetadata/service/search/vector/VectorIndexService.java",
-        "openmetadata-service/src/main/java/org/openmetadata/service/cache/CacheConfig.java",
-    )
-
-    selected = its(plan)
-    assert selected["PatchTableEmbeddingIT"] == ["postgres-opensearch"]
-    assert selected["UncachedReadIT"] == ["cache-tests"]
-    assert "cache-tests" in selected["EntityCacheInvalidationIT"]
 
 
 def test_results_block_is_replaced_in_place_or_inserted_under_the_heading() -> None:

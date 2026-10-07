@@ -5,9 +5,13 @@ Pull-request CI runs the Java unit tests only. The integration tests (ITs) run
 in the merge queue, and the JavaUIIT, search-it and scale suites run nightly in
 openmetadata-nightly. An IT a change breaks is therefore first seen when the PR
 is ejected from the queue, unless the author ran it. This planner maps the
-branch diff to the unit tests and ITs it can break, through
-``.github/java-tests/impact-map.json``, and builds the Maven commands that run
-them in the failsafe lane and engine profile CI uses.
+branch diff to the unit tests and ITs it can break and builds the Maven commands
+that run them in the failsafe lane and engine profile CI uses.
+
+``.github/java-tests/impact-map.json`` holds ownership rules only: areas own code
+by directory and tests by name pattern. The rest is read from the code (who names
+a changed class or method, which areas call it, which engine a test assumes), and
+whatever the planner cannot place runs more tests, never fewer.
 
     python .github/scripts/plan_local_java_tests.py                 # list + commands
     python .github/scripts/plan_local_java_tests.py --run           # run + write results
@@ -31,6 +35,7 @@ import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +51,29 @@ UNIT_TEST_CLASS = re.compile(r"^(Test\w+|\w+Test|\w+Tests|\w+TestCase)$")
 IT_CLASS = re.compile(r"^\w+(IT|Test)$")
 CONVENTION_SUFFIXES = ("Repository", "Resource", "Mapper", "Index")
 MIN_STEM_LENGTH = 3
+WORD = re.compile(r"[A-Za-z_]\w*")
+COMMENT = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
+IMPORT_OR_PACKAGE = re.compile(r"^(?:import|package)\s[^;]*;", re.MULTILINE)
+HUNK_CONTEXT = re.compile(r"^@@ [^@]* @@ (.*)$")
+METHOD_DECLARATION = re.compile(
+    r"^[+-]\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|protected|private|static|final|abstract|"
+    r"synchronized|default|native)\s+)*(?:<[^>]+>\s+)?[\w.$<>\[\], ?]+\s+(\w+)\s*\("
+)
+METHOD_BODY_START = re.compile(
+    r"^[ \t]*(?:@\w+(?:\([^)]*\))?\s*)*(?:(?:public|protected|private|static|final|abstract|"
+    r"synchronized|default|native)\s+)*(?:<[^>]+>\s+)?[\w.$<>\[\], ?]+\s+(\w+)\s*\([^;{]*\)"
+    r"\s*(?:throws\s+[\w.,\s]+)?\{",
+    re.MULTILINE,
+)
+NOT_METHOD_NAMES = {
+    "if", "for", "while", "switch", "catch", "return", "new", "throw", "else", "try",
+    "case", "assert", "super", "this", "synchronized",
+}  # fmt: skip
+MIN_METHOD_NAME_LENGTH = 4
+# A helper most IT classes go through (SdkClients, TestNamespace) carries a change to every IT.
+UNIVERSAL_HELPER_SHARE = 0.5
+# Past this share of the merge-queue lanes, a selection is the full suite in all but name.
+FULL_SUITE_SHARE = 0.6
 # Surefire has no switch that skips only unit tests, and `-am` would otherwise run
 # every upstream module's whole suite before the ITs. `-Dmaven.test.skip` is out too:
 # it skips compiling the openmetadata-service test-jar the IT module depends on. A
@@ -86,6 +114,8 @@ class Command:
     report_dirs: list[str]
     expected_classes: list[str] = field(default_factory=list)
     full_suite_dirs: list[str] = field(default_factory=list)
+    engine: str = ""
+    lane: str = ""
 
 
 @dataclass
@@ -98,10 +128,20 @@ class Plan:
     unmapped_files: list[str] = field(default_factory=list)
     untested_classes: list[str] = field(default_factory=list)
     triggers: dict[str, set[str]] = field(default_factory=dict)
+    # Why every merge-queue IT runs: reason -> the changed files behind it.
+    full_suite: dict[str, set[str]] = field(default_factory=dict)
+    # Engines the changed code (anything but a test class) runs on; smoke runs on each.
+    smoke_engines: set[str] = field(default_factory=set)
+    smoke_on_default_engine: bool = False
     commands: list[Command] = field(default_factory=list)
 
     def has_tests(self) -> bool:
-        return bool(self.unit_tests or self.full_unit_modules or self.integration_tests)
+        return bool(
+            self.unit_tests
+            or self.full_unit_modules
+            or self.integration_tests
+            or self.full_suite
+        )
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -119,6 +159,10 @@ class Plan:
             "integrationTests": {
                 path: {"reasons": sorted(sel.reasons), "engines": sel.run_engines}
                 for path, sel in sorted(self.integration_tests.items())
+            },
+            "fullSuite": {
+                reason: sorted(files)
+                for reason, files in sorted(self.full_suite.items())
             },
             "notRunLocally": dict(sorted(self.not_run_locally.items())),
             "unmappedFiles": self.unmapped_files,
@@ -145,6 +189,47 @@ def matches(path: str, patterns: list[str]) -> bool:
 
 def simple_name(path: str) -> str:
     return path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+
+
+def class_fqn(path: str) -> str | None:
+    """Fully qualified name of the class a Java source file declares."""
+    for root in ("/src/main/java/", "/src/test/java/"):
+        if root in path and path.endswith(".java"):
+            return path.split(root, 1)[1][: -len(".java")].replace("/", ".")
+    return None
+
+
+def is_pattern(test: str) -> bool:
+    """A glob or a path; a bare class name is one test, which the map must not list."""
+    return any(char in test for char in "*?[/")
+
+
+def ant_to_fnmatch(pattern: str) -> str:
+    """A failsafe <exclude> as an fnmatch pattern over paths under the IT source root."""
+    return pattern.replace("**/", "*")
+
+
+def methods_using(text: str, symbol: str) -> set[str]:
+    """Names of the methods in a Java source whose bodies mention `symbol`."""
+    code = COMMENT.sub(" ", re.sub(r'"(?:\\.|[^"\\])*"', '""', text))
+    found: set[str] = set()
+    for declaration in METHOD_BODY_START.finditer(code):
+        depth, end = 1, declaration.end()
+        while depth and end < len(code):
+            depth += {"{": 1, "}": -1}.get(code[end], 0)
+            end += 1
+        if re.search(rf"\b{re.escape(symbol)}\b", code[declaration.end() : end]):
+            found.add(declaration.group(1))
+    return found - NOT_METHOD_NAMES
+
+
+def word_index(sources: dict[str, str]) -> dict[str, set[str]]:
+    """Which files mention each identifier, as `git grep -w` would find it."""
+    index: dict[str, set[str]] = {}
+    for path, text in sources.items():
+        for word in set(WORD.findall(text)):
+            index.setdefault(word, set()).add(path)
+    return index
 
 
 def plural(count: int, noun: str) -> str:
@@ -176,6 +261,54 @@ def collect_changed_files(repo_root: Path, base: str) -> list[str]:
     return sorted({path for path in [*tracked, *untracked] if path})
 
 
+def collect_changed_methods(
+    repo_root: Path, base: str, paths: list[str]
+) -> dict[str, set[str]]:
+    """Names of the Java methods the branch changes, per file.
+
+    Git's java diff driver names the method around each hunk; a hunk that adds a method
+    names the one before it, so methods declared on changed lines count too. Extra names
+    only add tests.
+    """
+    if not paths:
+        return {}
+    merge_base = git(repo_root, "merge-base", base, "HEAD")
+    with tempfile.TemporaryDirectory() as scratch:
+        attributes = Path(scratch) / "attributes"
+        attributes.write_text("*.java diff=java\n", encoding="utf-8")
+        diff = git(
+            repo_root,
+            "-c",
+            f"core.attributesFile={attributes}",
+            "diff",
+            "-U0",
+            "--no-renames",
+            merge_base,
+            "--",
+            *paths,
+        )
+    methods: dict[str, set[str]] = {}
+    current = None
+    for line in diff.splitlines():
+        if line.startswith("diff --git "):
+            current = line.split(" b/", 1)[-1]
+            continue
+        if current is None or line.startswith(("+++", "---")):
+            continue
+        names = []
+        hunk = HUNK_CONTEXT.match(line)
+        if hunk:
+            names = re.findall(r"(\w+)\s*\(", hunk.group(1))[:1]
+        elif line.startswith(("+", "-")):
+            names = METHOD_DECLARATION.findall(line)
+        methods.setdefault(current, set()).update(
+            name
+            for name in names
+            if len(name) >= MIN_METHOD_NAME_LENGTH and name not in NOT_METHOD_NAMES
+        )
+    return {path: names for path, names in methods.items() if names}
+
+
 def has_uncommitted_changes(repo_root: Path, ignore: list[str]) -> bool:
     """Whether the run tested code the commit doesn't hold.
 
@@ -197,13 +330,144 @@ class Repo:
         self.root = root
         self.maven = impact_map["maven"]
         self.it_root = self.maven["integrationTestSourceRoot"]
+        self.owned_roots = impact_map.get("ownedRoots", [])
+        self.shared_infrastructure = impact_map.get("sharedInfrastructure", [])
+        self._imports: dict[str, dict[str, str]] = {}
         files = git(
             root, "ls-files", "--cached", "--others", "--exclude-standard"
         ).splitlines()
         self.files = [path for path in files if (root / path).is_file()]
+        self.pom = (root / self.maven["integrationTestModule"] / "pom.xml").read_text(
+            encoding="utf-8"
+        )
         self.it_classes = self._integration_test_classes()
         self.unit_test_classes = self._unit_test_classes()
         self.lanes = self._lane_membership()
+
+    def _read(self, path: str) -> str:
+        return (self.root / path).read_text(encoding="utf-8", errors="replace")
+
+    @cached_property
+    def it_sources(self) -> dict[str, str]:
+        """The Java the ITs are made of: the IT tree, and the client code they call the
+        server through (`testSideSources`, the SDK)."""
+        roots = (self.it_root + "/", *self.maven.get("testSideSources", []))
+        return {
+            path: self._read(path)
+            for path in self.files
+            if path.startswith(roots) and path.endswith(".java")
+        }
+
+    @cached_property
+    def it_words(self) -> dict[str, set[str]]:
+        return word_index(self.it_sources)
+
+    @cached_property
+    def production_sources(self) -> dict[str, str]:
+        return {
+            path: self._read(path)
+            for path in self.files
+            if path.endswith(".java")
+            and "/src/main/java/" in path
+            and matches(path, self.owned_roots)
+        }
+
+    @cached_property
+    def production_words(self) -> dict[str, set[str]]:
+        return word_index(self.production_sources)
+
+    @cached_property
+    def universal_helpers(self) -> set[str]:
+        """Helpers most ITs go through, and the shared IT bootstrap every IT starts from."""
+        prefix = self.it_root + "/"
+        its = {prefix + relative for relative in self.it_classes}
+        return {
+            path
+            for path in self.it_sources
+            if path not in its
+            and (
+                matches(path, self.shared_infrastructure)
+                or len(self.it_words.get(simple_name(path), set()) & its)
+                > UNIVERSAL_HELPER_SHARE * len(its)
+            )
+        }
+
+    def imports(self, path: str, text: str) -> dict[str, str]:
+        """Simple name -> fully qualified name of each class a Java file imports."""
+        cached = self._imports.get(path)
+        if cached is None:
+            cached = {}
+            for static, name in re.findall(
+                r"^import\s+(static\s+)?([\w.]+)\s*;", text, re.MULTILINE
+            ):
+                owner = name.rsplit(".", 1)[0] if static else name
+                cached[owner.rsplit(".", 1)[-1]] = owner
+            self._imports[path] = cached
+        return cached
+
+    def names_class(self, path: str, text: str, fqn: str) -> bool:
+        """Whether a file mentioning the simple name of `fqn` means that class. One that
+        imports another class of the same name does not; one that imports neither may
+        mean it through its package, a fully qualified name or a comment, so it counts."""
+        simple = fqn.rsplit(".", 1)[-1]
+        imported = self.imports(path, text).get(simple)
+        return imported is None or imported == fqn or fqn in text
+
+    @cached_property
+    def class_headers(self) -> dict[str, str]:
+        """Each IT class's annotations and declaration, without comments."""
+        prefix = self.it_root + "/"
+        headers = {}
+        for relative, name in self.it_classes.items():
+            text = self.it_sources.get(prefix + relative, "")
+            declaration = re.search(rf"\bclass\s+{re.escape(name)}\b", text)
+            if not declaration:
+                continue
+            start = 0
+            for statement in IMPORT_OR_PACKAGE.finditer(text, 0, declaration.start()):
+                start = statement.end()
+            headers[relative] = COMMENT.sub(" ", text[start : declaration.end()])
+        return headers
+
+    @cached_property
+    def never_run(self) -> set[str]:
+        """IT classes no lane runs: abstract bases, class-level @Disabled, suite-profile excludes."""
+        never = {
+            relative
+            for relative, header in self.class_headers.items()
+            if re.search(r"\babstract\b|@Disabled\b", header)
+        }
+        for suite in self.maven["suites"].values():
+            profile = re.search(
+                rf"<id>{re.escape(suite['profile'])}</id>(.*?)</profile>",
+                self.pom,
+                re.DOTALL,
+            )
+            excludes = [
+                ant_to_fnmatch(exclude)
+                for exclude in re.findall(
+                    r"<exclude>([^<]+)</exclude>", profile.group(1) if profile else ""
+                )
+            ]
+            never |= {
+                relative
+                for relative in self.it_classes
+                if any(fnmatch.fnmatchcase(relative, p) for p in suite["tests"])
+                and any(fnmatch.fnmatchcase(relative, e) for e in excludes)
+            }
+        return never
+
+    @cached_property
+    def conditional(self) -> dict[str, str]:
+        """IT classes enabled only by a system property the IT pom never sets."""
+        return {
+            relative: prop
+            for relative, header in self.class_headers.items()
+            for prop in re.findall(
+                r'@EnabledIfSystemProperty\s*\(\s*named\s*=\s*"([^"]+)"', header
+            )
+            if prop not in self.pom
+        }
 
     def _integration_test_classes(self) -> dict[str, str]:
         prefix = self.it_root + "/"
@@ -234,15 +498,12 @@ class Repo:
         A lane names either comma-separated pom properties (`pomProperties`) or a failsafe
         execution whose first `<includes>` lists its classes (`pomExecutionIncludes`).
         """
-        pom = (self.root / self.maven["integrationTestModule"] / "pom.xml").read_text(
-            encoding="utf-8"
-        )
         lanes: dict[str, list[str]] = {}
         for lane, config in self.maven["lanes"].items():
             patterns: list[str] = []
             for prop in config.get("pomProperties", []):
                 found = re.search(
-                    rf"<{re.escape(prop)}>([^<]*)</{re.escape(prop)}>", pom
+                    rf"<{re.escape(prop)}>([^<]*)</{re.escape(prop)}>", self.pom
                 )
                 if not found:
                     raise SystemExit(
@@ -255,7 +516,7 @@ class Repo:
             if execution:
                 found = re.search(
                     rf"<id>{re.escape(execution)}</id>.*?<includes>(.*?)</includes>",
-                    pom,
+                    self.pom,
                     re.DOTALL,
                 )
                 if not found:
@@ -362,12 +623,52 @@ class Planner:
         changed_files: list[str],
         add_its: list[str] = (),
         add_units: list[str] = (),
+        add_areas: list[str] = (),
+        changed_methods: dict[str, set[str]] | None = None,
+        reason: str = "",
     ) -> Plan:
         plan = Plan(changed_files=changed_files)
         for path in changed_files:
             if matches(path, self.map["ignore"]):
                 continue
-            self._plan_file(plan, path)
+            self._plan_file(plan, path, (changed_methods or {}).get(path, set()))
+        if plan.smoke_on_default_engine:
+            self._add_smoke(plan, "code other than a test class changed", set())
+        if plan.smoke_engines:
+            self._add_smoke(
+                plan, "code other than a test class changed", plan.smoke_engines
+            )
+        self._add_author_choices(plan, add_its, add_units, add_areas, reason)
+
+        lane_its = self._lane_its()
+        selected = lane_its & set(plan.integration_tests)
+        if not plan.full_suite and len(selected) > FULL_SUITE_SHARE * len(lane_its):
+            plan.full_suite[
+                f"{len(selected)} of the {len(lane_its)} merge-queue ITs were selected"
+            ] = set()
+        if plan.full_suite:
+            for relative in lane_its:
+                self._add_it(plan, relative, "full suite", set())
+        self._drop_unrunnable(plan)
+        plan.commands = self._commands(plan)
+        return plan
+
+    def _add_author_choices(
+        self,
+        plan: Plan,
+        add_its: list[str],
+        add_units: list[str],
+        add_areas: list[str],
+        reason: str,
+    ) -> None:
+        """Tests the author or agent adds to the plan. Nothing can take tests out of it."""
+        if not (add_its or add_units or add_areas):
+            return
+        if not reason:
+            raise SystemExit(
+                'Say why the plan needs these tests: --reason "<the effect it missed>"'
+            )
+        label = f"added by author: {reason}"
         for name in add_its:
             paths = [
                 relative
@@ -377,8 +678,8 @@ class Planner:
             if not paths:
                 raise SystemExit(f"--add-it: no integration test class is named {name}")
             for relative in paths:
-                self._add_it(plan, relative, "added by author", set())
-            plan.triggers.setdefault("added by author", set()).add(name)
+                self._add_it(plan, relative, label, set())
+            plan.triggers.setdefault(label, set()).add(name)
         for name in add_units:
             modules = [
                 module
@@ -390,24 +691,56 @@ class Planner:
                     f"--add-unit: no unit test class in {self.maven['unitTestModules']} is named {name}"
                 )
             for module in modules:
-                self._add_unit(plan, module, name, "added by author")
-            plan.triggers.setdefault("added by author", set()).add(name)
-        self._drop_unrunnable(plan)
-        plan.commands = self._commands(plan)
-        return plan
+                self._add_unit(plan, module, name, label)
+            plan.triggers.setdefault(label, set()).add(name)
+        for name in add_areas:
+            area = next((a for a in self.map["areas"] if a["name"] == name), None)
+            if area is None:
+                raise SystemExit(
+                    f"--add-area: no area is named {name}. Areas: "
+                    + ", ".join(a["name"] for a in self.map["areas"])
+                )
+            self._add_area(plan, area, label, set(), f"area {name}")
 
-    def _plan_file(self, plan: Plan, path: str) -> None:
-        mapped = False
+    def _lane_its(self) -> set[str]:
+        """Every IT the merge queue runs: the lane classes, not the suites or what no lane runs."""
+        not_local = [p for rule in self.maven["notRunLocally"] for p in rule["tests"]]
+        return {
+            relative
+            for relative, name in self.repo.it_classes.items()
+            if self.lane_for(relative) in self.maven["lanes"]
+            and relative not in self.repo.never_run
+            and relative not in self.repo.conditional
+            and not any(self._it_pattern_matches(relative, name, p) for p in not_local)
+        }
+
+    def _plan_file(self, plan: Plan, path: str, methods: set[str]) -> None:
         engines = self._engines_for(path)
+        it_prefix = self.repo.it_root + "/"
+        test_source = self._is_test_source(path)
+        owned = False
 
-        if path.startswith(self.repo.it_root + "/"):
-            relative = path[len(self.repo.it_root) + 1 :]
+        if path.startswith(it_prefix):
+            relative = path[len(it_prefix) :]
             if relative in self.repo.it_classes:
                 self._add_it(plan, relative, "changed", engines)
                 plan.triggers.setdefault("changed test", set()).add(path)
-                mapped = True
+                owned = True
+            elif path in self.repo.universal_helpers:
+                # Every IT calls it, so only the changed methods tell which ITs it affects.
+                found = [
+                    self._add_referencing_its(
+                        plan, path, method, engines, is_method=True
+                    )
+                    for method in sorted(methods)
+                ]
+                if not any(found):
+                    plan.full_suite.setdefault(
+                        f"{simple_name(path)} is used by most ITs", set()
+                    ).add(path)
+                owned = True
             elif path.endswith(".java"):
-                mapped |= self._add_referencing_its(
+                owned = self._add_referencing_its(
                     plan, path, simple_name(path), engines
                 )
 
@@ -421,13 +754,20 @@ class Planner:
                 self._add_referencing_unit_tests(
                     plan, name, f"test helper {name} changed", exclude=path
                 )
-            mapped = True
+            owned = True
         elif "/src/main/java/" in path and path.endswith(".java"):
+            name = simple_name(path)
             # Classes outside the unit modules (the SDK, spec helpers) still get the unit
             # tests that use them; only a unit module's own classes must have one.
-            covered = self._add_unit_tests_for_class(plan, simple_name(path), path)
+            covered = self._add_unit_tests_for_class(plan, name, path)
             if module and not covered and (self.repo.root / path).exists():
                 plan.untested_classes.append(path)
+            self._add_referencing_its(plan, path, name, engines)
+            for method in sorted(methods):
+                self._add_referencing_its(
+                    plan, path, method, engines, is_method=True, owner=name
+                )
+            self._add_callers(plan, path, name, engines, methods)
         elif module and f"{module}/src/main/resources/" in path:
             self._add_unit_tests_for_resource(plan, path)
 
@@ -437,51 +777,38 @@ class Planner:
                 plan, generated, f"schema {path.rsplit('/', 1)[-1]} changed"
             )
 
-        for mapping in self.map["mappings"]:
-            if matches(path, mapping["sources"]):
-                bucket_engines = set(mapping.get("engines", [])) | engines
-                for pattern in mapping["tests"]:
-                    for relative in self.repo.it_paths_matching(pattern):
-                        self._add_it(
-                            plan, relative, f"bucket {mapping['name']}", bucket_engines
-                        )
-                plan.triggers.setdefault(f"bucket {mapping['name']}", set()).add(path)
-                mapped = True
+        for area in self.map["areas"]:
+            if matches(path, area["sources"]):
+                self._add_area(plan, area, f"area {area['name']}", engines, path)
+                owned = True
 
         stem = convention_stem(path)
-        if stem:
-            hits = [
-                rel
-                for rel, name in self.repo.it_classes.items()
-                if stem_matches(stem, name)
-            ]
-            for relative in hits:
-                self._add_it(plan, relative, f"entity {stem}", engines)
-            if hits:
-                plan.triggers.setdefault(f"entity {stem}", set()).add(path)
-                mapped = True
-
-        if path.startswith("openmetadata-sdk/src/main/java/") and path.endswith(
-            ".java"
-        ):
-            mapped |= self._add_referencing_its(plan, path, simple_name(path), engines)
+        if stem and self._add_entity(plan, stem, f"entity {stem}", engines, path):
+            owned = True
 
         if matches(path, self.map["sharedInfrastructure"]):
-            self._add_smoke(plan, f"shared infrastructure {path}", engines)
+            plan.full_suite.setdefault("shared infrastructure", set()).add(path)
             for owner in self._full_suite_modules(path):
                 plan.full_unit_modules.setdefault(owner, set()).add(f"{path} changed")
-            mapped = True
+            owned = True
 
-        if engines and not mapped:
-            mapped = True
-            self._add_smoke(plan, f"engine-specific {path}", engines)
-
-        # An IT-tree helper no IT reaches is a gap too; skipping it would record NOT NEEDED.
-        if not mapped and (
-            path.startswith(self.repo.it_root + "/") or not self._is_test_source(path)
-        ):
+        test_class = path.startswith(it_prefix) and (
+            path[len(it_prefix) :] in self.repo.it_classes
+        )
+        if not test_class and (not test_source or path.startswith(it_prefix)):
+            if engines:
+                plan.smoke_engines |= engines
+            else:
+                plan.smoke_on_default_engine = True
+        if owned:
+            return
+        if path.startswith(it_prefix):
+            # Test code no IT reaches breaks nothing, but NOT NEEDED would hide the gap.
             plan.unmapped_files.append(path)
-            self._add_smoke(plan, f"unmapped {path}", engines)
+            self._add_smoke(plan, f"no IT uses {path}", engines)
+        elif not test_source:
+            plan.unmapped_files.append(path)
+            plan.full_suite.setdefault("no area owns the file", set()).add(path)
 
     def _engines_for(self, path: str) -> set[str]:
         engines: set[str] = set()
@@ -515,7 +842,12 @@ class Planner:
             if any(self._it_pattern_matches(relative, name, p) for p in rule["tests"]):
                 plan.not_run_locally[relative] = rule["where"]
                 return
-        if self._never_run(relative):
+        if relative in self.repo.conditional:
+            plan.not_run_locally[relative] = (
+                f"only with -D{self.repo.conditional[relative]}=true, which no CI lane sets"
+            )
+            return
+        if relative in self.repo.never_run:
             return
         selection = plan.integration_tests.setdefault(relative, Selection())
         selection.reasons.add(reason)
@@ -524,11 +856,91 @@ class Planner:
         else:
             selection.wants_default = True
 
-    def _never_run(self, relative: str) -> bool:
-        name = self.repo.it_classes[relative]
-        return any(
-            self._it_pattern_matches(relative, name, p) for p in self.maven["neverRun"]
-        )
+    def _add_area(
+        self,
+        plan: Plan,
+        area: dict[str, Any],
+        reason: str,
+        engines: set[str],
+        trigger: str,
+    ) -> None:
+        if area.get("fullSuite"):
+            plan.full_suite.setdefault(f"area {area['name']}", set()).add(trigger)
+        area_engines = set(area.get("engines", [])) | engines
+        for pattern in area["tests"]:
+            for relative in self.repo.it_paths_matching(pattern):
+                self._add_it(plan, relative, reason, area_engines)
+        plan.triggers.setdefault(reason, set()).add(trigger)
+
+    def _add_entity(
+        self, plan: Plan, stem: str, reason: str, engines: set[str], trigger: str
+    ) -> bool:
+        hits = [
+            relative
+            for relative, name in self.repo.it_classes.items()
+            if stem_matches(stem, name)
+        ]
+        for relative in hits:
+            self._add_it(plan, relative, reason, engines)
+        if hits:
+            plan.triggers.setdefault(reason, set()).add(trigger)
+        return bool(hits)
+
+    def _add_callers(
+        self,
+        plan: Plan,
+        path: str,
+        symbol: str,
+        engines: set[str],
+        methods: set[str],
+    ) -> None:
+        """Run the entity tests of the production code that calls the change.
+
+        A change reaches its callers: TestCaseRepository calls TableRepository's delete
+        cleanup, so the TestCase ITs run. When the diff names the changed methods, the
+        callers are the files that use the class and one of them, or a method of the class
+        that calls them; a widely used class is mostly called for other things. Adding the
+        callers' whole areas instead doubled the median plan on recent main commits.
+        """
+        fqn = class_fqn(path)
+        callers = {
+            caller
+            for caller in self.repo.production_words.get(symbol, set()) - {path}
+            if not fqn
+            or self.repo.names_class(caller, self.repo.production_sources[caller], fqn)
+        }
+        if methods:
+            reached = self._methods_reaching(path, methods)
+            callers = {
+                caller
+                for caller in callers
+                if any(caller in self.repo.production_words.get(m, ()) for m in reached)
+            }
+        stems = {convention_stem(caller) for caller in callers}
+        for stem in sorted(stems - {None}):
+            self._add_entity(plan, stem, f"called from entity {stem}", engines, path)
+
+    def _methods_reaching(self, path: str, methods: set[str]) -> set[str]:
+        """The changed methods, plus the methods of the same class that call them."""
+        text = self.repo.production_sources.get(path, "")
+        reached = set(methods)
+        frontier = set(methods)
+        while frontier:
+            frontier = {
+                caller for name in frontier for caller in methods_using(text, name)
+            } - reached
+            reached |= frontier
+        return reached
+
+    def _test_rule_matches(
+        self, relative: str, name: str, rule: dict[str, Any]
+    ) -> bool:
+        if any(
+            self._it_pattern_matches(relative, name, p) for p in rule.get("tests", [])
+        ):
+            return True
+        source = self.repo.it_sources.get(f"{self.repo.it_root}/{relative}", "")
+        return any(re.search(regex, source) for regex in rule.get("assumes", []))
 
     @staticmethod
     def _it_pattern_matches(relative: str, name: str, pattern: str) -> bool:
@@ -541,42 +953,71 @@ class Planner:
         plan.triggers.setdefault("smoke", set()).add(reason)
 
     def _add_referencing_its(
-        self, plan: Plan, path: str, symbol: str, engines: set[str]
+        self,
+        plan: Plan,
+        path: str,
+        symbol: str,
+        engines: set[str],
+        is_method: bool = False,
+        owner: str = "",
     ) -> bool:
-        """Select the ITs that use `symbol`, directly or through other IT-tree classes.
+        """Select the ITs that name `symbol`, directly or through IT-tree helpers.
 
-        Helpers often reach the tests only through another helper (AuthBackend ->
-        TokenRefresher -> SdkClients -> every IT), and a neverRun base class such as
-        BaseEntityIT reaches them through its subclasses, so both are followed.
+        Helpers reach the tests through other helpers (AuthBackend -> TokenRefresher ->
+        SdkClients -> every IT), and a base class such as BaseEntityIT through its
+        subclasses, so both are followed. A helper most ITs use (SdkClients) is followed
+        only through its methods that mention the symbol: a change that breaks such a helper
+        outright fails every IT, so any selection catches it; a narrower break shows in the
+        ITs calling those methods. A name more than `integrationTestReferenceCap` IT files
+        mention (`getId`) says nothing about which tests matter, and is skipped. A method of
+        a production class counts only where its class is named too: BaseEntityIT's own
+        `createEntity` is not EntityRepository's.
         """
         prefix = self.repo.it_root + "/"
+        if is_method and self._too_common(symbol, path):
+            return False
         referencing: set[str] = set()
         seen = {path}
         followed = {symbol}
-        pending = [symbol]
-        while pending and len(referencing) <= self.it_reference_cap:
-            for hit in self.repo.referencing_files(pending.pop(), [self.repo.it_root]):
-                if hit in seen:
+        # (name, the class it names, or None for a method name)
+        pending = [(symbol, None if is_method else class_fqn(path))]
+        while pending:
+            current, fqn = pending.pop()
+            hits = self.repo.it_words.get(current, set()) - seen
+            if owner and current == symbol:
+                hits &= self.repo.it_words.get(owner, set())
+            for hit in sorted(hits):
+                text = self.repo.it_sources[hit]
+                if fqn and not self.repo.names_class(hit, text, fqn):
                     continue
                 seen.add(hit)
                 relative = hit[len(prefix) :]
-                if relative in self.repo.it_classes and not self._never_run(relative):
+                if (
+                    relative in self.repo.it_classes
+                    and relative not in self.repo.never_run
+                ):
                     referencing.add(relative)
-                elif simple_name(hit) not in followed:
-                    followed.add(simple_name(hit))
-                    pending.append(simple_name(hit))
-        if not referencing:
-            return False
-        if len(referencing) > self.it_reference_cap:
-            self._add_smoke(
-                plan,
-                f"{symbol} is used by more ITs than the cap of {self.it_reference_cap}",
-                engines,
-            )
-            return True
+                    continue
+                if hit in self.repo.universal_helpers:
+                    names = {
+                        (name, None)
+                        for name in methods_using(text, current)
+                        if not self._too_common(name, hit)
+                    }
+                else:
+                    names = {(simple_name(hit), class_fqn(hit))}
+                for name, name_fqn in sorted(names, key=lambda item: item[0]):
+                    if name not in followed:
+                        followed.add(name)
+                        pending.append((name, name_fqn))
         for relative in sorted(referencing):
             self._add_it(plan, relative, f"uses {symbol}", engines)
-        return True
+        return bool(referencing)
+
+    def _too_common(self, method: str, path: str) -> bool:
+        return (
+            len(self.repo.it_words.get(method, set()) - {path}) > self.it_reference_cap
+        )
 
     def _add_unit(self, plan: Plan, module: str, name: str, reason: str) -> None:
         plan.unit_tests.setdefault(module, {}).setdefault(name, set()).add(reason)
@@ -655,10 +1096,7 @@ class Planner:
         for rule in self.map.get("testEngines", []):
             # A class whose every test assumes one backend only skips anywhere else, and a
             # skipped run looks green; run it where it executes.
-            if any(
-                self._it_pattern_matches(relative, name, pattern)
-                for pattern in rule["tests"]
-            ):
+            if self._test_rule_matches(relative, name, rule):
                 return sorted(rule["engines"])
         if suite:
             # A suite profile picks its backend from -DdatabaseType/-DsearchType, so it only runs
@@ -804,81 +1242,120 @@ class Planner:
                     ],
                     report_dirs=reports,
                     expected_classes=classes,
+                    engine=engine,
+                    lane=lane,
                 )
             )
         return commands
 
 
 def audit_impact_map(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
-    """Ways the map can silently skip tests. Empty when every IT is reachable."""
+    """Where the map leaves code or tests without an owner, or lists tests one by one.
+
+    Empty when every IT and every production file under `ownedRoots` has an owner. An
+    unowned production file runs the full suite, so a gap costs time, never a missed test.
+    """
     maven = impact_map["maven"]
     module = maven["integrationTestModule"]
-    pom = (repo.root / module / "pom.xml").read_text(encoding="utf-8")
+    planner = Planner(repo, impact_map)
+    areas = impact_map["areas"]
     problems: list[str] = []
 
     engines = {maven["defaultEngine"]}
     engines |= {
         engine for suite in maven["suites"].values() for engine in suite["engines"]
     }
-    engines |= {
-        engine
-        for mapping in impact_map["mappings"]
-        for engine in mapping.get("engines", [])
-    }
-    engines |= {
-        engine
-        for rule in impact_map.get("engineRules", [])
-        for engine in rule["engines"]
-    }
-    engines |= {
-        engine
-        for rule in impact_map.get("testEngines", [])
-        for engine in rule["engines"]
-    }
+    engines |= {engine for area in areas for engine in area.get("engines", [])}
+    for key in ("engineRules", "testEngines"):
+        engines |= {
+            engine for rule in impact_map.get(key, []) for engine in rule["engines"]
+        }
+    engines |= set(maven.get("ciWorkflows", {}))
     problems += [
         f"engine '{e}' is not a profile in {module}/pom.xml"
         for e in sorted(engines)
-        if f"<id>{e}</id>" not in pom
-    ]
-    problems += [
-        f"testEngines: pattern '{pattern}' matches no test class"
-        for rule in impact_map.get("testEngines", [])
-        for pattern in rule["tests"]
-        if not repo.it_paths_matching(pattern)
+        if f"<id>{e}</id>" not in repo.pom
     ]
     problems += [
         f"suite '{name}': profile '{suite['profile']}' is not in {module}/pom.xml"
         for name, suite in maven["suites"].items()
-        if f"<id>{suite['profile']}</id>" not in pom
+        if f"<id>{suite['profile']}</id>" not in repo.pom
     ]
 
-    reachable: set[str] = set()
-    for mapping in impact_map["mappings"]:
-        for pattern in mapping["tests"]:
-            hits = repo.it_paths_matching(pattern)
-            reachable.update(hits)
-            if not hits:
+    def check_tests(owner: str, patterns: list[str]) -> None:
+        for pattern in patterns:
+            if not is_pattern(pattern):
                 problems.append(
-                    f"bucket '{mapping['name']}': test pattern '{pattern}' matches no test class"
+                    f"{owner}: '{pattern}' names a single test; match tests by pattern"
                 )
+            elif not repo.it_paths_matching(pattern):
+                problems.append(
+                    f"{owner}: test pattern '{pattern}' matches no test class"
+                )
+
+    for area in areas:
+        check_tests(f"area '{area['name']}'", area["tests"])
+        problems += [
+            f"area '{area['name']}': source '{pattern}' matches no file"
+            for pattern in area["sources"]
+            if not any(fnmatch.fnmatchcase(path, pattern) for path in repo.files)
+        ]
+    for rule in impact_map.get("testEngines", []):
+        check_tests("testEngines", rule.get("tests", []))
+        problems += [
+            f"testEngines: '{regex}' matches no test source"
+            for regex in rule.get("assumes", [])
+            if not any(re.search(regex, text) for text in repo.it_sources.values())
+        ]
+    for rule in maven["notRunLocally"]:
+        check_tests("notRunLocally", rule["tests"])
     problems += [
-        f"smoke: pattern '{pattern}' matches no test class"
-        for pattern in impact_map["smoke"]
-        if not repo.it_paths_matching(pattern)
+        f"smoke: '{test}' matches no test class"
+        for test in impact_map["smoke"]
+        if not repo.it_paths_matching(test)
     ]
 
-    excluded = maven["neverRun"] + [
-        pattern for rule in maven["notRunLocally"] for pattern in rule["tests"]
-    ]
+    stems = {convention_stem(path) for path in repo.files} - {None}
+    owned_tests = {
+        relative
+        for area in areas
+        for pattern in area["tests"]
+        for relative in repo.it_paths_matching(pattern)
+    }
+    excluded = [p for rule in maven["notRunLocally"] for p in rule["tests"]]
     for relative, name in sorted(repo.it_classes.items(), key=lambda item: item[1]):
-        if relative in reachable or any(
-            Planner._it_pattern_matches(relative, name, p) for p in excluded
+        if (
+            relative in owned_tests
+            or relative in repo.never_run
+            or relative in repo.conditional
+            or any(stem_matches(stem, name) for stem in stems)
+            or any(planner._it_pattern_matches(relative, name, p) for p in excluded)
         ):
             continue
         problems.append(
-            f"{name} ({repo.it_root}/{relative}) is in no bucket, so no change selects it for the "
-            "pre-PR run; add it to the bucket for the code it tests"
+            f"{name} ({repo.it_root}/{relative}): no area owns it; add a test pattern that "
+            "matches it to the area for the code it tests"
         )
+
+    unowned: dict[str, list[str]] = {}
+    for path in repo.files:
+        if (
+            not matches(path, impact_map.get("ownedRoots", []))
+            or matches(path, impact_map["ignore"])
+            or matches(path, impact_map["sharedInfrastructure"])
+            or any(matches(path, area["sources"]) for area in areas)
+        ):
+            continue
+        stem = convention_stem(path)
+        if stem and any(stem_matches(stem, name) for name in repo.it_classes.values()):
+            continue
+        unowned.setdefault(path.rsplit("/", 1)[0], []).append(path.rsplit("/", 1)[-1])
+    problems += [
+        f"no area owns {plural(len(names), 'file')} in {directory}/ "
+        f"({', '.join(sorted(names)[:3])}{', ...' if len(names) > 3 else ''}); "
+        "a change there runs the full suite"
+        for directory, names in sorted(unowned.items())
+    ]
     return problems
 
 
@@ -896,10 +1373,32 @@ def print_plan(plan: Plan, planner: Planner) -> None:
         print(f"\n[unit] {module}: {plural(len(tests), 'class')}")
         for name, reasons in sorted(tests.items()):
             print(f"  {name}  <- {', '.join(sorted(reasons))}")
+    if plan.full_suite:
+        print(
+            f"\n[integration] FULL suite: every merge-queue IT on {planner.default_engine}"
+        )
+        for reason, paths in sorted(plan.full_suite.items()):
+            shown = ", ".join(sorted(paths)[:3]) + (" ..." if len(paths) > 3 else "")
+            print(f"  <- {reason}" + (f": {shown}" if shown else ""))
+        ci = planner.maven.get("ciWorkflows", {}).get(planner.default_engine)
+        if ci:
+            dispatch = f'gh workflow run "{ci["workflow"]}" --ref <branch> {ci.get("inputs", "")}'
+            print(
+                f"  Run it below, or in CI on your branch: {dispatch.strip()}, then record "
+                'the run: make java_affected_run ARGS="--ci-run <run-id>"'
+            )
     if plan.integration_tests:
-        print(f"\n[integration] {plural(len(plan.integration_tests), 'class')}")
+        shown = {
+            relative: selection
+            for relative, selection in plan.integration_tests.items()
+            if not plan.full_suite
+            or selection.reasons != {"full suite"}
+            or selection.run_engines != [planner.default_engine]
+        }
+        title = "also selected for their own reasons" if plan.full_suite else ""
+        print(f"\n[integration] {plural(len(shown), 'class')} {title}".rstrip())
         by_lane: dict[str, list[str]] = {}
-        for relative in plan.integration_tests:
+        for relative in shown:
             by_lane.setdefault(planner.lane_for(relative), []).append(relative)
         for lane in planner.lane_order():
             for relative in sorted(
@@ -922,7 +1421,8 @@ def print_plan(plan: Plan, planner: Planner) -> None:
             print(f"  {path}")
     if plan.unmapped_files:
         print(
-            f"\nImpact-map gaps: no bucket covers these, so the smoke ITs were added. Add a mapping to {IMPACT_MAP}:"
+            f"\nImpact-map gaps: no area owns these, so the full suite runs (test code: the smoke set). "
+            f"Add the directory to an area in {IMPACT_MAP}:"
         )
         for path in plan.unmapped_files:
             print(f"  {path}")
@@ -948,6 +1448,8 @@ class StepResult:
     failed_tests: list[str] = field(default_factory=list)
     class_counts: dict[str, list[int]] = field(default_factory=dict)
     class_dirs: dict[str, str] = field(default_factory=dict)
+    # Set when a passed CI run of the full suite on this engine stands in for the step.
+    ci_url: str = ""
 
     @property
     def missing_classes(self) -> list[str]:
@@ -964,6 +1466,8 @@ class StepResult:
 
     @property
     def passed(self) -> bool:
+        if self.ci_url:
+            return True
         return (
             self.exit_code == 0
             and self.failures == 0
@@ -1034,9 +1538,82 @@ def running_testcontainers(repo_root: Path) -> list[str]:
     return [line for line in result.stdout.splitlines() if line]
 
 
-def run_commands(repo_root: Path, plan: Plan, keep_going: bool) -> list[StepResult]:
+def ci_evidence(
+    repo_root: Path,
+    run_ids: list[str],
+    head: str,
+    workflows: dict[str, dict[str, str]],
+) -> dict[str, str]:
+    """Engine -> URL of a passed CI integration-test run on HEAD, for each --ci-run.
+
+    The run's integration-test jobs must have run and passed: a workflow whose IT job was
+    skipped still concludes "success".
+    """
+    covered: dict[str, str] = {}
+    for run_id in run_ids:
+        run = json.loads(
+            subprocess.run(
+                [
+                    "gh",
+                    "run",
+                    "view",
+                    run_id,
+                    "--json",
+                    "headSha,status,conclusion,url,workflowName,jobs",
+                ],
+                cwd=repo_root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+        )
+        engine = next(
+            (e for e, w in workflows.items() if w["workflow"] == run["workflowName"]),
+            None,
+        )
+        if engine is None:
+            raise SystemExit(
+                f"--ci-run {run_id} is '{run['workflowName']}', not an integration-test workflow "
+                f"({', '.join(w['workflow'] for w in workflows.values())})."
+            )
+        if run["headSha"] != head:
+            raise SystemExit(
+                f"--ci-run {run_id} tested {run['headSha'][:12]}, not HEAD {head[:12]}. "
+                "Run the workflow on this commit."
+            )
+        if (run["status"], run["conclusion"]) != ("completed", "success"):
+            raise SystemExit(
+                f"--ci-run {run_id} is {run['status']}/{run['conclusion'] or '-'}, not a passed run."
+            )
+        it_jobs = [
+            job
+            for job in run.get("jobs", [])
+            if fnmatch.fnmatchcase(job["name"], workflows[engine]["jobs"])
+        ]
+        if not it_jobs or any(job["conclusion"] != "success" for job in it_jobs):
+            raise SystemExit(
+                f"--ci-run {run_id} did not run and pass its integration-test jobs "
+                f"('{workflows[engine]['jobs']}'); they were skipped or failed."
+            )
+        covered[engine] = run["url"]
+    return covered
+
+
+def run_commands(
+    repo_root: Path,
+    plan: Plan,
+    keep_going: bool,
+    ci: dict[str, str] | None = None,
+    ci_lanes: set[str] = frozenset(),
+) -> list[StepResult]:
+    """Run the plan's steps. A lane step on an engine `ci` covers is taken from that run:
+    the CI workflow runs every lane in full."""
     results: list[StepResult] = []
     for command in plan.commands:
+        url = (ci or {}).get(command.engine) if command.lane in ci_lanes else None
+        if url:
+            results.append(StepResult(command, 0, 0.0, ci_url=url))
+            continue
         for directory in command.report_dirs:
             shutil.rmtree(repo_root / directory, ignore_errors=True)
         print(f"\n$ {shlex.join(command.argv)}\n", flush=True)
@@ -1113,6 +1690,11 @@ def render_tests_run(results: list[StepResult]) -> list[str]:
     concurrent = False
     for index, (result, (suites, named)) in enumerate(zip(results, splits)):
         title = f"{result.command.kind} · {result.command.label}"
+        if result.ci_url:
+            lines.append(
+                f"- {title}: every lane class, in [this CI run]({result.ci_url})"
+            )
+            continue
         parts = [
             f"full {directory.split('/target/', 1)[0]} suite, {count_classes(result, names)}"
             for directory, names in sorted(suites.items())
@@ -1150,6 +1732,17 @@ def overall_status(plan: Plan, results: list[StepResult]) -> str:
     return "PASSED"
 
 
+def display_command(argv: list[str]) -> str:
+    """A step's command as the PR shows it; a full-suite class list would fill the body."""
+    shown = [
+        f"-Dit.test=<{arg.count(',') + 1} classes>"
+        if arg.startswith("-Dit.test=") and arg.count(",") >= INLINE_CLASS_LIMIT
+        else arg
+        for arg in argv
+    ]
+    return shlex.join(shown)
+
+
 def commit_line(commit: str, base: str, dirty: bool) -> str:
     return f"- Commit: `{commit[:12]}` (base `{base}`)" + (
         " — uncommitted changes were present" if dirty else ""
@@ -1177,6 +1770,12 @@ def render_block(
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
     for result in results:
+        if result.ci_url:
+            lines.append(
+                f"| {result.command.kind} | {result.command.label} | | | | | | "
+                f"passed in [CI]({result.ci_url}) |"
+            )
+            continue
         if result.passed:
             verdict = "passed"
         elif result.tests - result.skipped <= 0:
@@ -1213,6 +1812,11 @@ def render_block(
     lines += render_tests_run(results)
 
     reasons = [
+        f"- **full suite** ← {reason}"
+        + (f": {', '.join(f'`{path}`' for path in sorted(paths)[:5])}" if paths else "")
+        + (f" (+{len(paths) - 5} more)" if len(paths) > 5 else "")
+        for reason, paths in sorted(plan.full_suite.items())
+    ] + [
         f"- `{trigger}` ← {', '.join(f'`{path}`' for path in sorted(paths)[:5])}"
         + (f" (+{len(paths) - 5} more)" if len(paths) > 5 else "")
         for trigger, paths in sorted(plan.triggers.items())
@@ -1252,7 +1856,7 @@ def render_block(
         "<details><summary>Commands</summary>",
         "",
         "```bash",
-        *[shlex.join(command.argv) for command in plan.commands],
+        *[display_command(command.argv) for command in plan.commands],
         "```",
         "",
         "</details>",
@@ -1352,7 +1956,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--check-map",
         action="store_true",
-        help="Report unbucketed ITs and dead patterns in the impact map, then exit",
+        help="Report unowned ITs and production files, single-test entries and dead "
+        "patterns in the impact map, then exit",
     )
     parser.add_argument(
         "--add-it",
@@ -1363,6 +1968,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--add-unit",
         default="",
         help="Comma-separated unit test classes to run on top of the plan (recorded as added)",
+    )
+    parser.add_argument(
+        "--add-area",
+        default="",
+        help="Comma-separated impact-map areas whose tests run on top of the plan",
+    )
+    parser.add_argument(
+        "--reason",
+        default="",
+        help="Why the plan needs the --add-* tests; required with them, shown in the PR",
+    )
+    parser.add_argument(
+        "--ci-run",
+        action="append",
+        default=[],
+        metavar="RUN_ID",
+        help="With --run, a passed CI integration-test run on HEAD that stands in for the "
+        "lane steps on its engine (repeat for more engines)",
     )
     parser.add_argument(
         "--run",
@@ -1387,6 +2010,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.update_pr and not args.run:
         parser.error("--update-pr requires --run")
+    if args.ci_run and not args.run:
+        parser.error("--ci-run requires --run")
     return args
 
 
@@ -1398,10 +2023,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.check_map:
         problems = audit_impact_map(Repo(repo_root, impact_map), impact_map)
         print(
-            "\n".join(problems) or f"{IMPACT_MAP}: every integration test is reachable."
+            "\n".join(problems)
+            or f"{IMPACT_MAP}: every integration test and production file has an owner."
         )
         return 1 if problems else 0
 
+    changed_methods: dict[str, set[str]] = {}
     if args.changed_files:
         changed_files = [
             line.strip()
@@ -1410,12 +2037,27 @@ def main(argv: list[str] | None = None) -> int:
         ]
     else:
         changed_files = collect_changed_files(repo_root, args.base)
+        changed_methods = collect_changed_methods(
+            repo_root,
+            args.base,
+            [
+                path
+                for path in changed_files
+                if path.endswith(".java") and (repo_root / path).exists()
+            ],
+        )
+
+    def names(value: str) -> list[str]:
+        return [name.strip() for name in value.split(",") if name.strip()]
 
     planner = Planner(Repo(repo_root, impact_map), impact_map)
     plan = planner.plan(
         changed_files,
-        add_its=[name.strip() for name in args.add_it.split(",") if name.strip()],
-        add_units=[name.strip() for name in args.add_unit.split(",") if name.strip()],
+        add_its=names(args.add_it),
+        add_units=names(args.add_unit),
+        add_areas=names(args.add_area),
+        changed_methods=changed_methods,
+        reason=args.reason.strip(),
     )
 
     if args.json:
@@ -1431,7 +2073,15 @@ def main(argv: list[str] | None = None) -> int:
         block = render_no_tests_block(plan, commit, args.base, dirty)
         results: list[StepResult] = []
     else:
-        if any(command.kind == "integration" for command in plan.commands):
+        ci = ci_evidence(
+            repo_root, args.ci_run, commit, planner.maven.get("ciWorkflows", {})
+        )
+        ci_lanes = set(planner.maven["lanes"])
+        if any(
+            command.kind == "integration"
+            and not (command.engine in ci and command.lane in ci_lanes)
+            for command in plan.commands
+        ):
             problem = docker_ready(repo_root)
             if problem:
                 print(f"\n{problem}", file=sys.stderr)
@@ -1445,7 +2095,7 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 return 1
-        results = run_commands(repo_root, plan, args.keep_going)
+        results = run_commands(repo_root, plan, args.keep_going, ci, ci_lanes)
         block = render_block(plan, planner, results, commit, args.base, dirty)
 
     markdown_path = repo_root / RESULTS_MARKDOWN

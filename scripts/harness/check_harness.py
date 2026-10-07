@@ -535,7 +535,8 @@ JAVA_PLANNER = ".github/scripts/plan_local_java_tests.py"
 
 def check_java_impact_map():
     """ITs run only in the merge queue, so the pre-PR run is the last chance to catch a
-    break. An IT that no impact-map bucket reaches is never part of that run."""
+    break. An IT no impact-map area owns is never selected; an unowned production file makes
+    every change to it run the full suite."""
     if not (os.path.exists(rp(JAVA_IMPACT_MAP)) and os.path.exists(rp(JAVA_PLANNER))):
         return []
     spec = importlib.util.spec_from_file_location("plan_local_java_tests", rp(JAVA_PLANNER))
