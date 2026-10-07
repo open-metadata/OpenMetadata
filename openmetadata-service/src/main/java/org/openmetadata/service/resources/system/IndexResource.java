@@ -65,10 +65,17 @@ public class IndexResource {
     configuredBasePath = (basePath != null && !basePath.isEmpty()) ? basePath : "/";
     SentryConfiguration sentryConfig = catalogConfig.getSentryConfiguration();
     String clusterName = catalogConfig.getClusterName();
-    // CDN prefix for the UI bundle under the split-serve build. Baked here at
-    // initialize time (constant for the process); empty when unset so initial
-    // asset URLs collapse to `/assets/...` and the UI loads from the JAR.
+    String appVersion = new VersionResource().getCatalogVersion().getVersion();
+    // Compose the CDN asset prefix as `<baseUrl>/<appVersion>` so one config
+    // knob (`cdnBaseUrl`) always agrees with the deployed version. Guarded by
+    // `cdnEnabled` so operators can flip the feature without wiping the URL;
+    // empty when disabled so Vite's `${cdnBaseUrl}` placeholders collapse to
+    // "" and asset URLs resolve same-origin against the JAR.
     String cdnBaseUrl = catalogConfig.getCdnBaseUrl();
+    String composedCdnUrl =
+        (catalogConfig.getCdnEnabled() && cdnBaseUrl != null && !cdnBaseUrl.isEmpty())
+            ? stripTrailingSlash(cdnBaseUrl) + "/" + appVersion
+            : "";
     configProcessedHtml =
         rawIndexHtml
             .replace("${sentryEnabled}", String.valueOf(sentryConfig.getEnabled()))
@@ -78,9 +85,8 @@ public class IndexResource {
                 "${sentryTraceSampleRate}",
                 escapeJs(String.valueOf(sentryConfig.getTracesSampleRate())))
             .replace("${clusterName}", escapeJs(clusterName != null ? clusterName : "openmetadata"))
-            .replace(
-                "${appVersion}", escapeJs(new VersionResource().getCatalogVersion().getVersion()))
-            .replace("${cdnBaseUrl}", cdnBaseUrl != null ? cdnBaseUrl : "");
+            .replace("${appVersion}", escapeJs(appVersion))
+            .replace("${cdnBaseUrl}", composedCdnUrl);
     // Re-init may bake new values into the template — drop any cached ETags so the next
     // request computes a fresh hash against the new body.
     ETAG_CACHE.invalidateAll();
@@ -116,6 +122,11 @@ public class IndexResource {
       return "";
     }
     return StringEscapeUtils.escapeEcmaScript(value);
+  }
+
+  /** Allow both {@code https://host} and {@code https://host/} in cdnBaseUrl config. */
+  private static String stripTrailingSlash(String s) {
+    return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
   }
 
   public static String getIndexFile(String basePath) {

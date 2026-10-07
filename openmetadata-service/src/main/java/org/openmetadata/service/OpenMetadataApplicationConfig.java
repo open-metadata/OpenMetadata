@@ -61,13 +61,22 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @Getter @JsonProperty private String basePath;
 
   /**
-   * Optional CDN prefix for the UI bundle. When set, IndexResource substitutes {@code
-   * ${cdnBaseUrl}} in {@code index.html} and injects {@code window.__CDN_BASE_URL__} so Vite's
-   * CDN split-serve build (`vite.config.cdn.ts` in the collate-ui repo) resolves initial asset
-   * URLs and dynamic chunk imports from the CDN. Unset / empty → placeholders substitute to {@code
-   * ""} and the UI falls back to same-origin asset loading from the JAR.
+   * CDN host for the UI bundle, without a version suffix (e.g. {@code
+   * https://serverassets-cdn.getcollate.io}). IndexResource composes
+   * {@code cdnBaseUrl + "/" + appVersion} and substitutes {@code ${cdnBaseUrl}} in {@code
+   * index.html}, so Vite's CDN split-serve build (`vite.config.cdn.ts` in the collate-ui repo)
+   * resolves initial asset URLs and dynamic chunk imports from
+   * {@code <cdn-host>/<version>/assets/...}. Unset / empty, or {@link #cdnEnabled} is false →
+   * placeholders substitute to {@code ""} and the UI loads assets same-origin from the JAR.
    */
   @Getter @JsonProperty private String cdnBaseUrl;
+
+  /**
+   * Off-switch for the CDN split-serve build. {@code false} (default) → {@link #cdnBaseUrl} is
+   * ignored even when set, so operators can keep the host configured in YAML and flip the feature
+   * on/off without wiping the URL.
+   */
+  @Getter @JsonProperty private boolean cdnEnabled;
 
   @Getter
   @JsonProperty("assets")
