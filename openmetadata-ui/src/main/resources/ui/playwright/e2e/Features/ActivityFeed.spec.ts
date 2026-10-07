@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -176,7 +177,7 @@ test.describe('Mention notifications in Notification Box', () => {
         // open thread panel, which is the one carrying the reply composer.
         .filter({ hasNot: user1Page.getByTestId('comments-input-field') });
 
-      await expect(seededThread).toBeVisible({ timeout: 30_000 });
+      await expect(seededThread).toBeVisible({ timeout: ACTION_TIMEOUT });
       await seededThread.click();
 
       await waitForAllLoadersToDisappear(user1Page);
@@ -463,7 +464,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       .filter({ hasText: CHINESE_MENTION_THREAD_MESSAGE })
       .first();
 
-    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await expect(seededThread).toBeVisible({ timeout: ACTION_TIMEOUT });
     await seededThread.click();
     await waitForAllLoadersToDisappear(page);
 

@@ -573,6 +573,28 @@ describe('buildLineOption', () => {
     ]);
   });
 
+  it('labels a reference line at its end unless asked for the start', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        referenceLines: [
+          { axis: 'y', value: 80, label: 'Target' },
+          { axis: 'y', value: 60, label: 'Floor', labelPosition: 'start' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const all = seriesOf(option);
+    const { data } = all[all.length - 1].markLine as {
+      data: Array<{ label: { position: string } }>;
+    };
+
+    expect(data.map(({ label }) => label.position)).toEqual([
+      'insideEndTop',
+      'insideStartTop',
+    ]);
+  });
+
   it('measures reference lines against the first value axis in a composed chart', () => {
     const option = buildComposedOption(
       {

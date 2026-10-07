@@ -299,7 +299,7 @@
   },
   "playwright/e2e/Features/SearchExport.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts": {
@@ -441,11 +441,6 @@
     }
   },
   "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
-  "playwright/e2e/Pages/AuditLogs.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
     }

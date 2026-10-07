@@ -59,7 +59,7 @@ const TestCaseTestSuitesCard = ({
               <Tooltip placement="top" title={name}>
                 <Focusable>
                   <Link
-                    className="tw:min-w-0 tw:truncate tw:text-sm"
+                    className="tw:min-w-0 tw:truncate tw:text-sm tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring"
                     data-testid={`test-suite-link-${testSuite.fullyQualifiedName}`}
                     to={path}>
                     <span className="tw:sr-only">

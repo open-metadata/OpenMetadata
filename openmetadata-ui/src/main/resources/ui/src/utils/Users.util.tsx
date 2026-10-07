@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Badge, Skeleton } from '@openmetadata/ui-core-components';
-import { Popover, Space, Tooltip } from 'antd';
+import {
+  Badge,
+  Popover,
+  PopoverTrigger,
+  Skeleton,
+} from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
+import { Button as AriaButton } from 'react-aria-components';
 import { Link } from 'react-router-dom';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
@@ -93,9 +99,20 @@ export const commonUserDetailColumns = (
               </Link>
             ))}
             {hasMore && (
-              <Popover
-                className="cursor-pointer"
-                content={
+              <PopoverTrigger>
+                <AriaButton
+                  className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+                  data-testid="plus-more-count">
+                  <Badge
+                    className="tw:inline-flex tw:mr-2 m-l-xs"
+                    color="gray"
+                    size="sm"
+                    type="color">{`+${listLength - LIST_CAP} more`}</Badge>
+                </AriaButton>
+                <Popover
+                  arrow
+                  containerClassName="tw:w-40 tw:px-4 tw:py-3"
+                  placement="bottom">
                   <Space wrap size={4}>
                     {record.teams.slice(LIST_CAP).map((team) => (
                       <Link
@@ -106,16 +123,8 @@ export const commonUserDetailColumns = (
                       </Link>
                     ))}
                   </Space>
-                }
-                overlayClassName="w-40"
-                trigger="click">
-                <Badge
-                  className="tw:inline-flex tw:mr-2 m-l-xs"
-                  color="gray"
-                  data-testid="plus-more-count"
-                  size="sm"
-                  type="color">{`+${listLength - LIST_CAP} more`}</Badge>
-              </Popover>
+                </Popover>
+              </PopoverTrigger>
             )}
           </Space>
         );
@@ -148,9 +157,20 @@ export const commonUserDetailColumns = (
               </Link>
             ))}
             {hasMore && (
-              <Popover
-                className="cursor-pointer"
-                content={
+              <PopoverTrigger>
+                <AriaButton
+                  className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+                  data-testid="plus-more-count">
+                  <Badge
+                    className="tw:inline-flex tw:mr-2 m-l-xs"
+                    color="gray"
+                    size="sm"
+                    type="color">{`+${listLength - LIST_CAP} more`}</Badge>
+                </AriaButton>
+                <Popover
+                  arrow
+                  containerClassName="tw:w-40 tw:px-4 tw:py-3"
+                  placement="bottom">
                   <Space wrap size={4}>
                     {record.roles.slice(LIST_CAP).map((role) => (
                       <Link
@@ -161,16 +181,8 @@ export const commonUserDetailColumns = (
                       </Link>
                     ))}
                   </Space>
-                }
-                overlayClassName="w-40"
-                trigger="click">
-                <Badge
-                  className="tw:inline-flex tw:mr-2 m-l-xs"
-                  color="gray"
-                  data-testid="plus-more-count"
-                  size="sm"
-                  type="color">{`+${listLength - LIST_CAP} more`}</Badge>
-              </Popover>
+                </Popover>
+              </PopoverTrigger>
             )}
           </Space>
         );

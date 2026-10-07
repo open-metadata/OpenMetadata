@@ -254,6 +254,31 @@ describe('TestCaseResultTab', () => {
     expect(screen.queryByText('TestSummary')).not.toBeInTheDocument();
   });
 
+  it('should keep the rail at a fixed width beside the results, and stack it in a narrow tab', async () => {
+    render(<TestCaseResultTab showSidePanel />);
+
+    const grid = await screen.findByTestId('test-case-result-tab-container');
+
+    expect(grid).toHaveClass(
+      'tw:grid-cols-1',
+      'tw:@3xl:grid-cols-[minmax(0,1fr)_clamp(260px,30%,320px)]'
+    );
+    expect(grid.parentElement).toHaveClass('tw:@container');
+    expect(screen.getByTestId('test-case-rail')).not.toHaveClass(
+      'tw:col-span-4'
+    );
+  });
+
+  it('should give the results the whole tab when the rail is hidden', async () => {
+    render(<TestCaseResultTab showSidePanel={false} />);
+
+    const grid = await screen.findByTestId('test-case-result-tab-container');
+
+    expect(grid).toHaveClass('tw:grid-cols-1');
+    expect(grid.className).not.toContain('tw:@3xl:grid-cols');
+    expect(screen.queryByTestId('test-case-rail')).not.toBeInTheDocument();
+  });
+
   it('should frame the result history as a card outside AI mode', async () => {
     render(<TestCaseResultTab />);
 

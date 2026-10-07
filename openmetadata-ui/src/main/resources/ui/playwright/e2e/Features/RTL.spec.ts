@@ -12,6 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import {
   redirectToHomePage,
@@ -49,7 +50,7 @@ test.describe('Verify RTL Layout for landing page', () => {
     // match is asserting more than the label.
     await expect(page.getByTestId('domain-dropdown')).toContainText(
       'כל הדומיינים',
-      { timeout: 30_000 }
+      { timeout: ACTION_TIMEOUT }
     );
   });
 

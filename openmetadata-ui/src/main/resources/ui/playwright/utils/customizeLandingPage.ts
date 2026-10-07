@@ -233,7 +233,9 @@ export const removeAndCheckWidget = async (
   await widget.scrollIntoViewIfNeeded();
 
   // Removal is a button in the card header now, not an item behind an antd
-  // overflow menu -- topic cards carry no `more-options-button` at all.
+  // overflow menu -- topic cards carry no `more-options-button` at all, so
+  // main's switch to `getByRole('menuitem', { name: 'Remove' })` has nothing
+  // left to target here.
   await widget.getByTestId(`remove-widget-${widgetKey}`).click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();

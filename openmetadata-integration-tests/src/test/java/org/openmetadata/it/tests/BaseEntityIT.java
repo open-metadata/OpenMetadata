@@ -3386,6 +3386,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // SEARCH INDEX TESTS
   // ===================================================================
 
+  /** Allows entity-specific lifecycle prerequisites for ordinary search fixtures. */
+  protected K createSearchRequest(TestNamespace ns) {
+    return createMinimalRequest(ns);
+  }
+
   /**
    * Test: Entity with null description shows INCOMPLETE in search
    * Equivalent to: get_entityWithNullDescriptionFromSearch in EntityResourceTest
@@ -5341,22 +5346,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
-   * Test: A bot whose policy does NOT deny {@code EditOwners} (the ingestion bot - {@code
-   * IngestionBotPolicy}/{@code DefaultBotPolicy} carry only a {@code DisplayName-Deny}) CAN reassign
-   * owners through a single-entity PUT even when an owner already exists.
+   * Test: A bot single-entity PUT carrying owners must not replace the owners a user assigned.
    *
-   * <p>Regression guard for the over-broad guard that reverted owners on <em>any</em> bot PUT once
-   * an owner was set, which silently broke ingestion ownership re-sync. {@code
-   * EntityRepository#updateOwners} now keys on the same policy-aware {@code updatingBotDeniedOperation
-   * (EDIT_OWNERS)} check as {@code updateDisplayName}, so a policy-allowed bot updates owners while a
-   * denied bot (or {@code overrideMetadata=false} with a field-deny) still preserves them.
+   * <p>No shipped bot policy denies {@code EditOwners}, so a policy-keyed guard never fired and
+   * owners sent by ingestion ({@code ownerConfig}, {@code includeOwners}) replaced user-assigned
+   * ones on every re-sync. A bot PUT now only fills owners on an entity that has none; a PATCH or
+   * a bulk run with {@code overrideMetadata=true} still reassigns them.
    */
   @Test
-  void test_singleEntityPut_bot_updatesOwnersWhenPolicyAllows(TestNamespace ns) {
+  void test_singleEntityPut_bot_preservesUserOwners(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsOwners) return;
     if (!hasField("setOwners", List.class)) return;
 
-    K request = createRequest(ns.prefix("put_ownallow_"), ns);
+    K request = createRequest(ns.prefix("put_ownkeep_"), ns);
     T created = createEntity(request);
     String fqn = created.getFullyQualifiedName();
 
@@ -5378,9 +5380,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertNotNull(result.getOwners(), "owners present after bot update: " + fqn);
     assertFalse(result.getOwners().isEmpty(), "owners not cleared: " + fqn);
     assertEquals(
-        shared.USER2.getId(),
+        shared.USER1.getId(),
         result.getOwners().get(0).getId(),
-        "Bot allowed EditOwners (ingestion bot, no Owner-Deny) must update owners via PUT: " + fqn);
+        "A bot PUT must not replace user-assigned owners: " + fqn);
   }
 
   /**
@@ -5852,7 +5854,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void checkCreatedEntity(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index (async indexing may take time)
@@ -5880,7 +5882,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(supportsSoftDelete);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index before delete
@@ -5916,7 +5918,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void checkIndexCreated(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index
@@ -5944,7 +5946,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(supportsPatch);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // First wait for entity to appear in search index

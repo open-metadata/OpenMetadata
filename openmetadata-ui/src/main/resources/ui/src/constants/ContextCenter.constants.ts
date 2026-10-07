@@ -137,7 +137,13 @@ export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
   'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
 
+export const DEFAULT_MEMORY_STATUSES = [
+  EntityStatus.Approved,
+  EntityStatus.Unprocessed,
+];
+
 export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
+  [EntityStatus.Unprocessed]: 'label.unprocessed',
   [EntityStatus.Approved]: 'label.approved',
   [EntityStatus.Archived]: 'label.archived',
   [EntityStatus.Draft]: 'label.draft',
