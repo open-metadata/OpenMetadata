@@ -14,19 +14,23 @@ Classification run manager for auto-classification workflows.
 
 import re
 from collections import OrderedDict
-from typing import Any, Protocol
+from contextlib import suppress
+from typing import Any, Protocol, get_args
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from requests.exceptions import Timeout
 
 from metadata.generated.schema.entity.classification.classification import (
+    AutoClassificationConfig,
     Classification,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
+from metadata.generated.schema.type.recognizer import RecognizerConfig
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.client import RestTransportError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.fqn import quote_name, split_raw_name, unquote_name
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -42,66 +46,68 @@ def _identifier(value: Any) -> str:
     return sanitized + ("…" if len(value) > MAX_DIAGNOSTIC_IDENTIFIER_LENGTH else "")
 
 
-_RECOGNIZER_TYPES = {
-    "pattern": "PatternRecognizer",
-    "exact_terms": "ExactTermsRecognizer",
-    "context": "ContextRecognizer",
-    "custom": "CustomRecognizer",
-    "predefined": "PredefinedRecognizer",
+_RECOGNIZER_MODELS = {
+    kind: model
+    for model in get_args(RecognizerConfig.model_fields["root"].annotation)
+    for kind in get_args(model.model_fields["type"].annotation)
 }
+_CLASSIFICATION_ENABLED = TypeAdapter(AutoClassificationConfig.model_fields["enabled"].annotation)
+_TAG_ENABLED = TypeAdapter(Tag.model_fields["autoClassificationEnabled"].annotation)
 
 
-def _selected_recognizer_index(location: tuple, recognizers: list) -> int | None:
-    if len(location) < 5 or location[0] != "recognizers" or location[2] != "recognizerConfig":
-        return None
-    index = location[1]
-    if not isinstance(index, int) or not 0 <= index < len(recognizers):
-        return None
-    recognizer = recognizers[index]
-    if not isinstance(recognizer, dict) or not isinstance(recognizer.get("recognizerConfig"), dict):
-        return None
-    branch = _RECOGNIZER_TYPES.get(recognizer["recognizerConfig"].get("type"))
-    return index if branch and branch in str(location[3]) else None
+def _disabled(value: Any, adapter: TypeAdapter) -> bool:
+    try:
+        return not adapter.validate_python(value)
+    except ValidationError:
+        return False
 
 
-def _unknown_recognizer_type_index(recognizers: list) -> int | None:
-    for index, recognizer in enumerate(recognizers):
-        config = recognizer.get("recognizerConfig") if isinstance(recognizer, dict) else None
-        kind = config.get("type") if isinstance(config, dict) else None
-        if isinstance(config, dict) and (not isinstance(kind, str) or kind not in _RECOGNIZER_TYPES):
-            return index
-    return None
+def _other_parent(raw_fqn: Any, classification_name: str) -> bool:
+    if not isinstance(raw_fqn, str):
+        return False
+    parts = split_raw_name(raw_fqn)
+    if len(parts) < 2 or any(not part for part in parts):
+        return False
+    try:
+        quoted_parts = [quote_name(part) for part in parts]
+    except ValueError:
+        return False
+    return quoted_parts[0] != quote_name(classification_name)
+
+
+def _field_path(location: tuple) -> str:
+    path = ""
+    for part in location:
+        path += f"[{part}]" if isinstance(part, int) else ("." if path else "") + _identifier(part)
+    return path or "invalid configuration"
 
 
 def _missing_field(exc: Exception, raw: dict | None = None) -> tuple[str, int | None]:
     if isinstance(exc, ValidationError):
-        errors = exc.errors()
+        errors = exc.errors(include_input=False, include_context=False)
         if raw and isinstance(raw.get("recognizers"), list):
-            unknown_type_index = _unknown_recognizer_type_index(raw["recognizers"])
-            if unknown_type_index is not None:
-                return "type", unknown_type_index
-            for desired_type in ("missing", "invalid"):
-                for error in errors:
-                    location = error["loc"]
-                    error_type = error["type"]
-                    if desired_type == "missing" and error_type != "missing":
-                        continue
-                    if desired_type == "invalid" and error_type in ("missing", "literal_error", "extra_forbidden"):
-                        continue
-                    index = _selected_recognizer_index(location, raw["recognizers"])
-                    if index is not None:
-                        return _identifier(location[-1]), index
-        for error in errors:
-            if error["type"] == "missing":
-                location = error["loc"]
-                recognizer_index = None
-                if "recognizers" in location:
-                    next_index = location.index("recognizers") + 1
-                    if next_index < len(location):
-                        index = location[next_index]
-                        if isinstance(index, int):
-                            recognizer_index = index
-                return _identifier(location[-1]), recognizer_index
+            for index, recognizer in enumerate(raw["recognizers"]):
+                config = recognizer.get("recognizerConfig") if isinstance(recognizer, dict) else None
+                if not isinstance(config, dict):
+                    if isinstance(recognizer, dict):
+                        return "recognizerConfig", index
+                    continue
+                kind = config.get("type")
+                model = _RECOGNIZER_MODELS.get(kind) if isinstance(kind, str) else None
+                if model is None:
+                    return "type", index
+                try:
+                    # Union errors include failures from unrelated branches. Revalidate only
+                    # the selected generated model to retain its actual field/index path.
+                    model.model_validate(config)
+                except ValidationError as config_error:
+                    return _missing_field(config_error)[0], index
+        if errors:
+            error = next((error for error in errors if error["type"] == "missing"), errors[0])
+            location = error["loc"]
+            if len(location) > 1 and location[0] == "recognizers" and isinstance(location[1], int):
+                return _field_path(location[2:]), location[1]
+            return _field_path(location), None
     return "invalid configuration", None
 
 
@@ -111,6 +117,8 @@ def _fetch_reason(exc: Exception) -> str:
         return f"HTTP {status_code}"
     if isinstance(exc, Timeout) or (isinstance(exc, RestTransportError) and isinstance(exc.cause, Timeout)):
         return "request timed out"
+    if isinstance(exc, RestTransportError):
+        return f"transport failure ({type(exc.cause).__name__})"
     return type(exc).__name__
 
 
@@ -131,6 +139,7 @@ class ClassificationManager:
         self.status = status
         self._classification_cache: OrderedDict[str, list[Classification]] = OrderedDict()
         self._tags_cache: OrderedDict[str, list[Tag]] = OrderedDict()
+        self._reported_diagnostics: OrderedDict[tuple[str, str, bool], None] = OrderedDict()
 
     @staticmethod
     def _cache_result(cache: OrderedDict, key: str, value: list) -> None:
@@ -139,7 +148,19 @@ class ClassificationManager:
         if len(cache) > MAX_CACHE_ENTRIES:
             cache.popitem(last=False)
 
-    def _failure(self, name: str, message: str) -> None:
+    def _diagnostic(self, name: str, message: str, *, warning: bool = False) -> None:
+        key = (name, message, warning)
+        if key in self._reported_diagnostics:
+            self._reported_diagnostics.move_to_end(key)
+            return
+        self._reported_diagnostics[key] = None
+        if len(self._reported_diagnostics) > MAX_CACHE_ENTRIES:
+            self._reported_diagnostics.popitem(last=False)
+        if warning:
+            logger.warning(message)
+            if self.status is not None:
+                self.status.warning(name, message)
+            return
         if self.status is not None:
             self.status.failed(StackTraceError(name=name, error=message))
         else:
@@ -149,23 +170,32 @@ class ClassificationManager:
         def callback(_entity: type, raw: dict, exc: Exception) -> None:
             raw_name = raw.get("name") or raw.get("fullyQualifiedName")
             name = _identifier(raw_name)
-            if filter_names and isinstance(raw_name, str) and raw_name not in filter_names:
+            selection_name = raw.get("name")
+            if not isinstance(selection_name, str) or not selection_name:
+                selection_name = None
+                raw_fqn = raw.get("fullyQualifiedName")
+                if isinstance(raw_fqn, str) and raw_fqn and len(split_raw_name(raw_fqn)) == 1:
+                    with suppress(ValueError):
+                        selection_name = unquote_name(quote_name(raw_fqn))
+            if filter_names and selection_name and selection_name not in filter_names:
                 return
             config = raw.get("autoClassificationConfig")
-            if isinstance(config, dict) and config.get("enabled") is False:
+            if config is None or (
+                isinstance(config, dict) and _disabled(config.get("enabled"), _CLASSIFICATION_ENABLED)
+            ):
                 return
             field, _ = _missing_field(exc)
-            self._failure(name, f"Could not load classification {name}: missing or invalid {field}")
+            self._diagnostic(name, f"Could not load classification {name}: missing or invalid {field}", warning=True)
 
         return callback
 
     def _tag_parse_error(self, classification_name: str):
         def callback(_entity: type, raw: dict, exc: Exception) -> None:
-            if raw.get("autoClassificationEnabled") is False:
+            if _disabled(raw.get("autoClassificationEnabled"), _TAG_ENABLED):
                 return
             raw_fqn = raw.get("fullyQualifiedName")
             fqn = _identifier(raw_fqn)
-            if isinstance(raw_fqn, str) and not raw_fqn.startswith(f"{classification_name}."):
+            if _other_parent(raw_fqn, classification_name):
                 return
             field, recognizer_index = _missing_field(exc, raw)
             recognizer = "<unknown>"
@@ -174,10 +204,11 @@ class ClassificationManager:
                 failing = recognizers[recognizer_index]
                 if isinstance(failing, dict):
                     recognizer = _identifier(failing.get("name"))
-            self._failure(
+            self._diagnostic(
                 fqn,
                 f"Could not load tag {fqn} in classification {classification_name}, "
                 f"recognizer {recognizer}: missing or invalid {field}",
+                warning=True,
             )
 
         return callback
@@ -222,7 +253,7 @@ class ClassificationManager:
                     enabled.append(classification)
             completed = True
         except Exception as exc:
-            self._failure("classifications", f"Failed to fetch classifications: {_fetch_reason(exc)}")
+            self._diagnostic("classifications", f"Failed to fetch classifications: {_fetch_reason(exc)}")
 
         if completed:
             self._cache_result(self._classification_cache, cache_key, enabled)
@@ -258,6 +289,7 @@ class ClassificationManager:
         completed = True
 
         for classification_name in classification_names:
+            loaded_before_classification = len(candidate_tags)
             try:
                 for tag in self.metadata.list_all_entities(
                     entity=Tag,
@@ -270,7 +302,7 @@ class ClassificationManager:
                         "classification",
                     ],
                     params={
-                        "parent": classification_name,
+                        "parent": quote_name(classification_name),
                     },
                     skip_on_failure=True,
                     on_parse_error=self._tag_parse_error(classification_name),
@@ -287,10 +319,10 @@ class ClassificationManager:
 
             except Exception as exc:
                 completed = False
-                self._failure(
+                self._diagnostic(
                     classification_name,
                     f"Failed to fetch tags for classification {classification_name}: {_fetch_reason(exc)}"
-                    + (" after partial results" if candidate_tags else ""),
+                    + (" after partial results" if len(candidate_tags) > loaded_before_classification else ""),
                 )
                 continue
 

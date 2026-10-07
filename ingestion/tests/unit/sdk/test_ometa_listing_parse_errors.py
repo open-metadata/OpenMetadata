@@ -63,6 +63,21 @@ def test_listing_default_remains_strict():
         list(metadata.list_all_entities(Tag))
 
 
+@pytest.mark.parametrize("paginate", [False, True])
+def test_callback_alone_skips_bad_entities(paginate):
+    bad = {**_tag("SPI"), "id": "bad"}
+    metadata = _sdk({"data": [bad, _tag("PII")], "paging": {"total": 2}})
+    errors = []
+
+    if paginate:
+        tags = list(metadata.list_all_entities(Tag, on_parse_error=lambda *args: errors.append(args)))
+    else:
+        tags = metadata.list_entities(Tag, on_parse_error=lambda *args: errors.append(args)).entities
+
+    assert [tag.name.root for tag in tags] == ["PII"]
+    assert len(errors) == 1
+
+
 def test_parse_callback_exception_propagates():
     metadata = _sdk({"data": [{**_tag("SPI"), "id": "bad"}], "paging": {"total": 1}})
 

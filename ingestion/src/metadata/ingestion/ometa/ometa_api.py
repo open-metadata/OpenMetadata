@@ -661,6 +661,9 @@ class OpenMetadata(
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
+
+        Providing on_parse_error enables per-entity skipping even when
+        skip_on_failure is False. Callback errors propagate to the caller.
         """
 
         suffix = self.get_suffix(entity)
@@ -677,7 +680,7 @@ class OpenMetadata(
         if self._use_raw_data:
             return resp
 
-        if skip_on_failure:
+        if skip_on_failure or on_parse_error is not None:
             entities = []
             for elmt in resp["data"]:
                 try:
@@ -714,6 +717,7 @@ class OpenMetadata(
         :param fields: Extra fields to return
         :param limit: Number of entities in each pagination
         :param params: Extra parameters, e.g., {"service": "serviceName"} to filter
+        :param on_parse_error: Report and skip malformed entities; implies skip_on_failure
         :return: Generator that will be yielding all Entities
         """
 
