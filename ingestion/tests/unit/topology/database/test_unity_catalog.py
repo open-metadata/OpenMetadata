@@ -593,14 +593,12 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
 
     @patch.object(UnitycatalogSource, "_process_table")
     @patch.object(UnitycatalogSource, "sql_connection", create=True)
-    @patch("databricks.sdk.service.catalog.TablesAPI.list")
     @patch("databricks.sdk.service.catalog.TablesAPI.get")
-    # The raw tables listing that reveals securable_kind bypasses TablesAPI, so
-    # without this the schema's Iceberg lookup dials the real host and burns the
-    # SDK's whole retry budget before the test can finish.
-    @patch("databricks.sdk.core.ApiClient.do", return_value={"tables": []})
+    # The listing is hand-rolled against the raw endpoint so securable_kind survives,
+    # so TablesAPI.list is never called; without this patch it dials the real host.
+    @patch("databricks.sdk.core.ApiClient.do")
     def test_get_tables_with_constraints(
-        self, mock_api_do, mock_dbx_get_table, mock_dbx_list_table, mock_sql_connection, mock_process_table
+        self, mock_api_do, mock_dbx_get_table, mock_sql_connection, mock_process_table
     ):
         mock_tables_with_constraints = [
             SimpleNamespace(
@@ -611,20 +609,22 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
         ]
 
         mock_sql_connection.execute.return_value = mock_tables_with_constraints
-        mock_dbx_list_table.return_value = [
-            TableInfo(
-                catalog_name="demo",
-                schema_name="default",
-                name="table_with_constraints",
-                table_type=DatabricksTableType.MANAGED,
-            ),
-            TableInfo(
-                catalog_name="demo",
-                schema_name="default",
-                name="table_no_constraints",
-                table_type=DatabricksTableType.MANAGED,
-            ),
-        ]
+        mock_api_do.return_value = {
+            "tables": [
+                {
+                    "catalog_name": "demo",
+                    "schema_name": "default",
+                    "name": "table_with_constraints",
+                    "table_type": "MANAGED",
+                },
+                {
+                    "catalog_name": "demo",
+                    "schema_name": "default",
+                    "name": "table_no_constraints",
+                    "table_type": "MANAGED",
+                },
+            ]
+        }
         mock_dbx_get_table.return_value = TableInfo(
             catalog_name="demo",
             schema_name="default",

@@ -33,6 +33,7 @@ from metadata.ingestion.source.database.databricks.metadata import (
     _TableInfo,
     get_table_type,
 )
+from metadata.ingestion.source.database.databricks.queries import DATABRICKS_GET_TABLE_TYPES
 
 _CACHE_KEY = _TABLE_INFO_CACHE_KEY
 
@@ -150,4 +151,37 @@ def test_get_table_type_still_returns_type_string_for_foreign_skip():
 
     assert get_table_type(dialect, connection, "main_prod", "sales", "orders") == "MANAGED"
     assert get_table_type(dialect, connection, "main_prod", "sales", "legacy_feed") == "FOREIGN"
+    assert connection.execute.call_count == 1
+
+
+def test_bulk_query_selects_the_data_source_format_column():
+    """The whole mechanism rides on this column. If it ever drops out of the SELECT,
+    row[2] raises inside a broad except, every table silently falls back to Regular
+    and the connector issues a per-table DESCRIBE instead."""
+    assert "data_source_format" in DATABRICKS_GET_TABLE_TYPES
+
+
+def test_listing_a_schema_issues_exactly_one_information_schema_query():
+    """The real cold path: get_table_names fills the per-schema cache, and
+    query_table_names_and_types then reuses it instead of querying again."""
+    connection = Mock()
+    connection.info = {}
+    connection.execute.return_value = [("managed_delta", "MANAGED", "DELTA"), ("feed", "FOREIGN", None)]
+    dialect = SimpleNamespace()
+    fake_self = SimpleNamespace(
+        context=SimpleNamespace(get=lambda: SimpleNamespace(database="main_prod")),
+        connection=connection,
+        inspector=Mock(),
+    )
+    connection.dialect = dialect
+    # get_table_names is what warms the cache in production; drive it for real.
+    fake_self.inspector.get_table_names.side_effect = lambda schema, db_name: [
+        name
+        for name in ("managed_delta", "feed")
+        if get_table_type(dialect, connection, db_name, schema, name) != "FOREIGN"
+    ]
+
+    result = {t.name: t.type_ for t in DatabricksSource.query_table_names_and_types(fake_self, "sales")}
+
+    assert result == {"managed_delta": TableType.DeltaLake}
     assert connection.execute.call_count == 1
