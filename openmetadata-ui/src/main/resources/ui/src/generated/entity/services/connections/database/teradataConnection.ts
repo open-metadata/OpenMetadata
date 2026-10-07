@@ -57,6 +57,7 @@ export interface TeradataConnection {
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?:  FilterPattern;
+    supportsLineageExtraction?:     boolean;
     supportsMetadataExtraction?:    boolean;
     supportsProfiler?:              boolean;
     supportsQueryComment?:          boolean;
