@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.agent.AgentSparqlException;
 import org.openmetadata.service.security.AuthorizationException;
 
@@ -33,7 +34,6 @@ class AgentSparqlToolErrorsTest {
   private static final Set<AgentSparqlErrorCode> RETRYABLE =
       Set.of(
           AgentSparqlErrorCode.EXECUTION_CAPACITY_EXHAUSTED,
-          AgentSparqlErrorCode.PROJECTION_NOT_READY,
           AgentSparqlErrorCode.RDF_REPOSITORY_UNAVAILABLE);
 
   @Test
@@ -65,6 +65,34 @@ class AgentSparqlToolErrorsTest {
   }
 
   @Test
+  void aRebuildingProjectionIsRetryableAndNamesTheAdministratorStepIfItPersists() {
+    final RuntimeException mapped =
+        projectionNotReady(RdfProjectionState.REBUILDING, "RDF projection is not ready");
+
+    assertThat(mapped)
+        .isInstanceOf(RdfRetryLaterException.class)
+        .hasMessageStartingWith("PROJECTION_NOT_READY: RDF projection is rebuilding; retry later.")
+        .hasMessageContaining("an administrator needs to run RdfIndexApp");
+  }
+
+  @Test
+  void aProjectionWhoseStateCannotBeDeterminedIsRetryable() {
+    assertThat(projectionNotReady(null, "RDF projection state could not be determined"))
+        .isInstanceOf(RdfRetryLaterException.class)
+        .hasMessageContaining("state could not be determined; retry later")
+        .hasMessageContaining("an administrator needs to run RdfIndexApp");
+  }
+
+  @Test
+  void aDegradedProjectionIsNotRetryableAndSaysAnAdministratorMustRebuild() {
+    assertThat(projectionNotReady(RdfProjectionState.DEGRADED, "RDF projection is not ready"))
+        .isInstanceOf(RdfProjectionDegradedException.class)
+        .hasMessageStartingWith("PROJECTION_NOT_READY: RDF projection is degraded;")
+        .hasMessageContaining("an administrator must run a full RdfIndexApp rebuild")
+        .satisfies(mapped -> assertThat(mapped.getMessage()).doesNotContain("Retry"));
+  }
+
+  @Test
   void aTimeoutIsClassifiedAsATimeout() {
     assertThat(map(AgentSparqlErrorCode.EXECUTION_TIMEOUT))
         .isInstanceOf(RdfQueryTimeoutException.class);
@@ -75,6 +103,7 @@ class AgentSparqlToolErrorsTest {
     for (AgentSparqlErrorCode code : AgentSparqlErrorCode.values()) {
       if (!CLIENT_ERRORS.contains(code)
           && !RETRYABLE.contains(code)
+          && code != AgentSparqlErrorCode.PROJECTION_NOT_READY
           && code != AgentSparqlErrorCode.FEDERATION_NOT_ALLOWED
           && code != AgentSparqlErrorCode.EXECUTION_TIMEOUT) {
         final RuntimeException mapped = map(code);
@@ -83,6 +112,12 @@ class AgentSparqlToolErrorsTest {
         assertThat(mapped.getCause()).isInstanceOf(AgentSparqlException.class);
       }
     }
+  }
+
+  private static RuntimeException projectionNotReady(
+      final RdfProjectionState state, final String message) {
+    return AgentSparqlToolErrors.toToolException(
+        AgentSparqlException.projectionNotReady(state, message, null));
   }
 
   private static RuntimeException map(final AgentSparqlErrorCode code) {

@@ -237,6 +237,21 @@ class SparqlQueryToolAgentProfileTest {
   }
 
   @Test
+  void aDegradedProjectionIsNotRetryableAndTheGraphIsNotQueried() {
+    final RdfRepository repository = repositoryReturning(EMPTY_SELECT_RESULT);
+
+    final RdfProjectionDegradedException degraded =
+        assertThrows(
+            RdfProjectionDegradedException.class,
+            () ->
+                tool(repository, () -> RdfProjectionState.DEGRADED)
+                    .execute(grantedAuthorizer(), CALLER, Map.of("query", SELECT_ALL)));
+
+    assertTrue(degraded.getMessage().contains("an administrator must run a full RdfIndexApp"));
+    verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
+  }
+
+  @Test
   void aGrantedCallerOnADeploymentWithoutRdfGetsTheNotEnabledMessage() {
     assertThrows(
         RdfNotEnabledException.class,

@@ -94,17 +94,29 @@ public final class AgentSparqlService {
   }
 
   private void requireReadyProjection() {
-    final RdfProjectionState state = currentProjectionState();
+    requireReadyProjection(projectionStateSupplier);
+  }
+
+  /**
+   * The readiness rule for every non-admin graph read. Public so the MCP tools that do not run
+   * through {@link #execute} apply the same check and raise the same failure.
+   */
+  public static void requireReadyProjection(
+      final Supplier<RdfProjectionState> projectionStateSupplier) {
+    final RdfProjectionState state = currentProjectionState(projectionStateSupplier);
     if (state != RdfProjectionState.READY) {
-      throw projectionNotReady("RDF projection is not ready (" + state + ")", null);
+      throw AgentSparqlException.projectionNotReady(
+          state, "RDF projection is not ready (" + state + ")", null);
     }
   }
 
-  private RdfProjectionState currentProjectionState() {
+  private static RdfProjectionState currentProjectionState(
+      final Supplier<RdfProjectionState> projectionStateSupplier) {
     try {
       return projectionStateSupplier.get();
     } catch (RuntimeException exception) {
-      throw projectionNotReady("RDF projection state could not be determined", exception);
+      throw AgentSparqlException.projectionNotReady(
+          null, "RDF projection state could not be determined", exception);
     }
   }
 
@@ -120,10 +132,5 @@ public final class AgentSparqlService {
       throw new SparqlQueryLimits.OutputLimitExceededException();
     }
     return body;
-  }
-
-  private static AgentSparqlException projectionNotReady(
-      final String message, final Throwable cause) {
-    return new AgentSparqlException(AgentSparqlErrorCode.PROJECTION_NOT_READY, message, cause);
   }
 }

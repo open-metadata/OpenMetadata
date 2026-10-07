@@ -489,12 +489,19 @@ configuration.
   |---|---|
   | `QUERY_INVALID`, `QUERY_FORM_NOT_ALLOWED`, `GRAPH_SELECTION_NOT_ALLOWED`, `QUERY_LIMIT_EXCEEDED`, `RESULT_OUTPUT_LIMIT_EXCEEDED` | 400 |
   | `FEDERATION_NOT_ALLOWED` | 403, as on the REST endpoints and the admin path of this tool |
-  | `EXECUTION_CAPACITY_EXHAUSTED`, `PROJECTION_NOT_READY`, `RDF_REPOSITORY_UNAVAILABLE` | 429 with "Retry shortly" |
+  | `EXECUTION_CAPACITY_EXHAUSTED`, `RDF_REPOSITORY_UNAVAILABLE` | 429 with "Retry shortly" |
+  | `PROJECTION_NOT_READY` while rebuilding (also when no `RdfIndexApp` run is recorded yet, or the state cannot be determined) | 429: "RDF projection is rebuilding; retry later. If it persists, an administrator needs to run RdfIndexApp." |
+  | `PROJECTION_NOT_READY` while `DEGRADED` | 400, the deployment-state bucket that "RDF is not enabled" uses: "RDF projection is degraded; an administrator must run a full RdfIndexApp rebuild before graph queries can be answered." Not retryable. |
   | `EXECUTION_TIMEOUT` | 504, as for every other MCP timeout |
   | `RDF_BACKEND_FAILURE` | 500 |
 
+  `PROJECTION_NOT_READY` is split by state, which the exception carries (not only its message):
+  a rebuild finishes on its own, but `DEGRADED` is set by a failed live write or a failed or
+  stopped run and is cleared only by a completed full rebuild, which can be a long way off. A
+  "retry shortly" there would send an agent into a loop, so it is a 400 that names the
+  administrator step.
   The REST agent endpoint reports `PROJECTION_NOT_READY`, `RDF_REPOSITORY_UNAVAILABLE` and
-  `EXECUTION_TIMEOUT` as 503 and `RESULT_OUTPUT_LIMIT_EXCEEDED` as 413. MCP uses 429 for the
+  `EXECUTION_TIMEOUT` as 503 (unchanged) and `RESULT_OUTPUT_LIMIT_EXCEEDED` as 413. MCP uses 429 for the
   retryable states because a 5xx would append "retrying will not help", which is wrong for a
   rebuilding projection. The cost is that telemetry counts them under `RATE_LIMIT`; a distinct
   unavailable status and category would change the `McpToolCallUsage` schema and is left to a

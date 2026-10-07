@@ -197,6 +197,32 @@ class AgentSparqlServiceTest {
   }
 
   @Test
+  void aProjectionFailureCarriesTheStateTheResolverReported() {
+    final AgentSparqlException rebuilding =
+        assertThrows(
+            AgentSparqlException.class,
+            () -> AgentSparqlService.requireReadyProjection(() -> RdfProjectionState.REBUILDING));
+    final AgentSparqlException degraded =
+        assertThrows(
+            AgentSparqlException.class,
+            () -> AgentSparqlService.requireReadyProjection(() -> RdfProjectionState.DEGRADED));
+    final AgentSparqlException unknown =
+        assertThrows(
+            AgentSparqlException.class,
+            () ->
+                AgentSparqlService.requireReadyProjection(
+                    () -> {
+                      throw new IllegalStateException("run store unavailable");
+                    }));
+
+    assertEquals(RdfProjectionState.REBUILDING, rebuilding.getProjectionState());
+    assertEquals(RdfProjectionState.DEGRADED, degraded.getProjectionState());
+    assertNull(unknown.getProjectionState());
+    assertEquals(AgentSparqlErrorCode.PROJECTION_NOT_READY, unknown.getCode());
+    AgentSparqlService.requireReadyProjection(() -> RdfProjectionState.READY);
+  }
+
+  @Test
   void explicitLimitIsCompleteRelativeToTheSubmittedQuery() {
     returnRows(10);
 

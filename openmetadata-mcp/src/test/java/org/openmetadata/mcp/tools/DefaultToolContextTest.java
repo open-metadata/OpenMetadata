@@ -108,6 +108,16 @@ class DefaultToolContextTest {
   }
 
   @Test
+  void aDegradedProjectionIsADeploymentStateNotARetryableFault() {
+    final RdfProjectionDegradedException degraded =
+        new RdfProjectionDegradedException("PROJECTION_NOT_READY: degraded", null);
+
+    assertThat(DefaultToolContext.classifyException(degraded))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+    assertThat(DefaultToolContext.resolveStatusCode(degraded)).isEqualTo(400);
+  }
+
+  @Test
   void classifyGraphQueryTimeoutAsTimeout() {
     assertThat(
             DefaultToolContext.classifyException(
