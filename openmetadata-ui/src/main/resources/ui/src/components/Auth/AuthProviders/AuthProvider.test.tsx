@@ -786,6 +786,58 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
         expect(reload).not.toHaveBeenCalled();
         expect(mockInvokeLogout).toHaveBeenCalled();
       });
+
+      it('handles the next refresh failure after standing down for a logout', async () => {
+        // The recovery that stood down for the logout returned without
+        // navigating, and logout lands on /signin without a reload. If the
+        // in-progress flag survived, every later refresh failure in this tab
+        // would be dropped at the coalescing guard.
+        let resolveSibling!: (v: boolean) => void;
+        (waitForSiblingToken as jest.Mock)
+          .mockReturnValueOnce(
+            new Promise<boolean>((resolve) => {
+              resolveSibling = resolve;
+            })
+          )
+          .mockResolvedValueOnce(false);
+        let finishLogout!: () => void;
+        mockInvokeLogout.mockReturnValueOnce(
+          new Promise<void>((resolve) => {
+            finishLogout = resolve;
+          })
+        );
+        mockGetOidcToken.mockResolvedValue('stored-token');
+        const logout = await renderForLogout();
+        const onFailed = getOnHandler('refresh-failed');
+        await act(async () => {
+          onFailed?.(REAUTH_REQUIRED); // parks at waitForSiblingToken
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        await act(async () => {
+          logout();
+        });
+        await act(async () => {
+          resolveSibling(true);
+        });
+        await act(async () => {
+          finishLogout();
+        });
+        await waitFor(() =>
+          expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false)
+        );
+
+        expect(reload).not.toHaveBeenCalled();
+        expect(waitForSiblingToken).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+          onFailed?.(REAUTH_REQUIRED);
+        });
+
+        await waitFor(() =>
+          expect(waitForSiblingToken).toHaveBeenCalledTimes(2)
+        );
+      });
     });
   });
 

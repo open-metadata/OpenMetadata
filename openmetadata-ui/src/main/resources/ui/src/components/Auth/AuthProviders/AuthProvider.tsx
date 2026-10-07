@@ -371,6 +371,12 @@ export const AuthProvider = ({
   // would sign the user straight back in.
   const isSigningOutRef = useRef(false);
 
+  // Set while this tab is acting on a refresh failure. Requests still in
+  // flight fail their own refreshes meanwhile; the first failure decides for
+  // all of them, so a second redirect (or a sign-out racing the redirect)
+  // never starts.
+  const isHandlingRefreshFailureRef = useRef(false);
+
   // Handler to perform logout within application
   const onLogoutHandler = useCallback(async () => {
     isSigningOutRef.current = true;
@@ -436,6 +442,11 @@ export const AuthProvider = ({
       // `handleRefreshFailed` recovery would never see the logout finish and
       // the SPA would be left half-logged-out with the flag stuck armed.
       isSigningOutRef.current = false;
+      // A recovery that stood down for this logout returned without
+      // navigating, so nothing reset this. Logout lands on /signin without a
+      // reload; left set, it would swallow every refresh failure after the
+      // next sign-in in this tab.
+      isHandlingRefreshFailureRef.current = false;
     }
   }, []);
 
@@ -516,12 +527,6 @@ export const AuthProvider = ({
     }
   };
 
-  // Set while this tab is acting on a refresh failure. Requests still in
-  // flight fail their own refreshes meanwhile; the first failure decides for
-  // all of them, so a second redirect (or a sign-out racing the redirect)
-  // never starts.
-  const isHandlingRefreshFailureRef = useRef(false);
-
   const signOutAfterRefreshFailure = (showSessionExpired: boolean) => {
     isHandlingRefreshFailureRef.current = false;
     // A cold-load refresh that failed with ReauthRequiredError leaves
@@ -536,13 +541,6 @@ export const AuthProvider = ({
     if (!markReauthAttempt()) {
       signOutAfterRefreshFailure(true);
 
-      return;
-    }
-    // A Sign-out click that landed between the entry guard and here (e.g.
-    // during the `await getOidcToken()` further up, or this fn's own
-    // microtask yield) started a logout. Honour it rather than firing a
-    // top-level redirect that would abort the in-flight `/logout`.
-    if (isSigningOutRef.current) {
       return;
     }
     authCoordinator.pause();
@@ -574,9 +572,9 @@ export const AuthProvider = ({
 
   // Recover a refresh failure once a stored token is known to still exist.
   // Extracted from `handleRefreshFailed` to keep that entry under the
-  // `sonarjs/cyclomatic-complexity` limit: the sibling/reauth/sign-out
-  // decision tree lives here, including the post-`await` re-check of
-  // `isSigningOutRef` before the `reauth` branch's terminal redirect.
+  // `sonarjs/cyclomatic-complexity` limit. Nothing here awaits before the
+  // `reauth` redirect, so the sign-out check after `await getOidcToken()` in
+  // `handleRefreshFailed` still holds; only the sibling wait needs its own.
   const recoverRefreshFailure = async (
     storedToken: string,
     payload: RefreshFailedPayload,
@@ -595,14 +593,6 @@ export const AuthProvider = ({
     if (decision === 'wait-for-sibling') {
       await waitForSiblingReauth(staleToken);
     } else if (decision === 'reauth' && isSilentReauthRecoverable(payload)) {
-      // `decideReauth()`/`isSilentReauthRecoverable()` are synchronous, but a
-      // Sign-out click that landed during the `await getOidcToken()` window
-      // is only observable now — re-check before the top-level redirect.
-      if (isSigningOutRef.current) {
-        isHandlingRefreshFailureRef.current = false;
-
-        return;
-      }
       await startSilentReauth(invokeSilentReauth);
     } else {
       signOutAfterRefreshFailure(true);
