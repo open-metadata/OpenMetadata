@@ -442,7 +442,7 @@ def test_unmapped_sample_fields_report_field_and_unsampled_column(workflow_confi
     warnings = _processor_warnings(caplog)
     assert len(warnings) == 1
     assert "['customer_email']" in warnings[0]
-    assert "Columns left without sample data: ['email']" in warnings[0]
+    assert "not covered by mapped sample fields (skipped, not classified): ['email']" in warnings[0]
     assert "example.com" not in caplog.text
 
 
@@ -465,7 +465,7 @@ def test_unmapped_nested_sample_field_reports_unsampled_leaves(workflow_config, 
     warnings = _processor_warnings(caplog)
     assert len(warnings) == 1
     assert "['contact_mail']" in warnings[0]
-    assert "Columns left without sample data: ['contact.email']" in warnings[0]
+    assert "not covered by mapped sample fields (skipped, not classified): ['contact.email']" in warnings[0]
 
 
 @pytest.mark.parametrize(

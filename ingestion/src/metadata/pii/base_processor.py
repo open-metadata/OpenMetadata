@@ -162,8 +162,11 @@ class AutoClassificationProcessor(Processor, ABC):
         """Warn when sampled fields cannot be matched to metadata columns.
 
         A custom sample query can return aliased fields. Their values never reach a
-        recognizer, and the columns they were meant for are classified without a sample.
-        Field and column names are logged, sampled values are not.
+        recognizer. While the sample has fields, only columns mapped to a sample field
+        are classified, and every other column is skipped, including classification by its
+        name or metadata. Columns are classified without sample data only when the
+        sample has no fields at all. Field and column names are logged, sampled values
+        are not.
         """
         if not sampled_columns:
             return
@@ -185,7 +188,7 @@ class AutoClassificationProcessor(Processor, ABC):
         ]
         logger.warning(
             "Auto Classification for [%s]: sampled fields %s do not match any column and were not analyzed."
-            " Columns left without sample data: %s",
+            " Metadata columns not covered by mapped sample fields (skipped, not classified): %s",
             entity_fqn,
             unmapped_fields,
             unsampled_columns,
