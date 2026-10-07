@@ -78,6 +78,7 @@ from metadata.ingestion.source.database.glue.models import (
     GlueTable,
     StorageDetails,
     TablePage,
+    TableParameters,
 )
 from metadata.ingestion.source.database.glue.utils import get_schema_definition
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
@@ -328,6 +329,11 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
                         # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
                         # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
                         table_type = TableType.Iceberg
+                    elif self._is_delta_table(parameters):
+                        # Kept after the Iceberg check so a UniForm table carrying both markers
+                        # stays Iceberg. Athena DDL writes table_type=DELTA, Spark and the crawler
+                        # write spark.sql.sources.provider=delta; producers disagree on case.
+                        table_type = TableType.DeltaLake
                     elif table.TableType == "EXTERNAL_TABLE":
                         table_type = TableType.External
                     elif table.TableType == "VIRTUAL_VIEW":
@@ -481,6 +487,20 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
             yield self._get_column_object(column)
         for column in table.PartitionKeys or []:
             yield self._get_column_object(column)
+
+    @staticmethod
+    def _is_delta_table(parameters: TableParameters | None) -> bool:
+        """A Glue Delta table is marked by table_type=DELTA (Athena DDL) or
+        spark.sql.sources.provider=delta (Spark/crawler). Producers disagree on case, so both
+        keys are compared case-insensitively. The provider key is dotted, so it is only reachable
+        through the extra-allowed dump, not attribute access."""
+        if not parameters:
+            return False
+        values = parameters.model_dump()
+        return any(
+            isinstance(values.get(key), str) and values[key].lower() == "delta"
+            for key in ("table_type", "spark.sql.sources.provider")
+        )
 
     @classmethod
     def get_format(cls, storage: StorageDetails) -> FileFormat | None:

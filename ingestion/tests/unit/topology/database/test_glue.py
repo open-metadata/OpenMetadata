@@ -1620,3 +1620,90 @@ class TestGlueExternalTableContainerMatch:
         table_request = self._ingest(glue_source, "s3a://bucket/events/")
 
         assert table_request.locationPath == "s3a://bucket/events/"
+
+
+class TestGlueDeltaDetection:
+    """Delta Lake tables carry a marker in Glue Parameters: table_type=DELTA (Athena DDL) or
+    spark.sql.sources.provider=delta (Spark/crawler). Producers disagree on case, so both keys are
+    compared case-insensitively. The Iceberg branch is checked first, so a table carrying both
+    markers stays Iceberg.
+
+    These run the real detection through GlueSource.get_tables_name_and_type, so they exercise
+    production code rather than reimplementing the condition on mocks. The Parameters fed in are the
+    exact shapes seeded into the moto Glue emulator for the live run (see
+    docs/delta-lake-detection-evidence/live-glue-delta-detection.md)."""
+
+    @staticmethod
+    def _table(params: dict | None, table_type: str = "EXTERNAL_TABLE", **extra) -> GlueTable:
+        return GlueTable(
+            Name="probe",
+            TableType=table_type,
+            Parameters=TableParameters(**params) if params is not None else None,
+            StorageDescriptor=StorageDetails(Columns=[GlueColumn(Name="id", Type="int")]),
+            **extra,
+        )
+
+    @staticmethod
+    def _detect(source, table: GlueTable) -> TableType:
+        source._get_glue_tables = lambda: [TablePage(TableList=[table])]
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            ((_, table_type),) = list(source.get_tables_name_and_type())
+        return table_type
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {"table_type": "DELTA"},  # (a) Athena DDL, upper case
+            {"table_type": "delta"},  # (b) lower case
+            {"spark.sql.sources.provider": "delta"},  # (c) Spark/crawler, lower case
+            {"spark.sql.sources.provider": "DELTA"},  # (d) upper case
+        ],
+        ids=["table_type_upper", "table_type_lower", "provider_lower", "provider_upper"],
+    )
+    def test_delta_marker_types_the_table_deltalake(self, glue_source, params):
+        assert self._detect(glue_source, self._table(params)) is TableType.DeltaLake
+
+    def test_spark_registered_placeholder_is_deltalake(self, glue_source):
+        """(e) A Spark-registered Delta table carries the placeholder schema Glue stores: a single
+        col array<string> and empty PartitionKeys. Detection is right; the column list is not."""
+        table = GlueTable(
+            Name="probe",
+            TableType="EXTERNAL_TABLE",
+            Parameters=TableParameters(
+                **{"spark.sql.sources.provider": "delta", "spark.sql.sources.schema.numParts": "1"}
+            ),
+            StorageDescriptor=StorageDetails(Columns=[GlueColumn(Name="col", Type="array<string>")]),
+            PartitionKeys=[],
+        )
+
+        assert self._detect(glue_source, table) is TableType.DeltaLake
+
+    def test_plain_external_table_stays_external(self, glue_source):
+        """(f) No Delta or Iceberg marker: the Glue TableType decides, as before."""
+        assert self._detect(glue_source, self._table({"EXTERNAL": "TRUE"})) is TableType.External
+
+    def test_iceberg_table_stays_iceberg(self, glue_source):
+        """(g) The Iceberg branch is untouched and still wins for a table_type=ICEBERG table."""
+        assert self._detect(glue_source, self._table({"table_type": "ICEBERG"})) is TableType.Iceberg
+
+    def test_iceberg_view_stays_iceberg(self, glue_source):
+        """(h) An Iceberg VIRTUAL_VIEW keeps its Iceberg type; the Delta branch does not touch it."""
+        table = self._table(
+            {"table_type": "ICEBERG"},
+            table_type="VIRTUAL_VIEW",
+            ViewOriginalText="SELECT id FROM events",
+        )
+
+        assert self._detect(glue_source, table) is TableType.Iceberg
+
+    def test_iceberg_wins_when_both_markers_present(self, glue_source):
+        """(i) A UniForm table can carry table_type=ICEBERG and spark.sql.sources.provider=delta.
+        The Iceberg check runs first, so precedence stays with Iceberg."""
+        table = self._table({"table_type": "ICEBERG", "spark.sql.sources.provider": "delta"})
+
+        assert self._detect(glue_source, table) is TableType.Iceberg
+
+    def test_no_parameters_stays_regular_or_external(self, glue_source):
+        """A table with no Parameters must not trip the Delta branch."""
+        assert self._detect(glue_source, self._table(None)) is TableType.External
