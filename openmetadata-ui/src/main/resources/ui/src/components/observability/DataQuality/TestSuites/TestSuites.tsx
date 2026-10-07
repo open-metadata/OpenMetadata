@@ -120,11 +120,13 @@ const TestSuites = () => {
           popoverProps={{ placement: 'bottomLeft' }}
           onUpdate={handleOwnerSelect}>
           <button
-            className={chipTriggerClassName}
+            className={chipTriggerClassName(Boolean(ownerFilterValue))}
             data-testid="owner-select-filter"
             type="button">
             {ownerFilterValue?.label ?? t('label.owner')}
-            <ChevronDown className={chipChevronClassName} />
+            <ChevronDown
+              className={chipChevronClassName(Boolean(ownerFilterValue))}
+            />
           </button>
         </UserTeamSelectableList>
       </Box>

@@ -12,6 +12,7 @@ import org.openmetadata.service.util.DIContainer;
 
 @Slf4j
 public class AlertPublisher extends AbstractEventConsumer {
+
   public AlertPublisher(DIContainer di) {
     super(di);
   }

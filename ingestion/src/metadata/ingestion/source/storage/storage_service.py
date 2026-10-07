@@ -13,16 +13,20 @@ Base class for ingesting Object Storage services
 """
 
 import json
+import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from contextlib import closing
 from typing import Annotated, Any, cast
 
 from pydantic import Field
 
+from metadata.domain.tags import TagCanonicalizer, TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column as TableColumn
 from metadata.generated.schema.entity.data.table import ColumnName
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageService,
@@ -41,6 +45,7 @@ from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
@@ -135,15 +140,15 @@ class StorageServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=OMetaTagAndClassification,
-                context="tags",
+                context=None,
                 processor="yield_tag_details",
                 nullable=True,
-                store_all_in_context=True,
+                store_all_in_context=False,
             ),
             NodeStage(
                 type_=Container,
                 context="container",
-                processor="yield_create_container_requests",
+                processor="yield_container_details",
                 consumer=["objectstore_service"],
                 nullable=True,
             ),
@@ -168,6 +173,24 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     container_source_state: set = set()  # noqa: RUF012
 
     global_manifest: ManifestMetadataConfig | None
+
+    @property
+    def tags_registry(self) -> TagRegistry:
+        """Per-source registry for tag definitions and container labels."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tags_registry")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tags_registry", TagRegistry())
+
+    @property
+    def tag_canonicalizer(self) -> TagCanonicalizer:
+        """Per-source canonicalizer for tag and classification names."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tag_canonicalizer")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tag_canonicalizer", TagCanonicalizer(metadata=self.metadata))
 
     @retry_with_docker_host()
     def __init__(
@@ -323,11 +346,65 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     def yield_tag_details(self, container_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each container
-        """
-        if self.source_config.includeTags:
-            yield from self.yield_container_tags(container_details) or []
+        """Publish tag definitions before creating the container."""
+        completed = False
+        try:
+            if self.source_config.includeTags:
+                yield from self.yield_container_tags(container_details) or []
+                with closing(self.tags_registry.drain()) as definitions:
+                    for record in definitions:
+                        yield Either(right=record, left=None)
+            completed = True
+        finally:
+            if not completed and container_details.container_fqn:
+                self.tags_registry.clear_scope(container_details.container_fqn)
+
+    def register_tag(
+        self, *, entity_fqn: str, definition: TagDefinition
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Resolve and attach a definition, yielding individual registration failures."""
+        if not definition.tag_name or not definition.tag_name.strip():
+            return
+        if not (
+            fqn.is_valid_entity_name(definition.classification_name) and fqn.is_valid_entity_name(definition.tag_name)
+        ):
+            logger.warning(
+                "%s: Skipped invalid tag %r in classification %r",
+                entity_fqn,
+                definition.tag_name,
+                definition.classification_name,
+            )
+            return
+        try:
+            tag = self.tag_canonicalizer.resolve(
+                classification_name=definition.classification_name,
+                tag_name=definition.tag_name,
+                classification_description=definition.classification_description,
+                tag_description=definition.tag_description,
+            )
+            self.tags_registry.define(tag)
+            self.tags_registry.attach(entity_fqn=entity_fqn, tag=tag)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Failed to register tag [{definition.tag_name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+    def get_tag_by_fqn(self, entity_fqn: str | None) -> list[TagLabel] | None:
+        """Return the labels attached to the current container."""
+        return (self.tags_registry.labels_for(entity_fqn) or None) if entity_fqn else None
+
+    def yield_container_details(self, container_details: Any) -> Iterable[Either[CreateContainerRequest]]:
+        """Create the container and release its tag attachments when consumed."""
+        try:
+            yield from self.yield_create_container_requests(container_details)
+        finally:
+            if container_details.container_fqn:
+                self.tags_registry.clear_scope(container_details.container_fqn)
 
     def register_record(self, container_request: CreateContainerRequest) -> None:
         """

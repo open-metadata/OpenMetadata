@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -35,7 +37,7 @@ import { ConfigurationParameterRow } from './TestCaseConfigurationCard/TestCaseC
 import { TestCaseSidePanelProps } from './TestCaseResultTab.interface';
 import {
   canEditTestCaseParameters,
-  getSidePanelColSpanClass,
+  getResultTabGridClass,
   hasAdditionalComponents,
   resolveIsSidePanelVisible,
   shouldRenderTestSummary,
@@ -69,7 +71,7 @@ function TestCaseSidePanel({
 }: Readonly<TestCaseSidePanelProps>) {
   return (
     <div
-      className="transition-all-200ms tw:col-span-4"
+      className="transition-all-200ms tw:min-w-0"
       data-testid="test-case-rail">
       <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
         <div className="tw:w-full">
@@ -246,30 +248,33 @@ const TestCaseResultTab = ({
   ]);
 
   return (
-    <div
-      className="p-md test-case-result-tab tw:grid tw:w-full tw:grid-cols-12 tw:gap-2.5"
-      data-testid="test-case-result-tab-container">
+    <div className="tw:@container">
       <div
-        className={`transition-all-200ms ${getSidePanelColSpanClass(
-          isSidePanelVisible
-        )}`}>
-        <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+        className={classNames(
+          'p-md test-case-result-tab tw:grid tw:w-full tw:gap-2.5',
+          getResultTabGridClass(isSidePanelVisible)
+        )}
+        data-testid="test-case-result-tab-container">
+        <Box
+          className="transition-all-200ms tw:min-w-0 tw:gap-2.5"
+          direction="col">
           {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
             AlertComponent && (
-              <div className="tw:w-full">
+              <Box direction="col">
                 <AlertComponent />
-              </div>
+              </Box>
             )}
           {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
             // AI mode sets the result history straight on the page, as the mock
             // does: the tiles carry the only borders in that section.
-            <div
-              className={
-                isAiMode ? 'tw:w-full' : 'test-case-result-tab-graph tw:w-full'
-              }
-              data-testid="test-case-result-tab-graph">
+            <Box
+              className={classNames({
+                'test-case-result-tab-graph': !isAiMode,
+              })}
+              data-testid="test-case-result-tab-graph"
+              direction="col">
               <TestSummary data={testCaseData} />
-            </div>
+            </Box>
           )}
 
           {hasAdditionalComponents(additionalComponents) &&
@@ -289,37 +294,39 @@ const TestCaseResultTab = ({
                 onUpdate={setTestCase}
               />
             )}
-        </div>
+        </Box>
+        {isSidePanelVisible && (
+          <TestCaseSidePanel
+            description={description}
+            descriptionChangeSummaryEntry={descriptionChangeSummaryEntry}
+            handleDataProductsSave={handleDataProductsSave}
+            handleDescriptionChange={handleDescriptionChange}
+            handleTagSelection={handleTagSelection}
+            hasEditDescriptionPermission={hasEditDescriptionPermission}
+            hasEditGlossaryTermsPermission={hasEditGlossaryTermsPermission}
+            hasEditPermission={hasEditPermission}
+            hasEditTagsPermission={hasEditTagsPermission}
+            isRulesLoaded={isRulesLoaded}
+            isVersionPage={isVersionPage}
+            parameterRows={parameterRows}
+            requireDomainForDataProduct={
+              entityRules.requireDomainForDataProduct
+            }
+            showEditParameterButton={shouldShowEditParameterButton(
+              hasEditPermission,
+              testCaseData,
+              showComputeRowCount,
+              Boolean(testCaseData?.dataQualityDimension)
+            )}
+            testCaseData={testCaseData}
+            testDefinition={testDefinition}
+            updatedTags={updatedTags}
+            versionParameterDiff={versionDiff?.sqlDiff}
+            withSqlParams={withSqlParams}
+            onEditParameter={() => setIsParameterEdit(true)}
+          />
+        )}
       </div>
-      {isSidePanelVisible && (
-        <TestCaseSidePanel
-          description={description}
-          descriptionChangeSummaryEntry={descriptionChangeSummaryEntry}
-          handleDataProductsSave={handleDataProductsSave}
-          handleDescriptionChange={handleDescriptionChange}
-          handleTagSelection={handleTagSelection}
-          hasEditDescriptionPermission={hasEditDescriptionPermission}
-          hasEditGlossaryTermsPermission={hasEditGlossaryTermsPermission}
-          hasEditPermission={hasEditPermission}
-          hasEditTagsPermission={hasEditTagsPermission}
-          isRulesLoaded={isRulesLoaded}
-          isVersionPage={isVersionPage}
-          parameterRows={parameterRows}
-          requireDomainForDataProduct={entityRules.requireDomainForDataProduct}
-          showEditParameterButton={shouldShowEditParameterButton(
-            hasEditPermission,
-            testCaseData,
-            showComputeRowCount,
-            Boolean(testCaseData?.dataQualityDimension)
-          )}
-          testCaseData={testCaseData}
-          testDefinition={testDefinition}
-          updatedTags={updatedTags}
-          versionParameterDiff={versionDiff?.sqlDiff}
-          withSqlParams={withSqlParams}
-          onEditParameter={() => setIsParameterEdit(true)}
-        />
-      )}
     </div>
   );
 };

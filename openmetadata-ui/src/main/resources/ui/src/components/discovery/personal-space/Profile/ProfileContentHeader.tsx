@@ -102,6 +102,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
             {titleInput ?? (
               <Typography
                 className="tw:text-primary-900"
+                data-testid="profile-content-header-title"
                 size="text-lg"
                 weight="bold">
                 {title}

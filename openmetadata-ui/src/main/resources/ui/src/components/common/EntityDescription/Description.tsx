@@ -172,15 +172,17 @@ const Description = ({
     handleRequestDescription,
   ]);
 
+  const editDescriptionLabel = t('label.edit-entity', {
+    entity: t('label.description'),
+  });
+
   const actionButtons = useMemo(
     () => (
       <div className="tw:flex tw:items-center tw:gap-2">
         {!isVersionView && !isReadOnly && hasEditAccess && (
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: t('label.description'),
-            })}>
+          <Tooltip title={editDescriptionLabel}>
             <Button
+              aria-label={editDescriptionLabel}
               color="secondary"
               data-testid="edit-description"
               // edit-new.svg, not untitled's Edit02: every other edit affordance on an entity
@@ -210,6 +212,7 @@ const Description = ({
       </div>
     ),
     [
+      editDescriptionLabel,
       isReadOnly,
       isVersionView,
       hasEditAccess,

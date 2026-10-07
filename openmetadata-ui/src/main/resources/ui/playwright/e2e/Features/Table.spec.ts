@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { TaskClass } from '../../support/entity/TaskClass';
@@ -452,7 +453,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     const glossaryTagsCell = page.locator(
       `${glossaryRowSelector} [data-testid*="glossary-tags"]`
     );
-    await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
+    await expect(glossaryTagsCell).toBeVisible({ timeout: ACTION_TIMEOUT });
 
     // Check if add button exists and is visible
     const rowSelector =
@@ -480,7 +481,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         response.ok()
     );
     await waitForAllLoadersToDisappear(page);
-    await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
+    await expect(glossaryTagsCell).toBeVisible({ timeout: ACTION_TIMEOUT });
 
     // Scoped to the cell: the select keeps its overlay mounted after closing, so the
     // matching dropdown option carries the same testid and an unscoped locator is
