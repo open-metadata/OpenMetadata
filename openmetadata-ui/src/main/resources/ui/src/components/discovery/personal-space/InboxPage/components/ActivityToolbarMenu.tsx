@@ -18,7 +18,9 @@ import { FC, useState } from 'react';
 export interface ActivityToolbarMenuOption {
   value: string;
   label: string;
-  icon: FC<{ className?: string }>;
+  icon?: FC<{ className?: string }>;
+  // Shown at the row's end, e.g. how many items the option holds.
+  count?: string;
 }
 
 export interface ActivityToolbarMenuProps {
@@ -30,13 +32,13 @@ export interface ActivityToolbarMenuProps {
   options: ActivityToolbarMenuOption[];
   value: string;
   onChange: (value: string) => void;
+  // A quiet trigger for a control inside a list's header rather than a toolbar.
+  color?: 'secondary' | 'tertiary';
+  size?: 'sm' | 'md';
   'data-testid'?: string;
 }
 
-/**
- * A single-choice toolbar menu as the design draws it: a heading, an icon per
- * option and a check on the chosen one, rather than a tinted row.
- */
+/** A single-choice toolbar menu: a heading over one row per option. */
 const ActivityToolbarMenu = ({
   title,
   triggerLabel,
@@ -44,6 +46,10 @@ const ActivityToolbarMenu = ({
   options,
   value,
   onChange,
+  color = 'secondary',
+  // The size FilterSelect gives its bordered trigger, so the Type filter
+  // beside these menus stands as tall as they do.
+  size = 'md',
   'data-testid': testId,
 }: ActivityToolbarMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -52,13 +58,11 @@ const ActivityToolbarMenu = ({
   return (
     <Dropdown.Root onOpenChange={setIsOpen}>
       <Button
-        color="secondary"
+        color={color}
         data-testid={testId}
         iconLeading={triggerIcon}
         iconTrailing={isOpen ? ChevronUp : ChevronDown}
-        // The size FilterSelect gives its bordered trigger, so the Type filter
-        // beside these menus stands as tall as they do.
-        size="md">
+        size={size}>
         {triggerLabel ?? selected?.label}
       </Button>
       <Dropdown.Popover className="tw:w-56" placement="bottom end">
@@ -73,6 +77,7 @@ const ActivityToolbarMenu = ({
             </Dropdown.SectionHeader>
             {options.map((option) => (
               <Dropdown.Item
+                addon={option.count}
                 icon={option.icon}
                 id={option.value}
                 key={option.value}
