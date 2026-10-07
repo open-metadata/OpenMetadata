@@ -15,6 +15,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { useLineageStore } from '../../hooks/useLineageStore';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../Explore/Explore.mock';
+import EntityLineageCanvas from './EntityLineageCanvas/EntityLineageCanvas';
 import Lineage from './Lineage.component';
 import LineageMap from './LineageMap/LineageMap.component';
 
@@ -27,6 +28,11 @@ jest.mock('../../hooks/useLineageStore', () => ({
 jest.mock('../Entity/EntityLineage/CustomControls.component', () => ({
   __esModule: true,
   default: jest.fn(() => <div data-testid="custom-controls" />),
+}));
+
+jest.mock('./EntityLineageCanvas/EntityLineageCanvas', () => ({
+  __esModule: true,
+  default: jest.fn(() => <div data-testid="entity-lineage-canvas" />),
 }));
 
 jest.mock('./LineageMap/LineageMap.component', () => ({
@@ -47,7 +53,7 @@ describe('Lineage Component', () => {
     (useLineageStore as unknown as jest.Mock).mockReturnValue({});
   });
 
-  it('renders the scene-backed map in the lineage container', () => {
+  it('renders the classic lineage canvas on an asset page', () => {
     render(<Lineage {...defaultProps} />);
 
     expect(screen.getByTestId('lineage-details')).toBeInTheDocument();
@@ -56,21 +62,22 @@ describe('Lineage Component', () => {
       'lineage-container'
     );
     expect(screen.getByTestId('custom-controls')).toBeInTheDocument();
-    expect(screen.getByTestId('lineage-map')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-lineage-canvas')).toBeInTheDocument();
+    expect(screen.queryByTestId('lineage-map')).not.toBeInTheDocument();
   });
 
-  it('passes entity context to the scene map', () => {
+  it('passes entity context to the asset canvas', () => {
     render(<Lineage {...defaultProps} />);
 
-    const lineageMapMock = LineageMap as jest.MockedFunction<typeof LineageMap>;
-    const mapProps = lineageMapMock.mock.calls[0][0];
+    const canvasMock = EntityLineageCanvas as jest.MockedFunction<
+      typeof EntityLineageCanvas
+    >;
 
-    expect(mapProps).toEqual(
+    expect(canvasMock.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         entity: mockEntity,
         entityType: EntityType.TABLE,
         hasEditAccess: true,
-        isPlatformLineage: undefined,
       })
     );
   });
@@ -86,12 +93,20 @@ describe('Lineage Component', () => {
 
     expect(screen.getByTestId('platform-header')).toBeInTheDocument();
     expect(screen.queryByTestId('custom-controls')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lineage-map')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('entity-lineage-canvas')
+    ).not.toBeInTheDocument();
+    expect(LineageMap).toHaveBeenCalledWith(
+      expect.objectContaining({ isPlatformLineage: true }),
+      expect.anything()
+    );
   });
 
-  it('keeps the scene map mounted when controls are hidden', () => {
+  it('keeps the canvas mounted when controls are hidden', () => {
     render(<Lineage {...defaultProps} showControls={false} />);
 
     expect(screen.queryByTestId('custom-controls')).not.toBeInTheDocument();
-    expect(screen.getByTestId('lineage-map')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-lineage-canvas')).toBeInTheDocument();
   });
 });

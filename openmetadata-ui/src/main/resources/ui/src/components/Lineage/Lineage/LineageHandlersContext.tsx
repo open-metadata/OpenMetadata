@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 import { createContext, useContext } from 'react';
-import type { Connection, Edge, Node, NodeProps } from 'reactflow';
+import type {
+  Connection,
+  Edge,
+  Node,
+  NodeProps,
+  OnNodesChange,
+  ReactFlowInstance,
+} from 'reactflow';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
@@ -46,6 +53,9 @@ export type LineageHandlersValue = {
     exportTypes?: ExportTypes[],
     onExportCallback?: (_: string) => Promise<CSVExportResponse>
   ) => void;
+  onInitReactFlow: (instance: ReactFlowInstance) => void;
+  onNodesChange: OnNodesChange;
+  refetchLineage: () => void;
 };
 
 const noop = () => undefined;
@@ -61,6 +71,9 @@ export const LineageHandlersContext = createContext<LineageHandlersValue>({
   updateEntityData: noop,
   handleEntityUpdate: noop,
   onExportClick: noop,
+  onInitReactFlow: noop,
+  onNodesChange: noop,
+  refetchLineage: noop,
 });
 
 export const useLineageHandlers = () => useContext(LineageHandlersContext);

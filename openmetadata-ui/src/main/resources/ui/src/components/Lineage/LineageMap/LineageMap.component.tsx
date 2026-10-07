@@ -92,15 +92,13 @@ import {
   getLineageEdgeDetails,
   getLineageScene,
 } from '../../../rest/lineageAPI';
-import {
-  addLineageHandler,
-  removeLineageHandler,
-} from '../../../utils/EntityLineagePureUtils';
+import { removeLineageHandler } from '../../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import {
   onColumnEdgeRemove,
   onEdgeClick,
+  saveLineageEdge,
 } from '../../../utils/Lineage/handlers/edgeMutations';
 import { onPaneClick } from '../../../utils/Lineage/handlers/nodeMutations';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
@@ -144,7 +142,6 @@ import {
   type LineageSceneRequest,
 } from './LineageMap.utils';
 import {
-  buildLineagePayload,
   findDeletableSelectedNode,
   getEndpointHandle,
   getEndpointNodeId,
@@ -458,18 +455,6 @@ const getHydratedSceneEdge = async (
   const details = await getLineageEdgeDetails(fromEntity.id, toEntity.id);
 
   return hydrateSelectedEdge(edge, sceneEdge, nodeById, details);
-};
-
-const getExistingEdgeDetails = async (fromId: string, toId: string) => {
-  try {
-    return await getLineageEdgeDetails(fromId, toId);
-  } catch (error) {
-    if ((error as AxiosError).response?.status !== 404) {
-      throw error;
-    }
-
-    return undefined;
-  }
 };
 
 const getSemanticZoomBand = (
@@ -1940,20 +1925,9 @@ const LineageMapCanvas = ({
     ): Promise<boolean> => {
       setIsCreatingEdge(true);
       try {
-        const existingDetails = await getExistingEdgeDetails(
-          fromEntity.id,
-          toEntity.id
-        );
-        const payload = buildLineagePayload(
-          fromEntity,
-          toEntity,
-          existingDetails,
-          columnPair
-        );
-        if (!payload) {
+        if (!(await saveLineageEdge(fromEntity, toEntity, columnPair))) {
           return false;
         }
-        await addLineageHandler(payload);
         setSelectedEdge(undefined);
         setSelectedNode(undefined);
         await refetchCurrentScene((response) =>
@@ -2203,12 +2177,8 @@ const LineageMapCanvas = ({
       </Panel>
       <Panel position="bottom-left">
         <LineageLayers
-          entity={entity}
-          entityType={entityType}
-          sceneBand={scene.band}
           sceneLens={scene.lens}
           sceneLevelLabelKey={getSceneLevelLabelKey(scene)}
-          onSceneBandChange={handleBandChange}
           onSceneLensChange={handleLensChange}
         />
       </Panel>

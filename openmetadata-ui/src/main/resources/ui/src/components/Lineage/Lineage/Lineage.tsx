@@ -88,7 +88,6 @@ import {
   exportLineageAsync,
   getDataQualityLineage,
   getLineageDataByFQN,
-  getPlatformLineage,
   updateLineageEdge,
 } from '../../../rest/lineageAPI';
 import { drawEdgesForExport } from '../../../utils/CanvasUtils';
@@ -114,7 +113,6 @@ import {
 import {
   createNodes,
   getConnectedNodesEdges,
-  getEntityTypeFromPlatformView,
   getUpstreamDownstreamNodesEdges,
   removeUnconnectedNodes,
 } from '../../../utils/EntityLineageNodeUtils';
@@ -476,7 +474,8 @@ export const Lineage = ({
   const { preferences } = useCurrentUserPreferences();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
   const isLineageSettingsLoaded = !isUndefined(defaultLineageConfig);
-  const [reactFlowInstance] = useState<ReactFlowInstance>();
+  const [reactFlowInstance, setReactFlowInstance] =
+    useState<ReactFlowInstance>();
   const reactFlowInstanceRef = useRef<ReactFlowInstance>();
   const lastFetchedLineageKeyRef = useRef<string>();
 
@@ -539,6 +538,7 @@ export const Lineage = ({
     removeEdgesBySourceTarget,
     removeEdgesByDocId,
     updateEdge,
+    onNodesChange,
   } = useMapBasedNodesEdges([], []);
   const [loading, setLoading] = useState(true);
   const [init, setInit] = useState(false);
@@ -881,46 +881,6 @@ export const Lineage = ({
       }
     },
     [redrawLineage]
-  );
-
-  const fetchPlatformLineage = useCallback(
-    async (view: string, config?: LineageConfig) => {
-      try {
-        setLoading(true);
-        setInit(false);
-        const res = await getPlatformLineage({
-          config,
-          view,
-        });
-
-        setLineageData(res);
-
-        const { nodes, edges, entity } = parseLineageData(
-          res,
-          '',
-          entityFqn,
-          config?.pipelineViewMode
-        );
-        const updatedEntityLineage = {
-          nodes,
-          edges,
-          entity,
-        };
-
-        setEntityLineage(updatedEntityLineage);
-      } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.lineage-data-lowercase'),
-          })
-        );
-      } finally {
-        setInit(true);
-        setLoading(false);
-      }
-    },
-    [entityFqn, t]
   );
 
   const fetchLineageData = useCallback(
@@ -2032,7 +1992,9 @@ export const Lineage = ({
   }, [isColumnLevelLineage]);
 
   const onPlatformViewUpdate = useCallback(() => {
-    if (lineageMode === 'impact_analysis') {
+    // The main Lineage page is drawn from the scene API by LineageMap; this
+    // provider only loads the classic lineage graph for asset pages.
+    if (lineageMode === 'impact_analysis' || isPlatformLineage) {
       return;
     }
 
@@ -2070,15 +2032,6 @@ export const Lineage = ({
           lineageConfig
         );
       }
-
-      return;
-    }
-
-    if (isPlatformLineage) {
-      fetchPlatformLineage(
-        getEntityTypeFromPlatformView(platformView),
-        lineageConfig
-      );
     }
   }, [
     lineageMode,
@@ -2091,7 +2044,6 @@ export const Lineage = ({
     lineageConfig,
     queryFilter,
     timeFilter,
-    fetchPlatformLineage,
   ]);
 
   useEffect(() => {
@@ -2236,6 +2188,17 @@ export const Lineage = ({
     });
   }, [dataQualityLineage, dqHighlightedEdges]);
 
+  const onInitReactFlow = useCallback((instance: ReactFlowInstance) => {
+    reactFlowInstanceRef.current = instance;
+    setReactFlowInstance(instance);
+    useLineageStore.getState().setReactFlowInstance(instance);
+  }, []);
+
+  const refetchLineage = useCallback(() => {
+    lastFetchedLineageKeyRef.current = undefined;
+    onPlatformViewUpdateRef.current();
+  }, []);
+
   const handlers = useMemo<LineageHandlersValue>(
     () => ({
       loadChildNodesHandler,
@@ -2247,6 +2210,9 @@ export const Lineage = ({
       updateEntityData,
       handleEntityUpdate,
       onExportClick,
+      onInitReactFlow,
+      onNodesChange,
+      refetchLineage,
     }),
     [
       loadChildNodesHandler,
@@ -2258,6 +2224,9 @@ export const Lineage = ({
       updateEntityData,
       handleEntityUpdate,
       onExportClick,
+      onInitReactFlow,
+      onNodesChange,
+      refetchLineage,
     ]
   );
 

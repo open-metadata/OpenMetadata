@@ -13,6 +13,7 @@
 
 import { Card } from '@openmetadata/ui-core-components';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
+import EntityLineageCanvas from './EntityLineageCanvas/EntityLineageCanvas';
 import type { LineageProps } from './Lineage.interface';
 import LineageMap from './LineageMap/LineageMap.component';
 
@@ -45,14 +46,23 @@ const Lineage = ({
         className="lineage-container tw:flex-1 tw:min-h-0 tw:overflow-hidden"
         data-testid="lineage-container"
         id="lineage-container">
-        <LineageMap
-          deleted={deleted}
-          entity={entity}
-          entityType={entityType}
-          hasEditAccess={hasEditAccess}
-          isPlatformLineage={isPlatformLineage}
-          platformHeader={platformHeader}
-        />
+        {isPlatformLineage ? (
+          <LineageMap
+            isPlatformLineage
+            deleted={deleted}
+            entity={entity}
+            entityType={entityType}
+            hasEditAccess={hasEditAccess}
+            platformHeader={platformHeader}
+          />
+        ) : (
+          <EntityLineageCanvas
+            deleted={deleted}
+            entity={entity}
+            entityType={entityType}
+            hasEditAccess={hasEditAccess}
+          />
+        )}
       </div>
     </Card>
   );
