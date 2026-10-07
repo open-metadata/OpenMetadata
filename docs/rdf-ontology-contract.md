@@ -78,8 +78,8 @@ One mapping can have several `om:fromColumn` values. Columns are separate resour
 literal reaches its owning asset: `<asset> om:hasColumn <col>`, `<col> om:fullyQualifiedName "fqn"`,
 and nested columns hang off their parent with `om:hasChildColumn`. The ontology and the
 `ColumnLineageShape` SHACL shape still describe `om:fromColumn` and `om:toColumn` as column IRIs; the
-projection does not write them that way, so that shape does not match what is projected.
-Literal matching is exact: only an untyped plain literal equals `"fqn"`.
+projection does not write them that way, so that shape does not match what is projected (tracked in
+#34864). Literal matching is exact: only an untyped plain literal equals `"fqn"`.
 
 ### Traversal and paging
 
@@ -119,7 +119,8 @@ downstream of the source column take 330 ms in memory, and 11 pages of 250 rows 
 
 `om:hasChildColumn` is projected for nested table columns even though the ontology labels it
 `om:InferenceOnly`: a real `RdfIndexApp` run over a table with a struct column writes it, so queries
-need no inference. The MCP description test lists it as a justified exception.
+need no inference. The MCP description test lists it as a justified exception, and the stale label
+is tracked in #34864.
 
 ## Custom extension values
 

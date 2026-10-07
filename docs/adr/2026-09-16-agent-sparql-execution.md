@@ -557,7 +557,7 @@ after the next reindex. This is the normal state of the graph on a running insta
 changed here**. The column lineage section of `docs/rdf-ontology-contract.md` and the
 `sparql_query` description state the dependency once. Column FQNs in `om:fromColumn` and
 `om:toColumn` are plain string literals, not IRIs; the ontology and shapes currently describe
-them as IRIs, which is tracked as a separate follow-up.
+them as IRIs, which is tracked in #34864.
 
 ### A7. What this amendment does not change
 
