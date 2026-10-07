@@ -31,6 +31,7 @@ test.describe(
   { tag: ['@Features', '@Governance'] },
   () => {
     let successor: { id: string; name: string; title: string };
+    let unprocessed: { id: string; name: string; title: string };
     let superseded: { id: string; name: string; title: string };
     let invalidated: { id: string; name: string; title: string };
     const supersededReason = 'Replaced by the corrected guidance';
@@ -39,7 +40,10 @@ test.describe(
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
       try {
-        const createMemory = async (kind: string) => {
+        const createMemory = async (
+          kind: string,
+          entityStatus?: 'Approved'
+        ) => {
           const name = `cc_lifecycle_${kind}_${uuid()}`;
 
           return createMemoryViaApi(apiContext, {
@@ -47,13 +51,15 @@ test.describe(
             title: name,
             question: `What is ${name}?`,
             answer: `Verified content for ${name}.`,
+            entityStatus,
             shareConfig: { visibility: 'Entity' },
           });
         };
 
-        successor = await createMemory('successor');
-        superseded = await createMemory('superseded');
-        invalidated = await createMemory('invalidated');
+        unprocessed = await createMemory('unprocessed');
+        successor = await createMemory('successor', 'Approved');
+        superseded = await createMemory('superseded', 'Approved');
+        invalidated = await createMemory('invalidated', 'Approved');
 
         await patchMemory(apiContext, superseded.id, [
           { op: 'replace', path: '/entityStatus', value: 'Deprecated' },
@@ -76,7 +82,12 @@ test.describe(
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
       try {
-        for (const memory of [superseded, invalidated, successor]) {
+        for (const memory of [
+          superseded,
+          invalidated,
+          successor,
+          unprocessed,
+        ]) {
           if (memory) {
             const response = await apiContext.delete(
               `${MEMORIES_API}/${memory.id}?hardDelete=true`
@@ -95,7 +106,7 @@ test.describe(
       test.slow();
       await navigateToMemories(page);
       await expect(page.getByTestId('memory-status-filter')).toContainText(
-        'Approved'
+        '2 Statuses'
       );
       await expect(
         await searchAndGetMemoryRow(page, successor.title, successor.id)
@@ -108,7 +119,7 @@ test.describe(
       await page.getByRole('menuitemcheckbox', { name: 'Deprecated' }).click();
       await page.keyboard.press('Escape');
       await expect(page.getByTestId('memory-status-filter')).toContainText(
-        '2 Statuses'
+        '3 Statuses'
       );
       await expect(
         page.getByTestId(`memory-row-${superseded.id}`)
@@ -123,6 +134,39 @@ test.describe(
       await expect(
         page.getByTestId(`memory-row-${superseded.id}`)
       ).toBeVisible();
+    });
+
+    test('unprocessed memories appear by default and cannot propose terms', async ({
+      page,
+    }) => {
+      await navigateToMemories(page);
+      const row = await searchAndGetMemoryRow(
+        page,
+        unprocessed.title,
+        unprocessed.id
+      );
+      await expect(
+        row.getByTestId(`memory-status-${unprocessed.id}`)
+      ).toContainText('Unprocessed');
+      await row.click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
+        'Unprocessed'
+      );
+      await expect(
+        dialog.getByRole('button', { name: /propose term/i })
+      ).not.toBeVisible();
+      await page.screenshot({
+        path: test.info().outputPath('unprocessed-memory.png'),
+      });
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await page.getByTestId('memory-status-filter').click();
+      await page.getByRole('menuitemcheckbox', { name: 'Unprocessed' }).click();
+      await page.keyboard.press('Escape');
+      await expect(page.getByTestId('memory-status-filter')).toContainText(
+        'Approved'
+      );
+      await expect(row).not.toBeVisible();
     });
 
     test('retired details show reasons and successor while proposal actions stay hidden', async ({
