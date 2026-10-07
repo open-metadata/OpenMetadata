@@ -27,6 +27,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -129,6 +131,59 @@ public class DomainReassignmentAuthorizationIT {
         1,
         result.getNumberOfRowsPassed(),
         "A domain-scoped user must still be able to claim an asset they may edit");
+  }
+
+  @Test
+  void test_putReassignmentCannotMoveAnAssetIntoAnUnheldDomain(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    Table table = createTable(ns, scoped.heldDomain());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> putTableDomains(scoped.client(), table, scoped.otherDomain()),
+        "A PUT reassignment must not move an asset into a domain the caller does not hold");
+  }
+
+  @Test
+  void test_putReassignmentCanStillMoveWithinAHeldDomain(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    Table table = createTable(ns, scoped.heldDomain());
+
+    putTableDomains(scoped.client(), table, scoped.heldSubDomain());
+
+    Table reloaded = SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
+    assertEquals(
+        scoped.heldSubDomain().getId(),
+        reloaded.getDomains().get(0).getId(),
+        "A PUT must still allow a move within the held domain hierarchy");
+  }
+
+  @Test
+  void test_dataProductBulkAddCannotPullAnAssetFromAnUnheldDomain(TestNamespace ns)
+      throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    DataProduct dataProduct = createDataProduct(ns, scoped.heldDomain());
+    Table table = createTable(ns, scoped.otherDomain());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> addAssetToDataProduct(scoped.client(), dataProduct, table),
+        "Adding an asset from an unheld domain to a data product must be denied per asset");
+  }
+
+  @Test
+  void test_dataProductBulkAddStillAcceptsAnAssetTheCallerMayEdit(TestNamespace ns)
+      throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    DataProduct dataProduct = createDataProduct(ns, scoped.heldDomain());
+    Table table = createTable(ns, scoped.heldDomain());
+
+    BulkOperationResult result = addAssetToDataProduct(scoped.client(), dataProduct, table);
+
+    assertEquals(
+        1,
+        result.getNumberOfRowsPassed(),
+        "A data-product add must still accept an asset the caller may edit");
   }
 
   /**
@@ -277,6 +332,42 @@ public class DomainReassignmentAuthorizationIT {
         .execute(
             HttpMethod.PUT,
             "/v1/domains/" + domain.getFullyQualifiedName() + "/assets/add",
+            request,
+            BulkOperationResult.class);
+  }
+
+  /** Reassigns the domain through the PUT create-or-update path rather than a JSON patch. */
+  private void putTableDomains(OpenMetadataClient client, Table table, Domain target) {
+    CreateTable update =
+        new CreateTable()
+            .withName(table.getName())
+            .withDatabaseSchema(table.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(table.getColumns())
+            .withDomains(List.of(target.getFullyQualifiedName()));
+    client.getHttpClient().execute(HttpMethod.PUT, "/v1/tables", update, Table.class);
+  }
+
+  private DataProduct createDataProduct(TestNamespace ns, Domain domain) {
+    return ns.trackRoot(
+        Entity.DATA_PRODUCT,
+        SdkClients.adminClient()
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(ns.shortPrefix("dp"))
+                    .withDescription("Data product in " + domain.getName())
+                    .withDomains(List.of(domain.getFullyQualifiedName()))));
+  }
+
+  private BulkOperationResult addAssetToDataProduct(
+      OpenMetadataClient client, DataProduct dataProduct, Table table) {
+    BulkAssets request =
+        new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add",
             request,
             BulkOperationResult.class);
   }
