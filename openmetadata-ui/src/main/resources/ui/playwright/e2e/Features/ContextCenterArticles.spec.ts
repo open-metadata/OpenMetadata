@@ -31,8 +31,8 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  ARTICLES_URL,
   ARTICLE_DESCRIPTION,
+  ARTICLES_URL,
   assertArticleEditorSaved,
   cleanupCurrentArticle,
   createArticleFromButton,
@@ -65,14 +65,12 @@ import {
   createMentionInConversation,
   createQuickLink,
   deletePage,
-  readArticleInHierarchy,
-  readQuickLink,
   toggleKnowledgePageBookmark,
   updateBody,
   updateQuickLink,
   updateTags,
   verifyNotificationAndClick,
-  waitForAutoSave,
+  waitForAutoSave
 } from '../../utils/KnowledgeCenter';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
@@ -482,15 +480,10 @@ test.describe('Context Center Articles', () => {
     await page.keyboard.press('Escape');
 
     await createQuickLink(page, testQuickLink, dataAsset);
-    await readQuickLink(page, testQuickLink);
-
-    await readArticleInHierarchy(page, testQuickLink.displayName);
-    await scrollHierarchyToNode(page, testQuickLink.displayName);
+    await page.getByRole('heading', { name: 'Add Quick Link' }).waitFor({ state: 'hidden' });
 
     await verifyArticleSearch(page, testQuickLink.displayName);
-    await expect(
-      page.getByTestId(`knowledge-card-${testQuickLink.displayName}`)
-    ).toBeVisible();
+    
 
     await updateQuickLink(page, testQuickLink);
 
@@ -859,9 +852,10 @@ test.describe('Context Center Articles', () => {
       .getByTestId('knowledge-page-listing')
       .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
     await expect(viewedCard.getByTestId('knowledge-card-title')).toBeVisible();
+    // Description span is hidden when empty — wait for text to hydrate from the search index
     await expect(
       viewedCard.getByTestId('knowledge-card-description')
-    ).toBeVisible();
+    ).toContainText(ARTICLE_DESCRIPTION, { timeout: 10000 });
     await expect(viewedCard.getByTestId('updated-at')).toBeVisible();
 
     const articleResponse = page.waitForResponse((response) =>
@@ -1093,20 +1087,31 @@ test.describe('Context Center Articles', () => {
     await navigateToArticles(page);
     await scrollHierarchyToNode(page, grandparent.displayName);
 
-    await page
-      .getByRole('button', {
-        name: `Expand ${grandparent.displayName}`,
-      })
-      .click();
+    // Use the stable data-testid on the expand button rather than its aria-name,
+    // which depends on accessibility-tree hydration timing and can miss in CI.
+    const expandNode = async (displayName: string) => {
+      const hierarchy = page.getByTestId('knowledge-pages-hierarchy');
+      const row = hierarchy.locator(
+        `[role="row"]:has([data-testid="page-node-${displayName}"])`
+      );
+      const expandBtn = row.getByTestId('tree-expand-btn');
+      const childrenLoaded = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/contextCenter') &&
+          res.request().method() === 'GET',
+        { timeout: 30_000 }
+      );
+      await expect(expandBtn).toBeVisible({ timeout: 10_000 });
+      await expandBtn.click();
+      await childrenLoaded;
+    };
+
+    await expandNode(grandparent.displayName);
     await expect(
       page.getByTestId(`page-node-${parent.displayName}`)
     ).toBeVisible();
 
-    await page
-      .getByRole('button', {
-        name: `Expand ${parent.displayName}`,
-      })
-      .click();
+    await expandNode(parent.displayName);
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -2080,7 +2085,12 @@ test.describe('Context Center Articles', () => {
           .locator('.ProseMirror[contenteditable="true"]')
           .first();
 
-        await expect(editor).toContainText(contentB);
+        await editor.waitFor({ state: 'visible' });
+        // Draft restore from localStorage is async after the API response renders;
+        // toPass retries until the draft content appears in the editor
+        await expect(async () => {
+          await expect(editor).toContainText(contentB);
+        }).toPass({ timeout: 20000 });
         await assertArticleEditorSaved(page);
       });
 

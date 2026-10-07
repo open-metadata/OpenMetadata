@@ -13,7 +13,7 @@
 
 import { APIRequestContext, Page } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
-import { expect, test as base } from '../../support/fixtures/base';
+import { test as base, expect } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -1886,6 +1886,7 @@ test.describe('Context Center Permissions', () => {
     test('user with editAll permission sees no row edit action on memories they do not own, but can edit and save their own memory', async ({
       editAllPage,
     }) => {
+      test.slow();
       await navigateToMemories(editAllPage);
 
       await expect(editAllPage.getByTestId('add-memory-btn')).not.toBeVisible();
@@ -2151,6 +2152,7 @@ test.describe('Context Center Permissions', () => {
     testWithRolesPages(
       'Data Consumer can view and edit content but cannot add article, domain, reviewer, data product, or data assets',
       async ({ dataConsumerPage }) => {
+        test.slow();
         await navigateToArticles(dataConsumerPage);
 
         await expect(

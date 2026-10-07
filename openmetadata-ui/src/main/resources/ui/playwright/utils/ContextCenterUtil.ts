@@ -274,10 +274,20 @@ export const waitForRecentlyViewed = async (
 };
 
 export const navigateToArticles = async (page: Page) => {
-  await page.goto(ARTICLES_URL);
+  const hierarchyLoaded = page
+    .waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/pages') &&
+        !res.url().includes('/name/') &&
+        res.request().method() === 'GET',
+      { timeout: 30_000 }
+    )
+    .catch(() => null);
+  await page.goto(ARTICLES_URL, { timeout: 90_000 });
   await page
     .getByTestId('context-center-articles-page')
     .waitFor({ state: 'visible' });
+  await hierarchyLoaded;
   await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'knowledge-page-skeleton');
 };
@@ -836,59 +846,64 @@ export const scrollHierarchyToNode = async (
 ) => {
   const hierarchy = page.getByTestId('knowledge-pages-hierarchy');
   const node = hierarchy.getByTestId(`page-node-${displayName}`);
+  // The hierarchy scroll container fires a native `scroll` event handled by
+  // KnowledgePagesHierarchy's handleScroll — it is NOT IntersectionObserver-based.
+  // We must dispatch a real scroll event after setting scrollTop, otherwise
+  // React's handler never runs and no pagination request is issued.
+  const container = page.getByTestId('article-list-container');
 
   await hierarchy.waitFor({ state: 'visible' });
 
-  const getLastNode = () =>
-    hierarchy
-      .locator('[data-testid^="page-node-"]')
-      .last()
-      .getAttribute('data-testid');
+  const nodes = hierarchy.locator('[data-testid^="page-node-"]');
+  let total = Infinity;
+  let fetched = 0;
 
-  let previousLastNode = '';
-  // Require 3 consecutive unchanged readings before concluding end-of-list.
-  // A single unchanged reading can be a false positive when the scroll lands
-  // just before the next infinite-scroll fetch threshold.
-  let staleCount = 0;
-
-  for (let attempt = 0; attempt < 100 && !(await node.isVisible()); attempt++) {
-    await scrollNearestScrollableAncestor(hierarchy);
-    await expect(
-      hierarchy.locator('[data-testid^="page-node-"]').filter({ visible: true })
-    ).not.toHaveCount(0);
-
-    let lastNode = await getLastNode();
-
-    if (lastNode === previousLastNode) {
-      // The last node may look unchanged because the scroll has only just
-      // flipped the observer element into view — the component still needs
-      // a render tick before its effect fires and issues the pagination
-      // fetch. Register the response wait now (not before the scroll) so
-      // its timeout window covers that render+effect+network latency
-      // instead of racing against it.
-      await page
-        .waitForResponse((res) => res.url().includes('/hierarchy'), {
-          timeout: 5000,
-        })
-        .catch(() => null);
-
-      lastNode = await getLastNode();
-
-      if (lastNode === previousLastNode) {
-        staleCount += 1;
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
-        await page.waitForTimeout(1000);
-        if (staleCount >= 5) {
-          break;
-        }
-      } else {
-        staleCount = 0;
-      }
-    } else {
-      staleCount = 0;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (await node.isVisible()) {
+      break;
     }
 
-    previousLastNode = lastNode ?? '';
+    if (fetched >= total) {
+      break;
+    }
+
+    const countBefore = await nodes.count();
+
+    // Hoist listener before the scroll so no response is missed
+    const responsePromise = page.waitForResponse(
+      (res) => res.url().includes('/hierarchy'),
+      { timeout: 15000 }
+    );
+
+    // Set scrollTop to the absolute bottom and dispatch a synthetic scroll
+    // event in the same evaluate call. handleScroll checks
+    // scrollTop + clientHeight >= scrollHeight - 1 to decide whether to
+    // fetch the next page — setting scrollTop alone (without the event) is
+    // silent to React because it listens via onScroll, not a MutationObserver.
+    await container.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+      el.dispatchEvent(new Event('scroll'));
+    });
+
+    const response = await responsePromise.catch(() => null);
+    if (response) {
+      const json = await response.json().catch(() => null);
+      if (json?.total !== undefined) {
+        total = json.total;
+      }
+      if (Array.isArray(json?.data)) {
+        fetched += json.data.length;
+      }
+    }
+
+    await expect
+      .poll(() => nodes.count(), { timeout: 5000 })
+      .toBeGreaterThan(countBefore)
+      .catch(() => null);
+
+    if ((await nodes.count()) === countBefore) {
+      break;
+    }
   }
 
   await expect(node).toBeVisible();
@@ -976,62 +991,90 @@ export const assertArticleEditorSaved = async (page: Page) => {
 export const scrollListingToCard = async (page: Page, displayName: string) => {
   const listing = page.getByTestId('knowledge-page-listing');
   const card = listing.getByTestId(`knowledge-card-${displayName}`);
+  const observer = page.getByTestId('observer-element');
+  const loader = page.getByTestId('knowledge-page-loader');
 
   await listing.waitFor({ state: 'visible' });
 
-  const getLastCard = () =>
-    listing
-      .locator('[data-testid^="knowledge-card-"]')
-      .last()
-      .getAttribute('data-testid');
+  const cards = listing.locator('[data-testid^="knowledge-card-"]');
+  let total = Infinity;
+  let fetched = 0;
 
-  let previousLastCard = '';
-  // Require 3 consecutive unchanged readings before concluding end-of-list.
-  // A single unchanged reading can be a false positive when the scroll lands
-  // just before the next infinite-scroll fetch threshold.
-  let staleCount = 0;
-
-  for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
-    await scrollNearestScrollableAncestor(listing);
-    await expect(
-      listing
-        .locator('[data-testid^="knowledge-card-"]')
-        .filter({ visible: true })
-    ).not.toHaveCount(0);
-
-    let lastCard = await getLastCard();
-
-    if (lastCard === previousLastCard) {
-      // The last card may look unchanged because the scroll has only just
-      // flipped the observer element into view — the component still needs
-      // a render tick before its effect fires and issues the pagination
-      // fetch. Register the response wait now (not before the scroll) so
-      // its timeout window covers that render+effect+network latency
-      // instead of racing against it.
-      await page
-        .waitForResponse(
-          (res) => res.url().includes('/api/v1/contextCenter/pages'),
-          { timeout: 5000 }
-        )
-        .catch(() => null);
-
-      lastCard = await getLastCard();
-
-      if (lastCard === previousLastCard) {
-        staleCount += 1;
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- detecting that lazy-loading has STOPPED has no positive signal to await; the pause is the measurement, and staleCount bounds it
-        await page.waitForTimeout(1000);
-        if (staleCount >= 5) {
-          break;
-        }
-      } else {
-        staleCount = 0;
-      }
-    } else {
-      staleCount = 0;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (await card.isVisible()) {
+      break;
     }
 
-    previousLastCard = lastCard ?? '';
+    if (fetched >= total) {
+      break;
+    }
+
+    // sentinel removed from DOM = last page already rendered
+    if ((await observer.count()) === 0) {
+      break;
+    }
+
+    const countBefore = await cards.count();
+
+    // Hoist listener before any scroll so no response is missed
+    const responsePromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/pages') &&
+        res.url().includes('offset='),
+      { timeout: 15000 }
+    );
+
+    // The observer element (2 px sentinel) lives inside an anonymous Box with
+    // tw:overflow-auto (no testid). We walk up from the observer element itself
+    // to find that scrollable ancestor, then:
+    //   Step 1: scroll it back to top so the observer leaves the viewport.
+    //   Step 2: scroll to absolute bottom so the observer re-enters viewport.
+    // This hidden→visible transition is the only reliable IntersectionObserver
+    // trigger. scrollBy on an already-bottomed container is a no-op, and
+    // scrollIntoViewIfNeeded() is a no-op when the element is already visible —
+    // so both prior approaches silently failed after the first page.
+    await observer.evaluate((el) => {
+      let current: HTMLElement | null = el.parentElement;
+      while (current && current.scrollHeight <= current.clientHeight) {
+        current = current.parentElement;
+      }
+      if (current) {
+        current.scrollTop = 0;
+      }
+    });
+    await observer.evaluate((el) => {
+      let current: HTMLElement | null = el.parentElement;
+      while (current && current.scrollHeight <= current.clientHeight) {
+        current = current.parentElement;
+      }
+      if (current) {
+        current.scrollTop = current.scrollHeight;
+      }
+    });
+
+    const response = await responsePromise.catch(() => null);
+    if (response) {
+      const json = await response.json().catch(() => null);
+      if (json?.total !== undefined) {
+        total = json.total;
+      }
+      if (Array.isArray(json?.data)) {
+        fetched += json.data.length;
+      }
+    }
+
+    // Wait for the loader to appear then disappear (loader may flash quickly)
+    await expect(loader).toBeVisible({ timeout: 3000 }).catch(() => null);
+    await loader.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => null);
+
+    await expect
+      .poll(() => cards.count(), { timeout: 5000 })
+      .toBeGreaterThan(countBefore)
+      .catch(() => null);
+
+    if ((await cards.count()) === countBefore) {
+      break;
+    }
   }
 
   await expect(card).toBeVisible();
@@ -1098,7 +1141,7 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   );
 
   const articlePath = ARTICLE_DETAIL_ROUTE.replace(':fqn', articleFqn);
-  await page.goto(articlePath);
+  await page.goto(articlePath, { timeout: 90_000 });
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
 };
