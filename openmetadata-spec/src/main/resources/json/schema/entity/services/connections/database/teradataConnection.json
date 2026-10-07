@@ -118,6 +118,9 @@
     },
     "supportsViewLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     }
   },
   "additionalProperties": false,
