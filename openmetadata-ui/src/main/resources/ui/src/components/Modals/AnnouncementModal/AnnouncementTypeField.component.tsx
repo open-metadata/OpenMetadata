@@ -42,10 +42,11 @@ interface AnnouncementColorSelectProps {
   onChange: (value: AnnouncementColor) => void;
 }
 
-// The chips stay neutral whatever the type: the choice is shown by fill, not by
-// colour, so a Critical chip does not shout while the form is still a draft.
+// Keep severity colours for published announcements; use the selection token
+// to make the active choice clear while composing in dark mode.
 const CHIP_CLASS = 'tw:cursor-pointer';
-const SELECTED_CHIP_CLASS = 'tw:bg-tertiary tw:text-primary';
+const SELECTED_CHIP_CLASS =
+  'tw:bg-tertiary tw:text-primary tw:dark:bg-brand-primary tw:dark:text-brand-secondary tw:dark:outline-brand';
 
 /**
  * One of five mutually exclusive types, so a radio group rather than a row of

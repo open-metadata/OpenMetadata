@@ -14,6 +14,10 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { Column } from 'react-data-grid';
 import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
+import {
+  ThemeProvider,
+  useTheme,
+} from '../../context/UntitledUIThemeProvider/theme-provider';
 import { EntityType } from '../../enums/entity.enum';
 import { CSVImportResult, Status } from '../../generated/type/csvImportResult';
 import BulkEditEntity from './BulkEditEntity.component';
@@ -73,8 +77,8 @@ jest.mock('react-papaparse', () => ({
 }));
 
 jest.mock('react-data-grid', () => {
-  const MockDataGrid = jest.fn(({ rows, columns }) => (
-    <div data-testid="data-grid">
+  const MockDataGrid = jest.fn(({ rows, columns, className }) => (
+    <div className={className} data-testid="data-grid">
       <span data-testid="row-count">{rows?.length ?? 0}</span>
       <span data-testid="column-count">{columns?.length ?? 0}</span>
       {columns?.map((column: Column<Record<string, string>>) => (
@@ -188,15 +192,30 @@ const defaultProps: BulkEditEntityProps = {
 
 const renderComponent = (props: Partial<BulkEditEntityProps> = {}) => {
   return render(
-    <MemoryRouter>
-      <BulkEditEntity {...defaultProps} {...props} />
-    </MemoryRouter>
+    <ThemeProvider>
+      <MemoryRouter>
+        <BulkEditEntity {...defaultProps} {...props} />
+      </MemoryRouter>
+    </ThemeProvider>
+  );
+};
+
+const ThemeToggle = () => {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+      Toggle theme
+    </button>
   );
 };
 
 describe('BulkEditEntity', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.removeItem('ui-theme');
     mockEntityType = EntityType.TABLE;
     mockCsvExportData = 'col1,col2\nval1,val2';
     useEntityExportModalProvider.mockReturnValue({
@@ -204,6 +223,29 @@ describe('BulkEditEntity', () => {
       csvExportData: mockCsvExportData,
       clearCSVExportData: mockClearCSVExportData,
     });
+  });
+
+  it('updates the live spreadsheet theme without remounting its data', async () => {
+    render(
+      <ThemeProvider>
+        <MemoryRouter>
+          <ThemeToggle />
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      </ThemeProvider>
+    );
+    const grid = await screen.findByTestId('data-grid');
+
+    expect(grid).toHaveClass('rdg-light');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle theme' }));
+
+    expect(grid).toHaveClass('rdg-dark');
+    expect(screen.getByTestId('row-count')).toHaveTextContent('2');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle theme' }));
+
+    expect(grid).toHaveClass('rdg-light');
   });
 
   describe('Render & Initial State', () => {
@@ -500,9 +542,11 @@ describe('BulkEditEntity', () => {
       });
 
       const { rerender } = render(
-        <MemoryRouter>
-          <BulkEditEntity {...defaultProps} />
-        </MemoryRouter>
+        <ThemeProvider>
+          <MemoryRouter>
+            <BulkEditEntity {...defaultProps} />
+          </MemoryRouter>
+        </ThemeProvider>
       );
 
       expect(firstTrigger).toHaveBeenCalledTimes(1);
@@ -514,9 +558,11 @@ describe('BulkEditEntity', () => {
       });
 
       rerender(
-        <MemoryRouter>
-          <BulkEditEntity {...defaultProps} />
-        </MemoryRouter>
+        <ThemeProvider>
+          <MemoryRouter>
+            <BulkEditEntity {...defaultProps} />
+          </MemoryRouter>
+        </ThemeProvider>
       );
 
       expect(secondTrigger).not.toHaveBeenCalled();

@@ -68,12 +68,14 @@ import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssets
 import { ProfilerTabPath } from '../../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import UploadFile from '../../../components/UploadFile/UploadFile';
+import { CSV_GRID_DARK_CLASS } from '../../../constants/BulkEdit.constants';
 import {
   ENTITY_IMPORT_STEPS,
   VALIDATION_STEP,
 } from '../../../constants/BulkImport.constant';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { ROUTES, SOCKET_EVENTS } from '../../../constants/constants';
+import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
@@ -303,6 +305,8 @@ const BulkEntityImportPage = () => {
   );
   const activeStepRef = useRef<VALIDATION_STEP>(VALIDATION_STEP.UPLOAD);
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
@@ -1319,9 +1323,11 @@ const BulkEntityImportPage = () => {
 
   const editDataGrid = useMemo(() => {
     return (
-      <div className="om-rdg" ref={setGridContainer}>
+      <Box
+        className={`om-rdg tw:block ${CSV_GRID_DARK_CLASS}`}
+        ref={setGridContainer}>
         <LazyDataGrid
-          className="rdg-light"
+          className={isDark ? 'rdg-dark' : 'rdg-light'}
           columns={
             filterColumns as unknown as ColumnOrColumnGroup<
               NoInfer<Record<string, string>>,
@@ -1335,9 +1341,10 @@ const BulkEntityImportPage = () => {
           onPaste={handlePaste}
           onRowsChange={handleOnRowsChange}
         />
-      </div>
+      </Box>
     );
   }, [
+    isDark,
     columns,
     editableDataSource,
     getEditableRowHeight,
@@ -1598,7 +1605,9 @@ const BulkEntityImportPage = () => {
   );
 
   const renderUploadStep = () => (
-    <div className="csv-import-card csv-import-upload-card">
+    <Box
+      className="csv-import-card csv-import-upload-card tw:block tw:rounded-xl tw:border tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white
+tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-6 tw:dark:border-secondary tw:dark:bg-surface">
       <div className="csv-import-stack">
         <div className="csv-import-copy">
           <h2>
@@ -1651,7 +1660,7 @@ const BulkEntityImportPage = () => {
           {t('message.import-entity-csv-tip', { entity: entityDisplayName })}
         </Alert>
       </div>
-    </div>
+    </Box>
   );
 
   const renderColumnReference = () => (
@@ -1709,7 +1718,9 @@ const BulkEntityImportPage = () => {
   );
 
   const renderImportProgress = () => (
-    <div className="csv-import-card csv-import-progress-card">
+    <Box
+      className="csv-import-card csv-import-progress-card tw:block tw:rounded-xl tw:border tw:border-[var(--om-grey-15,#eaecf5)]
+tw:bg-white tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-6 tw:dark:border-secondary tw:dark:bg-surface">
       <div className="csv-import-progress-content">
         <div className="csv-import-progress-icon">
           <RefreshCw01 className="csv-import-spin" />
@@ -1760,7 +1771,7 @@ const BulkEntityImportPage = () => {
           {t('label.cancel-entity', { entity: t('label.import') })}
         </Button>
       </div>
-    </div>
+    </Box>
   );
 
   const shouldRenderMetricImportEditor = useMemo(
@@ -1858,7 +1869,9 @@ const BulkEntityImportPage = () => {
 
     if (validationData?.abortReason) {
       return (
-        <div className="csv-import-card m-t-lg">
+        <Box
+          className="csv-import-card m-t-lg tw:block tw:rounded-xl tw:border tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white
+tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-6 tw:dark:border-secondary tw:dark:bg-surface">
           <div className="csv-import-abort-state">
             <p className="text-center" data-testid="abort-reason">
               <strong className="d-block">{t('label.aborted')}</strong>{' '}
@@ -1871,7 +1884,7 @@ const BulkEntityImportPage = () => {
               {t('label.back')}
             </Button>
           </div>
-        </div>
+        </Box>
       );
     }
 
@@ -1879,7 +1892,9 @@ const BulkEntityImportPage = () => {
   };
 
   const renderStepOneContent = () => (
-    <div className="csv-import-card">
+    <Box
+      className="csv-import-card tw:block tw:rounded-xl tw:border tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white
+tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-6 tw:dark:border-secondary tw:dark:bg-surface">
       <div className="csv-import-stack">
         <div className="csv-import-grid-toolbar">
           <div>
@@ -1913,7 +1928,7 @@ const BulkEntityImportPage = () => {
         </div>
         {editDataGrid}
       </div>
-    </div>
+    </Box>
   );
 
   const renderStepTwoContent = () => {
@@ -1926,7 +1941,9 @@ const BulkEntityImportPage = () => {
     }
 
     return (
-      <div className="csv-import-card">
+      <Box
+        className="csv-import-card tw:block tw:rounded-xl tw:border tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white
+tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-6 tw:dark:border-secondary tw:dark:bg-surface">
         <div className="csv-import-stack">
           <div className="csv-import-results-header">
             {importOperationSummary && (
@@ -1940,9 +1957,10 @@ const BulkEntityImportPage = () => {
 
           <div>
             {validateCSVData && (
-              <div className="om-rdg csv-import-results-rdg">
+              <Box
+                className={`om-rdg csv-import-results-rdg tw:block ${CSV_GRID_DARK_CLASS}`}>
                 <LazyDataGrid
-                  className="rdg-light"
+                  className={isDark ? 'rdg-dark' : 'rdg-light'}
                   columns={importResultColumns}
                   rowClass={getImportOperationRowClass}
                   rowHeight={(row: Record<string, string>) =>
@@ -1950,11 +1968,11 @@ const BulkEntityImportPage = () => {
                   }
                   rows={validateCSVData.dataSource}
                 />
-              </div>
+              </Box>
             )}
           </div>
         </div>
-      </div>
+      </Box>
     );
   };
 

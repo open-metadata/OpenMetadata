@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Input, Row, Select, Space, Tooltip } from 'antd';
+import {
+  Box,
+  Input,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import {
   get,
   isArray,
@@ -45,46 +49,50 @@ const renderInputField = (
   format?: string,
   title?: string
 ) => (
-  <Col key={key} span={12}>
-    <Row>
-      <Col className="d-flex items-center" span={8}>
-        <Space size={0}>
-          <p className="text-grey-muted m-0">{key || title}:</p>
+  <Box className="tw:w-1/2 tw:px-1 tw:py-1" key={key}>
+    <Box className="tw:w-full">
+      <Box align="center" className="tw:w-1/3">
+        <Box align="center">
+          <p className="text-grey-muted tw:dark:text-tertiary m-0">
+            {key || title}:
+          </p>
           {description && (
-            <Tooltip placement="bottom" title={description} trigger="hover">
-              <InfoCircleOutlined
-                className="m-x-xss"
-                style={{ color: '#C4C4C4' }}
-              />
+            <Tooltip placement="bottom" title={description}>
+              <InfoCircle className="tw:mx-1 tw:size-3.5 tw:text-[#C4C4C4] tw:dark:text-fg-quaternary" />
             </Tooltip>
           )}
-        </Space>
-      </Col>
-      <Col span={16}>
+        </Box>
+      </Box>
+      <Box className="tw:w-2/3">
         {isArray(value) ? (
-          <Select
-            allowClear={false}
-            bordered={false}
-            className="w-full border-none"
-            data-testid="input-field"
-            mode="multiple"
-            open={false}
-            removeIcon={null}
-            style={{ pointerEvents: 'none' }}
-            value={value}
-          />
+          <Box
+            className="tw:min-h-8 tw:w-full tw:flex-wrap tw:items-center tw:gap-1 tw:px-1 tw:py-0.5"
+            data-testid="input-field">
+            {/* Repeated values are valid in connection arrays, so value alone is not a unique key. */}
+            {value.map((item, index) => (
+              <Typography
+                as="span"
+                className="tw:rounded-sm tw:border tw:border-[#f0f0f0] tw:bg-[#f5f5f5] tw:px-2 tw:text-sm tw:leading-5 tw:dark:border-secondary tw:dark:bg-secondary"
+                // eslint-disable-next-line react/no-array-index-key
+                key={`${item}-${index}`}>
+                {item}
+              </Typography>
+            ))}
+          </Box>
         ) : (
           <Input
-            readOnly
-            className="w-full border-none"
-            data-testid="input-field"
+            isReadOnly
+            aria-label={key || title}
+            inputClassName="tw:h-8 tw:px-[11px] tw:py-1 tw:text-sm tw:leading-[22px]"
+            inputDataTestId="input-field"
             type={format === 'password' ? 'password' : 'text'}
-            value={value}
+            value={String(value ?? '')}
+            wrapperClassName="tw:rounded-lg tw:bg-transparent tw:shadow-none tw:outline-0!"
           />
         )}
-      </Col>
-    </Row>
-  </Col>
+      </Box>
+    </Box>
+  </Box>
 );
 
 // Renders filter pattern fields
@@ -99,37 +107,38 @@ const renderFilterPattern = (
   }
 
   return (
-    <Col key={key} span={12}>
-      <Row>
-        <Col className="d-flex" span={8}>
-          <Space align="start" size={0}>
-            <p className="text-grey-muted m-0">{key || title}:</p>
+    <Box className="tw:w-1/2 tw:px-1 tw:py-1" key={key}>
+      <Box className="tw:w-full">
+        <Box className="tw:w-1/3">
+          <Box align="start">
+            <p className="text-grey-muted tw:dark:text-tertiary m-0">
+              {key || title}:
+            </p>
             {description && (
-              <Tooltip placement="bottom" title={description} trigger="hover">
-                <InfoCircleOutlined
-                  className="m-x-xss"
-                  style={{ color: '#C4C4C4' }}
-                />
+              <Tooltip placement="bottom" title={description}>
+                <InfoCircle className="tw:mx-1 tw:size-3.5 tw:text-[#C4C4C4] tw:dark:text-fg-quaternary" />
               </Tooltip>
             )}
-          </Space>
-        </Col>
-        <Col className="filter-config" span={16}>
+          </Box>
+        </Box>
+        <Box className="tw:w-2/3 tw:gap-2 tw:pl-[11px]" direction="col">
           {Object.entries(value).map(([key, value]) => {
             return isEmpty(value) ? null : (
               <div
                 className="w-full flex flex-col"
                 key={`${key}-${JSON.stringify(value)}`}>
-                <Typography className="key">{`${startCase(key)}:`}</Typography>
-                <Typography className="value">
+                <Typography className="tw:text-[#757575] tw:font-normal tw:dark:text-tertiary">{`${startCase(
+                  key
+                )}:`}</Typography>
+                <Typography weight="semibold">
                   {(value as string[]).join(', ')}
                 </Typography>
               </div>
             );
           })}
-        </Col>
-      </Row>
-    </Col>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

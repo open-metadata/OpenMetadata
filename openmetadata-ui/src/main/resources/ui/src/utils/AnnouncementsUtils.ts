@@ -246,27 +246,32 @@ export const ANNOUNCEMENT_SURFACE_CLASSES: Record<
   { surface: string; icon: string; title: string }
 > = {
   gray: {
-    surface: 'tw:bg-utility-gray-50 tw:outline-utility-gray-200',
+    surface:
+      'tw:bg-utility-gray-50 tw:outline-utility-gray-200 tw:dark:bg-secondary tw:dark:outline-secondary',
     icon: 'tw:text-utility-gray-500',
     title: 'tw:text-utility-gray-700',
   },
   brand: {
-    surface: 'tw:bg-utility-brand-50 tw:outline-utility-brand-200',
+    surface:
+      'tw:bg-utility-brand-50 tw:outline-utility-brand-200 tw:dark:bg-brand-primary tw:dark:outline-brand-subtle',
     icon: 'tw:text-utility-brand-500',
     title: 'tw:text-utility-brand-700',
   },
   error: {
-    surface: 'tw:bg-utility-error-50 tw:outline-utility-error-200',
+    surface:
+      'tw:bg-utility-error-50 tw:outline-utility-error-200 tw:dark:bg-error-primary tw:dark:outline-error_subtle',
     icon: 'tw:text-utility-error-500',
     title: 'tw:text-utility-error-700',
   },
   warning: {
-    surface: 'tw:bg-utility-warning-50 tw:outline-utility-warning-200',
+    surface:
+      'tw:bg-utility-warning-50 tw:outline-utility-warning-200 tw:dark:bg-warning-primary',
     icon: 'tw:text-utility-warning-500',
     title: 'tw:text-utility-warning-700',
   },
   success: {
-    surface: 'tw:bg-utility-success-50 tw:outline-utility-success-200',
+    surface:
+      'tw:bg-utility-success-50 tw:outline-utility-success-200 tw:dark:bg-success-primary',
     icon: 'tw:text-utility-success-500',
     title: 'tw:text-utility-success-700',
   },

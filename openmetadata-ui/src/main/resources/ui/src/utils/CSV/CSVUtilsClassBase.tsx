@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box, Button, TextArea } from '@openmetadata/ui-core-components';
 import {
   ArrowUpRight,
   Bold01,
@@ -1813,6 +1814,16 @@ const getInlineCustomPropertiesEditor =
     );
   };
 
+// These light values preserve the spreadsheet toolbar while dark mode follows
+// the same semantic controls as the rest of the bulk-edit form.
+const DESCRIPTION_FORMAT_BUTTON_CLASS = [
+  'tw:size-7.5 tw:min-w-0 tw:rounded-lg tw:border-0 tw:bg-transparent tw:p-0! tw:text-utility-gray-700 tw:shadow-none',
+  'tw:before:hidden tw:after:hidden tw:transition-colors tw:duration-[120ms] tw:hover:bg-[#f3f4f6] tw:hover:text-utility-gray-900',
+  'tw:focus-visible:bg-[#f3f4f6] tw:focus-visible:text-utility-gray-900 tw:active:bg-[var(--ant-primary-50)] tw:active:text-[var(--ant-primary-6)]',
+  'tw:dark:text-secondary tw:dark:hover:bg-secondary_hover tw:dark:hover:text-primary tw:dark:focus-visible:bg-secondary_hover',
+  'tw:dark:focus-visible:text-primary tw:dark:active:bg-brand-primary tw:dark:active:text-brand-secondary',
+].join(' ');
+
 const InlineDescriptionEditor = ({
   value,
   onCancel,
@@ -1913,7 +1924,7 @@ const InlineDescriptionEditor = ({
     onComplete(draft);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       onCancel();
@@ -1929,73 +1940,83 @@ const InlineDescriptionEditor = ({
 
   return (
     <KeyDownStopPropagationWrapper keys={['Enter', 'Escape', 'Tab']}>
-      <div
-        className="bulk-edit-description-editor"
+      <Box
+        className="bulk-edit-description-editor tw:absolute tw:top-0 tw:left-0 tw:z-10 tw:w-full tw:min-w-0 tw:max-w-full tw:min-h-[132px]
+          tw:flex-col tw:gap-2.5 tw:border-2 tw:border-[var(--ant-primary-6)] tw:bg-white tw:px-3.5 tw:pt-2.5 tw:pb-3
+          tw:text-utility-gray-900 tw:shadow-[0_1px_2px_0_#0a0d120d] tw:dark:border-brand tw:dark:bg-overlay-surface tw:dark:text-primary"
         data-testid="bulk-edit-description-editor"
         role="presentation"
         onBlur={handleBlur}>
-        <div className="bulk-edit-description-editor-toolbar">
-          <button
+        <Box className="tw:items-center tw:gap-1 tw:border-b tw:border-[var(--om-grey-15,#eaecf5)] tw:pb-2 tw:dark:border-secondary">
+          <Button
             aria-label={t('label.bold')}
-            className="bulk-edit-description-editor-button"
+            className={DESCRIPTION_FORMAT_BUTTON_CLASS}
+            color="tertiary"
             type="button"
-            onClick={() => applyInlineFormat('**')}
-            onMouseDown={handleToolbarMouseDown}>
+            onMouseDown={handleToolbarMouseDown}
+            onPress={() => applyInlineFormat('**')}>
             <Bold01 size={16} />
-          </button>
-          <button
+          </Button>
+          <Button
             aria-label={t('label.italic')}
-            className="bulk-edit-description-editor-button"
+            className={DESCRIPTION_FORMAT_BUTTON_CLASS}
+            color="tertiary"
             type="button"
-            onClick={() => applyInlineFormat('_')}
-            onMouseDown={handleToolbarMouseDown}>
+            onMouseDown={handleToolbarMouseDown}
+            onPress={() => applyInlineFormat('_')}>
             <Italic01 size={16} />
-          </button>
-          <button
+          </Button>
+          <Button
             aria-label={t('label.bulleted-list')}
-            className="bulk-edit-description-editor-button"
+            className={DESCRIPTION_FORMAT_BUTTON_CLASS}
+            color="tertiary"
             type="button"
-            onClick={() => applyLineFormat(() => '- ')}
-            onMouseDown={handleToolbarMouseDown}>
+            onMouseDown={handleToolbarMouseDown}
+            onPress={() => applyLineFormat(() => '- ')}>
             <List size={16} />
-          </button>
-          <button
+          </Button>
+          <Button
             aria-label={t('label.numbered-list')}
-            className="bulk-edit-description-editor-button"
+            className={DESCRIPTION_FORMAT_BUTTON_CLASS}
+            color="tertiary"
             type="button"
-            onClick={() => applyLineFormat((index) => `${index + 1}. `)}
-            onMouseDown={handleToolbarMouseDown}>
-            <span className="bulk-edit-description-editor-numbered-icon">
+            onMouseDown={handleToolbarMouseDown}
+            onPress={() => applyLineFormat((index) => `${index + 1}. `)}>
+            <span className="tw:font-['Geist_Mono','JetBrains_Mono',Menlo,monospace] tw:text-xs tw:font-semibold tw:leading-none">
               1.
             </span>
-          </button>
-          <button
+          </Button>
+          <Button
             aria-label={t('label.code')}
-            className="bulk-edit-description-editor-button"
+            className={DESCRIPTION_FORMAT_BUTTON_CLASS}
+            color="tertiary"
             type="button"
-            onClick={() => applyInlineFormat('`')}
-            onMouseDown={handleToolbarMouseDown}>
+            onMouseDown={handleToolbarMouseDown}
+            onPress={() => applyInlineFormat('`')}>
             <Code01 size={16} />
-          </button>
-          <span className="bulk-edit-description-editor-separator" />
-          <button
+          </Button>
+          <span className="tw:mx-2 tw:inline-flex tw:h-[22px] tw:w-px tw:bg-[var(--om-grey-15,#eaecf5)] tw:dark:bg-[var(--tw-color-border-secondary)]" />
+          <Button
             aria-label={t('label.clear-formatting')}
-            className="bulk-edit-description-editor-button"
+            className={DESCRIPTION_FORMAT_BUTTON_CLASS}
+            color="tertiary"
             type="button"
-            onClick={clearFormatting}
-            onMouseDown={handleToolbarMouseDown}>
+            onMouseDown={handleToolbarMouseDown}
+            onPress={clearFormatting}>
             <Type01 size={16} />
-          </button>
-        </div>
-        <textarea
+          </Button>
+        </Box>
+        <TextArea
           aria-label={t('label.description')}
-          className="bulk-edit-description-editor-textarea"
-          ref={textareaRef}
+          textAreaClassName="bulk-edit-description-editor-textarea tw:min-h-[54px] tw:w-full tw:resize-none tw:rounded-none tw:border-0
+            tw:bg-transparent tw:p-0 tw:text-sm tw:font-normal tw:leading-5 tw:text-utility-gray-900 tw:shadow-none tw:outline-0!
+            tw:overflow-x-hidden tw:overflow-y-auto tw:wrap-anywhere tw:break-words tw:whitespace-pre-wrap tw:dark:text-primary"
+          textAreaRef={textareaRef}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={setDraft}
           onKeyDown={handleKeyDown}
         />
-      </div>
+      </Box>
     </KeyDownStopPropagationWrapper>
   );
 };

@@ -95,7 +95,7 @@ const getOptionTextClass = (state: {
   }
 
   if (state.isSelected) {
-    return 'tw:text-brand-700';
+    return 'tw:text-brand-700 tw:dark:text-brand-secondary';
   }
 
   return 'tw:text-secondary';
@@ -239,7 +239,9 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
             visibleOptions.map((opt) => (
               <Dropdown.Item
                 className={(state) =>
-                  state.isSelected ? 'tw:[&>div]:!bg-brand-50' : ''
+                  state.isSelected
+                    ? 'tw:[&>div]:!bg-brand-50 tw:dark:[&>div]:bg-brand-primary!'
+                    : ''
                 }
                 id={opt.value}
                 key={opt.value}>
@@ -263,7 +265,7 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
                     {state.isSelected && (
                       <Check
                         aria-hidden="true"
-                        className="tw:size-4 tw:shrink-0 tw:text-brand-700"
+                        className="tw:size-4 tw:shrink-0 tw:text-brand-700 tw:dark:text-brand-secondary"
                         height={16}
                         width={16}
                       />

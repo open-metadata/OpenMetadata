@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import {
+  Box,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,12 +23,12 @@ import { ServiceInsightsWidgetType } from '../../../enums/ServiceInsights.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getServiceInsightsWidgetPlaceholder } from '../../../utils/ServiceInsightsWidgets';
 import { getReadableCountString } from '../../../utils/ServicePureUtils';
-import './total-data-assets-widget.less';
 import { TotalAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
 function TotalDataAssetsWidget({
   isLoading,
   totalAssetsCount,
+  variant = 'default',
 }: Readonly<TotalAssetsWidgetProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -45,17 +46,29 @@ function TotalDataAssetsWidget({
         height: 140,
         width: 140,
         chartType: ServiceInsightsWidgetType.TOTAL_DATA_ASSETS,
-        placeholderClassName: 'border-none',
+        placeholderClassName:
+          variant === 'embedded'
+            ? 'border-none tw:[&_svg]:size-[72px]'
+            : 'border-none',
         theme,
       }),
-    [theme]
+    [theme, variant]
   );
 
   return (
-    <Card
-      className="widget-info-card total-data-assets-widget"
-      data-testid="total-data-assets-widget">
-      <div className="flex flex-col gap-1 widget-header">
+    <Box
+      className={classNames(
+        'widget-info-card total-data-assets-widget tw:h-full tw:rounded-xl tw:dark:bg-surface',
+        variant === 'embedded'
+          ? 'tw:bg-white tw:gap-0'
+          : 'tw:gap-4 tw:border tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-[var(--om-grey-25,#fdfdfd)] tw:p-6 tw:dark:border-secondary'
+      )}
+      data-testid="total-data-assets-widget"
+      direction="col">
+      <div
+        className={`flex flex-col gap-1 widget-header ${
+          variant === 'embedded' ? 'tw:py-3' : ''
+        }`}>
         <Typography size="text-lg" weight="medium">
           {t('label.total-entity', { entity: t('label.data-asset-plural') })}
         </Typography>
@@ -71,13 +84,21 @@ function TotalDataAssetsWidget({
       )}
       {!isLoading && showPlaceholder && errorPlaceholder}
       {!isLoading && !showPlaceholder && (
-        <div className="assets-list-container">
+        <Box
+          className="assets-list-container tw:h-full tw:rounded-lg tw:bg-[var(--om-grey-50,#fafafa)] tw:p-4 tw:dark:bg-secondary"
+          direction="col"
+          gap={2}>
           {totalAssetsCount?.map((entity) => (
             <div
               className="flex items-center justify-between"
               key={entity.name}>
               <div className="flex items-center gap-3">
-                <div className="p-0 icon-container">{entity.icon}</div>
+                <Box
+                  align="center"
+                  className="icon-container tw:size-7 tw:rounded-[14px] tw:bg-[var(--om-grey-2,#f2f2f2)] tw:dark:bg-tertiary"
+                  justify="center">
+                  {entity.icon}
+                </Box>
 
                 <Typography>{entity.name}</Typography>
               </div>
@@ -87,9 +108,9 @@ function TotalDataAssetsWidget({
               </Typography>
             </div>
           ))}
-        </div>
+        </Box>
       )}
-    </Card>
+    </Box>
   );
 }
 

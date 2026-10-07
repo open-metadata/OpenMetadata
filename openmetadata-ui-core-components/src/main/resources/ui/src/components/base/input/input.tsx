@@ -184,6 +184,13 @@ export const InputBase = forwardRef<
         className={cx(
           cx(
             'tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:outline-hidden tw:placeholder:text-sm tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary',
+            // Browser autofill backgrounds override normal background colours.
+            // An inset fill keeps credentials on the same dark surface without
+            // suppressing autofill or altering the wrapper's focus outline.
+            'tw:dark:autofill:shadow-[inset_0_0_0_1000px_var(--tw-background-color-primary)]',
+            'tw:dark:autofill:[-webkit-text-fill-color:var(--tw-text-color-primary)]',
+            'tw:dark:disabled:autofill:shadow-[inset_0_0_0_1000px_var(--tw-background-color-disabled_subtle)]',
+            'tw:dark:disabled:autofill:[-webkit-text-fill-color:var(--tw-text-color-disabled)]',
             fontSizeClass[fontSize]
           ),
           isDisabled && 'tw:cursor-not-allowed tw:text-disabled',

@@ -453,11 +453,11 @@ function getGatePillClass(
     'tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:px-2',
     'tw:text-xs tw:font-semibold tw:leading-4',
     {
-      'tw:border-utility-brand-200 tw:bg-white tw:text-utility-brand-700':
+      'tw:border-utility-brand-200 tw:bg-white tw:text-utility-brand-700 tw:dark:bg-utility-brand-100':
         !gateResult && !isFailed,
-      'tw:border-utility-success-200 tw:bg-white tw:text-utility-success-700':
+      'tw:border-utility-success-200 tw:bg-white tw:text-utility-success-700 tw:dark:bg-utility-success-100':
         gateResult?.passed,
-      'tw:border-utility-error-200 tw:bg-white tw:text-utility-error-700':
+      'tw:border-utility-error-200 tw:bg-white tw:text-utility-error-700 tw:dark:bg-utility-error-100':
         gateFailed,
     }
   );
@@ -580,13 +580,14 @@ export function ConnectionGateCard(
   const pillClass = classNames(
     'tw:inline-flex tw:h-6 tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium',
     {
-      'tw:border-utility-success-200 tw:text-utility-success-700':
+      'tw:border-utility-success-200 tw:text-utility-success-700 tw:dark:bg-utility-success-100':
         pillState === 'pass',
-      'tw:border-utility-error-200 tw:text-utility-error-700':
+      'tw:border-utility-error-200 tw:text-utility-error-700 tw:dark:bg-utility-error-100':
         pillState === 'fail',
-      'tw:border-utility-brand-200 tw:text-utility-brand-700':
+      'tw:border-utility-brand-200 tw:text-utility-brand-700 tw:dark:bg-utility-brand-100':
         pillState === 'running',
-      'tw:border-gray-300 tw:text-secondary': pillState === 'queued',
+      'tw:border-gray-300 tw:text-secondary tw:dark:bg-secondary':
+        pillState === 'queued',
     }
   );
 
@@ -918,7 +919,8 @@ export function ConnectionRawLogSection(
       </button>
       {showRawLog && (
         <pre
-          className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:w-full tw:max-h-[360px] tw:m-0 tw:font-semibold"
+          className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:text-utility-gray-300
+tw:whitespace-pre-wrap tw:w-full tw:max-h-[360px] tw:m-0 tw:font-semibold"
           data-testid="raw-connection-log">
           {testConnectionStepResult.flatMap((result, stepIdx) => {
             const summary = result.resultSummary || result.message;

@@ -723,6 +723,18 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
                 searchable
                 label={t('label.all-service-types')}
                 options={serviceTypeOptions}
+                renderItemIcon={(serviceType) => (
+                  <img
+                    alt={serviceType}
+                    className={[
+                      'tw:hidden tw:size-4 tw:object-contain tw:dark:block',
+                      ['PowerBI', 'Kafka', 'KafkaConnect'].includes(serviceType)
+                        ? 'tw:dark:brightness-0 tw:dark:invert'
+                        : '',
+                    ].join(' ')}
+                    src={serviceUtilClassBase.getServiceLogo(serviceType)}
+                  />
+                )}
                 testId="connections-service-type-filter"
                 value={selectedServiceTypes}
                 onChange={(values) => setCsvParam(SERVICE_TYPE_PARAM, values)}

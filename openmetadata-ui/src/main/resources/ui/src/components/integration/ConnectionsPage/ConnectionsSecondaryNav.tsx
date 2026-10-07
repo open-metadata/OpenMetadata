@@ -128,7 +128,8 @@ const ConnectionsSecondaryNav = ({
 
   return (
     <aside
-      className="tw:w-[264px] tw:shrink-0 tw:self-stretch tw:overflow-y-auto tw:border-r tw:border-secondary tw:bg-surface tw:px-3.5 tw:pb-48 tw:pt-5"
+      className="tw:w-[264px] tw:shrink-0 tw:self-stretch tw:overflow-y-auto tw:border-r tw:border-secondary tw:bg-surface tw:px-3.5
+tw:pb-48 tw:pt-5 tw:dark:rounded-xl tw:dark:border"
       data-testid="connections-secondary-nav">
       <nav aria-label={t('label.connection-plural')}>
         <NavigationItem

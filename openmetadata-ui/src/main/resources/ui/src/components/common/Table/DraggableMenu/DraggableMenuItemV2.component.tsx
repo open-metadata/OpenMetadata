@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Dropdown, Typography } from '@openmetadata/ui-core-components';
-import { Eye, EyeOff } from '@openmetadata/ui-core-components/icons';
+import { DotsGrid, Eye, EyeOff } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useCallback, useMemo, type MouseEvent } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
@@ -92,8 +92,15 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
         <span
           className="tw:inline-flex tw:cursor-grab tw:items-center tw:active:cursor-grabbing"
           data-testid="draggable-menu-item-drag-handle">
+          {/* The legacy asset has a white backing; preserve it only in light mode. */}
+          <DotsGrid
+            aria-hidden
+            className="tw:hidden tw:text-fg-quaternary tw:dark:block"
+            data-testid="draggable-menu-item-dark-drag-icon"
+            size={16}
+          />
           <ColumnDragIcon
-            className="text-grey-muted"
+            className="text-grey-muted tw:dark:hidden"
             data-testid="draggable-menu-item-drag-icon"
             height={16}
             width={16}

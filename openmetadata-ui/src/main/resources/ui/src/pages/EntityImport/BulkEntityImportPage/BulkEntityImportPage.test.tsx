@@ -21,6 +21,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import { ROUTES } from '../../../constants/constants';
+import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { EntityType } from '../../../enums/entity.enum';
 import { Include } from '../../../generated/type/include';
 import BulkEntityImportPage from './BulkEntityImportPage';
@@ -258,18 +259,20 @@ jest.mock('react-data-grid', () => ({
 
 const renderComponent = (initialPath = '/table/test.table/import') => {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Routes>
-        <Route
-          element={<BulkEntityImportPage />}
-          path="/:entityType/:fqn/import"
-        />
-        <Route
-          element={<BulkEntityImportPage />}
-          path="/bulk/edit/:entityType/:fqn"
-        />
-      </Routes>
-    </MemoryRouter>
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route
+            element={<BulkEntityImportPage />}
+            path="/:entityType/:fqn/import"
+          />
+          <Route
+            element={<BulkEntityImportPage />}
+            path="/bulk/edit/:entityType/:fqn"
+          />
+        </Routes>
+      </MemoryRouter>
+    </ThemeProvider>
   );
 };
 
@@ -333,6 +336,7 @@ describe('BulkEntityImportPage', () => {
     mockIsBulkEditRoute = EntityBulkEditUtils.isBulkEditRoute as jest.Mock;
 
     jest.clearAllMocks();
+    localStorage.removeItem('ui-theme');
     mockGetEntityByFqn.mockResolvedValue(mockEntity);
     mockValidateCsvString.mockResolvedValue({
       jobId: 'test-job-id',

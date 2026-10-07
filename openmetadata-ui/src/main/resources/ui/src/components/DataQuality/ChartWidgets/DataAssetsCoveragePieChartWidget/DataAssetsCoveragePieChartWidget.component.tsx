@@ -105,7 +105,7 @@ const DataAssetsCoveragePieChartWidget = ({
   if (isLoading) {
     return (
       <Card
-        className={className}
+        className={`${className} tw:dark:py-6`}
         data-testid="data-assets-coverage-pie-chart-widget">
         <Skeleton height={200} width="100%" />
       </Card>
@@ -114,7 +114,7 @@ const DataAssetsCoveragePieChartWidget = ({
 
   return (
     <Card
-      className={className}
+      className={`${className} tw:dark:py-6`}
       data-testid="data-assets-coverage-pie-chart-widget">
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">

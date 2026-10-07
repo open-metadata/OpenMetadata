@@ -94,7 +94,7 @@ const TestCaseStatusPieChartWidget = ({
   if (isTestCaseSummaryLoading) {
     return (
       <Card
-        className={className}
+        className={`${className} tw:dark:py-6`}
         data-testid="test-case-status-pie-chart-widget">
         <Skeleton height={200} width="100%" />
       </Card>
@@ -102,7 +102,9 @@ const TestCaseStatusPieChartWidget = ({
   }
 
   return (
-    <Card className={className} data-testid="test-case-status-pie-chart-widget">
+    <Card
+      className={`${className} tw:dark:py-6`}
+      data-testid="test-case-status-pie-chart-widget">
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <div className="custom-chart-icon-background all-tests-icon icon-container">

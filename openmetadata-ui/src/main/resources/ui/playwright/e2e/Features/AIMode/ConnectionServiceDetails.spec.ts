@@ -125,6 +125,211 @@ test.describe(
         await enableAiAppMode(page);
       });
 
+      for (const theme of ['light', 'dark']) {
+        test(`keeps one pagination divider and usable column controls in ${theme} mode`, async ({
+          page,
+        }) => {
+          await page.addInitScript(
+            (value) => localStorage.setItem('ui-theme', value),
+            theme
+          );
+          await visitAiModeServiceDetailsPage(page, {
+            category: 'databaseServices',
+            fqn: serviceFqn,
+            query: '?pageSize=2',
+          });
+
+          const table = page.getByTestId('service-children-table');
+          const lastRowCells = table.locator('tbody tr:last-child > td');
+          await expect(lastRowCells).not.toHaveCount(0);
+          // The footer owns the divider; the final row must not add another.
+          for (const cell of await lastRowCells.all()) {
+            await expect(cell).toHaveCSS('border-bottom-width', '0px');
+            await expect
+              .poll(() =>
+                cell.evaluate(
+                  (element) => getComputedStyle(element, '::after').display
+                )
+              )
+              .toBe('none');
+          }
+          await expect(page.getByTestId('pagination')).toHaveCSS(
+            'border-top-width',
+            '1px'
+          );
+
+          await page.getByTestId('column-dropdown').click();
+          const descriptionItem = page.getByTestId(
+            'column-menu-item-description'
+          );
+          await expect(descriptionItem).toBeVisible();
+          await expect(
+            descriptionItem.getByTestId(
+              theme === 'dark'
+                ? 'draggable-menu-item-dark-drag-icon'
+                : 'draggable-menu-item-drag-icon'
+            )
+          ).toBeVisible();
+          await descriptionItem
+            .getByRole('button', { name: /^Description/ })
+            .click();
+          await page.keyboard.press('Escape');
+          await expect(
+            table.getByRole('columnheader', {
+              name: 'Description',
+              exact: true,
+            })
+          ).toBeHidden();
+
+          await page.getByTestId('column-dropdown').click();
+          await descriptionItem
+            .getByRole('button', { name: /^Description/ })
+            .click();
+          await page.keyboard.press('Escape');
+          await expect(
+            table.getByRole('columnheader', {
+              name: 'Description',
+              exact: true,
+            })
+          ).toBeVisible();
+        });
+
+        test(`keeps connection details read-only with the ${theme} card surface`, async ({
+          page,
+        }) => {
+          await page.addInitScript(
+            (value) => localStorage.setItem('ui-theme', value),
+            theme
+          );
+          await visitAiModeServiceDetailsPage(page, {
+            category: 'databaseServices',
+            fqn: serviceFqn,
+            tab: 'connection',
+          });
+
+          const details = page.getByTestId('service-connection-details');
+          await expect(details).toBeVisible();
+          await expect(details).toHaveCSS(
+            'background-color',
+            theme === 'dark' ? 'rgb(34, 38, 47)' : 'rgb(255, 255, 255)'
+          );
+          await expect(details).toHaveCSS('border-radius', '8px');
+          await expect(details).toHaveCSS('padding-top', '16px');
+          const inputs = details.locator('input');
+          await expect(inputs).not.toHaveCount(0);
+          for (const input of await inputs.all()) {
+            await expect(input).toHaveAttribute('readonly', '');
+          }
+        });
+
+        test(`formats and reverts a bulk description in ${theme} mode`, async ({
+          page,
+        }) => {
+          await page.addInitScript(
+            (value) => localStorage.setItem('ui-theme', value),
+            theme
+          );
+          await visitAiModeServiceDetailsPage(page, {
+            category: 'databaseServices',
+            fqn: serviceFqn,
+          });
+          await page.getByTestId('bulk-edit-table').click();
+
+          const grid = page.getByRole('grid');
+          await expect(grid).toHaveClass(new RegExp(`rdg-${theme}`));
+          const row = grid
+            .getByRole('row')
+            .filter({ has: page.getByText(databases[0], { exact: true }) });
+          const description = row.locator('.rdg-cell-description');
+          await description.dblclick();
+          const editor = page.getByTestId('bulk-edit-description-editor');
+          await expect(editor).toHaveCSS(
+            'background-color',
+            theme === 'dark' ? 'rgb(34, 38, 47)' : 'rgb(255, 255, 255)'
+          );
+          const textarea = editor.getByRole('textbox', {
+            name: 'Description',
+            exact: true,
+          });
+          await textarea.fill('Important update');
+          await expect(textarea).toHaveValue('Important update');
+          await textarea.press('Shift+Home');
+          await expect(editor).toBeVisible();
+          await editor
+            .getByRole('button', { name: 'Bold', exact: true })
+            .click();
+          await expect(textarea).toHaveValue('**Important update**');
+          await textarea.press('ControlOrMeta+Enter');
+          await expect(editor).toBeHidden();
+          await expect(description).toContainText('**Important update**');
+
+          await page
+            .getByRole('button', { name: 'Revert Changes', exact: true })
+            .click();
+          await expect(description).not.toContainText('Important update');
+        });
+
+        test(`preserves announcement formatting with the ${theme} editor surface`, async ({
+          page,
+        }) => {
+          await page.addInitScript(
+            (value) => localStorage.setItem('ui-theme', value),
+            theme
+          );
+          await visitAiModeServiceDetailsPage(page, {
+            category: 'databaseServices',
+            fqn: serviceFqn,
+          });
+          await page
+            .getByRole('button', { name: 'Settings', exact: true })
+            .click();
+          await page
+            .getByRole('menu', { name: 'Settings' })
+            .getByRole('menuitemradio', { name: 'Announcements', exact: true })
+            .click();
+          await page.getByTestId('add-announcement').click();
+
+          const dialog = page.getByTestId('add-announcement-dialog');
+          const submit = dialog.getByTestId('announcement-submit');
+          await expect(submit).toBeDisabled();
+          if (theme === 'dark') {
+            await expect
+              .poll(() =>
+                submit.evaluate((element) => ({
+                  highlight: getComputedStyle(element, '::before').display,
+                  outline: getComputedStyle(element, '::after').outlineStyle,
+                  width: getComputedStyle(element, '::after').outlineWidth,
+                }))
+              )
+              .toEqual({ highlight: 'none', outline: 'solid', width: '1px' });
+          }
+          const field = dialog.locator('.block-editor-wrapper--bar-menu');
+          const editor = dialog.locator(
+            '.om-block-editor[contenteditable="true"]'
+          );
+          await expect(field).toHaveCSS(
+            'border-radius',
+            theme === 'dark' ? '8px' : '4px'
+          );
+          await expect(
+            dialog.getByRole('button', { name: 'bold', exact: true })
+          ).toBeVisible();
+          await editor.fill('Important announcement');
+          await editor.press('ControlOrMeta+a');
+          await dialog
+            .getByRole('button', { name: 'bold', exact: true })
+            .click();
+          await expect(editor.locator('strong')).toHaveText(
+            'Important announcement'
+          );
+
+          await dialog
+            .getByRole('button', { name: 'Cancel', exact: true })
+            .click();
+          await expect(dialog).toBeHidden();
+        });
+      }
+
       test('shows the owners and tags of each database', async ({ page }) => {
         await visitAiModeServiceDetailsPage(page, {
           category: 'databaseServices',

@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  DatePicker,
   Dialog,
   FeaturedIcon,
   FormField,
@@ -23,6 +24,7 @@ import {
   Label,
   Modal,
   ModalOverlay,
+  parseDate,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -31,6 +33,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
@@ -55,14 +58,7 @@ interface AnnouncementFormProps {
 }
 
 /**
- * A native date input rather than a component: core's `Input` is a react-aria
- * TextField, which has no `date` type, and its `DatePicker` is typed against
- * `@internationalized/date` from the design system's own node_modules, so the
- * `DateValue` it expects is a different type identity from the one this app
- * resolves. The native control is localized, keyboard-accessible and needs
- * neither a cast nor a dependency.
- *
- * The frame puts the calendar on the left. The native picker indicator is
+ * Preserve the native control's existing light-mode appearance. Its indicator is
  * stretched invisibly over the whole control instead of hidden, so a click
  * anywhere still opens the picker rather than only on the icon.
  */
@@ -81,6 +77,7 @@ const DATE_INPUT_CLASS = [
 
 const DateField = ({
   boundary = 'start',
+  isDark,
   id,
   label,
   value,
@@ -88,6 +85,7 @@ const DateField = ({
 }: {
   /** `end` anchors the value to 23:59:59.999 so the chosen day is included. */
   boundary?: 'start' | 'end';
+  isDark: boolean;
   id: string;
   label: string;
   value?: number | null;
@@ -97,26 +95,41 @@ const DateField = ({
     <Label isRequired htmlFor={id}>
       {label}
     </Label>
-    <div className="tw:relative">
-      {/* `z-1` because the input below is itself positioned (it has to be, so
+    {isDark ? (
+      <DatePicker
+        aria-label={label}
+        className="tw:w-full tw:[&_button]:w-full"
+        data-testid={id}
+        id={id}
+        value={value == null ? null : parseDate(toDateInputValue(value))}
+        onChange={(date) =>
+          onChange(fromDateInputValue(date?.toString() ?? '', boundary))
+        }
+      />
+    ) : (
+      <div className="tw:relative">
+        {/* `z-1` because the input below is itself positioned (it has to be, so
           the picker indicator can stretch over it) and carries an opaque
           background — at `z-index: auto` paint order is DOM order, so the
           input would cover this icon. `pointer-events-none` keeps the click
           falling through to the indicator. */}
-      <Calendar
-        aria-hidden
-        className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:left-3 tw:z-1 tw:size-4 tw:-translate-y-1/2 tw:text-fg-quaternary"
-      />
-      <input
-        aria-label={label}
-        className={DATE_INPUT_CLASS}
-        data-testid={id}
-        id={id}
-        type="date"
-        value={toDateInputValue(value)}
-        onChange={(e) => onChange(fromDateInputValue(e.target.value, boundary))}
-      />
-    </div>
+        <Calendar
+          aria-hidden
+          className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:left-3 tw:z-1 tw:size-4 tw:-translate-y-1/2 tw:text-fg-quaternary"
+        />
+        <input
+          aria-label={label}
+          className={DATE_INPUT_CLASS}
+          data-testid={id}
+          id={id}
+          type="date"
+          value={toDateInputValue(value)}
+          onChange={(e) =>
+            onChange(fromDateInputValue(e.target.value, boundary))
+          }
+        />
+      </div>
+    )}
   </Box>
 );
 
@@ -158,6 +171,7 @@ const AnnouncementForm = ({
   onSubmit,
 }: AnnouncementFormProps) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const isCustom = form.watch('type') === AnnouncementType.Custom;
   const requiredMessage = (fieldText: string) =>
     t('message.field-text-is-required', { fieldText });
@@ -323,6 +337,7 @@ const AnnouncementForm = ({
                   {({ field }) => (
                     <DateField
                       id="startTime"
+                      isDark={theme === 'dark'}
                       label={t('label.start-date')}
                       value={field.value}
                       onChange={field.onChange}
@@ -341,6 +356,7 @@ const AnnouncementForm = ({
                     <DateField
                       boundary="end"
                       id="endTime"
+                      isDark={theme === 'dark'}
                       label={t('label.end-date')}
                       value={field.value}
                       onChange={field.onChange}
@@ -362,11 +378,13 @@ const AnnouncementForm = ({
                 {({ field, fieldState }) => (
                   <Box className="tw:gap-1.5" direction="col">
                     <Label isRequired>{t('label.description')}</Label>
-                    {/* The block editor, not core's DESCRIPTION field: that one
-                        renders a plain TextArea, and an announcement's
-                        description is markdown that the banner and drawer both
-                        render through RichTextEditorPreviewerV1. */}
+                    {/* Keep rich-text formatting in both themes. Core's plain
+                        textarea would change the editing workflow; only the
+                        dark field surface and border adopt the core tokens. */}
                     <RichTextEditor
+                      className="tw:dark:[&_.block-editor-wrapper--bar-menu]:rounded-lg! tw:dark:[&_.block-editor-wrapper--bar-menu]:border-primary!
+                        tw:dark:[&_.block-editor-wrapper--bar-menu]:bg-primary tw:dark:[&_.block-editor-wrapper--bar-menu:focus-within]:border-brand!
+                        tw:dark:[&_.bar-menu-wrapper]:rounded-t-lg tw:dark:[&_.om-block-editor]:text-primary!"
                       data-testid="description"
                       initialValue={field.value}
                       placeHolder={t('label.enter-entity-description', {

@@ -162,13 +162,15 @@ const ConnectionsPage: React.FC = () => {
         }
       }}>
       <ButtonGroupItem
-        className="tw:size-10! tw:justify-center tw:p-0! tw:selected:bg-brand-50 tw:selected:text-brand-600"
+        className="tw:size-10! tw:justify-center tw:p-0! tw:selected:bg-brand-50 tw:selected:text-brand-600
+tw:dark:selected:bg-brand-primary tw:dark:selected:text-brand-secondary"
         data-testid="grid-view-toggle"
         iconLeading={<LayoutGrid01 height={18} width={18} />}
         id="grid"
       />
       <ButtonGroupItem
-        className="tw:size-10! tw:justify-center tw:p-0! tw:selected:bg-brand-50 tw:selected:text-brand-600"
+        className="tw:size-10! tw:justify-center tw:p-0! tw:selected:bg-brand-50 tw:selected:text-brand-600
+tw:dark:selected:bg-brand-primary tw:dark:selected:text-brand-secondary"
         data-testid="list-view-toggle"
         iconLeading={<List height={18} width={18} />}
         id="list"

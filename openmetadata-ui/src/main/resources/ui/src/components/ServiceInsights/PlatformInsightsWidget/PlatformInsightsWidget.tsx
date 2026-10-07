@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Card, Col, Collapse, Row } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -29,13 +33,12 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
 import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import './platform-insights-widget.less';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
 
 const renderViewMoreExpandIcon = (
   t: ReturnType<typeof useTranslation>['t']
 ) => (
-  <div className="expand-icon-container">
+  <div className="expand-icon-container tw:flex tw:items-center tw:justify-center tw:gap-2">
     <Typography className="text-primary">{t('label.view-more')}</Typography>
     <ArrowSvg className="text-primary" height={14} width={14} />
   </div>
@@ -44,6 +47,7 @@ const renderViewMoreExpandIcon = (
 function PlatformInsightsWidget({
   chartsData,
   isLoading,
+  variant = 'default',
 }: Readonly<PlatformInsightsWidgetProps>) {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceTypes;
@@ -68,103 +72,147 @@ function PlatformInsightsWidget({
       };
     }, [serviceCategory, chartsData]);
 
-  return (
-    <Collapse
-      className="service-insights-collapse-widget platform-insights-card"
-      defaultActiveKey={['1']}
-      expandIcon={() => renderViewMoreExpandIcon(t)}
-      expandIconPosition="end">
-      <Collapse.Panel
-        header={
-          <div className="flex flex-col gap-1">
-            <Typography className="font-medium text-lg tw:text-primary">
-              {t('label.entity-insight-plural', {
-                entity: t('label.platform'),
-              })}
-            </Typography>
-            <Typography className="tw:text-tertiary text-sm">
-              {t('message.platform-insight-description')}
-            </Typography>
-          </div>
-        }
-        key="1">
-        {/* Don't remove this class name, it is used for exporting the platform insights chart */}
-        <Row className="export-platform-insights-chart" gutter={16}>
-          <Col
-            className={classNames('other-charts-container', containerClassName)}
-            span={24}>
-            {isLoading
-              ? filteredCharts.map((chartType) => (
-                  <Card
-                    className="widget-info-card other-charts-card"
-                    key={chartType}>
-                    <SkeletonParagraph rows={2} />
-                  </Card>
-                ))
-              : filteredChartsData.map((chart) => {
-                  const icon = chart.isIncreased ? (
-                    <ArrowUp color={GREEN_1} height={11} width={11} />
-                  ) : (
-                    <ArrowUp
-                      className="flip-vertical"
-                      color={RED_1}
-                      height={11}
-                      width={11}
-                    />
-                  );
+  const header = (
+    <Box direction="col" gap={1}>
+      <Typography className="font-medium text-lg tw:text-primary">
+        {t('label.entity-insight-plural', { entity: t('label.platform') })}
+      </Typography>
+      <Typography className="tw:text-tertiary text-sm">
+        {t('message.platform-insight-description')}
+      </Typography>
+    </Box>
+  );
+  const cardClass = [
+    'widget-info-card other-charts-card tw:h-full tw:rounded-xl tw:border tw:border-[var(--om-grey-15,#eaecf5)]',
+    // The embedded page does not inherit the classic insights page's gray card fill.
+    variant === 'embedded'
+      ? 'tw:bg-white'
+      : 'tw:bg-[var(--om-grey-25,#fdfdfd)]',
+    'tw:p-3 tw:dark:border-secondary tw:dark:bg-secondary',
+  ].join(' ');
 
-                  const showIcon = chart.percentageChange !== 0;
-
-                  return (
-                    <Card
-                      className="widget-info-card other-charts-card"
-                      key={chart.chartType}>
-                      <Typography className="font-semibold text-sm">
-                        {getTitleByChartType(chart.chartType)}
-                      </Typography>
-                      <Row align="top" className="m-t-xs" gutter={8}>
-                        <Col span={12}>
-                          <Typography className="current-percentage">
-                            {`${getReadableCountString(
-                              chart.currentPercentage
-                            )}%`}
-                          </Typography>
-                        </Col>
-                        {!isUndefined(chart.percentageChange) && (
-                          <Col
-                            className="flex flex-col gap-1 items-end"
-                            span={12}>
-                            <div className="percent-change-tag">
-                              {showIcon && icon}
-                              <Typography
-                                className="font-medium text-xs"
-                                style={{
-                                  color: chart.isIncreased ? GREEN_1 : RED_1,
-                                }}>
-                                {`${getReadableCountString(
-                                  chart.percentageChange
-                                )}%`}
-                              </Typography>
-                            </div>
-                            <Typography
-                              className="font-small text-xs text-no-wrap"
-                              color="secondary">
-                              {chart.numberOfDays === 1
-                                ? t('label.in-the-last-day')
-                                : t('label.in-last-number-of-days', {
-                                    numberOfDays: chart.numberOfDays,
-                                  })}
-                            </Typography>
-                          </Col>
+  // Keep the export selector on the chart region used by the download action.
+  const content = (
+    <Box className="export-platform-insights-chart tw:block">
+      <Box
+        className={classNames(
+          'other-charts-container tw:grid tw:gap-4',
+          containerClassName,
+          variant === 'embedded'
+            ? 'tw:grid-cols-3 tw:[&.four-chart-container]:grid-cols-2'
+            : 'tw:grid-cols-5 tw:[&.four-chart-container]:grid-cols-4'
+        )}>
+        {isLoading
+          ? filteredCharts.map((chartType) => (
+              <Box className={cardClass} direction="col" key={chartType}>
+                <SkeletonParagraph rows={2} />
+              </Box>
+            ))
+          : filteredChartsData.map((chart) => (
+              <Box
+                className={cardClass}
+                direction="col"
+                justify="between"
+                key={chart.chartType}>
+                <Typography className="font-semibold text-sm">
+                  {getTitleByChartType(chart.chartType)}
+                </Typography>
+                <Box align="start" className="tw:mt-1 tw:-mx-1">
+                  <Box className="tw:w-1/2 tw:px-1">
+                    <Typography className="current-percentage tw:text-xl tw:font-semibold tw:leading-5">
+                      {getReadableCountString(chart.currentPercentage)}%
+                    </Typography>
+                  </Box>
+                  {!isUndefined(chart.percentageChange) && (
+                    <Box
+                      align="end"
+                      className="tw:w-1/2 tw:px-1"
+                      direction="col"
+                      gap={1}>
+                      <Box
+                        align="center"
+                        className={classNames(
+                          'percent-change-tag tw:w-fit tw:rounded-md tw:border tw:border-[#abefc6] tw:bg-[var(--om-green-9,#ecfdf3)] tw:px-1.5',
+                          chart.isIncreased
+                            ? 'tw:dark:bg-success-primary tw:dark:border-utility-success-200'
+                            : 'tw:dark:bg-error-primary tw:dark:border-error-subtle'
                         )}
-                      </Row>
-                    </Card>
-                  );
-                })}
-          </Col>
-        </Row>
-      </Collapse.Panel>
-    </Collapse>
+                        gap={1}
+                        justify="center">
+                        {chart.percentageChange !== 0 && (
+                          <ArrowUp
+                            className={classNames(
+                              !chart.isIncreased && 'flip-vertical',
+                              chart.isIncreased
+                                ? 'tw:dark:text-fg-success-primary'
+                                : 'tw:dark:text-fg-error-primary'
+                            )}
+                            color={chart.isIncreased ? GREEN_1 : RED_1}
+                            height={11}
+                            width={11}
+                          />
+                        )}
+                        <Typography
+                          className={classNames(
+                            'font-medium text-xs',
+                            chart.isIncreased
+                              ? 'tw:dark:text-success-primary!'
+                              : 'tw:dark:text-error-primary!'
+                          )}
+                          style={{
+                            color: chart.isIncreased ? GREEN_1 : RED_1,
+                          }}>
+                          {getReadableCountString(chart.percentageChange)}%
+                        </Typography>
+                      </Box>
+                      <Typography
+                        className="font-small text-xs text-no-wrap"
+                        color="secondary">
+                        {chart.numberOfDays === 1
+                          ? t('label.in-the-last-day')
+                          : t('label.in-last-number-of-days', {
+                              numberOfDays: chart.numberOfDays,
+                            })}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            ))}
+      </Box>
+    </Box>
+  );
+
+  // The embedded layout has always stayed open. Express that as a layout choice
+  // instead of disabling an interactive collapse header through CSS.
+  if (variant === 'embedded') {
+    return (
+      <Box
+        className="platform-insights-card tw:bg-white tw:dark:bg-surface"
+        direction="col">
+        <Box className="tw:py-3 tw:pr-4">{header}</Box>
+        {content}
+      </Box>
+    );
+  }
+
+  return (
+    <Accordion
+      className="service-insights-collapse-widget platform-insights-card tw:rounded-xl tw:border
+        tw:border-[var(--om-grey-15,#eaecf5)] tw:outline-0 tw:dark:border-secondary"
+      defaultExpandedKeys={['1']}>
+      <AccordionItem className="tw:bg-primary tw:dark:bg-surface" id="1">
+        <AccordionHeader
+          className="tw:px-4 tw:py-3 tw:hover:bg-transparent"
+          showChevron={false}>
+          {header}
+          {renderViewMoreExpandIcon(t)}
+        </AccordionHeader>
+        <AccordionPanel className="tw:border-0 tw:px-4 tw:pt-0 tw:pb-4">
+          {content}
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
   );
 }
 

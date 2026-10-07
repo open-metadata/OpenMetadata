@@ -22,11 +22,18 @@ export const styles = sortCx({
     // A link button drops the button box by default; `boxed` keeps it.
     linkUnboxed: 'tw:justify-normal tw:rounded tw:p-0!',
     root: [
-      'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:transition tw:duration-100 tw:ease-linear tw:before:absolute',
+      'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap ' +
+        'tw:transition tw:duration-100 tw:ease-linear tw:before:absolute',
       // When button is used within `InputGroup`
-      'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
+      'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px ' +
+        'tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none ' +
+        'tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none ' +
+        'tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
       // Disabled styles
       'tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled',
+      // The masked highlight fades the disabled border into dark surfaces.
+      // Keep a complete outline when the primary fill is no longer present.
+      'tw:dark:disabled:before:hidden tw:dark:disabled:after:outline-disabled',
       // Icon styles
       'tw:disabled:*:data-icon:text-fg-disabled_subtle',
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
@@ -91,7 +98,8 @@ export const styles = sortCx({
     },
     secondary: {
       root: [
-        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised ' +
+          'tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
         `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
         'tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
@@ -124,7 +132,8 @@ export const styles = sortCx({
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
+        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover ' +
+          'tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
       ].join(' '),
     },
     'primary-destructive': {
@@ -132,7 +141,9 @@ export const styles = sortCx({
         // Dark fill softened to 90% opacity per the palette guideline — scoped to
         // this button so the shared `bg-error-solid` token stays opaque for
         // badges, error FeaturedIcons, and other solid-error consumers.
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover tw:dark:bg-error-solid/90 tw:dark:hover:bg-error-solid_hover/90 tw:dark:data-loading:bg-error-solid_hover/90',
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover ' +
+          'tw:data-loading:bg-error-solid_hover tw:dark:bg-error-solid/90 tw:dark:hover:bg-error-solid_hover/90 ' +
+          'tw:dark:data-loading:bg-error-solid_hover/90',
         `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
@@ -144,7 +155,8 @@ export const styles = sortCx({
     },
     'secondary-destructive': {
       root: [
-        'tw:bg-surface tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        'tw:bg-surface tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary ' +
+          'tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
         `${borderAfter} tw:after:outline-error_subtle`,
         // Disabled styles
         'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',

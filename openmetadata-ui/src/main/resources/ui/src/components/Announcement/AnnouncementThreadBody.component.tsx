@@ -140,7 +140,7 @@ const AnnouncementThreadBody = ({
   if (isEmpty(announcements) && !isThreadLoading) {
     return (
       <ErrorPlaceHolder
-        className="h-auto mt-24"
+        className="h-auto mt-24 tw:dark:border-0!"
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography
           as="p"

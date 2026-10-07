@@ -92,14 +92,18 @@ const EntityHealthStatusPieChartWidget = ({
 
   if (isLoading) {
     return (
-      <Card className={className} data-testid="entity-health-pie-chart-widget">
+      <Card
+        className={`${className} tw:dark:py-6`}
+        data-testid="entity-health-pie-chart-widget">
         <Skeleton height={200} width="100%" />
       </Card>
     );
   }
 
   return (
-    <Card className={className} data-testid="entity-health-pie-chart-widget">
+    <Card
+      className={`${className} tw:dark:py-6`}
+      data-testid="entity-health-pie-chart-widget">
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <div className="custom-chart-icon-background health-check-icon icon-container">

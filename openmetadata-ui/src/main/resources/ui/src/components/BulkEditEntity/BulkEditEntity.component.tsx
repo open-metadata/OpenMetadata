@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BadgeWithIcon, Button, Input } from '@openmetadata/ui-core-components';
+import {
+  BadgeWithIcon,
+  Box,
+  Button,
+  Input,
+} from '@openmetadata/ui-core-components';
 import {
   Edit03,
   Lock01,
@@ -38,8 +43,12 @@ import type {
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
 import { useNavigate } from 'react-router-dom';
-import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
+import {
+  CSV_GRID_DARK_CLASS,
+  ENTITY_BULK_EDIT_STEPS,
+} from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
+import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import entityBulkEditConfigClassBase from '../../utils/CSV/EntityBulkEditConfigClassBase';
@@ -156,6 +165,8 @@ const BulkEditEntity = ({
   workflowMode = 'bulkEdit',
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
@@ -460,9 +471,11 @@ const BulkEditEntity = ({
     });
 
     return (
-      <div className="om-rdg bulk-edit-rdg" ref={setGridRef}>
+      <Box
+        className={`om-rdg bulk-edit-rdg tw:block ${CSV_GRID_DARK_CLASS}`}
+        ref={setGridRef}>
         <LazyDataGrid
-          className="rdg-light"
+          className={isDark ? 'rdg-dark' : 'rdg-light'}
           columns={
             gridColumns as unknown as ColumnOrColumnGroup<
               NoInfer<Record<string, string>>,
@@ -497,9 +510,10 @@ const BulkEditEntity = ({
           onPaste={handlePaste}
           onRowsChange={handleOnRowsChange}
         />
-      </div>
+      </Box>
     );
   }, [
+    isDark,
     changedCellKeysByRowId,
     columns,
     filteredDataSource,
@@ -589,7 +603,9 @@ const BulkEditEntity = ({
     }
 
     return (
-      <div className="csv-import-card bulk-edit-card">
+      <Box
+        className="csv-import-card bulk-edit-card tw:block tw:rounded-xl tw:border tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white
+tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-0 tw:dark:border-secondary tw:dark:bg-surface">
         <Banner
           className="border-radius"
           isLoading={false}
@@ -601,7 +617,7 @@ const BulkEditEntity = ({
             {t('label.try-again')}
           </Button>
         </div>
-      </div>
+      </Box>
     );
   };
 
@@ -667,7 +683,7 @@ const BulkEditEntity = ({
   );
 
   const renderAddRowBar = () => (
-    <div className="bulk-edit-add-row-bar">
+    <div className="bulk-edit-add-row-bar tw:dark:bg-secondary! tw:dark:border-secondary!">
       <div className="bulk-edit-add-row-content">
         <Button
           className="bulk-edit-add-row-btn"
@@ -682,7 +698,7 @@ const BulkEditEntity = ({
               })}
         </Button>
         {!isImportWorkflow && (
-          <span className="bulk-edit-add-row-hint">
+          <span className="bulk-edit-add-row-hint tw:dark:text-tertiary!">
             {t(newRowConfig?.hintMessageKey ?? '')}
           </span>
         )}
@@ -707,13 +723,15 @@ const BulkEditEntity = ({
   );
 
   const renderStepOneCard = () => (
-    <div className="csv-import-card bulk-edit-card">
+    <Box
+      className="csv-import-card bulk-edit-card tw:block tw:rounded-xl tw:border tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white
+tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-0 tw:dark:border-secondary tw:dark:bg-surface">
       <div className="csv-import-stack bulk-edit-stack">
         {renderToolbar()}
         <div className="bulk-edit-grid-shell">{editDataGrid}</div>
         {newRowConfig && renderAddRowBar()}
       </div>
-    </div>
+    </Box>
   );
 
   const renderStepTwoCard = () => {
@@ -722,7 +740,9 @@ const BulkEditEntity = ({
     }
 
     return (
-      <div className="csv-import-card">
+      <Box
+        className="csv-import-card tw:block tw:rounded-xl tw:border tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white
+tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-6 tw:dark:border-secondary tw:dark:bg-surface">
         <div className="csv-import-stack">
           <div>
             <ImportStatus csvImportResult={validationData} />
@@ -730,19 +750,19 @@ const BulkEditEntity = ({
 
           <div>
             {validateCSVData && (
-              <div className="om-rdg">
+              <Box className={`om-rdg tw:block ${CSV_GRID_DARK_CLASS}`}>
                 <LazyDataGrid
-                  className="rdg-light"
+                  className={isDark ? 'rdg-dark' : 'rdg-light'}
                   columns={validateCSVData.columns}
                   headerRowHeight={38}
                   rowHeight={44}
                   rows={validateCSVData.dataSource}
                 />
-              </div>
+              </Box>
             )}
           </div>
         </div>
-      </div>
+      </Box>
     );
   };
 

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Space, Tooltip } from 'antd';
+import { Box, Input, Tooltip } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -34,7 +34,10 @@ import {
 import { getOwnHandler } from '../../../../utils/RecordUtils';
 import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
-import './service-connection-details.less';
+
+// Preserve the existing light card geometry while dark mode uses a raised surface.
+const DETAILS_CARD_CLASS =
+  'tw:block tw:rounded-lg tw:border tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-primary tw:p-4 tw:dark:border-secondary tw:dark:bg-surface';
 
 type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
@@ -146,48 +149,44 @@ const ServiceConnectionDetails = ({
 
   return (
     <>
-      <div
-        className="service-connection-details"
+      <Box
+        className={DETAILS_CARD_CLASS}
         data-testid="service-connection-details">
-        <Row className="w-full" gutter={[8, 8]}>
-          {data}
-        </Row>
-      </div>
+        <Box className="tw:-mx-1 tw:-my-1 tw:w-full tw:flex-wrap">{data}</Box>
+      </Box>
 
       {extraInfo && (
-        <div className="service-connection-details m-t-md m-y-lg">
-          <Row className="w-full" gutter={[8, 8]}>
-            <Col span={12}>
-              <Row>
-                <Col className="d-flex items-center" span={8}>
-                  <Space size={0}>
-                    <p className="text-grey-muted m-0">{extraInfo.headerKey}</p>
+        <Box className={`${DETAILS_CARD_CLASS} m-t-md m-y-lg`}>
+          <Box className="tw:-mx-1 tw:-my-1 tw:w-full tw:flex-wrap">
+            <Box className="tw:w-1/2 tw:px-1 tw:py-1">
+              <Box className="tw:w-full">
+                <Box align="center" className="tw:w-1/3">
+                  <Box align="center">
+                    <p className="text-grey-muted tw:dark:text-tertiary m-0">
+                      {extraInfo.headerKey}
+                    </p>
                     {extraInfo.description && (
-                      <Tooltip
-                        placement="bottom"
-                        title={extraInfo.description}
-                        trigger="hover">
-                        <InfoCircleOutlined
-                          className="m-x-xss"
-                          style={{ color: '#C4C4C4' }}
-                        />
+                      <Tooltip placement="bottom" title={extraInfo.description}>
+                        <InfoCircle className="tw:mx-1 tw:size-3.5 tw:text-[#C4C4C4] tw:dark:text-fg-quaternary" />
                       </Tooltip>
                     )}
-                  </Space>
-                </Col>
-                <Col span={16}>
+                  </Box>
+                </Box>
+                <Box className="tw:w-2/3">
                   <Input
-                    readOnly
-                    className="w-full border-none"
-                    data-testid="input-field"
+                    isReadOnly
+                    aria-label={extraInfo.headerKey}
+                    inputClassName="tw:h-8 tw:px-[11px] tw:py-1 tw:text-sm tw:leading-[22px]"
+                    inputDataTestId="input-field"
                     type="text"
                     value={extraInfo.displayName ?? extraInfo.name}
+                    wrapperClassName="tw:rounded-lg tw:bg-transparent tw:shadow-none tw:outline-0!"
                   />
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-        </div>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
       )}
     </>
   );

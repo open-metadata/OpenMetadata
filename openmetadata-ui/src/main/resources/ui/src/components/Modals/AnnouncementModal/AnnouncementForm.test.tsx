@@ -21,6 +21,7 @@ import {
 } from '@testing-library/react';
 import { DateTime } from 'luxon';
 import { useForm } from 'react-hook-form';
+import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import {
   AnnouncementColor,
   AnnouncementType,
@@ -78,20 +79,47 @@ const Harness = ({
   });
 
   return (
-    <AnnouncementForm
-      open
-      description="message.add-announcement-description"
-      form={form}
-      submitLabel="label.submit"
-      testId="add-announcement-dialog"
-      title="label.add-entity"
-      onCancel={jest.fn()}
-      onSubmit={onSubmit}
-    />
+    <ThemeProvider>
+      <AnnouncementForm
+        open
+        description="message.add-announcement-description"
+        form={form}
+        submitLabel="label.submit"
+        testId="add-announcement-dialog"
+        title="label.add-entity"
+        onCancel={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    </ThemeProvider>
   );
 };
 
 describe('AnnouncementForm', () => {
+  beforeEach(() => localStorage.removeItem('ui-theme'));
+
+  it('uses the core calendar in dark mode and keeps the selected end day inclusive', async () => {
+    localStorage.setItem('ui-theme', 'dark');
+    const onSubmit = jest.fn();
+    render(<Harness onSubmit={onSubmit} />);
+
+    fireEvent.click(within(screen.getByTestId('endTime')).getByRole('button'));
+    const calendar = await screen.findByRole('grid');
+    fireEvent.click(within(calendar).getByText('16', { exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: /apply/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId('announcement-submit')).toBeEnabled()
+    );
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('announcement-submit'))
+    );
+
+    expect(
+      DateTime.fromMillis(onSubmit.mock.calls[0][0].endTime).toFormat(
+        'yyyy-MM-dd HH:mm'
+      )
+    ).toBe('2023-11-16 23:59');
+  });
+
   it('should render the type selector and both date inputs', () => {
     render(<Harness onSubmit={jest.fn()} />);
 
