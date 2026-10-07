@@ -159,10 +159,6 @@
       "title": "Supports System Profile",
       "$ref": "../connectionBasicType.json#/definitions/supportsSystemProfile"
     },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
-    },
     "supportsDataDiff": {
       "title": "Supports Data Diff Extraction.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"

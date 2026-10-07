@@ -13,7 +13,13 @@
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import { UIEventHandler, useCallback, useEffect, useState } from 'react';
+import {
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ES_UPDATE_DELAY,
@@ -66,7 +72,10 @@ import {
   getQuickFilterQuery,
 } from '../../../utils/ExplorePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { CSVExportJob } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import {
+  CSVExportJob,
+  CSVExportWebsocketResponse,
+} from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
@@ -81,6 +90,13 @@ export interface UseAssetSelectionStateProps {
 }
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 50;
+
+type BulkAssetsActivity = Pick<
+  CSVExportWebsocketResponse,
+  'jobId' | 'status'
+> & {
+  result?: BulkOperationResult;
+};
 
 export const useAssetSelectionState = ({
   entityFqn,
@@ -120,6 +136,15 @@ export const useAssetSelectionState = ({
 
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [assetJobResponse, setAssetJobResponse] = useState<CSVExportResponse>();
+  // Mirrors the in-flight job id for the socket listener, which would otherwise
+  // close over a stale `assetJobResponse`.
+  const activeJobIdRef = useRef<string>();
+  // True from the moment a save is fired until its response has been processed.
+  const pendingSaveRef = useRef(false);
+  // Terminal events that arrived in that window, when the job id was not known
+  // yet. Written only while a save is pending and cleared when it settles, so it
+  // holds at most the events of one request round-trip.
+  const earlyActivitiesRef = useRef(new Map<string, BulkAssetsActivity>());
   const [aggregations, setAggregations] = useState<Aggregations>();
   const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
@@ -269,6 +294,26 @@ export const useAssetSelectionState = ({
     }
   };
 
+  const handleTerminalActivity = useCallback(
+    (activity: BulkAssetsActivity) => {
+      if (activity.status === 'COMPLETED') {
+        activeJobIdRef.current = undefined;
+        setAssetJobResponse(undefined);
+        if (activity.result?.status === 'success') {
+          onSave?.();
+          onCancel?.();
+        } else {
+          setFailedStatus(activity.result);
+        }
+      } else if (activity.status === 'FAILED') {
+        activeJobIdRef.current = undefined;
+        setExportJob(activity);
+        setAssetJobResponse(undefined);
+      }
+    },
+    [onSave, onCancel]
+  );
+
   const processSaveResponse = useCallback(
     async (res: unknown) => {
       if (isUndefined((res as CSVExportResponse).jobId)) {
@@ -284,10 +329,22 @@ export const useAssetSelectionState = ({
           setFailedStatus(res as BulkOperationResult);
         }
       } else {
+        const { jobId } = res as CSVExportResponse;
+        const earlyActivity = earlyActivitiesRef.current.get(jobId);
+
+        // The server queues the job before it writes this response, so a small
+        // job can already have reported back over the socket.
+        if (earlyActivity) {
+          handleTerminalActivity(earlyActivity);
+
+          return;
+        }
+
+        activeJobIdRef.current = jobId;
         setAssetJobResponse(res as CSVExportResponse);
       }
     },
-    [onSave, onCancel]
+    [onSave, onCancel, handleTerminalActivity]
   );
 
   const handleSaveError = useCallback(
@@ -310,6 +367,7 @@ export const useAssetSelectionState = ({
     try {
       setIsSaveLoading(true);
       setFailedStatus(undefined);
+      pendingSaveRef.current = true;
       if (!activeEntity) {
         return;
       }
@@ -373,6 +431,8 @@ export const useAssetSelectionState = ({
     } catch (err) {
       handleSaveError(err);
     } finally {
+      pendingSaveRef.current = false;
+      earlyActivitiesRef.current.clear();
       setIsSaveLoading(false);
     }
   }, [activeEntity, selectedItems, type, processSaveResponse, handleSaveError]);
@@ -387,6 +447,7 @@ export const useAssetSelectionState = ({
     }
     try {
       setIsSaveLoading(true);
+      pendingSaveRef.current = true;
       const res = await addAssetsToDomain(
         activeEntity.fullyQualifiedName ?? '',
         pendingDomainEntities
@@ -398,6 +459,8 @@ export const useAssetSelectionState = ({
     } catch (err) {
       handleSaveError(err);
     } finally {
+      pendingSaveRef.current = false;
+      earlyActivitiesRef.current.clear();
       setIsSaveLoading(false);
     }
   }, [
@@ -529,28 +592,34 @@ export const useAssetSelectionState = ({
   useEffect(() => {
     if (socket) {
       socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, (newActivity) => {
-        if (newActivity) {
-          const activity = JSON.parse(newActivity);
-          if (activity.status === 'COMPLETED') {
-            setAssetJobResponse(undefined);
-            if (activity.result.status === 'success') {
-              onSave?.();
-              onCancel?.();
-            } else {
-              setFailedStatus(activity.result);
-            }
-          } else if (activity.status === 'FAILED') {
-            setExportJob(activity);
-            setAssetJobResponse(undefined);
-          }
+        if (!newActivity) {
+          return;
         }
+
+        const activity = JSON.parse(newActivity) as BulkAssetsActivity;
+
+        // The channel is per-user, so another tab's job also lands here and
+        // would close this drawer; only react to the job we started.
+        if (!activeJobIdRef.current) {
+          if (pendingSaveRef.current) {
+            earlyActivitiesRef.current.set(activity.jobId, activity);
+          }
+
+          return;
+        }
+
+        if (activity.jobId !== activeJobIdRef.current) {
+          return;
+        }
+
+        handleTerminalActivity(activity);
       });
     }
 
     return () => {
       socket?.off(SOCKET_EVENTS.BULK_ASSETS_CHANNEL);
     };
-  }, [socket]);
+  }, [socket, handleTerminalActivity]);
 
   return {
     search,

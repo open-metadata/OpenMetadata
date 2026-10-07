@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Popover, Row, Space } from 'antd';
+import {
+  Button,
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -85,8 +90,19 @@ const QueryUsedByOtherTable = ({
             <Typography className="m-r-xss">
               {t('label.and-lowercase')}
             </Typography>
-            <Popover
-              content={
+            <PopoverTrigger>
+              <Button
+                noTextPadding
+                className="show-more"
+                color="link-color"
+                data-testid="show-more"
+                size="sm">
+                {`${remainingTable.length} ${t('label.more-lowercase')}`}
+              </Button>
+              <Popover
+                arrow
+                containerClassName="tw:px-4 tw:py-3"
+                placement="bottom">
                 <Space direction="vertical">
                   {remainingTable.map((table) => (
                     <Link
@@ -99,13 +115,8 @@ const QueryUsedByOtherTable = ({
                     </Link>
                   ))}
                 </Space>
-              }
-              placement="bottom"
-              trigger="click">
-              <Typography className="show-more" data-testid="show-more">
-                {`${remainingTable.length} ${t('label.more-lowercase')}`}
-              </Typography>
-            </Popover>
+              </Popover>
+            </PopoverTrigger>
           </>
         ) : null}
       </Typography>

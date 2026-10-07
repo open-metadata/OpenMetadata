@@ -42,12 +42,11 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 1,
-    // Lowered as positional locators are retargeted: replyAnnouncement targets
-    // the announcement banner's title rather than the first of a list of items;
-    // DomainFilterQueryFilter's quick-filter helpers share one opener that
-    // reaches for `asset-filter-button`; ActivityFeed finds its seeded card by
-    // text and SearchExport its selected tab, not the first of each.
-    'om-playwright/no-positional-locator': 606,
+    // The merged fixes target named elements in replyAnnouncement,
+    // DomainFilterQueryFilter, ActivityFeed, and SearchExport; the core
+    // Popover/Dropdown migration also removed a positional locator.
+    // Two below that again: this branch deletes the S3 sample-data storage tests.
+    'om-playwright/no-positional-locator': 603,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 18,

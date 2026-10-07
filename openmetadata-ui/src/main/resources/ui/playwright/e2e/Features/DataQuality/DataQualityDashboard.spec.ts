@@ -1144,7 +1144,7 @@ test.describe(
           '/api/v1/search/query?*index=dataProduct*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await dataProductOptionsRes;
 
         await expect(
@@ -1181,7 +1181,7 @@ test.describe(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="dataProductFqn"]');
+        await page.getByTestId('advanced-filter-option-dataProductFqn').click();
         await getTestCases;
 
         await expect(

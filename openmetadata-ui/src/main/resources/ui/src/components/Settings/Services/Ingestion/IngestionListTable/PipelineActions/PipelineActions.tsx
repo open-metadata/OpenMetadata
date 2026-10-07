@@ -175,7 +175,6 @@ function PipelineActions({
                 ingestion={pipeline}
                 ingestionPipelinePermissions={ingestionPipelinePermissions}
                 moreActionButtonProps={{
-                  ...moreActionButtonProps,
                   disabled: isDisabled || moreActionButtonProps?.disabled,
                 }}
                 serviceCategory={serviceCategory}

@@ -815,16 +815,26 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+      await expect(
+        adminPage
+          .getByRole('dialog')
+          .filter({ hasNot: adminPage.getByRole('menu') })
+      ).toBeVisible();
 
-      await adminPage.getByRole('dialog').getByRole('textbox').clear();
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
+        .getByRole('textbox')
+        .clear();
+      await adminPage
+        .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('textbox')
         .fill('Sample Data Updated');
 
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('button', { name: 'Ok' })
         .click();
 
@@ -914,16 +924,26 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+      await expect(
+        adminPage
+          .getByRole('dialog')
+          .filter({ hasNot: adminPage.getByRole('menu') })
+      ).toBeVisible();
 
-      await adminPage.getByRole('dialog').getByRole('textbox').clear();
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
+        .getByRole('textbox')
+        .clear();
+      await adminPage
+        .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('textbox')
         .fill('Access Policy');
 
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('button', { name: 'Ok' })
         .click();
 
