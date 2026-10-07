@@ -755,7 +755,9 @@ const KnowledgePageListComponent = forwardRef<
             </Col>
           ))}
         </Row>
-        {isLoadingMore ? <Loader className="tw:shrink-0" /> : null}
+        {isLoadingMore ? (
+          <Loader className="tw:shrink-0" data-testid="knowledge-page-loader" />
+        ) : null}
         <div
           className="w-full"
           data-testid="observer-element"

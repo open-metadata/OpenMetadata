@@ -913,8 +913,13 @@ test.describe('Context Center Articles', () => {
     );
 
     await observerElement.scrollIntoViewIfNeeded();
-    await paginationResponse;
-    await waitForAllLoadersToDisappear(page);
+    const resp = await paginationResponse;
+
+    expect(resp.status()).toBe(200);
+
+    const paginationLoader = page.getByTestId('knowledge-page-loader');
+    await expect(paginationLoader).toBeVisible({ timeout: 3000 }).catch(() => null);
+    await paginationLoader.waitFor({ state: 'hidden' });
 
     await expect.poll(() => cards.count()).toBeGreaterThan(initialCardCount);
   });
