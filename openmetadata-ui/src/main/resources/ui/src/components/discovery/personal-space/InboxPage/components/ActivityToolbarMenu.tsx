@@ -32,6 +32,9 @@ export interface ActivityToolbarMenuProps {
   options: ActivityToolbarMenuOption[];
   value: string;
   onChange: (value: string) => void;
+  // A quiet trigger for a control inside a list's header rather than a toolbar.
+  color?: 'secondary' | 'tertiary';
+  size?: 'sm' | 'md';
   'data-testid'?: string;
 }
 
@@ -43,6 +46,10 @@ const ActivityToolbarMenu = ({
   options,
   value,
   onChange,
+  color = 'secondary',
+  // The size FilterSelect gives its bordered trigger, so the Type filter
+  // beside these menus stands as tall as they do.
+  size = 'md',
   'data-testid': testId,
 }: ActivityToolbarMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -51,13 +58,11 @@ const ActivityToolbarMenu = ({
   return (
     <Dropdown.Root onOpenChange={setIsOpen}>
       <Button
-        color="secondary"
+        color={color}
         data-testid={testId}
         iconLeading={triggerIcon}
         iconTrailing={isOpen ? ChevronUp : ChevronDown}
-        // The size FilterSelect gives its bordered trigger, so the Type filter
-        // beside these menus stands as tall as they do.
-        size="md">
+        size={size}>
         {triggerLabel ?? selected?.label}
       </Button>
       <Dropdown.Popover className="tw:w-56" placement="bottom end">
