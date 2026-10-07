@@ -132,6 +132,7 @@ public class OntologyChangeSetIT {
             memories.create(
                 new CreateContextMemory()
                     .withName(ns.prefix("revenueMemory"))
+                    .withEntityStatus(EntityStatus.APPROVED)
                     .withDescription("Subscription revenue definition")
                     .withQuestion("What is monthly recurring revenue?")
                     .withAnswer("Recurring subscription revenue in a month.")));
@@ -223,6 +224,7 @@ public class OntologyChangeSetIT {
             memories.create(
                 new CreateContextMemory()
                     .withName(ns.prefix("retiredSource"))
+                    .withEntityStatus(EntityStatus.APPROVED)
                     .withQuestion("What is the canonical orders table?")
                     .withAnswer("sales.orders is canonical.")));
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
@@ -529,6 +531,7 @@ public class OntologyChangeSetIT {
   private static CreateContextMemory memoryRequest(String name) {
     return new CreateContextMemory()
         .withName(name)
+        .withEntityStatus(EntityStatus.APPROVED)
         .withDescription("Memory behind an ontology draft")
         .withQuestion("What is an active subscriber?")
         .withAnswer("A customer with a paid subscription this month.");

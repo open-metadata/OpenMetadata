@@ -53,7 +53,7 @@ describe('useContextCenterBadges', () => {
 
     expect(getListContextMemories).toHaveBeenCalledWith({
       limit: 0,
-      statuses: EntityStatus.Approved,
+      statuses: [EntityStatus.Approved, EntityStatus.Unprocessed].join(','),
     });
   });
 });

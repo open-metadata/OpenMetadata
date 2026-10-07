@@ -14,6 +14,7 @@
 import test, { expect, Page, Route } from '@playwright/test';
 import { readFile } from 'fs/promises';
 import { parse } from 'papaparse';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
@@ -356,7 +357,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
           },
           {
             message: 'Table relationships must reach the RDF projection',
-            timeout: 120_000,
+            timeout: LONG_ACTION_TIMEOUT,
           }
         )
         .toMatchObject({ status: 200, body: { boolean: true } });

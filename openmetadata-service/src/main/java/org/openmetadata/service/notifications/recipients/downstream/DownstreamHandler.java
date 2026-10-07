@@ -13,11 +13,10 @@
 
 package org.openmetadata.service.notifications.recipients.downstream;
 
-import java.util.Set;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.Recipients;
 
 /**
  * Handles downstream entity resolution for lineage-based notifications.
@@ -39,9 +38,9 @@ public interface DownstreamHandler {
    * @param destination the subscription destination with type and configuration
    * @param changeEvent the ChangeEvent containing entity snapshot and ID/type information
    * @param maxDepth the maximum depth to traverse (null for unlimited with cycle protection)
-   * @return set of recipients from downstream entities
+   * @return the recipients of downstream entities, and the lookups that failed
    */
-  Set<Recipient> resolveDownstreamRecipients(
+  Recipients resolveDownstreamRecipients(
       SubscriptionAction action,
       SubscriptionDestination destination,
       ChangeEvent changeEvent,

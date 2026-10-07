@@ -117,6 +117,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
           onClick={(e: MouseEvent) => e.stopPropagation()}
         />
         <Popover
+          arrow
           containerClassName="tw:flex tw:gap-2 tw:p-1"
           data-testid="feed-reactions-popover"
           placement="top start">
