@@ -62,6 +62,8 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.config.source.SettingsFingerprint;
+import org.openmetadata.service.config.source.StoredSettingRow;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
@@ -264,6 +266,82 @@ public interface SystemTokenDAOs {
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);
 
+    @SqlQuery(
+        "SELECT json, deployment_snapshot FROM openmetadata_settings WHERE configType = :configType")
+    @RegisterRowMapper(StoredSettingRowMapper.class)
+    StoredSettingRow getStoredSettingRow(@Bind("configType") String configType);
+
+    /** Inserts the row unless one exists, so a row that fails to parse is never overwritten. */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO openmetadata_settings (configType, json, deployment_snapshot) "
+                + "VALUES (:configType, :json, :snapshot) "
+                + "ON DUPLICATE KEY UPDATE configType = configType",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO openmetadata_settings (configType, json, deployment_snapshot) "
+                + "VALUES (:configType, :json :: jsonb, :snapshot :: jsonb) "
+                + "ON CONFLICT (configType) DO NOTHING",
+        connectionType = POSTGRES)
+    int insertSettingsIfAbsent(
+        @Bind("configType") String configType,
+        @BindJson("json") String json,
+        @BindJson("snapshot") String snapshot);
+
+    /**
+     * Writes a reconciled value unless the row changed since {@code expectedJson} was read. The
+     * snapshot gets the hash of the written value in the same statement, so another server never
+     * sees the value without the mark that it came from a reconciliation.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :updatedJson, "
+                + "deployment_snapshot = JSON_SET(CAST(:snapshot AS JSON), "
+                + "'$.meta.appliedJsonHash', SHA2(CAST(CAST(:updatedJson AS JSON) AS CHAR), 256)) "
+                + "WHERE configType = :configType "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb), "
+                + "deployment_snapshot = jsonb_set((:snapshot :: jsonb), '{meta,appliedJsonHash}', "
+                + "to_jsonb(md5((:updatedJson :: jsonb)::text))) "
+                + "WHERE configType = :configType AND json = (:expectedJson :: jsonb)",
+        connectionType = POSTGRES)
+    int updateSettingsWithSnapshotIfCurrent(
+        @Bind("configType") String configType,
+        @BindJson("expectedJson") String expectedJson,
+        @BindJson("updatedJson") String updatedJson,
+        @BindJson("snapshot") String snapshot);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET deployment_snapshot = :snapshot "
+                + "WHERE configType = :configType",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET deployment_snapshot = (:snapshot :: jsonb) "
+                + "WHERE configType = :configType",
+        connectionType = POSTGRES)
+    void updateDeploymentSnapshot(
+        @Bind("configType") String configType, @BindJson("snapshot") String snapshot);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT configType, SHA2(CAST(json AS CHAR), 256) AS jsonHash, deployment_snapshot "
+                + "FROM openmetadata_settings",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT configType, md5(json::text) AS jsonHash, deployment_snapshot "
+                + "FROM openmetadata_settings",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(SettingsFingerprintRowMapper.class)
+    List<SettingsFingerprint> listSettingsFingerprints();
+
     @SqlQuery("SELECT 42")
     Integer testConnection() throws StatementException;
 
@@ -331,6 +409,23 @@ public interface SystemTokenDAOs {
           };
       settings.setConfigValue(value);
       return settings;
+    }
+  }
+
+  class StoredSettingRowMapper implements RowMapper<StoredSettingRow> {
+    @Override
+    public StoredSettingRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new StoredSettingRow(rs.getString("json"), rs.getString("deployment_snapshot"));
+    }
+  }
+
+  class SettingsFingerprintRowMapper implements RowMapper<SettingsFingerprint> {
+    @Override
+    public SettingsFingerprint map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new SettingsFingerprint(
+          rs.getString("configType"),
+          rs.getString("jsonHash"),
+          rs.getString("deployment_snapshot"));
     }
   }
 

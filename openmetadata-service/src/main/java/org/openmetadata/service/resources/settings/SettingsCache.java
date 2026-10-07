@@ -13,20 +13,15 @@
 
 package org.openmetadata.service.resources.settings;
 
-import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
-import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
-import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
-import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
-import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.SPARQL_QUERY_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
@@ -51,7 +46,6 @@ import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
@@ -59,8 +53,6 @@ import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
-import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
@@ -73,13 +65,16 @@ import org.openmetadata.schema.configuration.RelationCategory;
 import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
-import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.config.source.ConfigSources;
+import org.openmetadata.service.config.source.DeploymentConfig;
+import org.openmetadata.service.config.source.DeploymentConfigReconciler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
@@ -89,6 +84,7 @@ import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class SettingsCache {
+  private static final String VERSION_RESOURCE = "/catalog/VERSION";
   private static volatile boolean initialized = false;
 
   /**
@@ -118,41 +114,46 @@ public class SettingsCache {
     // Private constructor for singleton
   }
 
-  // Expected to be called only once from the DefaultAuthorizer
+  /** Seeds missing settings, including those that also live in the deployment configuration. */
   public static void initialize(OpenMetadataApplicationConfig config) {
+    initialize(config, true);
+  }
+
+  /**
+   * Seeds missing settings except those that also live in the deployment configuration. For
+   * processes such as CLI jobs, which may not carry the server's environment: storing their copy
+   * would reach every running server.
+   */
+  public static void initializeWithoutDeploymentSettings(OpenMetadataApplicationConfig config) {
+    initialize(config, false);
+  }
+
+  private static void initialize(
+      OpenMetadataApplicationConfig config, boolean seedDeploymentSettings) {
     if (!initialized) {
       initialized = true;
+      if (seedDeploymentSettings) {
+        seedDeploymentSettings(config);
+      }
       createDefaultConfiguration(config);
     }
   }
 
+  /**
+   * Stores the deployment value of every setting that also lives in the deployment configuration
+   * and is missing from the database, with the snapshot the next start reconciles against.
+   */
+  private static void seedDeploymentSettings(OpenMetadataApplicationConfig config) {
+    DeploymentConfig deployment =
+        ConfigSources.deployment().orElseGet(() -> DeploymentConfig.capture(config));
+    new DeploymentConfigReconciler(
+            Entity.getCollectionDAO().systemDAO(),
+            Entity.getSystemRepository(),
+            VersionUtils.getOpenMetadataServerVersion(VERSION_RESOURCE).getVersion())
+        .seedMissing(deployment);
+  }
+
   private static void createDefaultConfiguration(OpenMetadataApplicationConfig applicationConfig) {
-    // Initialise Email Setting
-    Settings storedSettings =
-        Entity.getSystemRepository().getConfigWithKey(EMAIL_CONFIGURATION.toString());
-    if (storedSettings == null) {
-      // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig =
-          applicationConfig.getOperationalApplicationConfigProvider().getEmailSettings();
-
-      Settings setting =
-          new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
-      Entity.getSystemRepository().createNewSetting(setting);
-    }
-
-    // Initialise OM base url setting
-    Settings storedOpenMetadataBaseUrlConfiguration =
-        Entity.getSystemRepository()
-            .getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
-    if (storedOpenMetadataBaseUrlConfiguration == null) {
-      Settings setting =
-          new Settings()
-              .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
-              .withConfigValue(
-                  applicationConfig.getOperationalApplicationConfigProvider().getServerUrl());
-      Entity.getSystemRepository().createNewSetting(setting);
-    }
-
     // Initialise Theme Setting
     Settings storedCustomUiThemeConf =
         Entity.getSystemRepository().getConfigWithKey(CUSTOM_UI_THEME_PREFERENCE.toString());
@@ -194,9 +195,6 @@ public class SettingsCache {
                       .withJwtTokenExpiryTime(3600));
       Entity.getSystemRepository().createNewSetting(setting);
     }
-
-    // Initialise App Configuration (tenant-wide "first impression" default app mode)
-    seedAppConfiguration(applicationConfig);
 
     // Initialise Search Settings
     Settings storedSearchSettings =
@@ -288,57 +286,6 @@ public class SettingsCache {
                               .withUseScrollForLargeGraphs(true)
                               .withScrollTimeoutMinutes(5)));
       Entity.getSystemRepository().createNewSetting(setting);
-    }
-
-    // Initialize Authentication Configuration
-    Settings storedAuthConfig =
-        Entity.getSystemRepository().getConfigWithKey(AUTHENTICATION_CONFIGURATION.toString());
-    if (storedAuthConfig == null) {
-      AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
-      if (authConfig != null) {
-        Settings setting =
-            new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
-
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
-    }
-
-    // Initialize Authorizer Configuration
-    Settings storedAuthzConfig =
-        Entity.getSystemRepository().getConfigWithKey(AUTHORIZER_CONFIGURATION.toString());
-    if (storedAuthzConfig == null) {
-      AuthorizerConfiguration authzConfig = applicationConfig.getAuthorizerConfiguration();
-      if (authzConfig != null) {
-        Settings setting =
-            new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
-
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
-    }
-
-    // Initialize MCP Configuration
-    Settings storedMcpConfig =
-        Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
-    if (storedMcpConfig == null) {
-      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
-          applicationConfig.getMcpConfiguration();
-      if (mcpConfig != null) {
-        Settings setting =
-            new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
-
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
-    }
-
-    Settings storedScimConfig =
-        Entity.getSystemRepository().getConfigWithKey(SCIM_CONFIGURATION.toString());
-    if (storedScimConfig == null) {
-      ScimConfiguration scimConfiguration = applicationConfig.getScimConfiguration();
-      if (scimConfiguration != null) {
-        Settings setting =
-            new Settings().withConfigType(SCIM_CONFIGURATION).withConfigValue(scimConfiguration);
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
     }
 
     Settings entityRulesSettings =
@@ -551,28 +498,6 @@ public class SettingsCache {
       } catch (IOException e) {
         LOG.error("Failed to read default SPARQL query settings", e);
       }
-    }
-  }
-
-  /**
-   * Seeds {@link SettingsType#APP_CONFIGURATION} from yaml on first boot only. If a DB row
-   * already exists, yaml is ignored - the DB is the source of truth once seeded, and admins
-   * mutate it at runtime via {@code /v1/system/settings/appConfiguration}.
-   *
-   * <p>Extracted from {@link #createDefaultConfiguration} so it can be unit tested in isolation
-   * without exercising every other settings-seed block in that method.
-   */
-  public static void seedAppConfiguration(OpenMetadataApplicationConfig applicationConfig) {
-    Settings storedAppConfig =
-        Entity.getSystemRepository().getConfigWithKey(APP_CONFIGURATION.toString());
-    if (storedAppConfig == null) {
-      AppConfiguration appConfig =
-          applicationConfig.getAppConfiguration() != null
-              ? applicationConfig.getAppConfiguration()
-              : new AppConfiguration();
-      Settings setting =
-          new Settings().withConfigType(APP_CONFIGURATION).withConfigValue(appConfig);
-      Entity.getSystemRepository().createNewSetting(setting);
     }
   }
 

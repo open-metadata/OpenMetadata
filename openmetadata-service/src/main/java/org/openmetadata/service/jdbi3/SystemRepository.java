@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
@@ -91,11 +92,18 @@ import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.NoOpAssetService;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
+import org.openmetadata.service.config.source.ConfigSources;
+import org.openmetadata.service.config.source.DeploymentSettingPreparer;
+import org.openmetadata.service.config.source.DualSourceSetting;
+import org.openmetadata.service.config.source.SettingsChangeAnnouncer;
+import org.openmetadata.service.config.source.SettingsSecrets;
+import org.openmetadata.service.config.source.SettingsWriteGuard;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
@@ -116,6 +124,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.TokenValidityResolver;
+import org.openmetadata.service.security.auth.ActiveProviderValidator;
 import org.openmetadata.service.security.auth.LdapDirectoryValidation;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -140,7 +149,7 @@ import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 
 @Slf4j
 @Repository
-public class SystemRepository {
+public class SystemRepository implements DeploymentSettingPreparer {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   private static final String GLOSSARY_TERM_RELATION_SETTINGS_CHANGED =
       "Glossary term relation settings changed while the JSON Patch was being applied";
@@ -257,16 +266,84 @@ public class SystemRepository {
 
     // Apply LDAP default values to prevent JSON PATCH errors when updating fields that were
     // previously null
-    if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+    if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION
+        && fetchedSettings.getConfigValue() != null) {
       AuthenticationConfiguration authConfig =
-          (AuthenticationConfiguration) fetchedSettings.getConfigValue();
-      if (authConfig != null && authConfig.getLdapConfiguration() != null) {
+          decryptedAuthentication((AuthenticationConfiguration) fetchedSettings.getConfigValue());
+      if (authConfig.getLdapConfiguration() != null) {
         ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
-        fetchedSettings.setConfigValue(authConfig);
       }
+      fetchedSettings.setConfigValue(authConfig);
     }
 
     return fetchedSettings;
+  }
+
+  /**
+   * The stored security configuration, read fresh from the database rather than from this server's
+   * memory, which may be behind a change made on another server; null when a row is missing.
+   */
+  public StoredSecurityConfiguration getStoredSecurityConfiguration() {
+    String authenticationJson =
+        dao.getConfigJsonWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+    String authorizerJson = dao.getConfigJsonWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
+    StoredSecurityConfiguration stored = null;
+    if (authenticationJson != null && authorizerJson != null) {
+      AuthenticationConfiguration authentication =
+          decryptedAuthentication(
+              JsonUtils.readValue(authenticationJson, AuthenticationConfiguration.class));
+      if (authentication.getLdapConfiguration() != null) {
+        ensureLdapConfigDefaultValues(authentication.getLdapConfiguration());
+      }
+      SecurityConfiguration configuration =
+          new SecurityConfiguration()
+              .withAuthenticationConfiguration(authentication)
+              .withAuthorizerConfiguration(
+                  JsonUtils.readValue(authorizerJson, AuthorizerConfiguration.class));
+      stored = new StoredSecurityConfiguration(configuration, authenticationJson, authorizerJson);
+    }
+    return stored;
+  }
+
+  /**
+   * Writes both security settings unless one changed since {@code stored} was read, which fails
+   * with a 412 instead of silently undoing that change.
+   */
+  public void updateSecurityConfigurationIfCurrent(
+      SecurityConfiguration updated, StoredSecurityConfiguration stored) {
+    updateSettingIfCurrent(
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(updated.getAuthenticationConfiguration()),
+        stored.authenticationJson());
+    updateSettingIfCurrent(
+        new Settings()
+            .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+            .withConfigValue(updated.getAuthorizerConfiguration()),
+        stored.authorizerJson());
+  }
+
+  /**
+   * Rejects {@code updated} before anything is validated or written when it changes a field the
+   * deployment configuration owns, so a write of both security settings never stops halfway.
+   */
+  public void assertSecurityConfigurationWritable(SecurityConfiguration updated) {
+    assertDeploymentFieldsUnchanged(
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(updated.getAuthenticationConfiguration()));
+    assertDeploymentFieldsUnchanged(
+        new Settings()
+            .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+            .withConfigValue(updated.getAuthorizerConfiguration()));
+  }
+
+  private static AuthenticationConfiguration decryptedAuthentication(
+      AuthenticationConfiguration stored) {
+    return JsonUtils.convertValue(
+        SettingsSecrets.decrypted(
+            SettingsType.AUTHENTICATION_CONFIGURATION, JsonUtils.valueToTree(stored)),
+        AuthenticationConfiguration.class);
   }
 
   public AssetCertificationSettings getAssetCertificationSettings() {
@@ -359,7 +436,8 @@ public class SystemRepository {
 
     try {
       updateSetting(setting);
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
+      // Callers such as administration jobs only notice a rejection that is thrown.
       throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
@@ -377,7 +455,8 @@ public class SystemRepository {
   public Response createNewSetting(Settings setting) {
     try {
       updateSetting(setting);
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
+      // Callers such as administration jobs only notice a rejection that is thrown.
       throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
@@ -391,6 +470,8 @@ public class SystemRepository {
   public Response deleteSettings(SettingsType type) {
     Settings oldValue = getConfigWithKey(type.toString());
     dao.delete(type.value());
+    SettingsCache.invalidateSettings(type.value());
+    SettingsChangeAnnouncer.announce(type);
     return (new RestUtil.DeleteResponse<>(oldValue, ENTITY_DELETED)).toResponse();
   }
 
@@ -479,6 +560,16 @@ public class SystemRepository {
   }
 
   private void postUpdate(SettingsType settingsType) {
+    refreshLocalState(settingsType);
+    // Rebuilding indexes changes shared state, so only the server that wrote the setting does it.
+    if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
+      Entity.getSearchRepository().reconcileColumnIndex();
+    }
+    SettingsChangeAnnouncer.announce(settingsType);
+  }
+
+  /** Refreshes what this server derives from a setting; every server runs it after a change. */
+  public void refreshLocalState(SettingsType settingsType) {
     if (settingsType == SettingsType.WORKFLOW_SETTINGS) {
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       workflowHandler.initializeNewProcessEngine(workflowHandler.getProcessEngineConfiguration());
@@ -487,13 +578,10 @@ public class SystemRepository {
     if (settingsType == SettingsType.LOGIN_CONFIGURATION) {
       LoginAttemptCache.updateLoginConfiguration();
     }
-
-    if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
-      Entity.getSearchRepository().reconcileColumnIndex();
-    }
   }
 
   public void updateSetting(Settings setting) {
+    assertDeploymentFieldsUnchanged(setting);
     try {
       String updatedJson = prepareSettingForUpdate(setting);
       dao.insertSettings(setting.getConfigType().toString(), updatedJson);
@@ -510,6 +598,7 @@ public class SystemRepository {
   }
 
   private void updateSettingIfCurrent(Settings setting, String expectedJson) {
+    assertDeploymentFieldsUnchanged(setting);
     try {
       String updatedJson = prepareSettingForUpdate(setting);
       int updated =
@@ -575,7 +664,64 @@ public class SystemRepository {
       JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
       setting.setConfigValue(authorizerConfig);
     }
-    return JsonUtils.pojoToJson(setting.getConfigValue());
+    return storageJsonOf(setting);
+  }
+
+  /** Authentication secrets are stored Fernet-encrypted; the caller keeps the clear values. */
+  private static String storageJsonOf(Settings setting) {
+    Object value = setting.getConfigValue();
+    return setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION
+        ? JsonUtils.pojoToJson(
+            SettingsSecrets.encrypted(setting.getConfigType(), JsonUtils.valueToTree(value)))
+        : JsonUtils.pojoToJson(value);
+  }
+
+  /**
+   * A setting whose source is ENV may only change the fields its deployment configuration does
+   * not define; the next start would overwrite them otherwise.
+   */
+  private void assertDeploymentFieldsUnchanged(Settings setting) {
+    SettingsType type = setting.getConfigType();
+    if (ConfigSources.isManagedByDeployment(type)) {
+      String storedJson = dao.getConfigJsonWithKey(type.value());
+      JsonNode stored =
+          storedJson == null
+              ? null
+              : SettingsSecrets.decrypted(type, JsonUtils.readTree(storedJson));
+      SettingsWriteGuard.assertWritable(
+          type, stored, JsonUtils.valueToTree(setting.getConfigValue()));
+    }
+  }
+
+  /**
+   * Validates a value reconciled from the deployment configuration like an API write of the
+   * setting, without calling the identity provider, and returns the JSON to store.
+   */
+  @Override
+  public String prepareReconciled(SettingsType type, JsonNode value) {
+    Settings setting = settingsOf(type, value);
+    OpenMetadataBaseUrlValidator.validate(setting);
+    if (setting.getConfigValue() instanceof AuthenticationConfiguration authConfig) {
+      ActiveProviderValidator.validate(authConfig, authConfig);
+    }
+    return prepareSettingForUpdate(setting);
+  }
+
+  /** Applies the checks a first start always ran on a seeded value; returns the JSON to store. */
+  @Override
+  public String prepareSeed(SettingsType type, JsonNode value) {
+    return prepareSettingForUpdate(settingsOf(type, value));
+  }
+
+  private static Settings settingsOf(SettingsType type, JsonNode value) {
+    Class<?> valueClass =
+        DualSourceSetting.of(type)
+            .map(DualSourceSetting::valueClass)
+            .orElseThrow(
+                () -> new IllegalArgumentException(type + " is not a dual-source setting"));
+    return new Settings()
+        .withConfigType(type)
+        .withConfigValue(JsonUtils.convertValue(value, valueClass));
   }
 
   /**

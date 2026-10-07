@@ -50,6 +50,13 @@ public class CacheInvalidationPubSub {
    */
   public static final String TYPE_PERSONA_CONTEXT = "personaContext";
 
+  /**
+   * Non-entity signal: a setting was written, with its name in {@code fqn}. Peers check the stored
+   * settings right away instead of at their next poll. The database stays the source of truth, so
+   * a lost message only delays the change.
+   */
+  public static final String TYPE_SETTINGS = "settings";
+
   private final CacheConfig.Redis redisConfig;
   @Getter private final String instanceId;
   private final AtomicBoolean running = new AtomicBoolean(false);

@@ -40,6 +40,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -60,28 +61,26 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.rdf.SavedSparqlQuery;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
-import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.EmailRequest;
-import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.SparqlQuerySettings;
-import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
-import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.AdoptDeploymentConfigRequest;
 import org.openmetadata.schema.system.SecurityValidationResponse;
+import org.openmetadata.schema.system.SettingSource;
+import org.openmetadata.schema.system.SettingsSourceResponse;
 import org.openmetadata.schema.system.TestLoginCredentialsRequest;
 import org.openmetadata.schema.system.TestLoginResult;
 import org.openmetadata.schema.system.TestLoginSession;
@@ -104,12 +103,18 @@ import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.config.source.LocalSettingsRefresher;
+import org.openmetadata.service.config.source.SettingsSecrets;
+import org.openmetadata.service.config.source.SettingsSourceService;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
+import org.openmetadata.service.jdbi3.StoredSecurityConfiguration;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.ontology.LegacyRelationshipTypeSynchronizer;
@@ -118,10 +123,10 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
-import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.ActiveProviderValidator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.TestLoginCandidates;
 import org.openmetadata.service.security.auth.TestLoginRoundTrip;
@@ -130,7 +135,6 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
-import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Path("/v1/system")
@@ -167,7 +171,7 @@ public class SystemResource {
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
   private PipelineServiceClientInterface pipelineServiceClient;
-  private JwtFilter jwtFilter;
+  private volatile JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
 
@@ -186,6 +190,10 @@ public class SystemResource {
         new JwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
+    SecurityConfigurationManager.getInstance()
+        .addConfigurationChangeListener(
+            (authConfig, authzConfig, mcpConfig) ->
+                this.jwtFilter = new JwtFilter(authConfig, authzConfig));
   }
 
   public static class SettingsList extends ResultList<Settings> {
@@ -664,6 +672,69 @@ public class SystemResource {
     return Response.ok().entity(LogicOps.getCustomOpsKeys()).build();
   }
 
+  @GET
+  @Path("/settings/source")
+  @Operation(
+      operationId = "getSettingsSource",
+      summary = "Where settings take their values from",
+      description =
+          "For each setting that exists both in the deployment configuration and in the database: "
+              + "its source (AUTO, ENV or DB), the fields the deployment owns, and the deployment "
+              + "values the stored setting overrides.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings source",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SettingsSourceResponse.class)))
+      })
+  public SettingsSourceResponse getSettingsSource(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return settingsSourceService().status();
+  }
+
+  @POST
+  @Path("/settings/source/{configType}/adopt")
+  @Operation(
+      operationId = "adoptDeploymentConfig",
+      summary = "Use the deployment configuration for stored settings",
+      description =
+          "Replaces stored values of a setting with the values from the deployment configuration. "
+              + "Without paths, every field listed as overridden is replaced.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings source after the change",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SettingSource.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "The deployment configuration already owns the setting")
+      })
+  public SettingSource adoptDeploymentConfig(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Setting to change", schema = @Schema(type = "string"))
+          @PathParam("configType")
+          String configType,
+      AdoptDeploymentConfigRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    SettingsType settingsType = SettingsType.fromValue(configType);
+    SettingsSourceService service = settingsSourceService();
+    service.adopt(settingsType, request == null ? null : request.getPaths());
+    return service
+        .status(settingsType)
+        .orElseThrow(() -> new NotFoundException(configType + " has no deployment configuration"));
+  }
+
+  private SettingsSourceService settingsSourceService() {
+    return new SettingsSourceService(
+        Entity.getCollectionDAO().systemDAO(), systemRepository, new LocalSettingsRefresher());
+  }
+
   @PUT
   @Path("/settings")
   @Operation(
@@ -1056,23 +1127,8 @@ public class SystemResource {
 
     // Apply password masking if needed - only to the copy
     if (authorizer.shouldMaskPasswords(securityContext)) {
-      // Mask OIDC configuration if present
-      if (config.getAuthenticationConfiguration() != null
-          && config.getAuthenticationConfiguration().getOidcConfiguration() != null) {
-        config
-            .getAuthenticationConfiguration()
-            .getOidcConfiguration()
-            .setSecret(PasswordEntityMasker.PASSWORD_MASK);
-      }
-
-      // Mask LDAP configuration if present
-      if (config.getAuthenticationConfiguration() != null
-          && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
-        config
-            .getAuthenticationConfiguration()
-            .getLdapConfiguration()
-            .setDnAdminPassword(PasswordEntityMasker.PASSWORD_MASK);
-      }
+      SettingsSecrets.maskInPlace(
+          AUTHENTICATION_CONFIGURATION, config.getAuthenticationConfiguration());
     }
     return config;
   }
@@ -1099,9 +1155,8 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
-      SecurityConfiguration originalConfig =
-          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
-      preserveMaskedSecuritySecrets(securityConfig, originalConfig);
+      preserveMaskedSecuritySecrets(securityConfig, currentSecurityConfiguration());
+      systemRepository.assertSecurityConfigurationWritable(securityConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
       validateConfigurationOfActiveProvider(securityConfig);
 
@@ -1129,13 +1184,12 @@ public class SystemResource {
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
 
       return Response.ok(getSecurityConfig(securityContext)).build();
-    } catch (BadRequestException e) {
-      // Raised only by validateConfigurationOfActiveProvider, before anything is written. Rethrow
-      // so
-      // the mapper answers 400 rather than letting the catch below report it as a server failure —
-      // and keep the type narrow, so a failure from the writes below still surfaces as a 5xx
-      // instead
-      // of telling the admin their payload was bad after the configuration was already persisted.
+    } catch (BadRequestException | SettingsManagedByEnvironmentException e) {
+      // Raised before anything is written: by validateConfigurationOfActiveProvider, or because the
+      // deployment configuration owns the setting. Rethrow so the mapper answers 400/409 rather
+      // than letting the catch below report a server failure. Keep the types narrow, so a failure
+      // from the writes below still surfaces as a 5xx instead of blaming the payload after the
+      // configuration was already persisted.
       throw e;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
@@ -1143,90 +1197,9 @@ public class SystemResource {
     }
   }
 
-  /**
-   * Validates the configuration with the blocks of inactive providers left out.
-   *
-   * <p>Bean validation cascades into every nested block present in the payload, so an instance that
-   * once touched LDAP and still carries a partially-filled {@code ldapConfiguration} could not save
-   * its SAML configuration — the request was rejected over required LDAP fields that the active
-   * provider never reads. That also made {@code GET} responses un-resubmittable, because {@code GET}
-   * omits fields the cascade demanded. Only validation ignores those blocks; they are still stored.
-   */
   private void validateConfigurationOfActiveProvider(SecurityConfiguration securityConfig) {
-    AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
-    boolean hasActiveProvider = authConfig != null && authConfig.getProvider() != null;
-    ProviderConfigurations detached =
-        hasActiveProvider ? detachInactiveProviderConfigurations(authConfig) : null;
-
-    try {
-      String violations = ValidatorUtil.validate(securityConfig);
-      if (violations != null) {
-        throw new BadRequestException("Invalid security configuration: " + violations);
-      }
-    } finally {
-      if (detached != null) {
-        detached.restoreTo(authConfig);
-      }
-    }
-  }
-
-  /**
-   * Takes the inactive providers' blocks off {@code authConfig} and hands them back, so the caller
-   * can restore them once validation has run.
-   *
-   * <p>Detaching from the instance that is about to be persisted is deliberate, rather than
-   * validating a Jackson deep copy of it: a round trip re-applies the schema defaults that
-   * jsonschema2pojo emits as field initializers, so a {@code @NotNull} field that has a default (for
-   * example {@code provider}, which defaults to {@code basic}) would be repaired in the copy and
-   * left unenforced on the object actually saved.
-   */
-  private ProviderConfigurations detachInactiveProviderConfigurations(
-      AuthenticationConfiguration authConfig) {
-    ProviderConfigurations detached =
-        new ProviderConfigurations(
-            authConfig.getLdapConfiguration(),
-            authConfig.getSamlConfiguration(),
-            authConfig.getOidcConfiguration());
-    clearInactiveProviderConfigurations(authConfig);
-    return detached;
-  }
-
-  /** The provider blocks lifted off an {@link AuthenticationConfiguration} for validation. */
-  private record ProviderConfigurations(
-      LdapConfiguration ldap, SamlSSOClientConfig saml, OidcClientConfig oidc) {
-
-    void restoreTo(AuthenticationConfiguration authConfig) {
-      authConfig.setLdapConfiguration(ldap);
-      authConfig.setSamlConfiguration(saml);
-      authConfig.setOidcConfiguration(oidc);
-    }
-  }
-
-  private void clearInactiveProviderConfigurations(AuthenticationConfiguration authConfig) {
-    AuthProvider provider = authConfig.getProvider();
-    if (provider != AuthProvider.LDAP) {
-      authConfig.setLdapConfiguration(null);
-    }
-    if (provider != AuthProvider.SAML) {
-      authConfig.setSamlConfiguration(null);
-    }
-    // oidcConfiguration is also the confidential client's block: a public client never reads it,
-    // whatever the provider, so its required fields must not gate a public-client save either.
-    if (!usesOidcConfiguration(provider) || authConfig.getClientType() != ClientType.CONFIDENTIAL) {
-      authConfig.setOidcConfiguration(null);
-    }
-  }
-
-  /**
-   * Only these providers carry their settings somewhere other than {@code oidcConfiguration}, so
-   * naming them — rather than listing the OIDC providers — keeps a new OIDC provider working here
-   * without an edit.
-   */
-  private static boolean usesOidcConfiguration(AuthProvider provider) {
-    return switch (provider) {
-      case BASIC, LDAP, SAML, OPENMETADATA -> false;
-      default -> true;
-    };
+    ActiveProviderValidator.validate(
+        securityConfig, securityConfig.getAuthenticationConfiguration());
   }
 
   @PATCH
@@ -1255,12 +1228,9 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
-      SecurityConfiguration originalConfig =
-          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
-
-      String configJson = JsonUtils.pojoToJson(originalConfig);
+      StoredSecurityConfiguration stored = systemRepository.getStoredSecurityConfiguration();
       SecurityConfiguration currentConfig =
-          JsonUtils.readValue(configJson, SecurityConfiguration.class);
+          stored == null ? currentSecurityConfiguration() : stored.configuration();
 
       JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
 
@@ -1269,6 +1239,8 @@ public class SystemResource {
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
       preserveMaskedSecuritySecrets(updatedConfig, currentConfig);
+      // A field the deployment owns cannot change whatever the validation would say about it.
+      systemRepository.assertSecurityConfigurationWritable(updatedConfig);
 
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
@@ -1295,68 +1267,63 @@ public class SystemResource {
 
         return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
       }
-      Settings authSettings =
-          new Settings()
-              .withConfigType(AUTHENTICATION_CONFIGURATION)
-              .withConfigValue(updatedConfig.getAuthenticationConfiguration());
-
-      Settings authzSettings =
-          new Settings()
-              .withConfigType(AUTHORIZER_CONFIGURATION)
-              .withConfigValue(updatedConfig.getAuthorizerConfiguration());
-
-      systemRepository.createOrUpdate(authSettings);
-      systemRepository.createOrUpdate(authzSettings);
+      storeSecurityConfiguration(updatedConfig, stored);
 
       SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
       SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
 
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
       return Response.noContent().build();
+    } catch (PreconditionFailedException e) {
+      // Another server, the CLI or an administration job changed the configuration since it was
+      // read. Catch up so the admin's next read shows it.
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+      throw e;
+    } catch (WebApplicationException | SettingsManagedByEnvironmentException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to patch security configuration", e);
       throw new RuntimeException("Failed to patch security configuration: " + e.getMessage());
     }
   }
 
+  /** What is stored, falling back to this server's copy when the rows are missing. */
+  private SecurityConfiguration currentSecurityConfiguration() {
+    StoredSecurityConfiguration stored = systemRepository.getStoredSecurityConfiguration();
+    return stored == null
+        ? JsonUtils.deepCopy(
+            SecurityConfigurationManager.getInstance().getCurrentSecurityConfig(),
+            SecurityConfiguration.class)
+        : stored.configuration();
+  }
+
+  private void storeSecurityConfiguration(
+      SecurityConfiguration updated, StoredSecurityConfiguration stored) {
+    if (stored == null) {
+      systemRepository.createOrUpdate(
+          new Settings()
+              .withConfigType(AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(updated.getAuthenticationConfiguration()));
+      systemRepository.createOrUpdate(
+          new Settings()
+              .withConfigType(AUTHORIZER_CONFIGURATION)
+              .withConfigValue(updated.getAuthorizerConfiguration()));
+    } else {
+      systemRepository.updateSecurityConfigurationIfCurrent(updated, stored);
+    }
+  }
+
   static void preserveMaskedSecuritySecrets(
       SecurityConfiguration updated, SecurityConfiguration original) {
-    if (updated != null && original != null) {
-      AuthenticationConfiguration updatedAuthentication = updated.getAuthenticationConfiguration();
-      AuthenticationConfiguration originalAuthentication =
-          original.getAuthenticationConfiguration();
-      if (updatedAuthentication != null && originalAuthentication != null) {
-        preserveOidcSecret(updatedAuthentication, originalAuthentication);
-        preserveLdapPassword(updatedAuthentication, originalAuthentication);
-      }
+    if (updated != null
+        && original != null
+        && updated.getAuthenticationConfiguration() != null
+        && original.getAuthenticationConfiguration() != null) {
+      SettingsSecrets.restoreMaskedInPlace(
+          AUTHENTICATION_CONFIGURATION,
+          updated.getAuthenticationConfiguration(),
+          original.getAuthenticationConfiguration());
     }
-  }
-
-  private static void preserveOidcSecret(
-      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
-    OidcClientConfig updatedOidc = updated.getOidcConfiguration();
-    OidcClientConfig originalOidc = original.getOidcConfiguration();
-    if (updatedOidc != null && originalOidc != null) {
-      updatedOidc.setSecret(restoredSecret(updatedOidc.getSecret(), originalOidc.getSecret()));
-    }
-  }
-
-  private static void preserveLdapPassword(
-      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
-    LdapConfiguration updatedLdap = updated.getLdapConfiguration();
-    LdapConfiguration originalLdap = original.getLdapConfiguration();
-    if (updatedLdap != null && originalLdap != null) {
-      updatedLdap.setDnAdminPassword(
-          restoredSecret(updatedLdap.getDnAdminPassword(), originalLdap.getDnAdminPassword()));
-    }
-  }
-
-  private static String restoredSecret(String replacement, String original) {
-    String restored = replacement;
-    if (restored == null || PasswordEntityMasker.PASSWORD_MASK.equals(restored)) {
-      restored = original;
-    }
-    return restored;
   }
 
   @POST
@@ -1614,6 +1581,8 @@ public class SystemResource {
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
 
       return Response.ok(mcpConfig).build();
+    } catch (SettingsManagedByEnvironmentException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to update MCP configuration", e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

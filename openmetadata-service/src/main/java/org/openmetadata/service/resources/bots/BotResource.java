@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
@@ -69,6 +70,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.UserUtil;
 
@@ -97,7 +99,10 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     boolean shouldSeed = SeedDataGate.getInstance().shouldSeed();
-    String domain = SecurityUtil.getDomain(config);
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    String domain =
+        SecurityUtil.getDomain(
+            authorizer == null ? config.getAuthorizerConfiguration() : authorizer);
     // First, load the bot users and assign their roles
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     List<User> botUsers = userRepository.getEntitiesFromSeedData(".*json/data/botUser/.*\\.json$");
