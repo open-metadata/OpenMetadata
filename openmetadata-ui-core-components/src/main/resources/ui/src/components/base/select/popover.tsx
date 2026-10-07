@@ -1,5 +1,4 @@
-import { mergeRefs } from '@react-aria/utils';
-import type { Ref, RefAttributes } from 'react';
+import type { MutableRefObject, Ref, RefAttributes } from 'react';
 import { useContext, useRef } from 'react';
 import { useInteractOutside } from 'react-aria';
 import type { PopoverProps as AriaPopoverProps } from 'react-aria-components';
@@ -16,12 +15,24 @@ interface PopoverProps extends AriaPopoverProps, RefAttributes<HTMLElement> {
 
 export const Popover = (props: PopoverProps) => {
   const state = useContext(OverlayTriggerStateContext);
-  const popoverRef = useRef<HTMLElement>(null);
+  const popoverRef = useRef<HTMLElement | null>(null);
   // Select and ComboBox hand their trigger down through PopoverContext.
   const contextTriggerRef = (
     useContext(PopoverContext) as { triggerRef?: Ref<Element> } | null
   )?.triggerRef;
   const triggerRef = props.triggerRef ?? contextTriggerRef;
+  // Assigned by hand rather than with `mergeRefs`: app tests mock
+  // `@react-aria/utils` down to the one export they need, and a shared
+  // component must not break when they do.
+  const attachRef = (element: HTMLElement | null) => {
+    popoverRef.current = element;
+
+    if (typeof props.ref === 'function') {
+      props.ref(element);
+    } else if (props.ref) {
+      (props.ref as MutableRefObject<HTMLElement | null>).current = element;
+    }
+  };
 
   // `isNonModal` below switches off react-aria's own outside-press dismissal
   // (`usePopover` derives `isDismissable: !isNonModal`), and the blur-based
@@ -88,7 +99,7 @@ export const Popover = (props: PopoverProps) => {
             : props.className
         )
       }
-      ref={mergeRefs(popoverRef, props.ref as Ref<HTMLElement>)}
+      ref={attachRef}
     />
   );
 };
