@@ -1149,6 +1149,7 @@ root-caused to the problem it solves. Paths are relative to `playwright/`.
 | `waitForOwnedAssetCount(apiContext, ownerId, count)` | `utils/polling.ts` | Before opening a page that reads an owner's asset count once on load |
 | `waitForAggregation(page, { field, value })` | `utils/searchAggregation.ts` | Filter dropdown aggregation for the typed value (lint-enforced) |
 | `triggerContractValidation` | `utils/dataContracts.ts` | Polls contract validation to a terminal status |
+| `reloadContractPage(page)` | `utils/dataContracts.ts` | Reloading a contract page after a validation; `domcontentloaded` + header + loaders, not `waitUntil: 'load'` |
 
 ### Fixtures and API
 
