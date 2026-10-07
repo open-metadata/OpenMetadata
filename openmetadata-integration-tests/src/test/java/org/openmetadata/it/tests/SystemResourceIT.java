@@ -203,6 +203,9 @@ public class SystemResourceIT {
 
     Boolean migrationsPassed = migrations.get("passed").asBoolean();
     assertTrue(migrationsPassed, "Database migrations should have passed");
+    assertFalse(
+        statusNode.has("LDAP"),
+        "The status reports on an LDAP directory only when LDAP is the login provider");
   }
 
   @Test

@@ -15,6 +15,7 @@ import {
   DropdownSearchField,
   DropdownStagedFooter,
   DropdownStatusFooter,
+  selectedTriggerClassName,
   TriggerCountBadge,
 } from '../filter-select/filter-select.shared';
 import {
@@ -1068,6 +1069,7 @@ export const TreeSelect = <T = unknown,>({
             className={cx(
               'tw:whitespace-nowrap',
               !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+              hasSelection && selectedTriggerClassName(bordered),
               triggerClassName
             )}
             color={bordered ? 'secondary' : 'tertiary'}

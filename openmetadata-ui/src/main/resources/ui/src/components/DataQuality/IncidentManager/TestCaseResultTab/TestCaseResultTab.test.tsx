@@ -17,6 +17,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { useParams } from 'react-router-dom';
 import { TagLabel, TestCase } from '../../../../generated/tests/testCase';
 import {
   LabelType,
@@ -253,6 +254,31 @@ describe('TestCaseResultTab', () => {
     expect(screen.queryByText('TestSummary')).not.toBeInTheDocument();
   });
 
+  it('should keep the rail at a fixed width beside the results, and stack it in a narrow tab', async () => {
+    render(<TestCaseResultTab showSidePanel />);
+
+    const grid = await screen.findByTestId('test-case-result-tab-container');
+
+    expect(grid).toHaveClass(
+      'tw:grid-cols-1',
+      'tw:@3xl:grid-cols-[minmax(0,1fr)_clamp(260px,30%,320px)]'
+    );
+    expect(grid.parentElement).toHaveClass('tw:@container');
+    expect(screen.getByTestId('test-case-rail')).not.toHaveClass(
+      'tw:col-span-4'
+    );
+  });
+
+  it('should give the results the whole tab when the rail is hidden', async () => {
+    render(<TestCaseResultTab showSidePanel={false} />);
+
+    const grid = await screen.findByTestId('test-case-result-tab-container');
+
+    expect(grid).toHaveClass('tw:grid-cols-1');
+    expect(grid.className).not.toContain('tw:@3xl:grid-cols');
+    expect(screen.queryByTestId('test-case-rail')).not.toBeInTheDocument();
+  });
+
   it('should frame the result history as a card outside AI mode', async () => {
     render(<TestCaseResultTab />);
 
@@ -476,6 +502,47 @@ describe('TestCaseResultTab', () => {
 
     mockTestCaseData.useDynamicAssertion = false;
     mockUseTestCaseStore.showAILearningBanner = false;
+  });
+
+  describe('version page', () => {
+    beforeEach(() => {
+      (useParams as jest.Mock).mockImplementation(() => ({ version: '0.2' }));
+      mockUseTestCaseStore.testCase = {
+        ...mockTestCaseData,
+        parameterValues: [{ name: 'columnCount', value: '12000' }],
+        changeDescription: {
+          fieldsAdded: [],
+          fieldsDeleted: [],
+          fieldsUpdated: [
+            {
+              name: 'parameterValues',
+              oldValue: [{ name: 'columnCount', value: '10000' }],
+              newValue: [{ name: 'columnCount', value: '12000' }],
+            },
+          ],
+        },
+      };
+    });
+
+    afterEach(() => {
+      (useParams as jest.Mock).mockImplementation(() => ({
+        version: undefined,
+      }));
+      mockUseTestCaseStore.testCase = mockTestCaseData;
+    });
+
+    it("should show each parameter's change in the Configuration card's rows", async () => {
+      render(<TestCaseResultTab />);
+
+      const row = await screen.findByTestId(
+        'configuration-parameter-columnCount'
+      );
+
+      expect(row).toHaveTextContent('10000 → 12000');
+      expect(
+        screen.queryByTestId('configuration-version-diff')
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe('Compute Row Count visibility', () => {

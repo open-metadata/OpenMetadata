@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -138,6 +140,23 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.kept());
     assertEquals(0, result.created());
     verify(memoryRepository, never()).create(any(), any());
+    verify(memoryRepository, never()).update(any(), any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = EntityStatus.class,
+      names = {"DRAFT", "ARCHIVED", "DEPRECATED", "REJECTED"})
+  void reExtractionLeavesAPillOutsideApprovedAsIs(EntityStatus retired) {
+    existing(
+        pill("Q1", "A1", ContextMemorySourceType.PAGE_EXTRACTION, retired),
+        pill("Q2", "A2", ContextMemorySourceType.PAGE_EXTRACTION, retired));
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(List.of(derived("Q1", "A1"), derived("Q2", "A2 revised")));
+
+    assertEquals(0, result.updated());
+    assertEquals(0, result.created(), "a retired pill still claims its fact");
     verify(memoryRepository, never()).update(any(), any(), any(), any());
   }
 

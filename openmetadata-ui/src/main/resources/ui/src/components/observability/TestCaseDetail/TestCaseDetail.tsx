@@ -165,8 +165,8 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 }
                 incidentTask={incidentHeaderData.incidentTask}
                 nextRunTimestamp={nextRunTimestamp}
-                parameterValues={testCase?.parameterValues}
                 taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                testCase={testCase}
                 testCaseResult={testCase?.testCaseResult}
                 testCaseStatus={testCase?.testCaseStatus}
                 testCaseStatusData={incidentHeaderData.testCaseStatusData}
@@ -189,9 +189,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     incidentHeaderData.testCaseStatusData,
     incidentHeaderData.hasEditStatusPermission,
     incidentHeaderData.handleAcknowledgeIncident,
-    testCase?.parameterValues,
-    testCase?.testCaseResult,
-    testCase?.testCaseStatus,
+    testCase,
   ]);
 
   const breadcrumbItems = useMemo(() => {

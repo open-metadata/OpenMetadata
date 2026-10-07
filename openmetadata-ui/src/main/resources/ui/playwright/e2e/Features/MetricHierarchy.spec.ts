@@ -13,6 +13,7 @@
 import type { APIRequestContext, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { VIEW_ONLY_RULE } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -955,7 +956,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           },
           {
             intervals: [1_000, 2_000, 5_000],
-            timeout: 120_000,
+            timeout: LONG_ACTION_TIMEOUT,
           }
         )
         .toBe('In Review');

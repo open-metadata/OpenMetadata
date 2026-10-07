@@ -70,10 +70,20 @@ const FREEZE_CSS = `
  * project's existing replacement, `waitForPageLoaded`, which waits for
  * `domcontentloaded` plus all loader spinners to disappear.
  */
-export const gotoForScreenshot = async (page: Page, path: string) => {
+export const gotoForScreenshot = async (
+  page: Page,
+  path: string,
+  { readyTestId }: { readyTestId?: string } = {}
+) => {
   await page.clock.setFixedTime(FIXED_DATE);
   await page.goto(path, { waitUntil: 'domcontentloaded' });
   await waitForPageLoaded(page);
+  // Lazily mounted routes (the AI shell's pages) can pass the loader and
+  // skeleton checks before their content exists at all, recording a blank
+  // page. Waiting for an element the page always renders closes that gap.
+  if (readyTestId) {
+    await expect(page.getByTestId(readyTestId)).toBeVisible();
+  }
   await waitForSkeletonsToResolve(page);
   await page.addStyleTag({ content: FREEZE_CSS });
   await page.evaluate(() => {

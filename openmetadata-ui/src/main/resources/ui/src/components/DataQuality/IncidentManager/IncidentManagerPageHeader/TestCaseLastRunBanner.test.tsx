@@ -15,11 +15,14 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useNavigate } from 'react-router-dom';
 import {
   TestCaseStatus,
+  type TestCase,
+  type TestCaseParameterValue,
   type TestCaseResolutionStatus,
   type TestCaseResult,
 } from '../../../../generated/tests/testCase';
 import {
   MOCK_TASK_DATA,
+  MOCK_TEST_CASE_DATA,
   MOCK_TEST_CASE_RESOLUTION_STATUS,
 } from '../../../../mocks/TestCase.mock';
 import TestCaseLastRunBanner from './TestCaseLastRunBanner.component';
@@ -48,10 +51,26 @@ const TEXT_XS_CLASS = 'tw:text-xs';
 const INCIDENT_PATH =
   '/test-case/sample_data.ecommerce_db.shopify.dim_address.table_column_count_between/issues';
 
+const testCaseWith = (
+  definitionName: string,
+  parameterValues: TestCaseParameterValue[]
+) =>
+  ({
+    ...MOCK_TEST_CASE_DATA,
+    parameterValues,
+    testDefinition: {
+      ...MOCK_TEST_CASE_DATA.testDefinition,
+      name: definitionName,
+    },
+  } as TestCase);
+
 const defaultProps: TestCaseLastRunBannerProps = {
   incidentTask: MOCK_TASK_DATA[1],
-  parameterValues: [{ name: 'rowCount', value: '1000' }],
+  nextRunTimestamp: null,
   taskLinkInfo: { label: '#9', path: INCIDENT_PATH },
+  testCase: testCaseWith('tableRowCountToEqual', [
+    { name: 'value', value: '1000' },
+  ]),
   testCaseStatusData:
     MOCK_TEST_CASE_RESOLUTION_STATUS[1] as TestCaseResolutionStatus,
 };
@@ -102,10 +121,11 @@ describe('TestCaseLastRunBanner', () => {
       );
       expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveClass(
         {
-          [TestCaseStatus.Aborted]: 'tw:text-warning-primary',
-          [TestCaseStatus.Failed]: 'tw:text-error-primary',
+          // The -700 steps: the -600 text tokens fall below AA on the tint.
+          [TestCaseStatus.Aborted]: 'tw:text-utility-warning-700',
+          [TestCaseStatus.Failed]: 'tw:text-utility-error-700',
           [TestCaseStatus.Queued]: 'tw:text-brand-primary',
-          [TestCaseStatus.Success]: 'tw:text-success-primary',
+          [TestCaseStatus.Success]: 'tw:text-utility-success-700',
         }[testCaseStatus]
       );
       expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
@@ -130,7 +150,7 @@ describe('TestCaseLastRunBanner', () => {
       );
       expect(
         screen.getByTestId('test-case-last-run-right-section')
-      ).toHaveClass('tw:justify-end', 'tw:lg:w-80');
+      ).toHaveClass('tw:justify-end', 'tw:lg:min-w-80');
       expect(screen.getByText(result)).toHaveClass(TEXT_XS_CLASS);
       expect(
         screen.getByTestId('test-case-run-description')
@@ -239,42 +259,86 @@ describe('TestCaseLastRunBanner', () => {
       'label.aborted'
     );
     expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveClass(
-      'tw:text-warning-primary'
+      'tw:text-utility-warning-700'
     );
     expect(
       screen.getByTestId(LAST_RUN_BANNER_TEST_IDS[TestCaseStatus.Aborted])
     ).not.toHaveTextContent('label.failed');
   });
 
-  it('uses the matching test parameter when the result omits its predicted value', () => {
+  // Real result names differ from their parameters' (`rowCount` against
+  // `value`), which is why the comparison is read from the test's bounds.
+  it.each<[string, TestCase, TestCaseResult['testResultValue'], string]>([
+    [
+      'a row count with its expected value',
+      testCaseWith('tableRowCountToEqual', [{ name: 'value', value: '10000' }]),
+      [{ name: 'rowCount', value: '110' }],
+      '110 / 10,000',
+    ],
+    [
+      'a row count with its allowed range',
+      testCaseWith('tableRowCountToBeBetween', [
+        { name: 'minValue', value: '12' },
+        { name: 'maxValue', value: '34' },
+      ]),
+      [{ name: 'rowCount', value: '25' }],
+      '25 / 12 – 34',
+    ],
+    [
+      'a null count with the zero its definition implies',
+      testCaseWith('columnValuesToBeNotNull', []),
+      [{ name: 'nullCount', value: '5' }],
+      '5 / 0',
+    ],
+  ])('compares %s', (_, testCase, testResultValue, expectedText) => {
     renderBanner({
-      parameterValues: [
-        { name: 'rowCount', value: '10000' },
-        { name: 'columnName', value: 'customer_id' },
-      ],
+      testCase,
       testCaseResult: {
-        result: 'Found 110 rows vs. the expected 10,000',
         testCaseStatus: TestCaseStatus.Failed,
-        testResultValue: [{ name: 'rowCount', value: '110' }],
+        testResultValue,
         timestamp: TEST_CASE_RESULT_TIMESTAMP,
       },
       testCaseStatus: TestCaseStatus.Failed,
     });
 
-    expect(screen.getByTestId(RESULT_EXPECTED_TEST_ID)).toHaveTextContent(
-      '110 / 10,000'
+    expect(screen.getByTestId('test-case-result-value')).toHaveTextContent(
+      expectedText
     );
   });
 
-  it('does not pair a result with an unrelated test parameter', () => {
+  it.each<[string, TestCase | undefined, TestCaseResult['testResultValue']]>([
+    [
+      'the test case has not loaded yet',
+      undefined,
+      [{ name: 'rowCount', value: '110' }],
+    ],
+    [
+      'the test states no expectation',
+      testCaseWith('columnValuesToMatchRegex', [
+        { name: 'regex', value: '^[0-9]+$' },
+      ]),
+      [{ name: 'likeCount', value: '5' }],
+    ],
+    [
+      'the run measured more than one value',
+      testCaseWith('columnValuesToBeBetween', [
+        { name: 'minValue', value: '1' },
+        { name: 'maxValue', value: '3489' },
+      ]),
+      [
+        { name: 'min', value: '1' },
+        { name: 'max', value: '3489' },
+      ],
+    ],
+  ])('hides the comparison when %s', (_, testCase, testResultValue) => {
     const result = 'Found 5 rows';
 
     renderBanner({
-      parameterValues: [{ name: 'columnName', value: 'customer_id' }],
+      testCase,
       testCaseResult: {
         result,
         testCaseStatus: TestCaseStatus.Failed,
-        testResultValue: [{ name: 'rowCount', value: '5' }],
+        testResultValue,
         timestamp: TEST_CASE_RESULT_TIMESTAMP,
       },
       testCaseStatus: TestCaseStatus.Failed,
@@ -351,6 +415,50 @@ describe('TestCaseLastRunBanner', () => {
       TEXT_XS_CLASS
     );
   });
+
+  it.each<[string, Partial<TestCaseLastRunBannerProps>]>([
+    [
+      'a latest run',
+      {
+        testCaseResult: {
+          result: 'All rows passed',
+          testCaseStatus: TestCaseStatus.Success,
+          timestamp: TEST_CASE_RESULT_TIMESTAMP,
+        },
+        testCaseStatus: TestCaseStatus.Success,
+      },
+    ],
+    ['no run yet', {}],
+  ])(
+    'shows an unknown next run as a dash, not as unscheduled, with %s',
+    (_, props) => {
+      renderBanner({ ...props, nextRunTimestamp: undefined });
+
+      const nextRun = screen.getByTestId(NEXT_RUN_TEST_ID);
+
+      expect(nextRun).toHaveTextContent('label.next · —');
+      expect(nextRun).not.toHaveTextContent('label.not-scheduled');
+    }
+  );
+
+  it.each<[string, number | null | undefined, string]>([
+    [
+      'a run is scheduled',
+      Date.now() + 3_600_000,
+      'message.test-case-first-run-scheduled',
+    ],
+    ['nothing is scheduled', null, 'message.test-case-not-run-yet'],
+    ['the schedule is unknown', undefined, 'message.test-case-has-not-run'],
+  ])(
+    'asks for a pipeline in the not-run banner only when it knows nothing is scheduled: %s',
+    (_, nextRunTimestamp, messageKey) => {
+      renderBanner({ nextRunTimestamp });
+
+      expect(screen.getByTestId(NO_RUN_BANNER_TEST_ID)).toHaveTextContent(
+        messageKey
+      );
+    }
+  );
 
   it('does not show a negative duration when a cached next run has passed', () => {
     const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(2_000);

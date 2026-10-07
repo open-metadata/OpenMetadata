@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
@@ -63,9 +64,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
 
-  // No shareConfig, so these fall back to the default (PRIVATE) visibility. The generic
-  // search-index tests in BaseEntityIT therefore double as the regression guard that a restricted
-  // memory still reaches the index — visibility is enforced at query time, not at index time.
+  // Without shareConfig these fixtures use PRIVATE visibility.
   @Override
   protected CreateContextMemory createMinimalRequest(TestNamespace ns) {
     return new CreateContextMemory()
@@ -128,7 +127,14 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
 
   @Override
   protected EntityStatus expectedInitialEntityStatus() {
-    return EntityStatus.APPROVED;
+    return EntityStatus.UNPROCESSED;
+  }
+
+  // Ordinary search returns trusted memories. Keep search fixtures explicitly approved while
+  // creation and lifecycle tests continue to exercise requests that omit the stage.
+  @Override
+  protected CreateContextMemory createSearchRequest(TestNamespace ns) {
+    return createMinimalRequest(ns).withEntityStatus(EntityStatus.APPROVED);
   }
 
   /** A memory can never go back to Draft, so its path moves between in use and archived. */
@@ -487,6 +493,22 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     assertEquals(memory.getId(), otherUserService.get(memory.getId().toString()).getId());
   }
 
+  @Test
+  void versions_ofAnotherUsersPrivateMemory_areForbidden(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "private-history", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService owner = new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+    ContextMemoryService other = new ContextMemoryService(SdkClients.user2Client().getHttpClient());
+    String id = memory.getId().toString();
+
+    assertFalse(owner.getVersionList(memory.getId()).getVersions().isEmpty());
+    assertEquals(memory.getId(), owner.getVersion(id, memory.getVersion()).getId());
+    assertThrows(ForbiddenException.class, () -> other.getVersionList(memory.getId()));
+    assertThrows(ForbiddenException.class, () -> other.getVersion(id, memory.getVersion()));
+  }
+
   /**
    * The ContextCenter serves its listing from search whenever it passes a query, filter, sort or
    * offset — which it always does. Restricted memories must therefore reach the search index and be
@@ -598,6 +620,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     return new CreateContextMemory()
         .withName(ns.prefix(name))
         .withDescription("Visibility indexing test")
+        .withEntityStatus(EntityStatus.APPROVED)
         .withQuestion("Is this memory searchable?")
         .withAnswer("Visibility is enforced at query time, not at index time.")
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
