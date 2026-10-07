@@ -1021,6 +1021,8 @@ describe('TaskDetailPanel', () => {
       '/table/svc.db.schema.sales/activity_feed/tasks'
     );
     expect(link).toHaveTextContent('Sales Table');
+    // In the title's own font and colour, not Typography's 14px blue link.
+    expect(link).toHaveClass('tw:[font:inherit]!', 'tw:text-inherit!');
   });
 
   it('highlights the whole trailing token when the asset name has a suffix', async () => {
