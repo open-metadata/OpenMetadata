@@ -153,5 +153,23 @@ describe('getKeyValues', () => {
       .find((input) => (input as HTMLInputElement).value === 'sftp-user');
 
     expect(username).toHaveAttribute('type', 'text');
+    expect(username).toHaveAttribute('readonly');
+  });
+
+  it('keeps all array values visible without an editable selector', () => {
+    renderConnection({ hosts: ['host-one', 'host-two'] });
+
+    expect(screen.getByText('host-one')).toBeVisible();
+    expect(screen.getByText('host-two')).toBeVisible();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+
+  it('renders false and zero rather than dropping them as empty values', () => {
+    renderConnection({ enabled: false, retries: 0 });
+
+    expect(screen.getByRole('textbox', { name: 'enabled' })).toHaveValue(
+      'false'
+    );
+    expect(screen.getByRole('textbox', { name: 'retries' })).toHaveValue('0');
   });
 });

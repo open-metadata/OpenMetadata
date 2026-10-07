@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { LineageEntityReference } from '../../../../components/Lineage/Lineage.interface';
 import { LineageData } from '../../../../interface/lineage.interface';
@@ -32,8 +33,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Button: jest.requireActual('@openmetadata/ui-core-components').Button,
-  Box: jest.requireActual('@openmetadata/ui-core-components').Box,
+  Tabs: jest.requireActual('@openmetadata/ui-core-components').Tabs,
   Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Tooltip: jest
     .fn()
@@ -277,7 +277,7 @@ describe('LineageTabContent', () => {
         container.querySelector('.lineage-tab-content')
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'label.upstream 1' })
+        screen.getByRole('tab', { name: 'label.upstream 1' })
       ).toBeInTheDocument();
       expect(
         container.querySelector('.lineage-items-list')
@@ -308,11 +308,11 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
       expect(screen.getByTestId('upstream-button-active')).toHaveAttribute(
-        'aria-pressed',
+        'aria-selected',
         'true'
       );
       expect(screen.getByTestId('downstream-button-')).toHaveAttribute(
-        'aria-pressed',
+        'aria-selected',
         'false'
       );
     });
@@ -325,24 +325,24 @@ describe('LineageTabContent', () => {
       ).toBeInTheDocument();
     });
 
-    it('should call onFilterChange when upstream button is clicked', () => {
+    it('should call onFilterChange when upstream button is clicked', async () => {
       const mockOnFilterChange = jest.fn();
       render(
         <LineageTabContent
           {...defaultProps}
+          filter="downstream"
           onFilterChange={mockOnFilterChange}
         />
       );
 
-      const upstreamButton = screen.getByText('label.upstream', {
-        selector: 'span',
-      });
-      fireEvent.click(upstreamButton);
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .click(screen.getByTestId('upstream-button-'));
 
       expect(mockOnFilterChange).toHaveBeenCalledWith('upstream');
     });
 
-    it('should call onFilterChange when downstream button is clicked', () => {
+    it('should call onFilterChange when downstream button is clicked', async () => {
       const mockOnFilterChange = jest.fn();
       render(
         <LineageTabContent
@@ -351,8 +351,9 @@ describe('LineageTabContent', () => {
         />
       );
 
-      const downstreamButton = screen.getByTestId('downstream-button-');
-      fireEvent.click(downstreamButton);
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .click(screen.getByTestId('downstream-button-'));
 
       expect(mockOnFilterChange).toHaveBeenCalledWith('downstream');
     });

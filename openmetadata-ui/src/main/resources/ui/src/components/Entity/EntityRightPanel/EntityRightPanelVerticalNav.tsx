@@ -135,7 +135,7 @@ const EntityRightPanelVerticalNav: React.FC<
   return (
     <div
       className={classNames(
-        'entity-right-panel-vertical-nav tw:relative tw:right-0.5 tw:flex tw:w-20 tw:flex-col tw:items-center tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-surface',
+        'entity-right-panel-vertical-nav tw:flex tw:w-20 tw:flex-col tw:items-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface',
         verticalNavConatinerclassName,
         isSideDrawer
           ? 'tw:mr-2 tw:h-screen tw:max-h-[calc(100vh-70px)]'
@@ -155,12 +155,14 @@ const EntityRightPanelVerticalNav: React.FC<
               className={({ isSelected }) =>
                 classNames(
                   'tw:relative tw:h-auto tw:w-full tw:flex-col tw:justify-center tw:gap-1.5 tw:rounded-none tw:bg-transparent tw:p-0 tw:font-normal tw:whitespace-normal tw:shadow-none',
-                  'tw:text-utility-gray-600 tw:hover:bg-transparent tw:hover:text-utility-brand-700 tw:[&>svg]:size-6 tw:[&>svg]:transition-all tw:[&>svg]:duration-200',
-                  isSelected && [
-                    'tw:bg-brand-primary tw:text-utility-brand-600 tw:hover:bg-brand-primary tw:hover:text-utility-brand-600',
-                    'tw:before:absolute tw:before:top-1/2 tw:before:left-0 tw:before:h-8 tw:before:w-1',
-                    'tw:before:-translate-y-1/2 tw:before:rounded-r-sm tw:before:bg-utility-brand-600',
-                  ]
+                  'tw:[&>svg]:size-6',
+                  isSelected
+                    ? [
+                        'tw:bg-brand-primary tw:text-fg-brand-primary',
+                        'tw:before:absolute tw:before:top-1/2 tw:before:left-0 tw:before:h-8 tw:before:w-1',
+                        'tw:before:-translate-y-1/2 tw:before:rounded-r-sm tw:before:bg-fg-brand-primary',
+                      ]
+                    : 'tw:text-tertiary tw:hover:bg-transparent tw:hover:text-brand-secondary'
                 )
               }
               data-testid={testId}

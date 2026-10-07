@@ -210,7 +210,6 @@
   --om-color-border-warning-subtle: var(--color-border-warning-subtle, #fec84b);
   --om-color-border-success-subtle: var(--color-border-success-subtle, #75e0a7);
 
-  --om-color-fg-tertiary: var(--color-fg-tertiary, #535862);
   --om-color-fg-brand: var(--color-fg-brand-primary, #1570ef);
   --om-color-fg-error: var(--color-fg-error-primary, #d92d20);
   --om-color-fg-warning: var(--color-fg-warning-primary, #dc6803);

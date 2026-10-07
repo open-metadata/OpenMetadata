@@ -224,6 +224,60 @@ test.describe('Connection config layout', () => {
     await redirectToHomePage(page);
   });
 
+  for (const theme of ['light', 'dark']) {
+    test(`keeps credential autofill and the ingestion runner card consistent in ${theme} mode`, async ({
+      page,
+    }) => {
+      await page.addInitScript(
+        (value) => localStorage.setItem('ui-theme', value),
+        theme
+      );
+      await openSnowflakeConnectionConfig(page);
+
+      // Runner selection belongs to Collate; credential autofill is shared.
+      if (!process.env.PLAYWRIGHT_IS_OSS) {
+        const runner = page.getByTestId('ingestion-runner-field');
+        await expect(runner).toHaveCSS(
+          'background-color',
+          theme === 'dark' ? 'rgb(34, 38, 47)' : 'rgb(239, 248, 255)'
+        );
+        await expect(runner).toHaveCSS('border-radius', '12px');
+        await expect(runner).toHaveCSS('padding-top', '14px');
+      }
+
+      // Force Chromium's autofill state without using saved credentials or a
+      // password manager. Ordinary fill() alone never exercises its UA paint.
+      const session = await page.context().newCDPSession(page);
+      await session.send('DOM.enable');
+      await session.send('CSS.enable');
+      const { root } = await session.send('DOM.getDocument');
+      for (const id of ['root/username', 'root/authType/password']) {
+        const selector = `[id="${id}"]`;
+        const input = page.locator(selector);
+        await input.fill('connection-test-value');
+        const { nodeId } = await session.send('DOM.querySelector', {
+          nodeId: root.nodeId,
+          selector,
+        });
+        await session.send('CSS.forcePseudoState', {
+          nodeId,
+          forcedPseudoClasses: ['autofill'],
+        });
+        await expect
+          .poll(() => input.evaluate((element) => element.matches(':autofill')))
+          .toBe(true);
+        await expect(input).toHaveCSS(
+          'box-shadow',
+          theme === 'dark'
+            ? /rgb\(12, 14, 18\) 0px 0px 0px 1000px inset$/
+            : 'none'
+        );
+        await expect(input).toHaveValue('connection-test-value');
+      }
+      await session.detach();
+    });
+  }
+
   test('should render connector forms that previously stalled at loading', async ({
     page,
   }) => {

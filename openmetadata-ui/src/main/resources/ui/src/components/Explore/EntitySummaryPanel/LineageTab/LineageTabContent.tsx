@@ -12,13 +12,11 @@
  */
 
 import {
-  Box,
-  Button,
   Owner,
+  Tabs,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -184,44 +182,28 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
   return (
     <div className="lineage-tab-content">
-      <Box
-        className="tw:sticky tw:top-0 tw:z-2 tw:mb-3 tw:gap-2.5 tw:pt-2"
-        wrap="wrap">
-        {(['upstream', 'downstream'] as const).map((direction) => {
-          const isSelected = filter === direction;
-
-          return (
-            <Button
-              noTextPadding
-              aria-pressed={isSelected}
-              className={classNames(
-                'tw:h-7 tw:gap-0 tw:rounded-2xl tw:border tw:px-1.75 tw:py-0 tw:text-xs tw:font-normal tw:shadow-none tw:before:hidden tw:after:outline-0',
-                'tw:[&>[data-text]]:flex tw:[&>[data-text]]:items-center',
-                isSelected
-                  ? 'tw:border-utility-brand-100 tw:bg-utility-brand-50 tw:text-utility-brand-600 tw:hover:bg-utility-brand-100 tw:hover:text-utility-brand-600'
-                  : 'tw:border-utility-gray-blue-100 tw:bg-surface tw:text-utility-gray-900'
-              )}
-              color="secondary"
-              data-testid={`${direction}-button-${isSelected ? 'active' : ''}`}
-              key={direction}
-              size="sm"
-              onClick={() => onFilterChange(direction)}>
+      <Tabs
+        className="tw:sticky tw:top-0 tw:z-2 tw:mb-3 tw:pt-2"
+        selectedKey={filter}
+        onSelectionChange={(key) =>
+          onFilterChange(key as LineageTabContentProps['filter'])
+        }>
+        <Tabs.List size="sm" type="button-border">
+          {(['upstream', 'downstream'] as const).map((direction) => (
+            <Tabs.Item
+              badge={direction === 'upstream' ? upstreamCount : downstreamCount}
+              data-testid={`${direction}-button-${
+                filter === direction ? 'active' : ''
+              }`}
+              id={direction}
+              key={direction}>
               <span data-testid={`${direction}-button-text`}>
                 {t(`label.${direction}`)}
               </span>
-              <span
-                className={classNames(
-                  'tw:ml-1 tw:flex tw:size-4 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-[var(--om-radius-9)] tw:text-[length:var(--om-font-size-10)]',
-                  isSelected
-                    ? 'tw:bg-surface tw:text-utility-brand-600'
-                    : 'tw:bg-utility-gray-blue-50 tw:text-utility-gray-900'
-                )}>
-                {direction === 'upstream' ? upstreamCount : downstreamCount}
-              </span>
-            </Button>
-          );
-        })}
-      </Box>
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+      </Tabs>
       <SearchBarComponent
         containerClassName="searchbar-container"
         placeholder={t('label.search-for-type', {

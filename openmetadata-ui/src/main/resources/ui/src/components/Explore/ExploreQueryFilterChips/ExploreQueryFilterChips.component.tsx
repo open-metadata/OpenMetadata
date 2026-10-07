@@ -97,10 +97,13 @@ const ExploreQueryFilterChips = ({
       data-testid="explore-query-filter-chips"
       gap={2}
       wrap="wrap">
-      <span className="text-grey-muted tw:inline-flex tw:items-center tw:gap-1.5 tw:text-xs tw:font-semibold tw:uppercase tw:tracking-[0.04em]">
+      <Typography
+        className="tw:inline-flex tw:items-center tw:gap-1.5 tw:uppercase tw:tracking-wide tw:text-quaternary"
+        size="text-xs"
+        weight="semibold">
         <FilterFunnel01 height={14} width={14} />
         {t('label.query')}
-      </span>
+      </Typography>
 
       {!hasFilterChips && (
         <Typography

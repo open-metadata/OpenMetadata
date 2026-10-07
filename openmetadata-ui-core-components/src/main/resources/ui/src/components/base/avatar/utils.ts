@@ -59,16 +59,12 @@ const TW_TEXT_FG_WHITE = 'tw:text-fg-white';
 // The hue border is dark-only: on a dark surface the 50-step tint needs an edge
 // to read as a circle, but in light mode it made every avatar a different
 // coloured ring. Light keeps the borderless tint.
-//
-// Dark 50-step tints are translucent, so stacked avatars showed the previous
-// one through the overlap. The tint is painted as a gradient over an opaque
-// `bg-primary` base; light tints are already opaque, so light is unchanged.
 const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
   {
     solid: { container: 'tw:bg-utility-blue-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-blue-50 tw:to-utility-blue-50 tw:dark:border tw:dark:border-utility-blue-200',
+        'tw:bg-utility-blue-50 tw:dark:border tw:dark:border-utility-blue-200',
       text: 'tw:text-utility-blue-700',
     },
   },
@@ -76,7 +72,7 @@ const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
     solid: { container: 'tw:bg-utility-pink-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-pink-50 tw:to-utility-pink-50 tw:dark:border tw:dark:border-utility-pink-200',
+        'tw:bg-utility-pink-50 tw:dark:border tw:dark:border-utility-pink-200',
       text: 'tw:text-utility-pink-700',
     },
   },
@@ -84,7 +80,7 @@ const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
     solid: { container: 'tw:bg-utility-purple-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-purple-50 tw:to-utility-purple-50 tw:dark:border tw:dark:border-utility-purple-200',
+        'tw:bg-utility-purple-50 tw:dark:border tw:dark:border-utility-purple-200',
       text: 'tw:text-utility-purple-700',
     },
   },
@@ -92,7 +88,7 @@ const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
     solid: { container: 'tw:bg-utility-indigo-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-indigo-50 tw:to-utility-indigo-50 tw:dark:border tw:dark:border-utility-indigo-200',
+        'tw:bg-utility-indigo-50 tw:dark:border tw:dark:border-utility-indigo-200',
       text: 'tw:text-utility-indigo-700',
     },
   },
@@ -100,7 +96,7 @@ const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
     solid: { container: 'tw:bg-utility-orange-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-orange-50 tw:to-utility-orange-50 tw:dark:border tw:dark:border-utility-orange-200',
+        'tw:bg-utility-orange-50 tw:dark:border tw:dark:border-utility-orange-200',
       text: 'tw:text-utility-orange-700',
     },
   },
@@ -113,7 +109,7 @@ const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
     },
     outlined: {
       container:
-        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-green-50 tw:to-utility-green-50 tw:dark:border tw:dark:border-utility-green-200',
+        'tw:bg-utility-green-50 tw:dark:border tw:dark:border-utility-green-200',
       text: 'tw:text-utility-green-700',
     },
   },
@@ -121,7 +117,7 @@ const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
     solid: { container: 'tw:bg-utility-fuchsia-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-fuchsia-50 tw:to-utility-fuchsia-50 tw:dark:border tw:dark:border-utility-fuchsia-200',
+        'tw:bg-utility-fuchsia-50 tw:dark:border tw:dark:border-utility-fuchsia-200',
       text: 'tw:text-utility-fuchsia-700',
     },
   },
@@ -134,7 +130,7 @@ const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
     },
     outlined: {
       container:
-        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-yellow-50 tw:to-utility-yellow-50 tw:dark:border tw:dark:border-utility-yellow-200',
+        'tw:bg-utility-yellow-50 tw:dark:border tw:dark:border-utility-yellow-200',
       text: 'tw:text-utility-yellow-700',
     },
   },
