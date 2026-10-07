@@ -48,9 +48,10 @@ export interface ContextMemory {
      */
     domains?: EntityReference[];
     /**
-     * Lifecycle stage of the memory: Draft, Approved (in use), Deprecated (replaced), Rejected
-     * (invalidated) or Archived. A Deprecated memory requires supersededBy. When omitted at
-     * creation, the memory starts Approved.
+     * Lifecycle stage of the memory: Unprocessed (awaiting reconciliation), Draft, Approved (in
+     * use), Deprecated (replaced), Rejected (invalidated) or Archived. A Deprecated memory
+     * requires supersededBy. When omitted at creation, the memory starts Unprocessed. Only
+     * Approved memories ground new memories and agent responses.
      */
     entityStatus?: EntityStatus;
     /**
@@ -338,9 +339,10 @@ export interface MemoryDispute {
 }
 
 /**
- * Lifecycle stage of the memory: Draft, Approved (in use), Deprecated (replaced), Rejected
- * (invalidated) or Archived. A Deprecated memory requires supersededBy. When omitted at
- * creation, the memory starts Approved.
+ * Lifecycle stage of the memory: Unprocessed (awaiting reconciliation), Draft, Approved (in
+ * use), Deprecated (replaced), Rejected (invalidated) or Archived. A Deprecated memory
+ * requires supersededBy. When omitted at creation, the memory starts Unprocessed. Only
+ * Approved memories ground new memories and agent responses.
  *
  * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
  * property. Entity types without that property have no lifecycle. When a create request
