@@ -42,6 +42,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -453,7 +454,9 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               null,
               java.util.UUID.fromString(taskEntityId.toString()),
               taskRepository.getFields(TaskRepository.FIELD_ASSIGNEES));
-      if (task.getAssignees() == null || task.getAssignees().isEmpty()) {
+      if (TaskWorkflowLifecycleResolver.isEntityEventWorkflow(task.getWorkflowDefinitionId())
+          || task.getAssignees() == null
+          || task.getAssignees().isEmpty()) {
         return List.of();
       }
       return getEntityLinkStringFromEntityReferenceWithTeamExpansion(task.getAssignees());

@@ -30,6 +30,7 @@ import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
@@ -462,6 +463,11 @@ public final class TaskWorkflowLifecycleResolver {
       transitions = DEFAULT_USER_APPROVAL_TRANSITIONS;
     }
     return transitions;
+  }
+
+  public static boolean isEntityEventWorkflow(UUID workflowDefinitionId) {
+    final WorkflowDefinition workflow = loadWorkflowDefinition(workflowDefinitionId);
+    return workflow != null && workflow.getTrigger() instanceof EventBasedEntityTriggerDefinition;
   }
 
   private static WorkflowDefinition loadWorkflowDefinition(UUID workflowDefinitionId) {
