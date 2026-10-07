@@ -23,7 +23,6 @@ import RGL, { ItemCallback, Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import {
   CommonWidgetType,
-  GRID_VERTICAL_MARGIN,
   TAB_GRID_MAX_COLUMNS,
 } from '../../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
@@ -54,7 +53,6 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import {
   getColumnLockedDragHandlers,
-  getGridRowAt,
   getLeftPanelHeight,
   placeWidgetBesideLeftPanel,
   placeWidgetInLeftPanel,
@@ -109,12 +107,6 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
 // Side-panel widgets stay in their column and only reorder vertically.
 const COLUMN_LOCKED_DRAG_HANDLERS =
   getColumnLockedDragHandlers(TAB_GRID_MAX_COLUMNS);
-
-const isPointerInRect = ({ clientX, clientY }: MouseEvent, rect: DOMRect) =>
-  clientX >= rect.left &&
-  clientX <= rect.right &&
-  clientY >= rect.top &&
-  clientY <= rect.bottom;
 
 // react-grid-layout applies the layout it hands to onDragStop, so taking a
 // widget out of it keeps the widget out of the grid it was dragged from.
@@ -411,8 +403,7 @@ export const CustomizeTabWidget = () => {
     crossPanelDropRef.current = {
       kind: 'out',
       widget,
-      // Unlike the panel's grid, the tab grid has no padding to take off.
-      row: leftPanelWidget.y + getGridRowAt(event.clientY - panelRect.top),
+      row: leftPanelWidget.y + newItem.y,
     };
   };
 
@@ -519,8 +510,8 @@ export const CustomizeTabWidget = () => {
     [tabLayouts]
   );
 
-  // A side widget dropped over the left panel moves into the panel at the row
-  // under the pointer.
+  // A side widget dropped on the left panel's columns and rows moves into the
+  // panel, at the row and half of the panel it was dropped on.
   const handleDragStop: ItemCallback = (
     layout,
     oldItem,
@@ -529,9 +520,12 @@ export const CustomizeTabWidget = () => {
     event,
     element
   ) => {
-    const panelRect = leftPanelRef.current?.getBoundingClientRect();
     const widget = tabLayouts.find(({ i }) => i === newItem.i);
-    if (!panelRect || !widget || !isPointerInRect(event, panelRect)) {
+    const isOverLeftPanel =
+      leftPanelWidget &&
+      newItem.x < leftPanelWidget.x + leftPanelWidget.w &&
+      newItem.y < leftPanelWidget.y + leftPanelWidget.h;
+    if (!widget || !leftPanelWidget || !isOverLeftPanel) {
       COLUMN_LOCKED_DRAG_HANDLERS.onDragStop(
         layout,
         oldItem,
@@ -548,9 +542,8 @@ export const CustomizeTabWidget = () => {
     crossPanelDropRef.current = {
       kind: 'in',
       widget,
-      // The panel's grid starts one margin of padding below its top.
-      row: getGridRowAt(event.clientY - panelRect.top - GRID_VERTICAL_MARGIN),
-      x: event.clientX < panelRect.left + panelRect.width / 2 ? 0 : 0.5,
+      row: newItem.y - leftPanelWidget.y,
+      x: newItem.x < leftPanelWidget.x + leftPanelWidget.w / 2 ? 0 : 0.5,
     };
   };
 

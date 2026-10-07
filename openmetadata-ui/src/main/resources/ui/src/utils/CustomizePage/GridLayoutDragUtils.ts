@@ -135,13 +135,6 @@ export const fromLeftPanelEditGrid = <T extends Layout>(widget: T): T => ({
   w: widget.w / LEFT_PANEL_EDIT_COLS,
 });
 
-/**
- * Grid row at `offset` px below the top of a grid's first row, in the row
- * height and margin both the tab grid and the left panel's grid use.
- */
-export const getGridRowAt = (offset: number) =>
-  Math.max(0, Math.floor(offset / (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN)));
-
 const isLeftPanelWidget = ({ i }: WidgetConfig) =>
   i.startsWith(DetailPageWidgetKeys.LEFT_PANEL);
 

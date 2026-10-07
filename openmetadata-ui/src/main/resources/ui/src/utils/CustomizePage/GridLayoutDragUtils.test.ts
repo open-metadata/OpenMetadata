@@ -18,7 +18,6 @@ import {
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import type { WidgetConfig } from '../../interface/customization.interface';
 import {
-  getGridRowAt,
   getColumnLockedDragHandlers,
   getLeftPanelHeight,
   placeWidgetBesideLeftPanel,
@@ -127,16 +126,6 @@ describe('getLeftPanelHeight', () => {
     getLeftPanelHeight(children);
 
     expect(children[0]).toMatchObject({ x: 3, y: 2 });
-  });
-});
-
-describe('getGridRowAt', () => {
-  const rowPitch = GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN;
-
-  it('returns the row an offset falls in, never above the first', () => {
-    expect(getGridRowAt(-10)).toBe(0);
-    expect(getGridRowAt(rowPitch - 1)).toBe(0);
-    expect(getGridRowAt(rowPitch)).toBe(1);
   });
 });
 
