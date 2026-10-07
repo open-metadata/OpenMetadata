@@ -1594,8 +1594,7 @@ const announcementForm = async (
   await page.fill('#title', data.title);
 
   // Scoped to the announcement dialog, not the page: this form opens over an
-  // entity page that has description editors of its own, and an unscoped
-  // `descriptionBox` matches those too.
+  // entity page that has fields of its own.
   const announcementDialog = page
     .locator('[role="dialog"]')
     .filter({ has: page.locator('#announcement-submit') });
@@ -1614,7 +1613,10 @@ const announcementForm = async (
     data.endDate
   );
 
-  const announcementDescription = announcementDialog.locator(descriptionBox);
+  // The description is the design system's `TextArea`, not the block editor.
+  // `data-testid` lands on the field wrapper, so the control is addressed by
+  // its id — the same way `#title` and `#announcement-submit` are here.
+  const announcementDescription = announcementDialog.locator('#description');
 
   await expect(announcementDescription).toHaveCount(1);
   await announcementDescription.fill(data.description);

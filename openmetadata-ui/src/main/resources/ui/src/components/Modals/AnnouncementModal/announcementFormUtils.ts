@@ -73,3 +73,23 @@ export const toAnnouncementTypeFields = ({
     customTypeName: isCustom ? customTypeName?.trim() || undefined : undefined,
   };
 };
+
+/**
+ * The description an announcement arrives with, as plain text to edit.
+ *
+ * The block editor this form used to embed stored its content as HTML, so
+ * announcements written before the description became a `TextArea` arrive
+ * wrapped in a paragraph — the field would otherwise offer `<p>Scheduled
+ * downtime</p>` as the text to edit.
+ *
+ * Only that single-paragraph wrapper is unwrapped. Anything richer is left
+ * verbatim rather than flattened: stripping tags would silently drop a list or
+ * a link on an edit that only meant to move the dates, and the markup at least
+ * still says what it is.
+ */
+export const toPlainDescription = (description?: string): string => {
+  const trimmed = description?.trim() ?? '';
+  const [, inner] = trimmed.match(/^<p(?:\s[^>]*)?>([\s\S]*)<\/p>$/i) ?? [];
+
+  return inner === undefined || /<[a-z]/i.test(inner) ? trimmed : inner.trim();
+};

@@ -105,25 +105,6 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-// The block editor is heavy and irrelevant to what this form owns.
-jest.mock('../../common/RichTextEditor/RichTextEditor', () => ({
-  __esModule: true,
-  default: ({
-    initialValue,
-    onTextChange,
-  }: {
-    initialValue?: string;
-    onTextChange: (value: string) => void;
-  }) => (
-    <textarea
-      aria-label="description"
-      data-testid="description"
-      value={initialValue}
-      onChange={(e) => onTextChange(e.target.value)}
-    />
-  ),
-}));
-
 const START = 1700000000000;
 const END = START + 86400000;
 
@@ -576,5 +557,20 @@ describe('AnnouncementForm', () => {
         hidden: true,
       })
     ).toHaveClass('tw:outline-error_subtle');
+  });
+
+  it('should render the description through the design system, not the block editor', () => {
+    render(<Harness onSubmit={jest.fn()} />);
+
+    const description = screen.getByLabelText(/label\.description/);
+
+    // A real textarea with the field's own placeholder -- the block editor
+    // rendered a contenteditable and silently dropped the placeholder prop.
+    expect(description.tagName).toBe('TEXTAREA');
+    expect(description).toHaveAttribute(
+      'placeholder',
+      'message.enter-a-description'
+    );
+    expect(description).toHaveValue('Scheduled downtime');
   });
 });

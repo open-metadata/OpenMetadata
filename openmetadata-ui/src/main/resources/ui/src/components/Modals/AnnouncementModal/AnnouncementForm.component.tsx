@@ -24,6 +24,7 @@ import {
   Label,
   Modal,
   ModalOverlay,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
@@ -33,7 +34,6 @@ import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
-import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { millisToDateValue } from '../../observability/DataQuality/Dashboard/calendarDate.utils';
 import { fromCalendarValue } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
@@ -379,30 +379,33 @@ const AnnouncementForm = ({
                 control={form.control}
                 name="description"
                 rules={{
-                  // The editor emits markup even when blank, so emptiness is
-                  // judged on content rather than on the raw string.
+                  // Judged on content, not on the raw string: an announcement
+                  // written before this field was a `TextArea` can still hold
+                  // the block editor's empty `<p></p>`, which is not a
+                  // description.
                   validate: (value) =>
                     !isDescriptionContentEmpty(value) ||
                     requiredMessage(t('label.description')),
                 }}>
                 {({ field, fieldState }) => (
-                  <Box className="tw:gap-1.5" direction="col">
-                    <Label isRequired>{t('label.description')}</Label>
-                    {/* The block editor, not core's DESCRIPTION field: that one
-                        renders a plain TextArea, and an announcement's
-                        description is markdown that the banner and drawer both
-                        render through RichTextEditorPreviewerV1. */}
-                    <RichTextEditor
-                      data-testid="description"
-                      initialValue={field.value}
-                      placeHolder={t('message.enter-a-description')}
-                      onTextChange={field.onChange}
-                    />
-                    <FieldError
-                      message={fieldState.error?.message}
-                      testId="description-error"
-                    />
-                  </Box>
+                  // Core's `TextArea`, not the block editor: the announcement
+                  // body is a short notice, and this keeps the field's label,
+                  // placeholder, hint and invalid border identical to the Title
+                  // input above it. `description` stays a markdown field on the
+                  // wire — plain text is valid markdown, so the banner and the
+                  // drawer keep rendering it through RichTextEditorPreviewerV1.
+                  <TextArea
+                    isRequired
+                    autoSize={{ minRows: 5, maxRows: 12 }}
+                    data-testid="description"
+                    hint={fieldState.error?.message}
+                    id="description"
+                    isInvalid={Boolean(fieldState.error)}
+                    label={t('label.description')}
+                    placeholder={t('message.enter-a-description')}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
                 )}
               </FormField>
             </HookForm>
