@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import { Owner } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { lazy, type ComponentType } from 'react';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import type { PropertyValueProps } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { DomainLabelProps } from '../../components/common/DomainLabel/DomainLabel.interface';
 import type { PreviewerProp } from '../../components/common/RichTextEditor/RichTextEditor.interface';
-import type { TagButtonProps } from '../../components/common/TagButton/TagButton.component';
 import type { EntityUnion } from '../../components/Explore/ExplorePage.interface';
+import {
+  ReferenceBadge,
+  SynonymBadge,
+} from '../../components/Glossary/GlossaryTermBadges/GlossaryTermBadges';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
   DUMMY_OWNER_LIST,
   DUMMY_TAGS_LIST,
-  WIDGET_CUSTOM_PROPERTIES,
 } from '../../constants/CustomizeWidgets.constants';
 import {
   DetailPageWidgetKeys,
@@ -33,16 +33,7 @@ import { EntityType } from '../../enums/entity.enum';
 import type { EntityReference } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/tests/testCase';
 import domainClassBase from '../Domain/DomainClassBase';
-import { renderReferenceElement } from '../GlossaryUtils';
 import tableClassBase from '../TableClassBase';
-
-const PropertyValue = withSuspenseFallback(
-  lazy(() =>
-    import('../../components/common/CustomPropertyTable/PropertyValue').then(
-      (m) => ({ default: m.PropertyValue })
-    )
-  )
-) as ComponentType<PropertyValueProps>;
 
 const DomainLabel = withSuspenseFallback(
   lazy(() =>
@@ -58,10 +49,6 @@ const RichTextEditorPreviewerV1 = withSuspenseFallback(
       import('../../components/common/RichTextEditor/RichTextEditorPreviewerV1')
   )
 ) as ComponentType<PreviewerProp>;
-
-const TagButton = withSuspenseFallback(
-  lazy(() => import('../../components/common/TagButton/TagButton.component'))
-) as ComponentType<TagButtonProps>;
 
 const ContainerWidget = withSuspenseFallback(
   lazy(() =>
@@ -248,7 +235,7 @@ export const WIDGET_COMPONENTS = {
     />
   ),
   [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: () => (
-    <TagButton className="glossary-synonym-tag" key="synonym" label="synonym" />
+    <SynonymBadge synonym="synonym" />
   ),
   [DetailPageWidgetKeys.DOMAIN_TYPE]: () =>
     domainClassBase.getDummyData().domainType,
@@ -269,7 +256,9 @@ export const WIDGET_COMPONENTS = {
       { name: 'Collate', endpoint: 'https://www.getcollate.io' },
     ];
 
-    return references.map((term) => renderReferenceElement(term));
+    return references.map((term) => (
+      <ReferenceBadge key={term.name} reference={term} />
+    ));
   },
   [DetailPageWidgetKeys.TAGS]: () => (
     <TagsViewer
@@ -287,35 +276,6 @@ export const WIDGET_COMPONENTS = {
       showLabel={false}
     />
   ),
-  [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: () => (
-    <div className="flex gap-2 flex-col">
-      {WIDGET_CUSTOM_PROPERTIES.map((prop, index) => (
-        <div
-          className={classNames(' bordered', {
-            'top-border-radius': index === 0,
-            'bottom-border-radius':
-              index === WIDGET_CUSTOM_PROPERTIES.length - 1,
-          })}
-          key={prop.name}>
-          <PropertyValue
-            extension={{
-              [prop.name]: prop.value,
-            }}
-            hasEditPermissions={false}
-            key={prop.name}
-            property={{
-              name: prop.name,
-              propertyType: prop.propertyType,
-              description: prop.description,
-              displayName: prop.displayName,
-            }}
-            onExtensionUpdate={() => Promise.resolve()}
-          />
-        </div>
-      ))}
-    </div>
-  ),
-
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: () => (
     <Owner
       hasPermission={false}

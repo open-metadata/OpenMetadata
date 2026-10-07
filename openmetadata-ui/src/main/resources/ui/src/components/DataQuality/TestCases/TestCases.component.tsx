@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RightOutlined } from '@ant-design/icons';
-import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
-import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
+import {
+  Button,
+  Dropdown,
+  EmptyPlaceholderAction,
+} from '@openmetadata/ui-core-components';
+import { ChevronRight, Plus } from '@openmetadata/ui-core-components/icons';
+import { Col, Form, Row, Select, Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
@@ -300,22 +303,35 @@ export const TestCases = () => {
           onValuesChange={handleFilterChange}>
           <Space wrap align="center" className="w-full" size={16}>
             <Form.Item noStyle name="selectedFilters">
-              <Dropdown
-                menu={{
-                  items: filterMenu,
-                  selectedKeys: selectedFilter,
-                  onClick: handleMenuClick,
-                }}
-                trigger={['click']}>
+              <Dropdown.Root>
                 <Button
-                  ghost
-                  className="expand-btn"
+                  className="tw:text-brand-secondary tw:after:outline-brand"
+                  color="secondary"
                   data-testid="advanced-filter"
-                  type="primary">
+                  iconTrailing={<ChevronRight size={14} />}
+                  size="sm">
                   {t('label.advanced')}
-                  <RightOutlined />
                 </Button>
-              </Dropdown>
+                <Dropdown.Popover
+                  className="tw:w-auto"
+                  placement="bottom start">
+                  <Dropdown.Menu
+                    aria-label={t('label.advanced')}
+                    selectedKeys={selectedFilter}
+                    selectionMode="multiple"
+                    onAction={(key) => handleMenuClick({ key: String(key) })}>
+                    {filterMenu.map((item) => (
+                      <Dropdown.Item
+                        shouldCloseOnSelect
+                        data-testid={`advanced-filter-option-${item.key}`}
+                        id={item.key}
+                        key={item.key}
+                        label={item.label}
+                      />
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             </Form.Item>
             {renderPrimaryFilters()}
             {renderSecondaryFilters()}

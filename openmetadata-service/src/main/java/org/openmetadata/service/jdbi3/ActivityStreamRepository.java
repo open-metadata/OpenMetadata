@@ -60,6 +60,8 @@ public class ActivityStreamRepository {
   private static final int MAX_STORED_SUMMARY_LENGTH = 500;
   private static final String UNRESOLVED_ACTOR_METRIC = "activity_stream.unresolved_actor";
   private static final UUID NO_DOMAIN_ACCESS = new UUID(0L, 0L);
+  // Stands in for an empty team list, since an empty IN () is invalid SQL.
+  private static final String NO_TEAM_ID = new UUID(0L, 0L).toString();
 
   private final CollectionDAO.ActivityStreamDAO activityStreamDAO;
 
@@ -147,6 +149,18 @@ public class ActivityStreamRepository {
     return result(
         listByFollowers(
             user.getId().toString(),
+            getEffectiveDomainsByFqn(securityContext, domain),
+            afterTimestamp(days),
+            limit));
+  }
+
+  public ResultList<ActivityEvent> getMentionsFeed(
+      SecurityContext securityContext, String domain, int days, int limit) {
+    String userName = securityContext.getUserPrincipal().getName();
+    return result(
+        listByMentions(
+            currentUser(securityContext).getId().toString(),
+            getTeamIds(userName),
             getEffectiveDomainsByFqn(securityContext, domain),
             afterTimestamp(days),
             limit));
@@ -444,7 +458,7 @@ public class ActivityStreamRepository {
   public List<ActivityEvent> listByOwners(
       String userId, List<String> teamIds, long afterTimestamp, int limit) {
     if (nullOrEmpty(teamIds)) {
-      teamIds = List.of("00000000-0000-0000-0000-000000000000"); // dummy to avoid SQL error
+      teamIds = List.of(NO_TEAM_ID);
     }
     List<String> jsonList = activityStreamDAO.listByOwners(userId, teamIds, afterTimestamp, limit);
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
@@ -457,7 +471,7 @@ public class ActivityStreamRepository {
       return listByOwners(userId, teamIds, afterTimestamp, limit);
     }
     if (nullOrEmpty(teamIds)) {
-      teamIds = List.of("00000000-0000-0000-0000-000000000000");
+      teamIds = List.of(NO_TEAM_ID);
     }
 
     List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
@@ -489,6 +503,25 @@ public class ActivityStreamRepository {
     List<String> jsonList =
         activityStreamDAO.listByFollowersAndDomains(
             userId, domainJson, domainIdStrings, afterTimestamp, limit);
+    return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
+  }
+
+  /** List activity whose replies mention a user or one of their teams. */
+  private List<ActivityEvent> listByMentions(
+      String userId, List<String> teamIds, List<UUID> domainIds, long afterTimestamp, int limit) {
+    List<String> teams = nullOrEmpty(teamIds) ? List.of(NO_TEAM_ID) : teamIds;
+    List<String> domainIdStrings =
+        nullOrEmpty(domainIds) ? List.of() : domainIds.stream().map(UUID::toString).toList();
+    List<String> jsonList =
+        domainIdStrings.isEmpty()
+            ? activityStreamDAO.listByMentions(userId, teams, afterTimestamp, limit)
+            : activityStreamDAO.listByMentionsAndDomains(
+                userId,
+                teams,
+                JsonUtils.pojoToJson(domainIdStrings),
+                domainIdStrings,
+                afterTimestamp,
+                limit);
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
 
@@ -646,7 +679,9 @@ public class ActivityStreamRepository {
           && !subject.hasDomains(event.getDomains())) {
         throw new AuthorizationException("Activity is outside the user's domains");
       }
-      Entity.getEntity(target.getType(), target.getId(), Entity.FIELD_DOMAINS, Include.ALL, false);
+      // Existence check only - domains were requested but never read, and domain targets have no
+      // domains field to request
+      Entity.getEntity(target.getType(), target.getId(), "", Include.ALL, false);
       authorizer.authorize(
           securityContext,
           new OperationContext(target.getType(), MetadataOperation.VIEW_BASIC),

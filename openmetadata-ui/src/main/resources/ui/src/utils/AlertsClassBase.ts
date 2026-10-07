@@ -15,6 +15,7 @@ import type { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
+import { PAGE_SIZE_LARGE } from '../constants/constants';
 import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import type { NotificationTemplate } from '../generated/entity/events/notificationTemplate';
@@ -24,10 +25,8 @@ import {
   SubscriptionCategory,
   type EventSubscription,
 } from '../generated/events/eventSubscription';
-import type {
-  ModifiedCreateEventSubscription,
-  ModifiedEventSubscription,
-} from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { searchContracts } from '../rest/contractAPI';
+import type { NameSearch } from './Alerts/AlertSourceSearch';
 import {
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
@@ -35,14 +34,23 @@ import {
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtilPure';
-import type { HandleAlertSaveProps } from './AlertsClassBase.interface';
+import type {
+  HandleAlertSaveProps,
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { t } from './i18next/LocalUtil';
-import { showSuccessToast } from './ToastUtils';
+import { showErrorToast, showSuccessToast } from './ToastUtils';
 
 export interface AddAlertFormWidgetProps {
   formRef: FormInstance<ModifiedCreateEventSubscription>;
+  /**
+   * Current form values from a caller that keeps them in state (the AI alert modal).
+   * When set, read these instead of watching formRef.
+   */
+  values?: ModifiedCreateEventSubscription;
   alertDetails?: ModifiedEventSubscription;
   templates?: NotificationTemplate[];
   loading?: boolean;
@@ -50,7 +58,53 @@ export interface AddAlertFormWidgetProps {
   templateResourcePermission?: OperationPermission;
 }
 
+/** Props for the notification template section of the AI alert form. */
+export interface AlertAiTemplateSectionProps {
+  /** Edits `notificationTemplate` and `customNotificationTemplateData`. */
+  value: ModifiedCreateEventSubscription | ModifiedEventSubscription;
+  onChange?: (value: ModifiedCreateEventSubscription) => void;
+  isViewOnly?: boolean;
+  loading?: boolean;
+  templates?: NotificationTemplate[];
+  templateResourcePermission?: OperationPermission;
+}
+
+// Data contracts are not in the search indexes, so their names come from the contract API.
+const searchDataContractNames: NameSearch = async (searchText) => {
+  try {
+    const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
+
+    return contracts
+      .map((contract) => contract.fullyQualifiedName ?? '')
+      .filter(Boolean)
+      .map((fullyQualifiedName) => ({
+        label: fullyQualifiedName,
+        value: fullyQualifiedName,
+      }));
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', { entity: t('label.data-contract') })
+    );
+
+    return [];
+  }
+};
+
 class AlertsClassBase {
+  /**
+   * The AI alert form's notification template section. Templates are a Collate
+   * feature, so OSS renders none; Collate returns its own section.
+   */
+  public getAlertAiTemplateSection(): React.ComponentType<AlertAiTemplateSectionProps> | null {
+    return null;
+  }
+
+  /** Sources whose names are not in the search indexes, with the search that finds them. */
+  public getSourceNameSearch(): Record<string, NameSearch> {
+    return { [EntityType.DATA_CONTRACT]: searchDataContractNames };
+  }
+
   public getAddAlertFormExtraWidgets() {
     const widgets: Record<
       string,
@@ -198,8 +252,9 @@ class AlertsClassBase {
         alertDetails = await createAlertAPI(finalData);
       }
 
+      const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
       showSuccessToast(
-        t(`server.${'create'}-entity-success`, {
+        t(`server.${action}-entity-success`, {
           entity: t('label.alert-plural'),
         })
       );

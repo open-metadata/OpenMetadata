@@ -123,7 +123,8 @@ class LightdashApiClient:
             for dashboard in dashboards_raw:
                 dashboards_list.append(LightdashDashboard(**dashboard, spaceName=space_name))  # noqa: PERF401
 
-            self.add_dashboard_lineage(dashboards_list=dashboards_list)
+            self.client.get(f"api/v1/dashboards/{dashboards_list[0].uuid}")
+            self.client.get(f"api/v1/projects/{self.config.projectUUID}/charts")
             return dashboards_list
         return []
 

@@ -29,10 +29,12 @@ import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
+  waitForAntdModalToSettle,
 } from '../../utils/common';
 import {
   getCustomizeDetailsDefaultTabs,
   getCustomizeDetailsEntity,
+  openPlaceholderWidgetPicker,
 } from '../../utils/customizeDetails';
 import {
   checkDefaultStateForNavigationTree,
@@ -44,26 +46,39 @@ import {
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const persona = new PersonaClass();
 // Keeping it separate so that it won't affect other tests
 const navigationPersona = new PersonaClass();
+// "Glossary Term - customization should work" saves `persona`'s Glossary Term
+// layout, so the tab-order test gets its own persona and user; otherwise it
+// inherits that layout whenever both tests run in the same worker.
+const glossaryTermPersona = new PersonaClass();
 const adminUser = new AdminClass();
 const user = new UserClass();
+const glossaryTermUser = new UserClass();
 
 const test = base.extend<{
   adminPage: Page;
   userPage: Page;
+  glossaryTermUserPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
+    await use(page);
+    await page.close();
+  },
+  glossaryTermUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await glossaryTermUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -76,9 +91,12 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
   await adminUser.setAdminRole(apiContext);
   await user.create(apiContext);
   await user.setAdminRole(apiContext);
+  await glossaryTermUser.create(apiContext);
+  await glossaryTermUser.setAdminRole(apiContext);
 
   await persona.create(apiContext);
   await navigationPersona.create(apiContext);
+  await glossaryTermPersona.create(apiContext);
 
   // Assign persona to user to validate page changes
   await user.patch({
@@ -120,6 +138,25 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
     ],
   });
 
+  const glossaryTermPersonaReference = {
+    id: glossaryTermPersona.responseData.id,
+    name: glossaryTermPersona.responseData.name,
+    displayName: glossaryTermPersona.responseData.displayName,
+    fullyQualifiedName: glossaryTermPersona.responseData.fullyQualifiedName,
+    type: 'persona',
+  };
+  await glossaryTermUser.patch({
+    apiContext,
+    patchData: [
+      { op: 'add', path: '/personas/0', value: glossaryTermPersonaReference },
+      {
+        op: 'add',
+        path: '/defaultPersona',
+        value: glossaryTermPersonaReference,
+      },
+    ],
+  });
+
   await afterAction();
 });
 
@@ -127,8 +164,10 @@ test.afterAll('Cleanup Customize tests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await user.delete(apiContext);
+  await glossaryTermUser.delete(apiContext);
   await persona.delete(apiContext);
   await navigationPersona.delete(apiContext);
+  await glossaryTermPersona.delete(apiContext);
   await afterAction();
 });
 
@@ -206,7 +245,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Explore', { exact: true })
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -220,7 +259,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Metrics')
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -268,7 +307,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Explore', { exact: true })
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -282,7 +321,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Metrics')
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -296,7 +335,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Glossary')
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -310,7 +349,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Incident Manager')
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
         await adminPage.getByTestId('save-button').click();
 
@@ -366,8 +405,11 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       });
 
       await test.step(`should show all the tabs & widget as default when no customization is done`, async () => {
-        const personaListResponse =
-          adminPage.waitForResponse(`/api/v1/personas?*`);
+        const personaListResponse = waitForResponseWithStatus(
+          adminPage,
+          (response) => response.url().includes('/api/v1/personas?'),
+          200
+        );
         await settingClick(adminPage, GlobalSettingOptions.PERSONA);
         await personaListResponse;
 
@@ -386,11 +428,21 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         const expectedTabs = getCustomizeDetailsDefaultTabs(type);
 
+        for (const tabName of expectedTabs) {
+          await expect(
+            adminPage
+              .getByTestId('customize-tab-card')
+              .getByTestId(`tab-${tabName}`)
+          ).toBeVisible();
+        }
+
         const tabs = adminPage
           .getByTestId('customize-tab-card')
           .getByRole('button')
           .filter({ hasNotText: 'Add Tab' });
 
+        // The tab card has rendered (asserted above), so this one-shot count
+        // reads the final state rather than a still-mounting card.
         const knowledgeGraphTab = adminPage
           .getByTestId('customize-tab-card')
           .getByTestId(`tab-${EntityTabs.KNOWLEDGE_GRAPH}`);
@@ -403,14 +455,6 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
             : 0);
 
         await expect(tabs).toHaveCount(expectedTabCount);
-
-        for (const tabName of expectedTabs) {
-          await expect(
-            adminPage
-              .getByTestId('customize-tab-card')
-              .getByTestId(`tab-${tabName}`)
-          ).toBeVisible();
-        }
       });
 
       await test.step('apply customization', async () => {
@@ -439,6 +483,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         // Wait for dialog animation to complete and button to be stable
         await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
+        await waitForAntdModalToSettle(adminPage);
         await expect(addButton).toBeEnabled();
         await addButton.click();
 
@@ -447,29 +492,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           adminPage.getByText('Customize Custom Tab Widgets')
         ).toBeVisible();
 
-        // Wait for dialog to close before interacting with grid layout
-        await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
-        await adminPage
-          .locator('.ant-modal-wrap')
-          .waitFor({ state: 'detached' });
-
-        // Get locator after dialog closes to avoid layout shift issues
-        const addWidgetButton = adminPage
-          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-          .getByTestId('add-widget-button');
-        await expect(addWidgetButton).toBeVisible();
-        await expect(addWidgetButton).toBeEnabled();
-
-        // Under CI load the react-grid-layout is still settling after the
-        // "Add tab" dialog closes; the first click can land on a detaching
-        // element and never open the widget picker. Retry until the picker's
-        // inner content appears — `add-widget-modal` itself is the antd
-        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
-        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
-        await expect(async () => {
-          await addWidgetButton.click();
-          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
-        }).toPass({ timeout: 30000 });
+        await openPlaceholderWidgetPicker(adminPage);
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -516,7 +539,9 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const visibleDescriptionWidget = userPage.locator(
           '[data-testid^="KnowledgePanel.Description-"]:visible'
         );
-        await expect(visibleDescriptionWidget.first()).toBeVisible();
+        await expect(
+          visibleDescriptionWidget.filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   });
@@ -600,29 +625,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           adminPage.getByText('Customize Custom Tab Widgets')
         ).toBeVisible();
 
-        // Wait for dialog to close before interacting with grid layout
-        await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
-        await adminPage
-          .locator('.ant-modal-wrap')
-          .waitFor({ state: 'detached' });
-
-        // Get locator after dialog closes to avoid layout shift issues
-        const addWidgetButton = adminPage
-          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-          .getByTestId('add-widget-button');
-        await expect(addWidgetButton).toBeVisible();
-        await expect(addWidgetButton).toBeEnabled();
-
-        // Under CI load the react-grid-layout is still settling after the
-        // "Add tab" dialog closes; the first click can land on a detaching
-        // element and never open the widget picker. Retry until the picker's
-        // inner content appears — `add-widget-modal` itself is the antd
-        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
-        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
-        await expect(async () => {
-          await addWidgetButton.click();
-          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
-        }).toPass({ timeout: 30000 });
+        await openPlaceholderWidgetPicker(adminPage);
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -633,7 +636,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button')
           .click();
 
-        await expect(adminPage.getByTestId('add-widget-modal')).toBeHidden();
+        await expect(adminPage.getByTestId('widget-info-tabs')).toBeHidden();
 
         await adminPage.getByTestId('save-button').click();
 
@@ -671,14 +674,16 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const visibleDescriptionWidget = userPage.locator(
           '[data-testid^="KnowledgePanel.Description-"]:visible'
         );
-        await expect(visibleDescriptionWidget.first()).toBeVisible();
+        await expect(
+          visibleDescriptionWidget.filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   });
 
   test('Validate Glossary Term details page after customization of tabs', async ({
     adminPage,
-    userPage,
+    glossaryTermUserPage,
   }) => {
     test.slow();
 
@@ -703,7 +708,11 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await personaListResponse;
 
       // Need to find persona card and click as the list might get paginated
-      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
+      await navigateToPersonaWithPagination(
+        adminPage,
+        glossaryTermPersona.data.name,
+        true
+      );
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.getByText('Governance').click();
       await adminPage.getByText('Glossary Term', { exact: true }).click();
@@ -726,31 +735,37 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Validate customization', async () => {
-      await redirectToHomePage(userPage);
+      await redirectToHomePage(glossaryTermUserPage);
 
-      await entity?.visitEntityPage(userPage);
-      await waitForAllLoadersToDisappear(userPage);
+      await entity?.visitEntityPage(glossaryTermUserPage);
+      await waitForAllLoadersToDisappear(glossaryTermUserPage);
 
       await expect(
-        userPage.getByRole('tab', { name: 'Overview' })
+        glossaryTermUserPage.getByRole('tab', { name: 'Overview' })
       ).toBeVisible();
       await expect(
-        userPage.getByRole('tab', { name: 'Glossary Terms' })
+        glossaryTermUserPage.getByRole('tab', { name: 'Glossary Terms' })
       ).toBeVisible();
       await expect(
-        userPage.getByTestId('create-error-placeholder-Glossary Term')
+        glossaryTermUserPage.getByTestId(
+          'create-error-placeholder-Glossary Term'
+        )
       ).toBeVisible();
 
-      await userPage.getByRole('tab', { name: 'Overview' }).click();
+      await glossaryTermUserPage.getByRole('tab', { name: 'Overview' }).click();
 
       await expect(
-        userPage.getByTestId('asset-description-container')
+        glossaryTermUserPage.getByTestId('asset-description-container')
       ).toBeVisible();
 
-      await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
+      await glossaryTermUserPage
+        .getByRole('tab', { name: 'Glossary Terms' })
+        .click();
 
       await expect(
-        userPage.getByTestId('create-error-placeholder-Glossary Term')
+        glossaryTermUserPage.getByTestId(
+          'create-error-placeholder-Glossary Term'
+        )
       ).toBeVisible();
     });
   });
@@ -800,16 +815,26 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+      await expect(
+        adminPage
+          .getByRole('dialog')
+          .filter({ hasNot: adminPage.getByRole('menu') })
+      ).toBeVisible();
 
-      await adminPage.getByRole('dialog').getByRole('textbox').clear();
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
+        .getByRole('textbox')
+        .clear();
+      await adminPage
+        .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('textbox')
         .fill('Sample Data Updated');
 
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('button', { name: 'Ok' })
         .click();
 
@@ -899,16 +924,26 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+      await expect(
+        adminPage
+          .getByRole('dialog')
+          .filter({ hasNot: adminPage.getByRole('menu') })
+      ).toBeVisible();
 
-      await adminPage.getByRole('dialog').getByRole('textbox').clear();
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
+        .getByRole('textbox')
+        .clear();
+      await adminPage
+        .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('textbox')
         .fill('Access Policy');
 
       await adminPage
         .getByRole('dialog')
+        .filter({ hasNot: adminPage.getByRole('menu') })
         .getByRole('button', { name: 'Ok' })
         .click();
 
@@ -929,10 +964,12 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await test.step('validate applied label change for Domain Documentation tab', async () => {
       await redirectToHomePage(userPage);
 
-      const domainResponse = userPage.waitForResponse(
+      const domainResponse = waitForResponseWithStatus(
+        userPage,
         (response) =>
-          response.url().includes('/api/v1/domains/name/') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/domains/name/'),
+        200
       );
       await entity?.visitEntityPage(userPage);
       await domainResponse;

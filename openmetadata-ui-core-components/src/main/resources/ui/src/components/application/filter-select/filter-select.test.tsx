@@ -263,7 +263,7 @@ describe('FilterSelect', () => {
     expect(screen.getByText('MYSQL')).toBeInTheDocument();
   });
 
-  it('single select marks the chosen row brand-blue with no tick icon', () => {
+  it('single select marks the chosen row like the sidebar selected item with no tick icon', () => {
     renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
 
     const row = screen.getByTestId('snowflake');
@@ -271,10 +271,10 @@ describe('FilterSelect', () => {
     // No check glyph any more: these options carry no icons, so the selected
     // row must contain no svg at all (the tick used to render one).
     expect(row.querySelector('svg')).toBeNull();
-    expect(row.className).toContain('bg-utility-brand-50');
+    expect(row.querySelector('div')?.className).toContain('bg-brand-primary');
     expect(
       screen.getByTitle('Snowflake').parentElement?.className ?? ''
-    ).toContain('text-fg-brand-primary');
+    ).toContain('text-brand-secondary');
   });
 
   it('single select brands the icon and count pill of the chosen row', () => {
@@ -294,16 +294,16 @@ describe('FilterSelect', () => {
     const other = screen.getByTestId('bigquery');
 
     // The row-level override recolors the option's svg on selection…
-    expect(selected.className).toContain('[&_svg]:text-fg-brand-primary');
-    expect(other.className).not.toContain('[&_svg]:text-fg-brand-primary');
+    expect(selected.className).toContain('[&_svg]:text-fg-brand-secondary_alt');
+    expect(other.className).not.toContain('[&_svg]:text-fg-brand');
     // …and the count pill flips to the brand border and text.
     const selectedPill = within(selected).getByTestId('filter-count');
     const otherPill = within(other).getByTestId('filter-count');
 
     expect(selectedPill.className).toContain('border-utility-brand-200');
-    expect(selectedPill.className).toContain('text-fg-brand-primary');
+    expect(selectedPill.className).toContain('text-brand-secondary');
     expect(otherPill.className).toContain('border-secondary');
-    expect(otherPill.className).not.toContain('text-fg-brand-primary');
+    expect(otherPill.className).not.toContain('text-brand-secondary');
   });
 
   it('single select applies the clicked value and reports one value', () => {
@@ -419,6 +419,63 @@ describe('FilterSelect', () => {
     expect(screen.getByTestId('trigger-test').className).toContain(
       'shadow-xs-skeuomorphic'
     );
+  });
+
+  it('brands the button trigger once a value is selected', () => {
+    const renderTrigger = (selectedValues: string[]) => (
+      <FilterSelect
+        bordered
+        data-testid="trigger-test"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={selectedValues}
+        triggerVariant="button"
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(renderTrigger(['snowflake']));
+    const selected = screen.getByTestId('trigger-test').className;
+
+    expect(selected).toContain('tw:text-fg-brand-primary');
+    expect(selected).toContain('tw:after:outline-brand');
+    expect(selected).toContain('tw:dark:after:outline-fg-brand-primary_alt');
+    // The brand set replaces the Button's neutral colours rather than racing them.
+    expect(selected).not.toContain('tw:text-secondary ');
+    expect(selected).not.toContain('tw:after:outline-primary');
+
+    rerender(renderTrigger([]));
+
+    expect(screen.getByTestId('trigger-test').className).not.toContain(
+      'text-fg-brand-primary'
+    );
+  });
+
+  it('sizes the input trigger on the Select scale', () => {
+    const renderInput = (size?: 'sm' | 'md') => (
+      <FilterSelect
+        data-testid="input-trigger"
+        label="Service"
+        options={OPTIONS}
+        selectedValues={[]}
+        size={size}
+        triggerVariant="input"
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(renderInput());
+
+    expect(screen.getByTestId('input-trigger')).toHaveClass(
+      'tw:px-3',
+      'tw:py-2'
+    );
+
+    rerender(renderInput('md'));
+
+    expect(screen.getByTestId('input-trigger')).toHaveClass(
+      'tw:px-3.5',
+      'tw:py-2.5'
+    );
+    expect(screen.getByTestId('input-trigger')).not.toHaveClass('tw:h-8');
   });
 
   it('exposes the label-keyed trigger test id as well as the key-keyed one', () => {
@@ -643,6 +700,45 @@ describe('FilterSelect', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('chips-trigger'));
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('pressing the trigger of an open filter closes it', () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      'data-testid': 'filter-trigger',
+      triggerVariant: 'button',
+      onOpenChange,
+    });
+    const trigger = screen.getByTestId('filter-trigger');
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    // A real mouse click: detail 1, so React Aria does not treat the click as
+    // a virtual (screen reader) press that reopens the menu.
+    fireEvent.pointerDown(trigger, { pointerType: 'mouse' });
+    fireEvent.click(trigger, { detail: 1 });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('pressing a chip remove button keeps an open filter open', () => {
+    renderFilter({
+      isOpen: undefined,
+      'data-testid': 'chips-trigger',
+      selectedValues: ['snowflake', 'bigquery'],
+      triggerDisplay: 'chips',
+      triggerVariant: 'input',
+    });
+    fireEvent.click(screen.getByTestId('chips-trigger'));
+    const [removeSnowflake] = screen.getAllByRole('button', {
+      name: 'Remove filter',
+    });
+    fireEvent.pointerDown(removeSnowflake, { pointerType: 'mouse' });
 
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });

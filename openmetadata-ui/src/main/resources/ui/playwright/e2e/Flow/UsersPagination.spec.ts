@@ -24,6 +24,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Soft Delete User Pagination', () => {
   test.beforeAll('Creating and Soft Deleting 30 users', async ({ browser }) => {
+    users.length = 0;
     test.slow(true);
 
     const { apiContext, afterAction } = await createNewPage(browser);

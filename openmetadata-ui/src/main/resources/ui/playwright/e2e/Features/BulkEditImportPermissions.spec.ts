@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -62,7 +63,7 @@ const table = new TableClass();
 const test = base.extend<{ bulkEditorPage: Page }>({
   bulkEditorPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editorUser.login(page);
+    await editorUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -163,7 +164,7 @@ test.describe(
     });
 
     test.afterAll(async ({ browser }) => {
-      test.setTimeout(120_000);
+      test.setTimeout(EXTENDED_TEST_TIMEOUT);
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.delete(apiContext);
       await glossaryTerm.delete(apiContext);

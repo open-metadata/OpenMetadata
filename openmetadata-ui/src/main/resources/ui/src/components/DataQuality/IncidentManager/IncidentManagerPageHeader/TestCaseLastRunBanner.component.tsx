@@ -13,6 +13,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
+import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import IncidentDetails from './IncidentDetails.component';
 import LastRunBannerLayout from './LastRunBannerLayout.component';
 import LastRunTime from './LastRunTime.component';
@@ -29,13 +30,16 @@ import {
   getIncidentTitle,
   getMetricSummary,
   getNextRunLabel,
+  getNotRunMessageKey,
   getRunDescription,
 } from './TestCaseLastRunBanner.utils';
 
 const TestCaseLastRunBanner = ({
+  hasEditStatusPermission,
   incidentTask,
   nextRunTimestamp,
-  parameterValues,
+  onAcknowledge,
+  testCase,
   testCaseResult,
   testCaseStatus: authoritativeTestCaseStatus,
   testCaseStatusData,
@@ -51,7 +55,7 @@ const TestCaseLastRunBanner = ({
         config={NO_RUN_CONFIG}
         description={
           <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-xs tw:leading-normal tw:text-secondary">
-            {t('message.test-case-not-run-yet')}
+            {t(getNotRunMessageKey(nextRunTimestamp))}
           </p>
         }
         rightSection={
@@ -77,7 +81,7 @@ const TestCaseLastRunBanner = ({
     );
   }
 
-  const { result, testResultValue, timestamp } = testCaseResult;
+  const { result, timestamp } = testCaseResult;
   const config = STATUS_CONFIG[testCaseStatus];
   const description = getRunDescription(
     result,
@@ -86,8 +90,8 @@ const TestCaseLastRunBanner = ({
   );
   const incidentLink = getIncidentLink(taskLinkInfo, testCaseStatus);
   const metricSummary = getMetricSummary(
-    parameterValues,
-    testResultValue,
+    testCase,
+    testCaseResult,
     testCaseStatus
   );
   const incidentTitle = incidentTask
@@ -109,16 +113,22 @@ const TestCaseLastRunBanner = ({
       description={<RunDescription description={description} />}
       footer={
         <IncidentDetails
+          canAcknowledge={
+            Boolean(hasEditStatusPermission) &&
+            testCaseStatusData?.testCaseResolutionStatusType ===
+              TestCaseResolutionStatusTypes.New
+          }
           config={config}
           description={incidentMetadata.description}
           incidentId={incidentMetadata.id}
           incidentLink={incidentLink}
           statusConfig={incidentMetadata.statusConfig}
+          onAcknowledge={onAcknowledge}
         />
       }
       rightSection={
         <div
-          className="tw:flex tw:shrink-0 tw:items-stretch tw:justify-end tw:gap-6 tw:lg:w-80"
+          className="tw:flex tw:shrink-0 tw:items-stretch tw:justify-end tw:gap-6 tw:lg:min-w-80"
           data-testid="test-case-last-run-right-section">
           <ResultExpected
             config={config}

@@ -13,13 +13,18 @@
 
 import type { RuleObject } from 'antd/lib/form';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, isEqual, isUndefined, map, omitBy, startCase } from 'lodash';
-import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import {
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
-  EXTERNAL_CATEGORY_OPTIONS,
-} from '../../constants/Alerts.constants';
+  isBoolean,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  omitBy,
+  startCase,
+} from 'lodash';
+import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
@@ -267,50 +272,6 @@ export const getFormattedDestinations = (
   return formattedDestinations;
 };
 
-// Destination category exclusions by entity type
-const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Most entity events have neither participants nor mention recipients.
-  __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  task: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-  ],
-  conversation: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-    SubscriptionCategory.Assignees,
-  ],
-  announcement: [SubscriptionCategory.Assignees],
-};
-
-export const getFilteredDestinationOptions = (
-  key: keyof typeof DESTINATION_SOURCE_ITEMS,
-  selectedSource: string
-) => {
-  const options = DESTINATION_SOURCE_ITEMS[key];
-  const isExternalDestination = !isEqual(
-    key,
-    DESTINATION_DROPDOWN_TABS.internal
-  );
-
-  if (isExternalDestination) {
-    return options;
-  }
-
-  const excludedCategories =
-    DESTINATION_CATEGORY_EXCLUDES[selectedSource] ||
-    DESTINATION_CATEGORY_EXCLUDES.__default__;
-
-  return options.filter(
-    (option) =>
-      !excludedCategories.includes(option.value as SubscriptionCategory)
-  );
-};
-
 export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
   switch (status) {
     case AlertRecentEventFilters.SUCCESSFUL:
@@ -420,6 +381,15 @@ export const getDiagnosticItems = (
     description: t('message.processed-all-events-description'),
   },
 ];
+
+/** Formats a diagnostic value for display: Yes/No for flags, a placeholder when unset. */
+export const formatDiagnosticValue = (value?: number | boolean) => {
+  if (isBoolean(value)) {
+    return t(value ? 'label.yes' : 'label.no');
+  }
+
+  return isUndefined(value) ? NO_DATA_PLACEHOLDER : String(value);
+};
 
 export const getRandomizedAlertName = () => {
   return `${OPEN_METADATA}_alert_${cryptoRandomString({

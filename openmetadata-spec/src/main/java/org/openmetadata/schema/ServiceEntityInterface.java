@@ -14,6 +14,7 @@
 package org.openmetadata.schema;
 
 import java.util.List;
+import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityReference;
 
@@ -38,4 +39,15 @@ public interface ServiceEntityInterface extends EntityInterface {
   default EntityReference getIngestionRunner() {
     return null;
   }
+
+  /**
+   * Deployment attributes of this service: environment, region and deployment. Null until an admin
+   * sets them. Declared here so policy evaluation can read them without knowing the concrete
+   * service type; every service schema carries the property.
+   */
+  default ServiceAttributes getServiceAttributes() {
+    return null;
+  }
+
+  default void setServiceAttributes(ServiceAttributes serviceAttributes) {}
 }

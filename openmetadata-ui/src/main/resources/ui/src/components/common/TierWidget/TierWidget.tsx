@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { ClassificationTag } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +24,6 @@ import {
   getTagRedirectLink,
   updateTierTag,
 } from '../../../utils/TagsPureUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TierCard from '../TierCard/TierCard';
 import {
@@ -58,8 +56,10 @@ const TierWidget = () => {
       const updatedEntity = cloneDeep(entity);
       updatedEntity.tags = updatedTags;
       await onUpdate(updatedEntity);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+    } catch {
+      // The page-level updater already toasts before rethrowing, so toasting
+      // here would duplicate it. Swallow rather than rethrow so TierCard's
+      // post-await cleanup runs and the popover doesn't stay stuck loading.
     } finally {
       setIsEditing(false);
     }
@@ -72,12 +72,16 @@ const TierWidget = () => {
 
   const tierEditControl = tier ? (
     <WidgetEditButton
+      aria-expanded={isEditing}
+      aria-haspopup="dialog"
       data-testid="edit-tier"
       title={t('label.edit-entity', { entity: t('label.tier') })}
       onClick={() => setIsEditing(true)}
     />
   ) : (
     <WidgetPlusButton
+      aria-expanded={isEditing}
+      aria-haspopup="dialog"
       data-testid="add-tier"
       title={t('label.add-entity', { entity: t('label.tier') })}
       onClick={() => setIsEditing(true)}
@@ -103,17 +107,15 @@ const TierWidget = () => {
     <TierCard
       currentTier={tier?.tagFQN}
       footerActionButtonsClassName="p-x-md"
-      popoverProps={{
-        open: isEditing,
-        onOpenChange: (visible: boolean) => {
-          if (!visible) {
-            setIsEditing(false);
-          }
-        },
-      }}
+      open={isEditing}
       tierCardClassName="tier-widget-popover"
       updateTier={handleTierUpdate}
-      onClose={() => setIsEditing(false)}>
+      onClose={() => setIsEditing(false)}
+      onOpenChange={(visible: boolean) => {
+        if (!visible) {
+          setIsEditing(false);
+        }
+      }}>
       {tier && <div data-testid="tier-selector-display">{tierDisplay}</div>}
     </TierCard>
   );

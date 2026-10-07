@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
@@ -25,8 +26,8 @@ import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { TeamImportResult } from '../../../components/Settings/Team/TeamImportResult/TeamImportResult.component';
 import { UserImportResult } from '../../../components/Settings/Team/UserImportResult/UserImportResult.component';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Team, TeamType } from '../../../generated/entity/teams/team';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -187,9 +188,9 @@ const ImportTeamsPage = () => {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <div className="m-t-sm text-center text-sm font-normal">
-          <Typography.Paragraph className="w-80">
+          <Typography as="p" className="w-80">
             {t('message.group-type-team-not-allowed-to-have-sub-team')}
-          </Typography.Paragraph>
+          </Typography>
         </div>
       </ErrorPlaceHolder>
     );
@@ -211,14 +212,18 @@ const ImportTeamsPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumb} />
         </Col>
         <Col span={24}>
-          <Typography.Title data-testid="title" level={5}>
+          <Typography
+            as="h5"
+            data-testid="title"
+            size="text-md"
+            weight="semibold">
             {t('label.import-entity', {
               entity:
                 type === ImportType.USERS
                   ? t('label.user-plural')
                   : t('label.team-plural'),
             })}
-          </Typography.Title>
+          </Typography>
         </Col>
         <Col span={24}>
           <EntityImport

@@ -14,9 +14,9 @@
 import { has } from 'lodash';
 import {
   OperationPermission,
-  ResourceEntity,
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../enums/permissions.enum';
 import {
   Access,
   Permission,

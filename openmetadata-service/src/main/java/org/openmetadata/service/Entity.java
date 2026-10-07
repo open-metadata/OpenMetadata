@@ -180,6 +180,7 @@ public final class Entity {
   public static final String DATABASE = "database";
   public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRIC = "metric";
+  public static final String METRIC_GROUP = "metricGroup";
   public static final String DASHBOARD = "dashboard";
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
@@ -1043,6 +1044,15 @@ public final class Entity {
   public static boolean entityHasField(String entityType, String field) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getAllowedFields().contains(field);
+  }
+
+  /** Entity types that have a lifecycle stage, i.e. whose schema declares {@code entityStatus}. */
+  public static List<String> getEntityTypesWithLifecycleStage() {
+    return ENTITY_REPOSITORY_MAP.entrySet().stream()
+        .filter(entry -> entry.getValue().isSupportsEntityStatus())
+        .map(Map.Entry::getKey)
+        .sorted()
+        .toList();
   }
 
   public static List<ServiceEntityInterface> getAllServicesForLineage() {

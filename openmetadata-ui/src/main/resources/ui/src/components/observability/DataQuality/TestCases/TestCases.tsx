@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -115,7 +115,7 @@ const TestCases = () => {
         testSummary={testCaseSummary}
       />
       <Box
-        className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
+        className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
         direction="col">
         <Box className="tw:p-4">
           <TestCaseListTableHeader

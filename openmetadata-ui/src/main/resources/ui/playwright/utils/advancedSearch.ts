@@ -12,6 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { getEncodedFqn } from './entity';
+import { waitForAggregation } from './searchAggregation';
 
 type EntityFields = {
   id: string;
@@ -183,7 +184,9 @@ export const selectOption = async (
     'button[aria-haspopup="listbox"]'
   );
 
-  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
+  await expect(
+    comboboxInput.or(triggerButton).filter({ visible: true })
+  ).not.toHaveCount(0);
 
   if (isSearchable) {
     if ((await triggerButton.count()) === 0) {
@@ -356,16 +359,14 @@ export const fillRule = async (
       await expect
         .poll(
           async () => {
+            const aggregation = waitForAggregation(
+              page,
+              { value: searchData },
+              { timeout: 5_000 }
+            ).catch(() => null);
             await dropdownInput.fill('');
             await dropdownInput.fill(searchData);
-
-            await page
-              .waitForResponse(
-                (response) =>
-                  response.url().includes('/api/v1/search/aggregate'),
-                { timeout: 5_000 }
-              )
-              .catch(() => null);
+            await aggregation;
 
             return countMatchingOptions();
           },
@@ -375,6 +376,17 @@ export const fillRule = async (
 
       const listboxId = await dropdownInput.getAttribute('aria-controls');
       const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
+
+      // One chip per committed value: counted before picking so the assertion
+      // below can prove this call added exactly one, and no more.
+      const multiSelect = ruleLocator.getByTestId(
+        'advanced-search-value-multiselect'
+      );
+      const selectedChips = multiSelect.getByTestId(
+        'autocomplete-selected-item'
+      );
+      const isMultiSelect = (await multiSelect.count()) > 0;
+      const chipsBefore = isMultiSelect ? await selectedChips.count() : 0;
 
       // Match on the option's value, not its label. Tag-like fields (Tier,
       // Tags, Certification) render the display name — `Tier1` — while the
@@ -405,7 +417,19 @@ export const fillRule = async (
         }
       }
 
-      await page.getByTestId('advanced-search-message').click();
+      // Dismiss the popup: re-selecting the current value emits no selection
+      // change, so it can stay open and swallow the next interaction. Tab
+      // (not blur — the click left focus inside the listbox, so the input has
+      // none to lose) moves focus out and react-aria closes it. NEVER Escape:
+      // the modal handles it and would close the whole dialog.
+      await dropdownInput.press('Tab', { timeout: 5_000 });
+      await dropdown
+        .waitFor({ state: 'hidden', timeout: 5_000 })
+        .catch(() => undefined);
+
+      if (isMultiSelect) {
+        await expect(selectedChips).toHaveCount(chipsBefore + 1);
+      }
     }
   }
 };

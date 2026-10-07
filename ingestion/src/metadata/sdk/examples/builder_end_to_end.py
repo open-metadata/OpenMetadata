@@ -100,7 +100,6 @@ class DatabaseServiceBuilderPy:
                 supportsDBTExtraction=None,
                 supportsProfiler=None,
                 supportsQueryComment=None,
-                sampleDataStorageConfig=None,
                 supportsDataDiff=None,
                 supportsUsageExtraction=None,
                 supportsLineageExtraction=None,
@@ -312,7 +311,6 @@ def main() -> None:
     configure(
         host="http://localhost:8585/api",
         jwt_token="YOUR_JWT_OR_API_KEY",
-        verify_ssl=False,
     )
 
     # 1) Service (builder)

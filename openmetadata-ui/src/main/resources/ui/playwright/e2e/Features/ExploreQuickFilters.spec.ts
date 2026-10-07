@@ -15,6 +15,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -30,6 +31,7 @@ import {
   searchAndClickOnOption,
   selectNullOption,
 } from '../../utils/explore';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -38,7 +40,9 @@ test.describe.configure({ mode: 'default' });
 
 const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
-const table = new TableClass();
+// Quick-filter assertions read table.serviceResponseData.name to
+// resolve the service the filter selects — needs a unique service.
+const table = new TableClass({ service: new DatabaseServiceClass() });
 const tier = new TagClass({
   classification: 'Tier',
 });
@@ -66,7 +70,9 @@ const waitForDataProductOnAsset = async (
         );
 
         if (!response.ok()) {
-          return false;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const data = await response.json();
@@ -328,9 +334,10 @@ test('Filter by column entity type shows only column results', async ({
     .getByTestId('drop-down-menu')
     .getByTestId('tablecolumn');
 
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*tableColumn*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: 'tableColumn',
+  });
 
   await page
     .getByTestId('drop-down-menu')
@@ -364,9 +371,10 @@ test.describe('Tier filter - aggregation-based options', () => {
     });
 
     await test.step('Search for tier with asset — it is visible in dropdown', async () => {
-      const searchRes = page.waitForResponse(
-        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: tier.responseData.fullyQualifiedName,
+      });
       await page
         .getByTestId('search-input')
         .fill(tier.responseData.fullyQualifiedName);
@@ -379,9 +387,10 @@ test.describe('Tier filter - aggregation-based options', () => {
 
     await test.step('Search for tier without asset — it is not visible in dropdown', async () => {
       await page.getByTestId('search-input').clear();
-      const searchRes = page.waitForResponse(
-        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: tierWithoutAsset.responseData.fullyQualifiedName,
+      });
       await page
         .getByTestId('search-input')
         .fill(tierWithoutAsset.responseData.fullyQualifiedName);
@@ -406,9 +415,10 @@ test.describe('Tier filter - aggregation-based options', () => {
       await page.getByTestId('search-dropdown-Tier').click();
       await waitForAllLoadersToDisappear(page);
 
-      const searchRes = page.waitForResponse(
-        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: tier.responseData.fullyQualifiedName,
+      });
       await page
         .getByTestId('search-input')
         .fill(tier.responseData.fullyQualifiedName);
@@ -460,7 +470,9 @@ test.describe('Filter persistence after bug fixes', () => {
     });
 
     await test.step('Verify the Databases node is marked as selected', async () => {
-      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+      await expect(
+        page.getByTestId('explore-tree').getByRole('row', { selected: true })
+      ).toBeVisible();
     });
 
     await test.step('Apply Tag filter from top dropdown', async () => {
@@ -482,7 +494,9 @@ test.describe('Filter persistence after bug fixes', () => {
     });
 
     await test.step('Verify Databases node selection is still preserved after filter change', async () => {
-      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+      await expect(
+        page.getByTestId('explore-tree').getByRole('row', { selected: true })
+      ).toBeVisible();
     });
   });
 
@@ -542,18 +556,20 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
     const domainName = domain.responseData.displayName as string;
 
     await test.step('Open Domains filter and wait for aggregate response', async () => {
-      const aggRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
-      );
+      const aggRes = waitForAggregation(page, {
+        field: 'domains.displayName.keyword',
+        value: null,
+      });
       await page.click('[data-testid="search-dropdown-Domains"]');
       await aggRes;
       await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Option label matches original casing, not lowercased bucket key', async () => {
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'domains.displayName.keyword',
+        value: domainName,
+      });
       await page.fill('[data-testid="search-input"]', domainName);
       await searchRes;
 
@@ -573,18 +589,20 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
     const tierFqn = tier.responseData.fullyQualifiedName as string;
 
     await test.step('Open Tier filter and wait for aggregate response', async () => {
-      const aggRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
-      );
+      const aggRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: null,
+      });
       await page.click('[data-testid="search-dropdown-Tier"]');
       await aggRes;
       await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Option label matches original FQN casing', async () => {
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: tierFqn,
+      });
       await page.fill('[data-testid="search-input"]', tierFqn);
       await searchRes;
 
@@ -605,9 +623,10 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
 
     await test.step('Open Tag filter and search for the tag', async () => {
       await page.click('[data-testid="search-dropdown-Tag"]');
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=tags.tagFQN*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tags.tagFQN',
+        value: tagFqn,
+      });
       await page.fill('[data-testid="search-input"]', tagFqn);
       await searchRes;
     });
@@ -629,18 +648,20 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
       user.responseData.name) as string;
 
     await test.step('Open Owners filter and wait for aggregate response', async () => {
-      const aggRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
-      );
+      const aggRes = waitForAggregation(page, {
+        field: 'ownerDisplayName',
+        value: null,
+      });
       await page.click('[data-testid="search-dropdown-Owners"]');
       await aggRes;
       await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Option label matches original casing, not lowercased bucket key', async () => {
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'ownerDisplayName',
+        value: ownerName,
+      });
       await page.fill('[data-testid="search-input"]', ownerName);
       await searchRes;
 
@@ -660,18 +681,20 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
       table.serviceResponseData.name) as string;
 
     await test.step('Open Service filter and wait for aggregate response', async () => {
-      const aggRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
-      );
+      const aggRes = waitForAggregation(page, {
+        field: 'service.displayName.keyword',
+        value: null,
+      });
       await page.click('[data-testid="search-dropdown-Service"]');
       await aggRes;
       await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Option label matches original casing', async () => {
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'service.displayName.keyword',
+        value: serviceName,
+      });
       await page.fill('[data-testid="search-input"]', serviceName);
       await searchRes;
 
@@ -778,7 +801,9 @@ test.describe('Metric search result highlight', () => {
       const highlightedSpan = displayNameHeader.locator(
         'span.text-highlighter'
       );
-      await expect(highlightedSpan.first()).toBeVisible();
+      await expect(highlightedSpan.filter({ visible: true })).not.toHaveCount(
+        0
+      );
 
       const fullText = await displayNameHeader.textContent();
       expect(fullText?.trim()).toBe(metric.entity.name);

@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { Button } from '@openmetadata/ui-core-components';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import TierCard from '../TierCard/TierCard';
 import TierWidget from './TierWidget';
 
@@ -63,67 +72,44 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
 });
 
-// Capture onOpenChange so tests can simulate AntD open/close events directly.
-// AntD does not call onOpenChange when `open` changes programmatically, so
-// prop-based open/close cycles cannot be used to drive this test.
-let capturedOnOpenChange: ((visible: boolean) => void) | null = null;
+const renderTierCard = (currentTier: string) => (
+  <TierCard currentTier={currentTier} updateTier={mockUpdateTier}>
+    <Button data-testid="edit-tier">Edit Tier</Button>
+  </TierCard>
+);
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Popover: jest
-    .fn()
-    .mockImplementation(({ content, onOpenChange, children }) => {
-      capturedOnOpenChange = onOpenChange;
-
-      return (
-        <>
-          {content}
-          {children}
-        </>
-      );
-    }),
-}));
+const openTierCard = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('edit-tier'));
+  });
+  await screen.findByTestId('radio-btn-Tier3');
+};
 
 describe('TierCard stale selectedTier', () => {
   beforeEach(() => {
     mockUpdateTier.mockClear();
-    capturedOnOpenChange = null;
   });
 
   it('resets radio to persisted tier after a cancelled change (Bug A — cancel-stale)', async () => {
-    render(
-      <TierCard
-        currentTier="Tier.Tier1"
-        popoverProps={{ open: true }}
-        updateTier={mockUpdateTier}>
-        <button>Edit Tier</button>
-      </TierCard>
+    render(renderTierCard('Tier.Tier1'));
+
+    await openTierCard();
+
+    // User selects Tier3 without saving, then dismisses the card.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('radio-btn-Tier3'));
+    });
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('cards')).not.toBeInTheDocument()
     );
 
-    // Simulate AntD firing onOpenChange(true) — loads tier data via handleOpenChange.
+    // Reopen and click Update — must commit the persisted Tier1, not cancelled Tier3.
+    await openTierCard();
     await act(async () => {
-      capturedOnOpenChange?.(true);
-    });
-
-    const tier3Radio = await screen.findByTestId('radio-btn-Tier3');
-
-    expect(tier3Radio).toBeInTheDocument();
-
-    // User selects Tier3 without saving.
-    await act(async () => {
-      fireEvent.click(tier3Radio);
-    });
-
-    // Cancel: AntD fires onOpenChange(false). handleOpenChange resets selectedTier to Tier1.
-    await act(async () => {
-      capturedOnOpenChange?.(false);
-    });
-
-    // Immediately click Update — selectedTier must be the persisted Tier1, not cancelled Tier3.
-    const updateButton = await screen.findByTestId('update-tier-card');
-
-    await act(async () => {
-      fireEvent.click(updateButton);
+      fireEvent.click(screen.getByTestId('update-tier-card'));
     });
 
     expect(mockUpdateTier).toHaveBeenCalledWith(
@@ -135,51 +121,31 @@ describe('TierCard stale selectedTier', () => {
   });
 
   it('shows the newly saved tier on reopen after a successful save (Bug B — save-stale)', async () => {
-    const { rerender } = render(
-      <TierCard
-        currentTier="Tier.Tier1"
-        popoverProps={{ open: true }}
-        updateTier={mockUpdateTier}>
-        <button>Edit Tier</button>
-      </TierCard>
+    const { rerender } = render(renderTierCard('Tier.Tier1'));
+
+    await openTierCard();
+
+    // User selects Tier3 and saves; the card closes while currentTier is still Tier1.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('radio-btn-Tier3'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('update-tier-card'));
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('cards')).not.toBeInTheDocument()
     );
+    mockUpdateTier.mockClear();
 
-    // Open and load tier data.
+    // Entity context propagates the saved tier while the card is closed.
     await act(async () => {
-      capturedOnOpenChange?.(true);
+      rerender(renderTierCard('Tier.Tier3'));
     });
 
-    const tier3Radio = await screen.findByTestId('radio-btn-Tier3');
-
-    // User selects Tier3 and saves.
+    // Reopen and click Update without re-selecting — must commit Tier3, not Tier1.
+    await openTierCard();
     await act(async () => {
-      fireEvent.click(tier3Radio);
-    });
-
-    // Close fires after save. handleOpenChange captures stale currentTier="Tier.Tier1" from
-    // its closure (entity context hasn't propagated yet) → resets selectedTier to Tier1 (wrong).
-    await act(async () => {
-      capturedOnOpenChange?.(false);
-    });
-
-    // Entity context now propagates: TierCard receives currentTier="Tier.Tier3", popover closed.
-    // The useEffect([currentTier]) guard fires and corrects selectedTier to Tier3.
-    await act(async () => {
-      rerender(
-        <TierCard
-          currentTier="Tier.Tier3"
-          popoverProps={{ open: false }}
-          updateTier={mockUpdateTier}>
-          <button>Edit Tier</button>
-        </TierCard>
-      );
-    });
-
-    // User reopens and clicks Update without re-selecting — must commit Tier3, not Tier1.
-    const updateButton = await screen.findByTestId('update-tier-card');
-
-    await act(async () => {
-      fireEvent.click(updateButton);
+      fireEvent.click(screen.getByTestId('update-tier-card'));
     });
 
     expect(mockUpdateTier).toHaveBeenCalledWith(
@@ -191,10 +157,12 @@ describe('TierCard stale selectedTier', () => {
   });
 });
 
+const mockOnUpdate = jest.fn();
+
 const mockUseGenericContextResult = {
   data: { name: 'domain', tags: [] } as unknown as Domain,
   permissions: {} as OperationPermission,
-  onUpdate: jest.fn(),
+  onUpdate: mockOnUpdate,
   isVersionView: false,
 };
 
@@ -247,5 +215,75 @@ describe('TierWidget permissions', () => {
     render(<TierWidget />);
 
     expect(screen.queryByTestId('add-tier')).not.toBeInTheDocument();
+  });
+});
+
+const axiosError = {
+  message: 'Request failed with status code 403',
+  response: { status: 403, data: { message: 'Forbidden' } },
+} as AxiosError;
+
+const saveTier = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('add-tier'));
+  });
+  await screen.findByTestId('radio-btn-Tier3');
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('radio-btn-Tier3'));
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('update-tier-card'));
+  });
+};
+
+// The widget swallows a failed save without toasting, because the pages that
+// render it (Domain, DataProduct) toast in their own onUpdate before rethrowing.
+describe('TierWidget failed save', () => {
+  beforeEach(() => {
+    mockOnUpdate.mockReset();
+    mockUseGenericContextResult.isVersionView = false;
+    (showErrorToast as jest.Mock).mockClear();
+    mockUseGenericContextResult.permissions = {
+      EditTier: true,
+    } as unknown as OperationPermission;
+  });
+
+  it('should toast once when the page updater toasts and rethrows', async () => {
+    mockOnUpdate.mockImplementation(async () => {
+      showErrorToast(axiosError);
+
+      throw axiosError;
+    });
+
+    render(<TierWidget />);
+    await saveTier();
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('should toast once when the page updater toasts and swallows', async () => {
+    mockOnUpdate.mockImplementation(async () => {
+      showErrorToast(axiosError);
+    });
+
+    render(<TierWidget />);
+    await saveTier();
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not toast on a successful save', async () => {
+    mockOnUpdate.mockResolvedValue(undefined);
+
+    render(<TierWidget />);
+    await saveTier();
+
+    await waitFor(() => expect(mockOnUpdate).toHaveBeenCalledTimes(1));
+
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });

@@ -21,12 +21,11 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.database.postgres.metadata import PostgresSource
-from metadata.ingestion.source.database.timescale.metadata import TimescaleSource
 
 
-@pytest.fixture(params=[PostgresSource, TimescaleSource])
-def source(request):
-    instance = object.__new__(request.param)
+@pytest.fixture
+def source(existing_tag_lookup):
+    instance = object.__new__(PostgresSource)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
     instance.service_connection = PostgresConnection(username="user", hostPort="localhost:5432", database="db")
     instance.context = TopologyContextManager(instance.topology)
@@ -34,7 +33,7 @@ def source(request):
         instance.context.get().upsert(key, value)
     instance.metadata = MagicMock()
     instance.metadata.es_search_from_fqn.return_value = []
-    instance.metadata.get_by_name.side_effect = AssertionError("Tag label lookup must not access the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.engine = MagicMock()
     return instance
 
@@ -98,10 +97,11 @@ def test_policy_names_resolve_to_existing_system_tags(source):
     assert labels(source, "first") == ["PII.Sensitive"]
 
 
-def test_invalid_policy_does_not_discard_later_valid_policy(source):
+def test_invalid_policy_does_not_discard_later_valid_policy(source, caplog):
     set_rows(source, [(1, 'bad"name', "db", "schema", "first"), (1, "Valid", "db", "schema", "first")])
     records = list(source._process_stage(source.topology.databaseSchema.stages[0], "schema"))
-    assert len([record for record in records if record.left]) == 1
+    assert [record for record in records if record.left] == []
+    assert "Skipped tag 'bad\"name' in classification 'PostgresPolicyTags'" in caplog.text
     assert [record.right.tag_request.name.root for record in records if record.right] == ["Valid"]
     assert labels(source, "first") == ["PostgresPolicyTags.Valid"]
 

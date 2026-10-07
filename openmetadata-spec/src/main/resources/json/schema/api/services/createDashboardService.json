@@ -33,6 +33,10 @@
       },
       "default": null
     },
+    "serviceAttributes": {
+      "description": "Deployment attributes of this service: environment, region and deployment. Set once here rather than tagged onto every asset this service ingests.",
+      "$ref": "../../entity/services/serviceAttributes.json"
+    },
     "style": {
       "$ref": "../../type/basic.json#/definitions/style"
     },

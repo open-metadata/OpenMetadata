@@ -12,12 +12,16 @@
  */
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
-import { escapeRegExp } from 'lodash';
+import { escapeRegExp, isUndefined } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { ignoreClosedTarget } from '../../../support/fixtures/serverLoad';
 import { performAdminLogin } from '../../../utils/admin';
+import { selectOptionWithRetry } from '../../../utils/common';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
+  expectRunTestCaseDisabledWithReason,
   openTestCaseDetailsPage,
   verifyTestCaseLastRunBanner,
 } from '../../../utils/testCases';
@@ -230,7 +234,7 @@ test.describe(
       await expect(maxRow).toContainText('34');
     });
 
-    test('aligns the page header card with the tab body content', async ({
+    test('insets the page header card 8px less than the tab body content', async ({
       page,
     }) => {
       await openDetailsPage(page);
@@ -251,12 +255,18 @@ test.describe(
 
       expect(headerCard).not.toBeNull();
       expect(grid).not.toBeNull();
+
+      // AI padding standard: the header band sits 8px inside the shell and
+      // page content 16px, so the header card extends 8px past the tab body
+      // on each side.
+      const headerOutset = 8;
+
       expect(Math.round(Number(headerCard?.x))).toBe(
-        Math.round(Number(grid?.x))
+        Math.round(Number(grid?.x)) - headerOutset
       );
       expect(
         Math.round(Number(headerCard?.x) + Number(headerCard?.width))
-      ).toBe(Math.round(Number(grid?.x) + Number(grid?.width)));
+      ).toBe(Math.round(Number(grid?.x) + Number(grid?.width)) + headerOutset);
     });
 
     test('aligns the last run banner with the tab body grid', async ({
@@ -333,6 +343,704 @@ test.describe(
         );
         await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
       });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Incident strip',
+  { tag: ['@Observability'] },
+  () => {
+    let failedTable: TableClass;
+    let failedTestCase: { name: string; fullyQualifiedName: string };
+
+    test.beforeAll(
+      'Create a test case whose failed run opens an incident',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        failedTable = new TableClass();
+        await failedTable.create(apiContext);
+        const testCase = await failedTable.createTestCase(apiContext);
+        failedTestCase = {
+          name: testCase.name as string,
+          fullyQualifiedName: testCase.fullyQualifiedName as string,
+        };
+
+        const failedTimestamp = getCurrentMillis();
+        await failedTable.addTestCaseResult(
+          apiContext,
+          failedTestCase.fullyQualifiedName,
+          {
+            result: 'Found rowCount=2 vs. the expected range 12 to 34',
+            testCaseStatus: 'Failed',
+            timestamp: failedTimestamp,
+          }
+        );
+
+        // The incident is opened asynchronously by the server once the failed
+        // result lands, so the strip has nothing to render until it exists.
+        await expect
+          .poll(
+            async () => {
+              // Filtered by FQN server-side: an unfiltered window holds every
+              // incident other workers opened at the same time, and the
+              // endpoint's default page of 10 can drop this one.
+              const response = await apiContext.get(
+                `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&testCaseFQN=${encodeURIComponent(
+                  failedTestCase.fullyQualifiedName
+                )}&startTs=${failedTimestamp - 60_000}&endTs=${
+                  failedTimestamp + 60_000
+                }`
+              );
+              const { data } = await response.json();
+
+              return Boolean(data?.length);
+            },
+            { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+          )
+          .toBe(true);
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await failedTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('acknowledges the incident from the failed run banner', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, failedTestCase.fullyQualifiedName);
+
+      const banner = await verifyTestCaseLastRunBanner(page, 'failed');
+      const strip = page.getByTestId('test-case-last-run-incident');
+      const acknowledge = strip.getByTestId('acknowledge-incident-button');
+      const headerStatus = page.getByTestId(`${failedTestCase.name}-status`);
+
+      await test.step('The strip carries the reason and a new incident', async () => {
+        await expect(banner).toContainText(
+          'Found rowCount=2 vs. the expected range 12 to 34'
+        );
+        await expect(strip).toBeVisible();
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'New'
+        );
+        await expect(acknowledge).toBeVisible();
+      });
+
+      await test.step('Acknowledge updates the strip and the header chip', async () => {
+        const transition = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/tasks/') &&
+            response.url().endsWith('/resolve') &&
+            response.request().method() === 'POST'
+        );
+        await acknowledge.click();
+        await transition;
+
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'Acknowledged'
+        );
+        await expect(acknowledge).toBeHidden();
+        await expect(headerStatus).toContainText('Ack');
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Configuration card',
+  { tag: ['@Observability'] },
+  () => {
+    let sqlTable: TableClass;
+    let sqlTestCaseFqn: string;
+
+    // Custom SQL tests run far past the mock's three lines; the block has to
+    // hold a query of any length without stretching the rail.
+    const longSql = [
+      'SELECT o.id',
+      'FROM orders AS o',
+      'WHERE 1 = 1',
+      ...Array.from(
+        { length: 117 },
+        (_, index) => `  AND o.id <> ${index + 1}`
+      ),
+    ].join('\n');
+
+    test.beforeAll(
+      'Create a custom SQL test with a 120-line query',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        sqlTable = new TableClass();
+        await sqlTable.create(apiContext);
+        const testCase = await sqlTable.createTestCase(apiContext, {
+          testDefinition: 'tableCustomSQLQuery',
+          parameterValues: [
+            { name: 'sqlExpression', value: longSql },
+            { name: 'strategy', value: 'ROWS' },
+          ],
+        });
+        sqlTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await sqlTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('keeps a long SQL query inside a scrolling block', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, sqlTestCaseFqn);
+
+      const sql = page
+        .getByTestId('test-case-configuration-card')
+        .getByRole('region', { name: 'SQL Query' });
+
+      await expect(sql).toContainText('SELECT o.id');
+
+      // The block stops at 320px (max-h-80) and scrolls the rest of the query.
+      await expect
+        .poll(() => sql.evaluate((node) => node.clientHeight))
+        .toBeLessThanOrEqual(320);
+      await expect
+        .poll(() =>
+          sql.evaluate((node) => node.scrollHeight - node.clientHeight)
+        )
+        .toBeGreaterThan(0);
+
+      await test.step('A keyboard user can scroll to the end of the query', async () => {
+        await sql.focus();
+
+        await expect(sql).toBeFocused();
+
+        // Pressed on the locator, so the key reaches the block even if
+        // something else took focus in between.
+        await sql.press('End');
+
+        // Keyboard scrolling animates, so wait for the block to reach its end.
+        await expect
+          .poll(() =>
+            sql.evaluate(
+              (node) => node.scrollHeight - node.clientHeight - node.scrollTop
+            )
+          )
+          .toBeLessThanOrEqual(1);
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Result history chart',
+  { tag: ['@Observability'] },
+  () => {
+    let chartTable: TableClass;
+    let chartTestCaseFqn: string;
+
+    test.beforeAll(
+      'Create a test case whose history holds an aborted run',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        chartTable = new TableClass();
+        await chartTable.create(apiContext);
+        const testCase = await chartTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        chartTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        const now = getCurrentMillis();
+        const hour = 3_600_000;
+
+        // Several plotted runs with an aborted one in the middle: the chart
+        // has to place both a value and a run that produced none, and the
+        // aborted point stays clear of the plot edge, where its own tooltip
+        // would otherwise flip over it.
+        const runs = [9980, 10020, undefined, 9990, 10010];
+
+        for (const [index, value] of runs.entries()) {
+          await chartTable.addTestCaseResult(apiContext, chartTestCaseFqn, {
+            result: isUndefined(value)
+              ? 'The query timed out before a row count could be taken'
+              : `Found rowCount=${value} vs. the expected 10000`,
+            testCaseStatus: isUndefined(value) ? 'Aborted' : 'Success',
+            ...(isUndefined(value)
+              ? {}
+              : { testResultValue: [{ name: 'value', value: String(value) }] }),
+            timestamp: now - (runs.length - index) * hour,
+          });
+        }
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await chartTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('plots the expectation line, the aborted run and the selection', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, chartTestCaseFqn);
+
+      const chart = page.getByTestId('graph-container');
+      // The aborted run sits on the value line itself, told apart by status.
+      // The runs are listed in a screen-reader-only list beside the SVG, so
+      // they are attached but never visible.
+      const abortedPoint = chart.locator(
+        '[data-testid="test-summary-point-value"][data-status="Aborted"]'
+      );
+
+      await test.step('The expectation line carries the asserted value', async () => {
+        await expect(
+          chart.locator('svg text', { hasText: 'Expected 10,000' })
+        ).toBeVisible();
+      });
+
+      await test.step('A run that produced no value is still plotted', async () => {
+        await expect(abortedPoint).toBeAttached();
+      });
+
+      await test.step('A single series draws no legend', async () => {
+        await expect(
+          chart.locator('svg text', { hasText: /^value$/ })
+        ).toHaveCount(0);
+      });
+
+      await test.step('Selecting a run moves the selection to it', async () => {
+        const card = page.getByTestId('run-details-card');
+
+        // The card opens on the newest run, which succeeded.
+        await expect(card).toHaveAttribute('data-status', 'Success');
+
+        // The newest run is the last of five; the aborted one is two before.
+        // Focus alone may not count as :focus-visible, so End starts the
+        // keyboard navigation, then Enter selects the run it rests on.
+        await chart.getByRole('group', { name: 'Test Case Results' }).focus();
+        await page.keyboard.press('End');
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('Enter');
+
+        await expect(card).toHaveAttribute('data-status', 'Aborted');
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Result history card',
+  { tag: ['@Observability'] },
+  () => {
+    let cardTable: TableClass;
+    let cardTestCaseFqn: string;
+
+    test.beforeAll(
+      'Create a test case with runs today and earlier in the month',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        cardTable = new TableClass();
+        await cardTable.create(apiContext);
+        const testCase = await cardTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        cardTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        const now = getCurrentMillis();
+        const minute = 60_000;
+        const day = 86_400_000;
+
+        // Three runs minutes ago and two more than a week back, so narrowing
+        // the window to today drops exactly the older two.
+        const runs = [
+          { at: now - 12 * day, status: 'Aborted' },
+          { at: now - 10 * day, status: 'Success' },
+          { at: now - 3 * minute, status: 'Success' },
+          { at: now - 2 * minute, status: 'Failed' },
+          { at: now - minute, status: 'Success' },
+        ];
+
+        for (const run of runs) {
+          await cardTable.addTestCaseResult(apiContext, cardTestCaseFqn, {
+            result: `Run ${run.status}`,
+            testCaseStatus: run.status,
+            ...(run.status === 'Aborted'
+              ? {}
+              : { testResultValue: [{ name: 'value', value: '10000' }] }),
+            timestamp: run.at,
+          });
+        }
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await cardTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('captions the chart and recounts the tiles for a new range', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, cardTestCaseFqn);
+
+      const card = page.getByTestId('test-summary-container');
+      const tile = (key: string) =>
+        card.getByTestId(`run-summary-${key}`).locator('[data-value]');
+
+      await test.step('The header names what the chart measures', async () => {
+        await expect(
+          card.getByRole('heading', { name: 'Result history' })
+        ).toBeVisible();
+        await expect(card.getByTestId('result-history-caption')).toHaveText(
+          'Row count vs. expected 10,000'
+        );
+      });
+
+      await test.step('The tiles count the default 30-day window', async () => {
+        await expect(tile('runs')).toHaveText('5');
+        await expect(tile('passed')).toHaveText('3');
+        await expect(tile('failed')).toHaveText('1');
+        await expect(tile('aborted')).toHaveText('1');
+        await expect(tile('success-rate')).toHaveText('60%');
+      });
+
+      await test.step('Narrowing the range to today recounts them', async () => {
+        // The picker is a react-aria popover, which closes if the page
+        // scrolls as its trigger is clicked; the helper reopens it.
+        await selectOptionWithRetry(
+          card.getByRole('button', { name: 'Calendar Date range picker' }),
+          page.getByRole('button', { name: 'Today', exact: true })
+        );
+
+        const resultsResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/testCaseResults/') &&
+            response.request().method() === 'GET'
+        );
+        await page.getByRole('button', { name: 'Apply', exact: true }).click();
+        await resultsResponse;
+
+        await expect(tile('runs')).toHaveText('3');
+        await expect(tile('passed')).toHaveText('2');
+        await expect(tile('failed')).toHaveText('1');
+        await expect(tile('aborted')).toHaveText('0');
+        await expect(tile('success-rate')).toHaveText('66.7%');
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Run details card',
+  { tag: ['@Observability'] },
+  () => {
+    let detailsTable: TableClass;
+    let detailsTestCaseFqn: string;
+    let abortedTestCaseFqn: string;
+
+    test.beforeAll(
+      'Create a test case whose latest run failed',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        detailsTable = new TableClass();
+        await detailsTable.create(apiContext);
+        const testCase = await detailsTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        detailsTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        await detailsTable.addTestCaseResult(apiContext, detailsTestCaseFqn, {
+          duration: 2600,
+          result: 'Found rowCount=110 vs. the expected 10000',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '110' }],
+          timestamp: getCurrentMillis() - 60_000,
+        });
+
+        // A run that aborts before measuring sends no values; every run of
+        // this test case did, so the chart has no series of its own.
+        const abortedTestCase = await detailsTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        abortedTestCaseFqn = abortedTestCase.fullyQualifiedName as string;
+        for (const minutesAgo of [3, 1]) {
+          await detailsTable.addTestCaseResult(apiContext, abortedTestCaseFqn, {
+            duration: 30000,
+            errorDetails: {
+              errorType: 'QueryCanceled',
+              message: 'canceling statement due to statement timeout',
+              stackTrace: [
+                'Traceback (most recent call last):',
+                '  File "/ingestion/validator.py", line 42, in run',
+                '    rows = session.execute(query)',
+                'psycopg2.errors.QueryCanceled: canceling statement due to statement timeout',
+              ].join('\n'),
+            },
+            result: 'Error computing tableRowCountToEqual',
+            testCaseStatus: 'Aborted',
+            testResultValue: [],
+            timestamp: getCurrentMillis() - minutesAgo * 60_000,
+          });
+        }
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await detailsTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('shows the failed run against its expectation', async ({ page }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, detailsTestCaseFqn);
+
+      const card = page.getByTestId('run-details-card');
+
+      await expect(
+        card.getByRole('heading', { name: 'Run details' })
+      ).toBeVisible();
+      await expect(card).toHaveAttribute('data-status', 'Failed');
+      await expect(card.getByTestId('run-details-duration')).toHaveText('2.6s');
+      await expect(card.getByTestId('run-details-definition')).toHaveText(
+        'tableRowCountToEqual'
+      );
+      await expect(card.getByTestId('run-details-expected')).toHaveText(
+        '10,000'
+      );
+      await expect(card.getByTestId('run-details-found')).toHaveText('110');
+      await expect(card.getByTestId('run-details-difference')).toHaveText(
+        '-9,890 (-98.9%)'
+      );
+      await expect(card.getByTestId('run-details-comparison')).toBeVisible();
+    });
+
+    test('shows an aborted run as an execution error and still charts it', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, abortedTestCaseFqn);
+
+      const card = page.getByTestId('run-details-card');
+
+      await expect(card).toHaveAttribute('data-status', 'Aborted');
+      await expect(card.getByTestId('run-details-duration')).toHaveText(
+        '30.0s (timeout)'
+      );
+      await expect(card.getByTestId('run-details-found')).toHaveText('—');
+      await expect(card.getByTestId('run-details-comparison')).toHaveCount(0);
+      await expect(card.getByTestId('run-execution-error-type')).toHaveText(
+        'QueryCanceled'
+      );
+      await expect(card.getByTestId('run-execution-error-message')).toHaveText(
+        'canceling statement due to statement timeout'
+      );
+      await expect(
+        card.getByTestId('run-execution-error-traceback')
+      ).toContainText(
+        'psycopg2.errors.QueryCanceled: canceling statement due to statement timeout'
+      );
+
+      // Both aborted runs get a point on the chart despite recording no value.
+      await expect(
+        page
+          .getByTestId('graph-container')
+          .locator(
+            '[data-testid^="test-summary-point-"][data-status="Aborted"]'
+          )
+      ).toHaveCount(2);
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Missing and failed results',
+  { tag: ['@Observability'] },
+  () => {
+    let statesTable: TableClass;
+    let neverRunFqn: string;
+    let ranFqn: string;
+
+    const serverError = {
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 500, message: 'Internal Server Error' }),
+    };
+    const isResultsList = (url: URL) =>
+      url.pathname.includes('/dataQuality/testCases/testCaseResults/') &&
+      url.searchParams.has('startTs');
+
+    test.beforeAll(
+      'Create a scheduled test that never ran, and one with a failed run',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        statesTable = new TableClass();
+        await statesTable.create(apiContext);
+        // An hourly suite pipeline, so the test that never ran has a next run.
+        await statesTable.createTestSuiteAndPipelines(apiContext);
+
+        const rowCountTest = {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        };
+        const neverRun = await statesTable.createTestCase(
+          apiContext,
+          rowCountTest
+        );
+        neverRunFqn = neverRun.fullyQualifiedName as string;
+
+        const ran = await statesTable.createTestCase(apiContext, rowCountTest);
+        ranFqn = ran.fullyQualifiedName as string;
+        await statesTable.addTestCaseResult(apiContext, ranFqn, {
+          result: 'Found rowCount=110 vs. the expected 10000',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '110' }],
+          timestamp: getCurrentMillis(),
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await statesTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('says a test that has never run has no runs yet, and that its scheduled run brings them', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, neverRunFqn);
+
+      await test.step('The result history has no tiles or run card', async () => {
+        const history = page.getByTestId('test-summary-container');
+
+        await expect(
+          history.getByTestId('test-summary-never-run')
+        ).toContainText('No runs recorded yet');
+        await expect(history.getByTestId('run-summary-tiles')).toHaveCount(0);
+        await expect(history.getByTestId('run-details-card')).toHaveCount(0);
+      });
+
+      await test.step('The banner asks for no pipeline: one is scheduled', async () => {
+        const banner = page.getByTestId(
+          'test-case-last-run-banner-not-run-yet'
+        );
+
+        await expect(banner).toContainText(
+          'This test has not run yet. Results will appear after its next scheduled run.'
+        );
+        await expect(banner.getByTestId('test-case-next-run')).toContainText(
+          'Next · in '
+        );
+      });
+    });
+
+    test('shows a failed results request as an error, and loads the run on retry', async ({
+      page,
+    }) => {
+      // Every results read fails until Retry, however many the page makes
+      // (a dev build mounts its effects twice).
+      let failResults = true;
+      await page.route(isResultsList, (route) =>
+        ignoreClosedTarget(route, () =>
+          failResults ? route.fulfill(serverError) : route.continue()
+        )
+      );
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, ranFqn);
+
+      const history = page.getByTestId('test-summary-container');
+      const loadError = history.getByTestId('test-summary-load-error');
+
+      await test.step('The failure reads as one, not as an empty range', async () => {
+        await expect(loadError).toContainText(
+          'Error while fetching Test Case Results'
+        );
+        await expect(history.getByTestId('run-summary-tiles')).toHaveCount(0);
+      });
+
+      await test.step('Retry loads the run in place', async () => {
+        const resultsResponse = page.waitForResponse(
+          (response) =>
+            isResultsList(new URL(response.url())) &&
+            response.request().method() === 'GET'
+        );
+        failResults = false;
+        await loadError.getByRole('button', { name: 'Retry' }).click();
+        expect((await resultsResponse).status()).toBe(200);
+
+        await expect(
+          history.getByTestId('run-summary-runs').locator('[data-value]')
+        ).toHaveText('1');
+        await expect(loadError).toHaveCount(0);
+      });
+    });
+
+    test('says why Run now is disabled when the pipelines could not be read', async ({
+      page,
+    }) => {
+      await page.route(
+        (url) =>
+          url.pathname.endsWith('/api/v1/services/ingestionPipelines') &&
+          url.searchParams.get('pipelineType') === 'TestSuite',
+        // A poll can still be in flight when the page closes.
+        (route) => ignoreClosedTarget(route, () => route.fulfill(serverError))
+      );
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, ranFqn);
+
+      await expectRunTestCaseDisabledWithReason(
+        page,
+        "Pipelines couldn't be loaded"
+      );
+    });
+
+    test('names every rail button, and nests none in another', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, ranFqn);
+
+      const rail = page.getByTestId('test-case-rail');
+
+      await expect(rail.getByTestId('edit-description')).toBeVisible();
+      await expect(rail.locator('button button')).toHaveCount(0);
+
+      for (const button of await rail.getByRole('button').all()) {
+        await expect(button).toHaveAccessibleName(/\S/);
+      }
     });
   }
 );

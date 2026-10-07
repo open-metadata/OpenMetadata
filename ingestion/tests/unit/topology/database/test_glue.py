@@ -23,13 +23,20 @@ from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 
+from metadata.generated.schema.entity.data.container import Container, ContainerDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import FileFormat, TableType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataType,
+    FileFormat,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -42,6 +49,8 @@ from metadata.generated.schema.type.customProperty import PropertyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.glue.metadata import GlueSource
 from metadata.ingestion.source.database.glue.models import (
     Column as GlueColumn,
@@ -407,11 +416,12 @@ class GlueUnitTest(TestCase):
 
         paginator.paginate.assert_called_once_with(DatabaseName="foreign_schema", CatalogId="different-catalog")
 
-    def test_iceberg_columns_are_read_from_the_schema_own_catalog(self):
-        """The Iceberg detail lookup must name the same catalog the schema came from.
+    def test_iceberg_columns_are_filtered_in_any_catalog_without_a_lookup(self):
+        """Iceberg filtering must not depend on a per-table GetTable.
 
-        Reading it from the caller's catalog raises, and the broad fallback then serves
-        the unfiltered storage-descriptor columns, so dropped columns come back as live.
+        A schema owned by another catalog is what the old lookup got wrong, and its broad
+        fallback then served the unfiltered columns. The flags ride along on the GetTables
+        listing, so the filter now works from data already in hand, in any catalog.
         """
         source = self._custom_db_name_source(
             [
@@ -424,23 +434,30 @@ class GlueUnitTest(TestCase):
         )
         assert ["foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
 
-        iceberg_table = Mock()
-        iceberg_table.Name = "iceberg_table"
-        iceberg_table.Parameters.table_type = "ICEBERG"
+        iceberg_table = GlueTable(
+            Name="iceberg_table",
+            Parameters=TableParameters(table_type="ICEBERG"),
+            StorageDescriptor=StorageDetails(
+                Columns=[
+                    GlueColumn(Name="event_id", Type="string"),
+                    GlueColumn(
+                        Name="retired_col",
+                        Type="string",
+                        Parameters={"iceberg.field.current": "false"},
+                    ),
+                ]
+            ),
+        )
         source.context.get().__dict__["database_schema"] = "foreign_schema"
         # The topology context is shared, so a stray table_data leaks into later tests.
         source.context.get().__dict__["table_data"] = iceberg_table
         self.addCleanup(source.context.get().__dict__.pop, "table_data", None)
         source.glue = Mock()
-        source.glue.get_table.return_value = {"Table": {"StorageDescriptor": {"Columns": []}}}
 
-        list(source.get_columns(Mock()))
+        columns = list(source.get_columns(iceberg_table.StorageDescriptor))
 
-        source.glue.get_table.assert_called_once_with(
-            DatabaseName="foreign_schema",
-            Name="iceberg_table",
-            CatalogId="different-catalog",
-        )
+        assert [column.name.root for column in columns] == ["event_id"]
+        source.glue.get_table.assert_not_called()
 
 
 @pytest.fixture
@@ -495,17 +512,6 @@ class TestGlueColumnDeduplication:
         source.context.get().__dict__["table_data"] = table
         return [column.name.root for column in source.get_columns(table.StorageDescriptor)]
 
-    @staticmethod
-    def _get_table_response(columns, partition_keys) -> dict:
-        return {
-            "Table": {
-                "StorageDescriptor": {
-                    "Columns": [{"Name": name, "Type": "string", "Parameters": {}} for name in columns]
-                },
-                "PartitionKeys": [{"Name": name, "Type": "string", "Parameters": {}} for name in partition_keys],
-            }
-        }
-
     @pytest.mark.parametrize(
         "columns,partition_keys,expected",
         [
@@ -524,21 +530,24 @@ class TestGlueColumnDeduplication:
     def test_iceberg_path_drops_partition_field_repeated_in_columns(self, source):
         table = self._glue_table(["event_id", "bucket_key"], ["bucket_key"], is_iceberg=True)
 
-        with patch.object(source, "glue") as glue_client:
-            glue_client.get_table.return_value = self._get_table_response(["event_id", "bucket_key"], ["bucket_key"])
-            names = self._column_names(source, table)
+        assert self._column_names(source, table) == ["event_id", "bucket_key"]
 
-        assert names == ["event_id", "bucket_key"]
+    def test_iceberg_columns_are_deduplicated_without_a_glue_call(self, source):
+        """Dedup and the retired-column filter both read the listing already in hand.
 
-    def test_iceberg_fallback_path_drops_duplicate_when_get_table_fails(self, source):
-        """A GetTable failure falls back to the standard path, which must dedupe too."""
+        Nothing is fetched per table, so no permission failure can drop the source back to
+        an unfiltered column list the way the old GetTable fallback did.
+        """
         table = self._glue_table(["event_id", "bucket_key"], ["bucket_key"], is_iceberg=True)
+        table.StorageDescriptor.Columns.append(
+            GlueColumn(Name="retired_col", Type="string", Parameters={"iceberg.field.current": "false"})
+        )
 
         with patch.object(source, "glue") as glue_client:
-            glue_client.get_table.side_effect = RuntimeError("AccessDeniedException")
             names = self._column_names(source, table)
 
         assert names == ["event_id", "bucket_key"]
+        glue_client.get_table.assert_not_called()
 
     def test_columns_colliding_after_truncation_are_deduplicated(self, source):
         """Emitted names are truncated to 256 chars, so two longer Glue names can collide there
@@ -557,6 +566,148 @@ class TestGlueColumnDeduplication:
             assert self._column_names(source, table) == ["event_id", "load_date"]
 
         assert caplog.records == []
+
+
+class TestGlueNullColumnLists:
+    """Glue sends an explicit null, not an empty list, for a table with no columns or no
+    partition keys - the same shape yield_table already guards against for StorageDescriptor.
+    Unpacking that null raises TypeError and loses the whole table."""
+
+    @staticmethod
+    def _names(glue_source, table) -> list[str]:
+        glue_source.context.get().__dict__["table_data"] = table
+        return [column.name.root for column in glue_source.get_columns(table.StorageDescriptor)]
+
+    @pytest.mark.parametrize(
+        "columns,partition_keys,expected",
+        [
+            (None, None, []),
+            (None, [GlueColumn(Name="load_date", Type="string")], ["load_date"]),
+            ([GlueColumn(Name="event_id", Type="string")], None, ["event_id"]),
+        ],
+        ids=["both_null", "columns_null", "partition_keys_null"],
+    )
+    def test_a_null_list_is_read_as_empty(self, glue_source, columns, partition_keys, expected):
+        table = GlueTable(
+            Name="events",
+            StorageDescriptor=StorageDetails(Columns=columns),
+            PartitionKeys=partition_keys,
+        )
+
+        assert self._names(glue_source, table) == expected
+
+
+class TestGlueIcebergRetiredColumns:
+    """Iceberg keeps a dropped field in the table schema flagged iceberg.field.current=false.
+
+    Emitting it would show a column that no longer exists as live. GetTables returns the flag
+    on every StorageDescriptor column, so the filter needs no GetTable call and no glue:GetTable grant.
+    """
+
+    @staticmethod
+    def _table(columns, partition_keys=(), is_iceberg=True) -> GlueTable:
+        def _column(spec) -> GlueColumn:
+            name, current = spec if isinstance(spec, tuple) else (spec, None)
+            parameters = None if current is None else {"iceberg.field.current": current}
+            return GlueColumn(Name=name, Type="string", Parameters=parameters)
+
+        return GlueTable(
+            Name="events",
+            TableType="EXTERNAL_TABLE",
+            Parameters=TableParameters(table_type="ICEBERG") if is_iceberg else None,
+            StorageDescriptor=StorageDetails(Columns=[_column(spec) for spec in columns]),
+            # Glue rejects parameters on a partition key, so a key is only ever a name and a type.
+            PartitionKeys=[GlueColumn(Name=name, Type="string") for name in partition_keys],
+        )
+
+    @staticmethod
+    def _names(glue_source, table) -> list[str]:
+        glue_source.context.get().__dict__["table_data"] = table
+        return [column.name.root for column in glue_source.get_columns(table.StorageDescriptor)]
+
+    def test_retired_column_is_dropped(self, glue_source):
+        table = self._table([("event_id", "true"), ("old_col", "false")])
+
+        assert self._names(glue_source, table) == ["event_id"]
+
+    def test_partition_keys_of_an_iceberg_table_are_kept(self, glue_source):
+        table = self._table([("event_id", "true"), ("old_col", "false")], partition_keys=["dt"])
+
+        assert self._names(glue_source, table) == ["event_id", "dt"]
+
+    @pytest.mark.parametrize(
+        "flag",
+        [None, "true", "TRUE", ""],
+        ids=["no_parameters", "true", "uppercase_true", "empty"],
+    )
+    def test_anything_but_false_is_current(self, glue_source, flag):
+        """Only an explicit "false" retires a field; Iceberg leaves live fields unannotated."""
+        table = self._table([("event_id", flag)])
+
+        assert self._names(glue_source, table) == ["event_id"]
+
+    def test_a_non_iceberg_table_keeps_a_column_carrying_the_flag(self, glue_source):
+        """The flag is meaningless outside Iceberg, so it must not filter an ordinary table."""
+        table = self._table([("event_id", "true"), ("old_col", "false")], is_iceberg=False)
+
+        assert self._names(glue_source, table) == ["event_id", "old_col"]
+
+    def test_filtering_issues_no_glue_api_call(self, glue_source):
+        """The regression guard for the silent degradation: with nothing fetched per table,
+        a missing permission cannot fall back to an unfiltered schema."""
+        table = self._table([("event_id", "true"), ("old_col", "false")])
+
+        with patch.object(glue_source, "glue") as glue_client:
+            assert self._names(glue_source, table) == ["event_id"]
+
+        glue_client.get_table.assert_not_called()
+
+
+class TestGlueDecimalColumns:
+    """dataLength is the length of a char/varchar/binary (entity/data/table.json), so a
+    decimal's digits belong in precision and scale instead."""
+
+    @staticmethod
+    def _column(glue_source, column_type: str):
+        return glue_source._get_column_object(GlueColumn(Name="amount", Type=column_type))
+
+    def test_precision_and_scale_are_emitted(self, glue_source):
+        column = self._column(glue_source, "decimal(10,2)")
+
+        assert (column.precision, column.scale) == (10, 2)
+        assert column.dataTypeDisplay == "decimal(10,2)"
+
+    def test_precision_is_not_reported_as_a_character_length(self, glue_source):
+        assert self._column(glue_source, "decimal(10,2)").dataLength is None
+
+    def test_precision_only_leaves_the_scale_unset(self, glue_source):
+        column = self._column(glue_source, "decimal(10)")
+
+        assert (column.precision, column.scale, column.dataLength) == (10, None, None)
+
+    def test_a_bare_decimal_carries_neither(self, glue_source):
+        column = self._column(glue_source, "decimal")
+
+        assert (column.precision, column.scale, column.dataLength) == (None, None, None)
+
+    def test_numeric_is_treated_the_same(self, glue_source):
+        column = self._column(glue_source, "numeric(38,10)")
+
+        assert (column.precision, column.scale) == (38, 10)
+
+    def test_character_length_still_reaches_data_length(self, glue_source):
+        column = self._column(glue_source, "varchar(50)")
+
+        assert column.dataLength == 50
+        assert (column.precision, column.scale) == (None, None)
+
+    def test_a_nested_decimal_is_unchanged(self, glue_source):
+        """Array parsing reports the element type only, and must keep doing so."""
+        column = self._column(glue_source, "array<decimal(10,2)>")
+
+        assert column.dataType.value == "ARRAY"
+        assert column.arrayDataType.value == "DECIMAL"
+        assert column.dataTypeDisplay == "array<decimal(10,2)>"
 
 
 class TestGlueViewModel:
@@ -1202,3 +1353,270 @@ class TestGlueYieldTableExtension:
             requests = list(self._requests(custom_property_source))
 
         assert all(request.extension is None for request in requests)
+
+
+LINEAGE_TABLE_FQN = "glue_source.118146679784.default.events"
+LINEAGE_CONTAINER_FQN = "s3_local.bucket.events"
+LINEAGE_CONTAINER_PATH = "s3://bucket/events"
+
+
+class _ContainerIndex:
+    """The container search as the server runs it, an exact match on fullPath."""
+
+    def __init__(self, *containers: Container):
+        self._containers = {container.fullPath: container for container in containers}
+        self.searched_paths: list[str] = []
+
+    def search(self, full_path: str, **_) -> list[Container] | None:
+        self.searched_paths.append(full_path)
+        container = self._containers.get(full_path)
+        return [container] if container else None
+
+
+def _container_at(full_path: str, columns: list[Column] | None = None) -> Container:
+    """A container recorded the way the S3 connector writes it."""
+    return Container(
+        id=uuid4(),
+        name="events",
+        fullPath=full_path,
+        service=EntityReference(id=uuid4(), type="storageService"),
+        dataModel=ContainerDataModel(isPartitioned=True, columns=columns or []),
+    )
+
+
+def _events_table(columns: list[Column] | None = None) -> Table:
+    return Table(
+        id=uuid4(),
+        name="events",
+        fullyQualifiedName=LINEAGE_TABLE_FQN,
+        columns=columns or [_table_column("event_id")],
+    )
+
+
+def _lineage_requests(glue_source, index: _ContainerIndex, table: Table):
+    """Run the lineage step with only the two searches stubbed, and return the requests and the stub."""
+    with patch.object(glue_source, "metadata") as metadata:
+        metadata.es_search_container_by_path.side_effect = index.search
+        metadata.es_search_from_fqn.side_effect = lambda *, fqn_search_string, **_: (
+            [table] if fqn_search_string == LINEAGE_TABLE_FQN else None
+        )
+        requests = [either.right for either in glue_source.yield_external_table_lineage()]
+    return requests, metadata
+
+
+def _table_column(name: str) -> Column:
+    return Column(name=name, dataType=DataType.STRING, fullyQualifiedName=f"{LINEAGE_TABLE_FQN}.{name}")
+
+
+def _container_column(name: str, display_name: str | None = None, *, has_fqn: bool = True) -> Column:
+    return Column(
+        name=name,
+        displayName=display_name,
+        dataType=DataType.STRING,
+        fullyQualifiedName=f"{LINEAGE_CONTAINER_FQN}.{name}" if has_fqn else None,
+    )
+
+
+def _edge(container_column: str, table_column: str | None = None) -> tuple[str, str]:
+    return (
+        f"{LINEAGE_CONTAINER_FQN}.{container_column}",
+        f"{LINEAGE_TABLE_FQN}.{table_column or container_column}",
+    )
+
+
+class TestGlueExternalTableColumnLineage:
+    """A storage connector lists partition columns first and leaves their displayName unset, so
+    matching on displayName alone failed on the first column and the edge lost every column.
+
+    Only the two search lookups are stubbed, and each test reads the lineage request the source
+    emits rather than the matching helper's return value.
+    """
+
+    @staticmethod
+    def _emit(glue_source, container_columns, table_columns):
+        index = _ContainerIndex(_container_at(LINEAGE_CONTAINER_PATH, container_columns))
+        requests, _ = _lineage_requests(glue_source, index, _events_table(table_columns))
+        return requests
+
+    @staticmethod
+    def _column_edges(request) -> set[tuple[str, str]]:
+        return {
+            (model_str(lineage.fromColumns[0]), model_str(lineage.toColumn))
+            for lineage in request.edge.lineageDetails.columnsLineage or []
+        }
+
+    def _edges_for(self, glue_source, container_columns, table_column_names) -> set[tuple[str, str]]:
+        glue_source.external_location_map[(MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root, "events")] = (
+            LINEAGE_CONTAINER_PATH
+        )
+        [request] = self._emit(glue_source, container_columns, [_table_column(name) for name in table_column_names])
+        return self._column_edges(request)
+
+    def test_a_partition_column_without_a_display_name_matches_by_name(self, glue_source):
+        edges = self._edges_for(
+            glue_source,
+            [_container_column("dt"), _container_column("event_id", "event_id")],
+            ["event_id", "dt"],
+        )
+
+        assert edges == {_edge("event_id"), _edge("dt")}
+
+    def test_the_name_fallback_ignores_case(self, glue_source):
+        """A partition column keeps the case it was declared with, while Glue lower cases."""
+        edges = self._edges_for(glue_source, [_container_column("Region")], ["region"])
+
+        assert edges == {_edge("Region", "region")}
+
+    def test_an_unresolvable_column_costs_only_its_own_edge(self, glue_source):
+        edges = self._edges_for(
+            glue_source,
+            [
+                _container_column("malformed", "malformed", has_fqn=False),
+                _container_column("event_id", "event_id"),
+            ],
+            ["malformed", "event_id", "only_in_glue"],
+        )
+
+        assert edges == {_edge("event_id")}
+
+    def test_a_column_that_fails_to_resolve_costs_only_its_own_edge(self, glue_source):
+        """No payload we know of makes a column raise any more, so the failure is injected: an
+        error on one column must still leave the other edges in place."""
+
+        def fail_on_broken(*, table_entity, column):
+            if column == "broken":
+                raise ValueError("unreadable column")
+            return get_column_fqn(table_entity=table_entity, column=column)
+
+        with patch(
+            "metadata.ingestion.source.database.external_table_lineage_mixin.get_column_fqn",
+            side_effect=fail_on_broken,
+        ):
+            edges = self._edges_for(
+                glue_source,
+                [_container_column("broken", "broken"), _container_column("event_id", "event_id")],
+                ["broken", "event_id"],
+            )
+
+        assert edges == {_edge("event_id")}
+
+    def test_a_partitioned_glue_table_gets_an_edge_for_its_partition_key(self, glue_source):
+        table = GlueTable(
+            Name="events",
+            TableType="EXTERNAL_TABLE",
+            StorageDescriptor=StorageDetails(
+                Columns=[GlueColumn(Name="event_id", Type="string")],
+                Location="s3a://bucket/events",
+            ),
+            PartitionKeys=[GlueColumn(Name="dt", Type="string")],
+        )
+        glue_source.context.get().__dict__["table_data"] = table
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            table_request = next(glue_source.yield_table(("events", TableType.External))).right
+        # The table search hands back what the server stored, which is the columns Glue sent.
+        stored_columns = [_table_column(model_str(column.name)) for column in table_request.columns]
+
+        [request] = self._emit(
+            glue_source,
+            [_container_column("dt"), _container_column("event_id", "event_id")],
+            stored_columns,
+        )
+
+        assert (request.edge.fromEntity.type, request.edge.toEntity.type) == ("container", "table")
+        assert self._column_edges(request) == {_edge("event_id"), _edge("dt")}
+
+
+class TestGlueExternalTableContainerMatch:
+    """Glue usually reports a table location with a trailing separator (s3://bucket/events/), while
+    the S3 connector records the container without one, and the container search is an exact
+    match, so the edge was never emitted.
+
+    Each test sends a Glue table through yield_table, which records its location, and reads the
+    lineage the source emits against containers recorded the way the S3 connector writes them.
+    """
+
+    @staticmethod
+    def _ingest(glue_source, location: str):
+        glue_source.context.get().__dict__["table_data"] = GlueTable(
+            Name="events",
+            TableType="EXTERNAL_TABLE",
+            StorageDescriptor=StorageDetails(
+                Columns=[GlueColumn(Name="event_id", Type="string")],
+                Location=location,
+            ),
+        )
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            return next(glue_source.yield_table(("events", TableType.External))).right
+
+    @staticmethod
+    def _lineage(glue_source, *containers: Container):
+        requests, _ = _lineage_requests(glue_source, _ContainerIndex(*containers), _events_table())
+        return requests
+
+    @pytest.mark.parametrize(
+        "location",
+        ["s3://bucket/events/", "s3://bucket/events", "s3a://bucket/events/", "S3A://bucket/events"],
+    )
+    def test_equivalent_locations_resolve_the_same_container(self, glue_source, location):
+        events = _container_at("s3://bucket/events")
+        self._ingest(glue_source, location)
+
+        [request] = self._lineage(glue_source, events, _container_at("s3://bucket"))
+
+        assert request.edge.fromEntity.id == events.id
+        assert request.edge.toEntity.type == "table"
+
+    def test_a_bucket_root_location_resolves_the_bucket_container(self, glue_source):
+        bucket = _container_at("s3://bucket")
+        self._ingest(glue_source, "s3://bucket/")
+
+        [request] = self._lineage(glue_source, bucket, _container_at("s3://bucket/events"))
+
+        assert request.edge.fromEntity.id == bucket.id
+
+    def test_prefix_similar_or_parent_containers_do_not_match(self, glue_source):
+        self._ingest(glue_source, "s3://bucket/events/")
+
+        requests = self._lineage(
+            glue_source,
+            _container_at("s3://bucket/events_archive"),
+            _container_at("s3://bucket/event"),
+            _container_at("s3://bucket"),
+            _container_at("s3://other/events"),
+        )
+
+        assert requests == []
+
+    def test_a_container_recorded_with_a_trailing_slash_still_matches(self, glue_source):
+        events = _container_at("s3://bucket/events/")
+        self._ingest(glue_source, "s3://bucket/events")
+
+        [request] = self._lineage(glue_source, events)
+
+        assert request.edge.fromEntity.id == events.id
+
+    def test_a_container_without_its_table_gets_no_edge(self, glue_source):
+        """The table search only finds the events table, so a location recorded for any other
+        table leaves the edge without its target."""
+        glue_source.external_location_map[(MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root, "orders")] = (
+            "s3://bucket/events/"
+        )
+
+        assert self._lineage(glue_source, _container_at("s3://bucket/events")) == []
+
+    def test_no_container_means_no_table_search(self, glue_source):
+        self._ingest(glue_source, "s3://bucket/events/")
+        index = _ContainerIndex()
+
+        requests, metadata = _lineage_requests(glue_source, index, _events_table())
+
+        assert requests == []
+        assert index.searched_paths == ["s3://bucket/events", "s3://bucket/events/"]
+        metadata.es_search_from_fqn.assert_not_called()
+
+    def test_the_location_path_is_sent_as_glue_reported_it(self, glue_source):
+        table_request = self._ingest(glue_source, "s3a://bucket/events/")
+
+        assert table_request.locationPath == "s3a://bucket/events/"

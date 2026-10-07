@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import Icon, { PlusOutlined } from '@ant-design/icons';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import type { ButtonProps } from 'antd';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
+import { forwardRef } from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
@@ -25,34 +27,35 @@ export type IconButtonProps = ButtonProps & {
   newLook?: boolean;
 };
 
-export const EditIconButton = ({
-  title,
-  className,
-  size,
-  newLook,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      {newLook ? (
-        <Button
-          className={classNames('bordered', className)}
-          icon={<EditIcon />}
-          size={size}
-          {...props}
-        />
-      ) : (
-        <Button
-          className={className}
-          icon={<EditIcon className="table-action-icon" />}
-          size="small"
-          type="text"
-          {...props}
-        />
-      )}
-    </Tooltip>
-  );
-};
+// Forwards its ref so react-aria's Pressable can make it a PopoverTrigger child.
+export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
+  ({ title, className, size, newLook, ...props }, ref) => {
+    return (
+      <Tooltip title={title}>
+        {newLook ? (
+          <Button
+            aria-label={title}
+            className={classNames('bordered', className)}
+            icon={<EditIcon />}
+            ref={ref}
+            size={size}
+            {...props}
+          />
+        ) : (
+          <Button
+            aria-label={title}
+            className={className}
+            icon={<EditIcon className="table-action-icon" />}
+            ref={ref}
+            size="small"
+            type="text"
+            {...props}
+          />
+        )}
+      </Tooltip>
+    );
+  }
+);
 
 export const RequestIconButton = ({
   title,
@@ -65,6 +68,7 @@ export const RequestIconButton = ({
     <Tooltip title={title}>
       {newLook ? (
         <Button
+          aria-label={title}
           className={classNames('bordered', className)}
           icon={<RequestIcon />}
           size={size}
@@ -92,6 +96,7 @@ export const CommentIconButton = ({
     <Tooltip title={title}>
       {newLook ? (
         <Button
+          aria-label={title}
           className={classNames('bordered', className)}
           icon={<CommentIcon />}
           size={size}
@@ -108,25 +113,26 @@ export const CommentIconButton = ({
   );
 };
 
+interface AlignRightIconButtonProps {
+  title: string;
+  className?: string;
+  onClick?: () => void;
+}
+
 export const AlignRightIconButton = ({
   title,
   className,
-  size,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <Button
-        className={classNames('border-none tab-expand-icon', className)}
-        data-testid="tab-expand-button"
-        icon={<ExpandIcon />}
-        size={size}
-        type="text"
-        {...props}
-      />
-    </Tooltip>
-  );
-};
+  onClick,
+}: AlignRightIconButtonProps) => (
+  <ButtonUtility
+    className={className}
+    color="tertiary"
+    data-testid="tab-expand-button"
+    icon={ExpandIcon}
+    tooltip={title}
+    onClick={onClick}
+  />
+);
 
 export const CardExpandCollapseIconButton = ({
   title,
@@ -136,6 +142,7 @@ export const CardExpandCollapseIconButton = ({
 }: IconButtonProps) => {
   const button = (
     <Button
+      aria-label={title}
       className={classNames('bordered', className)}
       disabled={disabled}
       icon={<CardExpandCollapseIcon />}

@@ -454,6 +454,8 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude Process Chains that match the pattern.
  *
+ * Regex exclude or include pipelines that match the pattern.
+ *
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
@@ -683,6 +685,17 @@ export interface TestServiceConnectionRequest {
      * of 'schema' to avoid conflicts with Pydantic's BaseModel.schema() method.
      */
     databaseSchema?: string;
+    /**
+     * UUIDs of files uploaded to one chat conversation, analyzed instead of a warehouse
+     * service. Every file is loaded into the same in-process DuckDB session, so a query may
+     * join them; serviceName and credentials are not used.
+     */
+    fileIds?: string[];
+    /**
+     * RUNTIME FIELD - The files behind fileIds, resolved by the backend before dispatch. Never
+     * accepted from the client.
+     */
+    files?: QueryRunnerFile[];
     /**
      * RUNTIME FIELD - Automatically injected by backend from admin
      * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
@@ -993,6 +1006,8 @@ export interface RequestConnection {
  * Salesforce Data 360 Pipeline Connection Config
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
+ *
+ * Tableau Pipeline Connection Config
  *
  * MlFlow Connection Config
  *
@@ -1315,6 +1330,8 @@ export interface Connection {
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      *
+     * Tableau Server URL.
+     *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
      *
@@ -1336,8 +1353,7 @@ export interface Connection {
     /**
      * Option to include policy tags as part of column description.
      */
-    includePolicyTags?:       boolean;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    includePolicyTags?: boolean;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
@@ -1908,8 +1924,10 @@ export interface Connection {
      */
     authMechanism?: AuthMechanismEnum;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
@@ -1919,7 +1937,9 @@ export interface Connection {
     includeSynonyms?: boolean;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -2229,6 +2249,11 @@ export interface Connection {
      * Hostname of the Couchbase service.
      */
     hostport?: string;
+    /**
+     * Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage
+     * from the relations it reads.
+     */
+    includeMetricViews?: boolean;
     /**
      * Enable dataflow for ingestion
      */
@@ -2681,6 +2706,8 @@ export interface Connection {
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -2691,6 +2718,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -2857,6 +2886,12 @@ export interface Connection {
      * {"S3_Connector": "my-s3-service"}
      */
     serviceMapping?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -4406,8 +4441,7 @@ export interface AirflowConnectionConnection {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -4594,96 +4628,6 @@ export enum Region {
 }
 
 /**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    /**
-     * Bucket Name
-     */
-    bucketName?: string;
-    /**
-     * Provide the pattern of the path where the generated sample data file needs to be stored.
-     */
-    filePathPattern?: string;
-    /**
-     * When this field enabled a single parquet file will be created to store sample data,
-     * otherwise we will create a new file per day
-     */
-    overwriteData?: boolean;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:        string;
-    storageConfig?: AwsCredentials;
-    [property: string]: any;
-}
-
-/**
- * AWS credentials required to access the S3 file.
- *
- * AWS credentials configs.
- *
- * AWS credentials for generating MWAA CLI token.
- *
- * AWS credentials configuration.
- */
-export interface AwsCredentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  */
 export enum ConnectionScheme {
@@ -4854,8 +4798,10 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
@@ -4874,8 +4820,7 @@ export interface DatabaseConnectionClass {
     /**
      * Password to connect to MSSQL.
      */
-    password?:                string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    password?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -4907,7 +4852,9 @@ export interface DatabaseConnectionClass {
     tableFilterPattern?: FilterPattern;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -5084,8 +5031,7 @@ export interface HiveMetastoreConnectionDetails {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -5792,6 +5738,7 @@ export enum AirflowConnectionType {
     Superset = "Superset",
     Synapse = "Synapse",
     Tableau = "Tableau",
+    TableauPipeline = "TableauPipeline",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
     Timescale = "Timescale",
@@ -5809,6 +5756,29 @@ export enum AirflowConnectionType {
 export enum CredentialSourceType {
     Team = "team",
     User = "user",
+}
+
+/**
+ * An uploaded file resolved by the backend for in-process analysis.
+ */
+export interface QueryRunnerFile {
+    /**
+     * UUID of the uploaded file (Asset).
+     */
+    fileId: string;
+    /**
+     * Original name of the file. Its extension selects the reader.
+     */
+    fileName: string;
+    /**
+     * Short-lived readable location (presigned URL) of the file.
+     */
+    fileUri: string;
+    /**
+     * Relation name the file is registered under. A multi-sheet workbook registers one relation
+     * per sheet, named tableName_<sheet>.
+     */
+    tableName: string;
 }
 
 /**

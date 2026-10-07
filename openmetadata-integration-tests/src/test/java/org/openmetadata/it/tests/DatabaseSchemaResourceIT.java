@@ -12,27 +12,36 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnConstraint;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.StaticSamplingConfig;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -41,6 +50,7 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for DatabaseSchema entity operations.
@@ -56,6 +66,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
 
   {
     supportsImportExport = true;
+    supportsCreationAudit = true;
     supportsBatchImport = true;
     supportsRecursiveImport = true; // DatabaseSchema supports recursive import with nested entities
     supportsLifeCycle = true;
@@ -867,6 +878,71 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
         "Sum of downstream edges across pages should match total downstream edges");
   }
 
+  @Test
+  void test_schemaEntityRelationshipCardinalityIsReadFromReferencedSide(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("er_cardinality_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    String schemaFqn = createEntity(createSchema).getFullyQualifiedName();
+
+    CreateTable parentRequest = new CreateTable();
+    parentRequest.setName(ns.prefix("organization"));
+    parentRequest.setDatabaseSchema(schemaFqn);
+    parentRequest.setColumns(
+        List.of(
+            new Column()
+                .withName("party_guid")
+                .withDataType(ColumnDataType.UUID)
+                .withConstraint(ColumnConstraint.PRIMARY_KEY)));
+    Table parent =
+        client.tables().getByName(client.tables().create(parentRequest).getFullyQualifiedName());
+    String parentKeyFqn = parent.getColumns().getFirst().getFullyQualifiedName();
+
+    CreateTable childRequest = new CreateTable();
+    childRequest.setName(ns.prefix("organization_duns"));
+    childRequest.setDatabaseSchema(schemaFqn);
+    childRequest.setColumns(
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("party_guid").withDataType(ColumnDataType.UUID)));
+    childRequest.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("party_guid"))
+                .withReferredColumns(List.of(parentKeyFqn))
+                .withRelationshipType(TableConstraint.RelationshipType.MANY_TO_ONE)));
+    Table child = client.tables().create(childRequest);
+
+    String edgeDocId = parent.getId() + "-" + child.getId();
+    Awaitility.await("Wait for the foreign key edge to be indexed")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchSchemaEntityRelationship(client, schemaFqn, null, false)
+                        .getData()
+                        .getUpstreamEdges()
+                        .containsKey(edgeDocId)));
+
+    EsEntityRelationshipData edge =
+        searchSchemaEntityRelationship(client, schemaFqn, null, false)
+            .getData()
+            .getUpstreamEdges()
+            .get(edgeDocId);
+    var edgeColumn = edge.getColumns().getFirst();
+
+    assertEquals(parent.getId(), edge.getEntity().getId());
+    assertEquals(parentKeyFqn, edgeColumn.getColumnFQN());
+    assertEquals(child.getFullyQualifiedName() + ".party_guid", edgeColumn.getRelatedColumnFQN());
+    assertEquals("ONE_TO_MANY", edgeColumn.getRelationshipType());
+  }
+
   private org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult
       searchSchemaEntityRelationship(
           OpenMetadataClient client, String fqn, String queryFilter, boolean includeDeleted) {
@@ -1374,8 +1450,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     org.openmetadata.schema.entity.data.Glossary glossary =
         client.glossaries().create(createGlossary);
 
-    // Create an IN_REVIEW glossary term by creating it first, then patching the status
-    // (You cannot create a term with IN_REVIEW status directly)
+    // Create a glossary term with a reviewer
     org.openmetadata.schema.type.EntityReference reviewerRef =
         org.openmetadata.it.factories.UserTestFactory.createUser(ns, "reviewer1")
             .getEntityReference();
@@ -1388,21 +1463,12 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     org.openmetadata.schema.entity.data.GlossaryTerm inReviewTerm =
         client.glossaryTerms().create(createInReviewTerm);
 
-    // Now update the term to set it to IN_REVIEW status
-    inReviewTerm.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
-    inReviewTerm = client.glossaryTerms().update(inReviewTerm.getId(), inReviewTerm);
-
-    // Wait for the term to be updated to IN_REVIEW status
-    final UUID termId = inReviewTerm.getId();
-    org.awaitility.Awaitility.await()
-        .atMost(10, java.util.concurrent.TimeUnit.SECONDS)
-        .pollInterval(500, java.util.concurrent.TimeUnit.MILLISECONDS)
-        .until(
-            () -> {
-              org.openmetadata.schema.entity.data.GlossaryTerm term =
-                  client.glossaryTerms().get(termId.toString());
-              return term.getEntityStatus() == org.openmetadata.schema.type.EntityStatus.IN_REVIEW;
-            });
+    // The approval workflow puts a new term with reviewers in review and owns its stage, so move
+    // the term there the way the workflow does
+    GovernanceWorkflowActions.moveToStage(
+        Entity.GLOSSARY_TERM,
+        inReviewTerm.getId(),
+        org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
 
     log.info("TEST: Creating CSV for unapproved glossary term import");
     log.info("TEST: IN_REVIEW term FQN: {}", inReviewTerm.getFullyQualifiedName());

@@ -34,6 +34,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { ExploreSearchIndex } from '../../../interface/discovery/explore.interface';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import {
@@ -49,7 +50,7 @@ import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFor
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
-import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
+import { UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,

@@ -6,7 +6,7 @@ import type {
   TdHTMLAttributes,
   ThHTMLAttributes,
 } from 'react';
-import { createContext, isValidElement, useContext } from 'react';
+import { createContext, forwardRef, isValidElement, useContext } from 'react';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import {
   ArrowDown,
@@ -15,7 +15,7 @@ import {
   Edit01,
   HelpCircle,
   Trash01,
-} from '@untitledui/icons';
+} from '../../../icons';
 import type {
   CellProps as AriaCellProps,
   ColumnProps as AriaColumnProps,
@@ -251,7 +251,7 @@ const TableRoot = ({
         <AriaTable
           className={(state) =>
             cx(
-              'tw:w-full tw:overflow-x-hidden',
+              'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
               typeof className === 'function' ? className(state) : className
             )
           }
@@ -442,9 +442,18 @@ const TableRow = <T extends object>({
           // an anonymous table cell — a phantom column that Chrome 151's
           // fixed-layout algorithm counts when splitting leftover width, so
           // every table came up one column-share short of its own right edge.
-          'tw:relative tw:outline-focus-ring tw:transition-colors tw:hover:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+          'tw:relative tw:outline-focus-ring tw:transition-colors tw:hover:bg-secondary tw:dark:hover:bg-primary_hover tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
           TABLE_SIZES[size].rowHeight,
-          highlightSelectedRow && 'tw:selected:bg-secondary',
+          highlightSelectedRow &&
+            'tw:selected:bg-secondary tw:dark:selected:bg-primary_hover',
+
+          // Clamped markdown fades into this colour; in dark it has to follow the
+          // row to bg-secondary or it paints a surface-coloured band. Light keeps
+          // the tbody default. Real :hover — rows without an action never get
+          // react-aria's data-hovered.
+          'tw:dark:[&:hover]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]',
+          highlightSelectedRow &&
+            'tw:dark:selected:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]',
 
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
           'tw:[&>td]:after:pointer-events-none tw:[&>td]:after:absolute tw:[&>td]:after:inset-x-0 tw:[&>td]:after:bottom-0 tw:[&>td]:after:h-px tw:[&>td]:after:w-full tw:[&>td]:after:bg-border-secondary tw:last:[&>td]:after:hidden tw:[&>td]:focus-visible:after:opacity-0 tw:focus-visible:[&>td]:after:opacity-0',
@@ -509,27 +518,30 @@ interface TableCellProps
   ref?: Ref<HTMLTableCellElement>;
 }
 
-const TableCell = ({ className, children, ...props }: TableCellProps) => {
-  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
-  const { selectionBehavior } = useTableOptions();
+const TableCell = forwardRef<HTMLTableCellElement, Omit<TableCellProps, 'ref'>>(
+  function TableCell({ className, children, ...props }, ref) {
+    const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
+    const { selectionBehavior } = useTableOptions();
 
-  return (
-    <AriaCell
-      {...props}
-      className={(state) =>
-        cx(
-          'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-          TABLE_SIZES[size].cellPadding,
+    return (
+      <AriaCell
+        {...props}
+        className={(state) =>
+          cx(
+            'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+            TABLE_SIZES[size].cellPadding,
 
-          selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
+            selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
 
-          typeof className === 'function' ? className(state) : className
-        )
-      }>
-      {children}
-    </AriaCell>
-  );
-};
+            typeof className === 'function' ? className(state) : className
+          )
+        }
+        ref={ref}>
+        {children}
+      </AriaCell>
+    );
+  }
+);
 TableCell.displayName = 'TableCell';
 
 const TableCard = {

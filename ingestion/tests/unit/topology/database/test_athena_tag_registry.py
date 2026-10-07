@@ -25,7 +25,7 @@ from metadata.ingestion.source.database.athena.metadata import AthenaSource
 
 
 @pytest.fixture
-def source():
+def source(existing_tag_lookup):
     instance = object.__new__(AthenaSource)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
     instance.context = TopologyContextManager(instance.topology)
@@ -38,7 +38,7 @@ def source():
         return []
 
     instance.metadata.es_search_from_fqn.side_effect = search
-    instance.metadata.get_by_name.side_effect = AssertionError("Tag label lookup must not access the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.athena_lake_formation_client = object.__new__(AthenaLakeFormationClient)
     instance.athena_lake_formation_client.catalog_id = "123456789012"
     instance.athena_lake_formation_client.lake_formation_client = MagicMock()
@@ -144,7 +144,7 @@ def test_system_tags_resolve_at_every_supported_level(source, level):
     assert fqns(labels) == ["PII.Sensitive"]
 
 
-def test_invalid_and_empty_values_do_not_discard_valid_tags_or_columns(source):
+def test_invalid_and_empty_values_do_not_discard_valid_tags_or_columns(source, caplog):
     response(
         source,
         {
@@ -153,7 +153,8 @@ def test_invalid_and_empty_values_do_not_discard_valid_tags_or_columns(source):
         },
     )
     records = table_stage(source)
-    assert len([item for item in records if item.left]) == 1
+    assert [item for item in records if item.left] == []
+    assert "Skipped tag 'bad\"name' in classification 'Class'" in caplog.text
     assert [item.right.tag_request.name.root for item in records if item.right] == ["Valid", "Valid"]
     assert fqns(source.get_tag_labels("table")) == ["Class.Valid"]
     assert fqns(source.get_column_tag_labels("table", {"name": "value"})) == ["ColumnClass.Valid"]

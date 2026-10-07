@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import {
   cloneDeep,
   groupBy,
@@ -256,9 +257,9 @@ const SearchIndexFieldsTable = ({
             toLower(displayValue)
           ) : (
             <Tooltip title={toLower(displayValue)}>
-              <Typography.Text ellipsis className="cursor-pointer">
+              <Typography ellipsis className="cursor-pointer">
                 {highlightSearchArrayElement(displayValue, searchText)}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
           )}
         </div>

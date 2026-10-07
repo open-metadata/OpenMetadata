@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Lock } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Tabs, TabsProps } from 'antd';
+import { Box, EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
+import { Lock01 } from '@openmetadata/ui-core-components/icons';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
@@ -38,8 +38,8 @@ import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { ServicesType } from '../../interface/service.interface';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
@@ -54,6 +54,7 @@ import {
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
+import { DetailsTabItem } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
@@ -154,17 +155,22 @@ function ServiceVersionPage() {
   const isLoading =
     isPermissionsLoading || (viewVersionPermission && isVersionsListLoading);
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          currentVersionData.changeDescription as ChangeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [currentVersionData.changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        currentVersionData.changeDescription as ChangeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [currentVersionData.changeDescription, owners, tier, domains]
+  );
 
   const fetchVersionsList = useCallback(async () => {
     try {
@@ -460,7 +466,7 @@ function ServiceVersionPage() {
     [paging, getOtherDetails, handlePageChange]
   );
 
-  const tabs: TabsProps['items'] = useMemo(() => {
+  const tabs: DetailsTabItem[] = useMemo(() => {
     const tabs =
       serviceCategory === ServiceCategory.METADATA_SERVICES
         ? []
@@ -529,7 +535,7 @@ function ServiceVersionPage() {
                 }}
               />
             }
-            icon={<Lock className="tw:text-secondary" />}
+            icon={<Lock01 className="tw:text-secondary" />}
             title={t('label.access-denied')}
           />
         </div>
@@ -542,14 +548,15 @@ function ServiceVersionPage() {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
                   domainDisplayName={domainDisplayName}
+                  domains={domainRef}
                   entityType={entityType}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
@@ -557,11 +564,24 @@ function ServiceVersionPage() {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
-              <Col className="entity-version-page-tabs" span={24}>
-                <Tabs className="tabs-new" data-testid="tabs" items={tabs} />
-              </Col>
-            </Row>
+              </div>
+              <div className="entity-version-page-tabs">
+                <Tabs className="tw:gap-3" data-testid="tabs">
+                  <Tabs.List size="sm" type="underline" variant="card">
+                    {tabs.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {tabs.map(({ key, children }) => (
+                    <Tabs.Panel id={key} key={key}>
+                      {children}
+                    </Tabs.Panel>
+                  ))}
+                </Tabs>
+              </div>
+            </Box>
           </div>
         )}
 

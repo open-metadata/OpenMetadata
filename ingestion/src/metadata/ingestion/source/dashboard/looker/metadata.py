@@ -92,7 +92,9 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
-from metadata.generated.schema.type.entityLineage import ColumnLineage
+from metadata.generated.schema.type.entityLineage import ColumnLineage, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
@@ -102,7 +104,9 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
@@ -111,6 +115,15 @@ from metadata.ingestion.source.dashboard.dashboard_service import (
 from metadata.ingestion.source.dashboard.looker.bulk_parser import BulkLkmlParser
 from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
 from metadata.ingestion.source.dashboard.looker.links import get_path_from_link
+from metadata.ingestion.source.dashboard.looker.measures import (
+    MeasureCandidate,
+    build_metric_request,
+    candidates_from_explore,
+    candidates_from_view,
+    merge_candidates,
+    order_parents_first,
+    related_metric_names,
+)
 from metadata.ingestion.source.dashboard.looker.models import (
     Includes,
     LookMLManifest,
@@ -119,6 +132,7 @@ from metadata.ingestion.source.dashboard.looker.models import (
     ViewName,
 )
 from metadata.ingestion.source.dashboard.looker.utils import _clone_repo
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.readers.file.api_reader import ReadersCredentials
 from metadata.readers.file.base import Reader
 from metadata.readers.file.credentials import get_credentials_from_url
@@ -248,6 +262,9 @@ class LookerSource(DashboardServiceSource):
 
         self._explores_cache = {}
         self._views_cache = {}
+        # Measures are project-scoped, while `_views_cache` is keyed by view name alone, so two
+        # projects declaring an `orders` view would hand each other's metrics the wrong data model.
+        self._project_views_cache: dict[tuple[str, str], DashboardDataModel | None] = {}
         self._repo_credentials: ReadersCredentials | None = None
         self._reader_class: type[Reader] | None = None
         self._project_parsers: dict[str, BulkLkmlParser] | None = None
@@ -263,12 +280,29 @@ class LookerSource(DashboardServiceSource):
         # Data models yielded by the bulk stage but not yet written by the sink. They are
         # resolved in `_yield_bulk_datamodel_lineage`, after the Barrier has flushed them.
         self._pending_explores: list[str] = []
-        self._pending_views: list[tuple[str, str]] = []
+        self._pending_views: list[tuple[str, str, str]] = []
         self._processed_view_names: set[str] = set()
         self._pending_view_lineage: list[tuple[LookMlView, ExploreRef, str]] = []
         self._pending_standalone_lineage: list[tuple[LookMlView, str, str, str]] = []
 
-        self._added_lineage: dict | None = {}
+        self._added_lineage: dict = {}
+
+        # LookML measures collected during the write pass, keyed by their identity so the
+        # same measure reached through several explores -- or through both the API and the
+        # LookML files -- stays one entity. Emitted in `_yield_datamodel_metrics` once the
+        # data models they belong to have been resolved.
+        self._metric_candidates: dict[tuple[str, str, str], MeasureCandidate] = {}
+        self._metric_explores: dict[tuple[str, str, str], list[str]] = {}
+
+        # Measures are read off the explores and views the data-model stage walks, so turning
+        # that stage off leaves nothing to collect them from. Said out loud rather than left as
+        # a run that reports success and writes no metrics.
+        if self.source_config.includeMetrics and not self.source_config.includeDataModels:
+            logger.warning(
+                "includeMetrics is enabled but includeDataModels is disabled: measures are "
+                "discovered from explores and LookML views, so no Metric will be ingested. "
+                "Enable includeDataModels to ingest metrics."
+            )
 
     @property
     def _display_url(self) -> str:
@@ -408,7 +442,17 @@ class LookerSource(DashboardServiceSource):
         that aggregates views from all repositories.
         """
         if self.repository_credentials and self._main_lookml_repos:
-            all_projects: set[str] = {model.project_name for model in all_lookml_models}
+            # Deduplicated but *ordered*, following the models: `yield_standalone_datamodels`
+            # takes the first project, and a set's iteration order changes between processes
+            # (string hashing is randomised), which would give every standalone view's
+            # measures a different hashed Metric name on each run. Following the model order
+            # also keeps that project paired with the `_all_lookml_models[0]` name the same
+            # method uses.
+            # A model with no project name has no repository to parse, so it is skipped rather
+            # than keyed under None.
+            all_projects = dict.fromkeys(
+                project_name for model in all_lookml_models if (project_name := model.project_name)
+            )
             self._project_parsers: dict[str, BulkLkmlParser] = {}
 
             # Create readers for all repositories
@@ -630,9 +674,11 @@ class LookerSource(DashboardServiceSource):
                 self.progress_tracking.manual.track(DashboardDataModel.__name__)
                 self.register_record_datamodel(datamodel_request=data_model_request)
 
+                self._collect_view_measures(view, first_project)
+
                 # Resolution and lineage are deferred to `_yield_bulk_datamodel_lineage`,
                 # once the Barrier has committed this request.
-                self._pending_views.append((view.name, datamodel_view_name))
+                self._pending_views.append((first_project, view.name, datamodel_view_name))
                 self._processed_view_names.add(view.name)
                 self._pending_standalone_lineage.append((view, first_project, first_model_name, datamodel_view_name))
 
@@ -723,6 +769,8 @@ class LookerSource(DashboardServiceSource):
                 self.progress_tracking.manual.track(DashboardDataModel.__name__)
                 self.register_record_datamodel(datamodel_request=explore_datamodel)
 
+                self._collect_explore_measures(model, datamodel_name)
+
                 # Resolved after the Barrier flush; see `_resolve_pending_datamodels`.
                 self._pending_explores.append(explore_datamodel.name.root)
 
@@ -788,6 +836,9 @@ class LookerSource(DashboardServiceSource):
             yield from self._add_standalone_view_lineage(view, project_name, model_name)
         self._pending_standalone_lineage = []
 
+        # Last: metrics need the resolved data models, for `assets` and as their lineage source.
+        yield from self._yield_datamodel_metrics()
+
     def _resolve_pending_datamodels(self) -> dict[str, DashboardDataModel | None]:
         """Fetch the data models written by this stage, keyed by their data model name.
 
@@ -813,11 +864,192 @@ class LookerSource(DashboardServiceSource):
             self._explores_cache[datamodel_name] = resolve(datamodel_name)
         self._pending_explores = []
 
-        for view_name, datamodel_view_name in self._pending_views:
-            self._views_cache[view_name] = resolve(datamodel_view_name)
+        for project_name, view_name, datamodel_view_name in self._pending_views:
+            data_model = resolve(datamodel_view_name)
+            self._views_cache[view_name] = data_model
+            self._project_views_cache[(project_name, view_name)] = data_model
         self._pending_views = []
 
         return resolved
+
+    # ------------------------------------------------------------------
+    # LookML measures -> Metric entities
+    # ------------------------------------------------------------------
+
+    def _collect_explore_measures(self, model: LookmlModelExplore, datamodel_name: str) -> None:
+        """Collect the measures an explore exposes.
+
+        This is the only measure source that needs no git credentials, so it is what makes
+        metric ingestion work on every Looker deployment. Each candidate also remembers the
+        explore, which becomes one of the metric's assets.
+        """
+        if not self.source_config.includeMetrics:
+            return
+        try:
+            candidates = candidates_from_explore(model, model.project_name or "")
+            merge_candidates(self._metric_candidates, candidates)
+            for candidate in candidates:
+                explores = self._metric_explores.setdefault(candidate.key, [])
+                if datamodel_name not in explores:
+                    explores.append(datamodel_name)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning("Error collecting measures of explore [%s]: %s", model.name, err)
+
+    def _collect_view_measures(self, view: LookMlView, project_name: str | None) -> None:
+        """Collect the measures a LookML view declares.
+
+        These replace whatever the API reported for the same measure: the LookML file is where
+        the exact filter syntax and the raw `sql` survive.
+        """
+        if not self.source_config.includeMetrics:
+            return
+        try:
+            merge_candidates(self._metric_candidates, candidates_from_view(view, project_name or ""))
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning("Error collecting measures of view [%s]: %s", view.name, err)
+
+    def _metric_assets(self, candidate: MeasureCandidate) -> list[EntityReference]:
+        """Data models the measure belongs to: the view that declares it, then the explores
+        that expose it. The defining view comes first so it reads as the metric's home."""
+        assets: list[EntityReference] = []
+        seen: set[str] = set()
+        data_models = [
+            self._project_views_cache.get((candidate.project, candidate.view)),
+            *(self._explores_cache.get(name) for name in self._metric_explores.get(candidate.key, [])),
+        ]
+        for data_model in data_models:
+            if data_model is not None and str(data_model.id.root) not in seen:
+                seen.add(str(data_model.id.root))
+                # `name`/`fullyQualifiedName` are cosmetic -- the server repopulates the
+                # reference from the id -- but they make the emitted request readable in logs.
+                # Guarded because `model_str(None)` would write the string "None".
+                assets.append(
+                    EntityReference(
+                        id=data_model.id,
+                        type="dashboardDataModel",
+                        name=model_str(data_model.name) if data_model.name else None,
+                        fullyQualifiedName=(
+                            model_str(data_model.fullyQualifiedName) if data_model.fullyQualifiedName else None
+                        ),
+                    )
+                )
+        return assets
+
+    def _yield_datamodel_metrics(self) -> Iterable[Either]:
+        """Emit one Metric per collected LookML measure, plus its lineage.
+
+        Runs at the very end of the bulk data-model stage: `assets` needs the data models to
+        have been written and read back, which only happened after the Barrier.
+        """
+        if not self.source_config.includeMetrics or not self._metric_candidates:
+            return
+
+        service = self.context.get().dashboard_service  # pyright: ignore[reportAttributeAccessIssue]
+        logger.info("Emitting %d LookML measure(s) as Metric entities", len(self._metric_candidates))
+
+        # The server resolves `relatedMetrics` when the metric is created, so a reference may
+        # only name a metric already written. `order_parents_first` is what arranges that;
+        # the membership test is the backstop for a reference cycle, which no ordering can
+        # satisfy and which would otherwise fail the whole request.
+        emitted: set[str] = set()
+
+        for candidate in order_parents_first(self._metric_candidates):
+            try:
+                if candidate.tags and self.source_config.includeTags:
+                    yield from self.yield_data_model_tags(candidate.tags)
+
+                related = [
+                    name
+                    for name in related_metric_names(service, candidate, self._metric_candidates)
+                    if name in emitted
+                ]
+                metric_request = build_metric_request(
+                    service,
+                    candidate,
+                    assets=self._metric_assets(candidate),
+                    related_metrics=related,
+                    tag_labels=get_tag_labels(
+                        metadata=self.metadata,
+                        tags=candidate.tags,
+                        classification_name=LOOKER_TAG_CATEGORY,
+                        include_tags=self.source_config.includeTags,  # pyright: ignore[reportArgumentType]
+                    ),
+                )
+                yield Either(right=metric_request)  # pyright: ignore[reportCallIssue]
+
+                metric_name = model_str(metric_request.name)
+                emitted.add(metric_name)
+                for edge in self._yield_metric_lineage(candidate, metric_name, related):
+                    yield from self.yield_lineage_request(edge)
+            except Exception as err:
+                yield Either(  # pyright: ignore[reportCallIssue]
+                    left=StackTraceError(
+                        name=f"{candidate.view}.{candidate.name}",
+                        error=f"Error yielding Metric for LookML measure [{candidate.view}.{candidate.name}]: {err}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    def _yield_metric_lineage(
+        self,
+        candidate: MeasureCandidate,
+        metric_name: str,
+        related: list[str],
+    ) -> Iterable[Either]:
+        """Metric -> Metric and View -> Metric edges for one measure.
+
+        A LookML measure is a field of the view that declares it: the view's data model is its
+        source, and the view's own Table -> View lineage carries the path on to the physical
+        columns -- including through a derived table, whose `${TABLE}` is the derived SQL rather
+        than any warehouse table. Explores only expose the measure, so they stay `assets`.
+
+        Both ends are addressed by FQN: a Metric's FQN is its name, so the server can resolve either
+        end without us reading the entity back for its id.
+        """
+        for parent_name in related:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                right=OMetaFQNLineageRequest(
+                    from_entity_fqn=parent_name,
+                    from_entity_type="metric",
+                    to_entity_fqn=metric_name,
+                    to_entity_type="metric",
+                    lineage_details=LineageDetails(source=LineageSource.DashboardLineage),
+                )
+            )
+
+        view_data_model = self._project_views_cache.get((candidate.project, candidate.view))
+        if view_data_model is None:
+            return
+
+        # The measure is itself a column of the view (`get_columns_from_model`). A Metric has
+        # `measures`, not columns, so the server accepts exactly one column endpoint on it: the
+        # metric's own FQN (`LineageRepository.getChildrenNames`, case METRIC). Addressing the
+        # measure as `<metric>.measure.<name>` gets every entry dropped by
+        # `validateLineageDetails`, which answers 200 and stores nothing.
+        column_name = truncate_column_name(candidate.name)
+        from_columns = [
+            FullyQualifiedEntityName(model_str(column.fullyQualifiedName))
+            for column in view_data_model.columns or []
+            if model_str(column.name) == column_name and column.fullyQualifiedName
+        ]
+        yield Either(  # pyright: ignore[reportCallIssue]
+            right=OMetaFQNLineageRequest(
+                from_entity_fqn=model_str(view_data_model.fullyQualifiedName),
+                from_entity_type="dashboardDataModel",
+                to_entity_fqn=metric_name,
+                to_entity_type="metric",
+                lineage_details=LineageDetails(
+                    source=LineageSource.DashboardLineage,
+                    columnsLineage=[
+                        ColumnLineage(fromColumns=from_columns, toColumn=FullyQualifiedEntityName(metric_name))
+                    ]
+                    if from_columns
+                    else None,
+                ),
+            )
+        )
 
     def _get_explore_sql(self, explore: LookmlModelExplore) -> str | None:
         """
@@ -882,9 +1114,11 @@ class LookerSource(DashboardServiceSource):
                 yield Either(right=data_model_request)
                 self.register_record_datamodel(datamodel_request=data_model_request)
 
+                self._collect_view_measures(view, explore.project_name)
+
                 # Resolution and lineage are deferred to `_yield_bulk_datamodel_lineage`,
                 # once the Barrier has committed this request.
-                self._pending_views.append((view.name, datamodel_view_name))
+                self._pending_views.append((explore.project_name or "", view.name, datamodel_view_name))
                 self._processed_view_names.add(view.name)
                 self._pending_view_lineage.append(
                     (view, ExploreRef(explore.model_name, explore.name), datamodel_view_name)
@@ -1665,7 +1899,7 @@ class LookerSource(DashboardServiceSource):
 
     def _process_and_validate_column_lineage(
         self,
-        column_lineage: list[tuple[str, str]],
+        column_lineage: list[tuple[str, str]] | None,
         from_entity: Table,
         to_entity: Dashboard | DashboardDataModel,
     ) -> list[ColumnLineage]:
@@ -1708,26 +1942,15 @@ class LookerSource(DashboardServiceSource):
                     continue
         return processed_column_lineage
 
-    def build_lineage_request(
-        self,
-        source: str,
-        db_service_prefix: str,
-        to_entity: Dashboard | DashboardDataModel,
-        column_lineage: list[tuple[str, str]] | None = None,
-    ) -> Either[AddLineageRequest] | None:
+    def _resolve_source_table(self, source: str, db_service_prefix: str) -> Table | None:
+        """Resolve a source table name against one configured db service prefix.
+
+        Split out of `build_lineage_request` so metric lineage can reuse the resolution
+        without also tripping that method's `_added_lineage` dedup, which is scoped to
+        view/explore edges.
+
+        We try searching with and without the `database`.
         """
-        Once we have a list of origin data sources, check their components
-        and build the lineage request.
-
-        We will try searching in ES with and without the `database`
-
-        Args:
-            source: table name from the source list
-            db_service_prefix: db service prefix from the config
-            to_entity: Dashboard Entity being used
-        """
-        logger.debug(f"Building lineage request for {source} to {to_entity.name}")
-
         source_elements = fqn.split_table_name(table_name=source)
 
         (
@@ -1768,18 +1991,42 @@ class LookerSource(DashboardServiceSource):
             )
 
             if from_entity:
-                if from_entity.id.root not in self._added_lineage:
-                    self._added_lineage[from_entity.id.root] = []
-                if to_entity.id.root not in self._added_lineage[from_entity.id.root]:
-                    self._added_lineage[from_entity.id.root].append(to_entity.id.root)
-                    processed_column_lineage = self._process_and_validate_column_lineage(
-                        column_lineage, from_entity, to_entity
-                    )
-                    return self._get_add_lineage_request(
-                        to_entity=to_entity,
-                        from_entity=from_entity,
-                        column_lineage=processed_column_lineage,
-                    )
+                return from_entity
+
+        return None
+
+    def build_lineage_request(
+        self,
+        source: str,
+        db_service_prefix: str,
+        to_entity: Dashboard | DashboardDataModel,
+        column_lineage: list[tuple[str, str]] | None = None,
+    ) -> Either[AddLineageRequest] | None:
+        """
+        Once we have a list of origin data sources, check their components
+        and build the lineage request.
+
+        Args:
+            source: table name from the source list
+            db_service_prefix: db service prefix from the config
+            to_entity: Dashboard Entity being used
+        """
+        logger.debug(f"Building lineage request for {source} to {to_entity.name}")
+
+        from_entity = self._resolve_source_table(source, db_service_prefix)
+        if from_entity is None:
+            return None
+
+        if from_entity.id.root not in self._added_lineage:
+            self._added_lineage[from_entity.id.root] = []
+        if to_entity.id.root not in self._added_lineage[from_entity.id.root]:
+            self._added_lineage[from_entity.id.root].append(to_entity.id.root)
+            processed_column_lineage = self._process_and_validate_column_lineage(column_lineage, from_entity, to_entity)
+            return self._get_add_lineage_request(
+                to_entity=to_entity,
+                from_entity=from_entity,
+                column_lineage=processed_column_lineage,
+            )
 
         return None
 

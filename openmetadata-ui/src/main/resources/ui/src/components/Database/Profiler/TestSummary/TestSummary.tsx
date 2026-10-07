@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  AlertCircle,
+  LineChartUp01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isEqual, pick } from 'lodash';
+import { isEqual, isUndefined, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import {
   TestCaseDimensionResult,
@@ -25,128 +34,263 @@ import {
   getListTestCaseResults,
   getTestCaseDimensionResultsByFqn,
 } from '../../../../rest/testAPI';
-import {
-  getCurrentMillis,
-  getEndOfDayInMillis,
-  getEpochMillisForPastDays,
-  getStartOfDayInMillis,
-} from '../../../../utils/date-time/DateTimeUtils';
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
-import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../../common/Loader/Loader';
+import RunDetailsCard from '../../../DataQuality/IncidentManager/RunDetailsCard/RunDetailsCard';
+import { getPastDaysRange } from '../../../observability/DataQuality/Dashboard/calendarDate.utils';
+import DqDateRangeFilter from '../../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
+import RunSummaryTiles from './RunSummaryTiles/RunSummaryTiles';
 import './test-summary.less';
+import {
+  getResultHistoryCaption,
+  hasTestCaseNeverRun,
+} from './TestSummary.utils';
 import TestSummaryGraph from './TestSummaryGraph';
 
 const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
-  const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
-  const defaultRange = useMemo(
-    () => ({
-      initialRange: {
-        startTs: getStartOfDayInMillis(
-          getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
-        ),
-        endTs: getEndOfDayInMillis(getCurrentMillis()),
-      },
-      key: 'last30days',
-      title: translateWithNestedKeys(
-        PROFILER_FILTER_RANGE.last30days.title,
-        PROFILER_FILTER_RANGE.last30days.titleData
-      ),
-    }),
-    []
-  );
+  const { t } = useTranslation();
+  const { dimensionKey, version } = useRequiredParams<{
+    dimensionKey?: string;
+    version?: string;
+  }>();
   const [results, setResults] = useState<
     TestCaseResult[] | TestCaseDimensionResult[]
   >([]);
-  const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(
-    defaultRange.initialRange
+  // Bounded at local midnight, as a range picked in the date picker is; UTC
+  // bounds would show tomorrow's date as the end of the default window.
+  const [dateRangeObject, setDateRangeObject] = useState<DateRangeObject>(() =>
+    getPastDaysRange(PROFILER_FILTER_RANGE.last30days.days)
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
-    defaultRange.title
+  const [hasLoadError, setHasLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  // Names the window in the chart's empty state. It opens on the default
+  // preset's name and switches to the dates once the reader picks a range.
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>(() =>
+    translateWithNestedKeys(
+      PROFILER_FILTER_RANGE.last30days.title,
+      PROFILER_FILTER_RANGE.last30days.titleData
+    )
   );
 
+  const caption = useMemo(() => {
+    const { metric, comparison } = getResultHistoryCaption(data);
+    const metricText = t(metric.key, metric.values);
+
+    return comparison
+      ? t('message.metric-vs-comparison', {
+          metric: metricText,
+          comparison: t(comparison.key, comparison.values),
+        })
+      : metricText;
+  }, [data, t]);
+
   const handleDateRangeChange = (value: DateRangeObject) => {
-    if (!isEqual(value, dateRangeObject)) {
+    if (!isEqual(value, pick(dateRangeObject, ['startTs', 'endTs']))) {
       setDateRangeObject(value);
+      setSelectedTimeRange(
+        `${formatDate(value.startTs)} – ${formatDate(value.endTs)}`
+      );
     }
   };
 
-  const fetchTestResults = async (dateRangeObj: DateRangeObject) => {
-    if (isEmpty(data)) {
-      return;
-    }
-    setIsGraphLoading(true);
-    try {
-      const resultsApi = dimensionKey
-        ? getTestCaseDimensionResultsByFqn(data.fullyQualifiedName ?? '', {
-            dimensionalityKey: dimensionKey,
-            ...pick(dateRangeObj, ['startTs', 'endTs']),
-          })
-        : getListTestCaseResults(
-            data.fullyQualifiedName ?? '',
-            pick(dateRangeObj, ['startTs', 'endTs'])
-          );
-      const { data: chartData } = await resultsApi;
+  const testCaseFqn = data.fullyQualifiedName ?? '';
+  const latestRunTimestamp = data.testCaseResult?.timestamp;
 
-      setResults(chartData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-      setIsGraphLoading(false);
-    }
-  };
+  // Until a load succeeds, a failed reload has no results to keep, quiet or
+  // not: a development build runs the effect twice, so the first load is quiet.
+  const hasLoaded = useRef(false);
 
-  const getGraph = useMemo(() => {
+  const fetchTestResults = useCallback(
+    async (
+      dateRangeObj: DateRangeObject,
+      { quietly, isStale }: { quietly: boolean; isStale: () => boolean }
+    ) => {
+      if (!testCaseFqn) {
+        return;
+      }
+      if (!quietly) {
+        setIsGraphLoading(true);
+      }
+      try {
+        const range = pick(dateRangeObj, ['startTs', 'endTs']);
+        const { data: chartData } = await (dimensionKey
+          ? getTestCaseDimensionResultsByFqn(testCaseFqn, {
+              dimensionalityKey: dimensionKey,
+              ...range,
+            })
+          : getListTestCaseResults(testCaseFqn, range));
+
+        if (!isStale()) {
+          setResults(chartData);
+          setHasLoadError(false);
+          hasLoaded.current = true;
+        }
+      } catch (error) {
+        if (!isStale()) {
+          showErrorToast(error as AxiosError);
+          // A failed quiet reload keeps the results it would have replaced.
+          if (!quietly || !hasLoaded.current) {
+            setHasLoadError(true);
+          }
+        }
+      } finally {
+        // The fetch that replaced this one owns the loaders now.
+        if (!isStale()) {
+          setIsLoading(false);
+          setIsGraphLoading(false);
+        }
+      }
+    },
+    [testCaseFqn, dimensionKey]
+  );
+
+  // What the last fetch was for. When only the latest run changed (a run
+  // finished, e.g. after Retry run), the window is reloaded without the graph
+  // loader, so the chart, tiles and card update in place.
+  const lastFetch = useRef<string>();
+
+  useEffect(() => {
+    const fetchKey = [
+      testCaseFqn,
+      dimensionKey,
+      dateRangeObject.startTs,
+      dateRangeObject.endTs,
+      retryCount,
+    ].join('|');
+    const quietly = lastFetch.current === fetchKey;
+    lastFetch.current = fetchKey;
+
+    // A newer range, dimension or run replaces this fetch, and a slow response
+    // must not overwrite the newer one's results when it arrives.
+    let isStale = false;
+
+    // fetchTestResults reports its own errors, so the effect need not wait on it.
+    void fetchTestResults(dateRangeObject, {
+      quietly,
+      isStale: () => isStale,
+    });
+
+    return () => {
+      isStale = true;
+    };
+  }, [
+    fetchTestResults,
+    testCaseFqn,
+    dimensionKey,
+    dateRangeObject,
+    latestRunTimestamp,
+    retryCount,
+  ]);
+
+  // Below the header: the results, or why there are none to show.
+  const resultsContent = useMemo(() => {
     if (isGraphLoading) {
       return <Loader />;
     }
 
-    return (
-      <TestSummaryGraph
-        selectedTimeRange={selectedTimeRange}
-        testCaseFqn={data.fullyQualifiedName ?? ''}
-        testCaseName={data.name}
-        testCaseParameterValue={data.parameterValues}
-        testCaseResults={results}
-        testDefinitionName={data.testDefinition.name}
-      />
-    );
-  }, [isGraphLoading, data, results, selectedTimeRange]);
-
-  useEffect(() => {
-    if (dateRangeObject) {
-      fetchTestResults(dateRangeObject);
+    // An error is not an empty range: say so, and let the reader retry.
+    if (hasLoadError) {
+      return (
+        <Box
+          className="tw:relative tw:min-h-56 tw:w-full"
+          data-testid="test-summary-load-error">
+          <EmptyPlaceholder
+            actions={[
+              {
+                key: 'retry',
+                color: 'secondary',
+                label: t('label.retry'),
+                onPress: () => setRetryCount((count) => count + 1),
+              },
+            ]}
+            icon={<AlertCircle className="tw:text-fg-error-primary" />}
+            title={t('server.entity-fetch-error', {
+              entity: t('label.test-case-result'),
+            })}
+          />
+        </Box>
+      );
     }
-  }, [dateRangeObject, dimensionKey]);
 
-  const handleSelectedTimeRange = useCallback((range: string) => {
-    setSelectedTimeRange(range);
-  }, []);
+    if (hasTestCaseNeverRun(data, results, !isUndefined(version))) {
+      return (
+        <Box
+          className="tw:relative tw:min-h-56 tw:w-full tw:rounded-xl tw:border tw:border-dashed tw:border-secondary"
+          data-testid="test-summary-never-run">
+          <EmptyPlaceholder
+            className="tw:px-5"
+            description={t('message.test-case-results-after-first-run')}
+            icon={LineChartUp01}
+            title={t('message.no-runs-recorded-yet')}
+            width="100%"
+          />
+        </Box>
+      );
+    }
+
+    return (
+      <>
+        <div data-testid="graph-container">
+          <TestSummaryGraph
+            selectedTimeRange={selectedTimeRange}
+            testCaseFqn={testCaseFqn}
+            testCaseName={data.name}
+            testCaseParameterValue={data.parameterValues}
+            testCaseResults={results}
+            testDefinitionName={data.testDefinition.name}
+          />
+        </div>
+        <RunSummaryTiles results={results} />
+        <RunDetailsCard results={results} testCase={data} />
+      </>
+    );
+  }, [
+    isGraphLoading,
+    hasLoadError,
+    data,
+    results,
+    version,
+    selectedTimeRange,
+    testCaseFqn,
+    t,
+  ]);
 
   if (isLoading) {
     return <Loader />;
   }
 
   return (
-    <Row data-testid="test-summary-container" gutter={[0, 16]}>
-      <Col className="d-flex justify-end" span={24}>
-        <DatePickerMenu
-          showSelectedCustomRange
-          defaultDateRange={pick(defaultRange, ['key', 'title'])}
-          handleDateRangeChange={handleDateRangeChange}
-          handleSelectedTimeRange={handleSelectedTimeRange}
+    <Box data-testid="test-summary-container" direction="col" gap={4}>
+      <Box align="start" gap={4} justify="between">
+        <Box direction="col" gap={1}>
+          {/* A plain heading rather than Typography: Typography wraps an h2 in
+              .prose, whose heading style (24px, semibold, margins) outranks
+              the size classes. */}
+          <h2 className="tw:m-0 tw:text-md tw:leading-5 tw:font-bold tw:text-primary">
+            {t('label.result-history')}
+          </h2>
+          <Typography
+            className="tw:text-quaternary"
+            data-testid="result-history-caption"
+            size="text-sm">
+            {caption}
+          </Typography>
+        </Box>
+        <DqDateRangeFilter
+          endTs={dateRangeObject.endTs}
+          size="sm"
+          startTs={dateRangeObject.startTs}
+          onApply={handleDateRangeChange}
         />
-      </Col>
-      <Col data-testid="graph-container" span={24}>
-        {getGraph}
-      </Col>
-    </Row>
+      </Box>
+      {resultsContent}
+    </Box>
   );
 };
 

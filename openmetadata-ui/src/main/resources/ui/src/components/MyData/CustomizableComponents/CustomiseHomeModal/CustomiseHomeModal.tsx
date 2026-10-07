@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { CheckOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Modal, Row, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -296,11 +297,11 @@ const CustomiseHomeModal = ({
       title={
         <div className="customise-home-modal-header p-box d-flex items-center gap-3">
           <Icon className="add-icon" component={AddIcon} />
-          <Typography.Text className="text-xl font-semibold text-white">
+          <Typography className="text-xl font-semibold text-white">
             {t('label.customize-entity', {
               entity: t('label.home'),
             })}
-          </Typography.Text>
+          </Typography>
         </div>
       }
       width={1800}
@@ -309,10 +310,7 @@ const CustomiseHomeModal = ({
         <Col className="sidebar p-box sticky top-0 self-start">
           {sidebarOptions}
         </Col>
-        <Divider
-          className="customise-home-modal-divider h-auto self-stretch"
-          type="vertical"
-        />
+        <Divider className="h-auto self-stretch" orientation="vertical" />
         <Col className="content p-box">
           {selectedKey === CustomiseHomeModalSelectedKey.ALL_WIDGETS &&
           isFetchingWidgets ? (

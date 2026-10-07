@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import {
+  chartColor,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { formatNumberWithComma } from '../../../utils/NumberUtils';
 import { SummaryDonut } from '../../DataQuality/SummaryPannel/SummaryDonut.component';
 import {
@@ -18,10 +22,10 @@ import {
   TestSummaryCardKey,
 } from '../../DataQuality/SummaryPannel/SummaryPanel.interface';
 import { useTestSummaryCards } from '../../DataQuality/SummaryPannel/useTestSummaryCards';
-import { SEGMENT_COLORS } from './DqSummaryPanel.constants';
+import { SEGMENT_STATUS } from './DqSummaryPanel.constants';
 
 const CARD_CLASS =
-  'tw:flex-1 tw:rounded-xl tw:bg-primary tw:px-6 tw:py-5 tw:shadow-xs tw:outline-1 tw:outline-secondary';
+  'tw:flex-1 tw:rounded-xl tw:bg-surface tw:px-6 tw:py-5 tw:shadow-xs tw:outline-1 tw:outline-secondary';
 
 /**
  * App-mode Data Quality summary cards. The card figures come from the shared
@@ -34,6 +38,7 @@ const DqSummaryPanel = ({
   isLoading = false,
 }: SummaryPanelProps) => {
   const cards = useTestSummaryCards(testSummary);
+  const palette = useChartPalette();
 
   if (isLoading) {
     return (
@@ -53,7 +58,7 @@ const DqSummaryPanel = ({
         const chartData = card.segments.map((segment) => ({
           name: segment.name,
           value: segment.value,
-          color: SEGMENT_COLORS[segment.id],
+          status: SEGMENT_STATUS[segment.id],
         }));
 
         return (
@@ -77,11 +82,17 @@ const DqSummaryPanel = ({
             <Box align="center" gap={3}>
               {card.key === TestSummaryCardKey.TotalTests && (
                 <Box direction="col" gap={2}>
-                  {chartData.map((item) => (
+                  {chartData.map((item, index) => (
                     <Box align="center" gap={2} key={item.name}>
                       <span
                         className="tw:size-2 tw:shrink-0 tw:rounded-full"
-                        style={{ backgroundColor: item.color }}
+                        style={{
+                          backgroundColor: chartColor(
+                            palette,
+                            index,
+                            item.status
+                          ),
+                        }}
                       />
                       <Typography className="tw:whitespace-nowrap tw:text-xs tw:font-medium tw:leading-4 tw:text-tertiary">
                         {item.name}{' '}
@@ -94,6 +105,7 @@ const DqSummaryPanel = ({
                 </Box>
               )}
               <SummaryDonut
+                ariaLabel={card.title}
                 chartData={chartData}
                 percentage={card.percentage}
                 size={100}

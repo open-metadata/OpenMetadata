@@ -31,15 +31,16 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 async function goToLearningResourcesAdmin(page: Page) {
   const admin = new AdminClass();
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('domcontentloaded');
 
   if (page.url().includes('/signin')) {
-    await admin.login(page);
+    await admin.signIn(page);
   }
 
   await page.waitForURL(
-    (url) => url.pathname === '/' || url.pathname === '/my-data'
+    (url) => url.pathname === '/' || url.pathname === '/my-data',
+    { waitUntil: 'domcontentloaded' }
   );
   await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
   await waitForAllLoadersToDisappear(page);
@@ -125,6 +126,16 @@ async function scrollDrawerToShowResource(page: Page, resourceText: string) {
   await expect(targetElement).toBeVisible();
 }
 
+async function openGlossaryLearningDrawer(page: Page, resourceText: string) {
+  await sidebarClick(page, SidebarItem.GLOSSARY);
+  await waitForAllLoadersToDisappear(page);
+
+  const learningIcon = page.getByTestId('learning-icon');
+  await expect(learningIcon).toBeVisible();
+  await learningIcon.click();
+  await scrollDrawerToShowResource(page, resourceText);
+}
+
 test.describe(
   'Learning Resources Admin Page',
   { tag: ['@Pages', '@Platform'] },
@@ -193,6 +204,53 @@ test.describe(
         page.getByTestId('learning-resource-form-drawer')
       ).not.toBeVisible();
       await waitForAllLoadersToDisappear(page);
+    });
+
+    test('should create a Link learning resource', async ({ page }) => {
+      const resourceName = `PW_Create_Link_${uuid()}`;
+      const guideUrl = 'https://docs.example.com/data-seeker-guide';
+      const { apiContext, afterAction } = await getApiContext(page);
+
+      await test.step('Fill the form with the Link type', async () => {
+        await page.getByTestId('create-resource').click();
+        await expect(
+          page.getByTestId('learning-resource-form-drawer')
+        ).toBeVisible();
+
+        await fillResourceForm(page, {
+          resourceName,
+          description: 'Internal guidance linked from the learning drawer',
+          type: 'Link',
+          category: 'Discovery',
+          context: 'Domain',
+          url: guideUrl,
+          status: 'Active',
+        });
+      });
+
+      await test.step('Save and verify a Link resource is created', async () => {
+        const createResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/learning/resources') &&
+            r.request().method() === 'POST'
+        );
+        await page.getByTestId('save-resource').click();
+        const response = await createResponse;
+
+        expect(response.status()).toBe(201);
+        const created = await response.json();
+        expect(created.resourceType).toBe('Link');
+        expect(created.source.url).toBe(guideUrl);
+        await expect(
+          page.getByTestId('learning-resource-form-drawer')
+        ).not.toBeVisible();
+
+        await apiContext.delete(
+          `/api/v1/learning/resources/${created.id}?hardDelete=true`
+        );
+      });
+
+      await afterAction();
     });
 
     test('should preview a learning resource by clicking on row', async ({
@@ -364,6 +422,99 @@ test.describe(
           playerDialog.getByText(`PW Player Resource ${uniqueId}`)
         ).toBeVisible();
       });
+    });
+
+    test('should open a Link resource in a new tab from the learning drawer', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const uniqueId = uuid();
+      const displayName = `PW Link Resource ${uniqueId}`;
+      const guideUrl = `https://docs.example.com/pw-link-${uniqueId}`;
+      const resource = new LearningResourceClass({
+        name: `PW_Link_Resource_${uniqueId}`,
+        displayName,
+        resourceType: 'Link',
+        contexts: [{ pageId: 'glossary' }],
+        status: 'Active',
+        source: { url: guideUrl },
+      });
+      await resource.create(apiContext);
+      // Serve the linked page locally so the test does not depend on an external host.
+      await page.context().route(guideUrl, (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: '<h1>Data Seeker Guide</h1>',
+        })
+      );
+
+      await test.step('Open learning drawer on glossary page', async () => {
+        await openGlossaryLearningDrawer(page, displayName);
+      });
+
+      await test.step('Click Link card and verify it opens in a new tab', async () => {
+        const newTabPromise = page.context().waitForEvent('page');
+        await page
+          .getByTestId(`learning-resource-card-PW_Link_Resource_${uniqueId}`)
+          .click();
+        const newTab = await newTabPromise;
+
+        await expect(newTab).toHaveURL(guideUrl);
+        await expect(
+          page.getByTestId('resource-player-dialog')
+        ).not.toBeVisible();
+        await expect(page.getByTestId('learning-drawer')).toBeVisible();
+        await newTab.close();
+      });
+
+      await resource.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should show a PDF resource in the resource player', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const uniqueId = uuid();
+      const displayName = `PW PDF Resource ${uniqueId}`;
+      const pdfUrl = `https://docs.example.com/pw-guide-${uniqueId}.pdf`;
+      const resource = new LearningResourceClass({
+        name: `PW_PDF_Resource_${uniqueId}`,
+        displayName,
+        resourceType: 'PDF',
+        contexts: [{ pageId: 'glossary' }],
+        status: 'Active',
+        source: { url: pdfUrl },
+      });
+      await resource.create(apiContext);
+
+      await test.step('Open learning drawer on glossary page', async () => {
+        await openGlossaryLearningDrawer(page, displayName);
+      });
+
+      await test.step('Click PDF card and verify the player embeds it', async () => {
+        await page
+          .getByTestId(`learning-resource-card-PW_PDF_Resource_${uniqueId}`)
+          .click();
+
+        const playerDialog = page.getByTestId('resource-player-dialog');
+        await expect(playerDialog).toBeVisible();
+        await expect(playerDialog.getByTitle(displayName)).toHaveAttribute(
+          'src',
+          pdfUrl
+        );
+        await expect(
+          playerDialog.getByRole('link', { name: 'Open in New Tab' })
+        ).toHaveAttribute('href', pdfUrl);
+      });
+
+      await resource.delete(apiContext);
+      await afterAction();
     });
   }
 );

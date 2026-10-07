@@ -36,7 +36,6 @@ import {
   redo,
   selectAll,
   selectAllText,
-  selectLastWord,
   toggleTask,
   typeInTableCell,
   undo,
@@ -124,7 +123,9 @@ export const runSlashCommandsAndBasicBlocksTest = async (
     const blockquoteWithText = blockquote.filter({
       hasText: 'This is a quote',
     });
-    await expect(blockquoteWithText.first()).toBeVisible();
+    await expect(blockquoteWithText.filter({ visible: true })).not.toHaveCount(
+      0
+    );
 
     // Also verify it's NOT in a list
     const textInList = editor
@@ -168,7 +169,9 @@ export const runTextFormattingTest = async (
     await page.keyboard.type('Italic text');
 
     await expect(page.getByText('Italic text')).toBeVisible();
-    await page.getByText('Italic text').selectText();
+    // Triple-click selects the whole paragraph deterministically — no word-count guess, no
+    // cross-platform Home/End ambiguity — so the entire run gets formatted.
+    await editor.getByText('Italic text').click({ clickCount: 3 });
     await applyTextFormatting(page, 'italic');
 
     await expect(page.getByText('Italic text')).toBeVisible();
@@ -180,7 +183,7 @@ export const runTextFormattingTest = async (
     await page.keyboard.type('inline code');
 
     await expect(page.getByText('inline code')).toBeVisible();
-    await page.getByText('inline code').selectText();
+    await editor.getByText('inline code').click({ clickCount: 3 });
     await applyTextFormatting(page, 'code');
 
     await expect(page.getByText('inline code')).toBeVisible();
@@ -320,7 +323,7 @@ export const runContentPersistenceTest = async (
 
     await page.keyboard.type('Bold persistent text');
     await expect(page.getByText('Bold persistent text')).toBeVisible();
-    await selectLastWord(page, 3, editor);
+    await editor.getByText('Bold persistent text').click({ clickCount: 3 });
     await applyTextFormatting(page, 'bold');
 
     await verifyContentPersistence(page, [

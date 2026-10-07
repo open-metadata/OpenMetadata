@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ComponentProps, useEffect, useState } from 'react';
@@ -76,16 +77,15 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         return {
           label: (
             <div className="d-flex flex-column">
-              <Typography.Text
-                className="text-sm"
-                data-testid="tag-option-label">
+              <Typography className="text-sm" data-testid="tag-option-label">
                 {item.data.displayName ?? item.data.name}
-              </Typography.Text>
-              <Typography.Text
-                className="text-grey-muted text-sm"
+              </Typography>
+              <Typography
+                className="tw:wrap-break-word text-sm"
+                color="secondary"
                 data-testid="tag-option-fully-qualified-name">
                 {fqn}
-              </Typography.Text>
+              </Typography>
             </div>
           ),
           value: fqn,
@@ -152,14 +152,14 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         </Col>
         <Col className="d-flex flex-column gap-1">
           <div className="d-flex items-center justify-between p-x-xss">
-            <Typography.Text data-testid="term-boost-impact-label">
+            <Typography data-testid="term-boost-impact-label">
               {t('label.boost')}
-            </Typography.Text>
-            <Typography.Text
+            </Typography>
+            <Typography
               className="font-semibold boost-value"
               data-testid="term-boost-value">
               {termBoostData.boost}
-            </Typography.Text>
+            </Typography>
           </div>
           <div data-testid="term-boost-slider">
             <Slider

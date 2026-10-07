@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +29,8 @@ const WidgetCard = ({
   title,
   titleIcon,
   headerExtra,
+  headerActions,
+  headerContent,
   defaultExpanded = true,
   onExpandStateChange,
   isExpandDisabled = false,
@@ -36,6 +38,8 @@ const WidgetCard = ({
   helperText,
   dataTestId,
   className,
+  contentClassName,
+  footer,
 }: WidgetCardProps) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(
@@ -52,6 +56,18 @@ const WidgetCard = ({
     setIsExpanded(isExpandDisabled ? false : defaultExpanded);
   }, [defaultExpanded, isExpandDisabled]);
 
+  const renderBody = () => (
+    <>
+      {children && (
+        <Card.Content
+          className={classNames('tw:pb-4 tw:pt-0', contentClassName)}>
+          {children}
+        </Card.Content>
+      )}
+      {footer && <Card.Footer>{footer}</Card.Footer>}
+    </>
+  );
+
   useEffect(() => {
     if (forceExpand) {
       setIsExpanded(true);
@@ -63,61 +79,61 @@ const WidgetCard = ({
       className={classNames('tw:w-full', className)}
       data-testid={dataTestId}
       size="sm">
-      <Card.Header
-        className="tw:border-0 tw:p-4"
-        extra={
-          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
-            {!isExpandDisabled && (
-              <Tooltip
-                title={t(isExpanded ? 'label.collapse' : 'label.expand')}>
-                <TooltipTrigger>
-                  <ButtonUtility
-                    className={classNames(
-                      'tw:p-0.5 tw:transition-transform tw:duration-200 tw:mt-0.5',
-                      { 'tw:rotate-180': !isExpanded }
-                    )}
-                    color="tertiary"
-                    data-testid="expand-collapse-icon"
-                    disabled={isExpandDisabled}
-                    icon={<CardExpandCollapseIcon className="tw:h-4 tw:w-4" />}
-                    title={isExpanded ? t('label.collapse') : t('label.expand')}
-                    onClick={handleExpandClick}
-                  />
-                </TooltipTrigger>
-              </Tooltip>
-            )}
-          </div>
-        }
-        title={
-          <div className="tw:flex tw:items-center tw:gap-2">
-            {titleIcon}
-            {title && (
-              <Typography
-                as="span"
-                className="tw:text-quaternary"
-                size="text-sm"
-                weight="semibold">
-                {title}
-              </Typography>
-            )}
-            {helperText && (
-              <Tooltip title={helperText}>
-                <TooltipTrigger className="tw:leading-0">
-                  <InfoCircle
-                    className="tw:cursor-pointer tw:text-utility-gray-400"
-                    size={14}
-                    strokeWidth={2}
-                  />
-                </TooltipTrigger>
-              </Tooltip>
-            )}
-            {headerExtra}
-          </div>
-        }
-      />
-      {isExpanded && children && (
-        <Card.Content className="tw:pb-4 tw:pt-0">{children}</Card.Content>
+      {headerContent ? (
+        // py-2 keeps the header height of the title row (p-4 + 20px line).
+        <div className="tw:flex tw:items-center tw:px-4 tw:py-2">
+          {headerContent}
+        </div>
+      ) : (
+        <Card.Header
+          className="tw:border-0 tw:p-4"
+          extra={
+            <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
+              {headerActions}
+              {!isExpandDisabled && (
+                <ButtonUtility
+                  className={classNames(
+                    'tw:p-0.5 tw:transition-transform tw:duration-200 tw:mt-0.5',
+                    { 'tw:rotate-180': !isExpanded }
+                  )}
+                  color="tertiary"
+                  data-testid="expand-collapse-icon"
+                  icon={<CardExpandCollapseIcon className="tw:h-4 tw:w-4" />}
+                  tooltip={t(isExpanded ? 'label.collapse' : 'label.expand')}
+                  onClick={handleExpandClick}
+                />
+              )}
+            </div>
+          }
+          title={
+            <div className="tw:flex tw:items-center tw:gap-2">
+              {titleIcon}
+              {title && (
+                <Typography
+                  as="span"
+                  className="tw:whitespace-nowrap tw:text-quaternary"
+                  size="text-sm"
+                  weight="semibold">
+                  {title}
+                </Typography>
+              )}
+              {helperText && (
+                <Tooltip title={helperText}>
+                  <TooltipTrigger className="tw:leading-0">
+                    <InfoCircle
+                      className="tw:cursor-pointer tw:text-utility-gray-400"
+                      size={14}
+                      strokeWidth={2}
+                    />
+                  </TooltipTrigger>
+                </Tooltip>
+              )}
+              {headerExtra}
+            </div>
+          }
+        />
       )}
+      {isExpanded && renderBody()}
     </Card>
   );
 };

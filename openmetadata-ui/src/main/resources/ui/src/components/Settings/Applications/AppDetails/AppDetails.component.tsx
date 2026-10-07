@@ -17,19 +17,10 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Button, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -39,7 +30,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
@@ -71,6 +61,10 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -237,7 +231,7 @@ const AppDetails = () => {
     t,
   ]);
 
-  const manageButtonContent: ItemType[] = useMemo(
+  const manageButtonContent: ManageMenuItem[] = useMemo(
     () => [
       ...(appData?.deleted
         ? ([
@@ -260,7 +254,7 @@ const AppDetails = () => {
               },
               key: 'restore-button',
             },
-          ] as ItemType[])
+          ] as ManageMenuItem[])
         : [
             {
               label: (
@@ -619,12 +613,15 @@ const AppDetails = () => {
     return (
       <div className="flex-center gap-2">
         <Icon component={IconExternalLink} style={ICON_DIMENSION} />
-        <Typography.Link
-          className="text-xs"
-          href={appData?.developerUrl}
-          target="_blank">
-          <Space>{t('label.visit-developer-website')}</Space>
-        </Typography.Link>
+        <Typography>
+          <a
+            className="text-xs"
+            href={appData?.developerUrl}
+            rel="noopener noreferrer"
+            target="_blank">
+            <Space>{t('label.visit-developer-website')}</Space>
+          </a>
+        </Typography>
       </div>
     );
   };
@@ -638,11 +635,22 @@ const AppDetails = () => {
     // Render default tabs interface
     return (
       <Tabs
-        destroyInactiveTabPane
-        className="tabs-new"
+        className="tw:gap-3"
         data-testid="tabs"
-        items={tabs}
-      />
+        defaultSelectedKey={tabs[0]?.key}>
+        <Tabs.List size="sm" type="underline" variant="card">
+          {tabs.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabs.map(({ key, children }) => (
+          <Tabs.Panel id={key} key={key}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     );
   };
 
@@ -654,90 +662,68 @@ const AppDetails = () => {
     <PageLayoutV1
       className="app-details-page-layout"
       pageTitle={getEntityName(appData) || t('label.application-plural')}>
-      <Row>
-        <Col className="d-flex" flex="auto">
+      <Box>
+        <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
             className="p-0"
             icon={<LeftOutlined />}
             size="small"
             type="text"
             onClick={onBrowseAppsClick}>
-            <Typography.Text className="font-medium">
+            <Typography className="font-medium">
               {t('label.browse-app-plural')}
-            </Typography.Text>
+            </Typography>
           </Button>
-        </Col>
-        <Col flex="360px">
+        </div>
+        <div className="tw:flex-[0_0_360px]">
           <div className="d-flex gap-2 justify-end">
-            <Dropdown
-              align={{ targetOffset: [-12, 0] }}
-              className="m-l-xs"
-              menu={{
-                items: manageButtonContent,
-              }}
-              open={showActions}
-              overlayClassName="glossary-manage-dropdown-list-container"
-              overlayStyle={{ width: '350px' }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={setShowActions}>
-              <Tooltip
-                placement="topRight"
-                title={t('label.manage-entity', {
-                  entity: t('label.application'),
-                })}>
-                <Button
-                  className="glossary-manage-dropdown-button p-x-xs"
-                  data-testid="manage-button"
-                  icon={
-                    <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                  }
-                  onClick={() => setShowActions(true)}
-                />
-              </Tooltip>
-            </Dropdown>
+            <ManageMenu
+              isOpen={showActions}
+              items={manageButtonContent}
+              label={t('label.manage-entity', {
+                entity: t('label.application'),
+              })}
+              triggerClassName="m-l-xs"
+              onOpenChange={setShowActions}
+            />
           </div>
-        </Col>
-      </Row>
-      <Row>
-        <Col span={24}>
+        </div>
+      </Box>
+      <Box direction="col">
+        <div>
           <Space className="app-details-header w-full" size={24}>
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
-              <Typography.Title level={4}>
-                {getEntityName(appData)}
-              </Typography.Title>
+              <Typography as="h4">{getEntityName(appData)}</Typography>
               {renderRuntimeDisabledBadge()}
 
               <div className="d-flex items-center flex-wrap gap-6">
                 <Space size={8}>
                   <ClockCircleOutlined />
-                  <Typography.Text className="text-xs text-grey-muted">
+                  <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
-                  </Typography.Text>
+                  </Typography>
                 </Space>
 
                 <Space size={8}>
                   <UserOutlined />
-                  <Typography.Text className="text-xs text-grey-muted">
+                  <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}
-                  </Typography.Text>
+                  </Typography>
                 </Space>
 
                 {renderDeveloperUrl()}
               </div>
             </div>
           </Space>
-        </Col>
-        <Col className="app-details-page-tabs" span={24}>
-          {renderAppDetailsBody()}
-        </Col>
-      </Row>
+        </div>
+        <div>{renderAppDetailsBody()}</div>
+      </Box>
 
       <ConfirmationModal
         bodyText={t('message.are-you-sure-action-property', {

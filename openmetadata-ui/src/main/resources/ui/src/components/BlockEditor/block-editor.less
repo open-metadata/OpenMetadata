@@ -14,9 +14,11 @@
 
 @border-radius: var(--om-radius-md);
 @border-color: var(--om-legacy-color-e8e8ed);
-@markdown-bg-color: var(--om-legacy-color-f8f8fa);
+// Semantic surface so inline code, table headers and callouts follow dark mode
+// (the legacy #f8f8fa alias has no dark value).
+@markdown-bg-color: var(--om-color-bg-secondary);
 @hover-bg: var(--om-legacy-color-0-0-0-0-02);
-@callout-bg: var(--om-legacy-color-f8f8fa);
+@callout-bg: var(--om-color-bg-secondary);
 @callout-warning-bg: var(--om-legacy-color-fff3dc);
 @callout-info-bg: @primary-1;
 @callout-danger-bg: var(--om-legacy-color-255-76-59-0-2);
@@ -308,7 +310,7 @@
       display: block;
       object-fit: cover;
       border-radius: var(--om-radius-sm);
-      background: white;
+      background: var(--om-color-bg-surface);
       width: 32px;
       height: 32px;
       box-shadow: var(--om-legacy-color-15-15-15-0-1) 0px 0px 0px 1px;
@@ -441,7 +443,8 @@
 }
 
 .is-format-active {
-  .ant-typography {
+  .ant-typography,
+  .format-label {
     color: @primary-color;
   }
   svg {
@@ -508,16 +511,6 @@ body .om-image-node-embed-link-btn-col {
 .om-callout-node-danger {
   background-color: @callout-danger-bg;
   border-left-color: @error-color;
-}
-
-.callout-type-btn.ant-btn.ant-btn-text {
-  padding: var(--om-space-2) var(--om-space-4);
-}
-
-.om-callout-node-popover {
-  .ant-popover-inner-content {
-    padding: var(--om-space-12) var(--om-space-4);
-  }
 }
 
 .callout-menu {

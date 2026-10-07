@@ -97,9 +97,10 @@ test('Query Entity', async ({ page }) => {
     await tableSearchResponse;
 
     await page
-      .locator('div')
-      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table1}$`) })
-      .first()
+      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .filter({
+        has: page.getByText(queryData.queryUsedIn.table1, { exact: true }),
+      })
       .click();
 
     await clickOutside(page);
@@ -172,21 +173,35 @@ test('Query Entity', async ({ page }) => {
 
     // Update Tags
     await page.getByTestId('add-tag').click();
-    await page.locator('#tagsForm_tags').click();
-    await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
-    await page.getByTestId(`tag-${queryData.tagFqn}`).first().click();
+
+    await expect(
+      page.getByTestId('classification-tag-picker-search')
+    ).toBeVisible();
+
+    const searchTagResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(queryData.tagFqn)}*`
+    );
+    await page
+      .getByTestId('classification-tag-picker-search')
+      .fill(queryData.tagFqn);
+    await searchTagResponse;
+    await page.getByTestId(`tree-node-${queryData.tagFqn}`).click();
+
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+
     const updateTagResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
         response.request().method() === 'PATCH'
     );
-    await page.getByTestId('saveAssociatedTag').click();
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await updateTagResponse;
   });
 
   await test.step('Update query and QueryUsedIn', async () => {
     await page.click('[data-testid="query-btn"]');
-    await page.click(`[data-menu-id*="edit-query"]`);
+    await page.getByTestId('edit-query').click();
     await page.click(CODE_EDITOR_LINE, { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
@@ -197,9 +212,10 @@ test('Query Entity', async ({ page }) => {
     await page.keyboard.type(queryData.queryUsedIn.table2);
     await tableSearchResponse;
     await page
-      .locator('div')
-      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table2}$`) })
-      .first()
+      .locator('.ant-select-dropdown:visible .ant-select-item-option')
+      .filter({
+        has: page.getByText(queryData.queryUsedIn.table2, { exact: true }),
+      })
       .click();
     await clickOutside(page);
     const updateQueryResponse = page.waitForResponse(
@@ -233,8 +249,8 @@ test('Query Entity', async ({ page }) => {
       page,
     });
     await expect(
-      page.locator('[data-testid="query-card"]').first()
-    ).toBeVisible();
+      page.locator('[data-testid="query-card"]').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     await queryFilters({
       filter: 'None',
@@ -255,8 +271,8 @@ test('Query Entity', async ({ page }) => {
     });
 
     await expect(
-      page.locator('[data-testid="query-card"]').first()
-    ).toBeVisible();
+      page.locator('[data-testid="query-card"]').filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   await test.step('Verify vote for query', async () => {
@@ -305,8 +321,7 @@ test('Query Entity', async ({ page }) => {
     await queryResponse;
 
     await page.click(`[data-testid="query-btn"]`);
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
-    await page.click(`[data-menu-id*="delete-query"]`);
+    await page.getByTestId('delete-query').click();
     const deleteQueryResponse = page.waitForResponse('/api/v1/queries/*');
     await page.click(`[data-testid="save-button"]`);
     await deleteQueryResponse;

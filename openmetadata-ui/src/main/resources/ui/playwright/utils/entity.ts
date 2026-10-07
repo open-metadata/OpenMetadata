@@ -13,6 +13,7 @@
 import { expect, Locator, Page, type Response } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   BIG_ENTITY_DELETE_TIMEOUT,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
@@ -54,15 +55,21 @@ import {
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
+import { clickUntilVisible, waitForResponseWithStatus } from './waitHelpers';
 
+/**
+ * Waits until no loader is left in `scope`: the whole page, or a widget's
+ * locator (a popover, a dropdown) when only that widget's data matters.
+ * Counting instead of `locator.waitFor()` keeps it non-strict, so several
+ * loaders mounted at once (e.g. the lineage section and a picker) never throw.
+ */
 export const waitForAllLoadersToDisappear = async (
-  page: Page,
+  scope: Page | Locator,
   dataTestId = 'loader',
-  timeout = 30000
+  timeout = ACTION_TIMEOUT
 ) => {
-  const loaders = page.locator(`[data-testid="${dataTestId}"]`);
+  const loaders = scope.locator(`[data-testid="${dataTestId}"]`);
 
-  // Wait for the loader elements count to become 0
   await expect(loaders).toHaveCount(0, { timeout });
 };
 
@@ -78,10 +85,42 @@ export const waitForAllLoadersToDisappear = async (
  * — `request-entity-tags`, for one — is simply absent until this clears, so the
  * click waits out the whole test timeout rather than racing by a few frames.
  */
-export const waitForWidgetsToRender = async (page: Page, timeout = 30000) => {
+export const waitForWidgetsToRender = async (
+  page: Page,
+  timeout = ACTION_TIMEOUT
+) => {
   await expect(
     page.locator('[data-testid="entity-detail-widget-skeleton"]')
   ).toHaveCount(0, { timeout });
+};
+
+/**
+ * Await a navigation's own "get by name" call and assert it actually returned
+ * the entity.
+ *
+ * `waitForResponse` resolves on *any* response, 404 and 500 included, so used
+ * bare it synchronises on "the server said something" rather than on "the page
+ * has what the test needs". A missing or unauthorised entity then satisfies the
+ * wait, the test walks on to the "<Entity> instance for <fqn> not found"
+ * placeholder, and the next click waits out the entire test timeout — surfacing
+ * as a bare `Test timeout of 60000ms exceeded` with no location, three
+ * interactions away from the request that actually failed.
+ *
+ * Use this wherever a helper navigates somewhere and the rest of the test
+ * assumes the destination loaded.
+ */
+export const expectNavigationResponseOk = async (
+  responsePromise: Promise<Response>,
+  what: string
+): Promise<Response> => {
+  const response = await responsePromise;
+
+  expect(
+    response.status(),
+    `${what}: ${response.url()} returned ${response.status()} — the entity is missing, deleted, or not visible to this user`
+  ).toBe(200);
+
+  return response;
 };
 
 export const visitEntityPage = async (data: {
@@ -124,7 +163,7 @@ export const visitEntityPage = async (data: {
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
       response.url().includes('exclude_source_fields'),
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await searchResponse;
@@ -175,7 +214,11 @@ export const visitEntityPageByFqn = async (data: {
   await page.goto(`/${routeSegment}/${encodedFqn}`, {
     waitUntil: 'domcontentloaded',
   });
-  await entityDetailsResponse;
+  await expectNavigationResponseOk(
+    entityDetailsResponse,
+    `visit ${endpoint} ${fqn}`
+  );
+
   await waitForAllLoadersToDisappear(page);
   await waitForWidgetsToRender(page);
 };
@@ -465,6 +508,19 @@ export const removeOwner = async ({
     .waitFor({ state: 'hidden' });
 };
 
+export const openOwnerPicker = async (page: Page, trigger: Locator) => {
+  // The trigger can be clicked while the page is still mounting its widgets
+  // (lazy chunks, grid re-layout), which remounts the picker and throws the
+  // open state away, so the popover never renders. Re-click until it does.
+  await expect(async () => {
+    await trigger.click();
+
+    await expect(page.getByTestId('select-owner-tabs')).toBeVisible({
+      timeout: 5000,
+    });
+  }).toPass({ timeout: 30000, intervals: [500, 1000, 2000] });
+};
+
 export const addMultiOwner = async (data: {
   page: Page;
   ownerNames: string | string[];
@@ -488,26 +544,19 @@ export const addMultiOwner = async (data: {
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
 
-  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
+  await openOwnerPicker(
+    page,
+    page.locator(`[data-testid="${activatorBtnDataTestId}"]`)
+  );
 
-  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
-
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByTestId('loader')
-    .first()
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('select-owner-tabs'));
 
   await page
     .locator("[data-testid='select-owner-tabs']")
     .getByRole('tab', { name: 'Users' })
     .click();
 
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByTestId('loader')
-    .first()
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('select-owner-tabs'));
 
   const isClearButtonVisible = await page
     .getByTestId('select-owner-tabs')
@@ -522,11 +571,7 @@ export const addMultiOwner = async (data: {
       .getByRole('tab', { name: 'Users' })
       .click();
 
-    await page
-      .getByTestId('select-owner-tabs')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('select-owner-tabs'));
   }
 
   if (clearAll && isMultipleOwners) {
@@ -550,11 +595,7 @@ export const addMultiOwner = async (data: {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
     await searchOwner;
-    await page
-      .getByTestId('select-owner-tabs')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('select-owner-tabs'));
 
     const ownerItem = page
       .locator('[data-testid="owner-option"]')
@@ -598,8 +639,11 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
-    ).toBeVisible();
+      page
+        .locator(`[data-testid="${resultTestId}"]`)
+        .getByTestId(name)
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   }
 };
 
@@ -645,8 +689,15 @@ export const assignTier = async (
   // Close the tier popover
   await clickOutside(page);
 
-  // Verify the tier was updated
-  await expect(page.getByTestId('Tier')).toContainText(tier);
+  // Verify the tier was updated. The PATCH returns 200 but React Query's
+  // entity-detail cache invalidation can lag under merge-queue load — the
+  // `Tier` chip re-renders from the refetched entity, not from the PATCH
+  // response. A retry-pass on Entity.spec (run 34324900183 chromium-23)
+  // saw 18 resolutions to the previous value across the 15 s default,
+  // then passed on retry #1. 30 s covers the observed p99.
+  await expect(page.getByTestId('Tier')).toContainText(tier, {
+    timeout: ACTION_TIMEOUT,
+  });
 };
 
 export const removeTier = async (page: Page, endpoint: string) => {
@@ -893,11 +944,27 @@ export const updateDescriptionForChildren = async (
   }
 };
 
+// Opens the ClassificationTagPicker; the outside-click handler can close the
+// popover before the search input shows, so the open is retried.
+export const openClassificationTagPicker = async (
+  page: Page,
+  trigger: Locator
+) => {
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toBeEnabled();
+
+  await clickUntilVisible(
+    trigger,
+    page.getByTestId('classification-tag-picker-search'),
+    { force: 'onRetry' }
+  );
+};
+
 export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  endpoint: string,
+  endpoint?: string,
   parentId = 'KnowledgePanel.Tags',
   tagFqn?: string
 ) => {
@@ -907,41 +974,40 @@ export const assignTag = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .first();
 
-  await expect(tagButton).toBeVisible();
-  await tagButton.click();
-
-  await expect(page.locator('#tagsForm_tags')).toBeVisible();
+  await openClassificationTagPicker(page, tagButton);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
 
-  await page.locator('#tagsForm_tags').fill(tag);
+  await page.getByTestId('classification-tag-picker-search').fill(tag);
 
   await searchTags;
 
   await page
-    .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
+    .getByTestId(`tree-node-${tagFqn ? `${tagFqn}` : tag}`)
     .first()
     .click();
 
-  await page
-    .locator('.ant-select-dropdown')
-    .getByTestId('saveAssociatedTag')
-    .waitFor({ state: 'visible' });
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequest = endpoint
+    ? page.waitForResponse(`/api/v1/${endpoint}/*`)
+    : page.waitForResponse(
+        (r) =>
+          r.request().method() === 'PATCH' &&
+          r.url().includes('/api/v1/') &&
+          !r.url().includes('/api/v1/analytics')
+      );
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page.getByTestId('update-btn').click();
 
   await patchRequest;
-  await page
-    .getByTestId('saveAssociatedTag')
-    .locator('[data-icon="loading"]')
-    .waitFor({ state: 'detached' });
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
   await expect(
     page
@@ -966,42 +1032,36 @@ export const assignTagToChildren = async ({
   rowSelector?: string;
   entityEndpoint: string;
 }) => {
-  await page
+  const trigger = page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('tags-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .click();
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
+
+  await openClassificationTagPicker(page, trigger);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
 
-  await page.locator('#tagsForm_tags').fill(tag);
+  await page.getByTestId('classification-tag-picker-search').fill(tag);
 
   await searchTags;
 
-  await page.getByTestId(`tag-${tag}`).click();
+  await page.getByTestId(`tree-node-${tag}`).click();
+
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+
   const patchRequest =
     entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
       ? page.waitForResponse('/api/v1/columns/name/*')
       : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
 
-  await page
-    .locator('.ant-select-dropdown')
-    .getByTestId('saveAssociatedTag')
-    .waitFor({ state: 'visible' });
-
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-  await page.getByTestId('saveAssociatedTag').click();
-
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
   await patchRequest;
-
-  await page
-    .getByTestId('saveAssociatedTag')
-    .locator('[data-icon="loading"]')
-    .waitFor({ state: 'detached' });
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+  await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
   await expect(
     page
@@ -1011,45 +1071,55 @@ export const assignTagToChildren = async ({
   ).toBeVisible();
 };
 
-export const removeTag = async (page: Page, tags: string[]) => {
-  for (const tag of tags) {
-    await page
-      .getByTestId('KnowledgePanel.Tags')
+export const removeTag = async (
+  page: Page,
+  tags: string[],
+  endpoint?: string,
+  parentId = 'KnowledgePanel.Tags',
+  tagFqns?: string[]
+) => {
+  for (let i = 0; i < tags.length; i++) {
+    const tag = tags[i];
+    const fqn = tagFqns?.[i] ?? tag;
+
+    const trigger = page
+      .getByTestId(parentId)
       .getByTestId('tags-container')
-      .getByTestId('edit-button')
-      .click();
+      .getByTestId('edit-button');
 
-    await page
-      .getByTestId(`selected-tag-${tag}`)
-      .getByTestId('remove-tags')
-      .locator('svg')
-      .click();
+    await openClassificationTagPicker(page, trigger);
 
-    const patchRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    const searchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        escapeESReservedCharacters(tag)
+      )}*`
     );
+    await page.getByTestId('classification-tag-picker-search').fill(tag);
+    await searchResponse;
 
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('saveAssociatedTag')
-      .waitFor({ state: 'visible' });
+    await page.getByTestId(`tree-node-${fqn}`).click();
 
-    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
-    await page.getByTestId('saveAssociatedTag').click();
+    const patchRequest = endpoint
+      ? page.waitForResponse(`/api/v1/${endpoint}/*`)
+      : page.waitForResponse(
+          (r) =>
+            r.request().method() === 'PATCH' &&
+            r.url().includes('/api/v1/') &&
+            !r.url().includes('/api/v1/analytics')
+        );
+
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await patchRequest;
-
-    await page
-      .getByTestId('saveAssociatedTag')
-      .locator('[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+    await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
     await expect(
       page
-        .getByTestId('KnowledgePanel.Tags')
+        .getByTestId(parentId)
         .getByTestId('tags-container')
-        .getByTestId(`tag-${tag}`)
+        .getByTestId(`tag-${fqn}`)
     ).not.toBeVisible();
   }
 };
@@ -1068,39 +1138,35 @@ export const removeTagsFromChildren = async ({
   entityEndpoint: string;
 }) => {
   for (const tag of tags) {
-    await page
+    const trigger = page
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
       .getByTestId('edit-button')
-      .first()
-      .click();
+      .first();
 
-    await page
-      .getByTestId('tag-selector')
-      .getByTestId(`selected-tag-${tag}`)
-      .getByTestId('remove-tags')
-      .click();
+    await openClassificationTagPicker(page, trigger);
+
+    const searchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        escapeESReservedCharacters(tag)
+      )}*`
+    );
+    await page.getByTestId('classification-tag-picker-search').fill(tag);
+    await searchResponse;
+
+    await page.getByTestId(`tree-node-${tag}`).click();
+
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
     const patchRequest =
       entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
         ? page.waitForResponse('/api/v1/columns/name/*')
         : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('saveAssociatedTag')
-      .waitFor({ state: 'visible' });
 
-    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-    await page.getByTestId('saveAssociatedTag').click();
-
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await patchRequest;
-
-    await page
-      .getByTestId('saveAssociatedTag')
-      .locator('[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+    await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
     await expect(
       page
@@ -1172,13 +1238,14 @@ export const openColumnDetailPanel = async ({
       )
     : null;
 
+  let clickTarget: Locator;
+
   if (entityType === 'MlModel') {
-    const columnName = page
+    clickTarget = page
       .locator(`[${rowSelector}="${columnId}"]`)
       .getByTestId(columnNameTestId)
       .first();
-    await columnName.waitFor({ state: 'visible' });
-    await columnName.click();
+    await clickTarget.waitFor({ state: 'visible' });
   } else {
     const row = page.locator(`[${rowSelector}="${columnId}"]`).first();
     await row.waitFor({ state: 'visible' });
@@ -1189,20 +1256,29 @@ export const openColumnDetailPanel = async ({
 
     const columnNameElement = nameCell.getByTestId(columnNameTestId);
 
-    if ((await columnNameElement.count()) > 0) {
-      await columnNameElement.click({ force: false });
-    } else {
-      await nameCell.click({ force: false });
-    }
+    clickTarget =
+      (await columnNameElement.count()) > 0 ? columnNameElement : nameCell;
   }
-  await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+  const panelContainer = page.locator('.column-detail-panel');
+
+  // Rows keep reflowing for about a second after first paint: nested rows
+  // auto-expand in an effect and description previews clamp once measured.
+  // On a slow runner the row moves between mousedown and mouseup, so the
+  // browser fires `click` on a common ancestor and the cell handler never
+  // runs. Re-click until the panel opens, but only while it is closed: once
+  // the drawer is up its mask covers the row and a click would close it.
+  await expect(async () => {
+    if (!(await panelContainer.isVisible())) {
+      await clickTarget.click({ timeout: 5_000 });
+    }
+    await expect(panelContainer).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
 
   if (apiResponsePromise) {
     const apiResponse = await apiResponsePromise;
     expect(apiResponse.status()).toBe(200);
   }
-
-  const panelContainer = page.locator('.column-detail-panel');
 
   // Wait for the panel content to be loaded
   await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
@@ -1422,7 +1498,7 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
     await expect(page.getByTestId('entity-follow-button')).toContainText(
       expectedText,
-      { timeout: 30_000 }
+      { timeout: ACTION_TIMEOUT }
     );
   }
 };
@@ -1516,13 +1592,14 @@ const announcementForm = async (
 ) => {
   await page.fill('#title', data.title);
 
-  await page.click('#startTime');
-  await page.fill('#startTime', `${data.startDate}`);
-  await page.press('#startTime', 'Enter');
-
-  await page.click('#endTime');
-  await page.fill('#endTime', `${data.endDate}`);
-  await page.press('#startTime', 'Enter');
+  // `fill` alone is enough for a native `<input type="date">`. The old
+  // click-then-Enter dance is left over from the antd DatePicker and is now
+  // actively harmful: the picker indicator is stretched across the whole
+  // control so a click opens the native picker, and the Enter then commits
+  // whatever date that picker has highlighted — today — silently overwriting
+  // the end date that was just filled.
+  await page.fill('#startTime', data.startDate);
+  await page.fill('#endTime', data.endDate);
 
   // Scoped to the announcement dialog, not the page: this form opens over an
   // entity page that has description editors of its own, and an unscoped
@@ -1554,7 +1631,10 @@ const announcementForm = async (
     throw new Error('Announcement creation response did not include an id');
   }
 
-  await page.click('[data-testid="announcement-close"]');
+  await page
+    .getByTestId('announcement-drawer')
+    .getByRole('button', { name: 'Close' })
+    .click();
   if (hideAlert) {
     await toastNotification(page, /Announcement created successfully/i);
   }
@@ -1582,8 +1662,8 @@ export const createAnnouncement = async (
 
   await page.getByTestId('add-announcement').click();
 
-  await expect(page.locator('.ant-modal-header')).toContainText(
-    'Make an announcement'
+  await expect(page.getByTestId('add-announcement-dialog')).toContainText(
+    'Add Announcement'
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
@@ -1603,8 +1683,7 @@ export const createAnnouncement = async (
 export const replyAnnouncement = async (page: Page) => {
   await page
     .locator('[data-testid="entity-header-announcements"]')
-    .locator('[data-testid^="announcement-item-"]')
-    .first()
+    .getByTestId('announcement-title-btn')
     .click();
 
   await page.hover(
@@ -1693,9 +1772,9 @@ export const deleteAnnouncement = async (page: Page) => {
     await deleteAction.click({ timeout: 2000 });
   }).toPass({ timeout: 30000 });
 
-  const modalText = await page.textContent('.ant-modal-body');
+  const deleteConfirm = page.getByTestId('announcement-delete-confirm');
 
-  expect(modalText).toContain(
+  await expect(deleteConfirm).toContainText(
     'Are you sure you want to permanently delete this message?'
   );
 
@@ -1704,7 +1783,7 @@ export const deleteAnnouncement = async (page: Page) => {
       response.url().includes('/api/v1/announcements/') &&
       response.request().method() === 'DELETE'
   );
-  await page.click('[data-testid="save-button"]');
+  await deleteConfirm.getByTestId('save-button').click();
   await deleteAnnouncementResponse;
 
   await page.reload();
@@ -1748,21 +1827,24 @@ export const editAnnouncement = async (
   }).toPass({ timeout: 30000 });
 
   // Wait for the edit announcement modal to open
-  await expect(page.locator('.ant-modal-header')).toContainText(
-    'Edit an Announcement'
+  await expect(page.getByTestId('edit-announcement-dialog')).toContainText(
+    'Edit Announcement'
   );
 
   // Clear and fill the title field
-  await page.fill('[data-testid="edit-announcement"] #title', '');
-  await page.fill('[data-testid="edit-announcement"] #title', data.title);
+  await page.fill('[data-testid="edit-announcement-dialog"] #title', '');
+  await page.fill(
+    '[data-testid="edit-announcement-dialog"] #title',
+    data.title
+  );
 
   // Clear and fill the description field
   await page
-    .locator('[data-testid="edit-announcement"]')
+    .locator('[data-testid="edit-announcement-dialog"]')
     .locator(descriptionBox)
     .fill('');
   await page
-    .locator('[data-testid="edit-announcement"]')
+    .locator('[data-testid="edit-announcement-dialog"]')
     .locator(descriptionBox)
     .fill(data.description);
 
@@ -1773,15 +1855,14 @@ export const editAnnouncement = async (
       response.request().method() === 'PATCH'
   );
   await page
-    .locator(
-      '[data-testid="edit-announcement"] .ant-modal-footer .ant-btn-primary'
-    )
+    .getByTestId('edit-announcement-dialog')
+    .getByTestId('announcement-submit')
     .click();
   await updateResponse;
 
   // Wait for modal to close
   await expect(
-    page.locator('[data-testid="edit-announcement"]')
+    page.locator('[data-testid="edit-announcement-dialog"]')
   ).not.toBeVisible();
 
   // Verify the changes were applied within the drawer
@@ -1789,7 +1870,10 @@ export const editAnnouncement = async (
   await expect(drawerAnnouncementCard).toContainText(data.description);
 
   // Close the announcement drawer
-  await page.locator('[data-testid="announcement-close"]').click();
+  await page
+    .getByTestId('announcement-drawer')
+    .getByRole('button', { name: 'Close' })
+    .click();
 
   await expect(page.getByTestId('announcement-drawer')).not.toBeVisible();
 };
@@ -1812,8 +1896,8 @@ export const createInactiveAnnouncement = async (
 
   await page.getByTestId('add-announcement').click();
 
-  await expect(page.locator('.ant-modal-header')).toContainText(
-    'Make an announcement'
+  await expect(page.getByTestId('add-announcement-dialog')).toContainText(
+    'Add Announcement'
   );
 
   const announcementId = await announcementForm(
@@ -1826,15 +1910,21 @@ export const createInactiveAnnouncement = async (
   await page.getByTestId('announcement-button').click();
 
   const announcementDrawer = page.getByTestId('announcement-drawer');
-  const inactiveAnnouncement = announcementDrawer
-    .getByTestId('announcement-card')
-    .filter({ hasText: data.title });
+
+  // The dates above are 6-11 days out, so this announcement is Scheduled, not
+  // Expired. The old assertion used the "inactive announcements" divider, which
+  // counted anything not currently active; the status tabs separate the two.
+  await announcementDrawer.getByTestId('announcement-status-Scheduled').click();
 
   await expect(
-    announcementDrawer.getByTestId('inActive-announcements')
+    announcementDrawer
+      .getByTestId('announcement-card')
+      .filter({ hasText: data.title })
   ).toBeVisible();
-  await expect(inactiveAnnouncement).toBeVisible();
-  await page.getByTestId('announcement-close').click();
+  await page
+    .getByTestId('announcement-drawer')
+    .getByRole('button', { name: 'Close' })
+    .click();
 
   return announcementId;
 };
@@ -1876,10 +1966,16 @@ export const updateDisplayNameForEntityChildren = async (
   rowId: string,
   rowSelector = 'data-row-key'
 ) => {
-  await page
-    .locator(`[${rowSelector}="${rowId}"]`)
-    .getByTestId('edit-displayName-button')
-    .click();
+  const row = page.locator(`[${rowSelector}="${rowId}"]`);
+
+  // Rows reflow for about a second after first paint (nested rows auto-expand,
+  // description previews clamp). A mouse click can straddle that shift, so
+  // `click` fires on the name cell instead of the button and the cell handler
+  // opens the column detail panel rather than this modal. Enter is no better:
+  // the react-aria grid row handles Enter itself and cancels the button's
+  // default activation while the table is still mounting. Dispatching the
+  // click on the button runs its own handler wherever the row has moved.
+  await row.getByTestId('edit-displayName-button').dispatchEvent('click');
 
   await expect(page.locator('#name')).toBeDisabled();
 
@@ -1891,27 +1987,23 @@ export const updateDisplayNameForEntityChildren = async (
 
   await page.locator('#displayName').fill(displayName.newDisplayName);
 
-  const updateRequest = page.waitForResponse(
-    (req) =>
-      ['PUT', 'PATCH'].includes(req.request().method()) &&
-      !req.url().includes('api/v1/analytics/web/events/collect')
+  const updateRequest = waitForResponseWithStatus(
+    page,
+    (response) =>
+      ['PUT', 'PATCH'].includes(response.request().method()) &&
+      !response.url().includes('api/v1/analytics/web/events/collect'),
+    200
   );
 
-  await page.click('[data-testid="save-button"]');
+  await page.getByTestId('save-button').click();
   await updateRequest;
 
   if (displayName.newDisplayName === '') {
-    await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('column-display-name')
-    ).not.toBeAttached();
+    await expect(row.getByTestId('column-display-name')).not.toBeAttached();
   } else {
-    await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('column-display-name')
-    ).toHaveText(displayName.newDisplayName);
+    await expect(row.getByTestId('column-display-name')).toHaveText(
+      displayName.newDisplayName
+    );
   }
 };
 
@@ -1920,39 +2012,13 @@ export const removeDisplayNameForEntityChildren = async (
   displayName: string,
   rowId: string,
   rowSelector = 'data-row-key'
-) => {
-  await page
-    .locator(`[${rowSelector}="${rowId}"]`)
-    .getByTestId('edit-displayName-button')
-    .click();
-
-  await expect(page.locator('#name')).toBeDisabled();
-
-  await expect(page.locator('#displayName')).toBeVisible();
-
-  await expect(page.locator('#displayName')).toHaveValue(displayName);
-
-  await page.locator('#displayName').fill('');
-
-  const updateRequest = page.waitForResponse((response) => {
-    const method = response.request().method();
-    const url = response.url();
-
-    // Check Analytics Api Does Not Intterupt With PUT CAll
-    return (
-      (method === 'PUT' || method === 'PATCH') &&
-      !url.includes('api/v1/analytics/web/events/collect')
-    );
-  });
-  await page.click('[data-testid="save-button"]');
-  await updateRequest;
-
-  await expect(
-    page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('column-display-name')
-  ).not.toBeVisible();
-};
+) =>
+  updateDisplayNameForEntityChildren(
+    page,
+    { oldDisplayName: displayName, newDisplayName: '' },
+    rowId,
+    rowSelector
+  );
 
 export const checkForEditActions = async ({
   page,
@@ -2353,10 +2419,10 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
   await expect(
     page
       .getByTestId('explore-tree')
-      .locator('span')
+      .getByRole('row')
       .filter({ hasText: serviceType })
       .first()
-  ).toHaveClass(/ant-tree-node-selected/);
+  ).toHaveAttribute('aria-selected', 'true');
 };
 
 export const escapeESReservedCharacters = (text?: string) => {
@@ -2511,7 +2577,7 @@ export const checkExploreSearchFilter = async (
         );
       }
     },
-    { timeout: 30_000 }
+    { timeout: ACTION_TIMEOUT }
   );
 
   // Arm the wait before selecting: immediate-apply fires the query on the
@@ -2588,17 +2654,25 @@ export const testCopyLinkButton = async ({
   containerTestId,
   expectedUrlPath,
   entityFqn,
+  rowName,
 }: {
   page: Page;
   buttonTestId: 'copy-column-link-button' | 'copy-field-link-button';
   containerTestId: string;
   expectedUrlPath: string;
   entityFqn: string;
+  rowName: string;
 }) => {
-  await expect(page.getByTestId(containerTestId)).toBeVisible();
+  const container = page.getByTestId(containerTestId);
+  await expect(container).toBeVisible();
 
-  // Find the first copy button and verify it's visible
-  const copyButton = page.getByTestId(buttonTestId).first();
+  // Every column/field row renders its own copy button, so the caller has to say
+  // which row it means. The names come from the fixture the test created, so
+  // they are unique on the page.
+  const copyButton = container
+    .getByRole('row')
+    .filter({ hasText: rowName })
+    .getByTestId(buttonTestId);
   await expect(copyButton).toBeVisible();
 
   // Click copy button and get clipboard text

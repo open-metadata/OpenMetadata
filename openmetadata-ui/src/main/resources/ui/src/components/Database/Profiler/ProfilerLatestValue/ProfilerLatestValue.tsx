@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import { Card } from '@openmetadata/ui-core-components';
+import {
+  chartColor,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { isUndefined } from 'lodash';
 import { getStatisticsDisplayValue } from '../../../../utils/NumberUtils';
 import '../ProfilerDashboard/profiler-dashboard.less';
@@ -22,6 +27,7 @@ const ProfilerLatestValue = ({
   stringValue = false,
   extra,
 }: ProfilerLatestValueProps) => {
+  const palette = useChartPalette();
   const getLatestValue = (value?: number | string) => {
     if (isUndefined(value)) {
       return '--';
@@ -35,16 +41,22 @@ const ProfilerLatestValue = ({
   };
 
   return (
-    <div
-      className="tw:flex tw:items-center tw:rounded-[10px] tw:bg-secondary tw:px-7.5 tw:py-4"
+    <Card
+      className="tw:flex tw:items-center tw:px-7.5 tw:py-4"
       data-testid="data-summary-container">
       <div className="tw:flex tw:grow tw:gap-20">
-        {information.map((info) => (
+        {information.map((info, index) => (
           <div key={info.title}>
             <p
               className="tw:m-0 tw:mb-1 tw:break-all tw:pl-2 tw:text-[11px] tw:font-semibold tw:leading-3 tw:text-secondary"
               data-testid="title"
-              style={{ borderLeft: `4px solid ${info.color}` }}>
+              style={{
+                borderLeft: `4px solid ${chartColor(
+                  palette,
+                  index,
+                  info.status
+                )}`,
+              }}>
               {info.title}
             </p>
             <p
@@ -66,7 +78,7 @@ const ProfilerLatestValue = ({
         ))}
       </div>
       {extra && <div className="tw:flex tw:justify-end">{extra}</div>}
-    </div>
+    </Card>
   );
 };
 

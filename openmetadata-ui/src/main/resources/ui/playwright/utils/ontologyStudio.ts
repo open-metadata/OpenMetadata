@@ -12,11 +12,13 @@
  */
 
 import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
 import { sidebarClick } from '../utils/sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export interface GraphTermRef {
   id: string;
@@ -45,25 +47,27 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
 
   await page.getByTestId('search-dropdown-glossaryIds').click();
   await page.getByTestId(glossaryId).click();
-  const termsResponse = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/glossaryTerms') &&
-        response.status() === 200,
-      { timeout: 30000 }
-    )
-    .catch(() => null);
+  const termsResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaryTerms'),
+    200,
+    { timeout: ACTION_TIMEOUT }
+  );
   await page.getByTestId('update-btn').click();
   await termsResponse;
 }
 
 export async function navigateToOntologyStudio(page: Page) {
   await redirectToHomePage(page);
-  const glossaryResponse = page.waitForResponse(
+  const glossaryResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/glossaries') &&
-      response.status() === 200,
-    { timeout: 30000 }
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaries'),
+    200,
+    { timeout: ACTION_TIMEOUT }
   );
 
   await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
@@ -73,7 +77,7 @@ export async function navigateToOntologyStudio(page: Page) {
 
 export async function waitForGraphLoaded(page: Page) {
   await expect(page.getByTestId('ontology-graph-loading')).not.toBeVisible({
-    timeout: 30000,
+    timeout: ACTION_TIMEOUT,
   });
 }
 
@@ -166,6 +170,20 @@ export interface RenderedEdge {
   relationType: string;
   inverseRelationType?: string;
 }
+
+/**
+ * The query-results graph, for callers that run with the studio's own graph also
+ * on screen.
+ *
+ * Query mode mounts OntologyGraphG6 twice -- once for the explorer and once for
+ * the SPARQL results -- and both carry `.ontology-g6-container`, so a bare
+ * selector matches two elements and a Playwright locator raises a strict-mode
+ * violation. Worse when it does not: `document.querySelector` silently takes
+ * whichever happens to be first, so a caller meaning to read the results could
+ * read the explorer instead and still find the edge it was looking for.
+ */
+export const QUERY_RESULT_GRAPH_CONTAINER =
+  '[data-testid="ontology-sparql-result-graph"] .ontology-g6-container';
 
 export async function readGraphEdges(
   page: Page,
@@ -537,7 +555,7 @@ export async function waitForMoreNodesThan(
       }
     },
     count,
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
 }
 export async function applyMultiGlossaryFilter(
@@ -548,14 +566,14 @@ export async function applyMultiGlossaryFilter(
   for (const id of glossaryIds) {
     await page.getByTestId(id).click();
   }
-  const termsResponse = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/glossaryTerms') &&
-        response.status() === 200,
-      { timeout: 30000 }
-    )
-    .catch(() => null);
+  const termsResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaryTerms'),
+    200,
+    { timeout: ACTION_TIMEOUT }
+  );
   await page.getByTestId('update-btn').click();
   await termsResponse;
 }

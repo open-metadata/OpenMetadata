@@ -67,6 +67,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseResource;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -131,6 +132,24 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Database::getId).toList();
     deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+  }
+
+  /**
+   * Carries a database tag change down to the assets beneath it in the search index, matching the
+   * read-time inheritance in {@link EntityRepository#inheritTags}. Without it Explore would keep
+   * showing the pre-change tags while the API reported the new ones.
+   */
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    // Keeps the index in step with the read-time inheritance in EntityRepository. This cascade
+    // carries this entity's OWN tags down, and inheritance re-derives the same labels on read, so
+    // both halves have to move together or Explore and GET /{entity}/{id} disagree.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    return descriptors;
   }
 
   @Override
@@ -270,6 +289,16 @@ public class DatabaseRepository extends EntityRepository<Database> {
     setInheritedFields(entities, fields);
 
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  @Override
+  protected void hydrateHistoryEntities(List<Database> databases) {
+    for (Database database : databases) {
+      if (database.getService() == null) {
+        throw EntityNotFoundException.byMessage(
+            "Database " + database.getId() + " has no service relationship");
+      }
+    }
   }
 
   private void fetchAndSetDatabaseSpecificFields(List<Database> databases, Fields fields) {
@@ -549,8 +578,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));

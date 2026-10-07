@@ -13,12 +13,11 @@
 Validator for table rule library SQL expression
 """
 
-from jinja2 import StrictUndefined, Template, TemplateSyntaxError, UndefinedError
-
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.models import (
     RuleLibrarySqlExpressionRuntimeParameters,
 )
+from metadata.data_quality.validations.utils import render_sql_expression
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -41,6 +40,9 @@ DATABASES_WITHOUT_DATABASE_CONCEPT = {
 
 class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
     """Validator for table-level SQL Expression based rules in the Rule Library."""
+
+    # The rule's SQL is executed as written, so the sampler never sees it.
+    BYPASSES_SAMPLER = True
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
@@ -77,15 +79,7 @@ class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
         params = {"table_name": table_name}
         params.update(self._get_user_params())
 
-        try:
-            template = Template(sql_template.root, undefined=StrictUndefined)
-            return template.render(**params)
-        except TemplateSyntaxError as e:
-            raise ValueError(f"Invalid Jinja2 syntax in SQL expression: {e.message}") from e
-        except UndefinedError as e:
-            raise ValueError(
-                f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
-            ) from e
+        return render_sql_expression(sql_template.root, params)
 
     def _run_results(self, sql_expression) -> int:
         raise NotImplementedError

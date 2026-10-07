@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Edge, Node } from 'reactflow';
 import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
 import EdgeInfoDrawer from './EdgeInfoDrawer.component';
@@ -78,10 +79,6 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
 jest.mock('../../Modals/ModalWithQueryEditor/ModalWithQueryEditor', () => {
   return jest.fn().mockImplementation(() => <div>ModalWithQueryEditor</div>);
 });
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-}));
 
 const mockOnEdgeDetailsUpdate = jest.fn();
 
@@ -175,6 +172,16 @@ describe('EdgeInfoDrawer Component', () => {
       await screen.findByText('label.sql-uppercase-query')
     ).toBeInTheDocument();
     expect(await screen.findAllByTestId('edit-button')).toHaveLength(1);
+  });
+
+  it('should call onClose when the close button is pressed', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onClose = jest.fn();
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} onClose={onClose} />);
+
+    await user.click(await screen.findByTestId('drawer-close-icon'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('should render no query if no query is present', async () => {

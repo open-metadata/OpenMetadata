@@ -16,11 +16,14 @@ import {
   TreeSelectNode,
   TreeSelectProps,
 } from '@openmetadata/ui-core-components';
-import { FC, useCallback, useMemo } from 'react';
+import { AxiosError } from 'axios';
+import { FC, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_EXTRA_LARGE } from '../../../constants/constants';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   GlossaryPickerValue,
   pruneNodes,
@@ -37,12 +40,14 @@ type InheritedTreeSelectProps = Pick<
   | 'onOpenChange'
   | 'renderTrigger'
   | 'triggerVariant'
+  | 'offset'
   | 'bordered'
   | 'label'
   | 'placeholder'
   | 'required'
   | 'disabled'
   | 'autoFocus'
+  | 'className'
   | 'data-testid'
 >;
 
@@ -67,20 +72,34 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   onOpenChange,
   renderTrigger,
   triggerVariant,
+  offset,
   bordered,
   label,
   placeholder,
   required = false,
   disabled = false,
   autoFocus = false,
+  className,
   'data-testid': dataTestId,
   excludeFqns,
   selectGlossaries = false,
 }) => {
   const { t } = useTranslation();
-  const fetchGlossaryTree = useGlossaryTreeData();
+  const fetchGlossaryTree = useGlossaryTreeData(selectGlossaries);
 
-  const excluded = useMemo(() => new Set(excludeFqns ?? []), [excludeFqns]);
+  // Keyed by contents: callers pass an inline array, so a per-identity memo
+  // would hand back a new Set every render and reset the tally below.
+  const excludeKey = (excludeFqns ?? []).join('\u0000');
+  const excluded = useMemo(
+    () => new Set(excludeKey ? excludeKey.split('\u0000') : []),
+    [excludeKey]
+  );
+
+  // Running per branch, because the tree keeps only the newest page's total.
+  const prunedPerBranch = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    prunedPerBranch.current = new Map();
+  }, [excluded]);
 
   // Pruned on fetch, not via `filterNode`, which the tree applies to searches only.
   const fetchData = useCallback(
@@ -89,9 +108,22 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
     ): Promise<TreeSelectDataResponse<GlossaryPickerValue>> => {
       const response = await fetchGlossaryTree(params);
 
-      return excluded.size === 0
-        ? response
-        : { ...response, nodes: pruneNodes(response.nodes, excluded) };
+      if (excluded.size === 0) {
+        return response;
+      }
+
+      const nodes = pruneNodes(response.nodes, excluded);
+      if (!params.parentId || response.total === undefined) {
+        return { ...response, nodes };
+      }
+
+      // `total` counts what the server holds; the row counts what survives.
+      const pruned =
+        (params.after ? prunedPerBranch.current.get(params.parentId) ?? 0 : 0) +
+        (response.nodes.length - nodes.length);
+      prunedPerBranch.current.set(params.parentId, pruned);
+
+      return { ...response, nodes, total: response.total - pruned };
     },
     [fetchGlossaryTree, excluded]
   );
@@ -105,8 +137,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
             id: tag.tagFQN,
             label: tag.displayName || tag.name || tag.tagFQN,
             value: tag.tagFQN,
-            // Glossary nodes are keyed by name, which is the term FQN's root.
-            parentId: Fqn.split(tag.tagFQN)[0],
+            // Glossary nodes are keyed by the raw name, so a quoted one never matches.
+            parentId: Fqn.unquoteName(Fqn.split(tag.tagFQN)[0]),
             data: tag,
           })
         ),
@@ -146,14 +178,20 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   // The server already filtered; filtering again would hide matching glossaries.
   const keepAllNodes = useCallback(() => true, []);
 
+  const handleFetchError = useCallback(
+    (error: unknown) => showErrorToast(error as AxiosError),
+    []
+  );
+
   return (
+    // No cascade: a term is applied on its own; a parent is a container.
     <TreeSelect
-      cascadeSelection
       lazyLoad
       searchable
       // eslint-disable-next-line jsx-a11y/no-autofocus -- opt-in, for a picker opened without a click
       autoFocus={autoFocus}
       bordered={bordered}
+      className={className}
       commitMode={commitMode}
       data-testid={dataTestId}
       disabled={disabled}
@@ -166,6 +204,9 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       isOpen={isOpen}
       label={label}
       multiple={multiple}
+      offset={offset}
+      // One page per branch; the rest arrives behind "Show N more".
+      pageSize={PAGE_SIZE_EXTRA_LARGE}
       placeholder={
         placeholder ??
         t('label.select-field', { field: t('label.glossary-term-plural') })
@@ -180,6 +221,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       triggerVariant={triggerVariant}
       value={selectedValue}
       onChange={handleChange}
+      // Owned here, so a failed page reports the API error, not axios's string.
+      onFetchError={handleFetchError}
       onOpenChange={onOpenChange}
     />
   );

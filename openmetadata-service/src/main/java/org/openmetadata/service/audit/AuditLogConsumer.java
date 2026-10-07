@@ -19,12 +19,14 @@ import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.scheduled.AuditLogSchedule;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
+import org.quartz.SchedulerException;
 
 /**
  * Quartz job that consumes change events from the change_event table and writes them to the
@@ -109,6 +111,19 @@ public class AuditLogConsumer implements Job {
       }
     } catch (Exception ex) {
       LOG.error("Error in audit log consumer execution: {}", ex.getMessage(), ex);
+    }
+    restartIfBehind(context);
+  }
+
+  // A run that ended past the next slot restarts the timetable one interval from now.
+  private static void restartIfBehind(JobExecutionContext context) {
+    if (context != null) {
+      try {
+        AuditLogSchedule.restartIfBehind(context);
+      } catch (SchedulerException | RuntimeException e) {
+        LOG.warn(
+            "Audit log consumer could not restart its timetable; the misfire scan fires it", e);
+      }
     }
   }
 

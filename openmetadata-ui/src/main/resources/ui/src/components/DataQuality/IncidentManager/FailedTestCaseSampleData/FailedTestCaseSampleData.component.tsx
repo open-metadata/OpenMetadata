@@ -12,20 +12,22 @@
  */
 
 import { Table, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../../enums/Axios.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TableData,
@@ -116,7 +118,7 @@ const FailedTestCaseSampleData = ({
     setIsDeleteModalOpen((prev) => !prev);
   };
 
-  const manageButtonContent: ItemType[] = [
+  const manageButtonContent: ManageMenuItem[] = [
     {
       label: (
         <ManageButtonItemLabel
@@ -266,29 +268,15 @@ const FailedTestCaseSampleData = ({
             </Link>
           )}
           {hasEditPermission && (
-            <Dropdown
-              menu={{
-                items: manageButtonContent,
-              }}
-              open={showActions}
-              overlayClassName="manage-dropdown-list-container"
-              overlayStyle={{ width: '350px' }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={setShowActions}>
-              <Tooltip
-                placement="topLeft"
-                title={t('label.manage-entity', {
-                  entity: t('label.sample-data'),
-                })}>
-                <Button
-                  className="flex-center px-1.5"
-                  data-testid="sample-data-manage-button"
-                  onClick={() => setShowActions(true)}>
-                  <IconDropdown className="anticon self-center " />
-                </Button>
-              </Tooltip>
-            </Dropdown>
+            <ManageMenu
+              data-testid="sample-data-manage-button"
+              isOpen={showActions}
+              items={manageButtonContent}
+              label={t('label.manage-entity', {
+                entity: t('label.sample-data'),
+              })}
+              onOpenChange={setShowActions}
+            />
           )}
         </div>
       </Space>

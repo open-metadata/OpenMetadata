@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -26,11 +26,9 @@ import {
 } from '../../../../../constants/constants';
 import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  IngestionServicePermission,
-  ResourceEntity,
-} from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { IngestionServicePermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../../enums/common.enum';
+import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
@@ -389,7 +387,7 @@ function IngestionListTable({
         width: 300,
         render: (_: string, record: ModifiedIngestionPipeline) => {
           return isLoading ? (
-            <Skeleton.Input active size="small" />
+            <Skeleton height={24} variant="rounded" width={120} />
           ) : (
             <IngestionStatusCount
               runId={record.runId}

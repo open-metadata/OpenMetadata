@@ -11,20 +11,16 @@
  *  limitations under the License.
  */
 
-import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
-  Button,
-  Card,
-  Col,
+  Box,
+  ButtonUtility,
   Dropdown,
-  Modal,
-  Row,
-  Space,
   Tabs,
-  Tooltip,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
+import { Button, Card, Col, Modal, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -47,8 +43,8 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -277,66 +273,45 @@ const PoliciesDetailPage = () => {
   const getRuleActionElement = useCallback(
     (rule: Rule) => {
       return (
-        <Dropdown
-          menu={{
-            items: [
-              {
-                label: (
-                  <Space align="center" data-testid="edit-rule">
-                    <Icon
-                      className="align-middle"
-                      component={EditIcon}
-                      style={{ fontSize: '14px' }}
-                    />
-
-                    {t('label.edit')}
-                  </Space>
-                ),
-                key: 'edit-button',
-              },
-              {
-                label: (
-                  <Space align="center" data-testid="delete-rule">
-                    <Icon
-                      className="align-middle"
-                      component={IconDelete}
-                      style={{ fontSize: '14px' }}
-                    />
-
-                    {t('label.delete')}
-                  </Space>
-                ),
-                key: 'delete-button',
-              },
-            ],
-            onClick: (menuInfo) => {
-              if (menuInfo.key === 'edit-button') {
-                navigate(getEditPolicyRulePath(fqn, rule.name || ''));
-              } else if (menuInfo.key === 'delete-button') {
-                handleRuleDelete(rule);
-              } else {
-                return;
-              }
-            },
-          }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Tooltip
-            placement="topRight"
-            title={t('label.manage-entity', {
+        <Dropdown.Root>
+          <ButtonUtility
+            color="tertiary"
+            data-testid={`manage-button-${rule.name}`}
+            icon={DotsVertical}
+            size="xs"
+            tooltip={t('label.manage-entity', {
               entity: t('label.rule'),
-            })}>
-            <Button
-              data-testid={`manage-button-${rule.name}`}
-              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
-              size="small"
-              type="text"
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            />
-          </Tooltip>
-        </Dropdown>
+            })}
+            tooltipPlacement="top end"
+          />
+          <Dropdown.Popover className="tw:w-auto">
+            <Dropdown.Menu
+              aria-label={t('label.manage-entity', {
+                entity: t('label.rule'),
+              })}
+              selectionMode="none"
+              onAction={(key) => {
+                if (key === 'edit-button') {
+                  navigate(getEditPolicyRulePath(fqn, rule.name || ''));
+                } else if (key === 'delete-button') {
+                  handleRuleDelete(rule);
+                }
+              }}>
+              <Dropdown.Item
+                icon={EditIcon}
+                id="edit-button"
+                textValue={t('label.edit')}>
+                <span data-testid="edit-rule">{t('label.edit')}</span>
+              </Dropdown.Item>
+              <Dropdown.Item
+                icon={IconDelete}
+                id="delete-button"
+                textValue={t('label.delete')}>
+                <span data-testid="delete-rule">{t('label.delete')}</span>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       );
     },
     [policy]
@@ -367,11 +342,11 @@ const PoliciesDetailPage = () => {
                     align="baseline"
                     className="w-full justify-between p-b-lg"
                     direction="horizontal">
-                    <Typography.Text
+                    <Typography
                       className="font-medium text-base text-grey-body"
                       data-testid="rule-name">
                       {rule.name}
-                    </Typography.Text>
+                    </Typography>
                     {getRuleActionElement(rule)}
                   </Space>
 
@@ -379,9 +354,9 @@ const PoliciesDetailPage = () => {
                     {rule.description && (
                       <Row data-testid="description">
                         <Col span={2}>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.description')}:`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col span={22}>
                           <RichTextEditorPreviewerV1
@@ -393,49 +368,49 @@ const PoliciesDetailPage = () => {
 
                     <Row data-testid="resources">
                       <Col span={2}>
-                        <Typography.Text className="text-grey-muted m-b-0">
+                        <Typography className="m-b-0" color="secondary">
                           {`${t('label.resource-plural')}:`}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography.Text className="text-grey-body">
+                        <Typography className="text-grey-body">
                           {rule.resources
                             ?.map((resource) => startCase(resource))
                             ?.join(', ')}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
 
                     <Row data-testid="operations">
                       <Col span={2}>
-                        <Typography.Text className="text-grey-muted">
+                        <Typography color="secondary">
                           {`${t('label.operation-plural')}:`}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography.Text className="text-grey-body">
+                        <Typography className="text-grey-body">
                           {rule.operations?.join(', ')}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
                     <Row data-testid="effect">
                       <Col span={2}>
-                        <Typography.Text className="text-grey-muted">
+                        <Typography color="secondary">
                           {`${t('label.effect')}:`}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography.Text className="text-grey-body">
+                        <Typography className="text-grey-body">
                           {startCase(rule.effect)}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
                     {rule.condition && (
                       <Row data-testid="condition">
                         <Col span={2}>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.condition')}:`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col span={22}>
                           <code>{rule.condition}</code>
@@ -532,8 +507,8 @@ const PoliciesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
-              <Row className="flex justify-between">
-                <Col span={23}>
+              <Box justify="between">
+                <div className="tw:min-w-0 tw:flex-1">
                   <EntityHeaderTitle
                     className="w-max-full"
                     displayName={policy.displayName}
@@ -547,8 +522,8 @@ const PoliciesDetailPage = () => {
                     name={policy?.name ?? ''}
                     serviceName="policy"
                   />
-                </Col>
-                <Col span={1}>
+                </div>
+                <div>
                   <ManageButton
                     isRecursiveDelete
                     afterDeleteAction={() => navigate(policiesPath)}
@@ -562,8 +537,8 @@ const PoliciesDetailPage = () => {
                     entityType={EntityType.POLICY}
                     onEditDisplayName={handleDisplayNameUpdate}
                   />
-                </Col>
-              </Row>
+                </div>
+              </Box>
               <Description
                 hasEditAccess
                 className="m-y-md"
@@ -574,11 +549,23 @@ const PoliciesDetailPage = () => {
                 onDescriptionUpdate={handleDescriptionUpdate}
               />
 
-              <Tabs
-                className="tabs-new"
-                defaultActiveKey="rules"
-                items={tabItems}
-              />
+              <Tabs className="tw:gap-3" defaultSelectedKey="rules">
+                <Tabs.List size="sm" type="underline" variant="card">
+                  {tabItems.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabItems.map(({ key, children }) => (
+                  <Tabs.Panel
+                    className="tw:rounded-xl tw:bg-primary"
+                    id={key}
+                    key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
             </div>
           )}
         </>
@@ -602,12 +589,12 @@ const PoliciesDetailPage = () => {
               );
               setEntity(undefined);
             }}>
-            <Typography.Text>
+            <Typography>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: policyName,
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         )}
       </div>

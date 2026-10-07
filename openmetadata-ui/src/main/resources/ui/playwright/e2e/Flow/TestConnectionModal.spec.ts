@@ -12,6 +12,7 @@
  */
 
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, uuid } from '../../utils/common';
@@ -99,7 +100,9 @@ async function setupWorkflowApiMocks(page: Page, workflowGetResponse: object) {
 }
 
 async function navigateToMysqlConnectionForm(page: Page) {
-  await page.goto('/databaseServices/add-service');
+  await page.goto('/databaseServices/add-service', {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   await selectServiceConnector(page, 'Mysql');
   await fillServiceNameAndWaitForValidation(page, `pw-tc-modal-test-${uuid()}`);
@@ -125,7 +128,9 @@ async function fillServiceNameAndWaitForValidation(
 }
 
 async function navigateToMysqlFormWithoutFilling(page: Page) {
-  await page.goto('/databaseServices/add-service');
+  await page.goto('/databaseServices/add-service', {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   await selectServiceConnector(page, 'Mysql');
   await advanceToServiceConnectionStep(page);
@@ -223,7 +228,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByRole('button', { name: /done/i })).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
       await expect(
         page.getByTestId('edit-connection-button')
@@ -252,7 +257,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByRole('button', { name: /done/i })).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
       await page.getByRole('button', { name: /done/i }).click();
 
@@ -301,7 +306,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByTestId('edit-connection-button')).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
       await expect(page.getByTestId('retry-test-button')).toBeVisible();
     });
@@ -331,7 +336,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByTestId('connection-remediation-card')).toBeVisible(
-        { timeout: 30000 }
+        { timeout: ACTION_TIMEOUT }
       );
     });
 
@@ -358,7 +363,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByTestId('edit-connection-button')).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       await page.getByTestId('edit-connection-button').click();
@@ -390,7 +395,7 @@ test.describe(
       await page.getByTestId('test-connection-btn').click();
 
       await expect(page.getByText(/show.*raw.*connection.*log/i)).toBeVisible({
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       await page.getByText(/show.*raw.*connection.*log/i).click();

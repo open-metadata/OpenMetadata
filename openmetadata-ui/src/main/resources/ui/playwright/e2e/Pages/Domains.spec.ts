@@ -12,6 +12,7 @@
  */
 import base, { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -47,6 +48,7 @@ import {
   visitGlossaryPage,
   waitForAntdPopupToSettle,
 } from '../../utils/common';
+import { getCustomPropertyEditButton } from '../../utils/customProperty';
 import {
   addAssetsToDataProduct,
   addAssetsToDomain,
@@ -82,13 +84,16 @@ import {
   createAnnouncement,
   deleteAnnouncement,
   editAnnouncement,
+  escapeESReservedCharacters,
   followEntity,
   getEncodedFqn,
+  openClassificationTagPicker,
   unFollowEntity,
   validateFollowedEntityToWidget,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
+import { expectBreadcrumbToContainAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin } from '../../utils/user';
@@ -112,7 +117,7 @@ const test = base.extend<{
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await setPage(page);
     await page.close();
   },
@@ -331,6 +336,40 @@ test.describe('Domains', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await addAssetsToDomain(page, domain, assets);
+    });
+
+    await test.step('Opening an asset from its card shows the full breadcrumb', async () => {
+      // Regression: navigating via the asset card used to pass a truncated
+      // breadcrumb in route state, so the asset page dropped the schema and
+      // the asset name (only service / database showed). The crumb must match
+      // a direct visit: service > database > schema > table.
+      const table = assets[0] as TableClass;
+      const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
+      // The breadcrumb current crumb renders the entity name, not displayName.
+      const tableName = table.entityResponseData.name ?? '';
+
+      const tableRes = page.waitForResponse(
+        `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
+      );
+      await page
+        .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+        .getByTestId('entity-link')
+        .click();
+      await tableRes;
+      await waitForAllLoadersToDisappear(page);
+
+      // The trail auto-collapses: the schema ancestor sits in the overflow
+      // menu while the current crumb (aria-current) stays inline. Both were
+      // dropped before the fix.
+      await expectBreadcrumbToContainAncestor(page, table.schema.name);
+      await expect(
+        page.getByTestId('breadcrumb').locator('[aria-current="page"]')
+      ).toContainText(tableName);
+
+      // Return to the domain page so the next step can create data products.
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
     });
 
     await test.step('Create DataProducts', async () => {
@@ -569,13 +608,6 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
 
       await selectDomain(page, domain.data);
-
-      // const selectSubDomainRes = page.waitForResponse(
-      //   '/api/v1/search/query?q=&index=domain*'
-      // );
-      // await page.getByTestId('subdomains').getByText('Sub Domains').click();
-      // await selectSubDomainRes;
-      // await verifyDomain(page, subDomain.data, domain.data, false);
 
       const subDomainApiRes1 = page.waitForResponse(
         '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
@@ -1254,7 +1286,7 @@ test.describe('Domains', () => {
         await expect(
           page
             .getByTestId('add-domain-form')
-            .getByTestId('tags-container')
+            .getByTestId('filter-chip')
             .getByText(tag.data.displayName)
         ).toBeVisible();
       });
@@ -1309,7 +1341,7 @@ test.describe('Domains', () => {
         await expect(
           page
             .getByTestId('add-domain-form')
-            .getByTestId('tags-container')
+            .getByTestId('filter-chip')
             .getByText(tag.data.displayName)
         ).toBeVisible();
       });
@@ -1375,12 +1407,15 @@ test.describe('Domains', () => {
 
       await page.reload();
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('all-domains-selector').click();
+      await page
+        .getByTestId('domain-dropdown-search')
+        .waitFor({ state: 'visible' });
+      await page.getByTestId('tree-node-All Domains').click();
 
-      await page.getByTestId('domain-dropdown').click();
-
-      await expect(page.getByTestId('all-domains-selector')).toHaveClass(
-        /selected-node/
+      // Picking "All Domains" clears the active scope back to the default,
+      // which the navbar trigger reflects as the "All Domains" label.
+      await expect(page.getByTestId('domain-dropdown')).toContainText(
+        'All Domains'
       );
     } finally {
       await domain.delete(apiContext);
@@ -1500,7 +1535,7 @@ test.describe('Domains', () => {
         );
         await expect(propertyCard).toBeVisible();
 
-        const editIcon = propertyCard.getByTestId('edit-icon');
+        const editIcon = getCustomPropertyEditButton(propertyCard);
         await expect(editIcon).toBeVisible();
         await editIcon.click();
 
@@ -1560,8 +1595,7 @@ test.describe('Domains', () => {
           title: 'Domain Announcement Test',
           description: 'Domain Announcement Description',
         },
-        false,
-        'announcement-card'
+        false
       );
 
       await editAnnouncement(page, {
@@ -1599,8 +1633,7 @@ test.describe('Domains', () => {
           title: 'Data Product Announcement Test',
           description: 'Data Product Announcement Description',
         },
-        false,
-        'announcement-card'
+        false
       );
 
       await editAnnouncement(page, {
@@ -2747,7 +2780,9 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('rename-button-title').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       await page.locator('#name').clear();
       await page.locator('#name').fill(domain2.responseData.name);
@@ -3294,7 +3329,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
@@ -3338,24 +3373,43 @@ test.describe('Domain Tree View Functionality', () => {
         state: 'visible',
       });
 
-      await page
-        .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
-        .click();
-      const input = page.locator(
-        '[data-testid="tags-container"] #tagsForm_tags'
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
       );
-      await input.click();
-      await input.fill(testTag.responseData.fullyQualifiedName);
+
+      const searchTagResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response
+            .url()
+            .includes(
+              encodeURIComponent(
+                escapeESReservedCharacters(
+                  testTag.responseData.fullyQualifiedName
+                )
+              )
+            ) &&
+          response.request().method() === 'GET'
+      );
       await page
-        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+        .getByTestId('classification-tag-picker-search')
+        .fill(testTag.responseData.fullyQualifiedName);
+      await searchTagResponse;
+
+      await page
+        .getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`)
         .click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
       const updateResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/domains/') &&
           response.request().method() === 'PATCH'
       );
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await updateResponse;
 
       await testTag.visitPage(page);
@@ -3376,7 +3430,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
@@ -3423,7 +3477,10 @@ test.describe('Domain asset dryRun — add confirmation', () => {
       .getByTestId('searchbar')
       .fill(name);
     await searchRes;
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   };
 
   test('shows preview modal on cross-domain move and commits on Move Anyway', async ({
@@ -3718,8 +3775,8 @@ test.describe('Domain assets — glossary and inherited glossary term', () => {
       `table-data-card_${inheritedTerm.responseData.fullyQualifiedName}`
     );
 
-    await expect(glossaryCard).toBeVisible({ timeout: 30_000 });
-    await expect(inheritedTermCard).toBeVisible({ timeout: 30_000 });
+    await expect(glossaryCard).toBeVisible({ timeout: ACTION_TIMEOUT });
+    await expect(inheritedTermCard).toBeVisible({ timeout: ACTION_TIMEOUT });
   });
 });
 
@@ -3765,10 +3822,11 @@ test.describe('Domain description editor popups', () => {
 
     await test.step('Mention popup inserts a user mention', async () => {
       await description.pressSequentially(' @admin');
+      // hasText is a case-insensitive substring match, so plain 'admin' also
+      // picks up team entries like "Legal Admin"; require an exact name node.
       await page
         .locator('.mention-item')
-        .filter({ hasText: 'admin' })
-        .first()
+        .filter({ has: page.getByText('admin', { exact: true }) })
         .click();
 
       await expect(description.locator('a[data-type="mention"]')).toBeVisible();

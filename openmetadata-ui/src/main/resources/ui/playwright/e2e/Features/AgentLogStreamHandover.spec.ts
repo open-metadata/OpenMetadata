@@ -13,6 +13,7 @@
 
 import { Page } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, uuid } from '../../utils/common';
@@ -268,7 +269,8 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
     await page.goto(
       `/service/databaseServices/${getEncodedFqn(
         service.entityResponseData.fullyQualifiedName
-      )}/agents/metadata`
+      )}/agents/metadata`,
+      { waitUntil: 'domcontentloaded' }
     );
     await page.getByTestId('data-assets-header').waitFor();
 
@@ -397,7 +399,7 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
           },
           {
             message: 'a drag with no pointer event must take the log back',
-            timeout: 30_000,
+            timeout: ACTION_TIMEOUT,
           }
         )
         .toBe('false');

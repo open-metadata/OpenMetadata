@@ -18,20 +18,21 @@ import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import MlModelDetailComponent from '../../components/MlModel/MlModelDetail/MlModelDetail.component';
 import { ROUTES } from '../../constants/constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import {
   addFollower,
   patchMlModelDetails,
@@ -421,4 +422,4 @@ const MlModelPage = () => {
   );
 };
 
-export default MlModelPage;
+export default withSuggestions(MlModelPage);

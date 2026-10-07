@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, PopoverTrigger } from '@openmetadata/ui-core-components';
 import { Fragment } from 'react';
+import { Button as AriaButton } from 'react-aria-components';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
@@ -65,8 +66,14 @@ export const getFrequentlyJoinedColumns = (
         ))}
 
         {frequentlyJoinedWithColumns.length > 3 && (
-          <Popover
-            content={
+          <PopoverTrigger>
+            <AriaButton className="show-more m-l-xss text-underline tw:cursor-pointer tw:rounded-sm tw:outline-focus-ring tw:focus-visible:outline-2">
+              ...
+            </AriaButton>
+            <Popover
+              arrow
+              containerClassName="tw:px-4 tw:py-3"
+              placement="bottom">
               <div className="text-left">
                 {frequentlyJoinedWithColumns?.slice(3).map((columnJoin) => (
                   <Fragment key={columnJoin.fullyQualifiedName}>
@@ -90,11 +97,8 @@ export const getFrequentlyJoinedColumns = (
                   </Fragment>
                 ))}
               </div>
-            }
-            placement="bottom"
-            trigger="click">
-            <span className="show-more m-l-xss text-underline">...</span>
-          </Popover>
+            </Popover>
+          </PopoverTrigger>
         )}
       </span>
     </div>

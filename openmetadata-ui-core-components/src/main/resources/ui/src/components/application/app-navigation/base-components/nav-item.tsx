@@ -1,5 +1,5 @@
 import type { FC, HTMLAttributes, MouseEventHandler, ReactNode } from 'react';
-import { ChevronDown, Share04 } from '@untitledui/icons';
+import { ChevronDown, Share04 } from '../../../../icons';
 import { Link as AriaLink } from 'react-aria-components';
 import { Badge } from '@/components/base/badges/badges';
 import { cx, sortCx } from '@/utils/cx';
@@ -7,11 +7,33 @@ import { cx, sortCx } from '@/utils/cx';
 const styles = sortCx({
   // Resting items are transparent in dark so they don't paint darker boxes on
   // the raised (bg-secondary) sidebar surface; hover/selected still highlight.
-  root: 'tw:group tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-md tw:bg-primary tw:dark:bg-transparent tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:hover:bg-primary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
-  rootSelected: 'tw:bg-active tw:hover:bg-secondary_hover',
+  // `no-underline!`: host apps ship unlayered `a:hover`/`a:focus` underline
+  // rules that outrank layered utilities; nav items are never underlined.
+  root: 'tw:group tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-md tw:bg-primary tw:dark:bg-transparent tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:hover:bg-primary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:no-underline!',
+  // Same treatment as the selected `button-brand` tab, so it holds up in dark mode.
+  rootSelected: 'tw:bg-brand-primary_alt tw:hover:bg-brand-primary_alt',
+});
+
+export type NavItemSize = 'sm' | 'md';
+
+const sizeStyles = sortCx({
+  sm: {
+    padding: 'tw:py-1',
+    icon: 'tw:size-4',
+    label: 'tw:text-sm tw:font-normal',
+    labelCurrent: 'tw:font-semibold',
+  },
+  md: {
+    padding: 'tw:py-2',
+    icon: 'tw:size-5',
+    label: 'tw:text-md tw:font-semibold',
+    labelCurrent: '',
+  },
 });
 
 interface NavItemBaseProps {
+  /** Text and icon size. `sm` is for dense secondary lists. Defaults to `md`. */
+  size?: NavItemSize;
   /** Whether the nav item shows only an icon. */
   iconOnly?: boolean;
   /** Whether the collapsible nav item is open. */
@@ -32,6 +54,8 @@ interface NavItemBaseProps {
   onClick?: MouseEventHandler;
   /** Content to display. */
   children?: ReactNode;
+  /** `data-testid` forwarded to the rendered link. */
+  dataTestId?: string;
 }
 
 export const NavItemBase = ({
@@ -42,12 +66,18 @@ export const NavItemBase = ({
   icon: Icon,
   children,
   truncate = true,
+  size = 'md',
+  dataTestId,
   onClick,
 }: NavItemBaseProps) => {
   const iconElement = Icon && (
     <Icon
       aria-hidden="true"
-      className="tw:mr-2 tw:size-5 tw:shrink-0 tw:text-fg-quaternary tw:transition-inherit-all"
+      className={cx(
+        'tw:mr-2 tw:shrink-0 tw:text-fg-quaternary tw:transition-inherit-all',
+        sizeStyles[size].icon,
+        current && 'tw:text-fg-brand-secondary_alt'
+      )}
     />
   );
 
@@ -63,9 +93,11 @@ export const NavItemBase = ({
   const labelElement = (
     <span
       className={cx(
-        'tw:flex-1 tw:text-md tw:font-semibold tw:text-secondary tw:transition-inherit-all tw:group-hover:text-secondary_hover',
+        'tw:flex-1 tw:text-secondary tw:transition-inherit-all tw:group-hover:text-secondary_hover',
+        sizeStyles[size].label,
+        current && sizeStyles[size].labelCurrent,
         truncate && 'tw:truncate',
-        current && 'tw:text-secondary_hover'
+        current && 'tw:text-brand-secondary tw:group-hover:text-brand-secondary'
       )}>
       {children}
     </span>
@@ -80,7 +112,8 @@ export const NavItemBase = ({
     return (
       <summary
         className={cx(
-          'tw:px-3 tw:py-2',
+          'tw:px-3',
+          sizeStyles[size].padding,
           styles.root,
           current && styles.rootSelected
         )}
@@ -104,10 +137,12 @@ export const NavItemBase = ({
       <AriaLink
         aria-current={current ? 'page' : undefined}
         className={cx(
-          'tw:py-2 tw:pr-3 tw:pl-10',
+          'tw:pr-3 tw:pl-10',
+          sizeStyles[size].padding,
           styles.root,
           current && styles.rootSelected
         )}
+        data-testid={dataTestId}
         href={href!}
         rel="noopener noreferrer"
         target={isExternal ? '_blank' : '_self'}
@@ -123,10 +158,12 @@ export const NavItemBase = ({
     <AriaLink
       aria-current={current ? 'page' : undefined}
       className={cx(
-        'tw:px-3 tw:py-2',
+        'tw:px-3',
+        sizeStyles[size].padding,
         styles.root,
         current && styles.rootSelected
       )}
+      data-testid={dataTestId}
       href={href!}
       rel="noopener noreferrer"
       target={isExternal ? '_blank' : '_self'}

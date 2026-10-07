@@ -43,14 +43,12 @@ import {
   Plus,
   Share07,
   X,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { ConfigProvider } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import {
   Dispatch,
   FC,
-  lazy,
   SetStateAction,
   useCallback,
   useEffect,
@@ -61,7 +59,7 @@ import {
 import { Control, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import {
@@ -72,20 +70,24 @@ import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverC
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
 import {
+  MEMORY_STATUS_LABEL_KEYS,
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
-  LabelType,
+  EntityReference,
+  EntityStatus,
   MemoryType,
   ShareVisibility,
-  State,
   TagLabel,
-  TagSource,
 } from '../../../generated/entity/context/contextMemory';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { useMemoryOntologyProposals } from '../../../hooks/discovery/context-center/useMemoryOntologyProposals';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -93,12 +95,14 @@ import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
-import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
+import MemoryDerivedOntology from '../../discovery/context-center/MemoryDerivedOntology/MemoryDerivedOntology';
+import { canProposeFromMemory } from '../../discovery/context-center/MemoryDerivedOntology/MemoryDerivedOntology.utils';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 import {
   CreateMemoryModalProps,
   LinkedAssetsSectionProps,
@@ -112,17 +116,11 @@ import {
   buildMemoryFormState,
   getAssetKey,
   getPrimaryAndRelatedEntities,
+  getSuccessorSearch,
   removeAssetByKey,
   submitMemoryCreate,
   submitMemoryUpdate,
 } from './CreateMemoryModal.utils';
-
-const TagSelectForm = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../../../components/Tag/TagsSelectForm/TagsSelectForm.component')
-  )
-);
 
 // ─── Form types ───────────────────────────────────────────────────────────────
 
@@ -132,7 +130,7 @@ const DEFAULT_FORM_VALUES: MemoryFormValues = {
   title: '',
   memory: '',
   memoryType: null,
-  visibility: ShareVisibility.Shared,
+  visibility: ShareVisibility.Private,
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -322,22 +320,22 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
   }
 
   return (
-    <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
+    <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-3 tw:py-2.5">
       <Lock01
-        className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"
+        className="tw:shrink-0 tw:text-fg-warning-primary tw:mt-0.5"
         size={16}
         strokeWidth={2}
       />
       <div className="tw:flex tw:flex-col">
         <Typography
-          className="tw:text-warning-700"
+          className="tw:text-utility-warning-700"
           size="text-xs"
           weight="semibold">
           {t('label.cant-edit-this-memory')}
         </Typography>
         <Typography
           as="p"
-          className="tw:text-warning-700 tw:leading-4"
+          className="tw:text-utility-warning-700 tw:leading-4"
           size="text-xs">
           {t('message.context-memory-read-only-description', {
             creatorName:
@@ -477,13 +475,7 @@ interface MemoryMetadataSectionProps {
   showTagForm: boolean;
   setShowTagForm: Dispatch<SetStateAction<boolean>>;
   handleRemoveTag: (tagFQN: string) => void;
-  fetchTagOptions: (
-    searchText: string,
-    page: number
-  ) => ReturnType<typeof tagClassBase.getTags>;
-  handleTagSave: (
-    tags: DefaultOptionType | DefaultOptionType[]
-  ) => Promise<void>;
+  handleTagSave: (tags: TagLabel[]) => void;
   t: TFunc;
 }
 
@@ -588,13 +580,7 @@ const MemoryTagsRow: FC<{
   showTagForm: boolean;
   setShowTagForm: Dispatch<SetStateAction<boolean>>;
   handleRemoveTag: (tagFQN: string) => void;
-  fetchTagOptions: (
-    searchText: string,
-    page: number
-  ) => ReturnType<typeof tagClassBase.getTags>;
-  handleTagSave: (
-    tags: DefaultOptionType | DefaultOptionType[]
-  ) => Promise<void>;
+  handleTagSave: (tags: TagLabel[]) => void;
   t: TFunc;
 }> = ({
   isViewOnly,
@@ -602,22 +588,21 @@ const MemoryTagsRow: FC<{
   showTagForm,
   setShowTagForm,
   handleRemoveTag,
-  fetchTagOptions,
   handleTagSave,
   t,
 }) => (
-  <div className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-3">
-    <div className="tw:flex tw:items-center tw:gap-3">
-      <div className="tw:basis-[30%]">
-        <Typography
-          className="tw:text-quaternary tw:w-28 tw:shrink-0"
-          size="text-sm">
-          {t('label.tag-plural')}
-        </Typography>
-      </div>
-      <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
-        {isViewOnly && selectedTags.length === 0 && <EmptyTags />}
-        {selectedTags.map((tag) => (
+  <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
+    <div className="tw:basis-[30%]">
+      <Typography
+        className="tw:text-quaternary tw:w-28 tw:shrink-0"
+        size="text-sm">
+        {t('label.tag-plural')}
+      </Typography>
+    </div>
+    <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
+      {isViewOnly && selectedTags.length === 0 && !showTagForm && <EmptyTags />}
+      {!showTagForm &&
+        selectedTags.map((tag) => (
           <ClassificationTag
             color={tag.style?.color}
             icon={tag.style?.iconURL}
@@ -630,37 +615,146 @@ const MemoryTagsRow: FC<{
             }
           />
         ))}
-        {!isViewOnly && (
-          <Button
-            color="link-color"
-            iconLeading={Plus}
-            size="sm"
-            onClick={() => setShowTagForm((v) => !v)}>
-            {t('label.add-entity', { entity: t('label.tag') })}
-          </Button>
-        )}
-      </div>
+      {!isViewOnly && !showTagForm && (
+        <Button
+          color="link-color"
+          iconLeading={Plus}
+          size="sm"
+          onClick={() => setShowTagForm((v) => !v)}>
+          {t('label.add-entity', { entity: t('label.tag') })}
+        </Button>
+      )}
+      {showTagForm && !isViewOnly && (
+        <TagSelector
+          isOpen
+          className="tw:w-full"
+          commitMode="staged"
+          value={selectedTags}
+          onChange={(tags) => {
+            handleTagSave(tags);
+          }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowTagForm(false);
+            }
+          }}
+        />
+      )}
     </div>
-
-    {showTagForm && !isViewOnly && (
-      <TagSelectForm
-        defaultValue={selectedTags.map((tag) => tag.tagFQN)}
-        fetchApi={fetchTagOptions}
-        placeholder={t('label.search-entity', {
-          entity: t('label.tag-plural'),
-        })}
-        onCancel={() => setShowTagForm(false)}
-        onSubmit={handleTagSave}
-      />
-    )}
   </div>
+);
+
+const getEntityStatusColor = (
+  status: EntityStatus
+): 'error' | 'warning' | 'gray' => {
+  if (status === EntityStatus.Rejected) {
+    return 'error';
+  }
+  if (status === EntityStatus.Deprecated) {
+    return 'warning';
+  }
+
+  return 'gray';
+};
+
+// Navigating from the editor would open the successor over unsaved edits, so it
+// only links in view mode.
+const MemorySuccessor: FC<{
+  successor: EntityReference;
+  isViewOnly: boolean;
+}> = ({ successor, isViewOnly }) => {
+  const location = useLocation();
+  const successorName = successor.fullyQualifiedName || successor.name;
+
+  return isViewOnly && successorName ? (
+    <Link
+      className="tw:text-brand-secondary tw:hover:underline"
+      data-testid="memory-lifecycle-successor"
+      to={{
+        pathname: ROUTES.CONTEXT_CENTER_MEMORIES,
+        search: getSuccessorSearch(
+          location.pathname,
+          location.search,
+          successorName
+        ),
+      }}>
+      {getEntityName(successor)}
+    </Link>
+  ) : (
+    <Typography
+      className="tw:text-tertiary"
+      data-testid="memory-lifecycle-successor"
+      size="text-sm">
+      {successorName ? getEntityName(successor) : successor.id}
+    </Typography>
+  );
+};
+
+const MemoryLifecycleRows: FC<{
+  memoryToEdit?: ContextMemory;
+  isViewOnly: boolean;
+  t: TFunc;
+}> = ({ memoryToEdit, isViewOnly, t }) => (
+  <>
+    {memoryToEdit?.entityStatus && (
+      <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
+        <div className="tw:basis-[30%]">
+          <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
+            {t('label.status')}
+          </Typography>
+        </div>
+        <Badge
+          color={getEntityStatusColor(memoryToEdit.entityStatus)}
+          data-testid="memory-lifecycle-status"
+          size="sm"
+          type="color">
+          {t(MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus])}
+        </Badge>
+      </div>
+    )}
+    {memoryToEdit?.statusReason && (
+      <div className="tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-3">
+        <div className="tw:basis-[30%]">
+          <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
+            {t('label.reason')}
+          </Typography>
+        </div>
+        <Typography
+          className="tw:text-tertiary tw:whitespace-pre-wrap"
+          data-testid="memory-lifecycle-reason"
+          size="text-sm">
+          {memoryToEdit.statusReason}
+        </Typography>
+      </div>
+    )}
+    {memoryToEdit?.entityStatus === EntityStatus.Deprecated &&
+      memoryToEdit.supersededBy && (
+        <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
+          <div className="tw:basis-[30%]">
+            <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
+              {t('label.superseded-by')}
+            </Typography>
+          </div>
+          <MemorySuccessor
+            isViewOnly={isViewOnly}
+            successor={memoryToEdit.supersededBy}
+          />
+        </div>
+      )}
+  </>
 );
 
 const MemoryMetadataExtraRows: FC<{
   memoryToEdit?: ContextMemory;
+  isViewOnly: boolean;
   t: TFunc;
-}> = ({ memoryToEdit, t }) => (
+}> = ({ memoryToEdit, isViewOnly, t }) => (
   <>
+    <MemoryLifecycleRows
+      isViewOnly={isViewOnly}
+      memoryToEdit={memoryToEdit}
+      t={t}
+    />
     {Boolean(memoryToEdit?.updatedAt) && (
       <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
         <div className="tw:basis-[30%]">
@@ -706,11 +800,10 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
   showTagForm,
   setShowTagForm,
   handleRemoveTag,
-  fetchTagOptions,
   handleTagSave,
   t,
 }) => (
-  <div>
+  <div data-testid="memory-metadata-section">
     <Typography className="tw:text-tertiary" size="text-xs" weight="semibold">
       {t('label.metadata')}
     </Typography>
@@ -728,7 +821,6 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
 
       {/* Tags row */}
       <MemoryTagsRow
-        fetchTagOptions={fetchTagOptions}
         handleRemoveTag={handleRemoveTag}
         handleTagSave={handleTagSave}
         isViewOnly={isViewOnly}
@@ -738,7 +830,11 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
         t={t}
       />
 
-      <MemoryMetadataExtraRows memoryToEdit={memoryToEdit} t={t} />
+      <MemoryMetadataExtraRows
+        isViewOnly={isViewOnly}
+        memoryToEdit={memoryToEdit}
+        t={t}
+      />
     </Card>
   </div>
 );
@@ -818,6 +914,19 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     [memoryToEdit, currentUserName]
   );
 
+  const ontologyProposals = useMemoryOntologyProposals(
+    memoryToEdit?.id,
+    isOpen
+  );
+  const { permissions } = usePermissionProvider();
+  const canCreateOntologyDrafts =
+    Boolean(isAdminUser) ||
+    checkPermission(
+      Operation.Create,
+      ResourceEntity.ONTOLOGY_CHANGE_SET,
+      permissions
+    );
+
   const { showEditButton, showSubmitButton } = useMemo(() => {
     const canEditMemory = (isOwner || isAdminUser) && canEdit;
     const showEditButton = isViewOnly && canEditMemory;
@@ -877,31 +986,13 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     []
   );
 
-  const handleTagSave = useCallback(
-    async (tags: DefaultOptionType | DefaultOptionType[]) => {
-      const tagArray = Array.isArray(tags) ? tags : [tags];
-      const newTags: TagLabel[] = tagArray.map((tag) => ({
-        tagFQN: typeof tag === 'string' ? tag : String(tag.value ?? ''),
-        source: TagSource.Classification,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-        style: tag.data.style,
-      }));
-      setSelectedTags(newTags);
-      setShowTagForm(false);
-    },
-    []
-  );
+  const handleTagSave = useCallback((tags: TagLabel[]) => {
+    setSelectedTags(tags);
+  }, []);
 
   const handleRemoveTag = useCallback((tagFQN: string) => {
     setSelectedTags((prev) => prev.filter((tag) => tag.tagFQN !== tagFQN));
   }, []);
-
-  const fetchTagOptions = useCallback(
-    (searchText: string, page: number) =>
-      tagClassBase.getTags(searchText, page),
-    []
-  );
 
   const handleSubmit = async (values: MemoryFormValues) => {
     setModalError('');
@@ -1165,7 +1256,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     {/* Section 5: Metadata */}
                     <MemoryMetadataSection
                       control={form.control}
-                      fetchTagOptions={fetchTagOptions}
                       handleRemoveTag={handleRemoveTag}
                       handleTagSave={handleTagSave}
                       isEditingVisibility={isEditingVisibility}
@@ -1178,6 +1268,26 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       showTagForm={showTagForm}
                       t={t}
                     />
+
+                    {memoryToEdit && (
+                      <MemoryDerivedOntology
+                        canPropose={canProposeFromMemory(
+                          memoryToEdit,
+                          ontologyProposals.status,
+                          {
+                            isOwner,
+                            canCreateDrafts: canCreateOntologyDrafts,
+                            isViewOnly,
+                          }
+                        )}
+                        isProposing={ontologyProposals.isProposing}
+                        memory={memoryToEdit}
+                        proposeError={ontologyProposals.proposeError}
+                        status={ontologyProposals.status}
+                        onNavigate={handleClose}
+                        onPropose={ontologyProposals.propose}
+                      />
+                    )}
                   </div>
 
                   {/* Sticky footer */}
