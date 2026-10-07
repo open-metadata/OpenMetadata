@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
@@ -224,7 +225,7 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
 
       await expect(allBadge).toBeVisible();
       // Open filter is the default, and exactly one task is still open.
-      await expect(badge(page)).toHaveText('1', { timeout: 30_000 });
+      await expect(badge(page)).toHaveText('1', { timeout: ACTION_TIMEOUT });
 
       // Poll the difference: all three numbers land after first paint, so a
       // single read races the count request and compares stale values. A
@@ -244,7 +245,7 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
               (Number(all.trim()) + Number(tasks.trim()))
             );
           },
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         )
         .toBe(0);
     } finally {

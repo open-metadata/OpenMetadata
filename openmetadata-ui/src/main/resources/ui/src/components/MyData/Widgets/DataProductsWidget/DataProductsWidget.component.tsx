@@ -176,6 +176,7 @@ const DataProductsWidget = ({
                         data-testid="data-product-name"
                         ellipsis={{
                           tooltip: true,
+                          excludeTriggerFromTabOrder: true,
                         }}>
                         {dataProduct.displayName || dataProduct.name}
                       </Typography>
@@ -202,7 +203,10 @@ const DataProductsWidget = ({
                       <Typography
                         className="data-product-card-name"
                         data-testid="data-product-name"
-                        ellipsis={{ tooltip: true }}>
+                        ellipsis={{
+                          tooltip: true,
+                          excludeTriggerFromTabOrder: true,
+                        }}>
                         {dataProduct.displayName || dataProduct.name}
                       </Typography>
                     </span>

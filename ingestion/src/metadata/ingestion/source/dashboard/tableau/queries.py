@@ -42,8 +42,21 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
             remoteType
           }}
           description
+          ... on ColumnField {{
+            role
+            dataType
+            isHidden
+          }}
           ... on CalculatedField {{
             formula
+            role
+            dataType
+            aggregation
+            defaultFormat
+            isHidden
+            upstreamFields {{
+              id
+            }}
           }}
         }}
       }}
@@ -56,8 +69,21 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
           remoteType
         }}
         description
+        ... on ColumnField {{
+          role
+          dataType
+          isHidden
+        }}
         ... on CalculatedField {{
           formula
+          role
+          dataType
+          aggregation
+          defaultFormat
+          isHidden
+          upstreamFields {{
+            id
+          }}
         }}
       }}
       upstreamTables {{

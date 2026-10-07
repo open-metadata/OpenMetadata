@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { SelectablePopoverProps } from '../AnchoredPopover/AnchoredPopover';
 
 export interface TagSelectableListProps {
   onCancel: () => void;
@@ -19,5 +19,5 @@ export interface TagSelectableListProps {
   selectedTags?: TagLabel[];
   onUpdate: (tags: TagLabel[]) => Promise<void>;
   children?: React.ReactNode;
-  popoverProps?: Partial<PopoverProps>;
+  popoverProps?: SelectablePopoverProps;
 }

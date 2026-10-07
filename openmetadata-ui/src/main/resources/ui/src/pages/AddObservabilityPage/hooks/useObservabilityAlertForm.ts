@@ -18,7 +18,7 @@ import {
   UseObservabilityAlertFormReturn,
 } from '../AddObservabilityPage.interface';
 import { useAlertFormData } from './useAlertFormData';
-import { useSelectedAlertTrigger } from './useObservabilityAlertResources';
+import { useSelectedAlertSources } from './useObservabilityAlertResources';
 
 export function useObservabilityAlertForm({
   form: providedForm,
@@ -26,7 +26,7 @@ export function useObservabilityAlertForm({
 }: UseObservabilityAlertFormOptions = {}): UseObservabilityAlertFormReturn {
   const [internalForm] = useForm<ModifiedCreateEventSubscription>();
   const form = providedForm ?? internalForm;
-  const selectedTrigger = useSelectedAlertTrigger(form);
+  const { sources, input } = useSelectedAlertSources(form);
 
-  return { ...useAlertFormData({ ...options, selectedTrigger }), form };
+  return { ...useAlertFormData({ ...options, sources, input }), form };
 }

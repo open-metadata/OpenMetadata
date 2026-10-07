@@ -29,6 +29,11 @@ export interface DomainTagsProps {
   onRemove?: (domain: EntityReference) => void;
   /** Chips shown before collapsing behind a "+N More" toggle. @default 5 */
   maxVisible?: number;
+  /**
+   * Max width of each chip's label before it truncates with an ellipsis. A
+   * number is px; a string (e.g. `'100%'`) lets the chip fill its container.
+   */
+  maxWidth?: string | number;
   size?: TagSize;
   /** Render the inherit glyph on inherited domains. @default true */
   showInheritedIcon?: boolean;

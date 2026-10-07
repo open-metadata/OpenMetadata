@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover } from 'antd';
 import { useMemo, useState } from 'react';
 import { ADD_USER_CONTAINER_HEIGHT } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/data/table';
-import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
+import AnchoredPopover from '../AnchoredPopover/AnchoredPopover';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { EntitySelectableListProps } from './EntitySelectableList.interface';
 
@@ -41,36 +40,34 @@ export const EntitySelectableList = <T,>({
     setPopupVisible(false);
   };
 
+  const isOpen = popoverProps?.open ?? popupVisible;
+
+  const handleOpenChange = (open: boolean) => {
+    setPopupVisible(open);
+    popoverProps?.onOpenChange?.(open);
+  };
+
   return (
-    <Popover
-      destroyTooltipOnHide
+    <AnchoredPopover
+      className={config.overlayClassName}
+      containerClassName="tw:px-3 tw:pt-2"
       content={
-        <div data-react-aria-top-layer>
-          <FocusTrapWithContainer active={popoverProps?.open || popupVisible}>
-            <SelectableList
-              customTagRenderer={config.customTagRenderer}
-              fetchOptions={config.fetchOptions}
-              height={listHeight}
-              multiSelect={multiSelect}
-              searchBarDataTestId={config.searchBarDataTestId}
-              searchPlaceholder={config.searchPlaceholder}
-              selectedItems={selectedItemsAsEntityReferences}
-              onCancel={onCancel}
-              onUpdate={handleUpdate}
-            />
-          </FocusTrapWithContainer>
-        </div>
+        <SelectableList
+          customTagRenderer={config.customTagRenderer}
+          fetchOptions={config.fetchOptions}
+          height={listHeight}
+          multiSelect={multiSelect}
+          searchBarDataTestId={config.searchBarDataTestId}
+          searchPlaceholder={config.searchPlaceholder}
+          selectedItems={selectedItemsAsEntityReferences}
+          onCancel={onCancel}
+          onUpdate={handleUpdate}
+        />
       }
-      open={popupVisible}
-      overlayClassName={`${config.overlayClassName} ${
-        popoverProps?.overlayClassName ?? ''
-      }`}
-      placement="top"
-      showArrow={false}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
+      isOpen={isOpen}
+      placement={popoverProps?.placement ?? 'top'}
+      onOpenChange={handleOpenChange}>
       {children}
-    </Popover>
+    </AnchoredPopover>
   );
 };

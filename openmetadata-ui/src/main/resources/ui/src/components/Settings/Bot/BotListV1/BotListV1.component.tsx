@@ -286,7 +286,7 @@ const BotListV1 = ({
             <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
               <Typography
                 className="text-ellipsis bot-link tw:text-primary"
-                ellipsis={{ tooltip: true }}>
+                ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
                 {renderHighlightedText(highlightSearchText(name, searchTerm))}
               </Typography>
             </Link>

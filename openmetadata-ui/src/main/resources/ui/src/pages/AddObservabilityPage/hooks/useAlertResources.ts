@@ -14,9 +14,12 @@
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AlertType as CapabilitiesAlertType } from '../../../generated/events/api/alertCapabilitiesRequest';
 import { AlertType } from '../../../generated/events/eventSubscription';
+import { useAlertSelection } from '../../../hooks/useAlertSelection';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../rest/alertsAPI';
 import { getResourceFunctions as getObservabilityResourceFunctions } from '../../../rest/observabilityAPI';
+import { toCapabilitiesInput } from '../../../utils/Alerts/AlertSelectionUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   ObservabilityFilterResourceDescriptor,
@@ -24,16 +27,27 @@ import {
 } from '../AddObservabilityPage.interface';
 import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
 
-/** Loads the alert source catalogue and narrows it to the selected source, without a form. */
+// One array for "nothing selected", so what depends on the sources does not change every render.
+const NO_SOURCES: string[] = [];
+
+/**
+ * Loads the alert source catalogue and asks the server what the chosen sources support,
+ * without a form. The caller passes the sources and the filters and triggers chosen so far.
+ */
 export function useAlertResources(
   alertType: AlertType = AlertType.Observability,
-  selectedTrigger?: string
+  sources: string[] = NO_SOURCES,
+  chosenSoFar?: Parameters<typeof toCapabilitiesInput>[0]
 ): UseObservabilityAlertResourcesReturn {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [filterResources, setFilterResources] = useState<
     ObservabilityFilterResourceDescriptor[]
   >([]);
+  const capabilitiesInput = useMemo(
+    () => toCapabilitiesInput(chosenSoFar),
+    [chosenSoFar]
+  );
 
   const fetchFunctions = useCallback(async () => {
     try {
@@ -59,42 +73,32 @@ export function useAlertResources(
     fetchFunctions();
   }, [fetchFunctions]);
 
-  const selectedResource = useMemo(
-    () => filterResources.find((resource) => resource.name === selectedTrigger),
-    [filterResources, selectedTrigger]
-  );
-
-  const supportedFilters = useMemo(
-    () => selectedResource?.supportedFilters,
-    [selectedResource]
-  );
-
-  const containerEntities = useMemo<
-    UseObservabilityAlertResourcesReturn['containerEntities']
-  >(() => selectedResource?.containerEntities, [selectedResource]);
-
-  const supportedTriggers = useMemo(
-    () => selectedResource?.supportedActions,
-    [selectedResource]
-  );
+  const selection = useAlertSelection({
+    alertType:
+      alertType === AlertType.Notification
+        ? CapabilitiesAlertType.Notification
+        : CapabilitiesAlertType.Observability,
+    sources,
+    input: capabilitiesInput,
+    catalog: filterResources,
+  });
+  const { supportedFilters, supportedTriggers } = selection.support;
 
   const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
+    () => (isEmpty(sources) ? true : !isEmpty(supportedFilters)),
+    [sources, supportedFilters]
   );
 
   const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
-    [selectedTrigger, supportedTriggers]
+    () => (isEmpty(sources) ? true : !isEmpty(supportedTriggers)),
+    [sources, supportedTriggers]
   );
 
   return {
-    containerEntities,
     filterResources,
     loading,
+    selection,
     shouldShowActionsSection,
     shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
   };
 }

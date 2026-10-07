@@ -17,6 +17,7 @@ import {
   Page,
   request,
 } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { AdminClass } from '../support/user/AdminClass';
@@ -56,7 +57,7 @@ const waitForLandingState = async (page: Page): Promise<'app' | 'login'> => {
         return false;
       },
       {
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
         message:
           'Neither the app shell (left-sidebar) nor the login form (input[name="email"]) appeared after navigating to /my-data',
       }
