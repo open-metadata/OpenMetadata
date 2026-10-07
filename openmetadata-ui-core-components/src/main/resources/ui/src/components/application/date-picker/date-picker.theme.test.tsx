@@ -27,4 +27,16 @@ describe('DatePicker trigger variants', () => {
     // Unset reads as a placeholder, not as a chosen value.
     expect(screen.getByText('Pick a day')).toHaveClass('tw:text-placeholder');
   });
+
+  it('turns the input trigger red when the field is invalid', () => {
+    render(
+      <DatePicker isInvalid aria-label="Start date" triggerVariant="input" />
+    );
+
+    // `isInvalid` is a field-level prop on the picker; react-aria never hands
+    // it to a plain Button's render props, so the trigger has to read it off
+    // the picker itself or an errored date stays neutral next to an errored
+    // Input.
+    expect(screen.getByRole('button')).toHaveClass('tw:outline-error_subtle');
+  });
 });

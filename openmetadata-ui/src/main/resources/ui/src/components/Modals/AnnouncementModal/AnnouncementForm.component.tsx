@@ -102,10 +102,13 @@ const DateField = ({
   onChange: (value: number | null) => void;
 }) => {
   // What the field held when the popover opened. Core's `DatePicker` commits
-  // every day click straight through `onChange`, and its Cancel button only
-  // closes the popover — so without restoring this, cancelling out of a
-  // mis-click keeps the wrong day and submits it.
+  // every day click straight through `onChange`, so without restoring this a
+  // mis-click survives dismissing the popover and gets submitted.
   const valueOnOpen = useRef<number | null>(value ?? null);
+  // Apply is the only confirming exit. Cancel, Escape and an outside click all
+  // leave through `onOpenChange(false)` — and react-aria calls `onCancel` for
+  // the button alone — so the revert hangs off the close, not off Cancel.
+  const wasApplied = useRef(false);
 
   return (
     <Box className="tw:min-w-0 tw:flex-1 tw:gap-1.5" direction="col">
@@ -116,13 +119,19 @@ const DateField = ({
         aria-label={label}
         data-testid={id}
         id={id}
+        isInvalid={Boolean(error)}
         triggerVariant="input"
         value={millisToDateValue(value ?? undefined)}
-        onCancel={() => onChange(valueOnOpen.current)}
+        onApply={() => {
+          wasApplied.current = true;
+        }}
         onChange={(selected) => onChange(fromCalendarValue(selected, boundary))}
         onOpenChange={(isOpen) => {
           if (isOpen) {
             valueOnOpen.current = value ?? null;
+            wasApplied.current = false;
+          } else if (!wasApplied.current) {
+            onChange(valueOnOpen.current);
           }
         }}
       />
@@ -308,10 +317,6 @@ const AnnouncementForm = ({
                   control={form.control}
                   name="startTime"
                   rules={{
-                    // Moving the start can invalidate an end that was fine
-                    // against the old one, so the other field is re-judged
-                    // here rather than only on the next submit.
-                    deps: ['endTime'],
                     validate: (value) =>
                       value != null || requiredMessage(t('label.start-date')),
                   }}>
@@ -321,7 +326,18 @@ const AnnouncementForm = ({
                       id="startTime"
                       label={t('label.start-date')}
                       value={field.value}
-                      onChange={field.onChange}
+                      onChange={(next) => {
+                        field.onChange(next);
+                        // Moving the start can invalidate an end that was fine
+                        // against the old one — but only re-judge an end that
+                        // exists. A blanket `deps` would also fire the end's
+                        // required rule the moment a start is picked, printing
+                        // "End Date is required" under a field the user has
+                        // not reached yet.
+                        if (form.getValues('endTime') != null) {
+                          form.trigger('endTime');
+                        }
+                      }}
                     />
                   )}
                 </FormField>

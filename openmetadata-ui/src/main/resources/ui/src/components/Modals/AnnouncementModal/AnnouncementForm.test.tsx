@@ -81,6 +81,16 @@ const dismissPopover = async (label: 'Apply' | 'Cancel') => {
   });
 };
 
+/** Dismiss by Escape — the exit react-aria reports without calling `onCancel`. */
+const escapePopover = async () => {
+  await act(async () => {
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: 'Escape',
+      code: 'Escape',
+    });
+  });
+};
+
 const pickDay = async (testId: string, day: string) => {
   await openAndPickDay(testId, day);
 
@@ -498,5 +508,73 @@ describe('AnnouncementForm', () => {
 
     expect(screen.getByTestId('announcement-submit')).toBeEnabled();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('should discard a mis-picked day when the popover is dismissed with Escape', async () => {
+    const october = DateTime.fromISO('2026-10-10').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await openAndPickDay('startTime', '12');
+
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(DateTime.fromISO('2026-10-12').toMillis())
+    );
+
+    // Escape and an outside click close the popover through `onOpenChange`;
+    // react-aria calls `onCancel` only for the Cancel button, so hanging the
+    // revert off Cancel alone would let this mis-click through.
+    await escapePopover();
+
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(october)
+    );
+  });
+
+  it('should not fault the untouched end date when a start date is picked', async () => {
+    // The state the add modal opens in: neither date set.
+    render(
+      <Harness
+        defaultValues={{ startTime: null, endTime: null }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await pickDay('startTime', '15');
+
+    // The end date is still required and submit stays disabled -- but the
+    // message belongs to a field the user has not reached yet, so it must not
+    // be printed under it.
+    expect(screen.queryByTestId('endTime-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('announcement-submit')).toBeDisabled();
+  });
+
+  it('should mark the picker invalid, not just print a line under it', async () => {
+    const onSubmit = jest.fn();
+    const october = DateTime.fromISO('2026-10-20').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await pickDay('endTime', '12');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('endTime-error')).toBeInTheDocument()
+    );
+
+    // An `Input` in error turns its border red; the picker has to match, or the
+    // two controls disagree in the same row.
+    expect(
+      within(screen.getByTestId('endTime')).getByRole('button', {
+        hidden: true,
+      })
+    ).toHaveClass('tw:outline-error_subtle');
   });
 });
