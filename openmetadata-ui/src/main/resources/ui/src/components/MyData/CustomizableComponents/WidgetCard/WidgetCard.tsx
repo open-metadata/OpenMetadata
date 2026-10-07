@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Card, Typography } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -68,6 +66,7 @@ const WidgetCard = ({
         isSelected ? 'selected' : ''
       }`}
       data-testid={widget.fullyQualifiedName}
+      isClickable
       onClick={handleClick}>
       <div className="widget-card-content d-flex justify-between items-center flex-1">
         <img
@@ -78,7 +77,7 @@ const WidgetCard = ({
         />
         {isSelected && (
           <div className="check-box bg-white border-radius-sm p-sm d-flex items-center justify-center">
-            <Icon className="check-icon" component={CheckIcon} />
+            <CheckIcon className="check-icon" />
           </div>
         )}
       </div>

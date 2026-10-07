@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const Edit01: FC<Props> = ({
+export const Menu03: FC<Props> = ({
   size = 24,
   color = 'currentColor',
   ...props
@@ -29,14 +29,14 @@ export const Edit01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M2.876 18.116c.046-.414.069-.62.131-.814a2 2 0 0 1 .234-.485c.111-.17.259-.317.553-.61L17 3a2.828 2.828 0 1 1 4 4L7.794 20.206c-.294.294-.442.442-.611.553a2 2 0 0 1-.485.233c-.193.063-.4.086-.814.132L2.5 21.5z"
+      d="M4.668 10H13M4.669 4.168H18M2 2.69v14.62m2.669-1.478H18"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-Edit01.displayName = 'Edit01';
+Menu03.displayName = 'Menu03';

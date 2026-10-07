@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
 import { forwardRef, useMemo } from 'react';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
@@ -36,30 +35,26 @@ const AllWidgetsContent = forwardRef<HTMLDivElement, AllWidgetsContentProps>(
         const isSelected = selectedWidgets.includes(widget.id ?? '');
 
         return (
-          <Col
-            className="d-flex"
+          <div
+            className="tw:flex"
             data-widget-key={widget.fullyQualifiedName}
-            key={widget.id}
-            lg={8}
-            md={12}
-            sm={24}>
+            key={widget.id}>
             <WidgetCard
               isSelected={isAlreadyAdded || isSelected}
               widget={widget}
               onSelectWidget={onSelectWidget}
             />
-          </Col>
+          </div>
         );
       });
     }, [widgets, addedWidgetsList, selectedWidgets, onSelectWidget]);
 
     return (
-      <Row
-        className="all-widgets-grid p-r-xs overflow-y-auto"
-        gutter={[20, 20]}
+      <div
+        className="all-widgets-grid tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:overflow-y-auto tw:pr-1"
         ref={ref}>
         {widgetsList}
-      </Row>
+      </div>
     );
   }
 );

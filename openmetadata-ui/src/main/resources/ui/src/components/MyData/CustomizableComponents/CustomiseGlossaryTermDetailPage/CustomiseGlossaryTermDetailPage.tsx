@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
 import { lazy, useCallback, useMemo } from 'react';
@@ -53,6 +52,7 @@ const GlossaryHeaderWidget = withSuspenseFallback(
 function CustomizeGlossaryTermDetailPage({
   personaDetails,
   onSaveLayout,
+  onClose,
   isGlossary,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
@@ -98,21 +98,18 @@ function CustomizeGlossaryTermDetailPage({
         pageTitle={t('label.customize-entity', {
           entity: t('label.' + kebabCase(currentPageType)),
         })}>
-        <Row className="customize-details-page" gutter={[0, 20]}>
-          <Col span={24}>
-            <CustomizablePageHeader
-              disableSave={disableSave}
-              personaName={getEntityName(personaDetails)}
-              onReset={handleReset}
-              onSave={handleSave}
-            />
-          </Col>
-          <Col span={24}>
-            <GlossaryHeaderWidget isGlossary={isGlossary} />
-          </Col>
-          {/* It will render cols inside the row */}
+        <div className="customize-details-page tw:flex tw:flex-col tw:gap-5">
+          <CustomizablePageHeader
+            disableSave={disableSave}
+            personaName={getEntityName(personaDetails)}
+            onClose={onClose}
+            onReset={handleReset}
+            onSave={handleSave}
+          />
+          <GlossaryHeaderWidget isGlossary={isGlossary} />
+          {/* CustomizeTabWidget renders its own cols internally */}
           <CustomizeTabWidget />
-        </Row>
+        </div>
       </PageLayoutV1>
     </NavigationBlocker>
   );

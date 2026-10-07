@@ -12,8 +12,13 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Modal, Space } from 'antd';
+import {
+  Box,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -88,7 +93,11 @@ function AddWidgetModal({
 
         return {
           label: (
-            <Space data-testid={`${widget.name}-widget-tab-label`}>
+            <Box
+              align="center"
+              data-testid={`${widget.name}-widget-tab-label`}
+              direction="row"
+              gap={1}>
               <span>{widget.name}</span>
               {addedWidgetsList.some(
                 (w) =>
@@ -101,7 +110,7 @@ function AddWidgetModal({
                   style={{ color: LIGHT_GREEN_COLOR }}
                 />
               )}
-            </Space>
+            </Box>
           ),
           key: widget.fullyQualifiedName,
           children: (
@@ -172,17 +181,19 @@ function AddWidgetModal({
   }, [loading, widgetsList, tabItems, activeTab, visitedTabs]);
 
   return (
-    <Modal
-      centered
-      className="add-widget-modal"
-      data-testid="add-widget-modal"
-      footer={null}
-      open={open}
-      title={t('label.add-new-entity', { entity: t('label.widget') })}
-      width={750}
-      onCancel={handleCloseAddWidgetModal}>
-      {widgetsInfo}
-    </Modal>
+    <ModalOverlay
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && handleCloseAddWidgetModal()}>
+      <Modal className="add-widget-modal">
+        <Dialog
+          data-testid="add-widget-modal"
+          title={t('label.add-new-entity', { entity: t('label.widget') })}
+          width={750}
+          onClose={handleCloseAddWidgetModal}>
+          <Dialog.Content>{widgetsInfo}</Dialog.Content>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 }
 

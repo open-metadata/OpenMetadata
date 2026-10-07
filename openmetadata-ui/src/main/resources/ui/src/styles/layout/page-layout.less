@@ -24,6 +24,8 @@
 // important Tailwind utilities (e.g. tw:!h-auto) — unlayered less rules
 // beat plain tw utilities, so the `!` is required.
 .page-layout-v1 {
+  display: flex;
+  flex-wrap: nowrap;
   margin: 0;
   overflow: hidden;
 }
@@ -45,14 +47,7 @@
     overflow: hidden;
   }
 
-  > .page-layout-v1-center > .ant-row {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  > .page-layout-v1-center > .ant-row > .ant-col {
+  > .page-layout-v1-center > .page-layout-v1-inner {
     display: flex;
     flex: 1;
     flex-direction: column;

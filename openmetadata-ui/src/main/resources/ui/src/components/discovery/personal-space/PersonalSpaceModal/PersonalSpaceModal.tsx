@@ -45,8 +45,14 @@ const DIALOG_CLASS = 'ai-personal-space__dialog';
 const PersonalSpaceModal: React.FC = () => {
   const { t } = useTranslation();
   const activePanel = usePersonalSpaceStore((state) => state.activePanel);
+  const suppressHashClear = usePersonalSpaceStore(
+    (state) => state.suppressHashClear
+  );
   const open = usePersonalSpaceStore((state) => state.open);
   const close = usePersonalSpaceStore((state) => state.close);
+  const clearSuppressHashClear = usePersonalSpaceStore(
+    (state) => state.clearSuppressHashClear
+  );
   const { pathname } = useLocation();
 
   const isOpen = activePanel !== null;
@@ -55,7 +61,12 @@ const PersonalSpaceModal: React.FC = () => {
 
   const { state: hashState } = useSettingsHash();
 
-  useSettingsHashSync(openProfile, isOpen);
+  useSettingsHashSync(
+    openProfile,
+    isOpen,
+    suppressHashClear,
+    clearSuppressHashClear
+  );
 
   // A pathname change while the modal is open means a link inside it navigated
   // away — close the overlay so it doesn't linger over the new page.

@@ -15,17 +15,16 @@ import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
   Key01,
+  Persona as PersonaIcon,
   PermissionDebugger as AccessControlIcon,
   Policy as GovernanceTabIcon,
   Settings02,
   ShieldTick,
   User01,
-  Users01,
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
 import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
-import type { ProfileNavId } from '../../../../constants/Profile.constants';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
@@ -36,13 +35,21 @@ import ProfileDetailsPanel from './ProfileDetailsPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
-import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
+import PersonasPanel from './tabs/personas/PersonasPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
-// Single source of truth lives in Profile.constants (hook-safe layer); re-exported
-// here so existing imports of `ProfileNavId` from this module keep working.
-export type { ProfileNavId };
+export type ProfileNavId =
+  | 'profile'
+  | 'permissions'
+  | 'access-token'
+  | 'my-connections'
+  | 'access-control'
+  | 'bots'
+  | 'personas'
+  | 'custom-properties'
+  | 'notification'
+  | 'governance';
 
 /** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
 export type ProfileNavGroup =
@@ -199,15 +206,15 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
 
 export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
   {
-    id: 'members',
+    id: 'personas',
     group: 'workspace',
-    label: 'label.member-plural',
-    description: 'message.team-member-management-description',
-    icon: Users01,
+    label: 'label.persona-plural',
+    description: 'message.page-sub-header-for-persona',
+    icon: PersonaIcon as FC<{ className?: string }>,
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
-      <MembersPanel onHeaderChange={onHeaderChange} />
+      <PersonasPanel onHeaderChange={onHeaderChange} />
     ),
   },
   {

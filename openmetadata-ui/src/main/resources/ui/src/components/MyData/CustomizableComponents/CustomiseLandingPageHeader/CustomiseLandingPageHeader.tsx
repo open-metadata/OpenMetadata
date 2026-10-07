@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -97,14 +95,10 @@ const CustomiseHeaderButton = ({
   hidden ? null : (
     <Button
       className="customise-header-btn"
+      color="secondary"
       data-testid="customise-header-btn"
-      icon={
-        <Icon
-          component={FilterIcon}
-          style={{ fontSize: '16px', color: 'white' }}
-        />
-      }
-      onClick={onClick}
+      iconLeading={<FilterIcon style={{ fontSize: '16px', color: 'white' }} />}
+      onPress={onClick}
     />
   );
 

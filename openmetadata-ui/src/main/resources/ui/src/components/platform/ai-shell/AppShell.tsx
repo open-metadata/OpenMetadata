@@ -31,6 +31,15 @@ const PersonalSpaceModal = withSuspenseFallback(
   )
 );
 
+const PersonaFullscreenPortal = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../discovery/personal-space/PersonaFullscreenPortal/PersonaFullscreenPortal'
+      )
+  )
+);
+
 /**
  * Outer chrome for app mode — sidebar, banners, routed content, and overlays.
  * Mounted exactly once by `AppModeRoutes` so individual modules only own their
@@ -76,6 +85,7 @@ export const AppShell = ({ children }: PropsWithChildren) => {
         <Overlay key={key} />
       ))}
       <PersonalSpaceModal />
+      <PersonaFullscreenPortal />
     </>
   );
 };

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { FC, Fragment, HTMLAttributes, ReactNode, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -74,7 +73,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      <Row
+      <div
         className={classNames(
           'page-layout-v1',
           paddingClassName,
@@ -82,41 +81,36 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           className
         )}
         data-testid="page-layout-v1"
-        data-variant={variant}
-        wrap={false}>
+        data-variant={variant}>
         {leftPanel && (
-          <Col
+          <div
             className="page-layout-leftpanel"
-            flex={leftPanelWidth + 'px'}
-            id="left-panelV1">
+            id="left-panelV1"
+            style={{ flex: `0 0 ${leftPanelWidth}px`, width: leftPanelWidth }}>
             {leftPanel}
-          </Col>
+          </div>
         )}
-        <Col
+        <div
           className={classNames(
-            `page-layout-v1-center page-layout-v1-vertical-scroll`,
+            'page-layout-v1-center page-layout-v1-vertical-scroll',
             {
               'flex justify-center': center,
               'full-screen-view': isFullScreen,
             },
             mainContainerClassName
           )}
-          flex={contentWidth}
-          offset={center ? 3 : 0}
-          span={center ? 18 : 24}>
-          <Row>
-            <Col span={24}>{children}</Col>
-          </Row>
-        </Col>
+          style={{ flex: `1 1 ${contentWidth}`, minWidth: 0 }}>
+          <div className="page-layout-v1-inner">{children}</div>
+        </div>
         {rightPanel && (
-          <Col
+          <div
             className="page-layout-rightpanel page-layout-v1-vertical-scroll"
-            flex={rightPanelWidth + 'px'}
-            id="right-panelV1">
+            id="right-panelV1"
+            style={{ flex: `0 0 ${rightPanelWidth}px`, width: rightPanelWidth }}>
             {rightPanel}
-          </Col>
+          </div>
         )}
-      </Row>
+      </div>
     </Fragment>
   );
 };

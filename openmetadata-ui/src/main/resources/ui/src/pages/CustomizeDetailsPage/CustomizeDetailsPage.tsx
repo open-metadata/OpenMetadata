@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
 import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -36,6 +35,7 @@ import { PageTypeToEntityTypeMap } from './CustomizeDetailPage.interface';
 export const CustomizeDetailsPage = ({
   personaDetails,
   onSaveLayout,
+  onClose,
 }: CustomizeMyDataProps) => {
   const { t } = useTranslation();
   const { currentPage, currentPageType, getPage } = useCustomizeStore();
@@ -82,32 +82,31 @@ export const CustomizeDetailsPage = ({
         pageTitle={t('label.customize-entity', {
           entity: t('label.' + kebabCase(currentPageType)),
         })}>
-        <Row className="customize-details-page" gutter={[0, 20]}>
-          <Col span={24}>
-            <CustomizablePageHeader
-              disableSave={disableSave}
-              personaName={getEntityName(personaDetails)}
-              onReset={handleReset}
-              onSave={handleSave}
-            />
-          </Col>
-          <Col span={24}>
-            <DataAssetsHeader
-              isCustomizedView
-              dataAsset={entityDummyData as Table}
-              entityType={
-                PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
-              }
-              permissions={{} as OperationPermission}
-              onDisplayNameUpdate={asyncNoop}
-              onOwnerUpdate={asyncNoop}
-              onRestoreDataAsset={async () => true}
-              onTierUpdate={asyncNoop}
-            />
-          </Col>
-          {/* It will render cols inside the row */}
+        <div className="customize-details-page tw:flex tw:flex-col tw:gap-5">
+          <CustomizablePageHeader
+            disableSave={disableSave}
+            personaName={getEntityName(personaDetails)}
+            onClose={onClose}
+            onReset={handleReset}
+            onSave={handleSave}
+          />
+          <DataAssetsHeader
+            isCustomizedView
+            dataAsset={entityDummyData as Table}
+            entityType={
+              (PageTypeToEntityTypeMap as Record<string, EntityType>)[
+                currentPageType
+              ] as EntityType.TABLE
+            }
+            permissions={{} as OperationPermission}
+            onDisplayNameUpdate={asyncNoop}
+            onOwnerUpdate={asyncNoop}
+            onRestoreDataAsset={async () => true}
+            onTierUpdate={asyncNoop}
+          />
+          {/* CustomizeTabWidget renders its own cols internally */}
           <CustomizeTabWidget />
-        </Row>
+        </div>
       </PageLayoutV1>
     </NavigationBlocker>
   );

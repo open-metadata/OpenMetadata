@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-import { Persona } from '../../../../generated/entity/teams/persona';
-import { Page } from '../../../../generated/system/ui/page';
+/** The sub-views rendered inside the Personas settings panel. */
+export type PersonaView =
+  | { type: 'landing' }
+  | { type: 'add' }
+  | { type: 'detail'; fqn: string; name: string }
+  | { type: 'customize'; fqn: string; name: string; category: string };
 
-export interface CustomizeMyDataProps {
-  personaDetails?: Persona;
-  isGlossary?: boolean;
-  initialPageData: Page | null;
-  backgroundColor?: string;
-  onSaveLayout: (page?: Page) => Promise<void>;
-  onBackgroundColorUpdate?: (color?: string) => Promise<void>;
-  /** Override the close-button action (used when embedded in the personas modal overlay). */
-  onClose?: () => void;
-}
+/** Detail-page tabs, selected via the `?tab=` hash param. */
+export type PersonaDetailTab = 'customize-ui' | 'users';

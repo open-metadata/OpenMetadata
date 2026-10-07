@@ -25,8 +25,13 @@ export type PersonalSpacePanel = 'profile' | 'my-data';
 
 interface PersonalSpaceState {
   activePanel: PersonalSpacePanel | null;
+  /** Set by `closeSilent` so the hash-sync effect skips clearing the URL hash. */
+  suppressHashClear: boolean;
   open: (panel: PersonalSpacePanel) => void;
   close: () => void;
+  /** Close the modal without clearing the URL hash (used when a fullscreen customize overlay takes over). */
+  closeSilent: () => void;
+  clearSuppressHashClear: () => void;
   inboxDateRange: InboxDateRange | null;
   setInboxDateRange: (range: InboxDateRange) => void;
   // When the user last looked at the Inbox activity list. Feeds have no
@@ -39,8 +44,11 @@ export const usePersonalSpaceStore = create<PersonalSpaceState>()(
   persist(
     (set) => ({
       activePanel: null,
-      open: (panel) => set({ activePanel: panel }),
+      suppressHashClear: false,
+      open: (panel) => set({ activePanel: panel, suppressHashClear: false }),
       close: () => set({ activePanel: null }),
+      closeSilent: () => set({ activePanel: null, suppressHashClear: true }),
+      clearSuppressHashClear: () => set({ suppressHashClear: false }),
       inboxDateRange: null,
       setInboxDateRange: (range) => set({ inboxDateRange: range }),
       inboxActivitySeenTs: null,

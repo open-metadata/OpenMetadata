@@ -233,6 +233,7 @@ export { MarkerPin01 } from './MarkerPin01';
 export { Maximize01 } from './Maximize01';
 export { Maximize02 } from './Maximize02';
 export { Memories } from './Memories';
+export { Menu03 } from './Menu03';
 export { Menu01 } from './Menu01';
 export { Menu02 } from './Menu02';
 export { MessageChatSquare } from './MessageChatSquare';
