@@ -35,6 +35,7 @@ import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /**
@@ -183,8 +184,9 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
       final McpToolParameters parameters,
       final String sparql) {
     RdfRepository repository = repository();
-    AgentSparqlResult result =
-        runAgentQuery(repository, requirePrincipal(securityContext), parameters, sparql);
+    AgentSparqlCaller caller =
+        AgentSparqlCaller.of(requirePrincipal(securityContext), serviceActor(securityContext));
+    AgentSparqlResult result = runAgentQuery(repository, caller, parameters, sparql);
     RdfBody.Bounded body =
         RdfBody.bound(new String(result.body(), StandardCharsets.UTF_8), maxBytes(parameters));
 
@@ -204,21 +206,32 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
    */
   private AgentSparqlResult runAgentQuery(
       final RdfRepository repository,
-      final String principal,
+      final AgentSparqlCaller caller,
       final McpToolParameters parameters,
       final String sparql) {
     AgentSparqlService service =
         AgentSparqlService.forRepository(() -> repository, projectionStateSupplier);
     try {
       return AgentSparqlAudit.record(
-          AgentSparqlCaller.of(principal, null),
+          caller,
           () -> {
             requireAgentProfileOptions(parameters);
-            return service.execute(principal, sparql);
+            return service.execute(caller.effectiveUser(), sparql);
           });
     } catch (AgentSparqlException failure) {
       throw AgentSparqlToolErrors.toToolException(failure);
     }
+  }
+
+  /**
+   * The bot behind the call, resolved the way {@code RdfResource} does for the REST endpoint: the
+   * validated swap on the context when there is one, else the request thread's impersonation.
+   * {@code McpServer} sets the latter to the MCP bot for every tool call.
+   */
+  private static String serviceActor(final CatalogSecurityContext securityContext) {
+    return securityContext.impersonatedUser() != null
+        ? securityContext.impersonatedUser()
+        : ImpersonationContext.getImpersonatedBy();
   }
 
   private static void requireAgentProfileOptions(final McpToolParameters parameters) {

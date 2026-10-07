@@ -44,6 +44,7 @@ import org.openmetadata.service.rdf.agent.AgentSparqlAudit;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.slf4j.LoggerFactory;
 
@@ -187,6 +188,27 @@ class SparqlQueryToolAgentProfileTest {
     } finally {
       auditLogger.detachAppender(events);
     }
+  }
+
+  @Test
+  void theAuditLineNamesTheMcpBotAsServiceActorAndTheImpersonationIsLeftClean() throws IOException {
+    final RdfRepository repository = repositoryReturning(EMPTY_SELECT_RESULT);
+    final Logger auditLogger = (Logger) LoggerFactory.getLogger(AgentSparqlAudit.class);
+    final ListAppender<ILoggingEvent> events = new ListAppender<>();
+    events.start();
+    auditLogger.addAppender(events);
+    ImpersonationContext.setImpersonatedBy("mcp-bot");
+    try {
+      run(repository, Map.of("query", SELECT_ALL));
+
+      final String event = events.list.get(0).getFormattedMessage();
+      assertTrue(event.contains("serviceActor=mcp-bot"), event);
+      assertTrue(event.contains("effectiveUser=agent-profile-user"), event);
+    } finally {
+      ImpersonationContext.clear();
+      auditLogger.detachAppender(events);
+    }
+    assertNull(ImpersonationContext.getImpersonatedBy());
   }
 
   @Test
