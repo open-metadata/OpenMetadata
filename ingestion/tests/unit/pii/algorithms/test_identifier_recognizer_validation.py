@@ -161,7 +161,20 @@ class TestValidatedFiPersonalIdentityCodeRecognizer:
         assert self.rec.validate_result("010101+123N") is True
 
     def test_unknown_separator_returns_false(self):
-        assert self.rec.validate_result("010101Z1239") is False
+        # Z is not a valid HETU separator; check char N is correct for 010101123
+        # so the False result unambiguously tests separator rejection.
+        assert self.rec.validate_result("010101Z123N") is False
+
+    def test_2023_separator_u_is_1900s(self):
+        # U is a 1900s separator per Finland's 2023 reform.
+        # 290200U1239: 29 Feb 1900 — 1900 is NOT a leap year → invalid date.
+        # (Without the fix U would be treated as 2000 and 29 Feb 2000 would pass.)
+        assert self.rec.validate_result("290200U1239") is False
+
+    def test_2023_separator_a_is_2000s(self):
+        # A is a 2000s separator per Finland's 2023 reform.
+        # 290200A1239: 29 Feb 2000 — 2000 IS a leap year → valid.
+        assert self.rec.validate_result("290200A1239") is True
 
     def test_wrong_length_returns_none(self):
         assert self.rec.validate_result("010101-12") is None

@@ -512,12 +512,14 @@ def au_acn_recognizer(
     )
 
 
-# Finnish HETU century separator → base year.  Letters A–Z all map to 2000; the regex
-# only admits A–Y, so Z would never reach validate_result in practice.
+# Finnish HETU century separator → base year.
+# Traditional: + → 1800, - → 1900.
+# Finland's 2023 HETU reform added new separators: A–F mean 2000s; U/V/W/X/Y mean 1900s.
 _FI_HETU_CENTURY: dict[str, int] = {
     '+': 1800,
     '-': 1900,
-    **{chr(c): 2000 for c in range(ord('A'), ord('Z') + 1)},
+    'U': 1900, 'V': 1900, 'W': 1900, 'X': 1900, 'Y': 1900,
+    'A': 2000, 'B': 2000, 'C': 2000, 'D': 2000, 'E': 2000, 'F': 2000,
 }
 # 31-entry check-character table (indices 0–30).
 _FI_HETU_CHECK_CHARS = "0123456789ABCDEFHJKLMNPRSTUVWXY"
