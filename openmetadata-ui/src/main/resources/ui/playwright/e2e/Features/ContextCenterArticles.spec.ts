@@ -918,7 +918,9 @@ test.describe('Context Center Articles', () => {
     expect(resp.status()).toBe(200);
 
     const paginationLoader = page.getByTestId('knowledge-page-loader');
-    await expect(paginationLoader).toBeVisible({ timeout: 3000 }).catch(() => null);
+    await expect(paginationLoader)
+      .toBeVisible({ timeout: 3000 })
+      .catch(() => null);
     await paginationLoader.waitFor({ state: 'hidden' });
 
     await expect.poll(() => cards.count()).toBeGreaterThan(initialCardCount);
