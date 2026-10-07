@@ -29,6 +29,10 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixin
     expression. Parameters are directly substituted via Jinja2.
     """
 
+    # The expression runs on the dataframes the sampler produced, so unlike the SQL variant
+    # it is evaluated on the configured sample and partition.
+    BYPASSES_SAMPLER = False
+
     def _run_results(self, sql_expression: str) -> int:
         """Execute the pandas query expression and return matching row count."""
         total_count = 0
@@ -40,3 +44,6 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixin
                 logger.exception(f"Error executing pandas query expression on chunk: {exc}")  # noqa: TRY401
                 raise exc  # noqa: TRY201
         return total_count
+
+    def _run_row_count(self) -> int:
+        return sum(len(df) for df in self.runner)
