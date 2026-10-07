@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, Modal, Popover } from 'antd';
+import {
+  ButtonUtility,
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Badge, Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -264,22 +269,26 @@ const ProfileSectionUserDetailsCard = ({
 
   return (
     <div className="d-flex flex-col w-full flex-center relative profile-section-user-details-card">
-      <Popover
-        destroyTooltipOnHide
-        content={manageProfileOptions}
-        open={isPopoverVisible}
-        overlayClassName="profile-management-popover"
-        placement="bottomLeft"
-        trigger="click"
-        onOpenChange={(visible) => setisPopoverVisible(visible)}>
-        {(isAdminUser || isLoggedInUser) && (
-          <MenuDots
-            className="cursor-pointer user-details-menu-icon"
+      {(isAdminUser || isLoggedInUser) && (
+        <PopoverTrigger
+          isOpen={isPopoverVisible}
+          onOpenChange={setisPopoverVisible}>
+          <ButtonUtility
+            aria-label={t('label.manage-entity', {
+              entity: t('label.profile'),
+            })}
+            className="user-details-menu-icon tw:p-0"
+            color="tertiary"
             data-testid="user-profile-manage-btn"
-            onClick={() => setisPopoverVisible((prev) => !prev)}
+            icon={<MenuDots height={24} width={24} />}
           />
-        )}
-      </Popover>
+          <Popover
+            className="profile-management-popover"
+            placement="bottom start">
+            {manageProfileOptions}
+          </Popover>
+        </PopoverTrigger>
+      )}
 
       <div className="m-t-sm">
         <UserPopOverCard userName={userData?.name}>

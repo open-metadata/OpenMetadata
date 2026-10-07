@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
@@ -2001,7 +2002,7 @@ test.describe('Data Contracts', () => {
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
           }`,
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         );
       }
 
@@ -2026,7 +2027,7 @@ test.describe('Data Contracts', () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[0]}`
         )
-      ).toBeVisible({ timeout: 30_000 });
+      ).toBeVisible({ timeout: ACTION_TIMEOUT });
 
       await openContractActionsDropdown(page);
       await page.getByTestId('contract-edit-button').click();
@@ -2077,7 +2078,7 @@ test.describe('Data Contracts', () => {
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
           },${filter.values[2]},${filter.values[3]}`,
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         );
       }
 
@@ -2104,7 +2105,7 @@ test.describe('Data Contracts', () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[1]}`
         )
-      ).toBeVisible({ timeout: 30_000 });
+      ).toBeVisible({ timeout: ACTION_TIMEOUT });
 
       await clickEditContractButton(page);
       await validateSecurityAndSLADetails(

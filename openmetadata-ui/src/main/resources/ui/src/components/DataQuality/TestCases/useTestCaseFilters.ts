@@ -12,7 +12,6 @@
  */
 import { FormProps } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
 import { entries, isEmpty, isEqual, isUndefined, uniq, values } from 'lodash';
 import QueryString from 'qs';
@@ -173,12 +172,11 @@ export const useTestCaseFilters = ({
     handleSearchParam(key as keyof TestCaseSearchParams);
   };
 
-  const filterMenu: ItemType[] = useMemo(
+  const filterMenu = useMemo(
     () =>
       entries(TEST_CASE_FILTERS).map(([name, filter]) => ({
         key: filter,
         label: TEST_CASE_FILTERS_LABELS[name],
-        value: filter,
       })),
     []
   );

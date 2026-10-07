@@ -12,11 +12,18 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { useAlertCapabilities } from '../../../../hooks/useAlertCapabilities';
 import { mockAlertDetails } from '../../../../mocks/Alerts.mock';
 import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
 import { MOCK_FILTER_RESOURCES } from '../../../../test/unit/mocks/observability.mock';
 import alertsClassBase from '../../../../utils/AlertsClassBase';
 import AlertConfigDetails from './AlertConfigDetails';
+
+jest.mock('../../../../hooks/useAlertCapabilities', () => ({
+  useAlertCapabilities: jest
+    .fn()
+    .mockReturnValue({ selection: undefined, loading: false }),
+}));
 
 const mockGetResourcePermission = jest.fn();
 
@@ -157,6 +164,47 @@ describe('AlertConfigDetails', () => {
     expect(
       screen.getByText('ObservabilityFormTriggerItem')
     ).toBeInTheDocument();
+  });
+
+  // Asked for one saved source as for several, and quietly: showing an alert asks nothing of the user.
+  it('asks the server what the saved sources support', async () => {
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={{
+            ...mockAlertDetails,
+            filteringRules: {
+              ...mockAlertDetails.filteringRules,
+              resources: ['table', 'topic'],
+            },
+          }}
+          isNotificationAlert={false}
+        />
+      );
+    });
+
+    expect(useAlertCapabilities).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table', 'topic'], quiet: true })
+    );
+
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={{
+            ...mockAlertDetails,
+            filteringRules: {
+              ...mockAlertDetails.filteringRules,
+              resources: ['table'],
+            },
+          }}
+          isNotificationAlert={false}
+        />
+      );
+    });
+
+    expect(useAlertCapabilities).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table'], quiet: true })
+    );
   });
 
   it('should show loader when fetching data', async () => {

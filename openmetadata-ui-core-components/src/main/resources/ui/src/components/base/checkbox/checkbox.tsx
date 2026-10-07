@@ -1,4 +1,5 @@
 import type { ReactNode, Ref } from 'react';
+import { forwardRef } from 'react';
 import {
   Checkbox as AriaCheckbox,
   type CheckboxProps as AriaCheckboxProps,
@@ -89,13 +90,13 @@ interface CheckboxProps extends AriaCheckboxProps {
   hint?: ReactNode;
 }
 
-export const Checkbox = ({
-  label,
-  hint,
-  size = 'sm',
-  className,
-  ...ariaCheckboxProps
-}: CheckboxProps) => {
+export const Checkbox = forwardRef<
+  HTMLLabelElement,
+  Omit<CheckboxProps, 'ref'>
+>(function Checkbox(
+  { label, hint, size = 'sm', className, ...ariaCheckboxProps },
+  ref
+) {
   const sizes = {
     xs: {
       root: 'tw:gap-2',
@@ -127,7 +128,8 @@ export const Checkbox = ({
           sizes[size].root,
           typeof className === 'function' ? className(state) : className
         )
-      }>
+      }
+      ref={ref}>
       {({ isSelected, isIndeterminate, isDisabled, isFocusVisible }) => (
         <>
           <CheckboxBase
@@ -166,5 +168,5 @@ export const Checkbox = ({
       )}
     </AriaCheckbox>
   );
-};
+});
 Checkbox.displayName = 'Checkbox';

@@ -1056,6 +1056,21 @@ describe('TableDetailsPageV1 data quality indicator', () => {
     expect(useTestCaseStore.getState().dqLineageData).toBeUndefined();
   });
 
+  it('skips the incidents request without ViewTests permission', async () => {
+    setMockPermissions({ ViewBasic: true });
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [incidentOn('passing-1')],
+      paging: { total: 1 },
+    });
+
+    await renderPage();
+
+    await waitFor(() => expect(getDataQualityLineage).toHaveBeenCalled());
+
+    expect(getListTestCaseIncidentStatus).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('dq-indicator')).not.toBeInTheDocument();
+  });
+
   it('shows the upstream state and stores the lineage response', async () => {
     const lineage = {
       nodes: [{ fullyQualifiedName: 'fqn' }, { fullyQualifiedName: 'raw' }],

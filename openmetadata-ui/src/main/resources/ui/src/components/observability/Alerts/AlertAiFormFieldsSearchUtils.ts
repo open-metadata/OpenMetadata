@@ -16,14 +16,11 @@ import { AxiosError } from 'axios';
 import { isEmpty, uniqBy } from 'lodash';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { UUID_REGEX } from '../../../constants/regex.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ObservabilityFilterResourceDescriptor } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  getDataContractSuggestions,
-  searchEntity,
-} from '../../../utils/Alerts/AlertsUtil';
+import { searchEntity } from '../../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../../utils/AlertsClassBase';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import {
   getEntityName,
@@ -254,11 +251,14 @@ export const searchAlertAiArgumentOptions = async ({
 }): Promise<SelectItemType[]> => {
   const trimmedSearchText = searchText.trim();
 
-  // Data contracts are not in the search-index mapping; classic lists them via the contracts API.
-  if (argument === 'fqnList' && selectedSource === EntityType.DATA_CONTRACT) {
-    const contracts = await getDataContractSuggestions(trimmedSearchText);
+  // A source whose names are not in the search indexes, such as a data contract, has a search of its own.
+  const ownSearch = selectedSource
+    ? alertsClassBase.getSourceNameSearch()[selectedSource]
+    : undefined;
+  if (argument === 'fqnList' && ownSearch) {
+    const names = await ownSearch(trimmedSearchText);
 
-    return contracts.map(({ value }) => ({ id: value, label: value }));
+    return names.map(({ value }) => ({ id: value, label: value }));
   }
 
   const buildConfig = ALERT_AI_ARGUMENT_CONFIG_BUILDERS[argument];

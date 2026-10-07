@@ -12,6 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -505,7 +506,7 @@ test.describe(
       await navigateToIntakeList(page);
 
       await expect(page.getByTestId(`edit-${DP_ENTITY_TYPE}`)).toBeVisible({
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       });
 
       await test.step('Open edit form page', async () => {
@@ -575,7 +576,7 @@ test.describe(
       await listResponse;
 
       const toggle = page.getByTestId(`toggle-${DP_ENTITY_TYPE}`);
-      await expect(toggle).toBeVisible({ timeout: 30_000 });
+      await expect(toggle).toBeVisible({ timeout: ACTION_TIMEOUT });
 
       const patchResponse = waitForResponseWithStatus(
         page,
@@ -612,7 +613,7 @@ test.describe(
       await navigateToIntakeList(page);
 
       await expect(page.getByTestId(`delete-${DP_ENTITY_TYPE}`)).toBeVisible({
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       });
 
       await test.step('Delete via the confirm dialog', async () => {
@@ -662,7 +663,7 @@ test.describe(
       await navigateToIntakeList(page);
 
       const deleteButton = page.getByTestId(`delete-${DP_ENTITY_TYPE}`);
-      await expect(deleteButton).toBeVisible({ timeout: 30_000 });
+      await expect(deleteButton).toBeVisible({ timeout: ACTION_TIMEOUT });
       await deleteButton.click();
 
       const dialog = page.getByTestId('intake-form-delete-confirm');
