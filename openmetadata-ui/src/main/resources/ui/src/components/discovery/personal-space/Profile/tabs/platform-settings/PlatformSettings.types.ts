@@ -11,20 +11,30 @@
  *  limitations under the License.
  */
 
+import type { TFunction } from 'i18next';
 import type { FC } from 'react';
 import type { AuthProvider } from '../../../../../../generated/settings/settings';
 
 export type PlatformSettingsPageId =
+  | 'theme'
   | 'email'
   | 'login-configuration'
   | 'health-check'
+  | 'profiler-configuration'
+  | 'data-quality'
   | 'lineage'
   | 'brand-url'
   | 'app-mode';
 
 export type PlatformSettingsView =
   | { type: 'landing' }
-  | { type: 'page'; page: PlatformSettingsPageId; isEditing: boolean };
+  | {
+      type: 'page';
+      page: PlatformSettingsPageId;
+      isEditing: boolean;
+      /** List pages: the item being edited; absent on `edit` means "add". */
+      itemId?: string;
+    };
 
 export interface PlatformSettingsPage {
   id: PlatformSettingsPageId;
@@ -36,6 +46,8 @@ export interface PlatformSettingsPage {
   /** False when the edit form has no per-field docs to offer as hints. */
   hasFieldHints?: boolean;
   isVisible?: (authProvider?: AuthProvider) => boolean;
+  /** Overrides the default "Edit {title}" header, e.g. "Add Dimension" on a list page. */
+  getEditTitle?: (t: TFunction, itemId?: string) => string;
 }
 
 /** Shared by every platform-settings page: report back to the panel. */
@@ -46,5 +58,6 @@ export interface PlatformSettingsPageProps {
 
 export interface PlatformSettingsFormProps {
   showHint: boolean;
+  itemId?: string;
   onNavigate: (view: PlatformSettingsView) => void;
 }

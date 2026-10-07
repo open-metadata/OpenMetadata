@@ -23,6 +23,8 @@ import AppModeSettings from './AppModeSettings';
 import AppModeSettingsForm from './AppModeSettingsForm';
 import BrandUrlSettings from './BrandUrlSettings';
 import BrandUrlSettingsForm from './BrandUrlSettingsForm';
+import DataQualitySettings from './DataQualitySettings';
+import DimensionSettingsForm from './DimensionSettingsForm';
 import EmailSettings from './EmailSettings';
 import EmailSettingsForm from './EmailSettingsForm';
 import HealthCheckSettings from './HealthCheckSettings';
@@ -43,6 +45,10 @@ import {
   viewToSubPath,
 } from './PlatformSettings.utils';
 import PlatformSettingsLanding from './PlatformSettingsLanding';
+import ProfilerSettings from './ProfilerSettings';
+import ProfilerSettingsForm from './ProfilerSettingsForm';
+import ThemeSettings from './ThemeSettings';
+import ThemeSettingsForm from './ThemeSettingsForm';
 
 interface PlatformSettingsPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
@@ -54,9 +60,12 @@ const VIEW_PAGES: Partial<
     (props: PlatformSettingsPageProps) => ReactNode
   >
 > = {
+  theme: (props) => <ThemeSettings {...props} />,
   email: (props) => <EmailSettings {...props} />,
   'login-configuration': (props) => <LoginSettings {...props} />,
   'health-check': (props) => <HealthCheckSettings {...props} />,
+  'profiler-configuration': (props) => <ProfilerSettings {...props} />,
+  'data-quality': (props) => <DataQualitySettings {...props} />,
   'brand-url': (props) => <BrandUrlSettings {...props} />,
   lineage: (props) => <LineageSettings {...props} />,
   'app-mode': (props) => <AppModeSettings {...props} />,
@@ -69,8 +78,11 @@ const FORM_PAGES: Partial<
     (props: PlatformSettingsFormProps) => ReactNode
   >
 > = {
+  theme: (props) => <ThemeSettingsForm {...props} />,
   email: (props) => <EmailSettingsForm {...props} />,
   'login-configuration': (props) => <LoginSettingsForm {...props} />,
+  'profiler-configuration': (props) => <ProfilerSettingsForm {...props} />,
+  'data-quality': (props) => <DimensionSettingsForm {...props} />,
   'brand-url': (props) => <BrandUrlSettingsForm {...props} />,
   lineage: (props) => <LineageSettingsForm {...props} />,
   'app-mode': (props) => <AppModeSettingsForm {...props} />,
@@ -132,7 +144,9 @@ const PlatformSettingsPanel = ({
       title = pageTitle;
 
       if (view.type === 'page' && view.isEditing) {
-        title = t('label.edit-entity', { entity: pageTitle });
+        title =
+          activePage.getEditTitle?.(t, view.itemId) ??
+          t('label.edit-entity', { entity: pageTitle });
         breadcrumbs.push({ id: 'edit', label: title });
       }
     }
@@ -188,7 +202,11 @@ const PlatformSettingsPanel = ({
     }
 
     if (showsForm) {
-      return FORM_PAGES[view.page]?.({ showHint, onNavigate });
+      return FORM_PAGES[view.page]?.({
+        showHint,
+        onNavigate,
+        itemId: view.itemId,
+      });
     }
 
     return VIEW_PAGES[view.page]?.({

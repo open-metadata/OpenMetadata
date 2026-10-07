@@ -48,6 +48,15 @@ describe('PlatformSettings.utils', () => {
       { type: 'page', page: 'health-check', isEditing: false },
     ],
     ['lineage/edit', { type: 'page', page: 'lineage', isEditing: true }],
+    [
+      'data-quality/edit/accuracy',
+      {
+        type: 'page',
+        page: 'data-quality',
+        isEditing: true,
+        itemId: 'accuracy',
+      },
+    ],
   ])('maps sub-path "%s" to its view', (subPath, expected) => {
     expect(hashSubPathToView(subPath, allPages)).toEqual(expected);
   });
@@ -69,6 +78,14 @@ describe('PlatformSettings.utils', () => {
     expect(
       viewToSubPath({ type: 'page', page: 'health-check', isEditing: false })
     ).toBe('health-check');
+    expect(
+      viewToSubPath({
+        type: 'page',
+        page: 'data-quality',
+        isEditing: true,
+        itemId: 'freshness',
+      })
+    ).toBe('data-quality/edit/freshness');
   });
 
   it('treats an empty number input as unset rather than zero', () => {

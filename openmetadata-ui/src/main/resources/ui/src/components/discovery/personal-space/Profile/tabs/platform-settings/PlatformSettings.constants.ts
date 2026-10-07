@@ -12,11 +12,14 @@
  */
 
 import {
+  Customize,
   Dataflow02,
+  DataQuality,
   HeartRounded,
   Link01,
   Lock01,
   Mail01,
+  RunProfiler,
   SwitchHorizontal01,
 } from '@openmetadata/ui-core-components/icons';
 import { isLoginConfigurationApplicable } from '../../../../../../utils/AuthProvider.util';
@@ -25,6 +28,13 @@ import type { PlatformSettingsPage } from './PlatformSettings.types';
 export const PLATFORM_SETTINGS_HASH_TAB = 'platform-settings';
 
 export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
+  {
+    id: 'theme',
+    icon: Customize,
+    titleKey: 'label.theme',
+    descriptionKey: 'message.appearance-configuration-message',
+    hasEditView: true,
+  },
   {
     id: 'email',
     icon: Mail01,
@@ -45,6 +55,25 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     icon: HeartRounded,
     titleKey: 'label.health-check',
     descriptionKey: 'message.page-sub-header-for-om-health-configuration',
+  },
+  {
+    id: 'profiler-configuration',
+    icon: RunProfiler,
+    titleKey: 'label.profiler-configuration',
+    descriptionKey: 'message.page-sub-header-for-profiler-configuration',
+    hasEditView: true,
+    hasFieldHints: false,
+  },
+  {
+    id: 'data-quality',
+    icon: DataQuality,
+    titleKey: 'label.data-quality',
+    descriptionKey: 'message.page-sub-header-for-data-quality-settings',
+    hasEditView: true,
+    getEditTitle: (t, itemId) =>
+      t(itemId ? 'label.edit-entity' : 'label.add-entity', {
+        entity: t('label.dimension'),
+      }),
   },
   {
     id: 'lineage',

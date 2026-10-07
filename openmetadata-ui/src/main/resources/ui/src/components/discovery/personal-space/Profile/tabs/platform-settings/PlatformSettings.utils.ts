@@ -37,17 +37,21 @@ export const hashSubPathToView = (
   subPath: string,
   pages: PlatformSettingsPage[]
 ): PlatformSettingsView => {
-  const [pageId, mode] = subPath.split('/');
+  const [pageId, mode, ...rest] = subPath.split('/');
   const page = pages.find((item) => item.id === pageId);
 
   if (!page) {
     return LANDING_VIEW;
   }
 
+  const isEditing = Boolean(page.hasEditView) && mode === EDIT_SEGMENT;
+  const itemId = isEditing && rest.length ? rest.join('/') : undefined;
+
   return {
     type: 'page',
     page: page.id,
-    isEditing: Boolean(page.hasEditView) && mode === EDIT_SEGMENT,
+    isEditing,
+    ...(itemId ? { itemId } : {}),
   };
 };
 
@@ -58,7 +62,13 @@ export const viewToSubPath = (
     return undefined;
   }
 
-  return view.isEditing ? `${view.page}/${EDIT_SEGMENT}` : view.page;
+  if (!view.isEditing) {
+    return view.page;
+  }
+
+  return view.itemId
+    ? `${view.page}/${EDIT_SEGMENT}/${view.itemId}`
+    : `${view.page}/${EDIT_SEGMENT}`;
 };
 
 /** Number inputs hold strings; an empty input means "unset", not zero. */

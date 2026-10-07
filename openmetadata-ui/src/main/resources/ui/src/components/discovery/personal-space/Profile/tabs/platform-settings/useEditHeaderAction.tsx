@@ -11,37 +11,45 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
-import { useEffect } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   PlatformSettingsPageId,
   PlatformSettingsPageProps,
 } from './PlatformSettings.types';
 
-/** Puts the "Edit" action in the modal header for a read-only settings view. */
+/**
+ * Puts the "Edit" action in the modal header for a read-only settings view,
+ * after any page-specific `extraActions`. Memoize `extraActions`: a new node
+ * every render re-runs the effect, which re-renders the panel and the page.
+ */
 export const useEditHeaderAction = (
   page: PlatformSettingsPageId,
   isLoading: boolean,
-  { onNavigate, onSetHeaderActions }: PlatformSettingsPageProps
+  { onNavigate, onSetHeaderActions }: PlatformSettingsPageProps,
+  extraActions?: ReactNode
 ) => {
   const { t } = useTranslation();
 
   useEffect(() => {
     onSetHeaderActions(
       isLoading ? undefined : (
-        <Button
-          color="primary"
-          data-testid="edit-button"
-          iconLeading={Edit01}
-          size="sm"
-          onPress={() => onNavigate({ type: 'page', page, isEditing: true })}>
-          {t('label.edit')}
-        </Button>
+        <Box direction="row" gap={3}>
+          {extraActions}
+          <Button
+            color="primary"
+            data-testid="edit-button"
+            iconLeading={Edit01}
+            size="sm"
+            onPress={() => onNavigate({ type: 'page', page, isEditing: true })}>
+            {t('label.edit')}
+          </Button>
+        </Box>
       )
     );
 
     return () => onSetHeaderActions(undefined);
-  }, [isLoading, onNavigate, onSetHeaderActions, page, t]);
+  }, [extraActions, isLoading, onNavigate, onSetHeaderActions, page, t]);
 };

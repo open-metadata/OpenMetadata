@@ -56,6 +56,22 @@ jest.mock('./BrandUrlSettingsForm', () => () => (
   <div data-testid="brand-url-form" />
 ));
 jest.mock('./AppModeSettings', () => () => <div data-testid="app-mode-view" />);
+jest.mock('./ThemeSettings', () => () => <div data-testid="theme-view" />);
+jest.mock('./ThemeSettingsForm', () => () => <div data-testid="theme-form" />);
+jest.mock('./ProfilerSettings', () => () => (
+  <div data-testid="profiler-view" />
+));
+jest.mock('./ProfilerSettingsForm', () => () => (
+  <div data-testid="profiler-form" />
+));
+jest.mock('./DataQualitySettings', () => () => (
+  <div data-testid="data-quality-view" />
+));
+jest.mock('./DimensionSettingsForm', () =>
+  jest.fn(({ itemId }: { itemId?: string }) => (
+    <div data-item-id={itemId ?? ''} data-testid="dimension-form" />
+  ))
+);
 jest.mock('./AppModeSettingsForm', () => () => (
   <div data-testid="app-mode-form" />
 ));
@@ -83,8 +99,11 @@ describe('PlatformSettingsPanel', () => {
     renderPanel();
 
     [
+      'theme',
       'email',
       'login-configuration',
+      'profiler-configuration',
+      'data-quality',
       'health-check',
       'lineage',
       'brand-url',
@@ -159,12 +178,34 @@ describe('PlatformSettingsPanel', () => {
     ['lineage/edit', 'lineage-form'],
     ['app-mode', 'app-mode-view'],
     ['app-mode/edit', 'app-mode-form'],
+    ['theme', 'theme-view'],
+    ['theme/edit', 'theme-form'],
+    ['profiler-configuration', 'profiler-view'],
+    ['profiler-configuration/edit', 'profiler-form'],
+    ['data-quality', 'data-quality-view'],
   ])('routes "%s" to its view or edit form', (subPath, testId) => {
     mockSubPath = subPath;
     renderPanel();
 
     expect(screen.getByTestId(testId)).toBeInTheDocument();
   });
+
+  it.each([
+    ['data-quality/edit', '', 'label.add-entity'],
+    ['data-quality/edit/freshness', 'freshness', 'label.edit-entity'],
+  ])(
+    'routes "%s" to the dimension form with its own title',
+    (subPath, itemId, title) => {
+      mockSubPath = subPath;
+      renderPanel();
+
+      expect(screen.getByTestId('dimension-form')).toHaveAttribute(
+        'data-item-id',
+        itemId
+      );
+      expect(lastHeader().title).toBe(title);
+    }
+  );
 
   it('omits the show-hint toggle on forms without field docs', () => {
     mockSubPath = 'app-mode/edit';

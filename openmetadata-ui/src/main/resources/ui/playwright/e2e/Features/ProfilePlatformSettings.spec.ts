@@ -15,8 +15,10 @@ import { expect, Page } from '@playwright/test';
 import { test } from '../../support/fixtures/base';
 import {
   chooseSelectOption,
+  getApiContext,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from '../../utils/common';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { enableAiAppMode } from '../Utils/appMode';
@@ -85,7 +87,8 @@ const stubSettingRoundTrip = async (
 
 const openPlatformSettings = async (page: Page) => {
   await enableAiAppMode(page);
-  await redirectToHomePage(page);
+  // Only the user menu is needed; home-page widget loaders are irrelevant here.
+  await redirectToHomePage(page, false);
   await page.getByTestId('ask-ai-user-menu-trigger').click();
   await page.getByTestId('ai-user-menu-profile').click();
   await expect(page.getByTestId('ai-profile-page')).toBeVisible();
@@ -132,9 +135,12 @@ test.describe(
       await openPlatformSettings(page);
 
       const pages: [string, string][] = [
+        ['theme', 'theme-settings'],
         ['email', 'email-settings'],
         ['login-configuration', 'login-settings'],
         ['health-check', 'health-check-settings'],
+        ['profiler-configuration', 'profiler-settings'],
+        ['data-quality', 'data-quality-settings'],
         ['lineage', 'lineage-settings'],
         ['brand-url', 'brand-url-settings'],
         ['app-mode', 'default-app-mode-page'],
@@ -147,7 +153,11 @@ test.describe(
           } else {
             await openCard(page, cardId);
           }
-          await expect(page.getByTestId(contentTestId)).toBeVisible();
+          // Each page loads its own settings; on a shared backend that can
+          // queue behind sibling workers (e.g. a real /system/status probe).
+          await expect(page.getByTestId(contentTestId)).toBeVisible({
+            timeout: 30_000,
+          });
           await header(page)
             .getByLabel('Breadcrumb')
             .getByText('Platform Settings', { exact: true })
@@ -402,6 +412,162 @@ test.describe(
       await expect(page.getByTestId('default-app-mode-value')).toHaveText(
         'Classic'
       );
+    });
+    test('theme: saves colours and logo, and Reset clears them', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(
+        page,
+        'customUiThemePreference'
+      );
+      await openPlatformSettings(page);
+      await openCard(page, 'theme');
+      await expect(page.getByTestId('theme-settings')).toBeVisible();
+
+      await header(page).getByTestId('edit-button').click();
+      await page.getByTestId('infoColor-color-input').fill('#123456');
+      await fillField(page, 'customFaviconUrlPath', 'favicon.ico');
+      await page.getByTestId('save-button').click();
+      await expect(
+        page.getByText('Favicon URL is not valid url')
+      ).toBeVisible();
+      expect(settings.puts).toHaveLength(0);
+
+      await fillField(
+        page,
+        'customFaviconUrlPath',
+        'https://cdn.example.org/favicon.ico'
+      );
+      await saveSettings(page);
+
+      expect(settings.puts[0].config_value).toMatchObject({
+        customLogoConfig: {
+          customFaviconUrlPath: 'https://cdn.example.org/favicon.ico',
+        },
+        customTheme: { infoColor: '#123456' },
+      });
+      await expect(page.getByTestId('infoColor-value')).toHaveText('#123456');
+
+      await clickAndWaitFor(
+        page,
+        header(page).getByTestId('reset-button'),
+        SETTINGS_PUT
+      );
+      expect(settings.puts[1].config_value).toMatchObject({
+        customTheme: { infoColor: '', primaryColor: '' },
+        customLogoConfig: { customFaviconUrlPath: '' },
+      });
+    });
+
+    test('profiler configuration: edits metric rows and sample data', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(
+        page,
+        'profilerConfiguration',
+        {
+          initial: {
+            metricConfiguration: [
+              { dataType: 'INT', metrics: ['max', 'min'], disabled: false },
+              { dataType: 'ARRAY', disabled: true },
+            ],
+            sampleDataConfig: { storeSampleData: false, readSampleData: true },
+          },
+        }
+      );
+      await openPlatformSettings(page);
+      await openCard(page, 'profiler-configuration');
+
+      await expect(page.getByTestId('metric-row-INT')).toContainText('Max');
+      await expect(page.getByTestId('metric-row-ARRAY')).toContainText(
+        'Disabled'
+      );
+
+      await header(page).getByTestId('edit-button').click();
+      await page.getByTestId('remove-filter-1').click();
+      await page.getByTestId('add-fields').click();
+      await chooseSelectOption(
+        page.getByTestId('metric-row-1').getByTestId('data-type-select'),
+        page.getByRole('option', { name: 'STRING', exact: true })
+      );
+      await page.getByTestId('store-sample-data-switch').click();
+      await saveSettings(page);
+
+      expect(settings.puts[0].config_value).toEqual({
+        metricConfiguration: [
+          { dataType: 'INT', metrics: ['max', 'min'], disabled: false },
+          { dataType: 'STRING', disabled: false },
+        ],
+        sampleDataConfig: { storeSampleData: true, readSampleData: true },
+      });
+      await expect(page.getByTestId('metric-row-STRING')).toBeVisible();
+      await expect(page.getByTestId('store-sample-data-value')).toHaveText(
+        'Enabled'
+      );
+    });
+
+    test('data quality: adds, edits and deletes a custom dimension', async ({
+      page,
+    }) => {
+      // Dimensions are entities with unique names, so this runs against the
+      // real API and cleans up after itself.
+      const name = `pw_dimension_${uuid()}`;
+      await openPlatformSettings(page);
+
+      try {
+        await openCard(page, 'data-quality');
+        await expect(page.getByTestId('dimensions-table')).toBeVisible();
+
+        await header(page).getByTestId('add-dimension').click();
+        await fillField(page, 'dimension-name', name);
+        await fillField(page, 'dimension-display-name', 'PW Dimension');
+        await page.getByTestId('dimension-color-2').click();
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('save-button'),
+          '**/api/v1/dataQuality/dimensions',
+          201
+        );
+
+        const row = page.getByTestId(`dimension-${name}`);
+        await expect(row).toContainText('PW Dimension');
+        await expect(row).toContainText('Custom');
+
+        await page.getByTestId(`edit-${name}`).click();
+        await expect(
+          page.getByTestId('dimension-name').locator('input')
+        ).toBeDisabled();
+        await fillField(page, 'dimension-display-name', 'PW Renamed');
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('save-button'),
+          '**/api/v1/dataQuality/dimensions/*'
+        );
+        await expect(row).toContainText('PW Renamed');
+
+        await page.getByTestId(`delete-${name}`).click();
+        await expect(page.getByTestId('delete-dimension-dialog')).toBeVisible();
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('confirm-delete-dimension'),
+          '**/api/v1/dataQuality/dimensions/*'
+        );
+        await expect(row).toHaveCount(0);
+      } finally {
+        const { apiContext, afterAction } = await getApiContext(page);
+        const list = await apiContext.get(
+          '/api/v1/dataQuality/dimensions?limit=1000'
+        );
+        const leftover = ((await list.json()).data ?? []).find(
+          (dimension: { name: string }) => dimension.name === name
+        );
+        if (leftover) {
+          await apiContext.delete(
+            `/api/v1/dataQuality/dimensions/${leftover.id}?hardDelete=true`
+          );
+        }
+        await afterAction();
+      }
     });
   }
 );
