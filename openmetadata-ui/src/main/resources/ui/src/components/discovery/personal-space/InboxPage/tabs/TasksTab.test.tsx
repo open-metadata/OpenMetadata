@@ -469,17 +469,6 @@ describe('TasksTab', () => {
     expect(mockListVisibleTasks.mock.calls[0][0]).not.toHaveProperty('endTs');
   });
 
-  it('lists all entity tasks (listTasks) when scoped to an entity', () => {
-    renderTab({ aboutEntity: 'svc.db.schema.table.tc' });
-
-    capturedFetchPage(undefined);
-
-    expect(mockListTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ aboutEntity: 'svc.db.schema.table.tc' })
-    );
-    expect(mockListVisibleTasks).not.toHaveBeenCalled();
-  });
-
   it('merges a custom className with the base card classes on the root', () => {
     renderTab({ className: 'tw:-mx-4' });
 

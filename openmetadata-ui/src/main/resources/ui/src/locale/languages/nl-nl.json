@@ -3457,6 +3457,7 @@
     "value-boost": "Waarde boost",
     "value-count": "Aantal waarden",
     "value-plural": "Waarden",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "Metriekvariant",
     "variant-plural": "Varianten",
     "vector-avg": "Vector gem.",

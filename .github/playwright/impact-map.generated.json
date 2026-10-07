@@ -8755,6 +8755,16 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/activity-feed/ActivityFeed/ActivityFeed.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
+        "playwright/e2e/Features/Tasks/TeamActivity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/AirflowMessageBanner/AirflowMessageBanner.tsx"
       ],
       "specs": [

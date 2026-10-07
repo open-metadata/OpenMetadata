@@ -3457,6 +3457,7 @@
     "value-boost": "値のブースト",
     "value-count": "値の件数",
     "value-plural": "値",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "バリアント",
     "variant-plural": "バリアント",
     "vector-avg": "ベクトル平均",

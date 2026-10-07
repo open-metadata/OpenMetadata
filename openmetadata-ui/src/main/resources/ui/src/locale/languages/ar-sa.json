@@ -3457,6 +3457,7 @@
     "value-boost": "تعزيز القيمة",
     "value-count": "عدد القيمة",
     "value-plural": "قيم",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "متغير",
     "variant-plural": "متغيرات",
     "vector-avg": "متوسط المتجه",

@@ -3457,6 +3457,7 @@
     "value-boost": "值權重",
     "value-count": "值計數",
     "value-plural": "值",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "變體",
     "variant-plural": "變體",
     "vector-avg": "向量平均",

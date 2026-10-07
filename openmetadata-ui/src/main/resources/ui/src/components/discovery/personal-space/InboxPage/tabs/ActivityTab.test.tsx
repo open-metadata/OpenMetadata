@@ -218,13 +218,16 @@ describe('ActivityTab', () => {
   it('fetches the sub-tab the toolbar selects', () => {
     render(<ActivityTab />);
 
-    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', undefined);
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', undefined, {
+      type: 'inbox',
+    });
 
     fireEvent.click(screen.getByText('following'));
 
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
-      undefined
+      undefined,
+      { type: 'inbox' }
     );
   });
 

@@ -18,7 +18,9 @@ import { FC, useState } from 'react';
 export interface ActivityToolbarMenuOption {
   value: string;
   label: string;
-  icon: FC<{ className?: string }>;
+  icon?: FC<{ className?: string }>;
+  // Shown at the row's end, e.g. how many items the option holds.
+  count?: string;
 }
 
 export interface ActivityToolbarMenuProps {
@@ -33,10 +35,7 @@ export interface ActivityToolbarMenuProps {
   'data-testid'?: string;
 }
 
-/**
- * A single-choice toolbar menu as the design draws it: a heading, an icon per
- * option and a check on the chosen one, rather than a tinted row.
- */
+/** A single-choice toolbar menu: a heading over one row per option. */
 const ActivityToolbarMenu = ({
   title,
   triggerLabel,
@@ -73,6 +72,7 @@ const ActivityToolbarMenu = ({
             </Dropdown.SectionHeader>
             {options.map((option) => (
               <Dropdown.Item
+                addon={option.count}
                 icon={option.icon}
                 id={option.value}
                 key={option.value}

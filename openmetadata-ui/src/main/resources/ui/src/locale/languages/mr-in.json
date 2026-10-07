@@ -3457,6 +3457,7 @@
     "value-boost": "मूल्य बूस्ट",
     "value-count": "मूल्य संख्या",
     "value-plural": "मूल्ये",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "व्हेरिएंट",
     "variant-plural": "व्हेरिएंट्स",
     "vector-avg": "वेक्टर सरासरी",

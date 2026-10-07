@@ -33,6 +33,7 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { getEntityFeedLink } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 import type { TableDetailPageTabProps } from './TableClassBase';
 
@@ -40,11 +41,10 @@ const TabsLabel = withSuspenseFallback(
   lazy(() => import('../components/common/TabsLabel/TabsLabel.component'))
 );
 
-const ActivityFeedTab = withSuspenseFallback(
-  lazy(() =>
-    import(
-      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
-    ).then((module) => ({ default: module.ActivityFeedTab }))
+const ActivityFeedEntityTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedEntityTab')
   ),
   TAB_CONTENT_FALLBACK
 );
@@ -311,10 +311,14 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedTab
+        <ActivityFeedEntityTab
           refetchFeed
           columns={tableDetails?.columns}
           entityFeedTotalCount={feedCount.totalCount}
+          entityLink={getEntityFeedLink(
+            EntityType.TABLE,
+            tableDetails?.fullyQualifiedName
+          )}
           entityType={EntityType.TABLE}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}

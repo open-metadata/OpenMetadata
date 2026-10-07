@@ -31,6 +31,30 @@ import {
 /** How the loaded tasks are broken up in the list. */
 export type InboxTaskGrouping = 'none' | 'type';
 
+/**
+ * The Type filter's options: one per label, not per type, since a test case
+ * incident and an incident both read "Incident" and listing them apart showed
+ * "Incident" twice. Taken from the tasks on screen rather than the full enum,
+ * so it never offers a type the queue does not hold; a chosen type stays
+ * offered (at 0) when none of its tasks are loaded, so it can be unticked.
+ */
+export const useTaskTypeOptions = (tasks: Task[], typeFilter: string[]) => {
+  const { t } = useTranslation();
+
+  return useMemo(() => {
+    const counts = countBy(tasks, getTaskTypeKey);
+    typeFilter.forEach((key) => {
+      counts[key] ??= 0;
+    });
+
+    return Object.entries(counts).map(([key, count]) => ({
+      value: key,
+      label: t(key),
+      count,
+    }));
+  }, [tasks, typeFilter, t]);
+};
+
 export interface InboxTaskListToolbarProps {
   /** The All / Open / Closed control, sharing the first row with grouping. */
   statusTabs: ReactNode;
@@ -94,22 +118,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
     [statusOptions, t]
   );
 
-  // One option per label, not per type: a test case incident and an incident
-  // both read "Incident", and listing them apart showed "Incident" twice. A
-  // chosen type stays offered (at 0) when none of its tasks are loaded, e.g.
-  // after switching tab, so it can still be unticked.
-  const typeOptions = useMemo(() => {
-    const counts = countBy(tasks, getTaskTypeKey);
-    typeFilter.forEach((key) => {
-      counts[key] ??= 0;
-    });
-
-    return Object.entries(counts).map(([key, count]) => ({
-      value: key,
-      label: t(key),
-      count,
-    }));
-  }, [tasks, typeFilter, t]);
+  const typeOptions = useTaskTypeOptions(tasks, typeFilter);
 
   return (
     <Box
