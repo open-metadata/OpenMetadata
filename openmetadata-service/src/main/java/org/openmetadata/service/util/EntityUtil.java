@@ -1013,22 +1013,6 @@ public final class EntityUtil {
     return null;
   }
 
-  public static boolean isDescriptionTask(TaskType taskType) {
-    return taskType == TaskType.RequestDescription || taskType == TaskType.UpdateDescription;
-  }
-
-  public static boolean isTagTask(TaskType taskType) {
-    return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
-  }
-
-  public static boolean isApprovalTask(TaskType taskType) {
-    return taskType == TaskType.RequestApproval;
-  }
-
-  public static boolean isTestCaseFailureResolutionTask(TaskType taskType) {
-    return taskType == TaskType.RequestTestCaseFailureResolution;
-  }
-
   public static Column findColumn(List<Column> columns, String columnName) {
     return columns.stream()
         .filter(c -> c.getName().equals(columnName))

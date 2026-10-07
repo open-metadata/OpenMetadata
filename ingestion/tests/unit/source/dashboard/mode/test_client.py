@@ -138,3 +138,18 @@ def test_fetch_all_reports_stops_when_a_tokenless_page_repeats(mode_client):
     ]
 
     assert mode_client.fetch_all_reports("acme") == repeated_page
+
+
+def test_get_user_email_is_fetched_once_per_user(mode_client):
+    mode_client.client.get.return_value = {"username": "jane", "email": "jane@acme.com"}
+
+    assert mode_client.get_user_email("jane") == "jane@acme.com"
+    assert mode_client.get_user_email("jane") == "jane@acme.com"
+    mode_client.client.get.assert_called_once_with("/jane")
+
+
+def test_get_user_email_tolerates_withheld_email_and_failures(mode_client):
+    mode_client.client.get.side_effect = [{"username": "jane"}, RuntimeError("403")]
+
+    assert mode_client.get_user_email("jane") is None
+    assert mode_client.get_user_email("john") is None

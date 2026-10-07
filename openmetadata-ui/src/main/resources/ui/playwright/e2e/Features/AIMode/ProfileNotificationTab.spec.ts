@@ -36,6 +36,7 @@ import {
   generateAlertName,
   waitForRecentEventsToFinishExecution,
 } from '../../../utils/alert';
+import { deleteFixtureEntity } from '../../../utils/apiResponse';
 import { getApiContext } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -54,6 +55,10 @@ import {
   navigateToEditAlert,
   saveNewAlertAndVerify,
 } from '../../../utils/profileNotificationAlert';
+import {
+  startWebhookReceiver,
+  stopWebhookReceiver,
+} from '../../../utils/webhook';
 
 // ── Test entities (instantiated in beforeAll) ────────────────────────────────
 
@@ -434,66 +439,90 @@ test('Alert with recent events check', async ({ page }) => {
   test.slow();
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);
-  await navigateToAlertsList(page);
+  // Set while the alert exists, so a test that stops early still removes it.
+  let createdAlertId: string | undefined;
 
-  await test.step('Create and trigger alert', async () => {
-    await page.getByTestId('add-alert').click();
-    await inputAlertInformation({
-      page,
-      name: ALERT_NAME,
-      sourceName: SOURCE_NAME_5,
-    });
-
-    await page.getByTestId('add-filters').click();
-    await addEntityFQNFilterProfile({
-      page,
-      filterNumber: 0,
-      entityFQN: (table.entityResponseData as { fullyQualifiedName: string })
-        .fullyQualifiedName,
-    });
-
-    await page.getByTestId('add-filters').click();
-    await addEventTypeFilterProfile({
-      page,
-      filterNumber: 1,
-      eventTypes: ['Entity Soft Deleted', 'Entity Restored'],
-    });
-
-    await page.click('[data-testid="add-destination-button"]');
-    await addInternalDestinationProfile({
-      page,
-      destinationNumber: 0,
-      category: 'Owners',
-      type: 'Email',
-    });
-
-    data.alertDetails = await saveNewAlertAndVerify(page);
-
-    await table.deleteTable(apiContext, false);
-    await table.restore(apiContext);
-  });
-
-  await test.step('Check alert details and recent events', async () => {
+  try {
+    // A receiver this test runs, so each event is really sent and counted as sent.
+    const destinationEndpoint = await startWebhookReceiver();
     await navigateToAlertsList(page);
 
-    await waitForRecentEventsToFinishExecution(page, data.alertDetails.name, 2);
+    await test.step('Create and trigger alert', async () => {
+      await page.getByTestId('add-alert').click();
+      await inputAlertInformation({
+        page,
+        name: ALERT_NAME,
+        sourceName: SOURCE_NAME_5,
+      });
 
-    await navigateToAlertDetail(page, data.alertDetails);
+      await page.getByTestId('add-filters').click();
+      await addEntityFQNFilterProfile({
+        page,
+        filterNumber: 0,
+        entityFQN: (table.entityResponseData as { fullyQualifiedName: string })
+          .fullyQualifiedName,
+      });
 
-    await expect(page.getByTestId('edit-description-btn')).toBeVisible();
+      await page.getByTestId('add-filters').click();
+      await addEventTypeFilterProfile({
+        page,
+        filterNumber: 1,
+        eventTypes: ['Entity Soft Deleted', 'Entity Restored'],
+      });
 
-    await checkRecentEventDetailsProfile({
-      page,
-      alertDetails: data.alertDetails,
-      table,
-      totalEventsCount: 2,
+      await page.click('[data-testid="add-destination-button"]');
+      await addExternalDestinationProfile({
+        page,
+        destinationNumber: 0,
+        category: 'Webhook',
+        input: destinationEndpoint,
+      });
+
+      data.alertDetails = await saveNewAlertAndVerify(page);
+      createdAlertId = data.alertDetails.id;
+
+      await table.deleteTable(apiContext, false);
+      await table.restore(apiContext);
     });
-  });
 
-  await test.step('Delete alert', async () => {
-    await navigateToAlertsList(page);
-    await deleteAlertFromList(page, data.alertDetails);
-  });
+    await test.step('Check alert details and recent events', async () => {
+      await navigateToAlertsList(page);
+
+      await waitForRecentEventsToFinishExecution(
+        page,
+        data.alertDetails.name,
+        2
+      );
+
+      await navigateToAlertDetail(page, data.alertDetails);
+
+      await expect(page.getByTestId('edit-description-btn')).toBeVisible();
+
+      await checkRecentEventDetailsProfile({
+        page,
+        alertDetails: data.alertDetails,
+        table,
+        totalEventsCount: 2,
+      });
+    });
+
+    await test.step('Delete alert', async () => {
+      await navigateToAlertsList(page);
+      await deleteAlertFromList(page, data.alertDetails);
+      createdAlertId = undefined;
+    });
+  } finally {
+    try {
+      if (createdAlertId) {
+        await deleteFixtureEntity(
+          apiContext,
+          `/api/v1/events/subscriptions/${createdAlertId}?hardDelete=true`
+        );
+      }
+    } finally {
+      await stopWebhookReceiver();
+    }
+  }
 });
 
 test('Destination should work properly', async ({ page }) => {

@@ -31,7 +31,6 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
   waitForToastToDisappear,
 } from '../../../utils/common';
 import {
@@ -1096,13 +1095,13 @@ test.describe(
 
         // get all the filters
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="testPlatforms"]');
+        await page.getByTestId('advanced-filter-option-testPlatforms').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="lastRunRange"]');
+        await page.getByTestId('advanced-filter-option-lastRunRange').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="serviceName"]');
+        await page.getByTestId('advanced-filter-option-serviceName').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="tier"]');
+        await page.getByTestId('advanced-filter-option-tier').click();
 
         // Test case search filter
         const searchTestCaseResponse = page.waitForResponse(
@@ -1184,7 +1183,7 @@ test.describe(
         const getTestCase = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="serviceName"]');
+        await page.getByTestId('advanced-filter-option-serviceName').click();
         await getTestCase;
 
         // Test case filter by Tags
@@ -1218,7 +1217,7 @@ test.describe(
         const getTestCaseWithoutTag = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tags"]');
+        await page.getByTestId('advanced-filter-option-tags').click();
         await getTestCaseWithoutTag;
 
         // Test case filter by Tier
@@ -1239,7 +1238,7 @@ test.describe(
         const getTestCaseWithoutTier = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tier"]');
+        await page.getByTestId('advanced-filter-option-tier').click();
         await getTestCaseWithoutTier;
 
         // Test case filter by table name
@@ -1373,7 +1372,7 @@ test.describe(
         expect(page.url()).toBe(url);
 
         await page.getByTestId('advanced-filter').click();
-        await page.click('[value="testPlatforms"]');
+        await page.getByTestId('advanced-filter-option-testPlatforms').click();
 
         await expect(
           page.getByTestId('platform-select-filter')
@@ -1381,7 +1380,9 @@ test.describe(
 
         await page.reload({ waitUntil: 'domcontentloaded' });
 
-        await expect(page.locator('[value="tier"]')).not.toBeVisible();
+        await expect(
+          page.getByTestId('advanced-filter-option-tier')
+        ).not.toBeVisible();
 
         // Apply domain globally
         await page.getByTestId('domain-dropdown').click();
@@ -1575,11 +1576,8 @@ test.describe(
 
           await expect(pageSizeDropdown).toBeVisible();
 
-          // Ant Dropdown opens on hover, so a re-render that shifts the footer out
-          // from under the pointer leaves the menu closed for good.
-          await pageSizeDropdown.hover();
+          await pageSizeDropdown.click();
           await expect(pageSizeMenu).toBeVisible();
-          await waitForAntdPopupToSettle(page);
 
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });

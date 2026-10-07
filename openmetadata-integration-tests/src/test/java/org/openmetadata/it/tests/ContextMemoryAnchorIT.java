@@ -43,6 +43,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -428,6 +429,7 @@ public class ContextMemoryAnchorIT {
   private static CreateContextMemory entityMemory(TestNamespace ns, String name) {
     return new CreateContextMemory()
         .withName(ns.prefix(name))
+        .withEntityStatus(EntityStatus.APPROVED)
         .withQuestion("Which column holds the order total?")
         .withAnswer("orders.amount_usd, in US dollars.")
         .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));

@@ -58,8 +58,13 @@ export const canEditTestCaseParameters = (
   isParameterEdit: boolean
 ): boolean => Boolean(hasEditPermission && isParameterEdit);
 
-export const getSidePanelColSpanClass = (isSidePanelVisible: boolean): string =>
-  isSidePanelVisible ? 'tw:col-span-8' : 'tw:col-span-12';
+// The rail keeps the mock's 320 px where the tab has room (30% of it, at least
+// 260 px), and stacks under the results below 48rem instead of shrinking to a
+// third of the tab, where its rows broke a word per line.
+export const getResultTabGridClass = (isSidePanelVisible: boolean): string =>
+  isSidePanelVisible
+    ? 'tw:grid-cols-1 tw:@3xl:grid-cols-[minmax(0,1fr)_clamp(260px,30%,320px)]'
+    : 'tw:grid-cols-1';
 
 export const resolveIsSidePanelVisible = (
   showSidePanel: boolean | undefined,

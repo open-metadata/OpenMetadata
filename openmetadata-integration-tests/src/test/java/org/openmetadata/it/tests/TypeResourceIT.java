@@ -128,6 +128,20 @@ public class TypeResourceIT {
   }
 
   @Test
+  void test_teamAndUserAreEntityTypes() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    for (String entityType : List.of("team", "user")) {
+      Type type = getTypeByName(client, entityType);
+      assertNotNull(type.getId(), entityType + " must be seeded as a Type");
+      assertEquals(
+          Category.Entity,
+          type.getCategory(),
+          entityType + " must be an Entity Type so custom properties can be defined on it");
+    }
+  }
+
+  @Test
   @Disabled("Type list pagination may not include all types - needs investigation")
   void test_listTypes() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();

@@ -40,7 +40,6 @@ import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.service.Entity;
@@ -774,18 +773,6 @@ class EntityUtilTest {
     assertNull(EntityUtil.getEntityField(null, "fullyQualifiedName"));
     assertNull(EntityUtil.getEntityField(table, ""));
     assertNull(EntityUtil.getEntityField(new ThrowingFieldTable(), "brokenField"));
-
-    assertTrue(EntityUtil.isDescriptionTask(TaskType.RequestDescription));
-    assertTrue(EntityUtil.isDescriptionTask(TaskType.UpdateDescription));
-    assertFalse(EntityUtil.isDescriptionTask(TaskType.RequestTag));
-    assertTrue(EntityUtil.isTagTask(TaskType.RequestTag));
-    assertTrue(EntityUtil.isTagTask(TaskType.UpdateTag));
-    assertFalse(EntityUtil.isTagTask(TaskType.RequestApproval));
-    assertTrue(EntityUtil.isApprovalTask(TaskType.RequestApproval));
-    assertFalse(EntityUtil.isApprovalTask(TaskType.RequestTag));
-    assertTrue(
-        EntityUtil.isTestCaseFailureResolutionTask(TaskType.RequestTestCaseFailureResolution));
-    assertFalse(EntityUtil.isTestCaseFailureResolutionTask(TaskType.RequestApproval));
   }
 
   @Test

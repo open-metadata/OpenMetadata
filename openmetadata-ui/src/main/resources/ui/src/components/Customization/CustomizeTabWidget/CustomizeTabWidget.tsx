@@ -12,7 +12,11 @@
  */
 
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Input, Modal, Space } from 'antd';
+import {
+  Button as CoreButton,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Input, Modal } from 'antd';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
@@ -504,28 +508,29 @@ export const CustomizeTabWidget = () => {
               />
             ))}
             {hiddenTabs.map((item) => (
-              <Dropdown
-                key={item.id}
-                menu={{
-                  items: [
-                    {
-                      label: t('label.show'),
-                      key: 'show',
-                      icon: <EyeFilled />,
-                    },
-                  ],
-                  onClick: () => add(item),
-                }}
-                trigger={['click']}>
-                <Button
+              <Dropdown.Root key={item.id}>
+                <CoreButton
                   className="draggable-hidden-tab-item bg-grey"
-                  data-testid={`tab-${item.name}`}>
-                  <Space>
-                    {getTabDisplayName(item)}
-                    <MoreOutlined />
-                  </Space>
-                </Button>
-              </Dropdown>
+                  color="secondary"
+                  data-testid={`tab-${item.name}`}
+                  iconTrailing={MoreOutlined}>
+                  {getTabDisplayName(item)}
+                </CoreButton>
+                <Dropdown.Popover
+                  className="tw:w-auto"
+                  placement="bottom start">
+                  <Dropdown.Menu
+                    aria-label={getTabDisplayName(item)}
+                    selectionMode="none"
+                    onAction={() => add(item)}>
+                    <Dropdown.Item
+                      icon={EyeFilled}
+                      id="show"
+                      label={t('label.show')}
+                    />
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             ))}
           </div>
         </Card>

@@ -308,7 +308,9 @@ test.describe('Domain Style Editing', () => {
       await page.getByTestId('edit-style-button').click();
 
       // Wait for modal to appear
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       // Fill icon URL input (data-testid="icon-url")
       await page.getByTestId('icon-url').fill('https://example.com/icon.png');
@@ -345,7 +347,9 @@ test.describe('Data Product UI Operations', () => {
       await page.getByTestId('rename-button').first().click();
 
       // Wait for modal to appear
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const newName = `Renamed DP ${uuid()}`;
       await page.locator('#displayName').clear();
@@ -380,7 +384,9 @@ test.describe('Data Product UI Operations', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
       await fillDeleteConfirmationIfPresent(page);
@@ -523,7 +529,9 @@ test.describe('Subdomain Management', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       await fillDeleteConfirmationIfPresent(page);
@@ -572,7 +580,9 @@ test.describe('Subdomain Management', () => {
       await page.getByTestId('rename-button').first().click();
 
       // Wait for modal to appear
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const newName = `Renamed SubDomain ${uuid()}`;
       await page.locator('#displayName').clear();
@@ -857,7 +867,9 @@ test.describe('Delete Domain with Dependencies', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       await fillDeleteConfirmationIfPresent(page);

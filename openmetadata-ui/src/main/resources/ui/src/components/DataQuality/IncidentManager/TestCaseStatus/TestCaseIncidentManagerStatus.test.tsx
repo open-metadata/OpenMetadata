@@ -100,6 +100,20 @@ describe('TestCaseIncidentManagerStatus', () => {
     ).toBeInTheDocument();
   });
 
+  it('names the header edit button, as the other header fields name theirs', async () => {
+    render(
+      <TestCaseIncidentManagerStatus
+        {...mockProps}
+        newLook
+        headerName="label.incident-status"
+      />
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'label.edit-entity' })
+    ).toHaveAttribute('data-testid', 'edit-resolution-icon');
+  });
+
   it('Should not show edit icon if edit permission is false', async () => {
     (checkPermission as jest.Mock).mockReturnValueOnce(false);
     const { container } = render(

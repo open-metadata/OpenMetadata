@@ -133,10 +133,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
           await metadataTab.click();
         }
         await page.click('[data-testid="add-new-ingestion-button"]');
-        await page
-          .locator('.ant-dropdown:visible [data-menu-id*="usage"]')
-          .waitFor();
-        await page.click('[data-menu-id*="usage"]');
+        await page.getByTestId('agent-item-usage').click();
         await waitForIngestionWorkflowForm(page);
         await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
 
