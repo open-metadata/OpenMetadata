@@ -318,8 +318,8 @@ function TestSummaryGraph({
     () =>
       getThresholdReference(
         testCaseParameterValue ?? [],
-        // Dimension results carry no learned bound, so the fallback simply
-        // finds nothing for them.
+        // Dimension results report the bounds they were evaluated against
+        // too, so a learned bound falls back the same way for them.
         testCaseResults[0] as Pick<TestCaseResult, 'maxBound'> | undefined
       ),
     [testCaseParameterValue, testCaseResults]

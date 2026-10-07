@@ -15,6 +15,7 @@ Base validator class
 
 from __future__ import annotations
 
+import math
 import reprlib
 import sys
 import time
@@ -82,6 +83,14 @@ DIMENSION_IMPACT_SCORE_KEY = "impact_score"
 DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
 DIMENSION_SUM_VALUE_KEY = "sum_value"  # For statistical validators weighted calculations
+
+
+def reportable_bound(bound: object) -> float | None:
+    """A bound as a result reports it: unset bounds resolve to ∓inf and date bounds to a date,
+    and neither fits the numeric `minBound`/`maxBound` fields, so both are left out."""
+    if isinstance(bound, bool) or not isinstance(bound, (int, float)) or math.isinf(bound):
+        return None
+    return float(bound)
 
 
 def elapsed_ms(start: float) -> float:
@@ -178,6 +187,11 @@ class BaseTestValidator(ABC):
     # `(effective bounds, configured bounds)`. Declared on the class for the same reason.
     _evaluation_scope: EvaluationScopeRuntimeParameters | None = None
     _bound_widening: tuple[tuple, tuple] | None = None
+
+    # Names of the parameters a between test reads its bounds from. Each dimension result reports
+    # the bounds it was evaluated against under these keys of `test_params`.
+    MIN_BOUND: str | None = None
+    MAX_BOUND: str | None = None
 
     # How this validator's metric behaves once only part of the table is read. Overridden by
     # validators whose metric a sample distorts, so the result message can say so.
@@ -918,6 +932,7 @@ class BaseTestValidator(ABC):
 
         test_result_values = self._get_test_result_values(metric_values)
         impact_score = row.get(DIMENSION_IMPACT_SCORE_KEY, 0.0)
+        params = test_params or {}
 
         return self.get_dimension_result_object(
             dimension_values={dimension_col_name: dimension_value},
@@ -928,6 +943,8 @@ class BaseTestValidator(ABC):
             passed_rows=evaluation["passed_rows"],
             failed_rows=evaluation["failed_rows"],
             impact_score=impact_score,
+            min_bound=params.get(self.MIN_BOUND) if self.MIN_BOUND else None,
+            max_bound=params.get(self.MAX_BOUND) if self.MAX_BOUND else None,
         )
 
     @staticmethod
@@ -1023,6 +1040,8 @@ class BaseTestValidator(ABC):
                 passedRowsPercentage=dim_result.passedRowsPercentage,
                 failedRowsPercentage=dim_result.failedRowsPercentage,
                 impactScore=dim_result.impactScore,  # Include the impact score
+                minBound=dim_result.minBound,
+                maxBound=dim_result.maxBound,
             )
 
             test_case_dimension_results.append(test_case_dim_result)
@@ -1076,6 +1095,8 @@ class BaseTestValidator(ABC):
         passed_rows: int | None = None,
         failed_rows: int | None = None,
         impact_score: float | None = None,
+        min_bound: float | None = None,
+        max_bound: float | None = None,
     ) -> "DimensionResult":  # noqa: UP037
         """Returns a DimensionResult object with automatic percentage calculations
 
@@ -1088,6 +1109,8 @@ class BaseTestValidator(ABC):
             passed_rows: Number of rows that passed for this dimension (None for statistical validators)
             failed_rows: Number of rows that failed for this dimension (auto-calculated if None, None for statistical validators)
             impact_score: Optional impact score for this dimension (0-1 range)
+            min_bound: lower bound the dimension was evaluated against
+            max_bound: upper bound the dimension was evaluated against
 
         Returns:
             DimensionResult: Dimension result object with calculated percentages
@@ -1121,6 +1144,8 @@ class BaseTestValidator(ABC):
             passedRowsPercentage=passed_rows_percentage,
             failedRowsPercentage=failed_rows_percentage,
             impactScore=round(impact_score, 4) if impact_score is not None else None,
+            minBound=reportable_bound(min_bound),
+            maxBound=reportable_bound(max_bound),
         )
 
         return dimension_result  # noqa: RET504

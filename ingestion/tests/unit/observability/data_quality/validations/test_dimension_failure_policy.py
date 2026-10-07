@@ -23,6 +23,9 @@ from uuid import uuid4
 import pytest
 
 from metadata.data_quality.validations import result_messages
+from metadata.data_quality.validations.column.sqlalchemy.columnValueMeanToBeBetween import (
+    ColumnValueMeanToBeBetweenValidator,
+)
 from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeNotNull import (
     ColumnValuesToBeNotNullValidator,
 )
@@ -193,3 +196,32 @@ def test_rollup_sentence_summarises_groups_beyond_the_listed_ones():
     sentence = result_messages.dimension_rollup_sentence(groups)
 
     assert sentence.startswith("7 dimension groups failed (name=g0, name=g1, name=g2, name=g3, name=g4 and 2 more)")
+
+
+def test_dimension_results_carry_the_bounds_they_were_evaluated_against(create_sqlite_table):
+    """A 10% threshold widens 30..30.55 to 27..33.605 for the aggregate and for every group"""
+    test_case = build_test_case(
+        [
+            TestCaseParameterValue(name="minValueForMeanInCol", value="30"),
+            TestCaseParameterValue(name="maxValueForMeanInCol", value="30.55"),
+            TestCaseParameterValue(name="threshold", value="10"),
+            TestCaseParameterValue(name="thresholdUnit", value="PERCENTAGE"),
+        ]
+    )
+
+    res = run(create_sqlite_table, ColumnValueMeanToBeBetweenValidator, test_case)
+
+    assert res.minBound == pytest.approx(27)
+    assert res.maxBound == pytest.approx(33.605)
+    assert res.dimensionResults
+    for dim in res.dimensionResults:
+        assert (dim.minBound, dim.maxBound) == (res.minBound, res.maxBound)
+
+
+def test_unset_bounds_are_left_out_of_dimension_results(create_sqlite_table):
+    test_case = build_test_case([TestCaseParameterValue(name="maxValueForMeanInCol", value="31")])
+
+    res = run(create_sqlite_table, ColumnValueMeanToBeBetweenValidator, test_case)
+
+    assert res.dimensionResults
+    assert all(dim.minBound is None and dim.maxBound == 31 for dim in res.dimensionResults)
