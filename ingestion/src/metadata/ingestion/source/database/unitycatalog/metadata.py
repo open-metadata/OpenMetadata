@@ -576,6 +576,9 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 row = self.client.api_client.do(
                     "GET", f"/api/2.1/unity-catalog/tables/{catalog_name}.{schema_name}.{table_name}"
                 )
+                if not isinstance(row, dict):
+                    # do() is typed dict | BinaryIO; a non-dict body carries no table.
+                    raise TypeError(f"expected a JSON object, got {type(row).__name__}")  # noqa: TRY301
                 table = TableInfo.from_dict(row)
                 securable_kind = str(row.get("securable_kind") or "").upper()
             except Exception as exc:
