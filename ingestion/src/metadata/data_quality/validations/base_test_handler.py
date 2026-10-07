@@ -570,7 +570,7 @@ class BaseTestValidator(ABC):
             # Compare rows to the rows the percentage allows. Dividing the violations first goes
             # through an inexact float (7 / 100 * 100 is 7.000000000000001) and fails a count
             # sitting exactly on the threshold; Decimal keeps a typed 7 or 2.9 exact.
-            allowed = Decimal(str(threshold.value)) * denominator / 100
+            allowed = Decimal(str(threshold.value)) / 100 * denominator
             return violations <= allowed
 
         return violations <= threshold.value
