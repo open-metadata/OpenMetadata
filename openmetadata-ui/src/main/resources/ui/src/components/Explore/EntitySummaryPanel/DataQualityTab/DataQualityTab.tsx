@@ -876,11 +876,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <Tabs.List
           className={classNames(
             'tw:sticky tw:z-3 tw:gap-8 tw:bg-surface tw:px-4 tw:pt-2.5',
-            // The entity title is 44px tall. Keep the legacy light offset, but avoid
-            // shifting the dark tabs 10px over the content that follows them.
+            // Sits below the 44px sticky entity title, which the column panel and the side drawer do not render.
             isColumnDetailPanel
               ? 'tw:top-0'
-              : 'tw:top-[54px] tw:dark:top-11 tw:[.drawer-summary-panel-container_&]:top-0 tw:dark:[.drawer-summary-panel-container_&]:top-0'
+              : 'tw:top-11 tw:[.drawer-summary-panel-container_&]:top-0'
           )}
           size="sm"
           type="underline">

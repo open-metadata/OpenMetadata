@@ -127,7 +127,7 @@ test.describe(
 
         await badge.hover();
 
-        const tooltip = page.locator('.ant-tooltip:visible');
+        const tooltip = page.getByRole('tooltip');
 
         await expect(tooltip).toBeVisible();
       });

@@ -790,7 +790,6 @@
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/DomainTierCertificationVoting.spec.ts",
-        "playwright/e2e/Features/ExploreDarkTheme.spec.ts",
         "playwright/e2e/Features/GlobalPageSize.spec.ts",
         "playwright/e2e/Features/ImpactAnalysis.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
@@ -7035,8 +7034,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Explore/SortingDropDown.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts",
-        "playwright/e2e/Features/ExploreDarkTheme.spec.ts"
+        "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts"
       ]
     },
     {
@@ -8463,7 +8461,6 @@
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
-        "playwright/e2e/Features/ExploreDarkTheme.spec.ts",
         "playwright/e2e/Features/LanguageOverride.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
         "playwright/e2e/Features/RoleFixtureSessions.spec.ts",
@@ -9874,7 +9871,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
-        "playwright/e2e/Features/ExploreDarkTheme.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },

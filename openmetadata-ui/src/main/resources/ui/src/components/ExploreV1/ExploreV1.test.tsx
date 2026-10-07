@@ -17,7 +17,6 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { ThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { SearchIndex } from '../../enums/search.enum';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 
@@ -197,6 +196,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     Alert,
     Badge,
+    BadgeWithButton: actual.BadgeWithButton,
     Box,
     Button,
     Card,
@@ -430,7 +430,7 @@ const props = {
 };
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider>{children}</ThemeProvider>
+  <>{children}</>
 );
 
 describe('ExploreV1', () => {

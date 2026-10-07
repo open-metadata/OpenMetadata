@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -133,14 +133,13 @@ const EntityRightPanelVerticalNav: React.FC<
   };
 
   return (
-    <Box
+    <div
       className={classNames(
-        'entity-right-panel-vertical-nav tw:relative tw:right-0.5 tw:flex tw:h-full tw:w-20 tw:flex-col tw:items-center tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-surface',
+        'entity-right-panel-vertical-nav tw:relative tw:right-0.5 tw:flex tw:w-20 tw:flex-col tw:items-center tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-surface',
         verticalNavConatinerclassName,
-        {
-          'drawer-entity-right-panel-vertical-nav tw:h-screen tw:max-h-[calc(100vh-70px)] tw:mr-2':
-            isSideDrawer,
-        }
+        isSideDrawer
+          ? 'tw:mr-2 tw:h-screen tw:max-h-[calc(100vh-70px)]'
+          : 'tw:h-full'
       )}>
       <Tabs
         className="tw:w-full"
@@ -156,12 +155,11 @@ const EntityRightPanelVerticalNav: React.FC<
               className={({ isSelected }) =>
                 classNames(
                   'tw:relative tw:h-auto tw:w-full tw:flex-col tw:justify-center tw:gap-1.5 tw:rounded-none tw:bg-transparent tw:p-0 tw:font-normal tw:whitespace-normal tw:shadow-none',
-                  'tw:text-utility-gray-600 tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-7)] tw:[&>svg]:size-6 tw:[&>svg]:transition-all tw:[&>svg]:duration-200',
+                  'tw:text-utility-gray-600 tw:hover:bg-transparent tw:hover:text-utility-brand-700 tw:[&>svg]:size-6 tw:[&>svg]:transition-all tw:[&>svg]:duration-200',
                   isSelected && [
-                    'tw:text-[var(--ant-primary-6)] tw:hover:text-[var(--ant-primary-6)]',
+                    'tw:bg-brand-primary tw:text-utility-brand-600 tw:hover:bg-brand-primary tw:hover:text-utility-brand-600',
                     'tw:before:absolute tw:before:top-1/2 tw:before:left-0 tw:before:h-8 tw:before:w-1',
-                    'tw:before:-translate-y-1/2 tw:before:rounded-r-sm tw:before:bg-[var(--ant-primary-6)]',
-                    'tw:dark:bg-brand-primary tw:dark:text-brand-secondary tw:dark:before:bg-brand-solid tw:dark:hover:bg-brand-primary tw:dark:hover:text-brand-secondary',
+                    'tw:before:-translate-y-1/2 tw:before:rounded-r-sm tw:before:bg-utility-brand-600',
                   ]
                 )
               }
@@ -184,7 +182,7 @@ const EntityRightPanelVerticalNav: React.FC<
           ))}
         </Tabs.List>
       </Tabs>
-    </Box>
+    </div>
   );
 };
 

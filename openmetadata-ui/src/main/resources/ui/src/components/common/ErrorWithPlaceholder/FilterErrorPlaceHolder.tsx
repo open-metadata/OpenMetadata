@@ -29,10 +29,10 @@ const FilterErrorPlaceHolder = ({
   const { theme } = useApplicationStore();
 
   return (
-    <Box
+    <div
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm bg-white tw:dark:bg-transparent!'
+        'h-full flex-center border-default border-radius-sm tw:bg-surface'
       )}
       data-testid="search-error-placeholder">
       <Box align="center" className="tw:gap-2.5" direction="col">
@@ -83,7 +83,7 @@ const FilterErrorPlaceHolder = ({
           )}
         </div>
       </Box>
-    </Box>
+    </div>
   );
 };
 

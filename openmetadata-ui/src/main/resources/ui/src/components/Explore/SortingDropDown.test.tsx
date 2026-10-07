@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import { render as rtlRender, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import {
   columnSortingFields,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
-import { ThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
 import SortingDropDown from './SortingDropDown';
-
-const render = (ui: Parameters<typeof rtlRender>[0]) =>
-  rtlRender(ui, { wrapper: ThemeProvider });
 
 const fieldList = [
   { name: 'Popularity', value: 'totalVotes' },
@@ -43,10 +39,6 @@ const SortingHarness = () => {
 };
 
 describe('SortingDropDown', () => {
-  beforeEach(() => localStorage.setItem('ui-theme', 'dark'));
-
-  afterEach(() => localStorage.removeItem('ui-theme'));
-
   it('marks the current sort and moves that selection after choosing another field', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<SortingHarness />);

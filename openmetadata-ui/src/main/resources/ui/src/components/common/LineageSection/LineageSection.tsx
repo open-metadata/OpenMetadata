@@ -39,13 +39,7 @@ const LineageItem = React.memo<LineageItemProps>(function LineageItem({
       className="tw:gap-2.5"
       color="link-color"
       data-testid={`${type}-lineage`}
-      iconLeading={
-        <Icon
-          className="tw:dark:[&>rect]:fill-(--tw-background-color-secondary) tw:dark:[&>path]:stroke-fg-secondary"
-          height={14}
-          width={14}
-        />
-      }
+      iconLeading={<Icon height={14} width={14} />}
       size="sm"
       onClick={onClick}>
       <div className="tw:flex tw:flex-row tw:gap-1">

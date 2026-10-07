@@ -66,12 +66,7 @@ const DescriptionDisplay: React.FC<DescriptionDisplayProps> = ({
     </div>
     {(shouldShowButton || isExpanded) && (
       <Button
-        className={[
-          'tw:inline-flex tw:border-0 tw:bg-transparent tw:p-0! tw:text-xs tw:font-normal tw:text-[var(--ant-primary-color)] tw:shadow-none',
-          'tw:after:outline-0 tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-6)] tw:hover:underline',
-          'tw:focus:text-[var(--ant-primary-6)] tw:dark:text-brand-secondary tw:dark:hover:text-brand-secondary',
-          'tw:dark:focus:text-brand-secondary',
-        ].join(' ')}
+        className="tw:text-xs"
         color="link-color"
         size="sm"
         type="button"
@@ -128,12 +123,12 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   // Callback to handle the edit button from description
   const handleEditDescription = useCallback(() => {
     setIsEditDescription(true);
-  }, [description]);
+  }, []);
 
   // Callback to handle the cancel button
   const handleCancelEditDescription = useCallback(() => {
     setIsEditDescription(false);
-  }, [description]);
+  }, []);
 
   // Callback to handle the description change from modal
   const handleDescriptionChange = useCallback(

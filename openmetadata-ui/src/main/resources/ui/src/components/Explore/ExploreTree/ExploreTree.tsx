@@ -79,7 +79,7 @@ import {
   TreeNodeData,
 } from './ExploreTree.interface';
 
-const SERVICE_ICON_CLASS = 'service-icon w-4 h-4 tw:dark:text-fg-secondary';
+const SERVICE_ICON_CLASS = 'service-icon w-4 h-4 tw:text-fg-secondary';
 
 const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
 const SERVICE_STYLE_TOP_HITS_SIZE = 1;

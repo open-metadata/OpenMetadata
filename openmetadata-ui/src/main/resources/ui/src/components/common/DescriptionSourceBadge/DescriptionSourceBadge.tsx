@@ -98,7 +98,7 @@ const ActorInfo = ({
       data-testid="source-actor">
       {config ? (
         <CheckCircleIcon
-          className="text-primary tw:dark:text-brand-secondary!"
+          className="tw:text-fg-brand-primary"
           height={12}
           width={12}
         />

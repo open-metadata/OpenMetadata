@@ -14,7 +14,6 @@
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
-import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 
 export interface SortingField {
   name: string;
@@ -32,7 +31,6 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
   handleFieldDropDown,
   sortField,
 }) => {
-  const { theme } = useTheme();
   const items = fieldList.map((field) => ({
     label: field.name,
     key: field.value,
@@ -60,10 +58,7 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
       <Dropdown.Popover>
         <Dropdown.Menu
           aria-label="Sorting Options"
-          // Preserve the light menu's existing unselected appearance.
-          selectedKeys={
-            theme === 'dark' && selectedField ? [selectedField.value] : []
-          }>
+          selectedKeys={selectedField ? [selectedField.value] : []}>
           {items.map((item) => (
             <Dropdown.Item id={item.key} key={item.key} onClick={item.onClick}>
               {item.label}

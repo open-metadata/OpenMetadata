@@ -195,15 +195,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               noTextPadding
               aria-pressed={isSelected}
               className={classNames(
-                'tw:h-7 tw:gap-0 tw:leading-[1.5715] tw:rounded-2xl tw:border tw:px-1.75 tw:py-0 tw:text-xs tw:font-normal tw:shadow-none tw:before:hidden tw:after:outline-0',
+                'tw:h-7 tw:gap-0 tw:rounded-2xl tw:border tw:px-1.75 tw:py-0 tw:text-xs tw:font-normal tw:shadow-none tw:before:hidden tw:after:outline-0',
                 'tw:[&>[data-text]]:flex tw:[&>[data-text]]:items-center',
                 isSelected
-                  ? [
-                      'tw:border-[var(--ant-primary-6)] tw:bg-[var(--ant-primary-6)] tw:text-white tw:hover:bg-[var(--ant-primary-6)]',
-                      'tw:hover:text-white tw:dark:border-utility-brand-200 tw:dark:bg-utility-brand-50 tw:dark:text-utility-brand-700',
-                      'tw:dark:hover:bg-utility-brand-100 tw:dark:hover:text-utility-brand-700',
-                    ].join(' ')
-                  : 'tw:border-utility-gray-blue-100 tw:bg-primary tw:text-utility-gray-900'
+                  ? 'tw:border-utility-brand-100 tw:bg-utility-brand-50 tw:text-utility-brand-600 tw:hover:bg-utility-brand-100 tw:hover:text-utility-brand-600'
+                  : 'tw:border-utility-gray-blue-100 tw:bg-surface tw:text-utility-gray-900'
               )}
               color="secondary"
               data-testid={`${direction}-button-${isSelected ? 'active' : ''}`}
@@ -215,10 +211,10 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               </span>
               <span
                 className={classNames(
-                  'tw:ml-1 tw:flex tw:size-4 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-[var(--om-radius-9)] tw:bg-utility-gray-blue-50 tw:text-[length:var(--om-font-size-10)]',
+                  'tw:ml-1 tw:flex tw:size-4 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-[var(--om-radius-9)] tw:text-[length:var(--om-font-size-10)]',
                   isSelected
-                    ? 'tw:text-[var(--ant-primary-6)] tw:dark:bg-utility-brand-100 tw:dark:text-utility-brand-700'
-                    : 'tw:text-utility-gray-900'
+                    ? 'tw:bg-surface tw:text-utility-brand-600'
+                    : 'tw:bg-utility-gray-blue-50 tw:text-utility-gray-900'
                 )}>
                 {direction === 'upstream' ? upstreamCount : downstreamCount}
               </span>
@@ -276,22 +272,14 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                         placement="top"
                         title={t('label.upstream')}
                         triggerClassName="tw:inline-flex">
-                        <UpstreamIcon
-                          className="tw:dark:[&>rect]:fill-(--tw-background-color-secondary) tw:dark:[&>path]:stroke-fg-secondary"
-                          height={18}
-                          width={18}
-                        />
+                        <UpstreamIcon height={18} width={18} />
                       </Tooltip>
                     ) : (
                       <Tooltip
                         placement="top"
                         title={t('label.downstream')}
                         triggerClassName="tw:inline-flex">
-                        <DownstreamIcon
-                          className="tw:dark:[&>rect]:fill-(--tw-background-color-secondary) tw:dark:[&>path]:stroke-fg-secondary"
-                          height={18}
-                          width={18}
-                        />
+                        <DownstreamIcon height={18} width={18} />
                       </Tooltip>
                     )}
                   </div>

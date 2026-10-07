@@ -28,7 +28,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCloseCircleOutlined } from '../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
-import { useTheme } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import type { SearchIndex } from '../../../../enums/search.enum';
 import { isFocusWithinSearchControl } from './ExploreSearchInput.utils';
 
@@ -80,10 +79,10 @@ const INPUT_CONTAINER_CLASS = classNames(
 );
 
 const NLP_TOGGLE_BASE_CLASS =
-  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-brand-600 tw:transition-none';
+  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-utility-brand-600 tw:transition-none';
 
 const NLP_TOGGLE_INACTIVE_CLASS =
-  'tw:border-[0.5px] tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:p-1 tw:hover:bg-[rgba(21,112,239,0.06)] tw:hover:text-brand-600';
+  'tw:border-[0.5px] tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:p-1 tw:hover:bg-[rgba(21,112,239,0.06)] tw:hover:text-utility-brand-600';
 
 const NLP_TOGGLE_ACTIVE_CLASS = 'tw:border-0 tw:bg-transparent tw:p-0';
 
@@ -92,8 +91,9 @@ const SUGGESTIONS_CONTAINER_CLASS =
 
 const SEARCH_POPOVER_CLASS = classNames(
   'tw:max-h-96! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point)',
-  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-primary tw:dark:bg-overlay-surface',
-  'tw:dark:[&_button:hover]:bg-secondary_hover! tw:dark:[&_button:focus-visible]:bg-secondary_hover!',
+  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-overlay-surface',
+  // Suggestions are antd text buttons, whose hover tint is invisible on dark surfaces.
+  'tw:[&_button:hover]:bg-primary_hover! tw:[&_button:focus-visible]:bg-primary_hover!',
   'tw:px-0! tw:py-4! tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
   'tw:will-change-transform'
 );
@@ -178,7 +178,6 @@ export const ExploreSearchInput = ({
   onSuggestionSelect,
 }: ExploreSearchInputProps) => {
   const { t } = useTranslation();
-  const { theme } = useTheme();
   const isSearchPopoverOpen =
     isSearchBoxOpen && (Boolean(searchValue) || isNLPActive);
   const searchShortcutLabel = getSearchShortcutLabel();
@@ -246,7 +245,7 @@ export const ExploreSearchInput = ({
             data-testid="explore-search-input"
             fontSize="xs"
             icon={Search}
-            iconClassName="tw:size-4 tw:text-brand-600"
+            iconClassName="tw:size-4 tw:text-utility-brand-600"
             inputClassName={INPUT_CLASS}
             placeholder={placeholderText}
             value={searchValue}
@@ -287,8 +286,7 @@ export const ExploreSearchInput = ({
           containerPadding={0}
           data-testid="explore-search-popover"
           isOpen={isSearchPopoverOpen}
-          // Dark feedback requests an 8px reduction; preserve the light-mode gap.
-          offset={{ dark: 4, light: 12 }[theme]}
+          offset={4}
           placement="bottom"
           size="sm"
           style={{
