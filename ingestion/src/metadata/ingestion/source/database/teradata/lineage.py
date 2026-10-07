@@ -21,6 +21,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.teradata.queries import (
+    TERADATA_QUERY_HISTORY_STATEMENT,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -28,7 +31,18 @@ logger = ingestion_logger()
 
 class TeradataLineageSource(LineageSource):
     """
-    Teradata lineage source implements view lineage
+    Teradata lineage from view definitions and the DBQL query log
+    """
+
+    sql_stmt = TERADATA_QUERY_HISTORY_STATEMENT
+    # INSERT ... VALUES rows (TPump/BTEQ loads) and plain CREATE TABLE DDL carry no lineage
+    # and would flood resultLimit, so those two types must also read from a SELECT
+    filters = """
+        AND UPPER(q.StatementType) LIKE ANY ('INSERT%', 'UPDATE%', 'MERGE%', 'CREATE TABLE%')
+        AND (
+            UPPER(q.StatementType) NOT LIKE ALL ('INSERT%', 'CREATE TABLE%')
+            OR UPPER(COALESCE(s.SqlTextInfo, q.QueryText)) LIKE '%SEL%'
+        )
     """
 
     @classmethod
