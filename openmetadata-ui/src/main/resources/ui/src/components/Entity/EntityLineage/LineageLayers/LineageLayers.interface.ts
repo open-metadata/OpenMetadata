@@ -1,8 +1,5 @@
 import { EntityType } from '../../../../enums/entity.enum';
-import {
-  LineageBand,
-  LineageLens,
-} from '../../../../generated/api/lineage/lineageScene';
+import { LineageLens } from '../../../../generated/api/lineage/lineageScene';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 
 /*
@@ -20,9 +17,7 @@ import { SourceType } from '../../../SearchedData/SearchedData.interface';
 export interface LineageLayersProps {
   entityType?: EntityType;
   entity?: SourceType;
-  sceneBand?: LineageBand;
   sceneLens?: LineageLens;
   sceneLevelLabelKey?: string;
-  onSceneBandChange?: (band: LineageBand) => void;
   onSceneLensChange?: (lens: LineageLens) => void;
 }

@@ -265,7 +265,7 @@ function getEntityLineageCoordinates(
   return {
     sourceX: sourceNode.position.x + (sourceNode.width ?? 0),
     sourceY: sourceNode.position.y + sourceHeight / 2,
-    targetX: targetNode.position.x - 10,
+    targetX: targetNode.position.x,
     targetY: targetNode.position.y + targetHeight / 2,
   };
 }

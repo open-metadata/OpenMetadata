@@ -12,7 +12,25 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { searchQuery } from '../../../../rest/searchAPI';
 import AddPipeLineModal from './AddPipeLineModal';
+
+jest.mock('../../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: [
+        {
+          _source: {
+            id: 'test-pipeline-2',
+            name: 'Pipeline 2',
+            entityType: 'pipeline',
+            fullyQualifiedName: 'sample_airflow/dim_etl',
+          },
+        },
+      ],
+    },
+  }),
+}));
 
 const mockProps = {
   showAddEdgeModal: true,
@@ -69,5 +87,47 @@ describe('Test CustomEdge Component', () => {
 
     expect(mockProps.onRemoveEdgeClick).toHaveBeenCalled();
     expect(mockProps.onSave).toHaveBeenCalled();
+  });
+
+  it('renders the search input as the real input element', async () => {
+    render(<AddPipeLineModal {...mockProps} />);
+
+    const input = await screen.findByTestId('field-input');
+
+    expect(input.tagName).toBe('INPUT');
+
+    fireEvent.change(input, { target: { value: 'dim' } });
+
+    expect(input).toHaveValue('dim');
+  });
+
+  it('saves the pipeline the user selects', async () => {
+    render(<AddPipeLineModal {...mockProps} />);
+
+    fireEvent.click(
+      await screen.findByTestId('pipeline-entry-sample_airflow/dim_etl')
+    );
+    fireEvent.click(screen.getByTestId('save-button'));
+
+    expect(searchQuery).toHaveBeenCalled();
+    expect(mockProps.onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'test-pipeline-2' })
+    );
+  });
+
+  it('marks the save button as loading', async () => {
+    render(<AddPipeLineModal {...mockProps} loading />);
+
+    expect(await screen.findByTestId('save-button')).toHaveAttribute(
+      'data-loading'
+    );
+  });
+
+  it('calls onModalCancel when the close button is pressed', async () => {
+    render(<AddPipeLineModal {...mockProps} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /close/i }));
+
+    expect(mockProps.onModalCancel).toHaveBeenCalled();
   });
 });

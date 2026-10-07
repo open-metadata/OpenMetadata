@@ -242,7 +242,7 @@ describe('CanvasUtils', () => {
         expect(result).toEqual({
           sourceX: 400,
           sourceY: 33,
-          targetX: 490,
+          targetX: 500,
           targetY: 33,
         });
       });
@@ -259,7 +259,7 @@ describe('CanvasUtils', () => {
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(500);
         expect(result?.sourceY).toBe(233); // 200 + 100/2
-        expect(result?.targetX).toBe(590);
+        expect(result?.targetX).toBe(600);
         expect(result?.targetY).toBe(333); // 300 + 100/2
       });
     });
@@ -409,7 +409,7 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(400);
-        expect(result?.targetX).toBe(490);
+        expect(result?.targetX).toBe(500);
       });
     });
 

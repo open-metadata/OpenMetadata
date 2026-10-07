@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { Connection, Edge } from 'reactflow';
+import type { Edge } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
 import type { AddLineage } from '../../../generated/api/lineage/addLineage';
 import {
@@ -53,6 +53,7 @@ export interface LineageMapEdgeData {
   dataTestId?: string;
   edge: EdgeDetails;
   isColumnLineage: boolean;
+  isEditable?: boolean;
   isRollup?: boolean;
   label?: string;
   sceneEdge?: LineageSceneEdge;
@@ -82,11 +83,6 @@ export const getEndpointHandle = (endpoint: string) => {
     ? undefined
     : endpoint.slice(separatorIndex + FIELD_SEPARATOR.length);
 };
-
-const getConnectionHandle = (
-  handle: string | null | undefined,
-  nodeId: string | null | undefined
-) => (handle && handle !== nodeId ? handle : undefined);
 
 export const getRealEntityRef = (
   node?: LineageSceneNode
@@ -140,6 +136,49 @@ export const hasSceneEntityConnection = (
       getEndpointHandle(edge.to) === targetHandle
   );
 };
+
+// A refreshed Asset scene shows a new column edge as its entity edge, while a
+// Field scene only carries the column edge, so accept either.
+export const hasSceneLineageEdge = (
+  scene: LineageScene,
+  fromEntityId: string,
+  toEntityId: string,
+  columnPair?: { fromColumn: string; toColumn: string }
+) =>
+  hasSceneEntityConnection(scene, fromEntityId, toEntityId) ||
+  (columnPair !== undefined &&
+    hasSceneEntityConnection(
+      scene,
+      fromEntityId,
+      toEntityId,
+      columnPair.fromColumn,
+      columnPair.toColumn
+    ));
+
+// The selected node is a drawer copy of the flow node, so match it by entity id.
+// Only nodes the ⋮ menu would offer to delete qualify.
+export const findDeletableSelectedNode = <
+  T extends {
+    data: {
+      sceneNode?: LineageSceneNode;
+      isNodeEditable?: boolean;
+      isNodeRemovable?: boolean;
+      isRootNode?: boolean;
+    };
+  }
+>(
+  nodes: T[],
+  selectedEntityId?: string
+) =>
+  selectedEntityId
+    ? nodes.find(
+        ({ data }) =>
+          getRealEntityRef(data.sceneNode)?.id === selectedEntityId &&
+          data.isNodeEditable &&
+          data.isNodeRemovable &&
+          !data.isRootNode
+      )
+    : undefined;
 
 export const isEditableSceneNode = (
   node?: LineageSceneNode
@@ -405,59 +444,47 @@ export const hydrateSelectedEdge = (
   };
 };
 
-export const buildConnectPayload = (
-  connection: Connection,
-  nodeById: Map<string, LineageSceneNode>,
-  existingDetails: LineageDetails = {}
+export const buildLineagePayload = (
+  fromEntity: EdgeFromToData,
+  toEntity: EdgeFromToData,
+  existingDetails: LineageDetails = {},
+  columnPair?: { fromColumn: string; toColumn: string }
 ): AddLineage | null => {
-  const { columnsLineage: existingColumns = [] } = existingDetails;
-  const fromEntity = getRealEntityRef(nodeById.get(connection.source ?? ''));
-  const toEntity = getRealEntityRef(nodeById.get(connection.target ?? ''));
-  const sourceHandle = getConnectionHandle(
-    connection.sourceHandle,
-    connection.source
-  );
-  const targetHandle = getConnectionHandle(
-    connection.targetHandle,
-    connection.target
-  );
-  const isColumnConnection = Boolean(sourceHandle && targetHandle);
-
-  if (
-    !fromEntity ||
-    !toEntity ||
-    fromEntity.id === toEntity.id ||
-    Boolean(sourceHandle) !== Boolean(targetHandle)
-  ) {
+  if (fromEntity.id === toEntity.id) {
     return null;
   }
-
-  const currentEdge: EdgeDetails = {
-    fromEntity,
-    toEntity,
-    columns: existingDetails?.columnsLineage,
-  };
-  const columnsLineage = isColumnConnection
-    ? getUpdatedColumnsFromEdge(connection, currentEdge)
-    : existingColumns;
+  const existingColumns = existingDetails.columnsLineage ?? [];
+  const alreadyMapped =
+    columnPair &&
+    existingColumns.some(
+      (lineage) =>
+        lineage.toColumn === columnPair.toColumn &&
+        lineage.fromColumns?.includes(columnPair.fromColumn)
+    );
+  const columnsLineage =
+    columnPair && !alreadyMapped
+      ? getUpdatedColumnsFromEdge(
+          {
+            source: fromEntity.id,
+            target: toEntity.id,
+            sourceHandle: columnPair.fromColumn,
+            targetHandle: columnPair.toColumn,
+          },
+          { fromEntity, toEntity, columns: existingColumns }
+        )
+      : existingColumns;
 
   return {
     edge: {
-      fromEntity: {
-        id: fromEntity.id,
-        type: fromEntity.type,
-      },
-      toEntity: {
-        id: toEntity.id,
-        type: toEntity.type,
-      },
+      fromEntity: { id: fromEntity.id, type: fromEntity.type },
+      toEntity: { id: toEntity.id, type: toEntity.type },
       lineageDetails: {
         columnsLineage,
-        description: existingDetails?.description,
-        pipeline: existingDetails?.pipeline,
-        source: existingDetails?.source,
-        sqlQuery: existingDetails?.sqlQuery ?? '',
-        tempLineageTables: existingDetails?.tempLineageTables,
+        description: existingDetails.description,
+        pipeline: existingDetails.pipeline,
+        source: existingDetails.source,
+        sqlQuery: existingDetails.sqlQuery ?? '',
+        tempLineageTables: existingDetails.tempLineageTables,
       },
     },
   };

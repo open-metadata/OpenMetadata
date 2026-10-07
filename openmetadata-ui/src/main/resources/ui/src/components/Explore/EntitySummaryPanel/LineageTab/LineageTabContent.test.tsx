@@ -32,7 +32,6 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
@@ -40,6 +39,31 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
   Owner: jest.fn().mockReturnValue(<></>),
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick, className, size, ...props }) => (
+      <button
+        className={className}
+        data-size={size}
+        onClick={onClick}
+        {...props}>
+        {children}
+      </button>
+    )),
+  Typography: jest
+    .fn()
+    .mockImplementation(
+      ({ children, className, as: Component = 'span', ...props }) => (
+        <Component
+          className={className}
+          data-testid={
+            Component === 'p' ? 'typography-paragraph' : 'typography-text'
+          }
+          {...props}>
+          {children}
+        </Component>
+      )
+    ),
   Breadcrumbs: jest
     .fn()
     .mockImplementation(
@@ -106,23 +130,6 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
           onChange={(e) => onSearch(e.target.value)}
         />
       </div>
-    )),
-}));
-
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick, className, size, ...props }) => (
-      <button
-        className={className}
-        data-size={size}
-        data-testid="button"
-        onClick={onClick}
-        {...props}>
-        {children}
-      </button>
     )),
 }));
 

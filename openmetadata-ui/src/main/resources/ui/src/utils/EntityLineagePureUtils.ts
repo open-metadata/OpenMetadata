@@ -16,7 +16,11 @@ import { get, isEqual, uniqueId, uniqWith } from 'lodash';
 import type { EntityTags } from 'Models';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ReactFlowInstance } from 'reactflow';
-import type { EdgeData } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import type {
+  EdgeData,
+  LineageConfig,
+  LineageConfigFormValues,
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
 import type {
   LineageEntityReference,
   LineageSourceType,
@@ -517,3 +521,11 @@ export const parseLineageData = (
     entity,
   };
 };
+
+export const getLineageConfigFormValues = (
+  config: LineageConfig
+): LineageConfigFormValues => ({
+  upstreamDepth: String(config.upstreamDepth ?? ''),
+  downstreamDepth: String(config.downstreamDepth ?? ''),
+  nodesPerLayer: String(config.nodesPerLayer ?? ''),
+});

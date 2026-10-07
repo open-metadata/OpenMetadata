@@ -17,24 +17,18 @@ import {
   ModalOverlay,
   SlideoutMenu,
 } from '@openmetadata/ui-core-components';
-import { Home02 } from '@openmetadata/ui-core-components/icons';
 import { LoadingState } from 'Models';
-import { lazy, useCallback, useMemo } from 'react';
+import { lazy, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Edge, Node } from 'reactflow';
 import { useShallow } from 'zustand/react/shallow';
-import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { EntityReference } from '../../../generated/type/entityLineage';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { LineageConfig } from '../../../interface/lineage.interface';
 import { SourceType } from '../../../interface/source.interface';
-import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
 import { getModalBodyText } from '../../../utils/EntityLineageEdgeUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleLink } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import EdgeInfoDrawer from '../../Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
 import AddPipeLineModal from '../../Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
 
@@ -63,30 +57,7 @@ type LineageOverlaysProps = {
   handlers: LineageOverlaysHandlers;
 };
 
-type LineageBreadcrumbsProps = {
-  breadcrumbs: TitleLink[];
-  isFullScreen: boolean;
-};
-
-const LineageBreadcrumbs = ({
-  breadcrumbs,
-  isFullScreen,
-}: LineageBreadcrumbsProps) => {
-  if (!isFullScreen || breadcrumbs.length === 0) {
-    return null;
-  }
-
-  return (
-    <TitleBreadcrumb
-      useCustomArrow
-      className="p-b-sm"
-      titleLinks={breadcrumbs}
-    />
-  );
-};
-
 type LineageDrawerOverlayProps = {
-  isEditMode: boolean;
   selectedNode?: SourceType;
   selectedEdge?: Edge;
   isDrawerOpen: boolean;
@@ -98,7 +69,6 @@ type LineageDrawerOverlayProps = {
 };
 
 const LineageDrawerOverlay = ({
-  isEditMode,
   selectedNode,
   selectedEdge,
   isDrawerOpen,
@@ -108,9 +78,35 @@ const LineageDrawerOverlay = ({
   onEdgeDetailsUpdate,
   onEntityUpdate,
 }: LineageDrawerOverlayProps) => {
-  if (isEditMode || (!selectedNode && !selectedEdge)) {
+  const { canEditLineage, closeDrawer, openAddEdgeModal, openDeleteModal } =
+    useLineageStore(
+      useShallow((state) => ({
+        canEditLineage: state.canEditLineage,
+        closeDrawer: state.closeDrawer,
+        openAddEdgeModal: state.openAddEdgeModal,
+        openDeleteModal: state.openDeleteModal,
+      }))
+    );
+
+  if (!selectedNode && !selectedEdge) {
     return null;
   }
+
+  const canEditEdge = canEditLineage && Boolean(selectedEdge?.data?.isEditable);
+  // The drawer is modal, so it closes before the pipeline or delete dialog opens.
+  const handleEditPipeline =
+    canEditEdge && !selectedEdge?.data?.isColumnLineage
+      ? () => {
+          closeDrawer();
+          openAddEdgeModal();
+        }
+      : undefined;
+  const handleDelete = canEditEdge
+    ? () => {
+        closeDrawer();
+        openDeleteModal();
+      }
+    : undefined;
 
   return (
     <SlideoutMenu
@@ -145,7 +141,9 @@ const LineageDrawerOverlay = ({
           edge={selectedEdge}
           nodes={nodes}
           onClose={onCloseDrawer}
+          onDelete={handleDelete}
           onEdgeDetailsUpdate={onEdgeDetailsUpdate}
+          onEditPipeline={handleEditPipeline}
         />
       )}
     </SlideoutMenu>
@@ -177,7 +175,6 @@ const LineageDeleteModal = ({
     <ModalOverlay
       isDismissable={!deletionState.loading}
       isOpen={showDeleteModal}
-      style={{ zIndex: 999 }}
       onOpenChange={(open) => {
         if (!open && !deletionState.loading) {
           onClose();
@@ -212,14 +209,7 @@ const LineageDeleteModal = ({
 export const LineageOverlays: React.FC<LineageOverlaysProps> = ({
   handlers,
 }) => {
-  const { t } = useTranslation();
-  const location = useCustomLocation();
-  const isFullScreen =
-    new URLSearchParams(location.search).get(FULLSCREEN_QUERY_PARAM_KEY) ===
-    'true';
-
   const {
-    isEditMode,
     lineageConfig,
     selectedNode,
     selectedEdge,
@@ -235,12 +225,8 @@ export const LineageOverlays: React.FC<LineageOverlaysProps> = ({
     sceneBand,
     loading,
     status,
-    entity,
-    entityType,
-    platformView,
   } = useLineageStore(
     useShallow((state) => ({
-      isEditMode: state.isEditMode,
       lineageConfig: state.lineageConfig,
       selectedNode: state.selectedNode,
       selectedEdge: state.selectedEdge,
@@ -256,39 +242,8 @@ export const LineageOverlays: React.FC<LineageOverlaysProps> = ({
       sceneBand: state.sceneBand,
       loading: state.loading,
       status: state.status,
-      entity: state.entity,
-      entityType: state.entityType,
-      platformView: state.platformView,
     }))
   );
-
-  const breadcrumbs = useMemo(() => {
-    const platformBreadcrumbs = platformView
-      ? [
-          {
-            name: '',
-            icon: <Home02 size={12} />,
-            url: '/',
-            activeTitle: true,
-          },
-          {
-            name: t('label.lineage'),
-            url: '',
-          },
-        ]
-      : [];
-
-    return entity
-      ? [
-          ...getEntityBreadcrumbs(entity, entityType, isFullScreen),
-          {
-            name: t('label.lineage'),
-            url: '',
-            activeTitle: true,
-          },
-        ]
-      : platformBreadcrumbs;
-  }, [entity, isFullScreen, entityType, platformView, t]);
 
   const handleEntityUpdate = useCallback(
     (updatedEntity: Partial<SourceType>) => {
@@ -323,13 +278,8 @@ export const LineageOverlays: React.FC<LineageOverlaysProps> = ({
 
   return (
     <>
-      <LineageBreadcrumbs
-        breadcrumbs={breadcrumbs}
-        isFullScreen={isFullScreen}
-      />
       <LineageDrawerOverlay
         isDrawerOpen={isDrawerOpen}
-        isEditMode={isEditMode}
         lineageConfig={lineageConfig}
         nodes={nodes}
         selectedEdge={selectedEdge}

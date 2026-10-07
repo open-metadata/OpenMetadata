@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SearchOutlined } from '@ant-design/icons';
-import { Input } from 'antd';
+import { Input } from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React, {
@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BORDER_COLOR } from '../../../../constants/constants';
 import {
   LINEAGE_CHILD_ITEMS_PER_PAGE,
   LINEAGE_COLUMN_NODE_SUPPORTED,
@@ -47,6 +46,7 @@ const NodeChildren = ({
   isOnlyShowColumnsWithLineageFilterActive,
   onColumnHover,
   onColumnSelect,
+  onColumnLineageEdit,
 }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const {
@@ -55,7 +55,6 @@ const NodeChildren = ({
     columnsHavingLineage,
     selectedColumn,
     isCreatingEdge,
-    isEditMode,
   } = useLineageStore();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
@@ -67,14 +66,14 @@ const NodeChildren = ({
     return Boolean(
       isDQEnabled && entityType === EntityType.TABLE && node.testSuite
     );
-  }, [isDQEnabled, entityType]);
+  }, [isDQEnabled, entityType, node.testSuite]);
 
   const supportsColumns = useMemo(() => {
     return (
       node &&
       LINEAGE_COLUMN_NODE_SUPPORTED.includes(node.entityType as EntityType)
     );
-  }, [node.entityType]);
+  }, [node]);
 
   const { children: entityChildren, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
@@ -100,12 +99,10 @@ const NodeChildren = ({
   }, [currentNodeColumnsWithLineage]);
 
   const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      const searchQuery = e.target.value;
+    (searchQuery: string) => {
       setSearchValue(searchQuery);
       const currentNodeColumnsToSearch =
-        isOnlyShowColumnsWithLineageFilterActive && !isEditMode
+        isOnlyShowColumnsWithLineageFilterActive
           ? stableColumnsWithLineage
           : entityChildren;
 
@@ -124,14 +121,13 @@ const NodeChildren = ({
     [
       entityChildren,
       stableColumnsWithLineage,
-      isEditMode,
       isOnlyShowColumnsWithLineageFilterActive,
     ]
   );
 
   useEffect(() => {
     if (!isEmpty(entityChildren)) {
-      if (isOnlyShowColumnsWithLineageFilterActive && !isEditMode) {
+      if (isOnlyShowColumnsWithLineageFilterActive) {
         setFilteredColumns(stableColumnsWithLineage);
       } else {
         setFilteredColumns(entityChildren);
@@ -140,7 +136,6 @@ const NodeChildren = ({
   }, [
     entityChildren,
     stableColumnsWithLineage,
-    isEditMode,
     isOnlyShowColumnsWithLineageFilterActive,
   ]);
 
@@ -166,17 +161,13 @@ const NodeChildren = ({
     } else {
       setIsLoading(false);
     }
-  }, [node, showDataObservabilitySummary, summary]);
+  }, [fetchTestSuiteSummary, node, showDataObservabilitySummary, summary]);
 
   const pageSize = useMemo(() => {
-    return isOnlyShowColumnsWithLineageFilterActive || isEditMode
+    return isOnlyShowColumnsWithLineageFilterActive
       ? filteredColumns.length
       : LINEAGE_CHILD_ITEMS_PER_PAGE;
-  }, [
-    isOnlyShowColumnsWithLineageFilterActive,
-    isEditMode,
-    filteredColumns.length,
-  ]);
+  }, [isOnlyShowColumnsWithLineageFilterActive, filteredColumns.length]);
 
   // No need to render if there's no children
   if (entityChildren.length === 0) {
@@ -197,14 +188,14 @@ const NodeChildren = ({
         data-testid="column-container">
         <div className="search-box">
           <Input
-            data-testid="search-column-input"
+            icon={Search}
+            inputDataTestId="search-column-input"
             placeholder={t('label.search-entity', {
               entity: childrenHeading,
             })}
-            suffix={<SearchOutlined color={BORDER_COLOR} />}
             value={searchValue}
             onChange={handleSearchChange}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
           />
 
           <section className="m-t-md" id="table-columns">
@@ -218,6 +209,7 @@ const NodeChildren = ({
                 showDataObservabilitySummary={showDataObservabilitySummary}
                 summary={summary}
                 onColumnHover={onColumnHover}
+                onColumnLineageEdit={onColumnLineageEdit}
                 onColumnSelect={onColumnSelect}
               />
             </div>

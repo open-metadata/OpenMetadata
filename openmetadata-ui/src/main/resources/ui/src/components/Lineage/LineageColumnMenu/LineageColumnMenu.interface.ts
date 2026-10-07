@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.entity-suggestion-option-btn {
-  height: auto;
-  padding: var(--om-space-4) var(--om-space-12);
+import { RefObject } from 'react';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 
-  &:hover {
-    color: transparent;
-  }
+export interface LineageColumnMenuProps {
+  onEdit: (
+    direction: LineageDirection,
+    triggerRef: RefObject<HTMLElement>
+  ) => void;
 }

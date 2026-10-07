@@ -10,150 +10,131 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  queryByText,
-  render,
-  screen,
-} from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ReactFlowProvider } from 'reactflow';
 import { EntityType } from '../../../../enums/entity.enum';
-import {
-  LineageBand,
-  LineageLens,
-} from '../../../../generated/api/lineage/lineageScene';
+import { LineageLens } from '../../../../generated/api/lineage/lineageScene';
 import { LineageLayer } from '../../../../generated/settings/settings';
+import { LineagePlatformView } from '../../../../hooks/lineage/types';
+import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import LineageLayers from './LineageLayers';
 
 const mockSetActiveLayer = jest.fn();
 const mockSetPlatformView = jest.fn();
+let mockActiveLayer: LineageLayer[] = [];
 
 jest.mock('../../../../hooks/useLineageStore', () => ({
   useLineageStore: jest.fn().mockImplementation(() => ({
-    activeLayer: [],
-    platformView: [],
+    activeLayer: mockActiveLayer,
+    platformView: 'None',
     setPlatformView: mockSetPlatformView,
-    isPlatformLineage: false,
     setActiveLayer: mockSetActiveLayer,
   })),
 }));
 
+const renderLayers = (props: Parameters<typeof LineageLayers>[0]) =>
+  render(
+    <ReactFlowProvider>
+      <LineageLayers {...props} />
+    </ReactFlowProvider>
+  );
+
 describe('LineageLayers component', () => {
-  it('renders LineageLayers component', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <LineageLayers entityType={EntityType.TABLE} />
-      </ReactFlowProvider>
-    );
-    const layerBtn = screen.getByText('label.layer-plural');
-
-    expect(layerBtn).toBeInTheDocument();
-
-    const columnButton = queryByText(container, 'label.column');
-    const pipelineButton = queryByText(container, 'label.pipeline');
-    const dataQualityButton = queryByText(container, 'label.data-quality');
-
-    expect(columnButton).not.toBeInTheDocument();
-    expect(pipelineButton).not.toBeInTheDocument();
-    expect(dataQualityButton).not.toBeInTheDocument();
+  afterEach(() => {
+    mockActiveLayer = [];
+    jest.clearAllMocks();
   });
 
-  it('calls onUpdateLayerView when a button is clicked', async () => {
-    render(
-      <ReactFlowProvider>
-        <LineageLayers entityType={EntityType.TABLE} />
-      </ReactFlowProvider>
-    );
-
-    const layerBtn = screen.getByTestId('lineage-layer-btn');
-
-    await act(async () => {
-      fireEvent.click(layerBtn);
+  it('offers the classic asset layers on an asset page', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderLayers({
+      entityType: EntityType.TABLE,
+      entity: { domains: [{ id: 'd' }] } as unknown as SourceType,
     });
 
-    const columnButton = screen.getByText('label.column');
-    const dataObservabilityBtn = screen.getByText('label.observability');
+    expect(screen.getByText('label.none')).toBeInTheDocument();
 
-    expect(columnButton).toBeInTheDocument();
-    expect(dataObservabilityBtn).toBeInTheDocument();
+    await user.click(screen.getByTestId('lineage-layer-btn'));
 
-    fireEvent.click(columnButton as HTMLElement);
+    expect(screen.getByTestId('lineage-layer-column-btn')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('lineage-layer-observability-btn')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-layer-service-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-layer-domain-btn')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('lineage-layer-data-product-btn')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('lineage-layer-lens-service')
+    ).not.toBeInTheDocument();
+  });
 
-    expect(mockSetActiveLayer).toHaveBeenCalledWith([
+  it('toggles store layers and platform view from the asset menu', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderLayers({ entityType: EntityType.TABLE });
+
+    await user.click(screen.getByTestId('lineage-layer-btn'));
+    await user.click(screen.getByTestId('lineage-layer-column-btn'));
+
+    expect(mockSetActiveLayer).toHaveBeenLastCalledWith([
       LineageLayer.ColumnLevelLineage,
     ]);
 
-    fireEvent.click(dataObservabilityBtn as HTMLElement);
+    await user.click(screen.getByTestId('lineage-layer-service-btn'));
 
-    expect(mockSetActiveLayer).toHaveBeenCalledWith([
-      LineageLayer.DataObservability,
-    ]);
+    expect(mockSetPlatformView).toHaveBeenLastCalledWith(
+      LineagePlatformView.Service
+    );
   });
 
-  it('calls scene lens handler in scene mode', async () => {
-    const onSceneBandChange = jest.fn();
-    const onSceneLensChange = jest.fn();
+  it('turns an active asset layer off', async () => {
+    mockActiveLayer = [LineageLayer.ColumnLevelLineage];
+    const user = userEvent.setup({ delay: null });
+    renderLayers({ entityType: EntityType.TABLE });
 
-    render(
-      <ReactFlowProvider>
-        <LineageLayers
-          entityType={EntityType.TABLE}
-          sceneBand={LineageBand.Asset}
-          sceneLens={LineageLens.Service}
-          sceneLevelLabelKey="label.lineage-map-schema-level"
-          onSceneBandChange={onSceneBandChange}
-          onSceneLensChange={onSceneLensChange}
-        />
-      </ReactFlowProvider>
+    expect(screen.getByText('label.column')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('lineage-layer-btn'));
+
+    expect(screen.getByTestId('lineage-layer-column-btn')).toHaveAttribute(
+      'data-selected'
     );
+
+    await user.click(screen.getByTestId('lineage-layer-column-btn'));
+
+    expect(mockSetActiveLayer).toHaveBeenLastCalledWith([]);
+  });
+
+  it('switches the lens from the platform Layers menu', async () => {
+    const user = userEvent.setup({ delay: null });
+    const onSceneLensChange = jest.fn();
+    renderLayers({
+      sceneLens: LineageLens.Service,
+      sceneLevelLabelKey: 'label.lineage-map-schema-level',
+      onSceneLensChange,
+    });
 
     expect(
       screen.getByText('label.lineage-map-schema-level')
     ).toBeInTheDocument();
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('lineage-layer-btn'));
-    });
+    await user.click(screen.getByTestId('lineage-layer-btn'));
 
     expect(
-      screen.getByText('message.lineage-map-service-lens-description')
+      await screen.findByText('message.lineage-map-service-lens-description')
     ).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-layer-lens-service')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
     expect(
-      screen.getByTestId(`lineage-layer-band-${LineageBand.Field}`)
-    ).toBeInTheDocument();
+      screen.queryByTestId('lineage-layer-column-btn')
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('lineage-layer-lens-domain'));
+    await user.click(screen.getByTestId('lineage-layer-lens-domain'));
 
     expect(onSceneLensChange).toHaveBeenCalledWith(LineageLens.Domain);
-    expect(onSceneBandChange).not.toHaveBeenCalled();
-  });
-
-  it('calls scene band handler in scene mode', async () => {
-    const onSceneBandChange = jest.fn();
-    const onSceneLensChange = jest.fn();
-
-    render(
-      <ReactFlowProvider>
-        <LineageLayers
-          entityType={EntityType.TABLE}
-          sceneBand={LineageBand.Asset}
-          sceneLens={LineageLens.Service}
-          onSceneBandChange={onSceneBandChange}
-          onSceneLensChange={onSceneLensChange}
-        />
-      </ReactFlowProvider>
-    );
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('lineage-layer-btn'));
-    });
-
-    fireEvent.click(
-      screen.getByTestId(`lineage-layer-band-${LineageBand.Field}`)
-    );
-
-    expect(onSceneBandChange).toHaveBeenCalledWith(LineageBand.Field);
-    expect(onSceneLensChange).not.toHaveBeenCalled();
   });
 });

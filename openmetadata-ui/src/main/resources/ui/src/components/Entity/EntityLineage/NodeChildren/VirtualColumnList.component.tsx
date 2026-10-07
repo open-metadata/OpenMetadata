@@ -14,6 +14,7 @@ import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/Lineage.constants';
+import { LineageDirection } from '../../../../generated/api/lineage/lineageDirection';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import {
@@ -30,6 +31,11 @@ export interface VirtualColumnListProps {
   nodeId?: string;
   onColumnHover?: (columnFqn?: string) => void;
   onColumnSelect?: (columnFqn?: string) => void;
+  onColumnLineageEdit?: (
+    columnFqn: string,
+    direction: LineageDirection,
+    triggerRef: React.RefObject<HTMLElement>
+  ) => void;
   showDataObservabilitySummary: boolean;
   summary?: TestSummary;
   pageSize?: number;
@@ -42,6 +48,7 @@ const VirtualColumnList = ({
   nodeId,
   onColumnHover,
   onColumnSelect,
+  onColumnLineageEdit,
   showDataObservabilitySummary,
   summary,
   pageSize = LINEAGE_CHILD_ITEMS_PER_PAGE,
@@ -144,6 +151,7 @@ const VirtualColumnList = ({
           showDataObservabilitySummary={showDataObservabilitySummary}
           summary={columnSummary}
           onColumnHover={onColumnHover}
+          onColumnLineageEdit={onColumnLineageEdit}
           onColumnSelect={onColumnSelect}
         />
       );
@@ -154,6 +162,7 @@ const VirtualColumnList = ({
       isConnectable,
       isLoading,
       onColumnHover,
+      onColumnLineageEdit,
       onColumnSelect,
       showDataObservabilitySummary,
       selectedColumn,

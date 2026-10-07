@@ -10,20 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../styles/variables.less';
-
 // Node, badge and handle borders read --lineage-node-border so dark can swap
 // it for border-primary via LINEAGE_NODE_DARK_CLASS on the node element; light
 // keeps these static greys.
-@lineage-border: var(--lineage-node-border, var(--om-legacy-color-b1b1b7));
-@lineage-collapse-header: var(--om-color-gray-50);
 
 .ant-btn.ant-btn-background-ghost.expand-btn {
-  background-color: var(--om-color-bg-surface);
+  background-color: var(--tw-background-color-surface);
   box-shadow: none;
 
   &:hover {
-    background-color: var(--om-color-bg-surface);
+    background-color: var(--tw-background-color-surface);
   }
 }
 
@@ -31,13 +27,13 @@
   box-shadow: none;
 
   &.lineage-path-highlight > .lineage-node {
-    border-color: @primary-color;
-    box-shadow: 0 0 0 3px @primary-1, @box-shadow-base;
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 3px var(--tw-color-utility-brand-100), var(--om-shadow-md);
   }
 
   &.lineage-path-highlight > .lineage-scene-layer-node {
-    border-color: @primary-color;
-    box-shadow: 0 0 0 1px @primary-color,
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 1px var(--tw-color-fg-brand-primary),
       0 2px 8px var(--om-legacy-color-16-24-40-0-12);
   }
 }
@@ -46,33 +42,41 @@
 .lineage-node {
   width: 100%;
   max-width: 400px; //  Max width of Lineage Node, in case of long columns names
-  border: 1px solid @lineage-border;
+  border: 1px solid var(--lineage-node-border, var(--om-legacy-color-b1b1b7));
   border-radius: var(--om-radius-10);
   overflow: hidden;
   transition: border-color var(--om-duration-150) ease,
     box-shadow var(--om-duration-150) ease, opacity var(--om-duration-150) ease;
 
   &.lineage-path-highlight {
-    border-color: @primary-color;
-    box-shadow: 0 0 0 3px @primary-1, @box-shadow-base;
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 3px var(--tw-color-utility-brand-100), var(--om-shadow-md);
   }
 
   &.lineage-scene-layer-node {
     min-height: 66px;
-    border-color: var(--lineage-node-border, @grey-200);
+    border-color: var(--lineage-node-border, var(--tw-border-color-secondary));
     border-radius: var(--om-radius-xl);
     box-shadow: 0 1px 3px var(--om-legacy-color-16-24-40-0-12);
 
     &.lineage-path-highlight,
     &.custom-node-header-active {
-      border-color: @primary-color;
-      box-shadow: 0 0 0 1px @primary-color,
+      border-color: var(--tw-color-fg-brand-primary);
+      box-shadow: 0 0 0 1px var(--tw-color-fg-brand-primary),
         0 2px 8px var(--om-legacy-color-16-24-40-0-12);
     }
 
     .lineage-node-content {
       min-height: 66px;
 
+      // The Layer-band drill button is always shown, 14px in and 22px wide.
+      &.has-scene-drill-button .label-container {
+        padding-right: var(--om-space-44);
+      }
+
+      // No .has-lineage-node-menu offset needed here: Layer-band scene nodes
+      // are never editable (canEditScene excludes LineageBand.Layer), so
+      // LineageNodeMenu never renders alongside this drill button variant.
       .lineage-scene-drill-button {
         top: 50%;
         right: 14px;
@@ -80,7 +84,7 @@
         height: 22px;
         border: none;
         border-radius: var(--om-radius-md);
-        background: @primary-1;
+        background: var(--tw-color-utility-brand-100);
         box-shadow: none;
         transform: translateY(-50%);
         opacity: 1;
@@ -120,8 +124,8 @@
 
         .entity-header-display-name {
           width: auto !important;
-          max-width: 170px;
-          color: @grey-900;
+          max-width: 100%;
+          color: var(--tw-text-color-primary);
           font-size: var(--om-font-size-sm);
           font-weight: var(--om-font-weight-semibold);
           line-height: 18px;
@@ -139,7 +143,7 @@
 
         .lineage-service-subtitle {
           display: block;
-          color: @grey-600;
+          color: var(--tw-text-color-tertiary);
           font-size: var(--om-font-size-11_5);
           line-height: 16px;
         }
@@ -176,16 +180,21 @@
     }
 
     &.amber {
-      border: 1px solid var(--om-color-warning-600);
+      border: 1px solid var(--tw-color-fg-warning-primary);
     }
 
     &.red {
-      border: 1px solid var(--om-color-error-600);
+      border: 1px solid var(--tw-color-fg-error-primary);
     }
   }
 
   .lineage-node-content {
-    position: relative;
+    // Anchor only the scene drill button. A positioned content box inside the
+    // node's overflow: hidden would also anchor, and so clip, the expand /
+    // collapse handles that sit half outside the node edge.
+    &.has-scene-drill-button {
+      position: relative;
+    }
 
     .lineage-scene-drill-button {
       position: absolute;
@@ -198,13 +207,13 @@
       width: 24px;
       height: 24px;
       padding: 0;
-      border: 1px solid @grey-200;
+      border: 1px solid var(--tw-border-color-secondary);
       border-radius: var(--om-radius-md);
-      background: @primary-1;
-      color: @primary-color;
+      background: var(--tw-color-utility-brand-100);
+      color: var(--tw-color-fg-brand-primary);
       cursor: pointer;
       opacity: 0;
-      box-shadow: @box-shadow-base;
+      box-shadow: var(--om-shadow-md);
       transition: opacity var(--om-duration-150) ease,
         background-color var(--om-duration-150) ease;
 
@@ -215,7 +224,7 @@
 
       &:hover,
       &:focus-visible {
-        background: @white;
+        background: var(--tw-background-color-surface);
         opacity: 1;
       }
     }
@@ -225,6 +234,24 @@
       .lineage-scene-drill-button {
         opacity: 1;
       }
+    }
+
+    // The node ⋮ menu sits in the same top-right spot as the absolutely
+    // positioned drill button, so shift the drill button clear of the 24px
+    // menu with enough gap that the two hit areas never overlap.
+    &.has-lineage-node-menu .lineage-scene-drill-button {
+      right: 34px;
+    }
+
+    // Keep the label row, and a container's count pill, clear of the drill
+    // button. With a ⋮ menu the drill button sits left of it, so the gap goes
+    // before the menu rather than after it.
+    &.has-scene-drill-button:not(.has-lineage-node-menu) .label-container {
+      padding-right: var(--om-space-36);
+    }
+
+    &.has-scene-drill-button .label-container .lineage-node-menu {
+      margin-left: var(--om-space-36);
     }
 
     .label-container {
@@ -239,7 +266,7 @@
 
           svg {
             width: 18px;
-            color: @grey-4;
+            color: var(--tw-text-color-quaternary);
           }
         }
 
@@ -263,7 +290,7 @@
             width: 100%;
             height: 1px;
 
-            background: @grey-200;
+            background: var(--tw-background-color-quaternary);
             content: '';
           }
         }
@@ -291,13 +318,14 @@
 
           .children-info-dropdown-label {
             min-width: fit-content;
-            padding: var(--om-space-2) @size-xs var(--om-space-2) @size-sm;
+            padding: var(--om-space-2) var(--om-space-8) var(--om-space-2)
+              var(--om-space-12);
             border: none;
             border-radius: var(--om-radius-lg);
             box-shadow: none;
 
-            background-color: @primary-1;
-            color: @blue-7;
+            background-color: var(--tw-color-utility-brand-100);
+            color: var(--tw-color-fg-brand-primary);
             font-size: var(--om-font-size-xs);
             font-weight: var(--om-font-weight-medium);
             line-height: 18px;
@@ -306,14 +334,14 @@
 
             &:hover {
               box-shadow: none;
-              background-color: @primary-1;
-              color: @blue-7;
+              background-color: var(--tw-color-utility-brand-100);
+              color: var(--tw-color-fg-brand-primary);
             }
 
             &::after {
-              margin-left: @size-xxs;
-              width: @size-sm;
-              height: @size-sm;
+              margin-left: var(--om-space-4);
+              width: var(--om-space-12);
+              height: var(--om-space-12);
               content: '';
             }
 
@@ -339,8 +367,8 @@
             }
 
             &.active {
-              background-color: @primary-1;
-              color: @blue-7;
+              background-color: var(--tw-color-utility-brand-100);
+              color: var(--tw-color-fg-brand-primary);
             }
 
             &:disabled:hover {
@@ -355,7 +383,7 @@
       min-height: 48px;
       padding: var(--om-space-12);
       padding-top: 0;
-      background-color: @grey-9;
+      background-color: var(--tw-background-color-secondary);
 
       .inside-current-page-item {
         margin-top: 0;
@@ -407,7 +435,7 @@
         position: relative;
         font-size: var(--om-font-size-xs);
         font-weight: var(--om-font-weight-regular);
-        border: 1px solid @grey-1;
+        border: 1px solid var(--tw-border-color-secondary);
         border-left: 6px solid transparent;
         border-radius: var(--om-radius-sm);
         border-top-left-radius: var(--om-radius-md);
@@ -435,11 +463,6 @@
             width: 14px;
             display: flex;
           }
-
-          .custom-node-column-label {
-            width: 100%;
-            display: block;
-          }
         }
 
         .custom-node-constraint {
@@ -451,8 +474,8 @@
       &:not(.any-column-selected) {
         .custom-node-column-container {
           &:hover {
-            background-color: @primary-1;
-            border-left-color: @primary-6;
+            background-color: var(--tw-color-utility-brand-100);
+            border-left-color: var(--tw-color-fg-brand-primary);
           }
         }
       }
@@ -464,7 +487,7 @@
       .label-container {
         .custom-node-label-container {
           .entity-footer {
-            background-color: @grey-9;
+            background-color: var(--tw-background-color-secondary);
           }
         }
       }
@@ -472,89 +495,89 @@
   }
 
   &.custom-node-header-active {
-    background-color: var(--om-color-brand-50);
+    background-color: var(--tw-background-color-brand-primary);
 
     .lineage-node-content {
       .label-container {
-        background-color: var(--om-color-brand-50);
+        background-color: var(--tw-background-color-brand-primary);
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: var(--om-color-brand-50);
+            background-color: var(--tw-background-color-brand-primary);
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: var(--om-color-brand-50);
+      background-color: var(--tw-background-color-brand-primary);
     }
 
     &.columns-expanded {
-      background-color: @primary-1;
+      background-color: var(--tw-color-utility-brand-100);
 
       .lineage-node-content {
         .label-container {
-          background-color: @primary-1;
+          background-color: var(--tw-color-utility-brand-100);
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: var(--om-color-brand-50);
+              background-color: var(--tw-background-color-brand-primary);
             }
           }
         }
 
         .column-container {
-          background-color: var(--om-color-brand-50);
+          background-color: var(--tw-background-color-brand-primary);
         }
       }
 
       .lineage-node-badge-container {
-        background-color: @primary-1;
+        background-color: var(--tw-color-utility-brand-100);
       }
     }
   }
 
   &.custom-node-header-active.data-quality-failed-custom-node-header {
-    background-color: var(--om-color-error-25);
+    background-color: var(--tw-background-color-error-primary);
 
     .lineage-node-content {
       .label-container {
-        background-color: var(--om-color-error-25);
+        background-color: var(--tw-background-color-error-primary);
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: var(--om-color-error-25);
+            background-color: var(--tw-background-color-error-primary);
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: var(--om-color-error-25);
-      border-color: var(--om-color-error-600);
+      background-color: var(--tw-background-color-error-primary);
+      border-color: var(--tw-color-fg-error-primary);
     }
 
     &.columns-expanded {
-      background-color: var(--om-color-error-100);
+      background-color: var(--tw-background-color-error-secondary);
 
       .lineage-node-badge-container {
-        background-color: var(--om-color-error-100);
+        background-color: var(--tw-background-color-error-secondary);
       }
 
       .lineage-node-content {
         .label-container {
-          background-color: var(--om-color-error-100);
+          background-color: var(--tw-background-color-error-secondary);
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: var(--om-color-error-25);
+              background-color: var(--tw-background-color-error-primary);
             }
           }
         }
 
         .column-container {
-          background-color: var(--om-color-error-25);
+          background-color: var(--tw-background-color-error-primary);
         }
       }
     }
@@ -562,7 +585,7 @@
 
   &.custom-node-header-tracing {
     .lineage-node-badge-container {
-      border-color: @primary-color;
+      border-color: var(--tw-color-fg-brand-primary);
     }
   }
 
@@ -579,22 +602,22 @@
 
     .column-container {
       .custom-node-column-container.custom-node-header-column-tracing {
-        background-color: @primary-1;
-        border-left-color: @primary-6;
+        background-color: var(--tw-color-utility-brand-100);
+        border-left-color: var(--tw-color-fg-brand-primary);
 
         &:hover {
-          background-color: @primary-1;
+          background-color: var(--tw-color-utility-brand-100);
         }
       }
 
       &.any-column-selected {
         .custom-node-column-container.custom-node-header-column-tracing {
-          background-color: @indigo-100;
-          border-left-color: @indigo-600;
+          background-color: var(--tw-color-utility-indigo-100);
+          border-left-color: var(--tw-color-utility-indigo-600);
 
           &:hover {
-            background-color: @indigo-100;
-            border-left-color: @indigo-600;
+            background-color: var(--tw-color-utility-indigo-100);
+            border-left-color: var(--tw-color-utility-indigo-600);
           }
         }
       }
@@ -603,8 +626,8 @@
         .custom-node-column-container:not(
             .custom-node-header-column-tracing
           ):hover {
-          background-color: @primary-1;
-          border-left-color: @primary-6;
+          background-color: var(--tw-color-utility-brand-100);
+          border-left-color: var(--tw-color-fg-brand-primary);
         }
       }
     }
@@ -621,7 +644,7 @@
     width: 68px;
     height: 15px;
 
-    border: 1px solid @lineage-border;
+    border: 1px solid var(--lineage-node-border, var(--om-legacy-color-b1b1b7));
     border-bottom: 0px;
     border-top-left-radius: var(--om-radius-10);
     border-top-right-radius: var(--om-radius-10);
@@ -640,8 +663,8 @@
       padding: var(--om-space-2);
       border-radius: var(--om-radius-7);
 
-      background-color: var(--om-color-brand-700);
-      color: white;
+      background-color: var(--tw-background-color-brand-solid_hover);
+      color: var(--tw-text-color-primary_on-brand);
 
       font-size: var(--om-font-size-xs);
       font-weight: var(--om-font-weight-medium);
@@ -676,7 +699,7 @@
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: var(--om-color-bg-surface) !important;
+  background-color: var(--tw-background-color-surface) !important;
 }
 
 .react-flow__node-load-more {
@@ -693,11 +716,11 @@
 .react-flow__node-output.selectable:hover,
 .react-flow__node-group.selectable:hover {
   .lineage-node-handle {
-    border-color: @primary-color;
+    border-color: var(--tw-color-fg-brand-primary);
   }
 
   .lineage-node {
-    border-color: @primary-color;
+    border-color: var(--tw-color-fg-brand-primary);
 
     .lineage-node-badge-container {
       border-color: var(--om-legacy-color-356fe7);
@@ -705,22 +728,22 @@
   }
 
   .data-quality-failed-custom-node-header {
-    border-color: @red-3;
+    border-color: var(--tw-color-fg-error-primary);
 
     .lineage-node-badge-container {
-      border-color: @red-3;
+      border-color: var(--tw-color-fg-error-primary);
     }
 
     .lineage-node-content {
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: var(--om-color-error-50);
-            color: var(--om-color-orange-dark-700);
-            border-left-color: var(--om-color-error-600);
+            background-color: var(--tw-background-color-error-primary);
+            color: var(--tw-color-utility-orange-dark-700);
+            border-left-color: var(--tw-color-fg-error-primary);
 
             .profiler-item {
-              color: black;
+              color: var(--tw-text-color-primary);
             }
           }
         }
@@ -733,8 +756,8 @@
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: var(--om-color-error-50);
-            border-left-color: var(--om-color-error-600);
+            background-color: var(--tw-background-color-error-primary);
+            border-left-color: var(--tw-color-fg-error-primary);
           }
         }
       }
@@ -748,9 +771,9 @@
     .lineage-node-content {
       .column-container {
         .custom-node-column-container.custom-node-header-column-tracing {
-          border-color: var(--om-color-error-600);
-          background-color: var(--om-color-white);
-          color: black;
+          border-color: var(--tw-color-fg-error-primary);
+          background-color: var(--tw-background-color-surface);
+          color: var(--tw-text-color-primary);
         }
       }
     }
@@ -758,7 +781,7 @@
 }
 
 .react-flow__handle.connectable {
-  background-color: @text-color;
+  background-color: var(--tw-background-color-quaternary);
 }
 
 .react-flow {
@@ -777,8 +800,11 @@
     min-width: 20px !important;
     height: 20px !important;
     border-radius: var(--om-radius-sm) !important;
-    border-color: @lineage-border !important;
-    background: var(--om-color-bg-surface) !important;
+    border-color: var(
+      --lineage-node-border,
+      var(--om-legacy-color-b1b1b7)
+    ) !important;
+    background: var(--tw-background-color-surface) !important;
     top: min(58px, 50%) !important;
 
     gap: var(--om-space-1);
@@ -804,7 +830,7 @@
     }
 
     svg {
-      color: @grey-4;
+      color: var(--tw-text-color-quaternary);
       cursor: pointer;
       padding: var(--om-space-1);
       width: 18px;
@@ -812,8 +838,8 @@
       border-radius: var(--om-radius-3);
 
       &:hover {
-        color: @primary-color;
-        background-color: var(--om-color-brand-50);
+        color: var(--tw-color-fg-brand-primary);
+        background-color: var(--tw-background-color-brand-primary);
       }
     }
 
@@ -824,7 +850,7 @@
       top: 2px;
       width: 1px;
       height: 14px;
-      background: @blue-20;
+      background: var(--tw-background-color-quaternary);
       transform: translateX(-50%);
     }
   }
@@ -835,20 +861,23 @@
   min-width: 20px !important;
   height: 20px !important;
   border-radius: 20% !important;
-  border-color: @lineage-border !important;
-  background: var(--om-color-bg-surface) !important;
+  border-color: var(
+    --lineage-node-border,
+    var(--om-legacy-color-b1b1b7)
+  ) !important;
+  background: var(--tw-background-color-surface) !important;
   top: 60px !important; // Need to show handles on top half
   top: min(58px, 50%) !important;
 
   svg {
-    color: @text-grey-muted;
+    color: var(--tw-text-color-quaternary);
   }
 }
 
 .react-flow .lineage-column-node-handle {
   width: 30px;
   border-radius: 0;
-  border-color: @lineage-border;
+  border-color: var(--lineage-node-border, var(--om-legacy-color-b1b1b7));
   background: transparent;
   top: 5px;
   height: 25px;
@@ -877,7 +906,7 @@
   }
 
   svg:first-child {
-    border-right: 1px solid @grey-15;
+    border-right: 1px solid var(--tw-border-color-secondary);
     width: 22px;
     padding-right: var(--om-space-6);
   }
@@ -885,8 +914,8 @@
 
 .custom-node-deleted-icon {
   border-radius: var(--om-radius-sm);
-  border: 1px solid @error-color;
-  background-color: var(--tw-color-bg-primary);
+  border: 1px solid var(--tw-color-fg-error-primary);
+  background-color: var(--tw-background-color-surface);
 }
 
 .manage-node {
@@ -896,5 +925,5 @@
 }
 
 .react-flow__edge :hover {
-  stroke: @primary-color;
+  stroke: var(--tw-color-fg-brand-primary);
 }

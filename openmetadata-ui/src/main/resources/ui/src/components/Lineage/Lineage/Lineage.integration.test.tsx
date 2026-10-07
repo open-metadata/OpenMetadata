@@ -63,11 +63,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../Entity/EntityLineage/EntityLineageSidebar.component', () => ({
-  __esModule: true,
-  default: () => <div data-testid="entity-lineage-sidebar" />,
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => {
   type ChildrenProps = { children?: ReactNode };
 

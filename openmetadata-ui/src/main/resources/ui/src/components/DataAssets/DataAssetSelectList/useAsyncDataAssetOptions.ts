@@ -20,7 +20,9 @@ import { Paging } from '../../../generated/type/paging';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { SourceType } from '../../SearchedData/SearchedData.interface';
 import {
   DataAssetOption,
   FetchOptionsResponse,
@@ -57,7 +59,9 @@ export const useAsyncDataAssetOptions = ({
       page: number
     ): Promise<FetchOptionsResponse> => {
       const response = await searchQuery({
-        query: searchQueryParam ? `*${searchQueryParam}*` : '*',
+        query: searchQueryParam
+          ? `*${escapeESReservedCharacters(searchQueryParam)}*`
+          : '*',
         pageNumber: page,
         pageSize: PAGE_SIZE,
         searchIndex,
@@ -69,20 +73,23 @@ export const useAsyncDataAssetOptions = ({
       const hits = response.hits.hits;
       const total = response.hits.total.value;
 
+      // Searching several indices widens the hit type past what the compiler
+      // can narrow; every searchable entity carries these fields.
       const data = hits.map(({ _source }) => {
-        const entityName = getEntityName(_source);
+        const source = _source as SourceType;
+        const entityName = getEntityName(source);
         const entityRef = getEntityReferenceFromEntity(
-          _source as EntityReference,
-          _source.entityType as EntityType
+          source as EntityReference,
+          source.entityType as EntityType
         );
 
         return {
           label: entityName,
-          value: _source.fullyQualifiedName,
+          value: source.fullyQualifiedName,
           reference: { ...entityRef },
           displayName: entityName,
-          name: _source.name,
-          id: _source.id,
+          name: source.name,
+          id: source.id,
         };
       });
 

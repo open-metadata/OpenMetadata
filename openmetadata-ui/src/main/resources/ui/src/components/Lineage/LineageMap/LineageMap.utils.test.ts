@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { renderHook } from '@testing-library/react';
 import type { TFunction } from 'i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -26,15 +27,18 @@ import {
   getBreadcrumbSceneRequest,
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
+  getDeleteKeyAction,
   getDrillBand,
   getLensRootLabelKey,
   getParentSceneRequest,
   getSceneFocus,
   getSceneLevelLabelKey,
-  getSceneNodeCountSubtitle,
+  getSceneNodeCount,
+  getSceneNodeTypeSubtitle,
   getSceneOriginFocus,
   getSceneRequestFromSearch,
   getSceneSearch,
+  useCloseOnViewportMove,
 } from './LineageMap.utils';
 
 describe('scene focus validation', () => {
@@ -124,7 +128,9 @@ describe('scene URL navigation', () => {
       request
     );
 
-    expect(getSceneRequestFromSearch(search, defaultFocus)).toEqual(request);
+    expect(getSceneRequestFromSearch(search, defaultFocus, true)).toEqual(
+      request
+    );
   });
 
   it('uses the current route entity when no focus has been selected', () => {
@@ -172,38 +178,17 @@ describe('scene URL navigation', () => {
   });
 
   it.each([{}, defaultFocus])(
-    'recenters the entity-page table after reloading a Layer URL with focus %j',
+    'keeps an asset page Layer view focused on its asset, focus %j',
     (focus) => {
-      const request = {
-        lens: LineageLens.Service,
+      const search = getSceneSearch('', {
+        lens: LineageLens.Domain,
         band: LineageBand.Layer,
         ...focus,
-      };
-      const search = getSceneSearch('', request);
-      const reloaded = getSceneRequestFromSearch(search, defaultFocus);
+      });
 
-      expect(reloaded).toEqual(request);
-
-      const scene: LineageScene = {
-        ...request,
-        nodes: [],
-        edges: [],
-        breadcrumb: [],
-      };
-      const recentered = {
-        lens: scene.lens,
-        band: LineageBand.Asset,
-        ...getSceneOriginFocus(scene, defaultFocus),
-      };
-
-      expect(
-        getSceneRequestFromSearch(
-          getSceneSearch(search, recentered),
-          defaultFocus
-        )
-      ).toEqual({
-        lens: LineageLens.Service,
-        band: LineageBand.Asset,
+      expect(getSceneRequestFromSearch(search, defaultFocus)).toEqual({
+        lens: LineageLens.Domain,
+        band: LineageBand.Layer,
         ...defaultFocus,
       });
     }
@@ -236,8 +221,8 @@ const t = ((key: string, options?: Record<string, string | number>) => {
     'label.table-plural': 'Tables',
   };
 
-  if (key === 'label.lineage-map-node-count-subtitle') {
-    return `${options?.kind} · ${options?.count} ${options?.entity}`;
+  if (key === 'label.lineage-map-node-type-subtitle') {
+    return `${options?.type} · ${options?.kind}`;
   }
 
   return labels[key] ?? key;
@@ -549,56 +534,147 @@ describe('LineageMap utils', () => {
     ).toBeUndefined();
   });
 
-  it('formats semantic node count subtitles from concrete asset counts', () => {
-    const subtitle = getSceneNodeCountSubtitle(
-      {
-        id: 'schema:sample_data.ecommerce_db.shopify',
-        label: 'shopify',
-        band: LineageBand.Asset,
-        levelKind: LineageLevelKind.Schema,
-        counts: {
-          [LineageLevelKind.Table]: 14,
+  it('counts the concrete assets a container holds', () => {
+    expect(
+      getSceneNodeCount(
+        {
+          id: 'schema:sample_data.ecommerce_db.shopify',
+          label: 'shopify',
+          band: LineageBand.Asset,
+          levelKind: LineageLevelKind.Schema,
+          counts: { [LineageLevelKind.Table]: 14 },
         },
-      },
-      t
-    );
-
-    expect(subtitle).toBe('schema · 14 tables');
+        t
+      )
+    ).toEqual({ count: 14, entity: 'tables' });
   });
 
-  it('falls back to asset count labels for mixed concrete counts', () => {
-    const subtitle = getSceneNodeCountSubtitle(
-      {
-        id: 'service:sample_data',
-        label: 'sample_data',
-        band: LineageBand.Layer,
-        levelKind: LineageLevelKind.Service,
-        counts: {
-          [LineageLevelKind.Table]: 2,
-          [LineageLevelKind.Dashboard]: 1,
+  it('falls back to an asset count for mixed concrete counts', () => {
+    expect(
+      getSceneNodeCount(
+        {
+          id: 'service:sample_data',
+          label: 'sample_data',
+          band: LineageBand.Layer,
+          levelKind: LineageLevelKind.Service,
+          counts: {
+            [LineageLevelKind.Table]: 2,
+            [LineageLevelKind.Dashboard]: 1,
+          },
         },
-      },
-      t
-    );
-
-    expect(subtitle).toBe('service · 3 assets');
+        t
+      )
+    ).toEqual({ count: 3, entity: 'assets' });
   });
 
-  it('does not include field counts in container asset subtitles', () => {
-    const subtitle = getSceneNodeCountSubtitle(
-      {
-        id: 'service:sample_data',
-        label: 'sample_data',
-        band: LineageBand.Layer,
-        levelKind: LineageLevelKind.Service,
-        counts: {
-          [LineageLevelKind.Column]: 275,
-          [LineageLevelKind.Table]: 25,
+  it('does not count fields towards a container', () => {
+    expect(
+      getSceneNodeCount(
+        {
+          id: 'service:sample_data',
+          label: 'sample_data',
+          band: LineageBand.Layer,
+          levelKind: LineageLevelKind.Service,
+          counts: {
+            [LineageLevelKind.Column]: 275,
+            [LineageLevelKind.Table]: 25,
+          },
         },
-      },
-      t
-    );
+        t
+      )
+    ).toEqual({ count: 25, entity: 'tables' });
+  });
 
-    expect(subtitle).toBe('service · 25 tables');
+  it('describes a container by its service type and kind', () => {
+    const service = {
+      id: 'service:sample_data',
+      label: 'sample_data',
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+
+    expect(
+      getSceneNodeTypeSubtitle({ ...service, serviceType: 'Snowflake' }, t)
+    ).toBe('Snowflake · service');
+    expect(getSceneNodeTypeSubtitle(service, t)).toBe('service');
+  });
+
+  it('leaves leaf assets without a container subtitle or count', () => {
+    const table = {
+      id: 'table:a',
+      label: 'a',
+      band: LineageBand.Asset,
+      levelKind: LineageLevelKind.Table,
+      counts: { [LineageLevelKind.Column]: 4 },
+    };
+
+    expect(getSceneNodeTypeSubtitle(table, t)).toBeUndefined();
+    expect(getSceneNodeCount(table, t)).toBeUndefined();
+  });
+});
+
+describe('getDeleteKeyAction', () => {
+  const keyEvent = (key: string, target: HTMLElement = document.body) =>
+    ({ key, target } as unknown as KeyboardEvent);
+
+  it('returns node for Delete with a selected node', () => {
+    expect(
+      getDeleteKeyAction(keyEvent('Delete'), {
+        canEdit: true,
+        hasSelectedNode: true,
+        hasSelectedEdge: false,
+      })
+    ).toBe('node');
+  });
+
+  it('returns edge for Backspace with only a selected edge', () => {
+    expect(
+      getDeleteKeyAction(keyEvent('Backspace'), {
+        canEdit: true,
+        hasSelectedNode: false,
+        hasSelectedEdge: true,
+      })
+    ).toBe('edge');
+  });
+
+  it('ignores keys typed in inputs', () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+
+    expect(
+      getDeleteKeyAction(keyEvent('Delete', input), {
+        canEdit: true,
+        hasSelectedNode: true,
+        hasSelectedEdge: false,
+      })
+    ).toBeUndefined();
+  });
+
+  it('ignores everything without edit permission', () => {
+    expect(
+      getDeleteKeyAction(keyEvent('Delete'), {
+        canEdit: false,
+        hasSelectedNode: true,
+        hasSelectedEdge: false,
+      })
+    ).toBeUndefined();
+  });
+});
+
+describe('useCloseOnViewportMove', () => {
+  it('closes the popover when the viewport starts moving', () => {
+    const close = jest.fn();
+    const { result } = renderHook(() => useCloseOnViewportMove(true, close));
+    result.current();
+
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing when closed', () => {
+    const close = jest.fn();
+    const { result } = renderHook(() => useCloseOnViewportMove(false, close));
+    result.current();
+
+    expect(close).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RefObject } from 'react';
+import { LineageDirection } from '../../../../generated/api/lineage/lineageDirection';
 import { LineageNodeType } from '../../../../interface/lineage.interface';
 
 export interface NodeChildrenProps {
@@ -19,6 +21,11 @@ export interface NodeChildrenProps {
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
   onColumnHover?: (columnFqn?: string) => void;
   onColumnSelect?: (columnFqn?: string) => void;
+  onColumnLineageEdit?: (
+    columnFqn: string,
+    direction: LineageDirection,
+    triggerRef: RefObject<HTMLElement>
+  ) => void;
 }
 
 // Re-exported because consumers outside this repository import it from this path.

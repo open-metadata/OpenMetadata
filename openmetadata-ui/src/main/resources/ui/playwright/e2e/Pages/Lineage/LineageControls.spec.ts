@@ -26,8 +26,6 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   connectEdgeBetweenNodesViaAPI,
-  dismissLineageMapOnboarding,
-  editLineageClick,
   performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -127,28 +125,22 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(zoomOutBtn).toBeVisible();
   });
 
-  test('Verify fit view options menu', async ({ page }) => {
-    await page.getByTestId('fit-screen').click();
-    await expect(
-      page.getByRole('menu', { name: 'Lineage View Options' })
-    ).toBeVisible();
-
-    await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
-
+  test('Verify fit to screen brings the root node into view', async ({
+    page,
+  }) => {
     const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
-    await editLineageClick(page);
-    await page.getByTestId(`lineage-node-${tableFqn}`).dispatchEvent('click');
+    const tableNode = page.getByTestId(`lineage-node-${tableFqn}`);
+    const zoomLevel = page.getByTestId('zoom-level');
+
+    for (let i = 0; i < 5; i++) {
+      await page.getByTestId('zoom-in').click();
+    }
+    const zoomedIn = await zoomLevel.textContent();
 
     await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Refocused to selected' }).click();
 
-    await editLineageClick(page);
-
-    await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
-
-    await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Refocused to home' }).click();
+    await expect(zoomLevel).not.toHaveText(zoomedIn ?? '');
+    await expect(tableNode).toBeInViewport();
   });
 
   test('Verify minimap toggle functionality', async ({ page }) => {
@@ -166,12 +158,12 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // before each step has fullscreen=true
     expect(page.url()).toContain('fullscreen=true');
 
-    await page.getByTestId('exit-full-screen').click();
+    await page.getByRole('button', { name: 'Exit Full Screen' }).click();
 
-    expect(page.url()).not.toContain('fullscreen=true');
-    await page.getByTestId('full-screen').click();
+    await expect.poll(() => page.url()).not.toContain('fullscreen=true');
+    await page.getByRole('button', { name: 'Full Screen View' }).click();
 
-    expect(page.url()).toContain('fullscreen=true');
+    await expect.poll(() => page.url()).toContain('fullscreen=true');
   });
 });
 
@@ -183,39 +175,55 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await performZoomOut(page);
     });
 
-    test('Verify unsupported DQ overlay is hidden in scene mode', async ({
-      page,
-    }) => {
+    test('Verify DQ layer toggle activation', async ({ page }) => {
       await page.getByTestId('lineage-layer-btn').click();
 
-      await expect(
-        page.getByTestId('lineage-layer-observability-btn')
-      ).not.toBeVisible();
-      await expect(
-        page.getByTestId('lineage-layer-lens-service')
-      ).toBeVisible();
-      await expect(page.getByTestId('lineage-layer-band-FIELD')).toBeVisible();
+      const observabilityBtn = page.getByTestId(
+        'lineage-layer-observability-btn'
+      );
+      await expect(observabilityBtn).toBeVisible();
+
+      await expect(observabilityBtn).not.toHaveAttribute('data-selected');
+
+      await observabilityBtn.click();
+      await page.keyboard.press('Escape');
+
+      await page.getByTestId('lineage-layer-btn').click();
+      await expect(observabilityBtn).toHaveAttribute('data-selected');
+    });
+
+    test('Verify DQ layer toggle off removes highlights', async ({ page }) => {
+      await page.getByTestId('lineage-layer-btn').click();
+
+      const observabilityBtn = page.getByTestId(
+        'lineage-layer-observability-btn'
+      );
+
+      await observabilityBtn.click();
+      await page.keyboard.press('Escape');
+
+      await page.getByTestId('lineage-layer-btn').click();
+      await expect(observabilityBtn).toHaveAttribute('data-selected');
+
+      await observabilityBtn.click();
+      await page.keyboard.press('Escape');
+
+      await page.getByTestId('lineage-layer-btn').click();
+      await expect(observabilityBtn).not.toHaveAttribute('data-selected');
     });
   });
 
   test.describe('Error Handling', () => {
     test('Verify invalid entity search handling', async ({ page }) => {
-      const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
       await sidebarClick(page, SidebarItem.LINEAGE);
-      expect((await sceneResponse).ok()).toBeTruthy();
-      await dismissLineageMapOnboarding(page);
 
       await waitForAllLoadersToDisappear(page);
 
       const searchSelect = page.getByTestId('search-entity-select');
       await expect(searchSelect).toBeVisible();
 
-      await searchSelect.click();
-
-      await page
-        .locator(
-          '[data-testid="search-entity-select"] .ant-select-selection-search-input'
-        )
+      await searchSelect
+        .getByRole('combobox')
         .fill('invalid_fqn_does_not_exist_12345');
 
       const noResultsText = page.getByText(/no match/i);

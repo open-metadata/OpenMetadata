@@ -12,13 +12,100 @@
  */
 import { expect } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
+import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
+import { ChartClass } from '../../../support/entity/ChartClass';
+import { ContainerClass } from '../../../support/entity/ContainerClass';
+import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { MetricClass } from '../../../support/entity/MetricClass';
+import { MlModelClass } from '../../../support/entity/MlModelClass';
+import { PipelineClass } from '../../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { TopicClass } from '../../../support/entity/TopicClass';
 import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
 } from '../../../utils/common';
-import { visitLineageTab } from '../../../utils/lineage';
+import {
+  clickLineageNode,
+  dismissLineageMapOnboarding,
+  visitLineageTab,
+} from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
+
+test.describe(
+  'Verify custom properties tab visibility logic for supported entity types lineage',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    test.describe.configure({ mode: 'default' });
+
+    const supportedEntities = [
+      { entity: new TableClass(), type: 'table' },
+      { entity: new TopicClass(), type: 'topic' },
+      { entity: new DashboardClass(), type: 'dashboard' },
+      { entity: new PipelineClass(), type: 'pipeline' },
+      { entity: new MlModelClass(), type: 'mlmodel' },
+      { entity: new ContainerClass(), type: 'container' },
+      { entity: new SearchIndexClass(), type: 'searchIndex' },
+      { entity: new ApiEndpointClass(), type: 'apiEndpoint' },
+      { entity: new MetricClass(), type: 'metric' },
+      { entity: new ChartClass(), type: 'chart' },
+    ];
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+
+      const createEntityArray: Promise<unknown>[] = [];
+
+      supportedEntities.forEach(({ entity }) => {
+        createEntityArray.push(entity.create(apiContext));
+      });
+
+      await Promise.all(createEntityArray);
+
+      await afterAction();
+    });
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    for (const { entity, type } of supportedEntities) {
+      test(`Verify custom properties tab IS visible for supported type: ${type}`, async ({
+        page,
+      }) => {
+        const searchTerm =
+          entity.entityResponseData?.['fullyQualifiedName'] ||
+          entity.entity.name;
+
+        await entity.visitEntityPage(page, searchTerm);
+        await visitLineageTab(page);
+
+        const nodeFqn =
+          entity.entityResponseData?.['fullyQualifiedName'] || searchTerm;
+
+        await clickLineageNode(page, nodeFqn);
+
+        const lineagePanel = page.getByTestId('lineage-entity-panel');
+        await expect(lineagePanel).toBeVisible();
+        await expect(lineagePanel.getByTestId('overview-tab')).toBeVisible();
+
+        const customPropertiesTab = lineagePanel.getByTestId(
+          'custom-properties-tab'
+        );
+        await expect(customPropertiesTab).toBeVisible();
+
+        const closeButton = lineagePanel.getByTestId('drawer-close-icon');
+        if (await closeButton.isVisible()) {
+          await closeButton.click();
+          await expect(lineagePanel).not.toBeVisible();
+        }
+      });
+    }
+  }
+);
 
 test.describe(
   'Hierarchical lineage node details interaction',
@@ -48,29 +135,24 @@ test.describe(
       await redirectToHomePage(page);
     });
 
-    test('drills into asset details instead of opening the legacy right panel', async ({
+    test('drills into asset details from the main Lineage page instead of opening the legacy right panel', async ({
       page,
     }) => {
       const tableFqn = table.entityResponseData.fullyQualifiedName;
       const serviceFqn = table.serviceResponseData.fullyQualifiedName;
 
-      await table.visitEntityPage(page);
-      await visitLineageTab(page);
-
-      const tableNode = page.getByTestId(`lineage-node-${tableFqn}`);
-      await expect(tableNode).toBeVisible();
-
-      await page.getByTestId('lineage-layer-btn').click();
-      const layerBandButton = page.getByTestId('lineage-layer-band-LAYER');
-      const isLayerBandSelected = await layerBandButton.evaluate((element) =>
-        element.hasAttribute('data-selected')
-      );
-
-      if (!isLayerBandSelected) {
-        await layerBandButton.click();
-      } else {
-        await page.keyboard.press('Escape');
-      }
+      // Hierarchy drilling lives on the main Lineage page, so open it at the
+      // Layer band focused on this table, as the asset tab used to.
+      const search = new URLSearchParams({
+        lineageLens: 'service',
+        lineageBand: 'LAYER',
+        lineageFocus: tableFqn,
+        lineageEntityType: 'table',
+      });
+      const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
+      await page.goto(`/lineage?${search.toString()}`);
+      expect((await sceneResponse).ok()).toBeTruthy();
+      await dismissLineageMapOnboarding(page);
 
       await expect(
         page

@@ -10,11 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, InputNumber, Modal } from 'antd';
-import React from 'react';
+import {
+  Button,
+  Dialog,
+  HookForm,
+  Input,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import React, { useEffect } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { LineageConfigModalProps } from './EntityLineage.interface';
+import { LINEAGE_CONFIG_FIELDS } from '../../../constants/Lineage.constants';
+import { getLineageConfigFormValues } from '../../../utils/EntityLineagePureUtils';
+import {
+  LineageConfig,
+  LineageConfigFormValues,
+  LineageConfigModalProps,
+} from './EntityLineage.interface';
 
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
@@ -23,70 +36,92 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<LineageConfigFormValues>({
+    defaultValues: getLineageConfigFormValues(config),
+  });
+
+  useEffect(() => {
+    if (visible) {
+      form.reset(getLineageConfigFormValues(config));
+    }
+  }, [visible, config, form.reset, form]);
+
+  // Only the edited fields are emitted, matching the previous AntD onFinish payload.
+  const onSubmit = (values: LineageConfigFormValues) =>
+    onSave({
+      upstreamDepth: Number(values.upstreamDepth),
+      downstreamDepth: Number(values.downstreamDepth),
+      nodesPerLayer: Number(values.nodesPerLayer),
+    } as LineageConfig);
 
   return (
-    <Modal
-      maskClosable={false}
-      open={visible}
-      title={t('label.lineage-config')}
-      onCancel={onCancel}
-      onOk={form.submit}>
-      <Form
-        form={form}
-        initialValues={config}
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={onSave}>
-        <Form.Item
-          label={t('label.upstream-depth')}
-          name="upstreamDepth"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 0,
-            },
-          ]}
-          tooltip={t('message.upstream-depth-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-upstream" />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.downstream-depth')}
-          name="downstreamDepth"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 0,
-            },
-          ]}
-          tooltip={t('message.downstream-depth-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-downstream" />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.nodes-per-layer')}
-          name="nodesPerLayer"
-          rules={[
-            {
-              required: true,
-            },
-            {
-              type: 'number',
-              min: 5,
-            },
-          ]}
-          tooltip={t('message.nodes-per-layer-tooltip')}>
-          <InputNumber className="w-full" data-testid="field-nodes-per-layer" />
-        </Form.Item>
-      </Form>
-    </Modal>
+    <ModalOverlay
+      isDismissable={false}
+      isOpen={visible}
+      onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          title={t('label.lineage-config')}
+          width={520}
+          onClose={onCancel}>
+          <Dialog.Content>
+            <HookForm<LineageConfigFormValues>
+              form={form}
+              onSubmit={form.handleSubmit(onSubmit)}>
+              {LINEAGE_CONFIG_FIELDS.map(
+                ({ name, label, tooltip, testId, min }) => (
+                  <Controller
+                    control={form.control}
+                    key={name}
+                    name={name}
+                    render={({ field, fieldState }) => (
+                      <Input
+                        isRequired
+                        hint={fieldState.error?.message}
+                        inputDataTestId={testId}
+                        isInvalid={Boolean(fieldState.error)}
+                        label={t(label)}
+                        name={field.name}
+                        ref={field.ref}
+                        tooltip={t(tooltip)}
+                        type="number"
+                        validationBehavior="aria"
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                      />
+                    )}
+                    rules={{
+                      required: t('message.field-text-is-required', {
+                        fieldText: t(label),
+                      }),
+                      min: {
+                        value: min,
+                        message: t('message.entity-size-less-than', {
+                          entity: t(label),
+                          min,
+                        }),
+                      },
+                    }}
+                  />
+                )
+              )}
+            </HookForm>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              onPress={() => form.handleSubmit(onSubmit)()}>
+              {t('label.ok')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

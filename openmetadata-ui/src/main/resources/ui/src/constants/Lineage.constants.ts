@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import type { BadgeColors } from '@openmetadata/ui-core-components';
+import {
+  ElementLoadingState,
+  LineageConfigField,
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -203,3 +207,35 @@ export const IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS = [
 ];
 
 export const IMPACT_ANALYSIS_STATIC_COLUMNS = ['name', 'column'];
+
+// getPipelineStatusClass returns a legacy antd-tag colour name; map it to the
+// core Badge's semantic colours. Unmapped statuses fall back to Badge's gray.
+export const PIPELINE_STATUS_BADGE_COLOR: Record<string, BadgeColors> = {
+  green: 'success',
+  red: 'error',
+  amber: 'warning',
+};
+
+export const LINEAGE_CONFIG_FIELDS: LineageConfigField[] = [
+  {
+    name: 'upstreamDepth',
+    label: 'label.upstream-depth',
+    tooltip: 'message.upstream-depth-tooltip',
+    testId: 'field-upstream',
+    min: 0,
+  },
+  {
+    name: 'downstreamDepth',
+    label: 'label.downstream-depth',
+    tooltip: 'message.downstream-depth-tooltip',
+    testId: 'field-downstream',
+    min: 0,
+  },
+  {
+    name: 'nodesPerLayer',
+    label: 'label.nodes-per-layer',
+    tooltip: 'message.nodes-per-layer-tooltip',
+    testId: 'field-nodes-per-layer',
+    min: 5,
+  },
+];

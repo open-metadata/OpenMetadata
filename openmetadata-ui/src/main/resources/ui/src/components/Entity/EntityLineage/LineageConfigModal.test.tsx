@@ -20,7 +20,7 @@ const onSave = jest.fn();
 const config = {
   upstreamDepth: 2,
   downstreamDepth: 3,
-  nodesPerLayer: 4,
+  nodesPerLayer: 5,
   pipelineViewMode: PipelineViewMode.Node,
 };
 
@@ -45,9 +45,9 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    expect(fieldUpstream).toBeInTheDocument();
-    expect(fieldDownstream).toBeInTheDocument();
-    expect(fieldNodesPerLayer).toBeInTheDocument();
+    expect(fieldUpstream).toHaveValue(2);
+    expect(fieldDownstream).toHaveValue(3);
+    expect(fieldNodesPerLayer).toHaveValue(5);
   });
 
   it('calls onCancel when Cancel button is clicked', () => {
@@ -60,7 +60,7 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
@@ -81,13 +81,10 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    // Update values
     fireEvent.change(fieldUpstream, { target: { value: '5' } });
     fireEvent.change(fieldDownstream, { target: { value: '6' } });
     fireEvent.change(fieldNodesPerLayer, { target: { value: '7' } });
-
-    // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith({
@@ -110,15 +107,14 @@ describe('LineageConfigModal', () => {
 
     const fieldUpstream = await screen.findByTestId('field-upstream');
 
-    // Try to set negative value
     fireEvent.change(fieldUpstream, { target: { value: '-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
-    // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-
-    await waitFor(() => {
-      expect(onSave).not.toHaveBeenCalled();
-    });
+    expect(
+      await screen.findByText('message.entity-size-less-than')
+    ).toBeInTheDocument();
+    expect(fieldUpstream).toHaveAttribute('aria-invalid', 'true');
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('validates minimum value for downstream depth', async () => {
@@ -133,15 +129,14 @@ describe('LineageConfigModal', () => {
 
     const fieldDownstream = await screen.findByTestId('field-downstream');
 
-    // Try to set negative value
     fireEvent.change(fieldDownstream, { target: { value: '-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
-    // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-
-    await waitFor(() => {
-      expect(onSave).not.toHaveBeenCalled();
-    });
+    expect(
+      await screen.findByText('message.entity-size-less-than')
+    ).toBeInTheDocument();
+    expect(fieldDownstream).toHaveAttribute('aria-invalid', 'true');
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('validates minimum value for nodes per layer', async () => {
@@ -158,15 +153,14 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    // Try to set value less than minimum (5)
     fireEvent.change(fieldNodesPerLayer, { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
-    // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-
-    await waitFor(() => {
-      expect(onSave).not.toHaveBeenCalled();
-    });
+    expect(
+      await screen.findByText('message.entity-size-less-than')
+    ).toBeInTheDocument();
+    expect(fieldNodesPerLayer).toHaveAttribute('aria-invalid', 'true');
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('validates required fields', async () => {
@@ -185,16 +179,14 @@ describe('LineageConfigModal', () => {
       'field-nodes-per-layer'
     );
 
-    // Clear all fields
     fireEvent.change(fieldUpstream, { target: { value: '' } });
     fireEvent.change(fieldDownstream, { target: { value: '' } });
     fireEvent.change(fieldNodesPerLayer, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
-    // Submit form
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-
-    await waitFor(() => {
-      expect(onSave).not.toHaveBeenCalled();
-    });
+    expect(
+      await screen.findAllByText('message.field-text-is-required')
+    ).toHaveLength(3);
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

@@ -13,6 +13,7 @@
 
 import type { TFunction } from 'i18next';
 import Qs from 'qs';
+import { useCallback } from 'react';
 import {
   LineageBand,
   LineageLens,
@@ -48,7 +49,7 @@ const LENS_CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.DataProduct,
 ]);
 
-const COUNT_SUBTITLE_LEVEL_KINDS = new Set<LineageLevelKind>([
+const CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.Service,
   LineageLevelKind.Database,
   LineageLevelKind.Schema,
@@ -231,8 +232,10 @@ export const getSceneRequestFromSearch = (
   const band =
     Object.values(LineageBand).find((value) => value === params.lineageBand) ??
     defaultBand;
+  // An asset page's Layer band (its Service / Domain / Data Product view) stays
+  // focused on that asset; only the main Lineage page shows the whole hierarchy.
   const fallbackFocus: LineageSceneFocus =
-    band === LineageBand.Layer ? {} : defaultFocus;
+    band === LineageBand.Layer && isPlatformLineage ? {} : defaultFocus;
 
   return {
     lens,
@@ -475,11 +478,30 @@ const getLowercaseLabel = (
   ).toLocaleLowerCase();
 };
 
-export const getSceneNodeCountSubtitle = (
+export const isContainerSceneNode = (node: LineageSceneNode) =>
+  CONTAINER_LEVEL_KINDS.has(node.levelKind);
+
+// Container nodes (service, database, schema, domain, data product) say what
+// they are under the name and how many assets they hold in a count pill.
+export const getSceneNodeTypeSubtitle = (
   node: LineageSceneNode,
   t: TFunction
 ) => {
-  if (!COUNT_SUBTITLE_LEVEL_KINDS.has(node.levelKind)) {
+  if (!isContainerSceneNode(node)) {
+    return undefined;
+  }
+  const kind = getLowercaseLabel(t, node.levelKind);
+
+  return node.serviceType
+    ? t('label.lineage-map-node-type-subtitle', {
+        type: node.serviceType,
+        kind,
+      })
+    : kind;
+};
+
+export const getSceneNodeCount = (node: LineageSceneNode, t: TFunction) => {
+  if (!isContainerSceneNode(node)) {
     return undefined;
   }
 
@@ -492,17 +514,13 @@ export const getSceneNodeCountSubtitle = (
     return undefined;
   }
 
-  const totalCount = countEntries.reduce((sum, entry) => sum + entry.count, 0);
+  const count = countEntries.reduce((sum, entry) => sum + entry.count, 0);
   const countedLevelKind =
     countEntries.length === 1
       ? countEntries[0].levelKind
       : LineageLevelKind.Asset;
 
-  return t('label.lineage-map-node-count-subtitle', {
-    kind: getLowercaseLabel(t, node.levelKind),
-    count: totalCount,
-    entity: getLowercaseLabel(t, countedLevelKind, totalCount),
-  });
+  return { count, entity: getLowercaseLabel(t, countedLevelKind, count) };
 };
 
 const LEVEL_LABEL_KEYS: Partial<Record<LineageLevelKind, string>> = {
@@ -580,6 +598,37 @@ export const getBreadcrumbSceneRequest = (
   };
 };
 
+export type DeleteKeyAction = 'node' | 'edge';
+
+export interface DeleteKeyActionContext {
+  canEdit: boolean;
+  hasSelectedNode: boolean;
+  hasSelectedEdge: boolean;
+}
+
+export const getDeleteKeyAction = (
+  event: KeyboardEvent,
+  { canEdit, hasSelectedNode, hasSelectedEdge }: DeleteKeyActionContext
+): DeleteKeyAction | undefined => {
+  if (!canEdit || (event.key !== 'Delete' && event.key !== 'Backspace')) {
+    return undefined;
+  }
+
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    target.closest('input, textarea, [contenteditable="true"]')
+  ) {
+    return undefined;
+  }
+
+  if (hasSelectedNode) {
+    return 'node';
+  }
+
+  return hasSelectedEdge ? 'edge' : undefined;
+};
+
 export const getParentSceneRequest = (
   scene: LineageScene
 ): LineageSceneRequest | undefined => {
@@ -626,4 +675,33 @@ export const getParentSceneRequest = (
   }
 
   return undefined;
+};
+
+/**
+ * ReactFlow's `onMoveStart` handler: closes an open edit popover as soon as the
+ * user starts panning/zooming, since its trigger anchor moves with the canvas.
+ */
+export const useCloseOnViewportMove = (isOpen: boolean, close: () => void) =>
+  useCallback(() => {
+    if (isOpen) {
+      close();
+    }
+  }, [isOpen, close]);
+
+/**
+ * Kept out of LineageMap.component.tsx so the upstream/downstream branch does
+ * not nest inside the "both FQNs present" branch (sonarjs/no-nested-conditional).
+ */
+export const getLineageEditColumnPair = (
+  isUpstream: boolean,
+  requestColumnFqn?: string,
+  pickedColumnFqn?: string
+): { fromColumn: string; toColumn: string } | undefined => {
+  if (!requestColumnFqn || !pickedColumnFqn) {
+    return undefined;
+  }
+
+  return isUpstream
+    ? { fromColumn: pickedColumnFqn, toColumn: requestColumnFqn }
+    : { fromColumn: requestColumnFqn, toColumn: pickedColumnFqn };
 };

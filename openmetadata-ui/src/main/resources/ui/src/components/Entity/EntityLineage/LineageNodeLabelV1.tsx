@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   BadgeWithIcon,
   Box,
   Breadcrumbs,
@@ -20,7 +21,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  memo,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -39,6 +47,7 @@ import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 interface LineageNodeLabelProps {
@@ -48,12 +57,41 @@ interface LineageNodeLabelProps {
   toggleColumnsList?: () => void;
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
+  actions?: ReactNode;
 }
 
+const getFooterChildrenCount = (node: LineageNodeType) =>
+  getEntityChildrenAndLabel(node).childrenCount ||
+  (node.lineageMapChildrenCount ?? 0);
+
+const NodeCountBadge = ({
+  count,
+}: {
+  count: LineageNodeType['lineageMapCount'];
+}) =>
+  count ? (
+    <Badge
+      className="tw:ml-2 tw:shrink-0"
+      color="gray"
+      data-testid="lineage-node-count"
+      size="sm"
+      type="pill-color">
+      {/* Badge is a flex container, which drops the leading space of a bare text node. */}
+      <span>
+        <Transi18next
+          i18nKey="label.lineage-map-node-count-badge"
+          renderElement={<strong className="tw:font-semibold" />}
+          values={count}
+        />
+      </span>
+    </Badge>
+  ) : null;
+
 const EntityLabel = ({
+  actions,
   node,
   onEntityClick,
-}: Pick<LineageNodeLabelProps, 'node' | 'onEntityClick'>) => {
+}: Pick<LineageNodeLabelProps, 'actions' | 'node' | 'onEntityClick'>) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -65,10 +103,7 @@ const EntityLabel = ({
     };
   }, [node]);
 
-  const { childrenCount } = useMemo(
-    () => getEntityChildrenAndLabel(node),
-    [node]
-  );
+  const childrenCount = useMemo(() => getFooterChildrenCount(node), [node]);
 
   const breadcrumbItems = useMemo(
     () =>
@@ -95,8 +130,13 @@ const EntityLabel = ({
   return (
     <div
       className={classNames(
-        'items-center entity-label-container',
-        childrenCount > 0 ? 'with-footer' : ''
+        'items-center entity-label-container tw:min-w-0 tw:flex-1',
+        {
+          'with-footer': childrenCount > 0,
+          // Container nodes have no footer, so centre the name, subtitle and
+          // count pill instead of the leaf layout's top-weighted padding.
+          'tw:flex tw:items-center tw:py-3!': Boolean(node.lineageMapCount),
+        }
       )}>
       <div className="d-flex items-center flex-auto">
         {!node.isTempTable && (
@@ -104,18 +144,19 @@ const EntityLabel = ({
             {getServiceIcon(node)}
           </div>
         )}
-        <Box className="flex-1 tw:min-w-0" direction="col">
+        <Box className="flex-1 tw:min-w-0 tw:text-left" direction="col">
           <Typography
             ellipsis
             as="span"
-            className="m-b-0 d-block text-left entity-header-display-name w-54"
+            className="m-b-0 d-block text-left entity-header-display-name tw:w-full"
             data-testid="entity-header-display-name"
             size="text-md"
             title={entityName}
             weight="medium">
             {onEntityClick ? (
               <Button
-                className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0 tw:truncate"
+                ellipsis
+                className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0"
                 color="link-gray"
                 size="sm"
                 onClick={onEntityClick}>
@@ -128,8 +169,9 @@ const EntityLabel = ({
 
           {subtitle ? (
             <Typography
+              ellipsis
               as="span"
-              className="lineage-service-subtitle"
+              className="lineage-service-subtitle tw:block tw:max-w-full"
               size="text-xs">
               {subtitle}
             </Typography>
@@ -144,6 +186,7 @@ const EntityLabel = ({
             />
           ) : null}
         </Box>
+        <NodeCountBadge count={node.lineageMapCount} />
         {showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">
             <IconDBTModel />
@@ -156,6 +199,7 @@ const EntityLabel = ({
             </div>
           </div>
         )}
+        {actions}
       </div>
     </div>
   );
@@ -224,11 +268,11 @@ const EntityFooter = ({
   isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelProps) => {
   const { t } = useTranslation();
-  const { isEditMode } = useLineageStore();
-  const { childrenHeading, childrenCount } = useMemo(
+  const { childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node]
   );
+  const childrenCount = useMemo(() => getFooterChildrenCount(node), [node]);
 
   const childrenInfoDropdownLabel = useMemo(
     () => `${childrenCount} ${childrenHeading}`,
@@ -297,7 +341,6 @@ const EntityFooter = ({
           color="tertiary"
           data-testid="lineage-filter-button"
           icon={FilterIcon}
-          isDisabled={isEditMode}
           tooltip={t('message.only-show-columns-with-lineage')}
           tooltipPlacement="right"
           onClick={handleOnlyShowColumnsWithLineage}
@@ -308,6 +351,7 @@ const EntityFooter = ({
 };
 
 const LineageNodeLabelV1 = ({
+  actions,
   node,
   onEntityClick,
   isChildrenListExpanded,
@@ -317,7 +361,11 @@ const LineageNodeLabelV1 = ({
 }: LineageNodeLabelProps) => {
   return (
     <div className="custom-node-label-container m-0">
-      <EntityLabel node={node} onEntityClick={onEntityClick} />
+      <EntityLabel
+        actions={actions}
+        node={node}
+        onEntityClick={onEntityClick}
+      />
       <EntityFooter
         isChildrenListExpanded={isChildrenListExpanded}
         isOnlyShowColumnsWithLineageFilterActive={

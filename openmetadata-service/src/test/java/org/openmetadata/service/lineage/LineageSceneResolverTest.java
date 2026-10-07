@@ -642,6 +642,41 @@ class LineageSceneResolverTest {
   }
 
   @Test
+  void assetSceneMarksFieldBearingAssetsExpandableWithoutFieldPayloads() {
+    String procedure = "snowflake.shop.public.load_orders";
+    String events = "kafka.events";
+    // The Asset band fetches no column payloads, so these carry no fields.
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of()),
+                table(CUSTOMERS, SNOWFLAKE_SERVICE, List.of()),
+                topic(events, "kafka"),
+                asset(Entity.STORED_PROCEDURE, procedure, SNOWFLAKE_SERVICE, "snowflake")),
+            List.of(
+                edge("orders-customers", ORDERS, Entity.TABLE, CUSTOMERS, Entity.TABLE),
+                edge("orders-events", ORDERS, Entity.TABLE, events, Entity.TOPIC),
+                edge(
+                    "orders-procedure", ORDERS, Entity.TABLE, procedure, Entity.STORED_PROCEDURE)));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.ASSET, lineage, 200);
+
+    assertTrue(isExpandable(scene, CUSTOMERS));
+    assertTrue(isExpandable(scene, events));
+    assertFalse(isExpandable(scene, procedure));
+  }
+
+  private static boolean isExpandable(LineageScene scene, String fqn) {
+    return scene.getNodes().stream()
+        .filter(node -> fqn.equals(node.getFullyQualifiedName()))
+        .findFirst()
+        .map(node -> Boolean.TRUE.equals(node.getIsExpandable()))
+        .orElseThrow(() -> new AssertionError("No scene node for " + fqn));
+  }
+
+  @Test
   void concreteEdgeCarriesPipelineAndDescription() {
     EntityReference pipeline =
         new EntityReference()

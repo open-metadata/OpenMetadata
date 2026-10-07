@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Modal } from 'antd';
+import {
+  Button,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -33,7 +39,6 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import '../../../ActivityFeed/FeedEditor/feed-editor.less';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import './add-pipeline-modal.less';
 
 interface AddPipeLineModalType {
   showAddEdgeModal: boolean;
@@ -106,6 +111,8 @@ const AddPipeLineModal = ({
 
       return <ErrorPlaceHolder />;
     }
+
+    return null;
   }, [selectedEdge, edgeSearchValue]);
 
   const debounceOnSearch = useCallback(debounce(getSearchResults, 300), []);
@@ -120,82 +127,97 @@ const AddPipeLineModal = ({
   }, []);
 
   return (
-    <Modal
-      destroyOnClose
-      data-testid="add-edge-modal"
-      footer={[
-        <Button
-          danger
-          data-testid="remove-edge-button"
-          key="remove-edge-btn"
-          type="primary"
-          onClick={onRemoveEdgeClick}>
-          {t('label.remove-entity', {
-            entity: t('label.edge-lowercase'),
-          })}
-        </Button>,
-        <Button
-          data-testid="save-button"
-          key="save-btn"
-          loading={loading}
-          type="primary"
-          onClick={() => onSave(edgeSelection)}>
-          {t('label.save')}
-        </Button>,
-      ]}
-      maskClosable={false}
-      open={showAddEdgeModal}
-      title={t(`label.${isUndefined(selectedEdge) ? 'add' : 'edit'}-entity`, {
-        entity: t('label.edge'),
-      })}
-      onCancel={onModalCancel}>
-      <Input
-        data-testid="field-input"
-        placeholder={t('message.search-for-edge')}
-        value={edgeSearchValue}
-        onChange={(e) => handleChange(e.target.value)}
-      />
+    <ModalOverlay
+      isDismissable={false}
+      isOpen={showAddEdgeModal}
+      onOpenChange={(isOpen) => !isOpen && onModalCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          data-testid="add-edge-modal"
+          title={t(
+            `label.${isUndefined(selectedEdge) ? 'add' : 'edit'}-entity`,
+            {
+              entity: t('label.edge'),
+            }
+          )}
+          width={520}
+          onClose={onModalCancel}>
+          <Dialog.Content>
+            <Input
+              inputDataTestId="field-input"
+              placeholder={t('message.search-for-edge')}
+              value={edgeSearchValue}
+              onChange={handleChange}
+            />
 
-      <div className="edge-option-container">
-        {edgeOptions.map((item) => {
-          const breadcrumb = Fqn.split(item.fullyQualifiedName ?? '').join('/');
+            <div className="tw:mt-1.5 tw:h-[310px] tw:w-full tw:overflow-auto">
+              {edgeOptions.map((item) => {
+                const breadcrumb = Fqn.split(
+                  item.fullyQualifiedName ?? ''
+                ).join('/');
 
-          return (
-            <div
-              className={classNames('edge-option-item gap-2', {
-                active: edgeSelection?.id === item.id,
+                return (
+                  <div
+                    className={classNames(
+                      'tw:my-2 tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-sm tw:p-2',
+                      edgeSelection?.id === item.id
+                        ? 'tw:bg-utility-brand-100'
+                        : 'tw:hover:bg-tertiary'
+                    )}
+                    data-testid={`pipeline-entry-${item.fullyQualifiedName}`}
+                    key={item.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setEdgeSelection(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        setEdgeSelection(item);
+                      }
+                    }}>
+                    {searchClassBase.getEntityIconWithBg(
+                      item.type,
+                      EntityIconSize.Size14
+                    )}
+                    <div>
+                      <div className="tw:flex tw:flex-wrap">
+                        <span className="tw:truncate tw:text-[10px] tw:text-quaternary">
+                          {breadcrumb}
+                        </span>
+                      </div>
+                      <div className="tw:flex tw:flex-col">
+                        <span className="tw:truncate tw:font-medium">
+                          {getEntityName(item)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
               })}
-              data-testid={`pipeline-entry-${item.fullyQualifiedName}`}
-              key={item.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setEdgeSelection(item)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  setEdgeSelection(item);
-                }
-              }}>
-              {searchClassBase.getEntityIconWithBg(
-                item.type,
-                EntityIconSize.Size14
-              )}
-              <div>
-                <div className="d-flex flex-wrap">
-                  <span className="truncate breadcrumb">{breadcrumb}</span>
-                </div>
-                <div className="d-flex flex-col">
-                  <span className="font-medium truncate">
-                    {getEntityName(item)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
 
-        {errorPlaceholderEdge}
-      </div>
-    </Modal>
+              {errorPlaceholderEdge}
+            </div>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="primary-destructive"
+              data-testid="remove-edge-button"
+              onClick={onRemoveEdgeClick}>
+              {t('label.remove-entity', {
+                entity: t('label.edge-lowercase'),
+              })}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="save-button"
+              isLoading={loading}
+              onPress={() => onSave(edgeSelection)}>
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

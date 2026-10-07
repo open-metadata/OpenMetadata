@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
 import { Edge } from 'reactflow';
+import { buildLineagePayload } from '../../../components/Lineage/LineageMap/LineageMapEdit.utils';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { EdgeFromToData } from '../../../interface/lineage.interface';
+import { getLineageEdgeDetails } from '../../../rest/lineageAPI';
+import { addLineageHandler } from '../../EntityLineagePureUtils';
 
 export const onEdgeClick = (edge: Edge): void => {
   const {
@@ -41,4 +46,44 @@ export const onAddPipelineClick = (): void => {
 
 export const onColumnEdgeRemove = (): void => {
   useLineageStore.getState().openDeleteModal();
+};
+
+const getExistingEdgeDetails = async (fromId: string, toId: string) => {
+  try {
+    return await getLineageEdgeDetails(fromId, toId);
+  } catch (error) {
+    if ((error as AxiosError).response?.status !== 404) {
+      throw error;
+    }
+
+    return undefined;
+  }
+};
+
+/**
+ * Adds (or extends) the lineage edge between two entities, merging a column
+ * pair into the edge's existing column lineage. Resolves false when there is
+ * nothing to save (same entity, or the column pair is already mapped).
+ */
+export const saveLineageEdge = async (
+  fromEntity: EdgeFromToData,
+  toEntity: EdgeFromToData,
+  columnPair?: { fromColumn: string; toColumn: string }
+): Promise<boolean> => {
+  const existingDetails = await getExistingEdgeDetails(
+    fromEntity.id,
+    toEntity.id
+  );
+  const payload = buildLineagePayload(
+    fromEntity,
+    toEntity,
+    existingDetails,
+    columnPair
+  );
+  if (!payload) {
+    return false;
+  }
+  await addLineageHandler(payload);
+
+  return true;
 };
