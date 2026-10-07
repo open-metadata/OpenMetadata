@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { isUndefined } from 'lodash';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toFiniteNumber } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { useTestCaseStore } from '../../../DataQuality/IncidentManager/useTestCase.store';
@@ -32,20 +32,19 @@ export const useSelectedRunInUrl = () => {
     (state) => state.setSelectedRunTimestamp
   );
   const urlRun = searchParams.get(SELECTED_RUN_PARAM);
+  // The URL's run as the page opened. It is restored once; after that the
+  // store leads and the URL follows.
+  const [openingRun] = useState(() => toFiniteNumber(urlRun ?? undefined));
   const isFirstSync = useRef(true);
 
   useEffect(() => {
-    const fromUrl = toFiniteNumber(urlRun ?? undefined);
-
     if (
-      !isUndefined(fromUrl) &&
+      !isUndefined(openingRun) &&
       isUndefined(useTestCaseStore.getState().selectedRunTimestamp)
     ) {
-      setSelectedRunTimestamp(fromUrl);
+      setSelectedRunTimestamp(openingRun);
     }
-    // Restored once, on mount; after that the store leads and the URL follows.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- on mount only
-  }, []);
+  }, [openingRun, setSelectedRunTimestamp]);
 
   useEffect(() => {
     const isFirst = isFirstSync.current;
@@ -75,6 +74,5 @@ export const useSelectedRunInUrl = () => {
         { replace: true }
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- follows the store only
-  }, [selectedRunTimestamp]);
+  }, [selectedRunTimestamp, urlRun, setSearchParams]);
 };

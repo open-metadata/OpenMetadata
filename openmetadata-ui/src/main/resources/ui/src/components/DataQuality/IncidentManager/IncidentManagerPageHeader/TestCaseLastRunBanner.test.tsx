@@ -25,7 +25,7 @@ import {
   MOCK_TEST_CASE_DATA,
   MOCK_TEST_CASE_RESOLUTION_STATUS,
 } from '../../../../mocks/TestCase.mock';
-import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import TestCaseLastRunBanner from './TestCaseLastRunBanner.component';
 import type { TestCaseLastRunBannerProps } from './TestCaseLastRunBanner.interface';
 
@@ -100,10 +100,7 @@ describe('TestCaseLastRunBanner', () => {
     });
 
     expect(screen.getByTestId('test-case-last-run-time')).toHaveTextContent(
-      customFormatDateTime(
-        TEST_CASE_RESULT_TIMESTAMP,
-        "MMM d, yyyy, h:mm a '(UTC'ZZ')'"
-      )
+      formatDateTime(TEST_CASE_RESULT_TIMESTAMP)
     );
   });
 
@@ -148,9 +145,12 @@ describe('TestCaseLastRunBanner', () => {
           [TestCaseStatus.Success]: 'tw:text-utility-success-700',
         }[testCaseStatus]
       );
+      expect(screen.getByTestId('test-case-last-run-title')).toHaveClass(
+        'tw:text-md'
+      );
       expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
         'tw:text-primary',
-        'tw:text-base'
+        'tw:font-medium'
       );
       expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
         'tw:size-10',
@@ -171,10 +171,10 @@ describe('TestCaseLastRunBanner', () => {
       expect(
         screen.getByTestId('test-case-last-run-right-section')
       ).toHaveClass('tw:justify-end', 'tw:lg:min-w-80');
-      expect(screen.getByText(result)).toHaveClass(TEXT_XS_CLASS);
-      expect(
-        screen.getByTestId('test-case-run-description')
-      ).toBeInTheDocument();
+      expect(screen.getByText(result)).toBeInTheDocument();
+      expect(screen.getByTestId('test-case-run-description')).toHaveClass(
+        TEXT_XS_CLASS
+      );
       expect(screen.getByTestId('test-case-last-run-time')).toHaveClass(
         TEXT_XS_CLASS,
         'tw:font-normal'
@@ -447,8 +447,8 @@ describe('TestCaseLastRunBanner', () => {
     expect(
       screen.queryByTestId(LAST_RUN_INCIDENT_TEST_ID)
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
-      'tw:text-base'
+    expect(screen.getByTestId('test-case-last-run-title')).toHaveClass(
+      'tw:text-md'
     );
     expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
       'tw:size-10',

@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { FeaturedIcon } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  FeaturedIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import type { LastRunBannerLayoutProps } from './TestCaseLastRunBanner.interface';
 
@@ -24,15 +28,18 @@ const LastRunBannerLayout = ({
   const { t } = useTranslation();
 
   return (
-    <div
+    <Box
       aria-live="polite"
       className={`tw:min-w-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-l-4 ${config.containerClassName}`}
       data-testid={config.testId}
+      direction="col"
       role="status">
-      <div
-        className="tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-3.5 tw:lg:flex-row tw:lg:items-start"
-        data-testid="test-case-last-run-summary">
-        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-start tw:gap-4">
+      <Box
+        className="tw:px-5 tw:py-3.5 tw:lg:flex-row tw:lg:items-start"
+        data-testid="test-case-last-run-summary"
+        direction="col"
+        gap={4}>
+        <Box align="start" className="tw:min-w-0 tw:flex-1" gap={4}>
           <FeaturedIcon
             outlined
             bgColor="white"
@@ -44,26 +51,31 @@ const LastRunBannerLayout = ({
             shape="square"
             size="md"
           />
-          <div className="tw:min-w-0 tw:flex-1">
-            <p className="tw:m-0 tw:text-base tw:leading-snug">
-              <span
-                className="tw:text-base tw:font-medium tw:text-primary"
-                data-testid="test-case-last-run-prefix">
+          <Box className="tw:min-w-0 tw:flex-1" direction="col">
+            <Typography
+              as="div"
+              data-testid="test-case-last-run-title"
+              size="text-md">
+              <Typography
+                className="tw:text-primary"
+                data-testid="test-case-last-run-prefix"
+                weight="medium">
                 {t('label.last-run-sentence')}
-              </span>{' '}
-              <span
-                className={`tw:font-semibold ${config.statusClassName}`}
-                data-testid="test-case-last-run-status">
+              </Typography>{' '}
+              <Typography
+                className={config.statusClassName}
+                data-testid="test-case-last-run-status"
+                weight="semibold">
                 {t(config.statusLabel)}
-              </span>
-            </p>
+              </Typography>
+            </Typography>
             {description}
-          </div>
-        </div>
+          </Box>
+        </Box>
         {rightSection}
-      </div>
+      </Box>
       {footer}
-    </div>
+    </Box>
   );
 };
 

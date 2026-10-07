@@ -937,7 +937,7 @@ test.describe(
         await expect(banner.getByTestId('test-case-last-run-time')).toHaveText(
           customFormatDateTime(
             failedTimestamp,
-            "MMM d, yyyy, h:mm a '(UTC'ZZ')'"
+            "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"
           )
         );
         await expect(banner.getByTestId('test-case-next-run')).toContainText(

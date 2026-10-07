@@ -252,11 +252,15 @@ const FailedTestCaseSampleData = ({
   return (
     <div className="w-full">
       <Space className="m-b-md justify-between w-full">
-        {/* Result history's heading: a plain h2, since Typography's .prose
-            heading styles outrank the size classes. */}
-        <h2 className="tw:m-0 tw:text-md tw:leading-5 tw:font-bold tw:text-primary">
+        {/* not-prose: Typography wraps a heading in .prose, whose h2 style
+            (24px, margins) would otherwise outrank the size classes. */}
+        <Typography
+          as="h2"
+          className="not-prose tw:m-0 tw:text-primary"
+          size="text-md"
+          weight="bold">
           {t('label.sample-data')}
-        </h2>
+        </Typography>
         <div className="d-flex gap-4">
           {testCaseData?.inspectionQuery && !isVersionPage && (
             <Link

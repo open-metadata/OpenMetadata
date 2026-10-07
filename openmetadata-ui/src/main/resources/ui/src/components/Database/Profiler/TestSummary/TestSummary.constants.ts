@@ -20,20 +20,6 @@ export interface ResultMetric {
 }
 
 /**
- * How the page writes a run's time, "Oct 5, 2026, 12:16 PM": the chart's axis
- * and point labels.
- */
-export const RUN_TIME_FORMAT = 'MMM d, yyyy, h:mm a';
-
-/**
- * A run's time where the page states it, "Oct 5, 2026, 12:16 PM (UTC+05:30)":
- * the banner, the run details card and the chart's tooltip. The zone says the
- * time is the reader's own, as the app's other full timestamps do; a shared
- * `?run=` link opens in the reader's zone.
- */
-export const RUN_TIME_WITH_ZONE_FORMAT = `${RUN_TIME_FORMAT} '(UTC'ZZ')'`;
-
-/**
  * What each test definition measures, for the chart card's caption. The
  * parameters say what the value is compared against; only the definition says
  * what the value is. A definition missing here reads as "Values".

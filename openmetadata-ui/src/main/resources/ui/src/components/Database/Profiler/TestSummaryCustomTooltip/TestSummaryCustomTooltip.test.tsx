@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import { Task } from '../../../../generated/entity/tasks/task';
-import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPathFromTask } from '../../../../utils/TaskNavigationUtils';
 import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
@@ -152,12 +151,6 @@ describe('Test TestSummaryCustomTooltip component', () => {
       (await screen.findByTestId('failedRowsPercentage')).textContent
     ).toBe('40%');
     expect(screen.queryByText('name')).not.toBeInTheDocument();
-    // The run time as the banner and the run details card write it, in the
-    // reader's time zone.
-    expect(formatDateTimeLong).toHaveBeenCalledWith(
-      expect.anything(),
-      "MMM d, yyyy, h:mm a '(UTC'ZZ')'"
-    );
   });
 
   // An aborted run is placed on the chart at a value it never recorded; the

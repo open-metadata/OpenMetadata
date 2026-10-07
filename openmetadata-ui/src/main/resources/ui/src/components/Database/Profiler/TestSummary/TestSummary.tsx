@@ -268,12 +268,15 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     <Box data-testid="test-summary-container" direction="col" gap={4}>
       <Box align="start" gap={4} justify="between">
         <Box direction="col" gap={1}>
-          {/* A plain heading rather than Typography: Typography wraps an h2 in
-              .prose, whose heading style (24px, semibold, margins) outranks
-              the size classes. */}
-          <h2 className="tw:m-0 tw:text-md tw:leading-5 tw:font-bold tw:text-primary">
+          {/* not-prose: Typography wraps a heading in .prose, whose h2 style
+              (24px, margins) would otherwise outrank the size classes. */}
+          <Typography
+            as="h2"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-md"
+            weight="bold">
             {t('label.result-history')}
-          </h2>
+          </Typography>
           <Typography
             className="tw:text-quaternary"
             data-testid="result-history-caption"

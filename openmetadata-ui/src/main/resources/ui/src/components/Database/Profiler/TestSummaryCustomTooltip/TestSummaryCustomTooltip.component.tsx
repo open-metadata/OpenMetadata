@@ -30,10 +30,9 @@ import {
 } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
   convertSecondsToHumanReadableFormat,
-  formatDateTimeLong,
+  formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
-import { RUN_TIME_WITH_ZONE_FORMAT } from '../TestSummary/TestSummary.constants';
 import './test-summary-custom-tooltip.less';
 
 const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
@@ -68,11 +67,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
     const passedRows = payloadData.passedRows as number | undefined;
     const failedRows = payloadData.failedRows as number | undefined;
     const totalRows = (passedRows ?? 0) + (failedRows ?? 0);
-    // The page's run time: the zone and the padded day read differently here.
-    const formattedDateTime = formatDateTimeLong(
-      timestamp,
-      RUN_TIME_WITH_ZONE_FORMAT
-    );
+    const formattedDateTime = formatDateTime(timestamp);
     let statusColor: string | undefined;
     if (status === TestCaseStatus.Failed) {
       statusColor = RED_3;

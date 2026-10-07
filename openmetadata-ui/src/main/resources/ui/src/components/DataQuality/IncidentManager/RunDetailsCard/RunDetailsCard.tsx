@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   Card,
+  ProgressBarBase,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
@@ -27,11 +28,8 @@ import {
   TestCaseErrorDetails,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
-import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
-import {
-  NO_VALUE,
-  RUN_TIME_WITH_ZONE_FORMAT,
-} from '../../../Database/Profiler/TestSummary/TestSummary.constants';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
 import { useTestCaseStore } from '../useTestCase.store';
@@ -116,31 +114,20 @@ const ComparisonBars = ({
               {value.toLocaleString()}
             </Typography>
           </Box>
-          {/* Decorative: the numbers are already stated in text. The found
-              value fills its track; the expected one marks its place on it. */}
-          {kind === 'found' ? (
-            <div
-              aria-hidden
-              className="tw:h-2.5 tw:overflow-hidden tw:rounded-full tw:bg-quaternary">
-              <div
-                className={classNames(
-                  'tw:h-full tw:rounded-full',
-                  barClassName
-                )}
-                style={{ width: `${width}%` }}
-              />
-            </div>
-          ) : (
-            <div
-              aria-hidden
-              className="tw:relative tw:h-2.5 tw:rounded-full tw:bg-quaternary">
-              <div
-                className="tw:absolute tw:-inset-y-0.5 tw:w-0.5 tw:-translate-x-1/2 tw:rounded-full tw:bg-fg-tertiary"
-                data-testid="run-details-expected-marker"
-                style={{ left: `${width}%` }}
-              />
-            </div>
-          )}
+          {/* Decorative: the numbers are already stated in text. */}
+          <Box
+            aria-hidden
+            data-testid={`run-details-${kind}-bar`}
+            direction="col">
+            <ProgressBarBase
+              className="tw:h-2.5 tw:rounded-full"
+              progressClassName={classNames(
+                'tw:rounded-full',
+                kind === 'found' ? barClassName : 'tw:bg-fg-quaternary'
+              )}
+              value={width}
+            />
+          </Box>
         </Box>
       ))}
     </Box>
@@ -265,12 +252,11 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           weight="semibold">
           {t('label.run-details')}
         </Typography>
-        {/* The banner's format: the zone and the padded day differed between the two. */}
         <Typography
           className="tw:text-tertiary"
           data-testid="run-details-date"
           size="text-sm">
-          {customFormatDateTime(result.timestamp, RUN_TIME_WITH_ZONE_FORMAT)}
+          {formatDateTime(result.timestamp)}
         </Typography>
         {isOlderRunSelected && (
           <Box align="center" gap={2}>

@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import type {
   ChartLegendProps,
   ChartPixel,
@@ -62,11 +66,13 @@ import {
   TooltipPosition,
   TooltipSize,
 } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
-import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  DATE_TIME_12_HOUR_FORMAT,
+  formatDateTimeLong,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { useTestCaseStore } from '../../../DataQuality/IncidentManager/useTestCase.store';
 import { TestCaseChartDataType } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
-import { RUN_TIME_FORMAT } from './TestSummary.constants';
 import { TOOLTIP_CLOSE_DELAY, TOOLTIP_GAP } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 import TestSummaryRunList from './TestSummaryRunList';
@@ -495,7 +501,7 @@ function TestSummaryGraph({
       ...new Set(plottedData.map((point) => Number(point.name))),
     ].sort((a, b) => a - b);
     const formatRunTime = (value: number) =>
-      formatDateTimeLong(value, RUN_TIME_FORMAT);
+      formatDateTimeLong(value, DATE_TIME_12_HOUR_FORMAT);
     // Ticks at the runs themselves, one per label: ECharts' own ticks landed
     // on midnight for daily runs ("12:00 AM"), and repeated a minute's label
     // for runs a few seconds apart.
@@ -559,9 +565,10 @@ function TestSummaryGraph({
 
   const pointAriaLabel = useCallback(
     (point: PlottedPoint) =>
-      `${formatDateTimeLong(Number(point.name), RUN_TIME_FORMAT)}: ${String(
-        point.status ?? ''
-      )}`,
+      `${formatDateTimeLong(
+        Number(point.name),
+        DATE_TIME_12_HOUR_FORMAT
+      )}: ${String(point.status ?? '')}`,
     []
   );
 
@@ -628,12 +635,12 @@ function TestSummaryGraph({
         points={plottedData}
         seriesLabels={seriesLabels}
       />
-      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:pb-2">
+      <Box align="center" className="tw:pb-2" gap={2} wrap="wrap">
         <TestSummaryStatusKey statuses={plottedStatuses} />
-        <span className="tw:ml-auto tw:text-xs tw:text-quaternary">
+        <Typography className="tw:ml-auto tw:text-quaternary" size="text-xs">
           {t('message.click-a-point-for-run-details')}
-        </span>
-      </div>
+        </Typography>
+      </Box>
     </Box>
   );
 }

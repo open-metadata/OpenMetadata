@@ -85,9 +85,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     ...jest.requireActual('@openmetadata/ui-core-components'),
     Table: TableMock,
-    Typography: ({ children }: React.PropsWithChildren<unknown>) => (
-      <span>{children}</span>
-    ),
   };
 });
 

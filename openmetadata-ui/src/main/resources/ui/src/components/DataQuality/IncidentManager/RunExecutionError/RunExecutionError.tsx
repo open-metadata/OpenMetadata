@@ -54,7 +54,7 @@ const RunErrorMessage = ({ message }: { message: string }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isClamped, setIsClamped] = useState(false);
-  const messageRef = useRef<HTMLParagraphElement>(null);
+  const messageRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
     const element = messageRef.current;
@@ -77,15 +77,16 @@ const RunErrorMessage = ({ message }: { message: string }) => {
 
   return (
     <Box align="start" direction="col" gap={1}>
-      <p
-        className={classNames(
-          'tw:m-0 tw:break-words tw:text-sm tw:text-secondary',
-          { 'tw:line-clamp-3': !isExpanded }
-        )}
+      <Typography
+        className={classNames('tw:break-words', {
+          'tw:line-clamp-3': !isExpanded,
+        })}
+        color="secondary"
         data-testid="run-execution-error-message"
-        ref={messageRef}>
+        ref={messageRef}
+        size="text-sm">
         {message}
-      </p>
+      </Typography>
       {(isClamped || isExpanded) && (
         <Button
           aria-expanded={isExpanded}

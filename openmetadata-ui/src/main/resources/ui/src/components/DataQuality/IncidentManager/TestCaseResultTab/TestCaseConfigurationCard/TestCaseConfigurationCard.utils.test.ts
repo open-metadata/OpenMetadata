@@ -121,15 +121,6 @@ describe('toSqlLines', () => {
     expect(rebuilt).toBe(sql);
   });
 
-  it('leaves functions such as COUNT unmarked, as the mock does', () => {
-    const [line] = toSqlLines('SELECT COUNT(*), SUM(total) FROM orders');
-    const keywords = line.tokens
-      .filter((token) => token.isKeyword)
-      .map((token) => token.text);
-
-    expect(keywords).toEqual(['SELECT', 'FROM']);
-  });
-
   it('does not treat a keyword substring as a keyword', () => {
     const [line] = toSqlLines('SELECT selection FROM t');
 

@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import {
   TestCase,
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
-import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { useTestCaseStore } from '../useTestCase.store';
 import RunDetailsCard from './RunDetailsCard';
 
@@ -242,23 +242,30 @@ describe('RunDetailsCard', () => {
 
     const header = screen.getByTestId('run-details-date');
 
-    expect(header).toHaveTextContent(
-      customFormatDateTime(
-        FAILED_RUN.timestamp,
-        "MMM d, yyyy, h:mm a '(UTC'ZZ')'"
-      )
-    );
+    expect(header).toHaveTextContent(formatDateTime(FAILED_RUN.timestamp));
     expect(header).toHaveTextContent('(UTC');
   });
 
-  it('draws the expected value as a marker on its track, and colours the found value', () => {
+  it('draws found and expected as bars on one scale, the found one in its status colour', () => {
     renderCard([FAILED_RUN]);
 
     const comparison = screen.getByTestId('run-details-comparison');
-    const marker = screen.getByTestId('run-details-expected-marker');
+    const found = within(screen.getByTestId('run-details-found-bar'));
+    const expected = within(screen.getByTestId('run-details-expected-bar'));
 
-    // 10,000 is the longer bar, so its marker sits at the end of the track.
-    expect(marker).toHaveStyle({ left: '100%' });
+    // 10,000 is the longer bar; 110 is 1.1% of it.
+    expect(expected.getByRole('progressbar', { hidden: true })).toHaveAttribute(
+      'aria-valuenow',
+      '100'
+    );
+    expect(found.getByRole('progressbar', { hidden: true })).toHaveAttribute(
+      'aria-valuenow',
+      '1.1'
+    );
+    expect(screen.getByTestId('run-details-found-bar')).toHaveAttribute(
+      'aria-hidden',
+      'true'
+    );
     expect(comparison).toHaveTextContent('110');
     expect(screen.getByTestId('run-details-found-value')).toHaveClass(
       'tw:text-utility-error-700'

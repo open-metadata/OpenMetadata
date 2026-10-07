@@ -74,7 +74,7 @@ function TestCaseSidePanel({
     <div
       className="transition-all-200ms tw:min-w-0"
       data-testid="test-case-rail">
-      <div className="tw:flex tw:w-full tw:flex-col tw:gap-4">
+      <Box className="tw:w-full" direction="col" gap={4}>
         <div className="tw:w-full">
           <TestCaseConfigurationCard
             isVersionPage={isVersionPage}
@@ -141,7 +141,7 @@ function TestCaseSidePanel({
             onSave={handleDataProductsSave}
           />
         </div>
-      </div>
+      </Box>
     </div>
   );
 }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import type { ResultExpectedProps } from './TestCaseLastRunBanner.interface';
 
@@ -28,23 +29,31 @@ const ResultExpected = ({
 
   return (
     <>
-      <div
-        className="tw:flex tw:min-w-32 tw:flex-col tw:items-end tw:justify-center tw:text-right"
-        data-testid="test-case-result-expected">
-        <span className="tw:text-xs tw:font-semibold tw:text-tertiary tw:uppercase">
+      <Box
+        align="end"
+        className="tw:min-w-32 tw:text-right"
+        data-testid="test-case-result-expected"
+        direction="col"
+        justify="center">
+        <Typography
+          className="tw:uppercase"
+          color="secondary"
+          size="text-xs"
+          weight="semibold">
           {t('label.result')} / {t('label.expected')}
-        </span>
+        </Typography>
         {/* The result carries the weight. The expectation is tertiary, not the
             mock's lighter grey, which is 2.2:1 on the status tint. */}
-        <span
-          className="tw:mt-0.5 tw:whitespace-nowrap tw:font-mono tw:text-sm"
-          data-testid="test-case-result-value">
-          <span className={`tw:font-bold ${config.resultClassName}`}>
+        <Typography
+          className="tw:mt-0.5 tw:whitespace-nowrap tw:font-mono"
+          data-testid="test-case-result-value"
+          size="text-sm">
+          <Typography className={config.resultClassName} weight="bold">
             {resultValue}
-          </span>
-          <span className="tw:text-tertiary"> / {expectedValue}</span>
-        </span>
-      </div>
+          </Typography>
+          <Typography color="secondary"> / {expectedValue}</Typography>
+        </Typography>
+      </Box>
       <span
         aria-hidden="true"
         className={`tw:border-l ${config.dividerClassName}`}
