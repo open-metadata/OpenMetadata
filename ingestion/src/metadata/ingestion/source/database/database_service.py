@@ -239,7 +239,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         cached = instance_dict.get("tags_registry")
         if cached is not None:
             return cached
-        return instance_dict.setdefault("tags_registry", TagRegistry())
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
 
     @property
     def tag_canonicalizer(self) -> TagCanonicalizer:
