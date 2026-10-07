@@ -20,7 +20,7 @@ from copy import deepcopy
 from types import SimpleNamespace
 from typing import ClassVar
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 from google.api_core.exceptions import Forbidden
@@ -71,7 +71,6 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
-from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.utils.lru_cache import LRUCache
 
 mock_bq_config = {
@@ -1321,6 +1320,7 @@ class TestBigqueryDeltaLakeDetection:
         self.bq_source = BigquerySource.create(mock_bq_config["source"], metadata)
         self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
         self.bq_source.context.get().__dict__["database_schema"] = MOCK_SCHEMA_NAME
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.bq_source.source_config.includeDDL = False
         self.bq_source.client = Mock()
 
@@ -1359,6 +1359,10 @@ class TestBigqueryDeltaLakeDetection:
 
         self.bq_source.client.get_table.side_effect = get_table
 
+    def _listed_types(self):
+        """Drive the full producer path, so the tableFilterPattern pre-check is covered too."""
+        return [(t.name, t.type_) for t in self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME)]
+
     def _external_payload(self, source_format):
         # The real DELTA_LAKE payload is unpartitioned; every other format reuses the real
         # (partitioned) ICEBERG table with its sourceFormat swapped or dropped.
@@ -1387,24 +1391,18 @@ class TestBigqueryDeltaLakeDetection:
     def test_source_format_decides_the_external_table_type(self, source_format, expected):
         self._stub_client({"delta_sales": ("EXTERNAL", self._external_payload(source_format))})
 
-        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
-
-        assert result == [TableNameAndType(name="delta_sales", type_=expected)]
+        assert self._listed_types() == [("delta_sales", expected)]
 
     def test_native_table_stays_regular_without_a_tables_get(self):
         self._stub_client({"orders": ("TABLE", self.NATIVE_PAYLOAD)})
 
-        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
-
-        assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
+        assert self._listed_types() == [("orders", TableType.Regular)]
         self.bq_source.client.get_table.assert_not_called()
 
     def test_view_stays_view_without_a_tables_get(self):
         self._stub_client({"customers_view_copied": ("VIEW", self.VIEW_PAYLOAD)})
 
-        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
-
-        assert result == [TableNameAndType(name="customers_view_copied", type_=TableType.View)]
+        assert self._listed_types() == [("customers_view_copied", TableType.View)]
         self.bq_source.client.get_table.assert_not_called()
 
     def test_failed_tables_get_falls_back_to_external_and_keeps_listing(self, caplog):
@@ -1417,11 +1415,11 @@ class TestBigqueryDeltaLakeDetection:
         )
 
         with caplog.at_level(logging.WARNING):
-            result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
+            result = self._listed_types()
 
         assert result == [
-            TableNameAndType(name="unreadable", type_=TableType.External),
-            TableNameAndType(name="delta_sales", type_=TableType.DeltaLake),
+            ("unreadable", TableType.External),
+            ("delta_sales", TableType.DeltaLake),
         ]
         warnings = [
             record
@@ -1448,12 +1446,12 @@ class TestBigqueryDeltaLakeDetection:
         DeltaLake type and the partition rule never fires."""
         self._stub_client({"delta_sales": ("EXTERNAL", self.DELTA_LAKE_PAYLOAD)})
 
-        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
+        result = self._listed_types()
         detected, partition = self.bq_source.get_table_partition_details(
             "delta_sales", MOCK_SCHEMA_NAME, inspector=None
         )
 
-        assert result == [TableNameAndType(name="delta_sales", type_=TableType.DeltaLake)]
+        assert result == [("delta_sales", TableType.DeltaLake)]
         assert (detected, partition) == (False, None)
 
     def test_external_table_with_missing_source_format_falls_back_to_external(self):
@@ -1466,6 +1464,53 @@ class TestBigqueryDeltaLakeDetection:
         del payload["externalDataConfiguration"]["sourceFormat"]
         self._stub_client({"formatless": ("EXTERNAL", payload)})
 
-        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
+        assert self._listed_types() == [("formatless", TableType.External)]
 
-        assert result == [TableNameAndType(name="formatless", type_=TableType.External)]
+    def test_filtered_out_external_table_costs_no_tables_get(self):
+        """A table tableFilterPattern will drop must not pay for the narrowing `tables.get`.
+
+        It is still yielded -- the base class owns the filtering and its `status.filter`
+        bookkeeping -- but it is yielded as plain External, unnarrowed.
+        """
+        self._stub_client({"delta_sales": ("EXTERNAL", self._external_payload("DELTA_LAKE"))})
+        self.bq_source.source_config.tableFilterPattern = FilterPattern(excludes=["delta_sales"])
+
+        assert self._listed_types() == [("delta_sales", TableType.External)]
+        self.bq_source.client.get_table.assert_not_called()
+
+    def test_kept_external_table_still_narrows_under_a_filter(self):
+        """The pre-check must not starve a table the filter keeps."""
+        self._stub_client({"delta_sales": ("EXTERNAL", self._external_payload("DELTA_LAKE"))})
+        self.bq_source.source_config.tableFilterPattern = FilterPattern(excludes=["something_else"])
+
+        assert self._listed_types() == [("delta_sales", TableType.DeltaLake)]
+
+    @pytest.mark.parametrize("use_fqn", [False, True])
+    def test_pre_check_agrees_with_the_base_filter(self, use_fqn):
+        """The pre-check only pays off if it decides exactly what the base decides.
+
+        Asserted end-to-end: the base drops the table, and the pre-check had already
+        stopped the `tables.get` for it.
+        """
+        self._stub_client(
+            {
+                "delta_drop": ("EXTERNAL", self._external_payload("DELTA_LAKE")),
+                "delta_keep": ("EXTERNAL", self._external_payload("DELTA_LAKE")),
+            }
+        )
+        self.bq_source.source_config.useFqnForFiltering = use_fqn
+        self.bq_source.source_config.tableFilterPattern = FilterPattern(
+            excludes=[".*delta_drop$" if use_fqn else "delta_drop"]
+        )
+
+        assert list(self.bq_source.get_tables_name_and_type()) == [("delta_keep", TableType.DeltaLake)]
+        assert self.bq_source.client.get_table.call_args_list == [call(f"{MOCK_DB_NAME}.{MOCK_SCHEMA_NAME}.delta_keep")]
+
+    def test_fqn_filtering_pre_check_matches_on_the_fqn(self):
+        """With useFqnForFiltering the pre-check must build the same FQN the base does."""
+        self._stub_client({"delta_sales": ("EXTERNAL", self._external_payload("DELTA_LAKE"))})
+        self.bq_source.source_config.useFqnForFiltering = True
+        self.bq_source.source_config.tableFilterPattern = FilterPattern(excludes=[f".*{MOCK_SCHEMA_NAME}.delta_sales$"])
+
+        assert self._listed_types() == [("delta_sales", TableType.External)]
+        self.bq_source.client.get_table.assert_not_called()

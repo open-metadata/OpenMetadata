@@ -114,6 +114,7 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
+from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
@@ -402,7 +403,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         continue
 
                 table_type = _bigquery_table_types.get(table.table_type, TableType.Regular)
-                if table_type == TableType.External:
+                if table_type == TableType.External and not self._is_filtered_out(schema_name, table.table_id):
                     table_type = self._external_table_type(table.table_id)
 
                 yield TableNameAndType(name=table.table_id, type_=table_type)
@@ -806,6 +807,36 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
         self._table_obj_cache.put(cache_key, table_obj)
         return table_obj
+
+    def _is_filtered_out(self, schema_name: str, table_name: str) -> bool:
+        """Mirror of the tableFilterPattern check in CommonDbSourceService.get_tables_name_and_type,
+        so a table that call site is about to drop never costs an extra tables.get.
+
+        Keep in sync with that call site. Drifting only costs a wasted or skipped `tables.get`:
+        the filter itself stays authoritative there.
+        """
+        if not self.source_config.tableFilterPattern:
+            return False
+        try:
+            standardized = self.standardize_table_name(schema_name, table_name)
+            target = standardized
+            if self.source_config.useFqnForFiltering:
+                target = (
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                        database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                        schema_name=schema_name,
+                        table_name=standardized,
+                        skip_es_search=True,
+                    )
+                    or standardized
+                )
+            return filter_by_table(self.source_config.tableFilterPattern, target)
+        except Exception as exc:
+            logger.debug("Could not pre-check the filter for table '%s': %s", table_name, exc)
+            return False
 
     def _external_table_type(self, table_name: str) -> TableType:
         """Narrow an EXTERNAL table to DeltaLake, which only tables.get can tell us.
