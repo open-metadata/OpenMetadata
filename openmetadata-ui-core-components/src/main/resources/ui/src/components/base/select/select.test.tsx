@@ -150,3 +150,33 @@ describe('Select dismissal', () => {
     expect(pressed).toHaveBeenCalled();
   });
 });
+
+describe('Select with no items', () => {
+  it('opens and shows the empty state instead of staying closed', async () => {
+    const user = userEvent.setup();
+    render(
+      <Select aria-label="Teams" items={[]}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+    );
+
+    await user.click(screen.getByRole('button', { name: /Teams/ }));
+
+    expect(await screen.findByRole('listbox')).toHaveTextContent(
+      /no-data-found|No data found/
+    );
+  });
+
+  it('renders a custom empty state', async () => {
+    const user = userEvent.setup();
+    render(
+      <Select aria-label="Teams" emptyState="Nothing to map" items={[]}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+    );
+
+    await user.click(screen.getByRole('button', { name: /Teams/ }));
+
+    expect(await screen.findByText('Nothing to map')).toBeInTheDocument();
+  });
+});

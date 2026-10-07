@@ -93,12 +93,25 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public static final EntityLifecycle LIFECYCLE =
       new EntityLifecycle(
           Map.of(
-              EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+              EntityStatus.UNPROCESSED,
+                  Set.of(
+                      EntityStatus.APPROVED,
+                      EntityStatus.DEPRECATED,
+                      EntityStatus.REJECTED,
+                      EntityStatus.ARCHIVED),
+              EntityStatus.DRAFT,
+                  Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED, EntityStatus.UNPROCESSED),
               EntityStatus.APPROVED,
-                  Set.of(EntityStatus.ARCHIVED, EntityStatus.DEPRECATED, EntityStatus.REJECTED),
-              EntityStatus.DEPRECATED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-              EntityStatus.REJECTED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-              EntityStatus.ARCHIVED, Set.of(EntityStatus.APPROVED)));
+                  Set.of(
+                      EntityStatus.ARCHIVED,
+                      EntityStatus.DEPRECATED,
+                      EntityStatus.REJECTED,
+                      EntityStatus.UNPROCESSED),
+              EntityStatus.DEPRECATED,
+                  Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED, EntityStatus.UNPROCESSED),
+              EntityStatus.REJECTED,
+                  Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED, EntityStatus.UNPROCESSED),
+              EntityStatus.ARCHIVED, Set.of(EntityStatus.APPROVED, EntityStatus.UNPROCESSED)));
 
   public ContextMemoryRepository() {
     super(
@@ -110,7 +123,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         UPDATE_FIELDS);
     supportsSearch = true;
     entityLifecycle = LIFECYCLE;
-    defaultEntityStatus = EntityStatus.APPROVED;
+    defaultEntityStatus = EntityStatus.UNPROCESSED;
   }
 
   @Override
