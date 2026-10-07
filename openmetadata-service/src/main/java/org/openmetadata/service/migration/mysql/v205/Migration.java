@@ -13,31 +13,20 @@
 
 package org.openmetadata.service.migration.mysql.v205;
 
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
-import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v205.OverrideMetadataRestore;
 
-@Slf4j
 public class Migration extends MigrationProcessImpl {
-  private final Long since;
+  private final OverrideMetadataRestore.Window window;
 
   public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
-    since = OverrideMetadataRestore.windowStartBeforeRun();
+    window = OverrideMetadataRestore.windowBeforeRun();
   }
 
   @Override
   public void runDataMigration() {
-    try {
-      DataMigrationStep.runOnce(
-          migrationDAO,
-          "2.0.5",
-          OverrideMetadataRestore.STEP_NAME,
-          () -> OverrideMetadataRestore.restore(since));
-    } catch (Exception e) {
-      LOG.error("v205: failed to restore metadata removed by 2.0.x ingestion runs", e);
-    }
+    OverrideMetadataRestore.restoreOnce(migrationDAO, window);
   }
 }

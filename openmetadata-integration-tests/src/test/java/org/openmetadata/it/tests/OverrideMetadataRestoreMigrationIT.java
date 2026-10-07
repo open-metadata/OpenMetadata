@@ -25,6 +25,7 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -40,9 +41,11 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.v205.OverrideMetadataRestore;
@@ -99,6 +102,42 @@ class OverrideMetadataRestoreMigrationIT {
   }
 
   /**
+   * The restore reads each entity type in pages of 200. t000 is on the first page and t200 is
+   * alone on the second, so both coming back proves the cursor moves past a full page.
+   */
+  @Test
+  void restoresEntitiesPastTheFirstPage(TestNamespace ns) throws Exception {
+    String schemaFqn =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns))
+            .getFullyQualifiedName();
+    List<CreateTable> tables =
+        IntStream.rangeClosed(0, 200)
+            .mapToObj(
+                index ->
+                    new CreateTable()
+                        .withName(String.format("t%03d", index))
+                        .withDatabaseSchema(schemaFqn)
+                        .withDescription("curated description")
+                        .withColumns(
+                            List.of(
+                                new Column().withName("c1").withDataType(ColumnDataType.STRING))))
+            .toList();
+    BulkApi.upsert("tables", tables);
+    for (String name : List.of("t000", "t200")) {
+      UUID id = SdkClients.adminClient().tables().getByName(schemaFqn + "." + name).getId();
+      patch(id, "[{\"op\":\"remove\",\"path\":\"/description\"}]", SdkClients.getAdminToken());
+      attributeCurrentVersionToIngestionBot(id);
+    }
+
+    ListFilter inSchema =
+        new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", schemaFqn);
+    assertEquals(2, OverrideMetadataRestore.restoreType(Entity.TABLE, since(), inSchema));
+    assertEquals(
+        "curated description",
+        SdkClients.adminClient().tables().getByName(schemaFqn + ".t200").getDescription());
+  }
+
+  /**
    * The suite's bootstrap ran the real migration workflow, so a recorded marker means the step ran
    * during the upgrade.
    */
@@ -123,9 +162,13 @@ class OverrideMetadataRestoreMigrationIT {
   }
 
   private int restore(UUID id) {
+    return OverrideMetadataRestore.restoreEntity(Entity.TABLE, id, since());
+  }
+
+  private long since() {
     Long since = TestSuiteBootstrap.getJdbi().withHandle(OverrideMetadataRestore::windowStart);
     assertNotNull(since, "the suite's bootstrap recorded the 2.0.x migrations");
-    return OverrideMetadataRestore.restoreEntity(Entity.TABLE, id, since);
+    return since;
   }
 
   private Table curatedTable(TestNamespace ns, String name) throws Exception {
