@@ -17,6 +17,7 @@ import ActivityFeedEntityTab from './ActivityFeedEntityTab';
 const TABLE_LINK = '<#E::table::svc.db.schema.customers>';
 let mockIsAiMode = true;
 let mockSubTab: string | undefined;
+const mockNavigate = jest.fn();
 
 jest.mock('../../../hooks/useAppMode', () => ({
   useIsAiMode: () => mockIsAiMode,
@@ -24,6 +25,15 @@ jest.mock('../../../hooks/useAppMode', () => ({
 
 jest.mock('react-router-dom', () => ({
   useParams: () => ({ subTab: mockSubTab }),
+  useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../utils/EntityUtilClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityLink: (type: string, fqn: string, tab: string, subTab: string) =>
+      `/${type}/${fqn}/${tab}/${subTab}`,
+  },
 }));
 
 jest.mock(
@@ -37,20 +47,19 @@ jest.mock('./ActivityFeed', () => ({
   __esModule: true,
   default: ({
     entityLink,
-    defaultView,
+    view,
     onTaskChange,
+    onViewChange,
   }: {
     entityLink: string;
-    defaultView: string;
+    view: string;
     onTaskChange: () => void;
+    onViewChange: (view: string) => void;
   }) => (
-    <button
-      data-link={entityLink}
-      data-testid="activity-feed"
-      data-view={defaultView}
-      onClick={onTaskChange}>
-      feed
-    </button>
+    <div data-link={entityLink} data-testid="activity-feed" data-view={view}>
+      <button onClick={onTaskChange}>task-changed</button>
+      <button onClick={() => onViewChange('tasks')}>to-tasks</button>
+    </div>
   ),
 }));
 
@@ -70,6 +79,7 @@ describe('ActivityFeedEntityTab', () => {
   beforeEach(() => {
     mockIsAiMode = true;
     mockSubTab = undefined;
+    mockNavigate.mockClear();
   });
 
   it("shows the Inbox's feed for the entity in AI mode", () => {
@@ -110,9 +120,26 @@ describe('ActivityFeedEntityTab', () => {
   it('refreshes the page after a task changes', () => {
     const { onFeedUpdate, onUpdateEntityDetails } = renderTab();
 
-    fireEvent.click(screen.getByTestId('activity-feed'));
+    fireEvent.click(screen.getByText('task-changed'));
 
     expect(onUpdateEntityDetails).toHaveBeenCalled();
     expect(onFeedUpdate).toHaveBeenCalled();
+  });
+
+  // The route names the view, so a switch is a link others can open.
+  it('puts the chosen view in the route', () => {
+    renderTab();
+
+    expect(screen.getByTestId('activity-feed')).toHaveAttribute(
+      'data-view',
+      'activity'
+    );
+
+    fireEvent.click(screen.getByText('to-tasks'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/table/svc.db.schema.customers/activity_feed/tasks',
+      { replace: true }
+    );
   });
 });

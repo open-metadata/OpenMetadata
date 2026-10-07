@@ -44,6 +44,9 @@ export interface TaskQueueEmptyStateProps {
   scannedCount?: number;
   onClearFilters: () => void;
   onLoadMore: () => void;
+  // The descriptions speak to the viewer about their own queue; an entity's
+  // queue shows the title alone.
+  isPersonal?: boolean;
 }
 
 // A dedicated empty state per status: All = generic "nothing to do", Open =
@@ -55,6 +58,7 @@ export const TaskQueueEmptyState = ({
   scannedCount,
   onClearFilters,
   onLoadMore,
+  isPersonal = true,
 }: TaskQueueEmptyStateProps) => {
   const { t } = useTranslation();
   const isScanCapped = scannedCount !== undefined;
@@ -98,7 +102,9 @@ export const TaskQueueEmptyState = ({
     all: (
       <EmptyPlaceholder
         data-testid="inbox-tasks-empty"
-        description={t('message.tasks-empty-description')}
+        description={
+          isPersonal ? t('message.tasks-empty-description') : undefined
+        }
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-tasks-right-now')}
         variant="blank"
@@ -107,7 +113,9 @@ export const TaskQueueEmptyState = ({
     open: (
       <EmptyPlaceholder
         data-testid="inbox-tasks-open-empty"
-        description={t('message.tasks-open-empty-description')}
+        description={
+          isPersonal ? t('message.tasks-open-empty-description') : undefined
+        }
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-open-tasks-yet')}
         variant="blank"
@@ -116,7 +124,9 @@ export const TaskQueueEmptyState = ({
     closed: (
       <EmptyPlaceholder
         data-testid="inbox-tasks-closed-empty"
-        description={t('message.tasks-closed-empty-description')}
+        description={
+          isPersonal ? t('message.tasks-closed-empty-description') : undefined
+        }
         icon={<Inbox01 className="tw:size-7 tw:text-utility-gray-blue-600" />}
         title={t('label.no-closed-tasks-yet')}
         variant="blank"

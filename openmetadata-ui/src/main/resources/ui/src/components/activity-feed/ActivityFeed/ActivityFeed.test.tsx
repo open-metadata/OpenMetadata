@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import ActivityFeed from './ActivityFeed';
 
 const TABLE_LINK = '<#E::table::svc.db.schema.customers>';
@@ -46,7 +46,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
-    Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Box: jest
+      .requireActual('react')
+      .forwardRef(
+        (
+          { children }: { children?: ReactNode },
+          ref: React.Ref<HTMLDivElement>
+        ) => <div ref={ref}>{children}</div>
+      ),
     Tabs,
   };
 });
@@ -133,5 +140,21 @@ describe('ActivityFeed', () => {
     render(<ActivityFeed entityLink={TABLE_LINK} />);
 
     expect(screen.getByTestId('view-tasks')).not.toHaveAttribute('data-badge');
+  });
+
+  // A host that puts the view in its route controls it.
+  it('follows a controlled view and reports a switch', () => {
+    const onViewChange = jest.fn();
+    render(
+      <ActivityFeed
+        entityLink={TABLE_LINK}
+        view="activity"
+        onViewChange={onViewChange}
+      />
+    );
+
+    fireEvent.click(screen.getByText('pick-tasks'));
+
+    expect(onViewChange).toHaveBeenCalledWith('tasks');
   });
 });

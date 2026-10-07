@@ -137,6 +137,7 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
           queue.showEmptyState ? (
             <TaskQueueEmptyState
               isNarrowed={queue.isNarrowed}
+              isPersonal={false}
               scannedCount={queue.hasMore ? queue.tasks.length : undefined}
               status={queue.status}
               onClearFilters={queue.handleClearFilters}

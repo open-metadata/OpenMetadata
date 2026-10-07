@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useFillAvailableHeight } from '../../../hooks/useFillAvailableHeight';
 import {
   getActivityScope,
   getTaskListScope,
@@ -40,7 +41,10 @@ export interface ActivityFeedProps {
    * assigned to them.
    */
   entityLink: string;
+  // The view to open on; or control it with `view` and `onViewChange`.
   defaultView?: ActivityFeedView;
+  view?: ActivityFeedView;
+  onViewChange?: (view: ActivityFeedView) => void;
   // After a task action changed the task, and possibly its entity.
   onTaskChange?: () => void;
 }
@@ -48,14 +52,27 @@ export interface ActivityFeedProps {
 /**
  * The Inbox's Activity and Tasks for one entity or user:
  * `<ActivityFeed entityLink="<#E::table::red.dev.dbt_jaffle.customers>" />`.
+ * It fills what is left of the page below it and scrolls inside itself.
  */
 const ActivityFeed: React.FC<ActivityFeedProps> = ({
   entityLink,
   defaultView = 'activity',
+  view: controlledView,
+  onViewChange,
   onTaskChange,
 }) => {
   const { t } = useTranslation();
-  const [view, setView] = useState<ActivityFeedView>(defaultView);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useFillAvailableHeight(rootRef);
+  const [ownView, setOwnView] = useState<ActivityFeedView>(defaultView);
+  const view = controlledView ?? ownView;
+  const handleViewChange = useCallback(
+    (next: ActivityFeedView) => {
+      setOwnView(next);
+      onViewChange?.(next);
+    },
+    [onViewChange]
+  );
   // Read when the feed mounts, so a page left open keeps a current window.
   const [dateRange, setDateRange] = useState<InboxDateRange>(() => ({
     ...getDefaultInboxDateRange(),
@@ -84,7 +101,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
     <Tabs
       className="tw:w-fit"
       selectedKey={view}
-      onSelectionChange={(key) => setView(key as ActivityFeedView)}>
+      onSelectionChange={(key) => handleViewChange(key as ActivityFeedView)}>
       <Tabs.List size="sm" type="button-border">
         <Tabs.Item badge={getInboxTabBadge(activityCount)} id="activity">
           {t('label.activity')}
@@ -98,9 +115,11 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
   return (
     <Box
-      className="tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:px-3"
+      // Its panes scroll inside it; nothing spills out to grow the page.
+      className="tw:flex tw:min-h-0 tw:flex-col tw:overflow-hidden tw:px-3"
       data-testid="activity-feed"
-      direction="col">
+      direction="col"
+      ref={rootRef}>
       {view === 'activity' ? (
         <ActivityTab
           dateRange={dateRange}

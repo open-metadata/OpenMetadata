@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 import React, { useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
+import EntityLink from '../../../utils/EntityLink';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import ActivityFeed from './ActivityFeed';
+import ActivityFeed, { ActivityFeedView } from './ActivityFeed';
 
 export type ActivityFeedEntityTabProps = ActivityFeedTabProps & {
   // The entity the page shows, e.g. `<#E::table::fqn>`.
@@ -34,8 +37,27 @@ const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
   ...tabProps
 }) => {
   const isAiMode = useIsAiMode();
+  const navigate = useNavigate();
   const { subTab } = useParams<{ subTab?: string }>();
   const { onUpdateEntityDetails, onFeedUpdate } = tabProps;
+  // The route names the view, as it does for today's tab, so a link to
+  // …/activity_feed/tasks opens on Tasks and a switch can be shared.
+  const view: ActivityFeedView =
+    subTab === ActivityFeedTabs.TASKS ? 'tasks' : 'activity';
+
+  const handleViewChange = useCallback(
+    (next: ActivityFeedView) =>
+      navigate(
+        entityUtilClassBase.getEntityLink(
+          EntityLink.getEntityType(entityLink),
+          EntityLink.getEntityFqn(entityLink),
+          EntityTabs.ACTIVITY_FEED,
+          next === 'tasks' ? ActivityFeedTabs.TASKS : ActivityFeedTabs.ALL
+        ),
+        { replace: true }
+      ),
+    [navigate, entityLink]
+  );
 
   // A resolved task can change the entity (an approved description, a new
   // owner) and moves the tab's count.
@@ -47,9 +69,10 @@ const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
   // The link is empty until the page has read its entity.
   return isAiMode && entityLink ? (
     <ActivityFeed
-      defaultView={subTab === ActivityFeedTabs.TASKS ? 'tasks' : 'activity'}
       entityLink={entityLink}
+      view={view}
       onTaskChange={handleTaskChange}
+      onViewChange={handleViewChange}
     />
   ) : (
     <ActivityFeedTab {...tabProps} />
