@@ -61,7 +61,7 @@ type ListSectionProps = {
   labelRenderer: (item: EntityReference) => ReactNode;
   getItemHref?: (item: EntityReference) => string;
   onItemAction?: (item: EntityReference) => void;
-  readMore: (count: number) => ReactNode;
+  renderReadMore: (count: number) => ReactNode;
   sizeLimit?: number;
 };
 
@@ -73,7 +73,7 @@ const renderListSection = ({
   labelRenderer,
   getItemHref,
   onItemAction,
-  readMore,
+  renderReadMore,
   sizeLimit = 2,
 }: ListSectionProps) => {
   const items = listItems.slice(0, sizeLimit);
@@ -107,7 +107,7 @@ const renderListSection = ({
           </Dropdown.Item>
         ))
       )}
-      {remainingCount > 0 && readMore(remainingCount)}
+      {remainingCount > 0 && renderReadMore(remainingCount)}
     </Dropdown.Section>
   );
 };
@@ -166,7 +166,7 @@ export const UserProfileIcon = () => {
         return Array.from(uniquePersonasMap.values());
       })(),
     };
-  }, [currentUser, currentUser?.personas, currentUser?.inheritedPersonas]);
+  }, [currentUser]);
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
@@ -311,7 +311,7 @@ export const UserProfileIcon = () => {
             sizeLimit: showAllPersona ? sortedPersonas.length : 2,
             labelRenderer: personaLabelRenderer,
             onItemAction: setSelectedPersona,
-            readMore: (count) => (
+            renderReadMore: (count) => (
               <Dropdown.Item
                 className={LIST_ITEM_CLASS}
                 id="more-persona"
@@ -328,7 +328,7 @@ export const UserProfileIcon = () => {
             title: t('label.role-plural'),
             listItems: roles ?? [],
             labelRenderer: getEntityName,
-            readMore: (count) => renderMoreItem('roles', count),
+            renderReadMore: (count) => renderMoreItem('roles', count),
           })}
           <Dropdown.Separator />
           {renderListSection({
@@ -337,7 +337,7 @@ export const UserProfileIcon = () => {
             title: t('label.inherited-role-plural'),
             listItems: inheritedRoles ?? [],
             labelRenderer: getEntityName,
-            readMore: (count) => renderMoreItem('inherited-roles', count),
+            renderReadMore: (count) => renderMoreItem('inherited-roles', count),
           })}
           <Dropdown.Separator />
           {renderListSection({
@@ -347,7 +347,7 @@ export const UserProfileIcon = () => {
             listItems: teams ?? [],
             labelRenderer: getEntityName,
             getItemHref: getTeamHref,
-            readMore: (count) => renderMoreItem('teams', count),
+            renderReadMore: (count) => renderMoreItem('teams', count),
           })}
           <Dropdown.Separator />
           <Dropdown.Item

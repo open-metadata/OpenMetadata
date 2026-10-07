@@ -13,10 +13,10 @@
 
 import {
   Button as CoreButton,
-  Tooltip as CoreTooltip,
   Dropdown,
   Popover,
   PopoverTrigger,
+  Tooltip as CoreTooltip,
 } from '@openmetadata/ui-core-components';
 import { Alert, Badge, Button, InputRef, Tooltip } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
@@ -531,11 +531,14 @@ const NavBar = () => {
     />
   );
 
-  const handleLanguageChange = useCallback(async (key: Key) => {
-    await localUtilClassBase.loadLocales(String(key));
-    await i18n.changeLanguage(String(key));
-    navigate(0);
-  }, []);
+  const handleLanguageChange = useCallback(
+    async (key: Key) => {
+      await localUtilClassBase.loadLocales(String(key));
+      await i18n.changeLanguage(String(key));
+      navigate(0);
+    },
+    [navigate]
+  );
 
   const currentLanguage = i18n.language
     ? upperCase(i18n.language.split('-')[0])
