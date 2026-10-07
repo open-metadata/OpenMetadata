@@ -15,7 +15,6 @@ import { Badge, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Col, Collapse, InputNumber, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, omit, startCase } from 'lodash';
-import type { MenuInfo } from 'rc-menu/lib/interface';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../constants/constants';
@@ -228,10 +227,7 @@ const EntitySearchSettings = () => {
       .map((field: AllowedFieldField) => ({
         key: field.name,
         label: field.name,
-        onClick: (e: MenuInfo) => {
-          e.domEvent.stopPropagation();
-          handleFieldSelection(field.name);
-        },
+        onClick: () => handleFieldSelection(field.name),
       }));
   }, [entityFields, searchSettings.searchFields]);
 

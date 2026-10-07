@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { ACTION_TIMEOUT, EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
@@ -41,7 +42,7 @@ async function visitColumnBulkOperationsPage(page: Page) {
   // Register before sidebarClick so the listener is active before navigation fires.
   const responsePromise = page.waitForResponse(
     (r) => r.url().includes(GRID_API_URL),
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
   await sidebarClick(page, SidebarItem.COLUMN_BULK_OPERATIONS);
   const response = await responsePromise;
@@ -500,7 +501,7 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
 });
 
 test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
-  test.setTimeout(120000);
+  test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
   const table = new TableClass();
   let sharedColumnName: string;
@@ -875,7 +876,7 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
 });
 
 test.describe('Column Bulk Operations - Bulk Update Flow', () => {
-  test.setTimeout(120000);
+  test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
   const table = new TableClass();
   let sharedColumnName: string;
@@ -1025,7 +1026,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
 });
 
 test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
-  test.setTimeout(120000);
+  test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
   const table = new TableClass();
   let structColumnName: string;

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.notifications.recipients.context;
 
+import java.util.Locale;
 import java.util.Objects;
 import lombok.Getter;
 import lombok.ToString;
@@ -34,7 +35,18 @@ public final class EmailRecipient extends Recipient {
   private final String email;
 
   public EmailRecipient(String email) {
+    this(email, CONFIGURED);
+  }
+
+  public EmailRecipient(String email, String name) {
+    super(name);
     this.email = Objects.requireNonNull(email, "email cannot be null");
+  }
+
+  /** Mailboxes that differ only in letter case or surrounding spaces are one mailbox. */
+  @Override
+  public Object identity() {
+    return email.trim().toLowerCase(Locale.ROOT);
   }
 
   /**
@@ -48,7 +60,7 @@ public final class EmailRecipient extends Recipient {
       LOG.debug("Skipping user {} as an email recipient: no email address", user.getName());
       return null;
     }
-    return new EmailRecipient(user.getEmail());
+    return new EmailRecipient(user.getEmail(), user.getName());
   }
 
   /**
@@ -65,22 +77,6 @@ public final class EmailRecipient extends Recipient {
       LOG.debug("Skipping team {} as an email recipient: no email address", team.getName());
       return null;
     }
-    return new EmailRecipient(team.getEmail());
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof EmailRecipient that)) {
-      return false;
-    }
-    return Objects.equals(email, that.email);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(email);
+    return new EmailRecipient(team.getEmail(), team.getName());
   }
 }

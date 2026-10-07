@@ -338,16 +338,6 @@ class FormatterUtilTest {
     }
 
     @Override
-    public String buildEntityMessage(String publisherName, ChangeEvent event) {
-      return null;
-    }
-
-    @Override
-    public String buildThreadMessage(String publisherName, ChangeEvent event) {
-      return null;
-    }
-
-    @Override
     public String buildTestMessage() {
       return "test";
     }
