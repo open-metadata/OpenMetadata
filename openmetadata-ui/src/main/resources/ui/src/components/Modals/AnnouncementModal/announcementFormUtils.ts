@@ -86,10 +86,23 @@ export const toAnnouncementTypeFields = ({
  * verbatim rather than flattened: stripping tags would silently drop a list or
  * a link on an edit that only meant to move the dates, and the markup at least
  * still says what it is.
+ *
+ * The unwrapped text is also decoded. The editor serialised to HTML, so a
+ * description reading `Tom & Jerry` is stored as `Tom &amp; Jerry` — left
+ * encoded, that is what the author would see in the field and re-save.
  */
 export const toPlainDescription = (description?: string): string => {
   const trimmed = description?.trim() ?? '';
   const [, inner] = trimmed.match(/^<p(?:\s[^>]*)?>([\s\S]*)<\/p>$/i) ?? [];
 
-  return inner === undefined || /<[a-z]/i.test(inner) ? trimmed : inner.trim();
+  if (inner === undefined || /<[a-z]/i.test(inner)) {
+    return trimmed;
+  }
+
+  // `inner` is tag-free by the test above, so parsing it can only resolve
+  // entities — there is no markup here for `textContent` to drop.
+  const decoded =
+    new DOMParser().parseFromString(inner, 'text/html').body.textContent ?? '';
+
+  return decoded.trim();
 };

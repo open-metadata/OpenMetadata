@@ -51,4 +51,18 @@ describe('toPlainDescription', () => {
     expect(toPlainDescription(undefined)).toBe('');
     expect(toPlainDescription('')).toBe('');
   });
+
+  it('should decode the entities the editor serialised into the text', () => {
+    // Stored encoded by the block editor; left as-is the author would see
+    // `Tom &amp; Jerry` in the field and save that back.
+    expect(toPlainDescription('<p>Tom &amp; Jerry</p>')).toBe('Tom & Jerry');
+    expect(toPlainDescription('<p>5 &lt; 6 &gt; 4</p>')).toBe('5 < 6 > 4');
+    expect(toPlainDescription('<p>a &quot;quoted&quot; word</p>')).toBe(
+      'a "quoted" word'
+    );
+  });
+
+  it('should read a non-breaking-space-only paragraph as empty', () => {
+    expect(toPlainDescription('<p>&nbsp;</p>')).toBe('');
+  });
 });

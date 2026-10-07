@@ -1847,15 +1847,14 @@ export const editAnnouncement = async (
     data.title
   );
 
-  // Clear and fill the description field
-  await page
+  // Clear and fill the description — core's `TextArea`, addressed by its id for
+  // the same reason as the create path above.
+  const editDescription = page
     .locator('[data-testid="edit-announcement-dialog"]')
-    .locator(descriptionBox)
-    .fill('');
-  await page
-    .locator('[data-testid="edit-announcement-dialog"]')
-    .locator(descriptionBox)
-    .fill(data.description);
+    .locator('#description');
+
+  await editDescription.fill('');
+  await editDescription.fill(data.description);
 
   // Save the changes and wait for the API response
   const updateResponse = page.waitForResponse(
