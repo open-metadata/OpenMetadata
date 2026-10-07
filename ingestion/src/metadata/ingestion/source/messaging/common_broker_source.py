@@ -126,9 +126,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 partitions=len(topic_details.topic_metadata.partitions),
                 replicationFactor=len(topic_details.topic_metadata.partitions.get(0).replicas),
             )
-            topic_config_resource = self.admin_client.describe_configs(
-                [confluent_kafka.admin.ConfigResource(confluent_kafka.admin.RESOURCE_TOPIC, topic_details.topic_name)]
+            # confluent_kafka.admin ships py.typed but declares no __all__, so every name
+            # it exposes reads as a private import to the type checker.
+            config_resource = confluent_kafka.admin.ConfigResource(  # pyright: ignore[reportPrivateImportUsage]
+                confluent_kafka.admin.RESOURCE_TOPIC,  # pyright: ignore[reportPrivateImportUsage]
+                topic_details.topic_name,
             )
+            topic_config_resource = self.admin_client.describe_configs([config_resource])
             self.add_properties_to_topic_from_resource(topic, topic_config_resource)
             if topic_schema is not None and topic_schema.schema_type is not None:
                 schema_type = topic_schema.schema_type.lower()
