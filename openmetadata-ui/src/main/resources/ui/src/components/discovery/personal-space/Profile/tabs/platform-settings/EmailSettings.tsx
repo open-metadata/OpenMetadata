@@ -85,13 +85,16 @@ const EmailSettings = ({
 
   if (!config) {
     return (
-      <EmptyPlaceholder
-        data-testid="email-config-empty"
-        icon={<Mail01 className="tw:text-quaternary" />}
-        title={t('label.no-entity', {
-          entity: t('label.email-configuration'),
-        })}
-      />
+      // The placeholder centres itself in its nearest positioned ancestor.
+      <div className="tw:relative tw:min-h-90">
+        <EmptyPlaceholder
+          data-testid="email-config-empty"
+          icon={<Mail01 className="tw:text-quaternary" />}
+          title={t('label.no-entity', {
+            entity: t('label.email-configuration'),
+          })}
+        />
+      </div>
     );
   }
 

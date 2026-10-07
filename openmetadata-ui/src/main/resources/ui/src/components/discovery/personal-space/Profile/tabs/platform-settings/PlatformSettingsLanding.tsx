@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import type {
   PlatformSettingsPage,
@@ -62,12 +62,19 @@ const PlatformSettingsLanding = ({
                   <Icon className="tw:size-5 tw:text-secondary" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
-                  <Typography
-                    className="tw:text-primary"
-                    size="text-sm"
-                    weight="semibold">
-                    {t(page.titleKey)}
-                  </Typography>
+                  <Box align="center" direction="row" gap={2}>
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-sm"
+                      weight="semibold">
+                      {t(page.titleKey)}
+                    </Typography>
+                    {page.isBeta && (
+                      <Badge color="brand" size="sm" type="pill-color">
+                        {t('label.beta')}
+                      </Badge>
+                    )}
+                  </Box>
                   <Typography
                     className="tw:line-clamp-2 tw:text-tertiary"
                     size="text-sm">

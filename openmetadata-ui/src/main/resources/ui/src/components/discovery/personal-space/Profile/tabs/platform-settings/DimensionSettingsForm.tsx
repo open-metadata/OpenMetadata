@@ -23,17 +23,18 @@ import { compare } from 'fast-json-patch';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { AGGREGATE_PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
 import { DIMENSION_COLOR_PALETTE } from '../../../../../../constants/DataQualityDimension.constants';
 import { DataQualityDimension } from '../../../../../../generated/tests/dataQualityDimension';
 import {
   createDataQualityDimension,
+  getDataQualityDimensions,
   patchDataQualityDimension,
 } from '../../../../../../rest/dataQualityDimensionAPI';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import { fetchDimensionList } from './DataQualitySettings.utils';
 import type { PlatformSettingsFormProps } from './PlatformSettings.types';
 import SettingsFormLayout, {
   SettingsFormSection,
@@ -49,6 +50,10 @@ export interface DimensionFormValues {
 }
 
 const DIMENSION_NAME_PATTERN = /^[\w-]+$/;
+
+// No get-by-name endpoint; the form only needs the dimensions, not the counts.
+const fetchDimensions = async () =>
+  (await getDataQualityDimensions({ limit: AGGREGATE_PAGE_SIZE_LARGE })).data;
 
 const toFormValues = (
   dimension?: DataQualityDimension
@@ -67,7 +72,7 @@ const DimensionSettingsForm = ({
 }: PlatformSettingsFormProps) => {
   const { t } = useTranslation();
   const isEditing = Boolean(itemId);
-  const { data, isLoading } = useSettingsFetch(fetchDimensionList);
+  const { data, isLoading } = useSettingsFetch(fetchDimensions);
   const [isSaving, setIsSaving] = useState(false);
   const form = useForm<DimensionFormValues>({ defaultValues: toFormValues() });
   const [color, name, displayName] = useWatch({
@@ -76,7 +81,7 @@ const DimensionSettingsForm = ({
   });
 
   const editing = useMemo(
-    () => data?.dimensions.find((dimension) => dimension.name === itemId),
+    () => data?.find((dimension) => dimension.name === itemId),
     [data, itemId]
   );
 

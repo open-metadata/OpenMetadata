@@ -24,6 +24,8 @@ export type PlatformSettingsPageId =
   | 'data-quality'
   | 'lineage'
   | 'brand-url'
+  | 'data-asset-rules'
+  | 'learning-resources'
   | 'app-mode';
 
 export type PlatformSettingsView =
@@ -43,6 +45,8 @@ export interface PlatformSettingsPage {
   descriptionKey: string;
   /** Read-only view first, with an Edit action that opens `<page>/edit`. */
   hasEditView?: boolean;
+  /** Shows a "Beta" badge on the landing card, as the classic menu did. */
+  isBeta?: boolean;
   /** False when the edit form has no per-field docs to offer as hints. */
   hasFieldHints?: boolean;
   isVisible?: (authProvider?: AuthProvider) => boolean;

@@ -64,6 +64,26 @@ jest.mock('./ProfilerSettings', () => () => (
 jest.mock('./ProfilerSettingsForm', () => () => (
   <div data-testid="profiler-form" />
 ));
+jest.mock('./DataAssetRulesSettings', () => () => (
+  <div data-testid="data-asset-rules-view" />
+));
+jest.mock('./LearningResourcesSettings', () => () => (
+  <div data-testid="learning-resources-view" />
+));
+const mockFormMounts = jest.fn();
+
+jest.mock('./LearningResourceSettingsForm', () => {
+  const { useState } = jest.requireActual('react');
+
+  return ({ itemId }: { itemId?: string }) => {
+    // A lazy initializer runs once per mount, never on re-render.
+    useState(() => mockFormMounts(itemId));
+
+    return (
+      <div data-item-id={itemId ?? ''} data-testid="learning-resource-form" />
+    );
+  };
+});
 jest.mock('./DataQualitySettings', () => () => (
   <div data-testid="data-quality-view" />
 ));
@@ -107,6 +127,8 @@ describe('PlatformSettingsPanel', () => {
       'health-check',
       'lineage',
       'brand-url',
+      'data-asset-rules',
+      'learning-resources',
       'app-mode',
     ].forEach((id) =>
       expect(
@@ -115,6 +137,17 @@ describe('PlatformSettingsPanel', () => {
     );
 
     expect(lastHeader().title).toBe('label.platform-setting-plural');
+  });
+
+  it('marks Data Asset Rules as beta, as the classic menu does', () => {
+    renderPanel();
+
+    expect(
+      screen.getByTestId('platform-settings-card-data-asset-rules')
+    ).toHaveTextContent('label.beta');
+    expect(
+      screen.getByTestId('platform-settings-card-email')
+    ).not.toHaveTextContent('label.beta');
   });
 
   it('hides login configuration for SSO providers', () => {
@@ -183,11 +216,35 @@ describe('PlatformSettingsPanel', () => {
     ['profiler-configuration', 'profiler-view'],
     ['profiler-configuration/edit', 'profiler-form'],
     ['data-quality', 'data-quality-view'],
+    ['data-asset-rules', 'data-asset-rules-view'],
+    ['learning-resources', 'learning-resources-view'],
+    ['learning-resources/edit/res-1', 'learning-resource-form'],
   ])('routes "%s" to its view or edit form', (subPath, testId) => {
     mockSubPath = subPath;
     renderPanel();
 
     expect(screen.getByTestId(testId)).toBeInTheDocument();
+  });
+
+  it('remounts the page when the route moves to another item, so it reloads', () => {
+    mockSubPath = 'learning-resources/edit';
+    const { rerender } = renderPanel();
+
+    mockSubPath = 'learning-resources/edit/res-1';
+    rerender(
+      <MemoryRouter>
+        <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
+      </MemoryRouter>
+    );
+
+    expect(mockFormMounts.mock.calls).toEqual([[undefined], ['res-1']]);
+  });
+
+  it('has no add/edit route for data asset rules', () => {
+    mockSubPath = 'data-asset-rules/edit';
+    renderPanel();
+
+    expect(screen.getByTestId('data-asset-rules-view')).toBeInTheDocument();
   });
 
   it.each([

@@ -143,6 +143,7 @@ test.describe(
         ['data-quality', 'data-quality-settings'],
         ['lineage', 'lineage-settings'],
         ['brand-url', 'brand-url-settings'],
+        ['learning-resources', 'learning-resources-settings'],
         ['app-mode', 'default-app-mode-page'],
       ];
 
@@ -509,6 +510,8 @@ test.describe(
     test('data quality: adds, edits and deletes a custom dimension', async ({
       page,
     }) => {
+      // Create, edit and delete against the real API, behind a list load.
+      test.slow();
       // Dimensions are entities with unique names, so this runs against the
       // real API and cleans up after itself.
       const name = `pw_dimension_${uuid()}`;
@@ -516,7 +519,9 @@ test.describe(
 
       try {
         await openCard(page, 'data-quality');
-        await expect(page.getByTestId('dimensions-table')).toBeVisible();
+        await expect(page.getByTestId('dimensions-table')).toBeVisible({
+          timeout: 30_000,
+        });
 
         await header(page).getByTestId('add-dimension').click();
         await fillField(page, 'dimension-name', name);
@@ -533,7 +538,11 @@ test.describe(
         await expect(row).toContainText('PW Dimension');
         await expect(row).toContainText('Custom');
 
-        await page.getByTestId(`edit-${name}`).click();
+        await clickAndWaitFor(
+          page,
+          page.getByTestId(`edit-${name}`),
+          /\/api\/v1\/dataQuality\/dimensions\?/
+        );
         await expect(
           page.getByTestId('dimension-name').locator('input')
         ).toBeDisabled();
@@ -564,6 +573,138 @@ test.describe(
         if (leftover) {
           await apiContext.delete(
             `/api/v1/dataQuality/dimensions/${leftover.id}?hardDelete=true`
+          );
+        }
+        await afterAction();
+      }
+    });
+    test('data asset rules: toggling a rule saves it', async ({ page }) => {
+      const rule = {
+        name: 'Single Domain',
+        description: 'One domain per asset.',
+        enabled: false,
+        rule: '{"==":[1,1]}',
+      };
+      const settings = await stubSettingRoundTrip(page, 'entityRulesSettings', {
+        initial: { entitySemantics: [rule] },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'data-asset-rules');
+
+      await expect(
+        page.getByTestId('data-asset-rule-Single Domain')
+      ).toContainText('One domain per asset.');
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('toggle-Single Domain'),
+        SETTINGS_PUT
+      );
+
+      expect(settings.puts[0].config_value).toEqual({
+        entitySemantics: [{ ...rule, enabled: true }],
+      });
+    });
+
+    test('data asset rules: empty state offers no Add, as adding is unsupported', async ({
+      page,
+    }) => {
+      await stubSettingRoundTrip(page, 'entityRulesSettings', {
+        initial: { entitySemantics: [] },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'data-asset-rules');
+
+      const emptyState = page.getByTestId('data-asset-rules-empty');
+      await expect(emptyState).toBeVisible();
+      await expect(emptyState.getByRole('button')).toHaveCount(0);
+    });
+
+    test('learning resources: adds, edits and deletes a resource', async ({
+      page,
+    }) => {
+      // Create, edit and delete against the real API, behind a list load.
+      test.slow();
+      // Learning resources are entities with unique names, so this runs
+      // against the real API and cleans up after itself.
+      const name = `pw-resource-${uuid()}`;
+      await openPlatformSettings(page);
+
+      try {
+        await openCard(page, 'learning-resources');
+        await expect(page.getByTestId('learning-resources-table')).toBeVisible({
+          timeout: 30_000,
+        });
+
+        await header(page).getByTestId('create-resource').click();
+        await fillField(page, 'name-input', name);
+        await page
+          .getByTestId('description-input')
+          .locator('textarea')
+          .fill('Created by Playwright.');
+        await chooseSelectOption(
+          page.getByTestId('resource-type-select'),
+          page.getByRole('option', { name: 'Video', exact: true })
+        );
+        for (const [testId, option] of [
+          ['categories-select', 'Discovery'],
+          ['contexts-select', 'Glossary'],
+        ]) {
+          await page.getByTestId(testId).locator('input').fill(option);
+          await page.getByRole('option', { name: option, exact: true }).click();
+        }
+        await fillField(
+          page,
+          'source-url-input',
+          'https://www.youtube.com/watch?v=pw-test'
+        );
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('save-button'),
+          '**/api/v1/learning/resources',
+          201
+        );
+
+        await page.getByTestId('search-resources').locator('input').fill(name);
+        const row = page.getByTestId(name);
+        await expect(row).toBeVisible();
+
+        await clickAndWaitFor(
+          page,
+          page.getByTestId(`edit-${name}`),
+          '**/api/v1/learning/resources/*'
+        );
+        await expect(
+          page.getByTestId('name-input').locator('input')
+        ).toBeDisabled();
+        await page
+          .getByTestId('description-input')
+          .locator('textarea')
+          .fill('Edited by Playwright.');
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('save-button'),
+          '**/api/v1/learning/resources'
+        );
+
+        await page.getByTestId('search-resources').locator('input').fill(name);
+        await page.getByTestId(`delete-${name}`).click();
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('confirm-button'),
+          '**/api/v1/learning/resources/*'
+        );
+        await expect(row).toHaveCount(0);
+      } finally {
+        const { apiContext, afterAction } = await getApiContext(page);
+        const existing = await apiContext.get(
+          `/api/v1/learning/resources/name/${encodeURIComponent(
+            name
+          )}?include=all`
+        );
+        if (existing.ok()) {
+          const { id } = await existing.json();
+          await apiContext.delete(
+            `/api/v1/learning/resources/${id}?hardDelete=true`
           );
         }
         await afterAction();

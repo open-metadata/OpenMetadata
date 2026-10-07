@@ -12,9 +12,11 @@
  */
 
 import {
+  BookOpen01,
   Customize,
   Dataflow02,
   DataQuality,
+  FileCheck02,
   HeartRounded,
   Link01,
   Lock01,
@@ -88,6 +90,23 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     titleKey: 'label.brand-name-url',
     descriptionKey: 'message.om-url-configuration-message',
     hasEditView: true,
+  },
+  {
+    id: 'data-asset-rules',
+    icon: FileCheck02,
+    titleKey: 'label.data-asset-rules',
+    descriptionKey: 'message.data-asset-rules-message',
+    isBeta: true,
+  },
+  {
+    id: 'learning-resources',
+    icon: BookOpen01,
+    titleKey: 'label.learning-resources',
+    descriptionKey: 'message.learning-resources-management-description',
+    hasEditView: true,
+    hasFieldHints: false,
+    getEditTitle: (t, itemId) =>
+      t(itemId ? 'label.edit-resource' : 'label.add-resource'),
   },
   {
     id: 'app-mode',
