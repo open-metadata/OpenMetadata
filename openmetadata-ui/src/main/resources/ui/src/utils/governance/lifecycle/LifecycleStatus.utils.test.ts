@@ -39,6 +39,10 @@ const lifecycles: EntityLifecycleStages = {
 };
 
 describe('entity-specific lifecycle statuses', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
   it('keeps memory-only values out of table filters', () => {
     expect(resolveLifecycleStatuses(lifecycles, ['table'])).toEqual([
       'Approved',
@@ -95,6 +99,56 @@ describe('entity-specific lifecycle statuses', () => {
     await expect(
       lifecycleStatusAutocomplete(['table'])('super', 0)
     ).resolves.toEqual({ values: [], hasMore: false });
+  });
+
+  it('shares one discovery request across concurrent searches and later keystrokes', async () => {
+    (
+      getEntityLifecycleStages as jest.MockedFunction<
+        typeof getEntityLifecycleStages
+      >
+    ).mockResolvedValue(lifecycles);
+    const fetchOptions = lifecycleStatusAutocomplete(['contextMemory']);
+
+    await expect(
+      Promise.all([fetchOptions('super', 0), fetchOptions('invalid', 0)])
+    ).resolves.toEqual([
+      {
+        values: [{ value: 'Superseded', title: 'Superseded' }],
+        hasMore: false,
+      },
+      {
+        values: [{ value: 'Invalidated', title: 'Invalidated' }],
+        hasMore: false,
+      },
+    ]);
+    await expect(fetchOptions(['approved'], 0)).resolves.toEqual({
+      values: [{ value: 'Approved', title: 'Approved' }],
+      hasMore: false,
+    });
+    expect(getEntityLifecycleStages).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a failed discovery request and reuses the successful result', async () => {
+    const getStages = getEntityLifecycleStages as jest.MockedFunction<
+      typeof getEntityLifecycleStages
+    >;
+    getStages
+      .mockRejectedValueOnce(new Error('Discovery unavailable'))
+      .mockResolvedValue(lifecycles);
+    const fetchOptions = lifecycleStatusAutocomplete(['contextMemory']);
+
+    await expect(fetchOptions('super', 0)).rejects.toThrow(
+      'Discovery unavailable'
+    );
+    await expect(fetchOptions('super', 0)).resolves.toEqual({
+      values: [{ value: 'Superseded', title: 'Superseded' }],
+      hasMore: false,
+    });
+    await expect(fetchOptions('invalid', 0)).resolves.toEqual({
+      values: [{ value: 'Invalidated', title: 'Invalidated' }],
+      hasMore: false,
+    });
+    expect(getStages).toHaveBeenCalledTimes(2);
   });
 
   it('resolves workflow targets without requiring a search index', async () => {

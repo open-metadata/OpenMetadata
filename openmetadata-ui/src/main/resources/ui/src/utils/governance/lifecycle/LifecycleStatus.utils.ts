@@ -55,20 +55,26 @@ export const fetchLifecycleStatuses = async (
     selection
   );
 
-export const lifecycleStatusAutocomplete =
-  (
-    entityTypes: readonly string[]
-  ): NonNullable<SelectFieldSettings['asyncFetch']> =>
-  async (search) => {
-    const statuses = await fetchLifecycleStatuses(entityTypes);
+export const lifecycleStatusAutocomplete = (
+  entityTypes: readonly string[]
+): NonNullable<SelectFieldSettings['asyncFetch']> => {
+  let statuses: Promise<string[]> | undefined;
+
+  return async (search) => {
+    statuses ??= fetchLifecycleStatuses(entityTypes).catch((error) => {
+      statuses = undefined;
+
+      throw error;
+    });
     const query = (
       Array.isArray(search) ? search.join(',') : search ?? ''
     ).toLowerCase();
 
     return {
-      values: statuses
+      values: (await statuses)
         .filter((status) => status.toLowerCase().includes(query))
         .map((status) => ({ value: status, title: status })),
       hasMore: false,
     };
   };
+};
