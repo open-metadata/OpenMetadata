@@ -1898,8 +1898,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private static AssetTagLabelService.Request assetsRequest(
       GlossaryTerm term, AddGlossaryToAssetsRequest request, ChangeActor actor) {
-    TagLabel label =
-        AssetTagLabelService.manualLabel(term.getFullyQualifiedName(), TagSource.GLOSSARY);
+    TagLabel label = EntityUtil.toTagLabel(term);
     boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
     return new AssetTagLabelService.Request(label, request.getAssets(), dryRun, actor);
   }

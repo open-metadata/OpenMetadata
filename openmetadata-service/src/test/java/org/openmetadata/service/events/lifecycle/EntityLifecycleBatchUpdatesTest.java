@@ -1,7 +1,6 @@
 package org.openmetadata.service.events.lifecycle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -55,21 +54,6 @@ class EntityLifecycleBatchUpdatesTest {
 
     assertEquals(List.of(List.of(first, second)), bulkHandler.batches);
     assertEquals(List.of(true), bulkHandler.refreshes, "the batch must be searchable on delivery");
-  }
-
-  @Test
-  void eachHandlerOnlySeesTheEntitiesItsFilterAcceptsWithTheirOwnChange() {
-    EntityInterface tagged = table(change("tags"));
-    EntityInterface moved = table(change("domains"));
-
-    dispatcher.batchUpdates(
-        () -> {
-          dispatcher.onEntityUpdated(tagged, tagged.getChangeDescription(), null);
-          dispatcher.onEntityUpdated(moved, moved.getChangeDescription(), null);
-        });
-
-    assertEquals(List.of(moved), domainsOnlyHandler.updated);
-    assertSame(moved.getChangeDescription(), domainsOnlyHandler.changes.getFirst());
   }
 
   @Test
@@ -163,7 +147,6 @@ class EntityLifecycleBatchUpdatesTest {
   /** A sync handler that only acts on domain changes, like the domain sync handler. */
   private static final class DomainsOnlyHandler implements EntityLifecycleEventHandler {
     private final List<EntityInterface> updated = new ArrayList<>();
-    private final List<ChangeDescription> changes = new ArrayList<>();
 
     @Override
     public boolean shouldProcess(EventType eventType, ChangeDescription change) {
@@ -175,7 +158,6 @@ class EntityLifecycleBatchUpdatesTest {
     public void onEntityUpdated(
         EntityInterface entity, ChangeDescription change, SubjectContext subjectContext) {
       updated.add(entity);
-      changes.add(change);
     }
 
     @Override

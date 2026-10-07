@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 class AssetLabelEditsTest {
   private static final String TABLE_FQN = "svc.db.schema.orders";
@@ -118,12 +120,17 @@ class AssetLabelEditsTest {
   }
 
   @Test
-  void aMissingColumnIsANoOp() {
+  void aMissingColumnIsReportedAndNothingChanges() {
     Column id = column("id", mutable(label(LabelType.MANUAL)));
     Table table = table(mutable(label(LabelType.MANUAL)), id);
+    String missing = TABLE_FQN + ".missing";
 
-    AssetLabelEdits.add(table, Entity.TABLE, TABLE_FQN + ".missing", label(LabelType.MANUAL));
-    AssetLabelEdits.strip(table, Entity.TABLE, TABLE_FQN + ".missing", label(LabelType.MANUAL));
+    assertThrows(
+        EntityNotFoundException.class,
+        () -> AssetLabelEdits.add(table, Entity.TABLE, missing, label(LabelType.MANUAL)));
+    assertThrows(
+        EntityNotFoundException.class,
+        () -> AssetLabelEdits.strip(table, Entity.TABLE, missing, label(LabelType.MANUAL)));
 
     assertEquals(List.of(TAG_FQN), fqns(table.getTags()));
     assertEquals(List.of(TAG_FQN), fqns(id.getTags()));

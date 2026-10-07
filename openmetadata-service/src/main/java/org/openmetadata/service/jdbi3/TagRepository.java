@@ -64,6 +64,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -490,8 +491,7 @@ public class TagRepository extends EntityRepository<Tag> {
   private AssetTagLabelService.Request assetsRequest(
       UUID tagId, BulkAssetsRequestInterface request, ChangeActor actor) {
     Tag tag = get(null, tagId, getFields("id"));
-    TagLabel label =
-        AssetTagLabelService.manualLabel(tag.getFullyQualifiedName(), TagSource.CLASSIFICATION);
+    TagLabel label = EntityUtil.toTagLabel(tag);
     boolean dryRun = Boolean.TRUE.equals(((AddTagToAssetsRequest) request).getDryRun());
     return new AssetTagLabelService.Request(label, request.getAssets(), dryRun, actor);
   }

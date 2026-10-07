@@ -17,17 +17,11 @@ import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TagLabel.LabelType;
-import org.openmetadata.schema.type.TagLabel.State;
-import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AssetEditService.AssetEdit;
-import org.openmetadata.service.jdbi3.AssetEditService.Selection;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.ChangeActor;
-import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -54,15 +48,6 @@ public final class AssetTagLabelService {
 
   private AssetTagLabelService() {}
 
-  /** The label an Assets tab change applies: the one a user picks on the asset's own page. */
-  public static TagLabel manualLabel(String tagFqn, TagSource source) {
-    return new TagLabel()
-        .withTagFQN(tagFqn)
-        .withSource(source)
-        .withLabelType(LabelType.MANUAL)
-        .withState(State.CONFIRMED);
-  }
-
   public static BulkOperationResult addToAssets(Request request) {
     TagLabelUtil.checkDisabledTags(List.of(request.label()));
     return AssetEditService.apply(editRequest(request), labelEdit(request, AssetLabelEdits::add));
@@ -80,7 +65,6 @@ public final class AssetTagLabelService {
     TagLabel label = request.label();
     return (asset, selection) -> {
       checkLabelAllowed(selection.entityType(), label);
-      requireChild(asset, selection);
       labelEdit.apply(asset, selection.entityType(), selection.childFqn(), label);
     };
   }
@@ -94,16 +78,6 @@ public final class AssetTagLabelService {
     if (certification != null
         && certification.equals(FullyQualifiedName.getParentFQN(label.getTagFQN()))) {
       throw new IllegalArgumentException(String.format(CERTIFICATION_AS_TAG, label.getTagFQN()));
-    }
-  }
-
-  private static void requireChild(EntityInterface asset, Selection selection) {
-    boolean missing =
-        selection.childFqn() != null
-            && ChildFieldResolver.locate(asset, selection.entityType(), selection.childFqn())
-                .isEmpty();
-    if (missing) {
-      throw EntityNotFoundException.byMessage("Column not found: " + selection.childFqn());
     }
   }
 }

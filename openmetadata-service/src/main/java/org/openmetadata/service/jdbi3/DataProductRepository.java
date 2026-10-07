@@ -373,16 +373,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   // Each asset is attached or detached through its own versioned PATCH, as on the asset's own page.
   private BulkOperationResult editAssets(
       DataProduct dataProduct, BulkAssets request, boolean isAdd, ChangeActor actor) {
-    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
     AssetEdit edit = isAdd ? attach(dataProduct.getEntityReference()) : detach(dataProduct.getId());
-    BulkOperationResult result =
-        AssetEditService.apply(
-            new AssetEditService.Request(request.getAssets(), dryRun, actor), edit);
-    List<EntityReference> changed = AssetEditService.succeededAssets(result);
-    if (!dryRun && !changed.isEmpty()) {
-      recordBulkAssetsChange(DATA_PRODUCT, dataProduct.getId(), isAdd, changed, actor.userName());
-    }
-    return result;
+    return applyAssetEdit(dataProduct.getId(), request, isAdd, edit, actor);
   }
 
   private static AssetEdit attach(EntityReference dataProduct) {
@@ -415,13 +407,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private static void requireDataProductAsset(Selection selection) {
-    boolean dataProductAsset =
-        selection.childFqn() == null
-            && Entity.getEntityRepository(selection.entityType()).isSupportsDataProducts();
-    if (!dataProductAsset) {
-      throw new IllegalArgumentException(
-          String.format(NOT_A_DATA_PRODUCT_ASSET, selection.ref().getType()));
-    }
+    AssetEditService.requireAssetHolding(
+        selection, EntityRepository::isSupportsDataProducts, NOT_A_DATA_PRODUCT_ASSET);
   }
 
   public BulkOperationResult bulkAddInputPorts(
@@ -1201,6 +1188,21 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     conflictsByAsset.forEach(
         (assetId, dataProducts) ->
             removeDataProductAssignments(assetsById.get(assetId), dataProducts, reindexQueue));
+  }
+
+  /** The data products an asset must drop to end up in {@code domainIds}, by {@link #conflicts}. */
+  List<EntityReference> conflictingDataProducts(
+      List<EntityReference> dataProducts, Set<UUID> domainIds) {
+    if (nullOrEmpty(dataProducts)) {
+      return List.of();
+    }
+    Map<UUID, Set<UUID>> dataProductDomains = batchFetchDataProductDomainIds(refIds(dataProducts));
+    return dataProducts.stream()
+        .filter(
+            dataProduct ->
+                conflicts(
+                    dataProductDomains.getOrDefault(dataProduct.getId(), Set.of()), domainIds))
+        .toList();
   }
 
   /**

@@ -304,10 +304,9 @@ public class EntityLifecycleEventDispatcher {
   }
 
   /**
-   * Runs {@code work} and delivers the entity-updated events it dispatches once it finishes, one
-   * batch per entity type, so a handler with a bulk {@code onEntitiesUpdated} (search) writes them in
-   * one request instead of one per entity. Every handler still filters each entity against that
-   * entity's own change description, as a single dispatch does, and only the latest state of an
+   * Runs {@code work} and delivers the entity-updated events it dispatches once it finishes, as one
+   * {@link #onEntitiesUpdated} per entity type, so a handler with a bulk {@code onEntitiesUpdated}
+   * (search) writes them in one request instead of one per entity. Only the latest state of an
    * entity is delivered. As with a single update, the search write is searchable once delivered. A
    * nested call joins the scope that is already open.
    */
@@ -322,7 +321,15 @@ public class EntityLifecycleEventDispatcher {
     } finally {
       Map<String, Map<UUID, EntityInterface>> batched = BATCHED_UPDATES.get();
       BATCHED_UPDATES.remove();
-      batched.values().forEach(byId -> dispatchBatchedUpdates(new ArrayList<>(byId.values())));
+      batched
+          .values()
+          .forEach(
+              byId ->
+                  onEntitiesUpdated(
+                      new ArrayList<>(byId.values()),
+                      null,
+                      null,
+                      EntityUpdateContext.refreshingSearch()));
     }
   }
 
@@ -335,51 +342,6 @@ public class EntityLifecycleEventDispatcher {
         .computeIfAbsent(entity.getEntityReference().getType(), type -> new LinkedHashMap<>())
         .put(entity.getId(), entity);
     return true;
-  }
-
-  private void dispatchBatchedUpdates(List<EntityInterface> entities) {
-    String entityType = entities.getFirst().getEntityReference().getType();
-    Map<UUID, Supplier<EntityInterface>> snapshots =
-        buildSnapshots(entities, EventType.ENTITY_UPDATED);
-    for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      List<EntityInterface> accepted =
-          entities.stream()
-              .filter(
-                  entity ->
-                      shouldProcess(
-                          handler, EventType.ENTITY_UPDATED, entity.getChangeDescription()))
-              .toList();
-      if (!accepted.isEmpty()) {
-        dispatchAcceptedUpdates(handler, accepted, snapshots);
-      }
-    }
-  }
-
-  private void dispatchAcceptedUpdates(
-      EntityLifecycleEventHandler handler,
-      List<EntityInterface> accepted,
-      Map<UUID, Supplier<EntityInterface>> snapshots) {
-    if (handler.isAsync()) {
-      for (EntityInterface entity : accepted) {
-        ChangeDescription change = entity.getChangeDescription();
-        PostCommitActionQueue.runOrDefer(
-            () ->
-                executeHandlerAfterCommit(
-                    entity,
-                    snapshots.get(entity.getId()),
-                    EventType.ENTITY_UPDATED,
-                    snapshot -> handler.onEntityUpdated(snapshot, change, null),
-                    handler));
-      }
-    } else {
-      PostCommitActionQueue.runOrDefer(
-          () ->
-              runInline(
-                  () ->
-                      handler.onEntitiesUpdated(
-                          accepted, null, null, EntityUpdateContext.refreshingSearch()),
-                  handler));
-    }
   }
 
   /**

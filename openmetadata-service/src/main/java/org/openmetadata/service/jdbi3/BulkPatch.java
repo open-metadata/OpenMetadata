@@ -32,7 +32,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository.Operation;
-import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -158,18 +157,9 @@ final class BulkPatch<T extends EntityInterface> {
         : Optional.of(new Candidate<>(updated, JsonUtils.extractPatchedFields(diff)));
   }
 
-  // The preparation PATCH runs on the patched entity before its updater.
   private T prepare(T original, T edited) {
-    T updated = repository.restorePatchSecrets(original, edited);
-    updated.setUpdatedBy(actor.userName());
-    updated.setUpdatedAt(System.currentTimeMillis());
-    repository.prepareInternal(updated, true);
-    RuleEngine.getInstance().evaluateUpdate(original, updated);
-    updated.setOwners(repository.getValidatedOwners(updated.getOwners()));
-    updated.setDomains(repository.getValidatedDomains(updated.getDomains()));
-    repository.restorePatchAttributes(original, updated);
-    updated.setImpersonatedBy(actor.impersonatedBy());
-    return updated;
+    return repository.preparePatchedEntity(
+        original, edited, actor.userName(), actor.impersonatedBy());
   }
 
   private List<EntityRepository<T>.EntityUpdater> store(

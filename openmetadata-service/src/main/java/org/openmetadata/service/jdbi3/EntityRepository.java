@@ -4561,7 +4561,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Use method with ChangeContext
+   * Use the overload that takes a {@link ChangeSource}.
    */
   @Deprecated
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
@@ -4694,45 +4694,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeSource changeSource,
       boolean useOptimisticLocking,
       String impersonatedBy) {
-    T updated;
+    T patched;
     try (var ignored = phase("patchApplyJson")) {
-      updated = JsonUtils.applyPatch(original, patch, entityClass);
+      patched = JsonUtils.applyPatch(original, patch, entityClass);
     }
-    try (var ignored = phase("patchRestoreSecrets")) {
-      updated = restorePatchSecrets(original, updated);
-    }
-
-    updated.setUpdatedBy(user);
-    updated.setUpdatedAt(System.currentTimeMillis());
-
-    try (var ignored = phase("patchPrepareInternal")) {
-      prepareInternal(updated, true);
-    }
-    try (var ignored = phase("patchRuleEvaluation")) {
-      RuleEngine.getInstance().evaluateUpdate(original, updated);
-    }
-
-    // Validate and populate owners
-    List<EntityReference> validatedOwners;
-    try (var ignored = phase("patchValidateOwners")) {
-      validatedOwners = getValidatedOwners(updated.getOwners());
-    }
-    updated.setOwners(validatedOwners);
-
-    // Validate and populate domain
-    List<EntityReference> validatedDomains;
-    try (var ignored = phase("patchValidateDomains")) {
-      validatedDomains = getValidatedDomains(updated.getDomains());
-    }
-    updated.setDomains(validatedDomains);
-    try (var ignored = phase("patchRestoreAttributes")) {
-      restorePatchAttributes(original, updated);
-    }
-
-    // Always set impersonatedBy to the passed value (which can be null)
-    // This ensures that when regular users make changes (impersonatedBy=null),
-    // any existing impersonatedBy value is cleared, preventing it from persisting
-    updated.setImpersonatedBy(impersonatedBy);
+    T updated = preparePatchedEntity(original, patched, user, impersonatedBy);
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;
@@ -4756,6 +4722,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
     return new PatchResponse<>(
         Status.OK, withHref(uriInfo, updated), entityUpdater.getChangeType());
+  }
+
+  /**
+   * The steps a PATCH runs on the patched entity before its updater, shared by the single PATCH and
+   * the batched one ({@link BulkPatch}) so a step added here applies to both.
+   */
+  final T preparePatchedEntity(T original, T patched, String user, String impersonatedBy) {
+    T updated;
+    try (var ignored = phase("patchRestoreSecrets")) {
+      updated = restorePatchSecrets(original, patched);
+    }
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+    try (var ignored = phase("patchPrepareInternal")) {
+      prepareInternal(updated, true);
+    }
+    try (var ignored = phase("patchRuleEvaluation")) {
+      RuleEngine.getInstance().evaluateUpdate(original, updated);
+    }
+    validatePatchedReferences(updated);
+    try (var ignored = phase("patchRestoreAttributes")) {
+      restorePatchAttributes(original, updated);
+    }
+    // Always set it, even to null, so a regular user's change clears a previous impersonation.
+    updated.setImpersonatedBy(impersonatedBy);
+    return updated;
+  }
+
+  private void validatePatchedReferences(T updated) {
+    try (var ignored = phase("patchValidateOwners")) {
+      updated.setOwners(getValidatedOwners(updated.getOwners()));
+    }
+    try (var ignored = phase("patchValidateDomains")) {
+      updated.setDomains(getValidatedDomains(updated.getDomains()));
+    }
   }
 
   /**
@@ -8830,7 +8831,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate — schema marks assets optional, so a request without it is valid
       return result.withSuccessRequest(
-          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+          List.of(new BulkResponse().withMessage(AssetEditService.NOTHING_TO_VALIDATE)));
     }
 
     // Validate Assets
@@ -8892,6 +8893,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
         getChangeEvent(
             entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  /**
+   * Applies an edit made on this entity's Assets tab to each selected asset, then records the
+   * assets it changed as one "assets" change on this entity.
+   */
+  protected final BulkOperationResult applyAssetEdit(
+      UUID entityId,
+      BulkAssets request,
+      boolean isAdd,
+      AssetEditService.AssetEdit edit,
+      ChangeActor actor) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+    BulkOperationResult result =
+        AssetEditService.apply(
+            new AssetEditService.Request(request.getAssets(), dryRun, actor), edit);
+    List<EntityReference> changed = AssetEditService.succeededAssets(result);
+    if (!dryRun && !changed.isEmpty()) {
+      recordBulkAssetsChange(entityType, entityId, isAdd, changed, actor.userName());
+    }
+    return result;
   }
 
   protected ChangeDescription addBulkAddRemoveChangeDescription(

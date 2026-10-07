@@ -76,7 +76,6 @@ public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
   private static final String FIELD_CHILDREN_COUNT = "childrenCount";
   private static final String DESCENDANT_WILDCARD = "%";
-  private static final String NOTHING_TO_VALIDATE = "Nothing to Validate.";
   private static final String NOT_A_DOMAIN_ASSET = "An asset of type %s cannot belong to a domain";
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
@@ -302,18 +301,10 @@ public class DomainRepository extends EntityRepository<Domain> {
   // previews the impact: a move from another domain and the data products it would detach.
   private BulkOperationResult editAssets(
       Domain domain, BulkAssets request, boolean isAdd, ChangeActor actor) {
-    if (Boolean.TRUE.equals(request.getDryRun())) {
-      return previewAssets(domain.getId(), request, isAdd);
-    }
     AssetEdit edit = isAdd ? assignTo(domain.getEntityReference()) : removeFrom(domain.getId());
-    BulkOperationResult result =
-        AssetEditService.apply(
-            new AssetEditService.Request(request.getAssets(), false, actor), edit);
-    List<EntityReference> changed = AssetEditService.succeededAssets(result);
-    if (!changed.isEmpty()) {
-      recordBulkAssetsChange(DOMAIN, domain.getId(), isAdd, changed, actor.userName());
-    }
-    return result;
+    return Boolean.TRUE.equals(request.getDryRun())
+        ? previewAssets(domain.getId(), request, isAdd)
+        : applyAssetEdit(domain.getId(), request, isAdd, edit, actor);
   }
 
   private BulkOperationResult previewAssets(UUID domainId, BulkAssets request, boolean isAdd) {
@@ -321,7 +312,7 @@ public class DomainRepository extends EntityRepository<Domain> {
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(true);
     if (nullOrEmpty(request.getAssets())) {
       return result.withSuccessRequest(
-          List.of(new BulkResponse().withMessage(NOTHING_TO_VALIDATE)));
+          List.of(new BulkResponse().withMessage(AssetEditService.NOTHING_TO_VALIDATE)));
     }
     EntityUtil.populateEntityReferences(request.getAssets());
     List<BulkResponse> previews =
@@ -369,47 +360,28 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private static void requireDomainAsset(Selection selection) {
-    boolean domainAsset =
-        selection.childFqn() == null
-            && Entity.getEntityRepository(selection.entityType()).isSupportsDomains();
-    if (!domainAsset) {
-      throw new IllegalArgumentException(
-          String.format(NOT_A_DOMAIN_ASSET, selection.ref().getType()));
-    }
+    AssetEditService.requireAssetHolding(
+        selection, EntityRepository::isSupportsDomains, NOT_A_DOMAIN_ASSET);
   }
 
-  // A data product belongs to one domain, so an asset keeps only the data products of the
-  // domains it ends up in. An unchanged list is returned as is, keeping the field out of the patch.
-  private List<EntityReference> dataProductsWithin(
+  // The data products an asset keeps once it is in domainIds. An unchanged list is returned as is,
+  // keeping the field out of the patch.
+  private static List<EntityReference> dataProductsWithin(
       List<EntityReference> dataProducts, Set<UUID> domainIds) {
-    if (nullOrEmpty(dataProducts)) {
-      return dataProducts;
-    }
-    Map<UUID, UUID> domainOfDataProduct = domainsOfDataProducts(dataProducts);
-    List<EntityReference> kept =
-        dataProducts.stream()
-            .filter(
-                dataProduct -> {
-                  UUID domainId = domainOfDataProduct.get(dataProduct.getId());
-                  return domainId == null || domainIds.contains(domainId);
-                })
-            .toList();
-    return kept.size() == dataProducts.size() ? dataProducts : new ArrayList<>(kept);
+    Set<UUID> dropped =
+        dataProductRepository().conflictingDataProducts(dataProducts, domainIds).stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet());
+    return dropped.isEmpty()
+        ? dataProducts
+        : new ArrayList<>(
+            dataProducts.stream()
+                .filter(dataProduct -> !dropped.contains(dataProduct.getId()))
+                .toList());
   }
 
-  private Map<UUID, UUID> domainsOfDataProducts(List<EntityReference> dataProducts) {
-    return daoCollection
-        .relationshipDAO()
-        .findFromBatch(
-            dataProducts.stream().map(dataProduct -> dataProduct.getId().toString()).toList(),
-            Relationship.HAS.ordinal(),
-            DOMAIN)
-        .stream()
-        .collect(
-            Collectors.toMap(
-                rec -> UUID.fromString(rec.getToId()),
-                rec -> UUID.fromString(rec.getFromId()),
-                (first, ignored) -> first));
+  private static DataProductRepository dataProductRepository() {
+    return (DataProductRepository) Entity.getEntityRepository(DATA_PRODUCT);
   }
 
   public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {
@@ -485,7 +457,7 @@ public class DomainRepository extends EntityRepository<Domain> {
       EntityReference currentDomain =
           getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
       List<EntityReference> affectedDataProducts =
-          getAffectedDataProductsForDryRun(targetDomainId, ref, relationship, isAdd);
+          getAffectedDataProductsForDryRun(targetDomainId, ref, isAdd);
       boolean isMove =
           isAdd && currentDomain != null && !currentDomain.getId().equals(targetDomainId);
       boolean hasSideEffects = isMove || !affectedDataProducts.isEmpty();
@@ -510,16 +482,25 @@ public class DomainRepository extends EntityRepository<Domain> {
     return response;
   }
 
+  // The data products the real run drops: the asset's own domains change as in assignTo/removeFrom,
+  // and removing a domain the asset only inherits changes nothing.
   private List<EntityReference> getAffectedDataProductsForDryRun(
-      UUID targetDomainId, EntityReference ref, Relationship relationship, boolean isAdd) {
-    List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
-    if (dataProducts.isEmpty()) {
-      return dataProducts;
-    }
-    if (!isAdd) {
-      return dataProducts;
-    }
-    return filterDataProductsByDomain(dataProducts, targetDomainId, relationship);
+      UUID targetDomainId, EntityReference ref, boolean isAdd) {
+    Set<UUID> ownDomains =
+        findFrom(ref.getId(), ref.getType(), Relationship.HAS, DOMAIN).stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet());
+    boolean unchanged = !isAdd && !ownDomains.contains(targetDomainId);
+    Set<UUID> domainsAfter =
+        isAdd
+            ? Set.of(targetDomainId)
+            : ownDomains.stream()
+                .filter(domainId -> !domainId.equals(targetDomainId))
+                .collect(Collectors.toSet());
+    return unchanged
+        ? List.of()
+        : dataProductRepository()
+            .conflictingDataProducts(getDataProducts(ref.getId(), ref.getType()), domainsAfter);
   }
 
   private String buildDryRunImpactMessage(
@@ -747,29 +728,6 @@ public class DomainRepository extends EntityRepository<Domain> {
           (DataProductRepository) Entity.getEntityRepository(DATA_PRODUCT);
       dataProductRepository.reindexAfterDomainDetach(context.dataProductsToReindex);
     }
-  }
-
-  private List<EntityReference> filterDataProductsByDomain(
-      List<EntityReference> dataProducts, UUID targetDomainId, Relationship relationship) {
-    Map<UUID, UUID> associatedDomains =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(
-                dataProducts.stream().map(dp -> dp.getId().toString()).collect(Collectors.toList()),
-                relationship.ordinal(),
-                DOMAIN)
-            .stream()
-            .collect(
-                Collectors.toMap(
-                    rec -> UUID.fromString(rec.getToId()),
-                    rec -> UUID.fromString(rec.getFromId())));
-    return dataProducts.stream()
-        .filter(
-            dp -> {
-              UUID domainId = associatedDomains.get(dp.getId());
-              return domainId != null && !domainId.equals(targetDomainId);
-            })
-        .collect(Collectors.toList());
   }
 
   @Override

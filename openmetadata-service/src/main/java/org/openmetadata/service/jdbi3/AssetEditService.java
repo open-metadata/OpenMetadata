@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
@@ -44,7 +45,7 @@ import org.openmetadata.service.util.EntityUtil;
  */
 public final class AssetEditService {
 
-  private static final String NOTHING_TO_VALIDATE = "Nothing to Validate.";
+  static final String NOTHING_TO_VALIDATE = "Nothing to Validate.";
   private static final String COLUMN_FQN_REQUIRED = "Column FQN is required";
 
   /** One selected item, resolved to the entity that is saved for it. */
@@ -76,6 +77,20 @@ public final class AssetEditService {
     }
     EntityUtil.populateEntityReferences(request.assets());
     return new AssetEditService(request, edit).run(result);
+  }
+
+  /**
+   * Rejects a column, or an asset whose type cannot hold the field the edit sets. {@code message}
+   * gets the selected type.
+   */
+  static void requireAssetHolding(
+      Selection selection, Predicate<EntityRepository<?>> holdsField, String message) {
+    boolean holds =
+        selection.childFqn() == null
+            && holdsField.test(Entity.getEntityRepository(selection.entityType()));
+    if (!holds) {
+      throw new IllegalArgumentException(String.format(message, selection.ref().getType()));
+    }
   }
 
   /** The selected assets the change was applied to. */

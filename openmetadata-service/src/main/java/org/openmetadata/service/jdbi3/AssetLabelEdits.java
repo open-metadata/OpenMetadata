@@ -24,6 +24,7 @@ import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.util.ChildFieldResolver;
 
 /**
@@ -40,8 +41,8 @@ final class AssetLabelEdits {
     if (childFqn == null) {
       addTo(asset.getTags(), label, asset::setTags);
     } else {
-      ChildFieldResolver.locate(asset, entityType, childFqn)
-          .ifPresent(child -> addTo(child.getTags(), label, child::setTags));
+      FieldInterface child = child(asset, entityType, childFqn);
+      addTo(child.getTags(), label, child::setTags);
     }
   }
 
@@ -54,9 +55,13 @@ final class AssetLabelEdits {
       removeFrom(asset.getTags(), label, asset::setTags);
       stripFields(childrenOf(asset, entityType), label);
     } else {
-      ChildFieldResolver.locate(asset, entityType, childFqn)
-          .ifPresent(child -> stripFields(List.of(child), label));
+      stripFields(List.of(child(asset, entityType, childFqn)), label);
     }
+  }
+
+  private static FieldInterface child(EntityInterface asset, String entityType, String childFqn) {
+    return ChildFieldResolver.locate(asset, entityType, childFqn)
+        .orElseThrow(() -> new EntityNotFoundException("Column not found: %s".formatted(childFqn)));
   }
 
   private static List<FieldInterface> childrenOf(EntityInterface asset, String entityType) {
