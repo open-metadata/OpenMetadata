@@ -1198,7 +1198,7 @@ knowing the mechanism moves the flake instead of removing it.
    | Stuck on `waitForResponse` until timeout | Predicate never matches (status in predicate, wrong request, listener registered late) | [Test Standards §7](#test-standards-to-follow) |
    | Click selected the item above | Ant dropdown scale animation | [Anti-Flakiness Patterns](#anti-flakiness-patterns) → Ant Design dropdown |
    | `element was detached` during a click | Popover closed on scroll, or a product re-render | [Anti-Flakiness Patterns](#anti-flakiness-patterns) → React Aria popovers |
-   | `... intercepts pointer events` | A toast, modal wrap or hover popover on top | [Test Data Isolation](#test-data-isolation), [Ambiguous locators](#ambiguous-page-global-locators) |
+   | `... intercepts pointer events` | A toast, modal wrap or hover popover on top | [A control under the toast stack](#a-control-under-the-toast-stack), [Ambiguous locators](#ambiguous-page-global-locators) |
    | State inverted after reload/reopen | Toggle raced an async restore | [Idempotent actions](#prefer-idempotent-actions-over-toggles) |
    | `Route is already handled!` / `Response has been disposed` | Route handler outlived the page | [Route interception](#route-interception-must-survive-teardown) |
 
