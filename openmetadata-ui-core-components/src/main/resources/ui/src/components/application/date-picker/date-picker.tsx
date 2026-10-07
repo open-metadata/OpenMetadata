@@ -64,7 +64,8 @@ export const DatePicker = ({
       <AriaPopover
         className={({ isEntering, isExiting }) =>
           cx(
-            'tw:origin-(--trigger-anchor-point) tw:will-change-transform',
+            // React Aria limits the popover height, but its calendar can exceed that limit in a modal.
+            'tw:origin-(--trigger-anchor-point) tw:will-change-transform tw:dark:overflow-y-auto',
             isEntering &&
               'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
             isExiting &&

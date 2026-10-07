@@ -176,7 +176,7 @@ const ServiceConnectionDetails = ({
                   <Input
                     isReadOnly
                     aria-label={extraInfo.headerKey}
-                    inputClassName="tw:h-8 tw:px-[11px] tw:py-1 tw:text-sm tw:leading-[22px]"
+                    inputClassName="tw:h-[30px] tw:px-[11px] tw:py-1 tw:text-sm tw:leading-[22px]"
                     inputDataTestId="input-field"
                     type="text"
                     value={extraInfo.displayName ?? extraInfo.name}

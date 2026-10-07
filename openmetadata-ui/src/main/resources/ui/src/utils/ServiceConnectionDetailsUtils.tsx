@@ -41,7 +41,7 @@ type KeyValuesProps = {
   serviceCategory: string;
 };
 
-// Renders a basic input field with label and optional tooltip
+// Preserve the original borderless input height; tag lists retain their taller boxed layout.
 const renderInputField = (
   key: string,
   value: string,
@@ -83,7 +83,7 @@ const renderInputField = (
           <Input
             isReadOnly
             aria-label={key || title}
-            inputClassName="tw:h-8 tw:px-[11px] tw:py-1 tw:text-sm tw:leading-[22px]"
+            inputClassName="tw:h-[30px] tw:px-[11px] tw:py-1 tw:text-sm tw:leading-[22px]"
             inputDataTestId="input-field"
             type={format === 'password' ? 'password' : 'text'}
             value={String(value ?? '')}

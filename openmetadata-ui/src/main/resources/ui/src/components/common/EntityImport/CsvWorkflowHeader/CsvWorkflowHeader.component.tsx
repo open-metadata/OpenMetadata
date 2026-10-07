@@ -106,12 +106,12 @@ tw:text-[var(--tw-color-utility-gray-600)] tw:dark:text-tertiary tw:[&_a]:text-i
           align="baseline"
           className="csv-workflow-title-row tw:gap-2.5"
           wrap="wrap">
-          <Typography
-            as="h1"
+          {/* A native heading avoids the prose wrapper that enlarges and wraps this inline title. */}
+          <h1
             className="csv-workflow-title tw:m-0 tw:text-base tw:font-semibold tw:tracking-[-0.005em] tw:leading-[22px]
 tw:text-[var(--tw-color-utility-gray-900)] tw:dark:text-primary">
             {title}
-          </Typography>
+          </h1>
           <Typography
             as="span"
             className="csv-workflow-description tw:text-[13px] tw:leading-[18px] tw:text-[var(--tw-color-utility-gray-600)] tw:dark:text-tertiary">

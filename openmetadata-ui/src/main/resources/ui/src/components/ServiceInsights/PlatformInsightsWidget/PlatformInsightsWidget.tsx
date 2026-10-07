@@ -117,8 +117,9 @@ function PlatformInsightsWidget({
                 <Typography className="font-semibold text-sm">
                   {getTitleByChartType(chart.chartType)}
                 </Typography>
-                <Box align="start" className="tw:mt-1 tw:-mx-1">
-                  <Box className="tw:w-1/2 tw:px-1">
+                <Box align="start" className="tw:mt-2 tw:-mx-1">
+                  {/* Preserve the inline baseline used by the original light-mode percentage. */}
+                  <Box className="tw:block tw:w-1/2 tw:px-1">
                     <Typography className="current-percentage tw:text-xl tw:font-semibold tw:leading-5">
                       {getReadableCountString(chart.currentPercentage)}%
                     </Typography>

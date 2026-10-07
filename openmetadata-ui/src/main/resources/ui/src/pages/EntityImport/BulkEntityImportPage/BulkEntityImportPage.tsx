@@ -1578,7 +1578,7 @@ const BulkEntityImportPage = () => {
   );
 
   const renderUploadFooter = () => (
-    <div className="csv-import-wizard-footer csv-import-wizard-footer-end import-footer">
+    <div className="csv-import-wizard-footer csv-import-wizard-footer-end import-footer tw:border-t tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white tw:dark:border-secondary tw:dark:bg-surface">
       <div className="csv-import-wizard-footer-actions">
         <Button
           color="secondary"
@@ -2007,7 +2007,7 @@ tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-6 tw:dark:border-secondary tw:dark:bg
     }
 
     return (
-      <div className="csv-import-wizard-footer import-footer">
+      <div className="csv-import-wizard-footer import-footer tw:border-t tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white tw:dark:border-secondary tw:dark:bg-surface">
         <Button color="secondary" onPress={handleRetryCsvUpload}>
           {t('label.import-more')}
         </Button>
@@ -2028,7 +2028,7 @@ tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-6 tw:dark:border-secondary tw:dark:bg
     }
 
     return (
-      <div className="csv-import-wizard-footer import-footer">
+      <div className="csv-import-wizard-footer import-footer tw:border-t tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white tw:dark:border-secondary tw:dark:bg-surface">
         {activeStep > 0 && (
           <Button
             color="secondary"

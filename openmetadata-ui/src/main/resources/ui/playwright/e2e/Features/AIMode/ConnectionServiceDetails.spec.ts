@@ -219,6 +219,7 @@ test.describe(
           await expect(inputs).not.toHaveCount(0);
           for (const input of await inputs.all()) {
             await expect(input).toHaveAttribute('readonly', '');
+            await expect(input).toHaveCSS('height', '30px');
           }
         });
 
@@ -235,6 +236,14 @@ test.describe(
           });
           await page.getByTestId('bulk-edit-table').click();
 
+          await expect(page.getByRole('heading', { level: 1 })).toHaveCSS(
+            'font-size',
+            '16px'
+          );
+          await expect(page.locator('.import-footer')).toHaveCSS(
+            'background-color',
+            theme === 'dark' ? 'rgb(34, 38, 47)' : 'rgb(255, 255, 255)'
+          );
           const grid = page.getByRole('grid');
           await expect(grid).toHaveClass(new RegExp(`rdg-${theme}`));
           const row = grid
@@ -293,6 +302,32 @@ test.describe(
           const submit = dialog.getByTestId('announcement-submit');
           await expect(submit).toBeDisabled();
           if (theme === 'dark') {
+            await dialog
+              .getByRole('button', { name: 'Calendar Start Date', exact: true })
+              .click();
+            await page
+              .getByRole('button', { name: 'Today', exact: true })
+              .click();
+            const apply = page.getByRole('button', {
+              name: 'Apply',
+              exact: true,
+            });
+            await apply.scrollIntoViewIfNeeded();
+            await expect
+              .poll(() =>
+                apply.evaluate(
+                  (element) =>
+                    element.getBoundingClientRect().bottom <= innerHeight
+                )
+              )
+              .toBe(true);
+            await apply.click();
+            await expect(
+              dialog.getByRole('button', {
+                name: 'Calendar Start Date',
+                exact: true,
+              })
+            ).not.toContainText('Select date');
             await expect
               .poll(() =>
                 submit.evaluate((element) => ({

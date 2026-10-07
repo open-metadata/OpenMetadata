@@ -768,7 +768,7 @@ tw:shadow-[0px_1px_2px_0px_#0a0d120d] tw:p-6 tw:dark:border-secondary tw:dark:bg
 
   const renderFooterActions = () => (
     <div>
-      <div className="float-right import-footer">
+      <div className="float-right import-footer tw:border-t tw:border-[var(--om-grey-15,#eaecf5)] tw:bg-white tw:dark:border-secondary tw:dark:bg-surface">
         {activeStep === 1 && (
           <Button
             color="secondary"
