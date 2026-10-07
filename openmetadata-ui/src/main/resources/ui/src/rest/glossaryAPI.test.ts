@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosRequestConfig } from 'axios';
 import { Provenance, Status } from '../generated/api/data/updateTermRelation';
 import { BULK_ACTION_CONCURRENCY } from '../utils/AsyncUtils';
 import APIClient from './axiosClient';
@@ -139,15 +140,14 @@ describe('getGlossaryTermsByIds', () => {
     let inFlight = 0;
     let maxInFlight = 0;
     mockedApiClient.get.mockImplementation(
-      async (_url: string, config?: { params?: { ids: string } }) => {
+      async (_url: string, config?: AxiosRequestConfig) => {
         inFlight += 1;
         maxInFlight = Math.max(maxInFlight, inFlight);
         await Promise.resolve();
         inFlight -= 1;
+        const { ids: batchIds } = config?.params as { ids: string };
 
-        return {
-          data: (config?.params?.ids ?? '').split(',').map((id) => ({ id })),
-        };
+        return { data: batchIds.split(',').map((id) => ({ id })) };
       }
     );
 
