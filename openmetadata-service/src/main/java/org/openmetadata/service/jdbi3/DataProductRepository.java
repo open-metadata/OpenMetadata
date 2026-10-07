@@ -30,6 +30,7 @@ import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -74,6 +75,8 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -544,6 +547,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public ResultList<EntityReference> getDataProductAssets(
       UUID dataProductId, int limit, int offset) {
+    return getDataProductAssets(dataProductId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getDataProductAssets(
+      UUID dataProductId, int limit, int offset, SubjectContext caller) {
     DataProduct dataProduct = get(null, dataProductId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -553,7 +562,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Use InheritedFieldQuery for data product assets
     InheritedFieldQuery query =
-        InheritedFieldQuery.forDataProduct(dataProduct.getFullyQualifiedName(), offset, limit);
+        InheritedFieldQuery.forDataProduct(dataProduct.getFullyQualifiedName(), offset, limit)
+            .forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -570,18 +580,28 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public ResultList<EntityReference> getDataProductAssetsByName(
       String dataProductName, int limit, int offset) {
-    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
-    return getDataProductAssets(dataProduct.getId(), limit, offset);
+    return getDataProductAssetsByName(dataProductName, limit, offset, null);
   }
 
-  public Map<String, Integer> getAllDataProductsWithAssetsCount() {
+  public ResultList<EntityReference> getDataProductAssetsByName(
+      String dataProductName, int limit, int offset, SubjectContext caller) {
+    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
+    return getDataProductAssets(dataProduct.getId(), limit, offset, caller);
+  }
+
+  /**
+   * Asset counts for the data products the caller may list, counting only assets the caller's
+   * search access policies allow.
+   */
+  public Map<String, Integer> getAllDataProductsWithAssetsCount(SecurityContext securityContext) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for data product asset counts");
       return new HashMap<>();
     }
 
-    List<DataProduct> allDataProducts =
-        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    ListFilter listable = new ListFilter(null);
+    EntityUtil.addDomainQueryParam(securityContext, listable, Entity.DATA_PRODUCT);
+    List<DataProduct> allDataProducts = listAll(getFields("fullyQualifiedName"), listable);
     Map<String, Integer> dataProductAssetCounts = new LinkedHashMap<>();
 
     for (DataProduct dataProduct : allDataProducts) {
@@ -594,7 +614,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         inheritedFieldEntitySearch.getAggregatedCountsByField(
             "dataProducts.fullyQualifiedName",
             queryFilter,
-            EntityBuilderConstant.MAX_AGGREGATE_SIZE);
+            EntityBuilderConstant.MAX_AGGREGATE_SIZE,
+            DefaultAuthorizer.getSubjectContext(securityContext));
 
     for (Map.Entry<String, Integer> entry : exactCounts.entrySet()) {
       dataProductAssetCounts.computeIfPresent(

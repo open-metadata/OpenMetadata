@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.UriTestUtils.assertHttpStatusFor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -56,6 +58,7 @@ import org.openmetadata.schema.entity.governance.IntakeFormRequiredField.FieldKi
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.CustomPropertyConfig;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -391,6 +394,28 @@ public class IntakeFormResourceIT {
       assertTrue(
           msg.contains("admin") || msg.contains("forbidden") || msg.contains("403"),
           "Expected admin-only / 403 error but got: " + ex.getMessage());
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
+  @Test
+  void intakeForm_getByEntityType_viewDeniedUserGets403(TestNamespace ns) throws Exception {
+    IntakeForm form = createIntakeForm(minimalDataProductForm(ns.prefix("view-denied-by-type")));
+    try {
+      OpenMetadataClient denied =
+          DenyPolicyPrincipals.clientDenied(
+              ns.shortPrefix("intake_view_denied"),
+              INTAKE_FORM_ENTITY_TYPE,
+              MetadataOperation.VIEW_BASIC);
+      String byType = INTAKE_FORMS_PATH + "/entityType/" + TargetEntityType.DATA_PRODUCT.value();
+
+      assertHttpStatusFor(denied, 403, HttpMethod.GET, byType, null);
+      IntakeForm visible =
+          SdkClients.testUserClient()
+              .getHttpClient()
+              .execute(HttpMethod.GET, byType, null, IntakeForm.class);
+      assertEquals(form.getId(), visible.getId());
     } finally {
       deleteIntakeForm(form.getId());
     }

@@ -71,6 +71,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
 
@@ -519,7 +520,14 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getTeamAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getTeamAssets(
+                id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -559,7 +567,14 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getTeamAssetsByName(fqn, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn));
+    return Response.ok(
+            repository.getTeamAssetsByName(
+                fqn, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @PATCH
@@ -908,7 +923,11 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response getAllTeamsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllTeamsWithAssetsCount();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContext());
+    java.util.Map<String, Integer> result = repository.getAllTeamsWithAssetsCount(securityContext);
     return Response.ok(result).build();
   }
 }

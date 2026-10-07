@@ -71,6 +71,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -114,6 +115,12 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
+    return getTagAssets(tagId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getTagAssets(
+      UUID tagId, int limit, int offset, SubjectContext caller) {
     Tag tag = get(null, tagId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -122,7 +129,7 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     InheritedFieldQuery query =
-        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit);
+        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -138,8 +145,13 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public ResultList<EntityReference> getTagAssetsByName(String tagName, int limit, int offset) {
+    return getTagAssetsByName(tagName, limit, offset, null);
+  }
+
+  public ResultList<EntityReference> getTagAssetsByName(
+      String tagName, int limit, int offset, SubjectContext caller) {
     Tag tag = getByName(null, tagName, getFields("id,fullyQualifiedName"));
-    return getTagAssets(tag.getId(), limit, offset);
+    return getTagAssets(tag.getId(), limit, offset, caller);
   }
 
   public Map<String, Integer> getAllTagsWithAssetsCount() {

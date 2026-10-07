@@ -17,6 +17,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface SearchClient
     extends IndexManagementClient,
@@ -841,6 +842,31 @@ public interface SearchClient
       String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /** As {@link #listPageHierarchy}, leaving out pages {@code caller}'s access policies deny. */
+  default ResultList listPageHierarchy(
+      String parent,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    return listPageHierarchy(parent, pageType, sortFilter, offset, limit);
+  }
+
+  /**
+   * As {@link #listPageHierarchyForActivePage}, leaving out pages {@code caller}'s access policies
+   * deny.
+   */
+  default ResultList listPageHierarchyForActivePage(
+      String activeFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    return listPageHierarchyForActivePage(activeFqn, pageType, sortFilter, offset, limit);
   }
 
   @SuppressWarnings("unused")

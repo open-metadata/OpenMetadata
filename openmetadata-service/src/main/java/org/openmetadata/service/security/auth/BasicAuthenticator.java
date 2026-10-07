@@ -154,7 +154,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         userRepository.get(
             null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
-      LOG.info("User [{}] already registered.", emailToken);
+      LOG.info("User [{}] already registered.", registeredUser.getName());
       return;
     }
 
@@ -186,7 +186,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       UUID mailVerificationToken = UUID.randomUUID();
       EmailVerificationToken emailVerificationToken =
           TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
-      LOG.info("Generated Email verification token [{}]", mailVerificationToken);
+      LOG.info("Generated an email verification token for user [{}]", user.getName());
       String emailVerificationLink =
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
@@ -207,25 +207,28 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public void sendPasswordResetLink(
       UriInfo uriInfo, User user, String subject, String templateFilePath) throws IOException {
-    UUID mailVerificationToken = UUID.randomUUID();
-    PasswordResetToken resetToken =
-        TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
-    LOG.info("Generated Password Reset verification token [{}]", mailVerificationToken);
-    String passwordResetLink =
-        String.format(
-            "%s/users/password/reset?user=%s&token=%s",
-            EmailUtil.getOMBaseURL(),
-            URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
-            mailVerificationToken);
-    try {
-      EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
-    } catch (TemplateException e) {
-      LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
-      throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
+    // Without SMTP the link reaches nobody, so a stored token could only ever be misused.
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      UUID mailVerificationToken = UUID.randomUUID();
+      PasswordResetToken resetToken =
+          TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
+      LOG.info("Generated a password reset token for user [{}]", user.getName());
+      String passwordResetLink =
+          String.format(
+              "%s/users/password/reset?user=%s&token=%s",
+              EmailUtil.getOMBaseURL(),
+              URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
+              mailVerificationToken);
+      try {
+        EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
+      } catch (TemplateException e) {
+        LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
+        throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
+      }
+      // don't persist tokens delete existing
+      tokenRepository.deleteTokenByUserAndType(user.getId(), PASSWORD_RESET.toString());
+      tokenRepository.insertToken(resetToken);
     }
-    // don't persist tokens delete existing
-    tokenRepository.deleteTokenByUserAndType(user.getId(), PASSWORD_RESET.toString());
-    tokenRepository.insertToken(resetToken);
   }
 
   @Override

@@ -58,10 +58,11 @@ public interface SearchManagementClient {
    * Search for entities by source URL.
    *
    * @param sourceUrl the source URL to search for
+   * @param subjectContext the caller; their search access policies narrow the matches
    * @return response containing matching entities
    * @throws IOException if search execution fails
    */
-  Response searchBySourceUrl(String sourceUrl) throws IOException;
+  Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext) throws IOException;
 
   /**
    * Search for entities by a specific field value.
@@ -72,11 +73,18 @@ public interface SearchManagementClient {
    * @param deleted whether to include deleted entities
    * @param from starting position for pagination
    * @param size maximum number of results to return
+   * @param subjectContext the caller; their search access policies narrow the matches
    * @return response containing matching entities
    * @throws IOException if search execution fails
    */
   Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException;
 
   Response searchByFieldWithOptions(

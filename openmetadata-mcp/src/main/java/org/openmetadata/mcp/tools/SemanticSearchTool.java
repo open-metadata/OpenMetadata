@@ -10,12 +10,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.mcp.util.VectorPagingContract;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
@@ -23,6 +26,7 @@ import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
@@ -69,6 +73,14 @@ public class SemanticSearchTool implements McpTool {
 
   private static final int MAX_COLUMN_NAMES = 60;
   private final PersonaSearchScope.Provider personaSearchScopeProvider;
+  private final HitVisibility hitVisibility;
+
+  /** Whether the caller may view the entity a search hit belongs to. */
+  @FunctionalInterface
+  interface HitVisibility {
+    boolean isViewable(
+        Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> hit);
+  }
 
   public SemanticSearchTool() {
     this(PersonaSearchScope::resolve);
@@ -76,7 +88,14 @@ public class SemanticSearchTool implements McpTool {
 
   @VisibleForTesting
   SemanticSearchTool(PersonaSearchScope.Provider personaSearchScopeProvider) {
+    this(personaSearchScopeProvider, SemanticSearchTool::isViewable);
+  }
+
+  @VisibleForTesting
+  SemanticSearchTool(
+      PersonaSearchScope.Provider personaSearchScopeProvider, HitVisibility hitVisibility) {
     this.personaSearchScopeProvider = personaSearchScopeProvider;
+    this.hitVisibility = hitVisibility;
   }
 
   @Override
@@ -132,6 +151,7 @@ public class SemanticSearchTool implements McpTool {
       VectorSearchResponse response =
           search(vectorService, searchParameters, personaScope.isPresent());
       Map<String, Object> result = buildResponse(query, response, size, from);
+      hideUnviewable(result, hit -> hitVisibility.isViewable(authorizer, securityContext, hit));
       personaScope.ifPresent(scope -> scope.annotate(result));
       return result;
     } catch (Exception e) {
@@ -270,6 +290,48 @@ public class SemanticSearchTool implements McpTool {
    * continues, the same figure is a lower bound and is labelled as one.
    */
   @VisibleForTesting
+  /**
+   * Drops results the caller may not view: vector search indexes every entity and applies no access
+   * policy of its own. It runs after paging, so a hidden result still counts as consumed and the
+   * next cursor moves past it instead of handing it to the next page.
+   */
+  @SuppressWarnings("unchecked")
+  static void hideUnviewable(
+      Map<String, Object> result, Predicate<Map<String, Object>> isViewable) {
+    if (result.get("results") instanceof List<?> results && !results.isEmpty()) {
+      List<Map<String, Object>> visible =
+          ((List<Map<String, Object>>) results).stream().filter(isViewable).toList();
+      int hidden = results.size() - visible.size();
+      if (hidden > 0) {
+        result.put("results", visible);
+        result.put("returnedCount", visible.size());
+        result.put("hiddenCount", hidden);
+      }
+    }
+  }
+
+  private static boolean isViewable(
+      Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> hit) {
+    EntityReference entity =
+        new EntityReference()
+            .withType(Objects.toString(hit.get("entityType"), null))
+            .withId(uuidOrNull(hit.get("parentId")))
+            .withFullyQualifiedName(Objects.toString(hit.get("fullyQualifiedName"), null));
+    return new ViewPermissionFilter(authorizer).canView(securityContext, entity);
+  }
+
+  private static UUID uuidOrNull(Object value) {
+    UUID id = null;
+    if (value != null) {
+      try {
+        id = UUID.fromString(value.toString());
+      } catch (IllegalArgumentException e) {
+        LOG.debug("Search hit carries a parentId that is not a UUID: {}", value);
+      }
+    }
+    return id;
+  }
+
   static void addParentTotal(Map<String, Object> result, int from) {
     int returned = result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
     result.put("totalFound", from + returned);

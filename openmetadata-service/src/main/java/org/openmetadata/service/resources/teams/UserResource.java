@@ -1527,7 +1527,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getUserAssets(id, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1565,7 +1571,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(name));
+    return Response.ok(
+            repository.getUserAssetsByName(name, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @POST

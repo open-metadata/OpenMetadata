@@ -950,12 +950,15 @@ public class SystemResource {
       })
   public EntitiesCount listEntitiesCount(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    // Catalog-wide counts ignore the caller's domain and view restrictions.
+    authorizer.authorizeAdminOrBot(securityContext);
     ListFilter filter = new ListFilter(include);
     return systemRepository.getAllEntitiesCount(filter);
   }
@@ -977,12 +980,14 @@ public class SystemResource {
       })
   public ServicesCount listServicesCount(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    authorizer.authorizeAdminOrBot(securityContext);
     ListFilter filter = new ListFilter(include);
     return systemRepository.getAllServicesCount(filter);
   }
@@ -1003,7 +1008,10 @@ public class SystemResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = ServicesCount.class)))
       })
-  public ValidationResponse validate() {
+  public ValidationResponse validate(@Context SecurityContext securityContext) {
+    // The report names the database URL, search host and pipeline service endpoint, and each call
+    // runs live probes against them, including billed embedding requests.
+    authorizer.authorizeAdminOrBot(securityContext);
     return systemRepository.validateSystem(applicationConfig, pipelineServiceClient, jwtFilter);
   }
 

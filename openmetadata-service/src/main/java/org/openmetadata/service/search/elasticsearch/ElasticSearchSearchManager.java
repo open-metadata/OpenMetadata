@@ -160,7 +160,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   @Override
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
     }
@@ -171,7 +172,10 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(restrictToOrgWideMemories(sourceUrlQuery)));
+                    .query(
+                        restrictToOrgWideMemories(
+                            ElasticRbacQueries.withAccessPolicies(
+                                sourceUrlQuery, subjectContext, rbacConditionEvaluator))));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -188,7 +192,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
   @Override
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -207,7 +217,10 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                     .index(Entity.getSearchRepository().getIndexOrAliasName(index))
                     .from(from)
                     .size(size)
-                    .query(restrictToOrgWideMemories(query)));
+                    .query(
+                        restrictToOrgWideMemories(
+                            ElasticRbacQueries.withAccessPolicies(
+                                query, subjectContext, rbacConditionEvaluator))));
     return executeSearchRequest(request);
   }
 

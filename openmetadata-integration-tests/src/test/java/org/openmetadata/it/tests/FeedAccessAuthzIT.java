@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
@@ -26,11 +27,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.feed.CreateAnnouncement;
 import org.openmetadata.schema.api.feed.CreateConversation;
@@ -39,6 +44,7 @@ import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -51,7 +57,12 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ActivityEventType;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -149,6 +160,42 @@ class FeedAccessAuthzIT {
                 CONVERSATIONS_PATH + "/" + conversation.getId(),
                 replace("/message", REWRITTEN)),
         "A user who did not author the conversation must not rewrite its message");
+  }
+
+  // ==================== Activity across entities ====================
+
+  /**
+   * Activity addressed by actor rather than by entity used to skip the per-entity check, returning
+   * old and new field values of changes to entities the caller cannot view. Those events are now
+   * dropped from the feed; events on viewable entities stay.
+   */
+  @Test
+  void actorAddressedActivity_dropsEventsOnEntitiesTheCallerCannotView(TestNamespace ns)
+      throws Exception {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table restricted = createTable(schema, ns.prefix("act-restricted"), List.of(PII_SENSITIVE));
+    Table open = createTable(schema, ns.prefix("act-open"), List.of());
+    User actor = UserTestFactory.createUser(ns, "act-actor");
+    UUID hiddenEvent = insertActivity(restricted, actor);
+    UUID shownEvent = insertActivity(open, actor);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("act_feed"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+
+    for (String path :
+        List.of(
+            ACTIVITY_PATH + "/user/" + actor.getId() + "?days=1",
+            ACTIVITY_PATH + "?actorId=" + actor.getId() + "&days=1")) {
+      List<String> deniedView = eventIds(denied, path);
+      assertTrue(deniedView.contains(shownEvent.toString()), path + " lost a viewable event");
+      assertFalse(deniedView.contains(hiddenEvent.toString()), path + " leaked a hidden event");
+      assertTrue(
+          eventIds(SdkClients.adminClient(), path).contains(hiddenEvent.toString()),
+          path + " must still show admins every event");
+    }
   }
 
   // ==================== Fetch a feed you cannot view ====================
@@ -497,6 +544,50 @@ class FeedAccessAuthzIT {
             CONVERSATIONS_PATH,
             new CreateConversation().withAbout(about).withMessage(message),
             Conversation.class);
+  }
+
+  private static final TagLabel PII_SENSITIVE =
+      new TagLabel()
+          .withTagFQN("PII.Sensitive")
+          .withSource(TagLabel.TagSource.CLASSIFICATION)
+          .withLabelType(TagLabel.LabelType.MANUAL)
+          .withState(TagLabel.State.CONFIRMED);
+
+  private static Table createTable(DatabaseSchema schema, String name, List<TagLabel> tags) {
+    return SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(name)
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
+                .withTags(tags));
+  }
+
+  private static UUID insertActivity(Table table, User actor) throws Exception {
+    ActivityEvent event =
+        new ActivityEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(ActivityEventType.ENTITY_UPDATED)
+            .withEntity(table.getEntityReference())
+            .withActor(actor.getEntityReference())
+            .withTimestamp(System.currentTimeMillis())
+            .withSummary("Updated " + table.getName());
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            ACTIVITY_PATH + "/test-insert",
+            MAPPER.writeValueAsString(event),
+            RequestOptions.builder().build());
+    return event.getId();
+  }
+
+  private static List<String> eventIds(OpenMetadataClient client, String path) throws Exception {
+    List<String> ids = new ArrayList<>();
+    MAPPER.readTree(get(client, path)).path("data").forEach(e -> ids.add(e.path("id").asText()));
+    return ids;
   }
 
   private static String entityLink(Table table) {

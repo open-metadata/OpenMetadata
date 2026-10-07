@@ -1465,6 +1465,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @NotNull
           @QueryParam("endTs")
           Long endTs) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getSystemProfiles(fqn, startTs, endTs);
   }
 
@@ -1616,9 +1619,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -1932,6 +1933,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     if (fqn == null || fqn.trim().isEmpty()) {
       throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
     }
+    authorizeEntityRelationshipRoot(securityContext, fqn, deleted);
 
     return Entity.getSearchRepository()
         .searchEntityRelationship(
@@ -1997,6 +1999,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     if (fqn == null || fqn.trim().isEmpty()) {
       throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
     }
+    authorizeEntityRelationshipRoot(securityContext, fqn, deleted);
 
     return Entity.getSearchRepository()
         .searchEntityRelationshipWithDirection(
@@ -2010,6 +2013,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .withLayerFrom(from)
                 .withLayerSize(size)
                 .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
+  }
+
+  private void authorizeEntityRelationshipRoot(
+      SecurityContext securityContext, String fqn, boolean includeDeleted) {
+    Include include = includeDeleted ? Include.ALL : Include.NON_DELETED;
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn, include));
   }
 
   @GET

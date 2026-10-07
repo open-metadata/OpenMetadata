@@ -37,6 +37,7 @@ import org.openmetadata.schema.api.ai.CreateAuditReport;
 import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.entity.ai.AuditReportStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AuditReportRepository;
@@ -45,6 +46,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 @Path("/v1/auditReports")
 @Tag(
@@ -184,6 +186,10 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+        getResourceContextById(id));
     AuditReport report = repository.get(uriInfo, id, repository.getFields(FIELDS));
     AuditReportStatus current = report.getStatus();
     if (current == AuditReportStatus.Completed

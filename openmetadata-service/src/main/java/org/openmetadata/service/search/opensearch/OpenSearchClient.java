@@ -421,8 +421,9 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    return searchManager.searchBySourceUrl(sourceUrl);
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchBySourceUrl(sourceUrl, subjectContext);
   }
 
   @Override
@@ -528,9 +529,16 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
-    return searchManager.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchManager.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
 
   @Override
@@ -589,8 +597,9 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response aggregate(AggregationRequest request) throws IOException {
-    return aggregationManager.aggregate(request);
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(request, subjectContext);
   }
 
   @Override
@@ -1282,14 +1291,46 @@ public class OpenSearchClient implements SearchClient {
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchy(
       String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
-    return getPageHierarchyFromSearch(parentFqn, pageType, sortFilter, offset, limit);
+    return listPageHierarchy(parentFqn, pageType, sortFilter, offset, limit, null);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchy(
+      String parentFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    Query pages =
+        OpenSearchRbacQueries.withAccessPolicies(
+            buildPageHierarchyBoolQuery(parentFqn, pageType), caller, rbacConditionEvaluator);
+    return getPageHierarchyFromSearch(pages, sortFilter, offset, limit);
   }
 
   @Override
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchyForActivePage(
       String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
-    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, sortFilter, offset, limit);
+    return listPageHierarchyForActivePage(activeFqn, pageType, sortFilter, offset, limit, null);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchyForActivePage(
+      String activeFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    Query pages =
+        OpenSearchRbacQueries.withAccessPolicies(
+            buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType),
+            caller,
+            rbacConditionEvaluator);
+    return getPageHierarchyFromSearchForActivePage(pages, sortFilter, offset, limit);
   }
 
   private List<SortOptions> buildPageHierarchySortOptions(SearchSortFilter sortFilter) {
@@ -1315,9 +1356,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearch(
-      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
-      throws IOException {
-    Query boolQuery = buildPageHierarchyBoolQuery(parentFqn, pageType);
+      Query boolQuery, SearchSortFilter sortFilter, int offset, int limit) throws IOException {
     List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
@@ -1344,9 +1383,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearchForActivePage(
-      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
-      throws IOException {
-    Query boolQuery = buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+      Query boolQuery, SearchSortFilter sortFilter, int offset, int limit) throws IOException {
     List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =

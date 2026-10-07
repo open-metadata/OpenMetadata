@@ -19,10 +19,11 @@ public interface AggregationManagementClient {
    *
    * @param request the aggregation request containing query parameters, field names, and other
    *     aggregation settings
+   * @param subjectContext the caller; their search access policies narrow what is aggregated
    * @return the response containing aggregation results
    * @throws IOException if the aggregation operation fails
    */
-  Response aggregate(AggregationRequest request) throws IOException;
+  Response aggregate(AggregationRequest request, SubjectContext subjectContext) throws IOException;
 
   /**
    * Execute a generic aggregation for data quality reporting.

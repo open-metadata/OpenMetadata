@@ -703,6 +703,8 @@ public class SearchResource {
       @Parameter(description = "Index Name", schema = @Schema(type = "string")) @PathParam("index")
           String indexName)
       throws IOException {
+    // A raw document from any index, read by id with no policy filter; for admins and bots only.
+    authorizer.authorizeAdminOrBot(securityContext);
     return searchRepository.getDocument(indexName, id);
   }
 
@@ -743,7 +745,8 @@ public class SearchResource {
           int size)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchRepository.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext));
   }
 
   @GET
@@ -766,7 +769,7 @@ public class SearchResource {
       @Parameter(description = "source url") @QueryParam("sourceUrl") String sourceUrl)
       throws IOException {
 
-    return searchRepository.searchBySourceUrl(sourceUrl);
+    return searchRepository.searchBySourceUrl(sourceUrl, getSubjectContext(securityContext));
   }
 
   @GET
@@ -834,7 +837,7 @@ public class SearchResource {
             .withDeleted(deleted)
             .withQueryText(queryText);
 
-    return searchRepository.aggregate(aggregationRequest);
+    return searchRepository.aggregate(aggregationRequest, getSubjectContext(securityContext));
   }
 
   @POST
@@ -857,7 +860,7 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
-    return searchRepository.aggregate(aggregationRequest);
+    return searchRepository.aggregate(aggregationRequest, getSubjectContext(securityContext));
   }
 
   @GET

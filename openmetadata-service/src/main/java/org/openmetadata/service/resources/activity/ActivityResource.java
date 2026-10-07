@@ -37,6 +37,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
@@ -55,6 +57,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -85,11 +89,35 @@ public class ActivityResource {
   private final ActivityStreamRepository activityStreamRepository;
   private final ConversationRepository conversationRepository;
   private final Authorizer authorizer;
+  private final ViewPermissionFilter viewFilter;
 
   public ActivityResource(Authorizer authorizer) {
     this.authorizer = authorizer;
+    this.viewFilter = new ViewPermissionFilter(authorizer);
     this.activityStreamRepository = new ActivityStreamRepository();
     this.conversationRepository = Entity.getConversationRepository();
+  }
+
+  /**
+   * Feeds that span entities - by actor, type, domain, follows or ownership - carry each event's old
+   * and new values, so every event must concern an entity the caller may view (issue #18158). A
+   * hidden event is dropped rather than the request refused, the same way domain filtering already
+   * shortens these feeds.
+   */
+  private ResultList<ActivityEvent> viewableOnly(
+      SecurityContext securityContext, ResultList<ActivityEvent> feed) {
+    if (DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return feed;
+    }
+    List<EntityReference> entities =
+        feed.getData().stream().map(ActivityEvent::getEntity).filter(Objects::nonNull).toList();
+    Set<UUID> viewable = viewFilter.viewableIds(securityContext, entities);
+    List<ActivityEvent> visible =
+        feed.getData().stream()
+            .filter(event -> event.getEntity() != null)
+            .filter(event -> viewable.contains(event.getEntity().getId()))
+            .toList();
+    return new ResultList<>(visible, null, null, visible.size());
   }
 
   /**
@@ -202,9 +230,13 @@ public class ActivityResource {
       } catch (AuthorizationException | EntityNotFoundException denied) {
         return new ResultList<>(List.of(), null, null, 0);
       }
+      return activityStreamRepository.listActivityEvents(
+          securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit);
     }
-    return activityStreamRepository.listActivityEvents(
-        securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit);
+    return viewableOnly(
+        securityContext,
+        activityStreamRepository.listActivityEvents(
+            securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit));
   }
 
   @GET
@@ -323,7 +355,8 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getMyFeed(securityContext, domain, days, limit);
+    return viewableOnly(
+        securityContext, activityStreamRepository.getMyFeed(securityContext, domain, days, limit));
   }
 
   @GET
@@ -356,7 +389,9 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getFollowingFeed(securityContext, domain, days, limit);
+    return viewableOnly(
+        securityContext,
+        activityStreamRepository.getFollowingFeed(securityContext, domain, days, limit));
   }
 
   @GET
@@ -463,7 +498,9 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getUserActivity(securityContext, userId, domain, days, limit);
+    return viewableOnly(
+        securityContext,
+        activityStreamRepository.getUserActivity(securityContext, userId, domain, days, limit));
   }
 
   @GET
