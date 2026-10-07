@@ -320,5 +320,50 @@ describe('Test FeedEditor Component', () => {
 
       expect(matches).toEqual([]);
     });
+
+    it('does not submit on Enter while the disabled no-match row keeps the dropdown open', async () => {
+      const { container } = render(
+        <FeedEditor
+          {...mockFeedEditorProp}
+          emptyMentionText="No match found"
+        />,
+        { wrapper: MemoryRouter }
+      );
+      const reactQuill = await findByTestId(container, 'react-quill');
+
+      // 1. Drive the real source() path: a failed mention search produces a
+      //    single disabled "No match found" row (commit 36729ad778). Reverting
+      //    that commit yields [] here, which fails this assertion — so the
+      //    test is sensitive to the commit, not just the fix.
+      const [matches] = await searchMentions('zz');
+
+      expect(matches).toEqual([
+        expect.objectContaining({ value: 'No match found', disabled: true }),
+      ]);
+
+      // 2. quill-mention's renderList fires showMentionList -> setIsOpen(true)
+      //    -> onOpen for a non-empty list. The mock stubs quill-mention, so
+      //    simulate that callback to mirror the real dropdown state: a
+      //    disabled row keeps the dropdown open (selectItem returns early for
+      //    a disabled item, so hideMentionList / onClose never fires).
+      act(() => {
+        mentionModule().onOpen();
+      });
+
+      // 3. First Enter: the list is open, so it must not submit.
+      fireEvent.keyDown(reactQuill, { key: 'Enter', shiftKey: false });
+
+      expect(onSave).not.toHaveBeenCalled();
+
+      // 4. Second Enter: the dropdown is still on screen. With the fix,
+      //    isMentionListOpen stayed true (only onClose flips it false, and it
+      //    never fired), so this Enter must not submit either. With the bug,
+      //    the first Enter's unconditional toggleMentionList(false) left the
+      //    flag false even though the dropdown stayed open, letting this
+      //    Enter post the comment.
+      fireEvent.keyDown(reactQuill, { key: 'Enter', shiftKey: false });
+
+      expect(onSave).not.toHaveBeenCalled();
+    });
   });
 });
