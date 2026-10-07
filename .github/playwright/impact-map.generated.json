@@ -1062,6 +1062,7 @@
         "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/ExploreTree.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
       ]
     },
@@ -1089,6 +1090,7 @@
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
@@ -1119,6 +1121,7 @@
         "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
       ]
     },
@@ -1160,6 +1163,7 @@
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
       ]
@@ -1408,6 +1412,7 @@
         "playwright/e2e/Pages/EntityDataSteward.spec.ts",
         "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/VersionPages/MetricVersionPage.spec.ts"
       ]
     },
@@ -1437,6 +1442,7 @@
         "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
       ]
     },
@@ -1478,6 +1484,7 @@
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/PipelineExecution.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
@@ -1507,6 +1514,7 @@
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/ExploreTree.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
       ]
     },
@@ -1800,6 +1808,7 @@
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
@@ -6639,7 +6648,8 @@
       "specs": [
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts"
+        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts"
       ]
     },
     {
@@ -6834,6 +6844,7 @@
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts"
       ]
     },
@@ -10296,7 +10307,8 @@
       "specs": [
         "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
-        "playwright/e2e/Pages/IntakeForm.spec.ts"
+        "playwright/e2e/Pages/IntakeForm.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts"
       ]
     },
     {
@@ -10413,37 +10425,6 @@
         "playwright/e2e/Features/TableConstraint.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/api/lineage/lineageScene.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
-        "playwright/e2e/Features/DomainIsolation/DomainLineageIsolation.spec.ts",
-        "playwright/e2e/Features/ImpactAnalysis.spec.ts",
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Features/MetricHierarchy.spec.ts",
-        "playwright/e2e/Features/Pagination.spec.ts",
-        "playwright/e2e/Features/Permission.spec.ts",
-        "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts",
-        "playwright/e2e/Features/Permissions/DomainPermissions.spec.ts",
-        "playwright/e2e/Features/Permissions/EntityPermissions.spec.ts",
-        "playwright/e2e/Features/Permissions/GlossaryPermissions.spec.ts",
-        "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
-        "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
-        "playwright/e2e/Flow/LineageSettings.spec.ts",
-        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
-        "playwright/e2e/Pages/LearningResources.spec.ts",
-        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
-        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
