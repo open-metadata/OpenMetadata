@@ -16,6 +16,9 @@ import { PropsWithChildren, ReactNode } from 'react';
 
 interface MockItem {
   id: string;
+  eventType?: string;
+  timestamp?: number;
+  actor?: { id: string; name: string; displayName?: string };
 }
 
 interface MockInboxItem {
@@ -28,20 +31,49 @@ let activityState: {
   total: number;
   isLoading: boolean;
 };
-const mockRefetch = jest.fn();
+const mockUseInboxActivity = jest.fn();
+// What the Mentions feed returns, read separately to mark mentioned cards.
+let mockMentionItems: MockInboxItem[] = [];
 
 jest.mock('../useInboxActivity', () => ({
-  useInboxActivity: () => ({
-    items: activityState.items,
-    total: activityState.total,
-    isLoading: activityState.isLoading,
-    refetch: mockRefetch,
-  }),
+  getInboxItemId: (item: MockInboxItem) =>
+    String(item.activity?.id ?? item.feed?.id ?? ''),
+  getInboxItemTimestamp: (item: MockInboxItem) => item.activity?.timestamp ?? 0,
+  useInboxActivity: (filter: string, ...args: unknown[]) => {
+    if (filter === 'mentions') {
+      return { items: mockMentionItems, total: 0, isLoading: false };
+    }
+    mockUseInboxActivity(filter, ...args);
+
+    return {
+      items: activityState.items,
+      total: activityState.total,
+      isLoading: activityState.isLoading,
+    };
+  },
+  useInboxActivityCounts: () => ({}),
 }));
 
-jest.mock('../components/InboxFilterBar', () => ({
+// Exercised by its own suite; here it only drives the tab's state.
+jest.mock('../components/ActivityToolbar', () => ({
   __esModule: true,
-  default: () => <div data-testid="inbox-filter-bar" />,
+  default: ({
+    onFilterChange,
+    onGroupingChange,
+    onTypeKeysChange,
+  }: {
+    onFilterChange: (value: string) => void;
+    onGroupingChange: (value: string) => void;
+    onTypeKeysChange: (value: string[]) => void;
+  }) => (
+    <div>
+      <button onClick={() => onFilterChange('following')}>following</button>
+      <button onClick={() => onGroupingChange('user')}>by-user</button>
+      <button onClick={() => onTypeKeysChange(['label.tag-plural'])}>
+        tags-only
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock('../components/ActivityFeedItem', () => ({
@@ -49,32 +81,21 @@ jest.mock('../components/ActivityFeedItem', () => ({
   default: ({
     activity,
     feed,
-    onClick,
+    isMentioned,
+    timeFormat,
   }: {
     activity?: MockItem;
     feed?: MockItem;
-    onClick: (selection: { activity?: MockItem; feed?: MockItem }) => void;
+    isMentioned?: boolean;
+    timeFormat?: string;
   }) => (
-    <button
+    <div
+      data-mentioned={isMentioned}
       data-testid="feed-item"
-      onClick={() => onClick(activity ? { activity } : { feed })}>
+      data-time-format={timeFormat}>
       {activity?.id ?? feed?.id}
-    </button>
+    </div>
   ),
-}));
-
-jest.mock('../components/ActivityDetailDrawer', () => ({
-  __esModule: true,
-  default: ({
-    open,
-    activity,
-    feed,
-  }: {
-    open: boolean;
-    activity?: MockItem;
-    feed?: MockItem;
-  }) =>
-    open ? <div data-testid="drawer">{activity?.id ?? feed?.id}</div> : null,
 }));
 
 jest.mock('../components/ActivitySkeleton', () => ({
@@ -83,7 +104,12 @@ jest.mock('../components/ActivitySkeleton', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: PropsWithChildren) => <div>{children}</div>,
+  Box: ({
+    children,
+    ...props
+  }: PropsWithChildren<{ 'data-testid'?: string }>) => (
+    <div data-testid={props['data-testid']}>{children}</div>
+  ),
   Typography: ({ children }: PropsWithChildren) => <span>{children}</span>,
   EmptyPlaceholder: ({
     title,
@@ -102,7 +128,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { number?: number }) =>
+      options?.number === undefined ? key : `${key}:${options.number}`,
+  }),
 }));
 
 import ActivityTab from './ActivityTab';
@@ -138,19 +167,6 @@ describe('ActivityTab', () => {
     expect(screen.getByTestId('activity-skeleton')).toBeInTheDocument();
   });
 
-  it('reports the total via onCountChange', () => {
-    activityState = {
-      items: [{ activity: { id: 'a1' } }],
-      total: 7,
-      isLoading: false,
-    };
-    const onCountChange = jest.fn();
-
-    render(<ActivityTab onCountChange={onCountChange} />);
-
-    expect(onCountChange).toHaveBeenCalledWith(7);
-  });
-
   it('renders activity events and conversations in one merged list', () => {
     activityState = {
       items: [
@@ -182,16 +198,134 @@ describe('ActivityTab', () => {
     expect(screen.getByText('t1')).toBeInTheDocument();
   });
 
-  it('opens the detail drawer when an item is clicked', () => {
+  it('marks the cards the Mentions feed names', () => {
     activityState = {
-      items: [{ activity: { id: 'a1' } }],
+      items: [{ activity: { id: 'a1' } }, { feed: { id: 't1' } }],
+      total: 2,
+      isLoading: false,
+    };
+    mockMentionItems = [{ feed: { id: 't1' } }];
+
+    render(<ActivityTab />);
+
+    expect(
+      screen
+        .getAllByTestId('feed-item')
+        .map((el) => el.getAttribute('data-mentioned'))
+    ).toEqual(['false', 'true']);
+  });
+
+  it('fetches the sub-tab the toolbar selects', () => {
+    render(<ActivityTab />);
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', undefined);
+
+    fireEvent.click(screen.getByText('following'));
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'following',
+      undefined
+    );
+  });
+
+  it('keeps only the chosen types', () => {
+    activityState = {
+      items: [
+        { activity: { id: 'tags', eventType: 'TagsUpdated' } },
+        { activity: { id: 'created', eventType: 'EntityCreated' } },
+      ],
+      total: 2,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(
+      screen.getAllByTestId('feed-item').map((el) => el.textContent)
+    ).toEqual(['tags']);
+  });
+
+  it('heads each day with its date and shows clock times beneath it', () => {
+    activityState = {
+      items: [{ activity: { id: 'a1', timestamp: 1 } }],
       total: 1,
       isLoading: false,
     };
 
     render(<ActivityTab />);
-    fireEvent.click(screen.getByTestId('feed-item'));
 
-    expect(screen.getByTestId('drawer')).toHaveTextContent('a1');
+    expect(screen.getAllByTestId('activity-group')).toHaveLength(1);
+    expect(screen.getByText('label.one-update')).toBeInTheDocument();
+    expect(screen.getByTestId('feed-item')).toHaveAttribute(
+      'data-time-format',
+      'hh:mm a'
+    );
+  });
+
+  // Cards render a batch at a time; the header still counts the whole day.
+  it('counts the whole group in its header, not the rendered batch', () => {
+    activityState = {
+      items: Array.from({ length: 45 }, (_, index) => ({
+        activity: { id: `a${index}`, timestamp: 1 },
+      })),
+      total: 45,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+
+    expect(screen.getAllByTestId('feed-item')).toHaveLength(40);
+    expect(screen.getByTestId('activity-group')).toHaveTextContent(
+      'label.number-update-plural:45'
+    );
+  });
+
+  // A batch revealed later would grow a group above the viewport, so Asset and
+  // User groupings render every card at once.
+  it('renders every card when grouped by user, not a batch', () => {
+    const alice = { id: 'u1', name: 'alice' };
+    activityState = {
+      items: Array.from({ length: 45 }, (_, index) => ({
+        activity: { id: `a${index}`, actor: alice },
+      })),
+      total: 45,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('by-user'));
+
+    expect(screen.getAllByTestId('feed-item')).toHaveLength(45);
+    expect(screen.queryByTestId('inbox-activity-sentinel')).toBeNull();
+    expect(screen.getByTestId('activity-group')).toHaveTextContent(
+      'label.number-update-plural:45'
+    );
+  });
+
+  it('groups by the person who acted, with full dates on the cards', () => {
+    const alice = { id: 'u1', name: 'alice', displayName: 'Alice' };
+    activityState = {
+      items: [
+        { activity: { id: 'a1', actor: alice } },
+        { activity: { id: 'b1', actor: { id: 'u2', name: 'bob' } } },
+        { activity: { id: 'a2', actor: alice } },
+      ],
+      total: 3,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('by-user'));
+
+    const groups = screen.getAllByTestId('activity-group');
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toHaveTextContent('Alice');
+    expect(groups[0]).toHaveTextContent('a1a2');
+    expect(screen.getAllByTestId('feed-item')[0]).toHaveAttribute(
+      'data-time-format',
+      'MMM dd, yyyy, hh:mm a'
+    );
   });
 });

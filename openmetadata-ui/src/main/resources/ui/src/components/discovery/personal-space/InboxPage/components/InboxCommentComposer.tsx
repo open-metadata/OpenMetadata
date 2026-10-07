@@ -19,16 +19,22 @@ import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/Activi
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../../../../../components/common/RichTextEditor/RichTextEditor.interface';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import { getBackendFormat } from '../../../../../utils/FeedUtilsPure';
+import {
+  getBackendFormat,
+  getFrontEndFormat,
+  MarkdownToHTMLConverter,
+} from '../../../../../utils/FeedUtilsPure';
 import './inbox-comment-composer.less';
 
 export interface InboxCommentComposerProps {
-  onSave: (message: string) => void;
+  // A rejected promise puts the draft back in the editor.
+  onSave: (message: string) => void | Promise<unknown>;
   placeHolder?: string;
+  focused?: boolean;
 }
 
 /**
- * Comment composer shared by the Inbox (Activity drawer + Task detail). It
+ * Comment composer shared by the Inbox (activity card threads + Task detail). It
  * reuses the OSS {@link ActivityFeedEditorNew} verbatim — so mention (@),
  * hashtag (#), markdown, the send button and Enter-to-send all keep working —
  * and only restyles it via the scoped `inbox-comment-composer__editor` class:
@@ -40,6 +46,7 @@ export interface InboxCommentComposerProps {
 const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
   onSave,
   placeHolder,
+  focused,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -53,22 +60,27 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
     setHasText(message.trim().length > 0);
   }, []);
 
-  // Enter sends through the editor, which clears itself; the draft is gone.
-  const handleEditorSave = useCallback(
+  // The editor is already empty when this runs, so a save that fails writes
+  // the draft back rather than losing it.
+  const submit = useCallback(
     (message: string) => {
       setHasText(false);
-      onSave(message);
+      Promise.resolve(onSave(message)).catch(() => {
+        editorRef.current?.setEditorContent(
+          MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(message))
+        );
+        setHasText(true);
+      });
     },
     [onSave]
   );
 
-  // Mirrors the editor's own Enter-to-send: post the content, then clear it.
+  // Mirrors the editor's own Enter-to-send, which clears itself first.
   const handleSend = () => {
     const content = editorRef.current?.getEditorContent();
     if (content) {
       editorRef.current?.clearEditorContent();
-      setHasText(false);
-      onSave(getBackendFormat(content));
+      submit(getBackendFormat(content));
     }
   };
 
@@ -110,9 +122,10 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
             />
           }
           emptyMentionText={t('message.no-match-found')}
+          focused={focused}
           placeHolder={placeholderText}
           ref={editorRef}
-          onSave={handleEditorSave}
+          onSave={submit}
           onTextChange={handleTextChange}
         />
       </div>

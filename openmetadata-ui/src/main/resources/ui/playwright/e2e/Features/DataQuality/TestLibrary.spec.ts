@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
@@ -81,7 +82,7 @@ test.describe(
       // Wait for page to load
       await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       // Verify URL
@@ -1219,7 +1220,7 @@ test.describe(
             response.request().method() === 'GET'
         );
         // Wait for dropdown to open and select 25
-        await page.locator('.ant-dropdown:visible').getByText('25').click();
+        await page.getByRole('menuitem', { name: /^25 \// }).click();
         await pageChangeResponse;
       });
 

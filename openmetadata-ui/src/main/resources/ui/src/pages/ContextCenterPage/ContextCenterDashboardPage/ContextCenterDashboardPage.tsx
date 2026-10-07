@@ -49,6 +49,7 @@ import {
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import {
+  DEFAULT_MEMORY_STATUSES,
   MOST_CITED_MEMORIES_LIMIT,
   RECENT_DASHBOARD_ARTICLES_LIMIT,
   RECENT_DASHBOARD_DOCUMENTS_LIMIT,
@@ -235,6 +236,7 @@ const ContextCenterDashboardPage: FC = () => {
         limit: RECENT_DASHBOARD_MEMORIES_LIMIT,
         sortBy: 'updatedAt',
         sortOrder: 'desc',
+        statuses: DEFAULT_MEMORY_STATUSES.join(','),
       });
       setMemoriesCount(response.paging.total ?? response.data.length);
       setMemories(response.data);

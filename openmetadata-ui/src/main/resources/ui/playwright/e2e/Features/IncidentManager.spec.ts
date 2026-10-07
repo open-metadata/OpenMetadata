@@ -17,6 +17,7 @@ import {
   type Page,
 } from '@playwright/test';
 import { get } from 'lodash';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
@@ -89,7 +90,7 @@ const openIncidentTaskTab = async (page: Page, waitForTaskPanel = false) => {
 
   if (waitForTaskPanel) {
     await expect(page.getByTestId('task-cta-buttons')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
   }
 };
@@ -265,7 +266,7 @@ const reassignIncidentTask = async (
   await expect(assigneeSelector).toBeVisible();
   await assigneeSelector.click();
   await assigneeInput.fill(assignee.displayName);
-  await expect(assigneeOption).toBeVisible({ timeout: 30_000 });
+  await expect(assigneeOption).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   await assigneeOption.click();
 

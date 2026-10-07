@@ -213,6 +213,11 @@ export interface ChartReferenceLine {
   axis: 'x' | 'y';
   value: number | string;
   label?: string;
+  /**
+   * Which end of the line carries its label. Defaults to `'end'`; `'start'`
+   * keeps it clear of a guide drawn at the newest point.
+   */
+  labelPosition?: 'start' | 'end';
   /** Status colour of the line. Defaults to the axis text colour. */
   status?: ChartStatus;
 }

@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCase } from '../../../../generated/tests/testCase';
-import { getResultHistoryCaption } from './TestSummary.utils';
+import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
+import {
+  getResultHistoryCaption,
+  hasTestCaseNeverRun,
+} from './TestSummary.utils';
 
 const TABLE_LINK = '<#E::table::svc.db.schema.orders>';
 const columnLink = (column: string) =>
@@ -141,5 +144,27 @@ describe('getResultHistoryCaption', () => {
     expect(getResultHistoryCaption(testCase('myCustomTest', {}))).toEqual({
       metric: { key: 'label.result-metric-values' },
     });
+  });
+});
+
+describe('hasTestCaseNeverRun', () => {
+  const latest = { timestamp: 1, testCaseStatus: TestCaseStatus.Failed };
+
+  it.each([
+    ['no results and no latest result', {}, [], false, true],
+    ['results in the range', {}, [latest], false, false],
+    [
+      'a latest result outside the range',
+      { testCaseResult: latest },
+      [],
+      false,
+      false,
+    ],
+    // A version's snapshot never carries the latest result.
+    ['a version page', {}, [], true, false],
+  ])('with %s', (_description, testCase, results, isVersionPage, expected) => {
+    expect(hasTestCaseNeverRun(testCase, results, isVersionPage)).toBe(
+      expected
+    );
   });
 });

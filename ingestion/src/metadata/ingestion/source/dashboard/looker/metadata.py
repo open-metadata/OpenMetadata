@@ -123,7 +123,6 @@ from metadata.ingestion.source.dashboard.looker.measures import (
     merge_candidates,
     order_parents_first,
     related_metric_names,
-    table_column_references,
 )
 from metadata.ingestion.source.dashboard.looker.models import (
     Includes,
@@ -133,6 +132,7 @@ from metadata.ingestion.source.dashboard.looker.models import (
     ViewName,
 )
 from metadata.ingestion.source.dashboard.looker.utils import _clone_repo
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.readers.file.api_reader import ReadersCredentials
 from metadata.readers.file.base import Reader
 from metadata.readers.file.credentials import get_credentials_from_url
@@ -147,7 +147,6 @@ from metadata.utils.filters import (
 )
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.lru_cache import LRUCache
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
@@ -175,10 +174,6 @@ TEMP_FOLDER_DIRECTORY = os.path.join(os.getcwd(), "tmp")  # noqa: PTH109, PTH118
 REPO_TMP_LOCAL_PATH = f"{TEMP_FOLDER_DIRECTORY}/lookml_repos"
 
 LOOKER_TAG_CATEGORY = "LookerTags"
-
-# Views whose resolved source tables are kept while metrics are emitted. A Looker project with
-# more distinct measure-bearing views than this just re-fetches the evicted ones.
-_SOURCE_TABLE_CACHE_SIZE = 512
 
 
 class _EndOfExplores:
@@ -267,6 +262,9 @@ class LookerSource(DashboardServiceSource):
 
         self._explores_cache = {}
         self._views_cache = {}
+        # Measures are project-scoped, while `_views_cache` is keyed by view name alone, so two
+        # projects declaring an `orders` view would hand each other's metrics the wrong data model.
+        self._project_views_cache: dict[tuple[str, str], DashboardDataModel | None] = {}
         self._repo_credentials: ReadersCredentials | None = None
         self._reader_class: type[Reader] | None = None
         self._project_parsers: dict[str, BulkLkmlParser] | None = None
@@ -282,7 +280,7 @@ class LookerSource(DashboardServiceSource):
         # Data models yielded by the bulk stage but not yet written by the sink. They are
         # resolved in `_yield_bulk_datamodel_lineage`, after the Barrier has flushed them.
         self._pending_explores: list[str] = []
-        self._pending_views: list[tuple[str, str]] = []
+        self._pending_views: list[tuple[str, str, str]] = []
         self._processed_view_names: set[str] = set()
         self._pending_view_lineage: list[tuple[LookMlView, ExploreRef, str]] = []
         self._pending_standalone_lineage: list[tuple[LookMlView, str, str, str]] = []
@@ -295,16 +293,6 @@ class LookerSource(DashboardServiceSource):
         # data models they belong to have been resolved.
         self._metric_candidates: dict[tuple[str, str, str], MeasureCandidate] = {}
         self._metric_explores: dict[tuple[str, str, str], list[str]] = {}
-        # Keyed by view name alone, while a metric's identity is (project, view, measure): two
-        # projects declaring `orders` produce two metrics that both read this one entry. It
-        # cannot be scoped by project here -- `BulkLkmlParser` is a process-wide Singleton whose
-        # `_views_cache` is shared by every project parser, so there is no per-project view to
-        # key on until that singleton goes. Same limitation as `_views_cache` above.
-        self._metric_views: dict[str, LookMlView] = {}
-        # (source table name, db service prefix) pairs already resolved for a view by the
-        # lineage pass. Recorded rather than re-derived so metric lineage reuses the render
-        # and constant-resolution the view lineage already did.
-        self._view_source_refs: dict[str, list[tuple[str, str]]] = {}
 
         # Measures are read off the explores and views the data-model stage walks, so turning
         # that stage off leaves nothing to collect them from. Said out loud rather than left as
@@ -690,7 +678,7 @@ class LookerSource(DashboardServiceSource):
 
                 # Resolution and lineage are deferred to `_yield_bulk_datamodel_lineage`,
                 # once the Barrier has committed this request.
-                self._pending_views.append((view.name, datamodel_view_name))
+                self._pending_views.append((first_project, view.name, datamodel_view_name))
                 self._processed_view_names.add(view.name)
                 self._pending_standalone_lineage.append((view, first_project, first_model_name, datamodel_view_name))
 
@@ -848,8 +836,7 @@ class LookerSource(DashboardServiceSource):
             yield from self._add_standalone_view_lineage(view, project_name, model_name)
         self._pending_standalone_lineage = []
 
-        # Last: metrics need both the resolved data models (for `assets`) and the source tables
-        # the lineage pass above recorded.
+        # Last: metrics need the resolved data models, for `assets` and as their lineage source.
         yield from self._yield_datamodel_metrics()
 
     def _resolve_pending_datamodels(self) -> dict[str, DashboardDataModel | None]:
@@ -877,8 +864,10 @@ class LookerSource(DashboardServiceSource):
             self._explores_cache[datamodel_name] = resolve(datamodel_name)
         self._pending_explores = []
 
-        for view_name, datamodel_view_name in self._pending_views:
-            self._views_cache[view_name] = resolve(datamodel_view_name)
+        for project_name, view_name, datamodel_view_name in self._pending_views:
+            data_model = resolve(datamodel_view_name)
+            self._views_cache[view_name] = data_model
+            self._project_views_cache[(project_name, view_name)] = data_model
         self._pending_views = []
 
         return resolved
@@ -886,17 +875,6 @@ class LookerSource(DashboardServiceSource):
     # ------------------------------------------------------------------
     # LookML measures -> Metric entities
     # ------------------------------------------------------------------
-
-    def _record_view_source_ref(self, view_name: str, source: str, db_service_prefix: str) -> None:
-        """Remember a source table the view lineage pass already rendered for this view.
-
-        Metric lineage needs the same upstream table. Recording the inputs instead of the
-        resolved entity keeps this free for the many views that declare no measures -- the
-        lookup only happens if a metric actually needs it.
-        """
-        refs = self._view_source_refs.setdefault(view_name, [])
-        if (source, db_service_prefix) not in refs:
-            refs.append((source, db_service_prefix))
 
     def _collect_explore_measures(self, model: LookmlModelExplore, datamodel_name: str) -> None:
         """Collect the measures an explore exposes.
@@ -928,7 +906,6 @@ class LookerSource(DashboardServiceSource):
             return
         try:
             merge_candidates(self._metric_candidates, candidates_from_view(view, project_name or ""))
-            self._metric_views[view.name] = view
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning("Error collecting measures of view [%s]: %s", view.name, err)
@@ -939,7 +916,7 @@ class LookerSource(DashboardServiceSource):
         assets: list[EntityReference] = []
         seen: set[str] = set()
         data_models = [
-            self._views_cache.get(candidate.view),
+            self._project_views_cache.get((candidate.project, candidate.view)),
             *(self._explores_cache.get(name) for name in self._metric_explores.get(candidate.key, [])),
         ]
         for data_model in data_models:
@@ -971,12 +948,6 @@ class LookerSource(DashboardServiceSource):
 
         service = self.context.get().dashboard_service  # pyright: ignore[reportAttributeAccessIssue]
         logger.info("Emitting %d LookML measure(s) as Metric entities", len(self._metric_candidates))
-
-        # Resolved once per view rather than once per measure: a view with twenty measures
-        # would otherwise cost twenty identical lookups. Bounded because the values are whole
-        # Table entities and a large catalog has no shortage of views; measures of one view are
-        # emitted together, so eviction only ever costs a re-fetch.
-        source_tables: LRUCache[list[Table]] = LRUCache(_SOURCE_TABLE_CACHE_SIZE)
 
         # The server resolves `relatedMetrics` when the metric is created, so a reference may
         # only name a metric already written. `order_parents_first` is what arranges that;
@@ -1010,7 +981,8 @@ class LookerSource(DashboardServiceSource):
 
                 metric_name = model_str(metric_request.name)
                 emitted.add(metric_name)
-                yield from self._yield_metric_lineage(candidate, metric_name, related, source_tables)
+                for edge in self._yield_metric_lineage(candidate, metric_name, related):
+                    yield from self.yield_lineage_request(edge)
             except Exception as err:
                 yield Either(  # pyright: ignore[reportCallIssue]
                     left=StackTraceError(
@@ -1025,11 +997,15 @@ class LookerSource(DashboardServiceSource):
         candidate: MeasureCandidate,
         metric_name: str,
         related: list[str],
-        source_tables: LRUCache[list[Table]],
     ) -> Iterable[Either]:
-        """Metric -> Metric and Table -> Metric edges for one measure.
+        """Metric -> Metric and View -> Metric edges for one measure.
 
-        Both are addressed by FQN: a Metric's FQN is its name, so the server can resolve either
+        A LookML measure is a field of the view that declares it: the view's data model is its
+        source, and the view's own Table -> View lineage carries the path on to the physical
+        columns -- including through a derived table, whose `${TABLE}` is the derived SQL rather
+        than any warehouse table. Explores only expose the measure, so they stay `assets`.
+
+        Both ends are addressed by FQN: a Metric's FQN is its name, so the server can resolve either
         end without us reading the entity back for its id.
         """
         for parent_name in related:
@@ -1043,60 +1019,37 @@ class LookerSource(DashboardServiceSource):
                 )
             )
 
-        # A measure's source columns can only be resolved from the LookML view: the `${TABLE}`
-        # its SQL refers to is the view's table, which the API never tells us.
-        view = self._metric_views.get(candidate.view)
-        if view is None:
+        view_data_model = self._project_views_cache.get((candidate.project, candidate.view))
+        if view_data_model is None:
             return
 
-        field_sql = {field.name: field.sql for field in (*view.dimensions, *view.dimension_groups, *view.measures)}
-        columns = table_column_references(candidate.sql, field_sql)
-
-        for table in self._resolved_source_tables(candidate.view, source_tables):
-            # A Metric is the leaf a column feeds -- it has `measures`, not columns -- so the
-            # server accepts exactly one column endpoint on it: the metric's own FQN
-            # (`LineageRepository.getChildrenNames`, case METRIC). Addressing the measure as
-            # `<metric>.measure.<name>` gets every entry dropped by `validateLineageDetails`,
-            # which answers 200 and stores nothing. Hence one edge carrying every source column.
-            from_columns = [
-                FullyQualifiedEntityName(from_column)
-                for column in sorted(columns)
-                if (from_column := get_column_fqn(table_entity=table, column=column))
-            ]
-            column_lineage = (
-                [ColumnLineage(fromColumns=from_columns, toColumn=FullyQualifiedEntityName(metric_name))]
-                if from_columns
-                else []
+        # The measure is itself a column of the view (`get_columns_from_model`). A Metric has
+        # `measures`, not columns, so the server accepts exactly one column endpoint on it: the
+        # metric's own FQN (`LineageRepository.getChildrenNames`, case METRIC). Addressing the
+        # measure as `<metric>.measure.<name>` gets every entry dropped by
+        # `validateLineageDetails`, which answers 200 and stores nothing.
+        column_name = truncate_column_name(candidate.name)
+        from_columns = [
+            FullyQualifiedEntityName(model_str(column.fullyQualifiedName))
+            for column in view_data_model.columns or []
+            if model_str(column.name) == column_name and column.fullyQualifiedName
+        ]
+        yield Either(  # pyright: ignore[reportCallIssue]
+            right=OMetaFQNLineageRequest(
+                from_entity_fqn=model_str(view_data_model.fullyQualifiedName),
+                from_entity_type="dashboardDataModel",
+                to_entity_fqn=metric_name,
+                to_entity_type="metric",
+                lineage_details=LineageDetails(
+                    source=LineageSource.DashboardLineage,
+                    columnsLineage=[
+                        ColumnLineage(fromColumns=from_columns, toColumn=FullyQualifiedEntityName(metric_name))
+                    ]
+                    if from_columns
+                    else None,
+                ),
             )
-            yield Either(  # pyright: ignore[reportCallIssue]
-                right=OMetaFQNLineageRequest(
-                    from_entity_fqn=model_str(table.fullyQualifiedName),
-                    from_entity_type="table",
-                    to_entity_fqn=metric_name,
-                    to_entity_type="metric",
-                    lineage_details=LineageDetails(
-                        source=LineageSource.DashboardLineage,
-                        columnsLineage=column_lineage or None,
-                    ),
-                )
-            )
-
-    def _resolved_source_tables(self, view_name: str, source_tables: LRUCache[list[Table]]) -> list[Table]:
-        """The upstream tables of a view, resolved on first use and memoized for the run.
-
-        A view with no upstream caches the empty list: a miss is as worth remembering as a hit,
-        since re-deriving it costs the same lookups.
-        """
-        if view_name not in source_tables:
-            source_tables.put(
-                view_name,
-                [
-                    table
-                    for source, db_service_prefix in self._view_source_refs.get(view_name, [])
-                    if (table := self._resolve_source_table(source, db_service_prefix)) is not None
-                ],
-            )
-        return source_tables.get(view_name)
+        )
 
     def _get_explore_sql(self, explore: LookmlModelExplore) -> str | None:
         """
@@ -1165,7 +1118,7 @@ class LookerSource(DashboardServiceSource):
 
                 # Resolution and lineage are deferred to `_yield_bulk_datamodel_lineage`,
                 # once the Barrier has committed this request.
-                self._pending_views.append((view.name, datamodel_view_name))
+                self._pending_views.append((explore.project_name or "", view.name, datamodel_view_name))
                 self._processed_view_names.add(view.name)
                 self._pending_view_lineage.append(
                     (view, ExploreRef(explore.model_name, explore.name), datamodel_view_name)
@@ -1402,7 +1355,6 @@ class LookerSource(DashboardServiceSource):
                     dialect = self._get_db_dialect(db_service_name)
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
                     self._parsed_views[view.name] = source_table_name
-                    self._record_view_source_ref(view.name, source_table_name, db_service_prefix)
 
                     lineage_request = self.build_lineage_request(
                         source=source_table_name,
@@ -1533,7 +1485,6 @@ class LookerSource(DashboardServiceSource):
                     dialect = self._get_db_dialect(db_service_name)
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
                     self._parsed_views[view.name] = source_table_name
-                    self._record_view_source_ref(view.name, source_table_name, db_service_prefix)
 
                     # View to the source is only there if we are informing the dbServiceNames
                     lineage_request = self.build_lineage_request(
@@ -1608,7 +1559,6 @@ class LookerSource(DashboardServiceSource):
                                     ),
                                 )
                             )
-                    self._record_view_source_ref(view_name, str(from_table_name), db_service_prefix)
                     yield self.build_lineage_request(
                         source=str(from_table_name),
                         db_service_prefix=db_service_prefix,
