@@ -16,6 +16,7 @@ import re
 import traceback
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple, Union  # noqa: UP035
+from uuid import UUID
 
 from metadata.generated.schema.entity.data.metric import MetricType
 from metadata.generated.schema.entity.data.table import Table
@@ -758,7 +759,7 @@ def _extract_dbt_reference(reference: Any) -> Optional[Tuple[Optional[str], str]
     return resolved
 
 
-def build_upstream_node(parent_node, parent_fqn: str) -> UpstreamNode:
+def build_upstream_node(parent_node, parent_fqn: str, table_id: Optional[UUID] = None) -> UpstreamNode:  # noqa: UP045
     """Pair a dbt manifest node with its table FQN, recording the namespace that a
     ``ref('pkg', 'model')`` or ``source('source_name', 'table')`` reference would use."""
     namespace = getattr(parent_node, "source_name", None) or getattr(parent_node, "package_name", None)
@@ -766,6 +767,7 @@ def build_upstream_node(parent_node, parent_fqn: str) -> UpstreamNode:
         name=parent_node.name,
         qualified_name=f"{namespace}.{parent_node.name}" if namespace else None,
         fqn=parent_fqn,
+        table_id=table_id,
     )
 
 
