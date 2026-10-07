@@ -12,7 +12,7 @@
  */
 @import (reference) '../../styles/variables.less';
 
-@platform-page-header-height: 140px;
+@platform-page-header-height: 98px;
 
 .platform-lineage-container {
   height: calc(100vh - @om-navbar-height - @platform-page-header-height);
@@ -22,9 +22,7 @@
   }
 
   .full-screen-lineage {
-    height: calc(
-      100vh - @om-navbar-height - 44px
-    ); // Breadcrumb height is 36 + bottom margin 8px
+    height: calc(100vh - @om-navbar-height);
 
     .lineage-card {
       height: 100%;

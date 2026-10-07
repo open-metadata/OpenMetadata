@@ -10,42 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ButtonUtility,
-  Grid,
-  Tooltip,
-  TooltipTrigger,
-} from '@openmetadata/ui-core-components';
-import {
-  Expand05,
-  Home02,
-  Minimize02,
-} from '@openmetadata/ui-core-components/icons';
-import { Card, Select } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import { ButtonUtility, Card, Grid } from '@openmetadata/ui-core-components';
+import { Expand05, Minimize02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { debounce, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
 import { ReactComponent as SettingsOutlined } from '../../assets/svg/ic-settings-gear.svg';
 import Loader from '../../components/common/Loader/Loader';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
+import DataAssetAsyncSelectList from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
+import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
 import LineageConfigModal from '../../components/Entity/EntityLineage/LineageConfigModal';
 import LineageComponent from '../../components/Lineage/Lineage.component';
 import { Lineage } from '../../components/Lineage/Lineage/Lineage';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import {
-  FULLSCREEN_QUERY_PARAM_KEY,
-  PAGE_SIZE_BASE,
-} from '../../constants/constants';
+import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import {
   ExportTypes,
   LINEAGE_EXPORT_SELECTOR,
@@ -62,19 +48,22 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
 import { LineageConfig } from '../../interface/lineage.interface';
-import { searchQuery } from '../../rest/searchAPI';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getViewportForLineageExport } from '../../utils/EntityLineageLayoutUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../utils/StringUtils';
+import { getEncodedFqn } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
+
+const LINEAGE_SEARCH_INDEXES = [
+  SearchIndex.DATA_ASSET,
+  SearchIndex.DOMAIN,
+  SearchIndex.SERVICE,
+];
+
 const PlatformLineage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -84,11 +73,6 @@ const PlatformLineage = () => {
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
   const [isEntityLoading, setIsEntityLoading] = useState(false);
-  const [options, setOptions] = useState<DefaultOptionType[]>([]);
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
-  const [defaultValue, setDefaultValue] = useState<string | undefined>(
-    decodedFqn || undefined
-  );
   // Config lives in the Zustand store — Lineage's fetch effect depends on
   // it, so writing here triggers a refetch. Local useState here would leave
   // the store untouched and the depth change would never reach the network.
@@ -142,7 +126,7 @@ const PlatformLineage = () => {
 
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
-      navigate(
+      void navigate(
         `/lineage/${(value as SourceType).entityType}/${getEncodedFqn(
           value.fullyQualifiedName ?? ''
         )}`
@@ -150,76 +134,22 @@ const PlatformLineage = () => {
     },
     [navigate]
   );
-  // `debounce` only coalesces calls inside its own window, so the empty search
-  // that `onFocus` starts and a search for what the user then types are two
-  // requests in flight at once — and the empty one is the slower of the pair,
-  // since it has no term to narrow three indices by. Without this guard its
-  // late answer overwrites the newer one and the list shows results for a
-  // query the box is no longer holding.
-  //
-  // Token bump is SYNCHRONOUS on every call (before debounce), not inside the
-  // debounced body: a keystroke fires debouncedSearch immediately, which
-  // advances searchOrder and invalidates any in-flight request from the
-  // previous keystroke. If we bumped inside the debounced body instead, a
-  // request that resolved between the keystroke and the next debounced fire
-  // would still match the current token and paint stale results.
-  const searchOrder = useRef(0);
-  const runSearch = useMemo(
-    () =>
-      debounce(async (value: string, request: number) => {
-        try {
-          setIsSearchLoading(true);
-          const searchIndices = [
-            SearchIndex.DATA_ASSET,
-            SearchIndex.DOMAIN,
-            SearchIndex.SERVICE,
-          ];
-
-          const response = await searchQuery({
-            query: escapeESReservedCharacters(value),
-            searchIndex: searchIndices,
-            pageSize: PAGE_SIZE_BASE,
-            queryFilter: getLineageEntityExclusionFilter(),
-            includeDeleted: false,
-          });
-
-          if (request !== searchOrder.current) {
-            return;
-          }
-
-          setOptions(
-            response.hits.hits.map((hit) => ({
-              value: hit._source.fullyQualifiedName ?? '',
-              label: (
-                <EntitySuggestionOption
-                  showEntityTypeBadge
-                  entity={hit._source as EntityReference}
-                  onSelectHandler={handleEntitySelect}
-                />
-              ),
-              data: hit,
-            }))
-          );
-        } finally {
-          if (request === searchOrder.current) {
-            setIsSearchLoading(false);
-          }
-        }
-      }, 300),
-    [handleEntitySelect]
-  );
-
-  const debouncedSearch = useCallback(
-    (value: string) => {
-      const request = ++searchOrder.current;
-      runSearch(value, request);
+  const handleSearchSelect = useCallback(
+    (option?: DataAssetOption | DataAssetOption[]) => {
+      // Clearing the chip leaves the current lineage on screen.
+      if (option && !Array.isArray(option)) {
+        handleEntitySelect({
+          ...option.reference,
+          entityType: option.reference.type,
+        } as EntityReference);
+      }
     },
-    [runSearch]
+    [handleEntitySelect]
   );
 
   const init = useCallback(async () => {
     if (!decodedFqn || !entityType) {
-      setDefaultValue(undefined);
+      setSelectedEntity(undefined);
 
       return;
     }
@@ -230,12 +160,11 @@ const PlatformLineage = () => {
         entityType as AssetsUnion
       )(decodedFqn);
       setSelectedEntity(entityResponse);
-      setDefaultValue(decodedFqn || undefined);
     } catch {
       // Old code awaited this via Promise.allSettled alongside the permission fetch, so a
       // rejection (or a synchronous throw from an unsupported entityType) never reached a
-      // showErrorToast call — a settled 'rejected' result just left selectedEntity/
-      // defaultValue unset. Preserve that silently; permission-fetch errors now surface
+      // showErrorToast call — a settled 'rejected' result just left selectedEntity
+      // unset. Preserve that silently; permission-fetch errors now surface
       // separately via the hook's own effect above.
     } finally {
       setIsEntityLoading(false);
@@ -272,71 +201,63 @@ const PlatformLineage = () => {
   const header = useMemo(() => {
     return (
       <div className="d-flex justify-between items-center">
-        <Select
-          showSearch
-          className="w-max-500"
-          data-testid="search-entity-select"
-          filterOption={false}
-          loading={isSearchLoading}
-          optionLabelProp="value"
-          options={options}
-          placeholder={t('label.search-entity-for-lineage', {
-            entity: 'entity',
-          })}
-          style={{ width: '50%' }}
-          value={defaultValue}
-          onFocus={() => !defaultValue && debouncedSearch('')}
-          onSearch={debouncedSearch}
-        />
+        <div
+          className="tw:w-1/2 tw:max-w-[500px]"
+          data-testid="search-entity-select">
+          <DataAssetAsyncSelectList
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- disables the list's default autofocus
+            autoFocus={false}
+            // The current entity is the placeholder, not a chip: a single-select
+            // chip hides the input, so the list could not open on first click.
+            placeholder={
+              selectedEntity
+                ? getEntityName(selectedEntity)
+                : t('label.search-entity-for-lineage', { entity: 'entity' })
+            }
+            queryFilter={getLineageEntityExclusionFilter()}
+            searchIndex={LINEAGE_SEARCH_INDEXES}
+            onChange={handleSearchSelect}
+          />
+        </div>
         <div className="d-flex gap-2">
-          <Tooltip
-            placement="top"
-            title={t('label.export-as-type', {
+          <ButtonUtility
+            data-testid="export-button"
+            icon={DownloadIcon}
+            tooltip={t('label.export-as-type', {
               type: t('label.png-uppercase'),
-            })}>
-            <TooltipTrigger>
-              <ButtonUtility
-                data-testid="export-button"
-                icon={DownloadIcon}
-                onClick={handleExport}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+            })}
+            onClick={handleExport}
+          />
+
           <ButtonUtility
             data-testid="lineage-config"
             icon={SettingsOutlined}
             onClick={handleSettingsClick}
           />
-          <Tooltip
-            placement="top"
-            title={
+
+          <ButtonUtility
+            icon={isFullScreen ? Minimize02 : Expand05}
+            tooltip={
               isFullScreen
                 ? t('label.exit-full-screen')
                 : t('label.full-screen-view')
-            }>
-            <TooltipTrigger>
-              <ButtonUtility
-                icon={isFullScreen ? Minimize02 : Expand05}
-                onClick={() =>
-                  navigate({
-                    search: QueryString.stringify({
-                      ...queryParams,
-                      [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
-                    }),
-                  })
-                }
-              />
-            </TooltipTrigger>
-          </Tooltip>
+            }
+            onClick={() =>
+              navigate({
+                search: QueryString.stringify({
+                  ...queryParams,
+                  [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
+                }),
+              })
+            }
+          />
         </div>
       </div>
     );
   }, [
-    isSearchLoading,
-    options,
     t,
-    defaultValue,
-    debouncedSearch,
+    selectedEntity,
+    handleSearchSelect,
     handleExport,
     isFullScreen,
     navigate,
@@ -377,42 +298,23 @@ const PlatformLineage = () => {
           : t('label.lineage')
       }>
       <Grid rowGap="2">
-        {isFullScreen ? null : (
-          <>
-            <Grid.Item span={24}>
-              <TitleBreadcrumb
-                useCustomArrow
-                titleLinks={[
-                  {
-                    name: '',
-                    icon: <Home02 size={12} />,
-                    url: '/',
-                    activeTitle: true,
-                  },
-                  {
-                    name: t('label.lineage'),
-                    url: '',
-                  },
-                ]}
+        <Grid.Item span={24}>
+          <Card size="sm">
+            <Card.Content>
+              <PageHeader
+                data={{
+                  header: t('label.platform-type-lineage', {
+                    platformType: startCase(platformView),
+                  }),
+                  subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
+                }}
+                learningPageId={LEARNING_PAGE_IDS.LINEAGE}
+                title={t('label.lineage')}
               />
-            </Grid.Item>
+            </Card.Content>
+          </Card>
+        </Grid.Item>
 
-            <Grid.Item span={24}>
-              <Card>
-                <PageHeader
-                  data={{
-                    header: t('label.platform-type-lineage', {
-                      platformType: startCase(platformView),
-                    }),
-                    subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
-                  }}
-                  learningPageId={LEARNING_PAGE_IDS.LINEAGE}
-                  title={t('label.lineage')}
-                />
-              </Card>
-            </Grid.Item>
-          </>
-        )}
         <Grid.Item span={24}>
           <div className="platform-lineage-container">{lineageElement}</div>
         </Grid.Item>

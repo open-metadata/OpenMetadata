@@ -1624,17 +1624,18 @@ export const verifyPlatformLineageForEntity = async (
 
   await page
     .getByTestId('search-entity-select')
-    .locator('div')
-    .filter({ hasText: /^Search entity to view lineage$/ })
-    .click();
-  await page.getByTestId('search-entity-select').locator('input').fill(fromFqn);
+    .getByRole('combobox')
+    .fill(fromFqn);
 
   const focusSceneResponse = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
       new URL(response.url()).searchParams.get('focusFqn') === fromFqn
   );
-  await page.getByTestId(`node-suggestion-${fromFqn}`).click();
+  await page
+    .locator('[role="listbox"]:visible')
+    .getByTestId(`option-${fromFqn}`)
+    .click();
   await expect(page).toHaveURL((url) =>
     url.pathname.endsWith(`/${encodeURIComponent(fromFqn)}`)
   );

@@ -20,7 +20,6 @@ import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
   uuid,
-  waitForAntdPopupToSettle,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -76,22 +75,18 @@ test.describe('Entity Lineage tab', () => {
 
       await sidebarClick(page, SidebarItem.LINEAGE);
 
-      await page.getByTestId('search-entity-select').waitFor();
-      await page.getByTestId('search-entity-select').click();
+      const entitySearch = page
+        .getByTestId('search-entity-select')
+        .getByRole('combobox');
+      const suggestions = page.locator('[role="listbox"]:visible');
 
       const searchRequest = page.waitForRequest(
         (req) =>
           req.url().includes('/api/v1/search/query') &&
           req.url().includes('deleted=false')
       );
-      await page.fill(
-        '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-        table.entity.name
-      );
+      await entitySearch.fill(table.entity.name);
       await searchRequest;
-
-      await page.locator('.ant-select-dropdown').waitFor();
-      await waitForAntdPopupToSettle(page);
 
       const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
       const dbFqn = get(
@@ -109,7 +104,7 @@ test.describe('Entity Lineage tab', () => {
           new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
           new URL(response.url()).searchParams.get('focusFqn') === nodeFqn
       );
-      await page.getByTestId(`node-suggestion-${nodeFqn}`).click();
+      await suggestions.getByTestId(`option-${nodeFqn}`).click();
       await expect
         .poll(() => new URL(page.url()).pathname)
         .toBe(`/lineage/table/${encodeURIComponent(nodeFqn)}`);
@@ -122,21 +117,14 @@ test.describe('Entity Lineage tab', () => {
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.LINEAGE);
-      await page.getByTestId('search-entity-select').waitFor();
-      await page.click('[data-testid="search-entity-select"]');
-
-      await page.fill(
-        '[data-testid="search-entity-select"] .ant-select-selection-search-input',
-        db
-      );
-      await page.getByTestId(`node-suggestion-${dbFqn}`).waitFor();
-      await waitForAntdPopupToSettle(page);
+      await entitySearch.fill(db);
+      await suggestions.getByTestId(`option-${dbFqn}`).waitFor();
       const databaseSceneResponse = page.waitForResponse(
         (response) =>
           new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
           new URL(response.url()).searchParams.get('focusFqn') === dbFqn
       );
-      await page.getByTestId(`node-suggestion-${dbFqn}`).click();
+      await suggestions.getByTestId(`option-${dbFqn}`).click();
       await expect
         .poll(() => new URL(page.url()).pathname)
         .toBe(`/lineage/database/${encodeURIComponent(dbFqn)}`);

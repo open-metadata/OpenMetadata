@@ -13,7 +13,7 @@
 
 import {
   Alert,
-  Badge,
+  Box,
   Breadcrumbs,
   Button,
   ButtonUtility,
@@ -25,6 +25,7 @@ import {
 import {
   ArrowsUp,
   Home02,
+  InfoCircle,
   LayersThree01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -839,7 +840,6 @@ const LineageMapBreadcrumbs = ({
         data-testid="lineage-map-breadcrumbs"
         items={items}
         maxItemWidth={180}
-        size="sm"
         onAction={(id) => {
           const breadcrumb = breadcrumbById.get(String(id));
           if (breadcrumb) {
@@ -866,24 +866,26 @@ const LineageMapStatusPanel = ({
   }
 
   return (
-    <Panel className="lineage-map-status-panel tw:z-10" position="top-right">
-      {hasHiddenNodes && (
-        <Badge color="gray" size="sm" type="color">
-          {t('label.plus-count-more', { count: hiddenNodeCount })}
-        </Badge>
-      )}
+    <Panel
+      className="lineage-map-status-panel tw:z-10 tw:flex tw:flex-col tw:items-end tw:gap-2"
+      position="top-right">
       {(sampled || hasHiddenNodes) && (
-        <Alert
-          title={
-            sampled
-              ? t('label.showing-count-of-total-assets', {
-                  count: nodes.length,
-                  total: nodes.length + hiddenNodeCount,
-                })
-              : t('message.knowledge-graph-truncated')
-          }
-          variant="warning"
-        />
+        <Box
+          align="center"
+          className="tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5 tw:shadow-xs"
+          data-testid="lineage-map-truncated-notice"
+          gap={2}>
+          <InfoCircle
+            aria-hidden="true"
+            className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
+          />
+          <Typography as="span" className="tw:text-secondary" size="text-sm">
+            {t('label.showing-count-of-total-assets', {
+              count: nodes.length,
+              total: nodes.length + hiddenNodeCount,
+            })}
+          </Typography>
+        </Box>
       )}
       {error && (
         <Alert title={t('message.something-went-wrong')} variant="error" />
@@ -1576,6 +1578,7 @@ const LineageMapCanvas = ({
     handleSceneColumnSelect,
     handleSceneLineageEdit,
     handleSceneNodeSelect,
+    isPlatformLineage,
     requestNodeDelete,
     scene,
     setColumnsHavingLineage,

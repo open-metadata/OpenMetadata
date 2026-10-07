@@ -207,12 +207,8 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const searchSelect = page.getByTestId('search-entity-select');
       await expect(searchSelect).toBeVisible();
 
-      await searchSelect.click();
-
-      await page
-        .locator(
-          '[data-testid="search-entity-select"] .ant-select-selection-search-input'
-        )
+      await searchSelect
+        .getByRole('combobox')
         .fill('invalid_fqn_does_not_exist_12345');
 
       const noResultsText = page.getByText(/no match/i);
