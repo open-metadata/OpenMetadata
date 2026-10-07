@@ -26,6 +26,7 @@ from typing import (
     TYPE_CHECKING,
     TypedDict,
     TypeVar,
+    cast,
 )
 from uuid import uuid4
 
@@ -282,14 +283,19 @@ class BaseTestValidator(ABC):
         A test case that does not set the parameter, or sets a value this agent does not know,
         keeps `OVERALL_ONLY`: the status it had before the policy existed.
         """
-        raw_policy = self.get_test_case_param_value(
-            self.test_case.parameterValues or [],
-            DIMENSION_FAILURE_POLICY_PARAM,
-            str,
-            default=DimensionFailurePolicy.OVERALL_ONLY.value,
+        # Read through `str` with a `str` default, so it is always a string. The helper's
+        # annotation cannot express that.
+        raw_policy = cast(
+            "str",
+            self.get_test_case_param_value(
+                self.test_case.parameterValues or [],
+                DIMENSION_FAILURE_POLICY_PARAM,
+                str,
+                default=DimensionFailurePolicy.OVERALL_ONLY.value,
+            ),
         )
         try:
-            return DimensionFailurePolicy(str(raw_policy).upper())
+            return DimensionFailurePolicy(raw_policy.upper())
         except ValueError:
             logger.warning(
                 "Unknown %s '%s' for %s. Rolling dimension results up as %s.",
