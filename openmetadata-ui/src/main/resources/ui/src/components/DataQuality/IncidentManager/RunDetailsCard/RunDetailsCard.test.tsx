@@ -107,9 +107,9 @@ describe('RunDetailsCard', () => {
 
     const found = screen.getByTestId('run-details-found');
 
-    expect(found).toHaveClass('tw:text-[13px]', 'tw:font-semibold');
+    expect(found).toHaveClass('tw:text-xs', 'tw:font-semibold');
     expect(screen.getByTestId('run-details-definition')).toHaveClass(
-      'tw:text-[13px]',
+      'tw:text-xs',
       'tw:font-medium'
     );
     // Equal columns broke "tableRowCountToBeBetween" mid-word at 1440px; the

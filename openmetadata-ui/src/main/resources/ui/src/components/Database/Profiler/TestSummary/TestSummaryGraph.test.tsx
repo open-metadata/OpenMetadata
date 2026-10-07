@@ -466,30 +466,11 @@ describe('TestSummaryGraph', () => {
     );
   });
 
-  it("should set the axes in the mock's type: 11px, the values in Geist Mono", () => {
-    render(<TestSummaryGraph {...mockProps} />);
-
-    const { xAxis, yAxis } = getChartProps();
-
-    expect(xAxis?.axisLabel).toEqual(expect.objectContaining({ fontSize: 11 }));
-    expect((yAxis as { axisLabel: Record<string, unknown> }).axisLabel).toEqual(
-      expect.objectContaining({
-        fontFamily: expect.stringContaining('Geist Mono'),
-        fontSize: 11,
-        fontWeight: 500,
-      })
-    );
-  });
-
-  it('should draw the expectation as the mock does: 1.5px, dashed 5 4, a 10.5px semibold label', () => {
+  it('should draw the expectation as the mock does: 1.5px, dashed 5 4', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
     expect(getReferenceLine('y')).toEqual(
-      expect.objectContaining({
-        lineType: [5, 4],
-        width: 1.5,
-        labelStyle: { fontSize: 10.5, fontWeight: 600 },
-      })
+      expect.objectContaining({ lineType: [5, 4], width: 1.5 })
     );
   });
 

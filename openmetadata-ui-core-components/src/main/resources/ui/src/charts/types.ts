@@ -232,8 +232,6 @@ export interface ChartReferenceLine {
   lineType?: 'solid' | 'dashed' | number[];
   /** Width of the line in px; 1 by default. */
   width?: number;
-  /** Size and weight of the label's text. */
-  labelStyle?: { fontSize?: number; fontWeight?: number };
 }
 
 export interface CartesianBuildInput<T extends object> {

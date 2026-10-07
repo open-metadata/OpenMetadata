@@ -696,7 +696,7 @@ describe('buildLineOption', () => {
     ]);
   });
 
-  it("draws a reference line in its own colour, dash and width, with its label's size, when asked", () => {
+  it('draws a reference line in its own colour, dash and width, when asked', () => {
     const option = buildLineOption(
       {
         ...base,
@@ -709,7 +709,6 @@ describe('buildLineOption', () => {
             color: '#475467',
             lineType: [5, 4],
             width: 1.5,
-            labelStyle: { fontSize: 10.5, fontWeight: 600 },
           },
         ],
       },
@@ -736,9 +735,6 @@ describe('buildLineOption', () => {
       type: [5, 4],
       width: 1.5,
     });
-    expect(styled.label).toEqual(
-      expect.objectContaining({ fontSize: 10.5, fontWeight: 600 })
-    );
   });
 
   it('measures reference lines against the first value axis in a composed chart', () => {

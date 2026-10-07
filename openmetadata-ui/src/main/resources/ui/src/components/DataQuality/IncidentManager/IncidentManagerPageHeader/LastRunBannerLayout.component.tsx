@@ -26,24 +26,23 @@ const LastRunBannerLayout = ({
   return (
     <div
       aria-live="polite"
-      className={`tw:min-w-0 tw:overflow-hidden tw:rounded-[14px] tw:border tw:border-l-4 ${config.containerClassName}`}
+      className={`tw:min-w-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-l-4 ${config.containerClassName}`}
       data-testid={config.testId}
       role="status">
       <div
         className="tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-3.5 tw:lg:flex-row tw:lg:items-start"
         data-testid="test-case-last-run-summary">
         <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-start tw:gap-4">
-          {/* The mock's 44px tile and 11px radius sit between FeaturedIcon's sizes. */}
           <FeaturedIcon
             outlined
             bgColor="white"
-            className="tw:size-11 tw:self-start tw:rounded-[11px]"
+            className="tw:self-start"
             color={config.iconColor}
             data-testid="test-case-last-run-icon"
             icon={config.icon}
             radius="lg"
             shape="square"
-            size="lg"
+            size="md"
           />
           <div className="tw:min-w-0 tw:flex-1">
             <p className="tw:m-0 tw:text-base tw:leading-snug">

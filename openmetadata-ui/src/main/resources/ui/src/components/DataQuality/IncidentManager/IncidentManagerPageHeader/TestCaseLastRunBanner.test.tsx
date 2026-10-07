@@ -49,8 +49,6 @@ const ACKNOWLEDGE_BUTTON_TEST_ID = 'acknowledge-incident-button';
 const TEST_CASE_RESULT_TIMESTAMP = 1_786_001_601_000;
 const TOP_ALIGNED_CLASS = 'tw:self-start';
 const TEXT_XS_CLASS = 'tw:text-xs';
-// The reason and the incident's title, as the mock sets them.
-const BANNER_TEXT_CLASS = 'tw:text-[13px]';
 const INCIDENT_PATH =
   '/test-case/sample_data.ecommerce_db.shopify.dim_address.table_column_count_between/issues';
 
@@ -155,8 +153,8 @@ describe('TestCaseLastRunBanner', () => {
         'tw:text-base'
       );
       expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
-        'tw:size-11',
-        'tw:rounded-[11px]',
+        'tw:size-10',
+        'tw:rounded-lg',
         TOP_ALIGNED_CLASS
       );
       expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
@@ -173,7 +171,7 @@ describe('TestCaseLastRunBanner', () => {
       expect(
         screen.getByTestId('test-case-last-run-right-section')
       ).toHaveClass('tw:justify-end', 'tw:lg:min-w-80');
-      expect(screen.getByText(result)).toHaveClass(BANNER_TEXT_CLASS);
+      expect(screen.getByText(result)).toHaveClass(TEXT_XS_CLASS);
       expect(
         screen.getByTestId('test-case-run-description')
       ).toBeInTheDocument();
@@ -240,7 +238,7 @@ describe('TestCaseLastRunBanner', () => {
         );
         expect(
           screen.getByTestId('test-case-incident-description')
-        ).toHaveClass(BANNER_TEXT_CLASS);
+        ).toHaveClass(TEXT_XS_CLASS);
         expect(
           screen.getByTestId('test-case-incident-description')
         ).not.toContainElement(screen.getByTestId(INCIDENT_ID_TEST_ID));
@@ -280,18 +278,15 @@ describe('TestCaseLastRunBanner', () => {
     const value = screen.getByTestId('test-case-result-value');
     const [result, expected] = Array.from(value.children);
 
-    expect(value).toHaveClass('tw:font-mono', 'tw:text-[15px]');
+    expect(value).toHaveClass('tw:font-mono', 'tw:text-sm');
     expect(result).toHaveClass('tw:font-bold', 'tw:text-utility-error-700');
     // Tertiary, not the mock's lighter grey: that one is 2.2:1 on the tint.
     expect(expected).toHaveClass('tw:text-tertiary');
     expect(
       screen.getByText('label.result / label.expected', { exact: false })
-    ).toHaveClass('tw:text-[11px]', 'tw:font-semibold');
+    ).toHaveClass(TEXT_XS_CLASS, 'tw:font-semibold');
     expect(screen.getByTestId('test-case-run-description')).toHaveClass(
-      'tw:text-[13px]'
-    );
-    expect(screen.getByTestId('test-case-last-run-icon')).toHaveClass(
-      'tw:size-11'
+      TEXT_XS_CLASS
     );
   });
 
@@ -456,15 +451,15 @@ describe('TestCaseLastRunBanner', () => {
       'tw:text-base'
     );
     expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
-      'tw:size-11',
-      'tw:rounded-[11px]',
+      'tw:size-10',
+      'tw:rounded-lg',
       TOP_ALIGNED_CLASS
     );
     expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
       'tw:py-3.5'
     );
     expect(screen.getByText('message.test-case-not-run-yet')).toHaveClass(
-      BANNER_TEXT_CLASS
+      TEXT_XS_CLASS
     );
   });
 

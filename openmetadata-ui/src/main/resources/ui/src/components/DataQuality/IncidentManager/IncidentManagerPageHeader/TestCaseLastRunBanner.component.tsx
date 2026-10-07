@@ -53,7 +53,7 @@ const TestCaseLastRunBanner = ({
       <LastRunBannerLayout
         config={NO_RUN_CONFIG}
         description={
-          <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-[13px] tw:leading-normal tw:text-tertiary">
+          <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-xs tw:leading-normal tw:text-tertiary">
             {t(getNotRunMessageKey(nextRunTimestamp))}
           </p>
         }

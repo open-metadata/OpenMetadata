@@ -98,18 +98,9 @@ const SINGLE_INSTANT_X_PADDING = 12 * 60 * 60 * 1000;
 const Y_AXIS_EDGE_SHARE = 0.04;
 const FLAT_SERIES_SHARE = 0.1;
 const FLAT_SERIES_MIN_PADDING = 1;
-// The mock's chart type: both axes at 11px, the values in Geist Mono.
-const AXIS_LABEL_FONT_SIZE = 11;
-const CHART_MONO_FONT = 'Geist Mono, ui-monospace, monospace';
 // The padded extremes are padding, not data: a label there printed values like
 // "10.58K" on top of the "10K" tick.
-const Y_AXIS_LABEL = {
-  showMinLabel: false,
-  showMaxLabel: false,
-  fontFamily: CHART_MONO_FONT,
-  fontSize: AXIS_LABEL_FONT_SIZE,
-  fontWeight: 500,
-};
+const Y_AXIS_LABEL = { showMinLabel: false, showMaxLabel: false };
 // The mock's dots: r3.4 in a 1.6px ring, the newest run's r5.4 in a 2.4px
 // one, an aborted run's ring 1.5px.
 const POINT_SIZE = 6.8;
@@ -119,14 +110,10 @@ const NEWEST_POINT_RING_WIDTH = 2.4;
 const HOLLOW_POINT_RING_WIDTH = 1.5;
 // The mock's guide to the selected run, drawn in the run's status colour.
 const SELECTION_GUIDE = { lineType: 'solid', width: 1.5 } as const;
-// The mock's expectation line and its label.
-const EXPECTATION_LINE: Pick<
-  ChartReferenceLine,
-  'lineType' | 'width' | 'labelStyle'
-> = {
+// The mock's expectation line.
+const EXPECTATION_LINE: Pick<ChartReferenceLine, 'lineType' | 'width'> = {
   lineType: [5, 4],
   width: 1.5,
-  labelStyle: { fontSize: 10.5, fontWeight: 600 },
 };
 // One series reads as data under a 2px line and a faint brand wash.
 const SINGLE_SERIES_LINE_WIDTH = 2;
@@ -558,7 +545,6 @@ function TestSummaryGraph({
       axisLabel: {
         rotate: 45,
         customValues: tickValues,
-        fontSize: AXIS_LABEL_FONT_SIZE,
         // Without a colour of their own, the labels take the axis line's.
         color: buildChartTheme({ isDark: isDarkMode }).axisText,
       },

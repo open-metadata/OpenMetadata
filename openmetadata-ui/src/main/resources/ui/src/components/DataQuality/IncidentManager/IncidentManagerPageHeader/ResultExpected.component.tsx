@@ -31,13 +31,13 @@ const ResultExpected = ({
       <div
         className="tw:flex tw:min-w-32 tw:flex-col tw:items-end tw:justify-center tw:text-right"
         data-testid="test-case-result-expected">
-        <span className="tw:text-[11px] tw:font-semibold tw:text-tertiary tw:uppercase">
+        <span className="tw:text-xs tw:font-semibold tw:text-tertiary tw:uppercase">
           {t('label.result')} / {t('label.expected')}
         </span>
         {/* The result carries the weight. The expectation is tertiary, not the
             mock's lighter grey, which is 2.2:1 on the status tint. */}
         <span
-          className="tw:mt-0.5 tw:whitespace-nowrap tw:font-mono tw:text-[15px]"
+          className="tw:mt-0.5 tw:whitespace-nowrap tw:font-mono tw:text-sm"
           data-testid="test-case-result-value">
           <span className={`tw:font-bold ${config.resultClassName}`}>
             {resultValue}

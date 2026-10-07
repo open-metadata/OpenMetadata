@@ -309,8 +309,9 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
                 {t(labelKey)}
               </Typography>
               <Typography
-                className={classNames('tw:font-mono tw:text-[13px]', className)}
+                className={classNames('tw:font-mono', className)}
                 data-testid={testId}
+                size="text-xs"
                 weight={weight ?? 'semibold'}>
                 {value}
               </Typography>

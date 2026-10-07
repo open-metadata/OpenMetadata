@@ -321,7 +321,6 @@ export const referenceLinesToMarkLine = (
       position:
         line.labelPosition === 'start' ? 'insideStartTop' : 'insideEndTop',
       color: theme.axisText,
-      ...line.labelStyle,
     },
     lineStyle: {
       color:
