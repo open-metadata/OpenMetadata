@@ -1385,13 +1385,57 @@ test.describe('Context Center Articles', () => {
       await editor.click();
       await editor.fill(conversationMessage);
 
-      const feedResponse = page.waitForResponse('/api/v1/feed');
+      const feedResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/conversations' &&
+          response.request().method() === 'POST'
+      );
       await page.locator('[data-testid="send-button"]').click();
-      await feedResponse;
+      const createdConversationResponse = await feedResponse;
+      const createdConversation = await createdConversationResponse.json();
       await expect(page.getByText(conversationMessage)).toBeVisible();
 
-      await page.locator('[data-testid="main-message"]').hover();
-      await page.locator('[data-testid="edit-message"]').click();
+      const mainMessage = page.locator(
+        `[data-testid="feed-card-v2-sidebar"][data-conversation-id="${createdConversation.id}"]`
+      );
+      await expect(mainMessage).toBeVisible();
+      await mainMessage.getByTestId('add-reactions').click();
+      const reactionResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              `/api/v1/conversations/${createdConversation.id}/reaction/rocket`
+            ) && response.request().method() === 'PUT'
+      );
+      await page
+        .getByTestId('feed-reactions-popover')
+        .getByRole('button', { name: 'rocket', exact: true })
+        .click();
+      await reactionResponse;
+      await mainMessage.getByTestId('emoji-button').hover();
+      await expect(
+        page.getByTestId('popover-content').filter({ hasText: /admin/i }).last()
+      ).toContainText(/admin/i);
+
+      await mainMessage.hover();
+      const resolveResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(`/api/v1/conversations/${createdConversation.id}`) &&
+          response.request().method() === 'PATCH'
+      );
+      await mainMessage.getByTestId('toggle-resolved').click();
+      await resolveResponse;
+      await mainMessage.hover();
+      await expect(mainMessage.getByTestId('toggle-resolved')).toHaveAttribute(
+        'aria-label',
+        'Open'
+      );
+
+      await mainMessage.hover();
+      await mainMessage.getByTestId('edit-message').click();
 
       const updatedMessage = `Updated Thread Message ${uuid()}`;
       await editor.click();
