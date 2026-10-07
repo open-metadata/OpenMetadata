@@ -5,6 +5,7 @@ import type { PopoverProps as AriaPopoverProps } from 'react-aria-components';
 import {
   Popover as AriaPopover,
   OverlayTriggerStateContext,
+  PopoverContext,
 } from 'react-aria-components';
 import { cx } from '@/utils/cx';
 
@@ -15,6 +16,11 @@ interface PopoverProps extends AriaPopoverProps, RefAttributes<HTMLElement> {
 export const Popover = (props: PopoverProps) => {
   const state = useContext(OverlayTriggerStateContext);
   const popoverRef = useRef<HTMLElement>(null);
+  // Select and ComboBox hand the trigger down through PopoverContext.
+  const contextTriggerRef = (
+    useContext(PopoverContext) as { triggerRef?: Ref<Element> } | null
+  )?.triggerRef;
+  const triggerRef = props.triggerRef ?? contextTriggerRef;
 
   // `isNonModal` below also switches off react-aria's outside-press dismissal
   // (`usePopover` derives `isDismissable: !isNonModal`), and the blur-based
@@ -39,10 +45,19 @@ export const Popover = (props: PopoverProps) => {
       if (target.closest('[data-react-aria-top-layer]')) {
         return;
       }
-      // Pressing the trigger of an open popup must close it here, and the press
-      // must not reach the trigger, or it reopens in the same gesture.
-      if (target.closest('[aria-expanded="true"]')) {
+      const triggerEl =
+        triggerRef && 'current' in triggerRef ? triggerRef.current : null;
+      const toggle = target.closest('[aria-expanded]');
+      // A ComboBox input carries `aria-expanded` too, so only a button counts.
+      const isTogglePress = Boolean(
+        toggle && triggerEl?.contains(toggle) && toggle.tagName !== 'INPUT'
+      );
+      if (isTogglePress) {
+        // The press must not reach the trigger, or it reopens what we close.
         event.stopPropagation();
+      } else if (triggerEl?.contains(target)) {
+        // Caret moves and chip removals are not a dismissal.
+        return;
       }
       state.close();
     };
@@ -56,7 +71,7 @@ export const Popover = (props: PopoverProps) => {
         true
       );
     };
-  }, [state]);
+  }, [state, triggerRef]);
 
   return (
     <AriaPopover

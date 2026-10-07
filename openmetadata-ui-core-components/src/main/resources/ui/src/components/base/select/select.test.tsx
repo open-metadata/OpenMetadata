@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button, Dialog, DialogTrigger, Modal } from 'react-aria-components';
 import { describe, expect, it, vi } from 'vitest';
@@ -106,5 +106,58 @@ describe('Select dismissal', () => {
     );
     // Stopped in the capture phase, so the press cannot reopen the popup.
     expect(reachedTrigger).not.toHaveBeenCalled();
+  });
+
+  it('keeps the list open when pressing inside a ComboBox trigger', async () => {
+    const user = userEvent.setup();
+    render(
+      <Select.ComboBox
+        aria-label="Entity type"
+        items={[{ id: 'TABLE', label: 'TABLE' }]}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select.ComboBox>
+    );
+
+    const input = screen.getByRole('combobox', { name: /Entity type/ });
+    await user.click(input);
+    expect(await screen.findByRole('listbox')).toBeVisible();
+
+    // react-aria marks the input itself aria-expanded; pressing it only moves
+    // the caret, and `menuTrigger="focus"` would not reopen an already
+    // focused input.
+    await act(async () => {
+      input.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+
+    expect(screen.getByRole('listbox')).toBeVisible();
+  });
+
+  it('leaves an unrelated expanded element its own press', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button aria-expanded="true" type="button">
+          Expanded section
+        </button>
+        <Select
+          aria-label="Entity type"
+          items={[{ id: 'TABLE', label: 'TABLE' }]}>
+          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+        </Select>
+      </>
+    );
+
+    await user.click(screen.getByRole('button', { name: /Entity type/ }));
+    expect(await screen.findByRole('listbox')).toBeVisible();
+
+    const unrelated = screen.getByRole('button', { name: 'Expanded section' });
+    const reached = vi.fn();
+    unrelated.addEventListener('pointerdown', reached);
+    unrelated.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    );
+    expect(reached).toHaveBeenCalled();
   });
 });
