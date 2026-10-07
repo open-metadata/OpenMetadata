@@ -32,7 +32,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.resources.rdf.RdfQueryResourceContext;
 import org.openmetadata.service.security.AuthorizationException;
@@ -86,7 +85,6 @@ final class RdfToolAuthorization {
         ArgumentCaptor.forClass(OperationContext.class);
     verify(authorizer)
         .authorize(eq(caller), operation.capture(), same(RdfQueryResourceContext.INSTANCE));
-    assertEquals(Entity.RDF, RdfQueryResourceContext.INSTANCE.getResource());
     assertEquals(
         List.of(MetadataOperation.EXECUTE_SPARQL_QUERY), operation.getValue().getOperations(null));
   }

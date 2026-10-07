@@ -47,13 +47,18 @@ class OntologyDescribeToolTest {
 
   @Test
   void fullOntologyNeedsNoPermission() throws IOException {
-    final Authorizer authorizer = mock(Authorizer.class);
+    final Authorizer deniedAuthorizer = RdfToolAuthorization.denyingAuthorizer();
 
-    new OntologyDescribeTool(() -> null).execute(authorizer, SECURITY_CONTEXT, Map.of());
-    new OntologyDescribeTool(() -> null)
-        .execute(authorizer, SECURITY_CONTEXT, Map.of("resource", "  "));
+    final OntologyDescribeTool.Result withoutResource =
+        new OntologyDescribeTool(() -> null).execute(deniedAuthorizer, SECURITY_CONTEXT, Map.of());
+    final OntologyDescribeTool.Result blankResource =
+        new OntologyDescribeTool(() -> null)
+            .execute(deniedAuthorizer, SECURITY_CONTEXT, Map.of("resource", "  "));
 
-    verifyNoInteractions(authorizer);
+    assertEquals("full-ontology", withoutResource.scope());
+    assertFalse(withoutResource.body().isBlank());
+    assertEquals("full-ontology", blankResource.scope());
+    assertFalse(blankResource.body().isBlank());
   }
 
   @Test

@@ -20,7 +20,6 @@ import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
 import org.openmetadata.schema.api.rdf.AgentSparqlResponse;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSparqlService;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
@@ -61,10 +60,6 @@ public final class AgentSparqlService {
         () -> sparqlServiceFor(repositorySupplier.get()),
         projectionStateSupplier,
         SparqlQueryExecutionGuard.shared());
-  }
-
-  public static AgentSparqlService forRepository(final Supplier<RdfRepository> repositorySupplier) {
-    return forRepository(repositorySupplier, RdfProjectionStateResolver::resolveConfigured);
   }
 
   private static RdfSparqlService sparqlServiceFor(final RdfRepository repository) {

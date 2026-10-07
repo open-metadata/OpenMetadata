@@ -57,6 +57,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSparqlService;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
@@ -162,7 +163,7 @@ class AgentSparqlServiceTest {
   }
 
   @Test
-  void theDefaultFactoryReadsReadinessFromTheServersRunStore() {
+  void theConfiguredResolverReadsReadinessFromTheServersRunStore() {
     returnRows(1);
     when(repository.getConfig()).thenReturn(new RdfConfiguration());
     final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
@@ -177,7 +178,8 @@ class AgentSparqlServiceTest {
       entity.when(Entity::getCollectionDAO).thenReturn(dao);
 
       AgentSparqlResult result =
-          AgentSparqlService.forRepository(() -> repository)
+          AgentSparqlService.forRepository(
+                  () -> repository, RdfProjectionStateResolver::resolveConfigured)
               .execute("user", SELECT_ALL + " LIMIT 5");
 
       assertEquals(1, result.rowCount());
