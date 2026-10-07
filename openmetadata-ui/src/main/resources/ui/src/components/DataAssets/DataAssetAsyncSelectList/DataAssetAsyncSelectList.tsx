@@ -18,6 +18,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import DataAssetPickerCountBar from '../DataAssetSelectList/DataAssetPickerCountBar';
 import DataAssetPickerFooter from '../DataAssetSelectList/DataAssetPickerFooter';
+import DataAssetPickerLoading from '../DataAssetSelectList/DataAssetPickerLoading';
 import DataAssetPickerRow from '../DataAssetSelectList/DataAssetPickerRow';
 import { useAsyncDataAssetOptions } from '../DataAssetSelectList/useAsyncDataAssetOptions';
 import {
@@ -59,13 +60,19 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<DataAssetOption[]>([]);
 
-  const { options, totalCount, loadOptions, handleSearchChange, handleScroll } =
-    useAsyncDataAssetOptions({
-      isOpen,
-      searchIndex,
-      queryFilter,
-      debounceTimeout,
-    });
+  const {
+    options,
+    isLoading,
+    totalCount,
+    loadOptions,
+    handleSearchChange,
+    handleScroll,
+  } = useAsyncDataAssetOptions({
+    isOpen,
+    searchIndex,
+    queryFilter,
+    debounceTimeout,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -169,6 +176,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the async select when the list mounts
       autoFocus={autoFocus}
       data-testid="asset-select-list"
+      emptyState={isLoading ? <DataAssetPickerLoading /> : undefined}
       filterOption={() => true}
       id={id}
       items={items}

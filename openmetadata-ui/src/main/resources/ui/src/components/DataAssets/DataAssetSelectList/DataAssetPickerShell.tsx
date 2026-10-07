@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { DataAssetPickerShellProps } from './DataAssetPicker.interface';
 import DataAssetPickerCountBar from './DataAssetPickerCountBar';
 import DataAssetPickerFooter from './DataAssetPickerFooter';
+import DataAssetPickerLoading from './DataAssetPickerLoading';
 import DataAssetPickerRow from './DataAssetPickerRow';
 
 // Index -1 = "All Assets" button (only when allowAllOption=true).
@@ -366,13 +367,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           <div
             className="tw:overflow-y-auto tw:flex-1 tw:p-1 tw:max-h-80 tw:flex tw:flex-col"
             onScroll={onScroll}>
-            {isLoading && (
-              <Box align="center" className="tw:py-4" justify="center">
-                <Typography className="tw:text-quaternary" size="text-sm">
-                  {t('label.loading')}...
-                </Typography>
-              </Box>
-            )}
+            {isLoading && <DataAssetPickerLoading />}
 
             {allAssetsSection}
 

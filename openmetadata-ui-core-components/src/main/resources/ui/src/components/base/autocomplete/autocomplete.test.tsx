@@ -266,3 +266,25 @@ describe('Autocomplete – popover header and footer', () => {
     ).toBeTruthy();
   });
 });
+
+describe('Autocomplete – empty state', () => {
+  it('renders the given empty state instead of the default one', async () => {
+    render(
+      <Autocomplete
+        emptyState={<div>Loading results</div>}
+        items={[]}
+        placeholder="Select"
+        selectedItems={[]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    expect(await screen.findByText('Loading results')).toBeInTheDocument();
+  });
+});

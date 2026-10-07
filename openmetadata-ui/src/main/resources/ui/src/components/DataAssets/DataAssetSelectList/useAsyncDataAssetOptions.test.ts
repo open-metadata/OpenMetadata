@@ -111,7 +111,7 @@ describe('useAsyncDataAssetOptions', () => {
     expect(result.current.totalCount).toBe(50);
   });
 
-  it('loadOptions resets options before fetching', async () => {
+  it('loadOptions replaces the options with the next search results', async () => {
     (searchQuery as jest.Mock)
       .mockResolvedValueOnce(
         buildSearchResponse([mockHit('1', 'orders', 'Orders')], 1)
@@ -136,6 +136,73 @@ describe('useAsyncDataAssetOptions', () => {
 
     expect(result.current.options).toHaveLength(1);
     expect(result.current.options[0].value).toBe('db.schema.products');
+  });
+
+  it('keeps the current options on screen while the next search loads', async () => {
+    const resolvers: Array<(value: unknown) => void> = [];
+    (searchQuery as jest.Mock)
+      .mockResolvedValueOnce(
+        buildSearchResponse([mockHit('1', 'orders', 'Orders')], 1)
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolvers.push(resolve);
+          })
+      );
+
+    const { result } = renderHook(() =>
+      useAsyncDataAssetOptions(DEFAULT_PARAMS)
+    );
+
+    await act(async () => {
+      await result.current.loadOptions('orders');
+    });
+
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.loadOptions('products');
+    });
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.options[0].value).toBe('db.schema.orders');
+
+    await act(async () => {
+      resolvers[0](
+        buildSearchResponse([mockHit('2', 'products', 'Products')], 1)
+      );
+      await pending;
+    });
+
+    expect(result.current.options[0].value).toBe('db.schema.products');
+  });
+
+  it('does not search again for the query it already shows, until the filter changes', async () => {
+    (searchQuery as jest.Mock).mockResolvedValue(
+      buildSearchResponse([mockHit('1', 'orders', 'Orders')], 1)
+    );
+
+    const { result, rerender } = renderHook(
+      (props: { queryFilter?: Record<string, unknown> }) =>
+        useAsyncDataAssetOptions({ ...DEFAULT_PARAMS, ...props }),
+      { initialProps: {} }
+    );
+
+    await act(async () => {
+      await result.current.loadOptions('');
+    });
+    await act(async () => {
+      await result.current.loadOptions('');
+    });
+
+    expect(searchQuery).toHaveBeenCalledTimes(1);
+
+    rerender({ queryFilter: { query: { term: { deleted: false } } } });
+    await act(async () => {
+      await result.current.loadOptions('');
+    });
+
+    expect(searchQuery).toHaveBeenCalledTimes(2);
   });
 
   it('calls showErrorToast when loadOptions throws', async () => {

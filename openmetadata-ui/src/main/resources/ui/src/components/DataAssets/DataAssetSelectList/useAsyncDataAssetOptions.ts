@@ -37,6 +37,10 @@ export const useAsyncDataAssetOptions = ({
   // Opening the list and typing both start a search; a slower earlier
   // response must not overwrite the results of the latest one.
   const latestRequest = useRef(0);
+  const loadedQuery = useRef<{
+    query: string;
+    fetcher: (query: string, page: number) => Promise<FetchOptionsResponse>;
+  }>();
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,8 +97,14 @@ export const useAsyncDataAssetOptions = ({
 
   const loadOptions = useCallback(
     async (query: string) => {
+      // Reopening the list asks for the same query again; reuse what is shown.
+      const loaded = loadedQuery.current;
+      if (loaded?.query === query && loaded.fetcher === fetchOptions) {
+        return;
+      }
       const request = ++latestRequest.current;
-      setOptions([]);
+      // Keep the current results on screen until the new ones arrive, so the
+      // list does not flash an empty state between searches.
       setIsLoading(true);
       try {
         const res = await fetchOptions(query, 1);
@@ -105,6 +115,7 @@ export const useAsyncDataAssetOptions = ({
         setSearchText(query);
         setPaging(res.paging);
         setCurrentPage(1);
+        loadedQuery.current = { query, fetcher: fetchOptions };
       } catch (error) {
         if (request === latestRequest.current) {
           showErrorToast(error as AxiosError);

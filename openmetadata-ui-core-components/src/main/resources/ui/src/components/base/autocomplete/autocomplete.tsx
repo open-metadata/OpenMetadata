@@ -111,6 +111,8 @@ export interface AutocompleteProps
   popoverHeader?: ReactNode;
   /** Pinned below the dropdown list (e.g. keyboard hints). */
   popoverFooter?: ReactNode;
+  /** Shown when the list is empty, in place of the default "no data" state (e.g. while loading). */
+  emptyState?: ReactNode;
   selectedItems: SelectItemType[] | ListData<SelectItemType>;
   icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
@@ -385,6 +387,7 @@ export const AutocompleteBase = ({
   onPopoverScroll,
   popoverHeader,
   popoverFooter,
+  emptyState,
   renderTag,
   filterOption,
   onFocus,
@@ -578,7 +581,7 @@ export const AutocompleteBase = ({
         isVirtualized && 'tw:max-h-80 tw:overflow-y-auto tw:py-1'
       )}
       ref={listBoxRef}
-      renderEmptyState={() => <SelectEmptyState />}
+      renderEmptyState={() => emptyState ?? <SelectEmptyState />}
       selectionMode="multiple"
       onScroll={isVirtualized ? handleScroll : undefined}>
       {visibleChildren}
