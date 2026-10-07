@@ -14,6 +14,8 @@
 import unittest
 from unittest.mock import Mock
 
+from trino.sqlalchemy.dialect import TrinoDialect
+
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.trino.metadata import (
@@ -30,6 +32,9 @@ class TestTrinoMetadata(unittest.TestCase):
         """Set up test fixtures"""
         self.mock_connection = Mock()
         self.mock_self = Mock()
+        # The real preparer, not a Mock: get_view_definition quotes through it, and a
+        # Mock would make the assertions below pass against any quoting at all.
+        self.mock_self.identifier_preparer = TrinoDialect().identifier_preparer
         self.mock_self._get_default_catalog_name.return_value = "test_catalog"
         self.mock_self._get_default_schema_name.return_value = "test_schema"
 
