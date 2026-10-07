@@ -526,10 +526,19 @@ configuration.
 
 Bots receive no exemption and no special rejection. The MCP transport has no
 `X-Impersonate-User` equivalent (`JwtFilter` builds the MCP security context with no impersonated
-user), so a bot is authorized on its own policies and passes only if one of them names
+user), so a bot is authorized on its own policies and passes if one of them names
 `ExecuteSparqlQuery`. This matches the other MCP tools and the agent endpoint without
 impersonation. A bot with only an `All`/`All` rule is denied for the same reason any user is
 (§2a).
+
+**By default every bot holds that grant.** `POST /v1/users` with `isBot=true` attaches
+`DefaultBotRole` (`UserResource.addRolesToBot`), `DefaultBotRole` includes `DataConsumerPolicy`,
+and `DataConsumerPolicy` ships `DataConsumerPolicy-ExecuteSparqlQuery-Rule` (#34253). So the answer
+to the issue's question whether bot tokens are allowed is yes, by default; a bot loses access only
+when that rule is removed or a policy denies the operation. `RdfMcpKnowledgeGraphIT.
+aBotWithoutTheGrantIsForbidden` strips the default rule first for that reason. The rule's
+description names the MCP tools next to the agent endpoint, since that text is what an
+administrator reads when deciding whether to keep it.
 
 ### A5. Non-guarantees apply to MCP
 

@@ -507,7 +507,7 @@ SET json = JSON_ARRAY_APPEND(
     '$.rules',
     JSON_OBJECT(
         'name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule',
-        'description', 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.',
+        'description', 'Allow authenticated users and bots to run read-only SPARQL queries through the agent SPARQL endpoint and the MCP knowledge-graph tools (sparql_query, entity_neighborhood, find_by_tag, and ontology_describe with a resource). Results are not filtered by asset or domain policies, so remove this rule if viewing is restricted through custom policies.',
         'resources', JSON_ARRAY('all'),
         'operations', JSON_ARRAY('ExecuteSparqlQuery'),
         'effect', 'allow'
