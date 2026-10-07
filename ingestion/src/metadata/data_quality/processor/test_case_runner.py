@@ -49,6 +49,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import entity_link
 from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.logger import test_suite_logger
@@ -285,7 +286,7 @@ class TestCaseRunner(Processor):
         if result is None or result.testCaseStatus is not TestCaseStatus.Aborted:
             return False
         error = result.result or f"Test case {test_case.name.root} was aborted"
-        logger.warning(f"Test case {test_case.name.root} was aborted: {error}")
+        logger.warning("Test case %s was aborted: %s", test_case.name.root, error)
         self.status.failed(
             StackTraceError(
                 name=test_case.name.root,
@@ -299,7 +300,7 @@ class TestCaseRunner(Processor):
         try:
             test_result = test_suite_runner.run_and_handle(test_case)
             if not self._record_if_aborted(test_case, test_result):
-                self.status.scanned(test_case.fullyQualifiedName.root)
+                self.status.scanned(model_str(test_case.fullyQualifiedName))
             return test_result  # noqa: TRY300
         except Exception as exc:
             error = f"Could not run test case {test_case.name.root}: {exc}"
