@@ -12,8 +12,9 @@
  */
 
 /**
- * In-flight cap for an action applied to every row a user selected. A selection can run to
- * hundreds of rows, and firing one request per row at once floods the server.
+ * In-flight cap for one request per item of a list: an action on every selected row, or a
+ * read for every item when there is no bulk endpoint. A list can run to hundreds of items,
+ * and firing one request per item at once floods the server.
  */
 export const BULK_ACTION_CONCURRENCY = 5;
 
