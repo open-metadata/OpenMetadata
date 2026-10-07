@@ -13,18 +13,6 @@
 
 import { TaskEntityType } from '../rest/tasksAPI';
 
-export const TASK_TYPES = {
-  RequestTag: 'message.request-tags-message',
-  RequestDescription: 'message.request-description-message',
-  UpdateTag: 'message.update-tag-message',
-  UpdateDescription: 'message.update-description-message',
-  RequestTestCaseFailureResolution:
-    'message.request-test-case-failure-resolution-message',
-  RequestApproval: 'message.request-approval-message',
-  RecognizerFeedbackApproval: 'message.recognizer-feedback-approval-message',
-  Generic: 'message.request-tags-message',
-};
-
 export const TASK_ENTITY_TYPES: Record<TaskEntityType, string> = {
   [TaskEntityType.GlossaryApproval]: 'message.request-approval-message',
   [TaskEntityType.RequestApproval]: 'message.request-approval-message',

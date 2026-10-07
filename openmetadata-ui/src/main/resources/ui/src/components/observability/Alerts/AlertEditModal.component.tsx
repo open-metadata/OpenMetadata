@@ -97,7 +97,6 @@ function AlertEditModal({
   const [showHint, setShowHint] = useState(true);
   const {
     alert,
-    containerEntities,
     extraFormButtons,
     filterResources,
     form,
@@ -106,10 +105,9 @@ function AlertEditModal({
     isLoading,
     loadingState,
     saving,
+    selection,
     shouldShowActionsSection,
     shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
     templateResourcePermission,
     templates,
   } = useObservabilityAlertForm({
@@ -199,18 +197,19 @@ function AlertEditModal({
       ) : (
         <AlertAiForm
           alert={alert}
-          containerEntities={containerEntities}
+          containerEntities={selection.support.containerEntities}
           filterResources={filterResources}
           formId={ALERT_AI_FORM_MODAL_ID}
           inlineAlert={inlineAlertDetails}
           mode={mode}
+          recipientCategories={selection.support.recipientCategories}
           shouldShowActionsSection={
             kind.hasTriggers && shouldShowActionsSection
           }
           shouldShowFiltersSection={shouldShowFiltersSection}
           showHint={showHint}
-          supportedFilters={supportedFilters}
-          supportedTriggers={supportedTriggers}
+          supportedFilters={selection.support.supportedFilters}
+          supportedTriggers={selection.support.supportedTriggers}
           templateResourcePermission={templateResourcePermission}
           templates={templates}
           templatesLoading={loadingState.templates}

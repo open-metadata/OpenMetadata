@@ -421,23 +421,33 @@ describe('FilterSelect', () => {
     );
   });
 
-  it('keeps the button trigger neutral once a value is selected', () => {
-    render(
+  it('brands the button trigger once a value is selected', () => {
+    const renderTrigger = (selectedValues: string[]) => (
       <FilterSelect
         bordered
         data-testid="trigger-test"
         label="Service"
         options={OPTIONS}
-        selectedValues={['snowflake']}
+        selectedValues={selectedValues}
         triggerVariant="button"
         onChange={() => undefined}
       />
     );
+    const { rerender } = render(renderTrigger(['snowflake']));
+    const selected = screen.getByTestId('trigger-test').className;
 
-    const { className } = screen.getByTestId('trigger-test');
+    expect(selected).toContain('tw:text-fg-brand-primary');
+    expect(selected).toContain('tw:after:outline-brand');
+    expect(selected).toContain('tw:dark:after:outline-fg-brand-primary_alt');
+    // The brand set replaces the Button's neutral colours rather than racing them.
+    expect(selected).not.toContain('tw:text-secondary ');
+    expect(selected).not.toContain('tw:after:outline-primary');
 
-    expect(className).not.toContain('after:outline-brand');
-    expect(className).not.toContain('text-fg-brand');
+    rerender(renderTrigger([]));
+
+    expect(screen.getByTestId('trigger-test').className).not.toContain(
+      'text-fg-brand-primary'
+    );
   });
 
   it('sizes the input trigger on the Select scale', () => {

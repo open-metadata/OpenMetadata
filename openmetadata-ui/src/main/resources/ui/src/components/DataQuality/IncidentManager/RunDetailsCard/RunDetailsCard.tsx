@@ -61,7 +61,7 @@ const RunDuration = ({
   return (
     <Box
       align="center"
-      className="tw:ml-auto tw:text-quaternary"
+      className="tw:ml-auto tw:text-tertiary"
       data-testid="run-details-duration"
       gap={1}>
       <Clock aria-hidden className="tw:size-3.5" />
@@ -174,7 +174,8 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
 
   const details = [
     {
-      className: 'tw:font-medium tw:text-primary',
+      // A camel-case name may break anywhere; numbers below only between words.
+      className: 'tw:break-words tw:font-medium tw:text-primary',
       labelKey: 'label.test-definition',
       testId: 'run-details-definition',
       value: testCase.testDefinition?.name ?? NO_VALUE,
@@ -228,7 +229,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           weight="semibold">
           {t('label.run-details')}
         </Typography>
-        <Typography className="tw:text-quaternary" size="text-sm">
+        <Typography className="tw:text-tertiary" size="text-sm">
           {formatDateTime(result.timestamp)}
         </Typography>
         {!isUndefined(duration) && (
@@ -238,8 +239,11 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           />
         )}
       </Box>
-      <Box className="tw:bg-surface tw:p-4" direction="col" gap={4}>
-        <div className="tw:grid tw:grid-cols-2 tw:gap-x-8 tw:gap-y-3 tw:md:grid-cols-[max-content_repeat(3,minmax(0,1fr))]">
+      <Box
+        className="tw:@container tw:bg-surface tw:p-4"
+        direction="col"
+        gap={4}>
+        <div className="tw:grid tw:grid-cols-2 tw:gap-3 tw:@lg:grid-cols-[max-content_repeat(3,minmax(min-content,1fr))]">
           {details.map(({ className, labelKey, testId, value }) => (
             <Box className="tw:min-w-0" direction="col" gap={1} key={labelKey}>
               <Typography
@@ -249,7 +253,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
                 {t(labelKey)}
               </Typography>
               <Typography
-                className={classNames('tw:break-words tw:font-mono', className)}
+                className={classNames('tw:font-mono', className)}
                 data-testid={testId}
                 size="text-sm">
                 {value}

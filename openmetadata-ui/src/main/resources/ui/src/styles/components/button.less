@@ -181,6 +181,12 @@ button {
   svg {
     color: @grey-600;
   }
+
+  // Antd shows focus only as a border tint, too faint to find by keyboard.
+  &:focus-visible {
+    outline: var(--om-space-2) solid var(--om-color-focus-ring);
+    outline-offset: var(--om-space-2);
+  }
 }
 
 .ant-btn-group.spaced {

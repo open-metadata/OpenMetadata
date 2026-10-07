@@ -13,15 +13,19 @@ Test athena source
 """
 
 import hashlib
+import json
 import unittest
 from copy import deepcopy
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
+from urllib.parse import urlsplit
 from uuid import UUID
 
 import pytest
 from pydantic import AnyUrl
+from requests import Response
+from sqlalchemy.types import INTEGER
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.entity.data.container import (
@@ -38,6 +42,9 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     Table,
     TableType,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
@@ -60,6 +67,8 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
 from metadata.ingestion.source.database.athena.metadata import AthenaSource
 from metadata.ingestion.source.database.athena.models import AthenaStatus
 from metadata.ingestion.source.database.athena.usage import AthenaUsageSource
@@ -834,7 +843,7 @@ class TestQueryTableNamesAndTypesIcebergConstant:
         assert ICEBERG_TABLE_TYPE == "ICEBERG"
 
 
-def _make_source_with_glue(config, table_list):
+def _make_source_with_glue(config, table_list, metadata=None):
     """Build an AthenaSource from config and attach a Glue client whose
     get_tables paginator yields a single page with the given TableList."""
     workflow_config = OpenMetadataWorkflowConfig.model_validate(config)
@@ -844,7 +853,7 @@ def _make_source_with_glue(config, table_list):
     ):
         source = AthenaSource.create(
             config["source"],
-            workflow_config.workflowConfig.openMetadataServerConfig,
+            metadata or workflow_config.workflowConfig.openMetadataServerConfig,
         )
     mock_paginator = MagicMock()
     mock_paginator.paginate.return_value = [{"TableList": table_list}]
@@ -1071,3 +1080,166 @@ class TestAthenaPrepareTypeRef:
             athena_source.prepare()
 
         assert mock_metadata.get_property_type_ref.call_count == 0
+
+
+class TestQueryTableNamesAndTypesLeavesViewsToTheViewPass:
+    """Glue lists Athena views as VIRTUAL_VIEW; the table pass must not emit them."""
+
+    def test_virtual_views_are_skipped_including_iceberg_views(self):
+        source, _ = _make_source_with_glue(
+            deepcopy(mock_athena_config),
+            [
+                {"Name": "plain_table", "TableType": "EXTERNAL_TABLE", "Parameters": {}},
+                {"Name": "plain_view", "TableType": "VIRTUAL_VIEW", "Parameters": {}},
+                {"Name": "iceberg_table", "TableType": "EXTERNAL_TABLE", "Parameters": {"table_type": "ICEBERG"}},
+                {"Name": "iceberg_view", "TableType": "VIRTUAL_VIEW", "Parameters": {"table_type": "ICEBERG"}},
+            ],
+        )
+
+        assert source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
+            TableNameAndType(name="plain_table", type_=TableType.External),
+            TableNameAndType(name="iceberg_table", type_=TableType.Iceberg),
+        ]
+
+
+MOCK_VIEW_NAME = "sample_view"
+MOCK_VIEW_DEFINITION = (
+    f'CREATE VIEW "{MOCK_DATABASE_SCHEMA.name.root}"."{MOCK_VIEW_NAME}" AS SELECT id FROM {MOCK_TABLE_NAME}'
+)
+GLUE_TABLE_AND_VIEW = [
+    {"Name": MOCK_TABLE_NAME, "TableType": "EXTERNAL_TABLE", "Parameters": {}},
+    {"Name": MOCK_VIEW_NAME, "TableType": "VIRTUAL_VIEW", "Parameters": {}},
+]
+
+
+class BulkTablesCatalog:
+    """Stands in for the OpenMetadata server. Keeps every /tables/bulk payload exactly as sent,
+    so an entity emitted twice in one run stays visible instead of collapsing into one record."""
+
+    def __init__(self):
+        self.bulk_payloads: list[list[dict]] = []
+
+    @property
+    def sent_tables(self) -> list[dict]:
+        return [table for payload in self.bulk_payloads for table in payload]
+
+    def request(self, method, url, **kwargs):
+        path = urlsplit(url).path
+        if method.upper() == "GET" and path.endswith("/search/fieldQuery"):
+            body = {"hits": {"hits": [], "total": {"value": 0}}}
+        elif method.upper() == "PUT" and path.endswith("/tables/bulk"):
+            payload = kwargs.get("json")
+            if payload is None:
+                payload = json.loads(kwargs["data"])
+            self.bulk_payloads.append(payload)
+            body = {
+                "status": "success",
+                "numberOfRowsProcessed": len(payload),
+                "numberOfRowsFailed": 0,
+                "successRequest": [],
+                "failedRequest": [],
+            }
+        else:
+            raise AssertionError(f"Unexpected HTTP request: {method} {path}")
+
+        response = Response()
+        response.status_code = 200
+        response._content = json.dumps(body).encode()
+        response.headers["Content-Type"] = "application/json"
+        response.url = url
+        return response
+
+
+@pytest.fixture
+def bulk_tables_catalog(monkeypatch):
+    catalog = BulkTablesCatalog()
+    monkeypatch.setattr("requests.Session.request", lambda _, *args, **kwargs: catalog.request(*args, **kwargs))
+    return catalog
+
+
+def _inspector_for_table_and_view():
+    columns = [{"name": "id", "type": INTEGER(), "nullable": True, "default": None, "comment": None}]
+    inspector = MagicMock()
+    inspector.get_view_names.return_value = [MOCK_VIEW_NAME]
+    # Athena probes partitions through get_columns too; answering it with the table's columns
+    # would type the table Partitioned.
+    inspector.get_columns.side_effect = lambda *_args, only_partition_columns=False, **_kwargs: (
+        [] if only_partition_columns else columns
+    )
+    inspector.get_view_definition.return_value = MOCK_VIEW_DEFINITION
+    inspector.get_table_comment.return_value = {"text": None}
+    inspector.get_table_options.return_value = {}
+    inspector.get_unique_constraints.return_value = []
+    inspector.get_foreign_keys.return_value = []
+    inspector.get_pk_constraint.return_value = {}
+    return inspector
+
+
+def _ingest_tables_through_bulk_sink(include_views: bool) -> None:
+    """Run Athena's table and view passes for one schema into the real REST sink, which flushes
+    them as a single /tables/bulk request: the shape in which a duplicate FQN flips its type."""
+    config = deepcopy(mock_athena_config)
+    config["source"]["sourceConfig"]["config"]["includeViews"] = include_views
+    metadata = OpenMetadata(
+        OpenMetadataConnection(
+            hostPort="http://localhost:8585/api",
+            authProvider="openmetadata",
+            securityConfig={"jwtToken": "athena"},
+            enableVersionValidation=False,
+        ),
+        additional_client_config_arguments={"retry": 0, "retry_wait": 0},
+    )
+    try:
+        source, _ = _make_source_with_glue(config, GLUE_TABLE_AND_VIEW, metadata=metadata)
+        source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+
+        with patch.object(
+            type(source), "inspector", new_callable=PropertyMock, return_value=_inspector_for_table_and_view()
+        ):
+            for table_name_and_type in source.get_tables_name_and_type():
+                for record in source.yield_table(table_name_and_type):
+                    assert record.left is None
+                    sink.run(record.right)
+        sink.close()
+
+        assert source.status.failures == sink.status.failures == []
+    finally:
+        metadata.close()
+
+
+class TestAthenaViewsReachTheBulkPayloadOnce:
+    """collate#5937: each view reaches the sink once, typed View with its definition, and only when
+    includeViews is on. Drives the real producers and sink; asserts on the /tables/bulk payload."""
+
+    def test_view_is_sent_once_as_view_with_its_definition(self, bulk_tables_catalog):
+        _ingest_tables_through_bulk_sink(include_views=True)
+
+        sent = bulk_tables_catalog.sent_tables
+        assert sorted(table["name"] for table in sent) == sorted([MOCK_TABLE_NAME, MOCK_VIEW_NAME])
+        by_name = {table["name"]: table for table in sent}
+        assert by_name[MOCK_VIEW_NAME]["tableType"] == TableType.View.value
+        assert by_name[MOCK_VIEW_NAME]["schemaDefinition"] == MOCK_VIEW_DEFINITION
+        assert by_name[MOCK_TABLE_NAME]["tableType"] == TableType.External.value
+
+    def test_include_views_false_sends_only_the_table(self, bulk_tables_catalog):
+        _ingest_tables_through_bulk_sink(include_views=False)
+
+        sent = bulk_tables_catalog.sent_tables
+        assert [(table["name"], table["tableType"]) for table in sent] == [(MOCK_TABLE_NAME, TableType.External.value)]
+
+    @pytest.mark.parametrize("include_views", [True, False])
+    def test_rerun_sends_the_same_payload_and_never_a_view_as_external(self, bulk_tables_catalog, include_views):
+        _ingest_tables_through_bulk_sink(include_views=include_views)
+        first_run = list(bulk_tables_catalog.bulk_payloads)
+        bulk_tables_catalog.bulk_payloads.clear()
+
+        _ingest_tables_through_bulk_sink(include_views=include_views)
+
+        assert bulk_tables_catalog.bulk_payloads == first_run
+        assert len(first_run) == 1
+        assert all(
+            table["tableType"] == TableType.View.value for table in first_run[0] if table["name"] == MOCK_VIEW_NAME
+        )

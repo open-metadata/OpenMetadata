@@ -30,6 +30,12 @@ import RunExecutionError from './RunExecutionError';
 import { parseTraceback } from './RunExecutionError.utils';
 
 const mockUseEntityPermissions = jest.fn();
+const mockUseParams = jest.fn().mockReturnValue({});
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: () => mockUseParams(),
+}));
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn(),
@@ -119,6 +125,7 @@ const renderError = (props: Partial<Parameters<typeof RunExecutionError>[0]>) =>
 describe('RunExecutionError', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseParams.mockReturnValue({});
     setPipelines([pipeline()]);
     setTriggerPermission(true);
   });
@@ -142,6 +149,17 @@ describe('RunExecutionError', () => {
     expect(
       screen.getByTestId('run-execution-error-traceback')
     ).toHaveTextContent('psycopg2.OperationalError: connection timed out');
+  });
+
+  it('lets the keyboard reach the capped traceback to scroll it, as the SQL block does', () => {
+    renderError({ errorDetails: { stackTrace: STACK_TRACE } });
+
+    const traceback = screen.getByRole('region', { name: 'label.traceback' });
+
+    expect(traceback).toHaveAttribute('tabindex', '0');
+    expect(traceback).toHaveTextContent(
+      'psycopg2.OperationalError: connection timed out'
+    );
   });
 
   it('falls back to the plain-text result without structured details', () => {
@@ -205,6 +223,16 @@ describe('RunExecutionError', () => {
     expect(
       screen.queryByTestId('run-execution-error-retry')
     ).not.toBeInTheDocument();
+  });
+
+  it('hides retry on the version page, as the header hides Run now, without reading the pipelines', () => {
+    mockUseParams.mockReturnValue({ version: '0.2' });
+    renderError({});
+
+    expect(
+      screen.queryByTestId('run-execution-error-retry')
+    ).not.toBeInTheDocument();
+    expect(getIngestionPipelines).not.toHaveBeenCalled();
   });
 
   it('hides retry when the test case cannot be run', async () => {
