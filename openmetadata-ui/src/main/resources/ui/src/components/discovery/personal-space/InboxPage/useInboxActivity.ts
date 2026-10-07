@@ -155,8 +155,10 @@ const getEntityRequests = (
     activity: isMentions
       ? getMentionsActivityFeed({ days, limit: ACTIVITY_LIMIT, entityLink })
       : getActivityByEntityLink(entityLink, { days, limit: ACTIVITY_LIMIT }),
+    // Its columns' conversations too, as its activity includes their changes.
     conversations: listConversations({
       entityLink,
+      includeFields: true,
       filterType: isMentions ? ConversationFilterType.Mentions : undefined,
       userId: isMentions ? viewerId : undefined,
       limit: CONVERSATION_LIMIT,

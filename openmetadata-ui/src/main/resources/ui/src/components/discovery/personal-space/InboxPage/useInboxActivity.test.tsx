@@ -477,7 +477,7 @@ describe('fetchInboxActivity per scope', () => {
   const TABLE_LINK = '<#E::table::svc.db.schema.orders>';
   const entity = { type: 'entity' as const, entityLink: TABLE_LINK };
 
-  it('reads everything about an entity and the conversations on it', async () => {
+  it('reads everything about an entity and the conversations on it and its fields', async () => {
     await fetchInboxActivity(ActivityFilter.All, 'u1', 100, 200, entity);
 
     expect(mockGetActivityByEntityLink).toHaveBeenCalledWith(TABLE_LINK, {
@@ -486,6 +486,7 @@ describe('fetchInboxActivity per scope', () => {
     });
     expect(mockListConversations).toHaveBeenCalledWith({
       entityLink: TABLE_LINK,
+      includeFields: true,
       filterType: undefined,
       userId: undefined,
       limit: 100,
@@ -507,6 +508,7 @@ describe('fetchInboxActivity per scope', () => {
     expect(mockListConversations).toHaveBeenCalledWith(
       expect.objectContaining({
         entityLink: TABLE_LINK,
+        includeFields: true,
         filterType: ConversationFilterType.Mentions,
         userId: 'u1',
       })
