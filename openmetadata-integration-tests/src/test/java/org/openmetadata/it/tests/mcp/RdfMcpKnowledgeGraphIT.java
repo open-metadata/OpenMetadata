@@ -97,7 +97,8 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
       EnumSet.of(AppRunRecord.Status.FAILED, AppRunRecord.Status.ACTIVE_ERROR);
   private static final Set<AppRunRecord.Status> FINISHED_RUN_STATUSES =
       EnumSet.of(AppRunRecord.Status.COMPLETED, AppRunRecord.Status.SUCCESS);
-  private static final String APP_NAME = "RdfIndexApp";
+  private static final String APP_NAME = RdfAccessFixtures.RDF_INDEX_APP;
+  private static final String LATEST_RUN_PATH = "/v1/apps/name/" + APP_NAME + "/runs/latest";
   private static final Pattern COLUMN_LINEAGE_TEMPLATE =
       Pattern.compile("SELECT DISTINCT \\?column.*?LIMIT 250 OFFSET 0");
   private static final String TEMPLATE_START_COLUMN = "svc.db.schema.table.col";
@@ -605,8 +606,7 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
 
   private static boolean isNewSuccessfulRun(final HttpClient httpClient, final Long previousStart) {
     final AppRunRecord run =
-        httpClient.execute(
-            HttpMethod.GET, "/v1/apps/name/" + APP_NAME + "/runs/latest", null, AppRunRecord.class);
+        httpClient.execute(HttpMethod.GET, LATEST_RUN_PATH, null, AppRunRecord.class);
     final boolean isNew = previousStart == null || run.getStartTime() > previousStart;
     if (isNew && FAILED_RUN_STATUSES.contains(run.getStatus())) {
       throw new AssertionError("RDF reindex failed: " + run);
@@ -617,8 +617,7 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
   /** The server answers 204, which the client returns as null, when the app has never run. */
   private static Long latestRunStart(final HttpClient httpClient) {
     final AppRunRecord latest =
-        httpClient.execute(
-            HttpMethod.GET, "/v1/apps/name/" + APP_NAME + "/runs/latest", null, AppRunRecord.class);
+        httpClient.execute(HttpMethod.GET, LATEST_RUN_PATH, null, AppRunRecord.class);
     return latest == null ? null : latest.getStartTime();
   }
 

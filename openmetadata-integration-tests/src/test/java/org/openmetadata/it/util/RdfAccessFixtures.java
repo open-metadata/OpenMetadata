@@ -52,7 +52,8 @@ import org.openmetadata.service.rdf.RdfProjectionHealth;
  */
 public final class RdfAccessFixtures implements AutoCloseable {
   private static final String STATUS = AppExtension.ExtensionType.STATUS.toString();
-  private static final String RDF_INDEX_APP = "RdfIndexApp";
+  public static final String RDF_INDEX_APP = "RdfIndexApp";
+  private static final String TEST_EMAIL_DOMAIN = "@test.openmetadata.org";
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String DATA_CONSUMER_GRANT_RULE =
       "DataConsumerPolicy-ExecuteSparqlQuery-Rule";
@@ -73,6 +74,10 @@ public final class RdfAccessFixtures implements AutoCloseable {
     return suffix;
   }
 
+  private static String emailOf(final String userName) {
+    return userName + TEST_EMAIL_DOMAIN;
+  }
+
   public Role allowRole(final MetadataOperation operation, final String resource) {
     return role("allow" + operation.value(), operation, resource, Rule.Effect.ALLOW);
   }
@@ -89,11 +94,11 @@ public final class RdfAccessFixtures implements AutoCloseable {
             .create(
                 new CreateUser()
                     .withName(userName)
-                    .withEmail(userName + "@test.openmetadata.org")
+                    .withEmail(emailOf(userName))
                     .withRoles(roleIds));
     cleanup.push(() -> admin.users().delete(user.getId()));
     principals.add(userName);
-    final String email = userName + "@test.openmetadata.org";
+    final String email = emailOf(userName);
     return JwtAuthProvider.tokenFor(email, email, new String[] {}, TOKEN_TTL_SECONDS);
   }
 
