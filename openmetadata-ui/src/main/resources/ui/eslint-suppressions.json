@@ -287,11 +287,6 @@
       "count": 5
     }
   },
-  "playwright/e2e/Features/RTL.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -717,7 +712,7 @@
   },
   "playwright/utils/customizeLandingPage.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 2
     }
   },
   "playwright/utils/customizeNavigation.ts": {
@@ -742,7 +737,7 @@
   },
   "playwright/utils/entity.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 15
+      "count": 14
     }
   },
   "playwright/utils/entityPanel.ts": {

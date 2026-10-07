@@ -51,7 +51,7 @@ const TrackedAssetList: React.FC<TrackedAssetListProps> = ({
       ) : (
         <ul className="tw:flex tw:flex-col tw:gap-2" data-testid={dataTestId}>
           {assets.map((asset) => (
-            <li key={asset.id}>
+            <li data-testid={`${dataTestId}-${asset.name}`} key={asset.id}>
               <Link
                 className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:rounded-lg tw:bg-secondary tw:px-3 tw:py-2.5"
                 to={entityUtilClassBase.getEntityLink(

@@ -889,8 +889,7 @@ test.describe('Curated Assets – Description filter', () => {
       await expect(
         adminPage
           .getByTestId('KnowledgePanel.CuratedAssets')
-          .locator('.entity-list-item-title')
-          .filter({ hasText: tableName })
+          .getByTestId(`curated-asset-${tableName}`)
       ).toBeVisible();
     });
   });

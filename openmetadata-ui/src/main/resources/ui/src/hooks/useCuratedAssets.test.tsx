@@ -14,6 +14,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
+import { SearchIndex } from '../enums/search.enum';
 import { queryClient } from '../queryClient';
 import { searchQuery } from '../rest/searchAPI';
 import {
@@ -124,6 +125,52 @@ describe('useCuratedAssets', () => {
       true,
       true,
     ]);
+  });
+
+  it('narrows the saved filter by entity type rather than by index', async () => {
+    mockSearchQuery.mockResolvedValue({
+      hits: { hits: [], total: { value: 0 } },
+    } as never);
+
+    const { result } = renderHook(
+      () =>
+        useCuratedAssets({
+          queryFilter:
+            '{"query":{"bool":{"must":[{"term":{"deleted":false}}]}}}',
+          resources: ['table', 'topic'],
+          rule: DEFAULT_CURATED_RULE,
+        }),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const request = mockSearchQuery.mock.calls[0][0];
+
+    expect(request.searchIndex).toBe(SearchIndex.DATA_ASSET);
+    expect(JSON.stringify(request.queryFilter)).toContain(
+      '{"term":{"entityType":"table"}}'
+    );
+  });
+
+  it('queries the all index when the saved config selects every type', async () => {
+    mockSearchQuery.mockResolvedValue({
+      hits: { hits: [], total: { value: 0 } },
+    } as never);
+
+    const { result } = renderHook(
+      () =>
+        useCuratedAssets({
+          queryFilter: '{"query":{"bool":{"must":[]}}}',
+          resources: ['all'],
+          rule: DEFAULT_CURATED_RULE,
+        }),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockSearchQuery.mock.calls[0][0].searchIndex).toBe(SearchIndex.ALL);
   });
 
   it('surfaces a failed search instead of an empty rule result', async () => {

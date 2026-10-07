@@ -203,7 +203,9 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
             className="tw:mt-3 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
             data-testid="data-product-rows">
             {visibleProducts.map((product) => (
-              <li key={product.id}>
+              <li
+                data-testid={`data-product-card-${product.id}`}
+                key={product.id}>
                 <Link
                   className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3"
                   to={getDataProductDetailsPath(product.fullyQualifiedName)}>
@@ -215,6 +217,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                   <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
                     <Typography
                       className="tw:min-w-0 tw:text-text-primary!"
+                      data-testid="data-product-name"
                       ellipsis={{ rows: 1 }}
                       size="text-sm"
                       weight="medium">
@@ -253,6 +256,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                   <Badge
                     className="tw:shrink-0"
                     color="gray"
+                    data-testid="data-product-asset-count"
                     size="sm"
                     type="pill-color">
                     {`${product.assetCount} ${t('label.asset-plural')}`}

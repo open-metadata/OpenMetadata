@@ -40,7 +40,10 @@ import {
 } from '../../../../utils/CustomizableLandingPagePureUtils';
 import { getWidgetFromKey } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
-import { normalizeLandingPageLayout } from '../../../../utils/CustomizeMyDataPageWidgetUtils';
+import {
+  getMyDataWidgetBaseKey,
+  normalizeLandingPageLayout,
+} from '../../../../utils/CustomizeMyDataPageWidgetUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -193,7 +196,16 @@ function CustomizeMyData({
             widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
         )
         .map((widget) => (
-          <div data-grid={widget} id={widget.i} key={widget.i}>
+          // Same handle the live page puts on its grid cell: the widgets share
+          // one shell now, so the cell is the only per-widget node left to
+          // carry the widget key. `id` stays the layout key — it has to be
+          // unique per cell — while the test handle is the base key, which a
+          // picker-added widget's `uniqueId` suffix would otherwise hide.
+          <div
+            data-grid={widget}
+            data-testid={getMyDataWidgetBaseKey(widget.i)}
+            id={widget.i}
+            key={widget.i}>
             {getWidgetFromKey({
               currentLayout: layout,
               handleLayoutUpdate: handleLayoutUpdate,

@@ -194,9 +194,7 @@ test.describe('Curated Assets Widget', () => {
       );
 
       await expect(
-        curatedAssetsWidget
-          .locator('.entity-list-item-title')
-          .filter({ hasText: entityDisplayName })
+        curatedAssetsWidget.getByTestId(`curated-asset-${entityDisplayName}`)
       ).toBeVisible();
 
       await redirectToHomePage(page);
@@ -222,9 +220,7 @@ test.describe('Curated Assets Widget', () => {
       );
 
       await expect(
-        curatedAssetsWidget
-          .locator('.entity-list-item-title')
-          .filter({ hasText: entityDisplayName })
+        curatedAssetsWidget.getByTestId(`curated-asset-${entityDisplayName}`)
       ).toBeVisible();
 
       await navigateToCustomizeLandingPage(page, {
@@ -411,7 +407,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
@@ -520,7 +518,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
@@ -536,7 +536,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
@@ -664,7 +666,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
@@ -680,7 +684,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
@@ -693,7 +699,13 @@ test.describe('Curated Assets Widget', () => {
     await saveCustomizeLayoutPage(page);
   });
 
-  test('Placeholder validation - widget not visible without configuration', async ({
+  // An unconfigured widget used to be dropped from the live page, because the
+  // old widget had nothing at all to render without a saved filter. The card
+  // that replaced it falls back to the built-in certified/Tier-1 rule, so an
+  // unconfigured widget is now a meaningful one -- it is in the default layout
+  // for exactly that reason. What must not leak to a reader is the editor-only
+  // "Create" prompt.
+  test('Unconfigured widget falls back to the built-in rule on the live page', async ({
     page,
   }) => {
     test.slow(true);
@@ -710,9 +722,24 @@ test.describe('Curated Assets Widget', () => {
 
     await redirectToHomePage(page);
 
-    // Verify placeholder is not visible when no widget is configured
+    const curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
+
     await expect(
-      page.locator('[data-testid="KnowledgePanel.CuratedAssets"]')
-    ).not.toBeVisible();
+      curatedAssetsWidget.getByTestId('widget-empty-state')
+    ).toBeHidden();
+    await expect(curatedAssetsWidget.getByText('Rule')).toBeVisible();
+
+    await navigateToCustomizeLandingPage(page, {
+      personaName: persona.responseData.name,
+    });
+
+    await removeAndCheckWidget(page, {
+      widgetKey: CURATED_ASSETS_WIDGET_KEY,
+    });
+
+    await saveCustomizeLayoutPage(page);
   });
 });

@@ -12,8 +12,11 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import type { QueryFilterInterface } from '../interface/queryFilter.interface';
 import { searchQuery } from '../rest/searchAPI';
+import { getModifiedQueryFilterWithSelectedAssets } from '../utils/CuratedAssetsPureUtils';
 import { buildCuratedQueryFilter, CuratedRule } from '../utils/curatedRule';
 
 export const CURATED_ASSETS_QUERY_KEY = [
@@ -103,15 +106,23 @@ const fetchCuratedAssets = async ({
   resources,
 }: CuratedAssetsSource) => {
   const savedFilter = parseSavedFilter(queryFilter);
-  const searchIndex =
-    savedFilter && resources?.length
-      ? (resources as unknown as SearchIndex)
-      : SearchIndex.DATA_ASSET;
+
+  // The selected entity types narrow the *filter*, not the index. Querying the
+  // resources as indices instead drops any type the search index map has no
+  // entry for, and loses the entityType aggregation the saved filter is scored
+  // against; `dataAsset` (or `all`, which also carries the non-asset types)
+  // with an entityType clause is the shape the persona editor has always saved.
+  const searchIndex = resources?.includes(EntityType.ALL)
+    ? SearchIndex.ALL
+    : SearchIndex.DATA_ASSET;
 
   return searchQuery({
     pageNumber: 1,
     pageSize: PAGE_SIZE,
-    queryFilter: savedFilter ?? buildCuratedQueryFilter(rule),
+    queryFilter: getModifiedQueryFilterWithSelectedAssets(
+      (savedFilter ?? buildCuratedQueryFilter(rule)) as QueryFilterInterface,
+      resources
+    ) as Record<string, unknown>,
     searchIndex,
   });
 };

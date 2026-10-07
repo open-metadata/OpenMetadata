@@ -14,6 +14,7 @@ import { DEFAULT_LANDING_PAGE_LAYOUT } from '../constants/CustomizeMyDataPage.co
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
+  getMyDataWidgetBaseKey,
   isAvailableMyDataWidgetKey,
   MY_DATA_WIDGET_KEYS,
   normalizeLandingPageLayout,
@@ -164,5 +165,31 @@ describe('normalizeLandingPageLayout', () => {
       { i: LandingPageWidgetKeys.ACTIVITY_FEED, x: 0, y: 3 },
       { i: LandingPageWidgetKeys.KPI, x: 1, y: 3 },
     ]);
+  });
+});
+
+describe('getMyDataWidgetBaseKey', () => {
+  // Widgets added through the picker carry a lodash `uniqueId` suffix, so the
+  // layout key is per-instance while the widget key is not. Anything keyed off
+  // the widget rather than the cell has to strip it.
+  it('strips the instance suffix a picker-added widget carries', () => {
+    expect(getMyDataWidgetBaseKey(`${LandingPageWidgetKeys.DOMAINS}-211`)).toBe(
+      LandingPageWidgetKeys.DOMAINS
+    );
+  });
+
+  it('leaves an un-suffixed key alone', () => {
+    expect(getMyDataWidgetBaseKey(LandingPageWidgetKeys.DOMAINS)).toBe(
+      LandingPageWidgetKeys.DOMAINS
+    );
+  });
+
+  // A retired widget still named by an old persona doc has no prefix to match.
+  // Returning the key unchanged keeps the cell addressable rather than
+  // collapsing every unknown entry onto one shared handle.
+  it('returns an unrecognised key unchanged', () => {
+    expect(getMyDataWidgetBaseKey('KnowledgePanel.Retired-7')).toBe(
+      'KnowledgePanel.Retired-7'
+    );
   });
 });

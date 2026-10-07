@@ -137,7 +137,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
             className="tw:mt-3 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
             data-testid="domain-rows">
             {visibleDomains.map((domain) => (
-              <li key={domain.id}>
+              <li data-testid={`domain-card-${domain.id}`} key={domain.id}>
                 <Link
                   className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3"
                   to={getDomainPath(domain.fullyQualifiedName)}>
@@ -168,6 +168,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
                   <Badge
                     className="tw:shrink-0"
                     color="gray"
+                    data-testid="domain-asset-count"
                     size="sm"
                     type="pill-color">
                     {`${domain.assetCount} ${t('label.asset-plural')}`}

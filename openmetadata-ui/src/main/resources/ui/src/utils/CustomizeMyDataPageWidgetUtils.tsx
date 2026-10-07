@@ -154,6 +154,20 @@ export const isKnownMyDataWidgetKey = (widgetKey: string): boolean =>
  * add back once it is removed. Sharing one predicate is what keeps the offered
  * set and the renderable set equal.
  */
+/**
+ * The widget key a layout entry names, without the instance suffix.
+ *
+ * Widgets added through the Add Widgets picker get a lodash `uniqueId` suffix
+ * (`getAddWidgetHandler`), e.g. `KnowledgePanel.Domains-211`, so a layout key
+ * is not interchangeable with a widget key. Everything that resolves a widget
+ * from a layout entry already prefix-matches for this reason; this returns the
+ * matched prefix so the grid cell can carry the stable key as its test handle
+ * rather than the per-instance one.
+ */
+export const getMyDataWidgetBaseKey = (widgetKey: string): string =>
+  WIDGET_KEY_PREFIX_MAP.find(([prefix]) => widgetKey.startsWith(prefix))?.[0] ??
+  widgetKey;
+
 export const isAvailableMyDataWidgetKey = (
   widgetKey: string,
   excludedWidgetFqns: string[]

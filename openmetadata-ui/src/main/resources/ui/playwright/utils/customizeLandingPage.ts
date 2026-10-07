@@ -37,6 +37,10 @@ const DEFAULT_LANDING_PAGE_WIDGETS = [
 
 export const CURATED_ASSETS_WIDGET_KEY = 'KnowledgePanel.CuratedAssets';
 
+// Root of the live landing page. The old `page-layout-v1` handle came from
+// PageLayoutV1, which the home route only renders for the welcome screen now.
+export const LANDING_PAGE_ROOT = 'home-landing-page';
+
 export type NameableEntityResponse = {
   name?: string;
   displayName?: string;
@@ -228,10 +232,9 @@ export const removeAndCheckWidget = async (
 
   await widget.scrollIntoViewIfNeeded();
 
-  // Click on remove widget button
-  await widget.locator('[data-testid="more-options-button"]').click();
-
-  await page.locator('.ant-dropdown:visible [data-menu-id*="remove"]').click();
+  // Removal is a button in the card header now, not an item behind an antd
+  // overflow menu -- topic cards carry no `more-options-button` at all.
+  await widget.getByTestId(`remove-widget-${widgetKey}`).click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
@@ -289,6 +292,12 @@ export const waitForLandingPageWidget = async (
     .toBe(true);
 
   await expect(widget.getByTestId('entity-list-skeleton')).toBeHidden();
+  // Topic cards skeleton their summary line rather than rendering an
+  // `entity-list-skeleton`; match on the prefix because the suffix is the
+  // card's own topic key, which is not derivable from the layout key.
+  await expect(
+    widget.locator('[data-testid^="topic-summary-skeleton-"]')
+  ).toBeHidden();
 
   return widget;
 };
@@ -309,13 +318,15 @@ export const checkAllDefaultWidgets = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-  await expect(page.getByTestId('page-layout-v1')).toBeVisible();
-  await page.evaluate(() => {
+  // The landing page is built on the core PageLayout now, not PageLayoutV1 —
+  // `page-layout-v1` only wraps the first-login welcome screen.
+  await expect(page.getByTestId(LANDING_PAGE_ROOT)).toBeVisible();
+  await page.evaluate((root) => {
     window.scrollTo(0, 0);
     document
-      .querySelector('.page-layout-v1-center.page-layout-v1-vertical-scroll')
+      .querySelector(`[data-testid="${root}"] [class*='overflow-y-auto']`)
       ?.scrollTo({ top: 0 });
-  });
+  }, LANDING_PAGE_ROOT);
 
   for (const widgetKey of DEFAULT_LANDING_PAGE_WIDGETS) {
     await waitForLandingPageWidget(page, widgetKey);
@@ -413,24 +424,53 @@ export const addAndVerifyWidget = async (
     personaName,
   });
 
-  await openAddCustomizeWidgetModal(page);
-  await waitForAllLoadersToDisappear(page);
-
-  await page
-    .getByRole('dialog', { name: 'Customize Home' })
+  // "Add" has to mean "ensure present". The picker refuses to re-add a widget
+  // the layout already holds (`handleSelectWidget` returns early), so the click
+  // is a no-op, `apply-btn` stays `disabled={!hasChanges}`, and clicking it
+  // waits out the action timeout -- which several widgets now hit, because they
+  // are in the default layout.
+  //
+  // Bounded wait rather than a single read: the editor grid paints after the
+  // header `navigateToCustomizeLandingPage` waited for, so an immediate probe
+  // can report a widget missing that is merely not mounted yet, landing on that
+  // same dead end.
+  const isAlreadyOnLayout = await page
     .getByTestId(widgetKey)
-    .click();
+    .waitFor({ state: 'attached', timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
 
-  await page.locator('[data-testid="apply-btn"]').click();
+  if (!isAlreadyOnLayout) {
+    await openAddCustomizeWidgetModal(page);
+    await waitForAllLoadersToDisappear(page);
+
+    await page
+      .getByRole('dialog', { name: 'Customize Home' })
+      .getByTestId(widgetKey)
+      .click();
+
+    await page.locator('[data-testid="apply-btn"]').click();
+  }
 
   await waitForLandingPageWidget(page, widgetKey);
 
-  const saveLayout = page.waitForResponse((response) =>
-    response.url().includes('/api/v1/docStore')
-  );
-  await page.locator('[data-testid="save-button"]').click();
-  await saveLayout;
-  await toastNotification(page, /Page layout (created|updated) successfully\./);
+  // Save is gated on the layout actually differing from the saved document, so
+  // a second "ensure present" pass over an unchanged layout has nothing to
+  // write and leaves the button disabled. Clicking it then waits out the
+  // action timeout instead of failing on the thing under test.
+  const saveButton = page.locator('[data-testid="save-button"]');
+
+  if (await saveButton.isEnabled()) {
+    const saveLayout = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/docStore')
+    );
+    await saveButton.click();
+    await saveLayout;
+    await toastNotification(
+      page,
+      /Page layout (created|updated) successfully\./
+    );
+  }
 
   await redirectToHomePage(page, false);
 
@@ -507,199 +547,8 @@ export const selectAssetTypes = async (
 };
 
 // Helper function to test widget footer "View More" button
-export const verifyWidgetFooterViewMore = async (
-  page: Page,
-  {
-    widgetKey,
-    expectedLink,
-    link,
-    // Callers that seed enough rows for the link to be guaranteed pass true, so
-    // a missing footer fails instead of quietly ending the check. Defaults to
-    // false because most widgets here have no seeded row count to rely on.
-    requireViewMore = false,
-  }: {
-    widgetKey: string;
-    expectedLink?: string;
-    link?: string;
-    requireViewMore?: boolean;
-  }
-) => {
-  // Wait for the page to load
-  await waitForAllLoadersToDisappear(page);
 
-  const widget = await waitForLandingPageWidget(page, widgetKey);
-
-  // Wait for the data to appear in the widget
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-
-  // Check for widget footer
-  const widgetFooter = widget.locator('[data-testid="widget-footer"]');
-
-  if (requireViewMore) {
-    await expect(widgetFooter).toBeVisible();
-  }
-
-  const footerExists = await widgetFooter.isVisible().catch(() => false);
-
-  if (!footerExists) {
-    // No footer is expected for this widget
-    return;
-  }
-
-  // Footer exists, check for view more button
-  const viewMoreButton = widget.locator('.footer-view-more-button');
-
-  if (requireViewMore) {
-    await expect(viewMoreButton).toBeVisible();
-  }
-
-  const buttonExists = await viewMoreButton.isVisible().catch(() => false);
-
-  if (!buttonExists) {
-    // No view more button in footer
-    return;
-  }
-
-  // View more button exists, verify it
-  await expect(viewMoreButton).toBeVisible();
-
-  // Get and verify the href
-  const href = await viewMoreButton.getAttribute('href');
-
-  if (expectedLink) {
-    // Exact link match
-    expect(href).toBe(expectedLink);
-  } else if (link) {
-    // Pattern match
-    expect(href).toContain(link);
-  }
-
-  // Click and verify navigation
-  await viewMoreButton.click();
-
-  if (expectedLink) {
-    // Wait for the specific URL
-    await page.waitForURL(expectedLink, { waitUntil: 'domcontentloaded' });
-  } else if (link) {
-    const currentUrl = page.url();
-
-    // Wait for URL matching pattern
-    expect(currentUrl).toContain(link);
-  }
-};
-
-export const verifyWidgetEntityNavigation = async (
-  page: Page,
-  {
-    widgetKey,
-    entitySelector,
-    urlPattern,
-    emptyStateTestId,
-    verifyElement,
-    apiResponseUrl,
-    searchQuery,
-    altApiResponseUrl,
-  }: {
-    widgetKey: string;
-    entitySelector: string;
-    urlPattern: string;
-    emptyStateTestId?: string;
-    verifyElement?: string;
-    apiResponseUrl: string;
-    searchQuery: string | string[];
-    altApiResponseUrl?: string;
-  }
-) => {
-  // Wait for the API response matching the search query, but tolerate it never
-  // arriving: waitForResponse's own timeout replaces the Promise.race against a
-  // fixed waitForTimeout, and .catch keeps the previous behaviour of continuing
-  // rather than failing when nothing matches inside the budget.
-  const response = page
-    .waitForResponse(
-      (response) => {
-        // Check primary API URL
-        if (response.url().includes(apiResponseUrl)) {
-          if (Array.isArray(searchQuery)) {
-            return searchQuery.every((query) => response.url().includes(query));
-          }
-          return response.url().includes(searchQuery);
-        }
-
-        // Check alternative API URL (for Task API migration)
-        if (altApiResponseUrl && response.url().includes(altApiResponseUrl)) {
-          return true;
-        }
-
-        return false;
-      },
-      { timeout: 10_000 }
-    )
-    .catch(() => null);
-
-  await redirectToHomePage(page);
-
-  await response;
-
-  // Wait for loaders after navigation
-  await waitForAllLoadersToDisappear(page);
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-
-  // Get widget after navigation to home page
-  const widget = await waitForLandingPageWidget(page, widgetKey);
-
-  // Wait again for any widget-specific loaders
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- widget rendering delay
-  await page.waitForTimeout(1000);
-
-  // Check for entity items in the widget
-  const entityItems = widget.locator(entitySelector);
-  const hasEntities = (await entityItems.count()) > 0;
-
-  if (hasEntities) {
-    await expect(entityItems.filter({ visible: true })).not.toHaveCount(0);
-
-    // Get the first entity item
-    const firstEntity = entityItems.first();
-
-    // Check if it's a link or button and click appropriately
-    const isLink = (await firstEntity.locator('.item-link').count()) > 0;
-
-    if (isLink) {
-      // For widgets with links inside (like My Data)
-      const entityLink = firstEntity.locator('.item-link').first();
-      await entityLink.click();
-    } else {
-      // For widgets with direct clickable cards (like Domains, Data Products)
-      await firstEntity.click();
-    }
-
-    // Wait for navigation
-
-    // Verify we're on the correct page
-    const currentUrl = page.url();
-
-    expect(currentUrl).toContain(urlPattern);
-
-    // Verify page element is visible if specified
-    if (verifyElement) {
-      const pageElement = page.locator(verifyElement);
-
-      await expect(pageElement).toBeVisible();
-    }
-
-    // Navigate back to home for next tests
-    await redirectToHomePage(page);
-  } else if (emptyStateTestId) {
-    await expect(page.getByTestId(emptyStateTestId)).toBeVisible();
-  } else {
-    await expect(
-      widget.locator('[data-testid="widget-empty-state"]')
-    ).toBeVisible();
-  }
-};
-
-export const verifyWidgetHeaderNavigation = async (
+export const verifyWidgetTitleAndNavigation = async (
   page: Page,
   widgetKey: string,
   expectedTitle: string,
@@ -711,19 +560,15 @@ export const verifyWidgetHeaderNavigation = async (
   // Wait for loaders before interacting with widget header
   await waitForAllLoadersToDisappear(page);
 
-  // Verify widget header
-  const widgetHeader = widget.getByTestId('widget-header');
+  // The title is the card's collapse toggle now, not a link: the way out to the
+  // full view is the footer action. So assert the card still names itself, then
+  // navigate the way a reader actually can.
+  await expect(widget).toContainText(expectedTitle);
 
-  await expect(widgetHeader).toBeVisible();
+  const footerAction = widget.locator('[data-testid^="topic-action-"]');
 
-  // Verify header title
-  const headerTitle = widgetHeader.getByTestId('widget-title');
-
-  await expect(headerTitle).toBeVisible();
-  await expect(headerTitle).toContainText(expectedTitle);
-
-  // Click header title to navigate
-  await headerTitle.click();
+  await expect(footerAction).toBeVisible();
+  await footerAction.click();
 
   // Poll instead of reading page.url() once: the click starts a client-side
   // navigation, so a single read can still observe the landing page URL.
@@ -768,7 +613,12 @@ const readLandingWidgetCount = async (
     return null;
   }
 
-  return (await card.textContent().catch(() => null))?.trim() ?? null;
+  const text = (await card.textContent().catch(() => null))?.trim();
+
+  // Topic cards render the count inside a labelled badge ("2 Assets"), where the
+  // old widgets rendered a bare number. Take the leading integer so the same
+  // helper reads both.
+  return text?.match(/\d+/)?.[0] ?? null;
 };
 
 // Poll a landing-page widget's asset count until it equals `expectedCount`.
@@ -830,10 +680,7 @@ export const verifyDomainCountInDomainWidget = async (
   domainId: string,
   expectedCount: number
 ) => {
-  const widgetCardSelector = [
-    `[data-testid="domain-card-${domainId}"] .domain-card-count`,
-    `[data-testid="domain-card-${domainId}"] .domain-card-full-count`,
-  ].join(', ');
+  const widgetCardSelector = `[data-testid="domain-card-${domainId}"] [data-testid="domain-asset-count"]`;
 
   await redirectToHomePage(page, false);
 

@@ -14,7 +14,6 @@ import { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  createConversationThread,
   FEED_ITEM_TIMEOUT,
   getFeedItemByText,
   getTableLeafName,
@@ -31,7 +30,6 @@ import { createAdminApiContext } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { selectActivityFeedFilterAndVerifyEndpoint } from '../../utils/widgetFilters';
 import { test } from '../fixtures/pages';
 
 const ACTIVITY_FEED_WIDGET_KEY = 'KnowledgePanel.ActivityFeed';
@@ -443,35 +441,32 @@ test.describe(
   { tag: [DOMAIN_TAGS.DISCOVERY] },
   () => {
     let homepageTable: TableClass;
-    let followedTable: TableClass;
-    const followedActivitySummary = `Followed table activity ${uuid()}`;
+    const ownedActivitySummary = `Homepage widget activity ${uuid()}`;
 
     test.beforeAll('Setup: create table and activity', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
 
       homepageTable = new TableClass();
-      followedTable = new TableClass();
 
       try {
         await homepageTable.create(apiContext);
-        await createConversationThread(
-          apiContext,
-          homepageTable,
-          `Test conversation for homepage widget ${uuid()}`
-        );
 
-        // The Following filter reads the FOLLOWS relationship, so the table has
-        // to be followed by the logged-in user before it can surface any event.
-        await followedTable.create(apiContext);
-
+        // The card reads `/activity/my-feed`, which is scoped to entities the
+        // logged-in user owns -- a conversation thread on an unowned table
+        // never reaches it. So the table has to be owned before the event is
+        // inserted, or the widget legitimately renders its empty state and the
+        // assertion below is testing nothing.
         const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
         const adminUser = await userResponse.json();
 
-        await followedTable.followTable(apiContext, adminUser.id);
+        await homepageTable.setOwner(apiContext, {
+          id: adminUser.id,
+          type: 'user',
+        });
         await insertActivityEventForTest(
           apiContext,
-          followedTable,
-          followedActivitySummary
+          homepageTable,
+          ownedActivitySummary
         );
       } finally {
         await afterAction();
@@ -483,7 +478,6 @@ test.describe(
 
       try {
         await homepageTable.delete(apiContext);
-        await followedTable.delete(apiContext);
       } finally {
         await afterAction();
       }
@@ -494,115 +488,26 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
     });
 
-    test('displays feed content in the Activity Feed widget', async ({
+    // The landing page's activity card is a digest with no filter control: the
+    // All Activity / My Data / Following options, and the per-filter endpoint
+    // routing they drove, went with the widget they belonged to. What the card
+    // still owes a reader is the recent events themselves.
+    test('displays recent activity in the Team Activity widget', async ({
       page,
     }) => {
-      const feedWidget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
-      const feedItems = feedWidget.getByTestId('message-container');
-
-      await expect(feedWidget).toBeVisible();
-      await expect(feedItems.filter({ visible: true })).not.toHaveCount(0, {
-        timeout: FEED_ITEM_TIMEOUT,
-      });
-    });
-
-    test('shows Activity Feed widget filter options', async ({ page }) => {
-      const feedWidget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
-
-      await expect(feedWidget).toBeVisible();
-
-      const sortDropdown = feedWidget.getByTestId('widget-sort-by-dropdown');
-
-      await expect(sortDropdown).toBeVisible();
-      await expect(sortDropdown).toBeEnabled();
-      await sortDropdown.click();
-
-      const filterMenu = page.getByRole('menu').filter({
-        hasText: 'All Activity',
-      });
-
-      await expect(filterMenu).toBeVisible();
-      await expect(
-        page.getByRole('menuitem', { name: 'All Activity' })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('menuitem', { name: 'My Data' })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('menuitem', { name: 'Following' })
-      ).toBeVisible();
-
-      await page.keyboard.press('Escape');
-      await expect(filterMenu).not.toBeVisible();
-    });
-
-    // Regression guard: every filter used to call the my-feed endpoint, so the
-    // widget showed the same list whichever option was picked.
-    test('routes each Activity Feed widget filter to its own endpoint', async ({
-      page,
-    }) => {
-      test.slow(true);
-
-      const allActivityResponse = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'GET' &&
-          new URL(response.url()).pathname === '/api/v1/activity'
-      );
-
-      await redirectToHomePage(page);
-
-      expect((await allActivityResponse).status()).toBe(200);
-
       const feedWidget = await waitForLandingPageWidget(
         page,
         ACTIVITY_FEED_WIDGET_KEY
       );
 
-      await selectActivityFeedFilterAndVerifyEndpoint(
-        page,
-        feedWidget,
-        'My Data',
-        '/api/v1/activity/my-feed'
-      );
-
-      await selectActivityFeedFilterAndVerifyEndpoint(
-        page,
-        feedWidget,
-        'Following',
-        '/api/v1/activity/following'
-      );
-
-      await selectActivityFeedFilterAndVerifyEndpoint(
-        page,
-        feedWidget,
-        'All Activity',
-        '/api/v1/activity'
-      );
-    });
-
-    test('shows the followed entity activity under the Following filter', async ({
-      page,
-    }) => {
-      test.slow(true);
-
-      const feedWidget = await waitForLandingPageWidget(
-        page,
-        ACTIVITY_FEED_WIDGET_KEY
-      );
-
-      await selectActivityFeedFilterAndVerifyEndpoint(
-        page,
-        feedWidget,
-        'Following',
-        '/api/v1/activity/following'
-      );
-
+      // Pinned to the seeded event rather than to a non-zero row count: the
+      // card digests whatever the database happens to hold, so a count alone
+      // would pass on somebody else's activity.
       await expect(
         feedWidget
-          .getByTestId('message-container')
-          .filter({ hasText: followedActivitySummary })
-          .filter({ visible: true })
-      ).not.toHaveCount(0, { timeout: FEED_ITEM_TIMEOUT });
+          .getByTestId('team-activity-rows')
+          .getByText(homepageTable.entityResponseData.name)
+      ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
     });
   }
 );

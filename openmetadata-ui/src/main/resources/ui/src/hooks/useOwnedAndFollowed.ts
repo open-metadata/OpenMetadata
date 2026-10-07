@@ -74,11 +74,16 @@ const runSearch = async (
   searchIndex: SearchIndex,
   filter: Record<string, string | string[]>
 ) => {
+  // Sorted newest-first because the card only has room for PAGE_SIZE rows: the
+  // assets worth surfacing in that slice are the ones that just moved, which is
+  // also what the "recently moved" summary above the list claims to describe.
   const response = await searchQuery({
     pageNumber: 1,
     pageSize: PAGE_SIZE,
     queryFilter: getTermQuery(filter),
     searchIndex,
+    sortField: 'updatedAt',
+    sortOrder: 'desc',
   });
 
   return (response.hits?.hits ?? []) as unknown as SearchHit[];

@@ -33,7 +33,10 @@ import {
   PERSONA_DOC_STALE_TIME,
 } from '../../../rest/queries/docStoreQuery';
 import customizeMyDataPageClassBase from '../../../utils/CustomizeMyDataPageClassBase';
-import { normalizeLandingPageLayout } from '../../../utils/CustomizeMyDataPageWidgetUtils';
+import {
+  getMyDataWidgetBaseKey,
+  normalizeLandingPageLayout,
+} from '../../../utils/CustomizeMyDataPageWidgetUtils';
 import { getPersonaPage } from '../../../utils/CustomizePage/PersonaPage.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getCustomizePagePath } from '../../../utils/GlobalSettingsUtils';
@@ -43,6 +46,7 @@ import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { TopicCollapseContext } from '../Widgets/Common/TopicWidget/TopicCollapseContext';
 import AnnouncementsRail from './AnnouncementsRail';
 import HomeLandingPageSkeleton from './HomeLandingPageSkeleton';
+import RecentlyViewedRail from './RecentlyViewedRail';
 import TopicsSectionHeader from './TopicsSectionHeader';
 import { useTopicsView } from './useTopicsView';
 
@@ -127,10 +131,15 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
   const widgets = useMemo(
     () =>
       displayLayout.map((widget) => (
-        // The grid instance key is the handle every landing-page test reaches
-        // for. The widgets used to carry it individually; now that they share
-        // one shell it belongs on the cell that holds them.
-        <div data-grid={widget} data-testid={widget.i} key={widget.i}>
+        // The widget key is the handle every landing-page test reaches for.
+        // The widgets used to carry it individually; now that they share one
+        // shell it belongs on the cell that holds them. It is deliberately the
+        // *base* key, not `widget.i`: a widget added through the picker carries
+        // a `uniqueId` suffix that nothing outside the layout knows about.
+        <div
+          data-grid={widget}
+          data-testid={getMyDataWidgetBaseKey(widget.i)}
+          key={widget.i}>
           <DeferredWidget
             data-testid={`deferred-widget-${widget.i}`}
             minHeight={widgetHeight(widget.h)}>
@@ -154,7 +163,10 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
 
   return (
     <div className="tw:relative tw:h-full tw:overflow-hidden">
-      <PageLayout className="tw:p-0!" scroll="page">
+      <PageLayout
+        className="tw:p-0!"
+        data-testid="home-landing-page"
+        scroll="page">
         <PageLayout.PageHeader
           actions={
             selectedPersona?.fullyQualifiedName ? (
@@ -194,6 +206,12 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
           <div className="tw:flex tw:flex-col tw:gap-14 tw:px-4 tw:pt-8">
             <AnnouncementsRail />
+
+            {/* Recently viewed used to live in the customisable landing header,
+              which this page replaced. It is kept here rather than dropped:
+              nothing else in the product surfaces it, and it is the only
+              zero-effort way back to whatever the user had open last. */}
+            <RecentlyViewedRail />
 
             {/* `SystemAlertBanner` and `NeedsYouNowSection` are built but not
               mounted. Both are prototype-only: the alert feed and the ranked
