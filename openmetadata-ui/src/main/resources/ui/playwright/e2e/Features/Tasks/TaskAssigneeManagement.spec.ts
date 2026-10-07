@@ -100,7 +100,7 @@ test.describe('Task Assignee Management', () => {
 
     const existingAssigneeRemoveButton = page
       .locator(
-        '[data-testid="select-assignee"] .ant-select-selection-item-remove'
+        '[data-testid="select-assignee"] [data-testid="autocomplete-selected-item"] button'
       )
       .first();
 
