@@ -177,12 +177,8 @@ test.describe('Large Glossary Performance Tests', () => {
         response.url().includes('after=')
     );
 
-    // Activated with the keyboard, not the mouse: the toast region renders fixed
-    // at bottom-center over the pagination controls, and the backend fans async
-    // notifications out to every socket of the logged-in user, so a parallel
-    // worker can refill the stack faster than it drains — waiting for it to be
-    // empty is a race no timeout wins. `press` still asserts the control is
-    // visible and enabled, and no overlay can swallow a key event.
+    // Keyboard, not mouse: background toasts render over the pagination controls
+    // and refill faster than they drain, so a click can be intercepted.
     await pagination.getByTestId('next').press('Enter');
 
     const nextPageResponse = await nextPageRequest;

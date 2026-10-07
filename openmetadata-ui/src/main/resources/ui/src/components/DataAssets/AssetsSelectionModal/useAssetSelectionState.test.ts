@@ -850,9 +850,8 @@ describe('useAssetSelectionState', () => {
   });
 
   describe('websocket bulk assets channel', () => {
-    // The channel is per-user: a job started from another tab/entity also lands
-    // here, so every assertion below goes through a job this hook actually
-    // started and the listener is expected to match on its jobId.
+    // Every case below goes through a job this hook actually started, since the
+    // listener now matches on jobId.
     const startBulkJob = async (
       result: ReturnType<typeof renderAssetSelectionState>['result']
     ) => {

@@ -126,8 +126,8 @@ export const useAssetSelectionState = ({
 
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [assetJobResponse, setAssetJobResponse] = useState<CSVExportResponse>();
-  // Mirrors the in-flight job id for the socket listener, which is registered once
-  // per socket and would otherwise close over a stale `assetJobResponse`.
+  // Mirrors the in-flight job id for the socket listener, which would otherwise
+  // close over a stale `assetJobResponse`.
   const activeJobIdRef = useRef<string>();
   const [aggregations, setAggregations] = useState<Aggregations>();
   const [quickFilterQuery, setQuickFilterQuery] =
@@ -541,11 +541,8 @@ export const useAssetSelectionState = ({
       socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, (newActivity) => {
         if (newActivity) {
           const activity = JSON.parse(newActivity);
-          // The channel is per-user, not per-drawer: every bulk-asset job this
-          // user runs — another browser tab, another entity, a parallel E2E
-          // worker signed in as the same admin — lands here. Acting on a
-          // foreign job's terminal event closed this drawer and discarded the
-          // selection the user was still building, so only our own job counts.
+          // The channel is per-user, so another tab's job also lands here and
+          // would close this drawer; only react to the job we started.
           if (
             !activeJobIdRef.current ||
             activity.jobId !== activeJobIdRef.current
