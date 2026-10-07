@@ -1,0 +1,1277 @@
+{
+  "version": 1,
+  "prHeading": "#### Backend integration tests",
+  "maven": {
+    "unitTestModules": [
+      "openmetadata-service",
+      "openmetadata-mcp",
+      "openmetadata-k8s-operator",
+      "common"
+    ],
+    "integrationTestModule": "openmetadata-integration-tests",
+    "integrationTestSourceRoot": "openmetadata-integration-tests/src/test/java",
+    "unitPhase": "package",
+    "defaultEngine": "mysql-elasticsearch",
+    "lanes": {
+      "parallel": {
+        "args": [
+          "-DintegrationTests.lane=parallel"
+        ]
+      },
+      "isolated": {
+        "pomProperties": [
+          "integrationTests.globalStateTests",
+          "integrationTests.multiNodeTests",
+          "integrationTests.retryQueueTests"
+        ],
+        "args": [
+          "-DintegrationTests.lane=global-state"
+        ]
+      },
+      "rdf": {
+        "pomProperties": [
+          "integrationTests.rdfTests"
+        ],
+        "args": [
+          "-DintegrationTests.lane=rdf"
+        ]
+      }
+    },
+    "suites": {
+      "search-it": {
+        "profile": "search-it",
+        "tests": [
+          "org/openmetadata/it/tests/search/*IT.java"
+        ],
+        "args": [
+          "-Djpw.data.mode=ingest"
+        ],
+        "defaultEngine": "postgres-opensearch",
+        "engines": {
+          "postgres-opensearch": [
+            "-DdatabaseType=postgres",
+            "-DsearchType=opensearch"
+          ],
+          "mysql-elasticsearch": [
+            "-DdatabaseType=mysql",
+            "-DsearchType=elasticsearch"
+          ]
+        }
+      }
+    },
+    "notRunLocally": [
+      {
+        "tests": [
+          "*UIIT"
+        ],
+        "where": "nightly: openmetadata-nightly k8s-java-it (ui-it + embedded JavaUIIT)"
+      },
+      {
+        "tests": [
+          "org/openmetadata/it/tests/search/scale/**"
+        ],
+        "where": "nightly: openmetadata-nightly k8s-java-it (scale-it)"
+      }
+    ],
+    "neverRun": [
+      "org/openmetadata/it/tests/search/StaticDatasetSeedIT.java",
+      "org/openmetadata/it/tests/search/ClusterPurgeIT.java",
+      "BaseEntityIT",
+      "BaseServiceIT"
+    ],
+    "unitTestReferenceCap": 40,
+    "integrationTestReferenceCap": 25
+  },
+  "ignore": [
+    "*.md",
+    "openmetadata-ui/**",
+    "openmetadata-ui-core-components/**",
+    "ingestion/**",
+    "openmetadata-airflow-apis/**",
+    "openmetadata-docs/**",
+    "docs/**",
+    "skills/**",
+    ".claude/**",
+    ".agents/**",
+    ".github/**",
+    "openmetadata-dist/**",
+    "docker/**",
+    "scripts/**",
+    "examples/**",
+    "Makefile",
+    "*.txt",
+    "LICENSE",
+    "NOTICE",
+    ".gitignore",
+    ".pre-commit-config.yaml",
+    "paseo.json",
+    "openmetadata-clients/**",
+    "openspec/**",
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "sharedInfrastructure": [
+    "pom.xml",
+    "*/pom.xml",
+    "openmetadata-shaded-deps/**",
+    "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/BaseEntityIT.java",
+    "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/BaseServiceIT.java",
+    "openmetadata-integration-tests/src/test/resources/**",
+    "openmetadata-sdk/**"
+  ],
+  "smoke": [
+    "DatabaseSmokeIT",
+    "TableResourceIT",
+    "UserResourceIT",
+    "GlossaryTermResourceIT",
+    "ConfigResourceIT",
+    "SeedDataPresenceIT"
+  ],
+  "engineRules": [
+    {
+      "sources": [
+        "bootstrap/sql/**/postgres/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/migration/postgres/**",
+        "**/*Postgres*.java",
+        "**/*PostgreSql*.java"
+      ],
+      "engines": [
+        "postgres-opensearch"
+      ]
+    },
+    {
+      "sources": [
+        "bootstrap/sql/**/mysql/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/migration/mysql/**",
+        "**/*MySql*.java",
+        "**/*Mysql*.java"
+      ],
+      "engines": [
+        "mysql-elasticsearch"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/*DAO*.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/locator/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/jdbi/**"
+      ],
+      "engines": [
+        "mysql-elasticsearch",
+        "postgres-opensearch"
+      ]
+    }
+  ],
+  "testEngines": [
+    {
+      "tests": [
+        "PatchTableEmbeddingIT",
+        "FlattenedChildrenHighlightSearchIT",
+        "ExtensionHighlightSearchIT"
+      ],
+      "engines": [
+        "postgres-opensearch"
+      ],
+      "reason": "every test assumes searchType=opensearch"
+    },
+    {
+      "tests": [
+        "org/openmetadata/it/tests/cache/**"
+      ],
+      "engines": [
+        "cache-tests"
+      ],
+      "reason": "every test assumes cacheProvider=redis"
+    },
+    {
+      "tests": [
+        "RdfCatalogScaleIT"
+      ],
+      "engines": [
+        "postgres-opensearch"
+      ],
+      "reason": "assumes PostgreSQL"
+    },
+    {
+      "tests": [
+        "UnitOfWorkRollbackIT"
+      ],
+      "engines": [
+        "mysql-elasticsearch"
+      ],
+      "reason": "assumes MySQL"
+    }
+  ],
+  "mappings": [
+    {
+      "name": "entity-core",
+      "description": "Shared entity lifecycle: EntityRepository/EntityResource, DAOs, relationships, locking, pagination, soft/hard delete, change descriptions. A regression here breaks every entity type.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/Entity.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/TypeRegistry.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityDAO.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/CollectionDAO.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityRelationship*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ListFilter.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityTimeSeries*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ChangeDescription*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/*UnitOfWork*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/locator/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/EntityResource.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/EntityBaseService.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/filters/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/EntityUtil.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/RestUtil.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/FullyQualifiedName.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/ChildFieldResolver.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/relationshipcleanup/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/jdbi/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/exception/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/lock/**",
+        "openmetadata-spec/src/main/resources/json/schema/type/**",
+        "openmetadata-spec/src/main/java/**",
+        "common/src/main/**"
+      ],
+      "tests": [
+        "DatabaseSmokeIT",
+        "TableResourceIT",
+        "DatabaseResourceIT",
+        "DatabaseSchemaResourceIT",
+        "DatabaseServiceResourceIT",
+        "DatabaseHierarchyIT",
+        "GlossaryResourceIT",
+        "GlossaryTermResourceIT",
+        "UserResourceIT",
+        "TeamResourceIT",
+        "TagResourceIT",
+        "ClassificationResourceIT",
+        "DomainResourceIT",
+        "DataProductResourceIT",
+        "TopicResourceIT",
+        "DashboardResourceIT",
+        "PipelineResourceIT",
+        "ContainerResourceIT",
+        "TypeResourceIT",
+        "ChangeSummaryResourceIT",
+        "Entity*IT",
+        "ChildField*IT",
+        "OptimisticLockingColumnPatchIT",
+        "PaginationIT",
+        "SoftDeleteRetentionIT",
+        "RestoreHierarchyIT",
+        "OneTransactionFlushAtomicityIT",
+        "UnitOfWorkRollbackIT",
+        "OrphanedEntityReferenceIT",
+        "OrphanedTimeSeriesCleanupIT",
+        "DeepCopyBenchmarkIT",
+        "WritePathBenchmarkIT",
+        "org/openmetadata/it/tests/repositories/Entity*IT.java"
+      ]
+    },
+    {
+      "name": "databases",
+      "description": "Databases, schemas, tables, stored procedures and their services.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/databases/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Database*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Table*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/StoredProcedure*",
+        "openmetadata-service/src/main/resources/json/data/database/**",
+        "openmetadata-service/src/main/resources/json/data/databaseSchema/**",
+        "openmetadata-service/src/main/resources/json/data/databaseService/**",
+        "openmetadata-service/src/main/resources/json/data/table/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/database*.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/table.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/storedProcedure.json"
+      ],
+      "tests": [
+        "Database*IT",
+        "Table*IT",
+        "StoredProcedureResourceIT"
+      ]
+    },
+    {
+      "name": "dashboards-charts",
+      "description": "Dashboards, charts and dashboard data models.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/dashboards/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/charts/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/datamodels/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Dashboard*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Chart*",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/dashboard*.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/chart.json"
+      ],
+      "tests": [
+        "Dashboard*IT",
+        "ChartResourceIT"
+      ]
+    },
+    {
+      "name": "apis",
+      "description": "API collections, API endpoints and API services.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/apis/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/services/apiservices/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/API*",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/api*.json"
+      ],
+      "tests": [
+        "API*IT"
+      ]
+    },
+    {
+      "name": "ml-models",
+      "description": "ML models and ML model services.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/mlmodels/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/services/mlmodel/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/MlModel*",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/mlmodel.json"
+      ],
+      "tests": [
+        "MlModel*IT"
+      ]
+    },
+    {
+      "name": "messaging-pipelines-storage",
+      "description": "Topics, pipelines, containers, search indexes (the entity) and their services.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/topics/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/pipelines/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/storages/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/searchindex/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Topic*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Pipeline*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Container*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/SearchIndexRepository.java",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/topic.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/pipeline.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/container.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/searchIndex.json"
+      ],
+      "tests": [
+        "TopicResourceIT",
+        "Pipeline*IT",
+        "ContainerResourceIT",
+        "SearchIndexResourceIT",
+        "Messaging*IT",
+        "StorageService*IT",
+        "SearchService*IT"
+      ]
+    },
+    {
+      "name": "search-core",
+      "description": "Any search code: the fast search ITs that run in the parallel lane.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/system/SearchSettingsHandler.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/system/IndexResource.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/events/lifecycle/handlers/SearchIndexHandler.java",
+        "openmetadata-spec/src/main/resources/elasticsearch/**",
+        "openmetadata-spec/src/main/java/org/openmetadata/search/**",
+        "openmetadata-spec/src/main/resources/json/schema/search/**",
+        "openmetadata-service/src/main/resources/json/data/settings/**"
+      ],
+      "tests": [
+        "SearchResourceIT",
+        "AsyncSearchIndexConsistencyIT",
+        "SearchIndexingFieldsParityIT",
+        "SearchConfigurationIT",
+        "SearchFieldlessQueryIT",
+        "AccentInsensitiveSearchIT",
+        "FlattenedChildrenHighlightSearchIT",
+        "CachedSearchLayerIT",
+        "ColumnSearchIndexIT",
+        "TestCaseSoftDeleteSearchIT",
+        "MlModelServiceSearchAliasIT",
+        "SearchConsumerFieldBehaviorIT"
+      ]
+    },
+    {
+      "name": "search-indexing",
+      "description": "Reindex app, live indexing, alias swaps, staged indexes, retry queue. Runs the destructive search-it classes (serial, own server) that no longer run on PRs.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/workflows/searchIndex/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/*Recreate*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/*Reindex*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchIndexRetry*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/IndexManagementClient.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/IndexMappingVersionTracker.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchIndexUtils.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/scripts/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/EntityManagementClient.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/GenericClient.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchManagementClient.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRetry*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchShardFailures.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/events/lifecycle/handlers/SearchIndexHandler.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/system/IndexResource.java"
+      ],
+      "tests": [
+        "AliasSwapConcreteRemovalIT",
+        "SearchIndexPromotionIT",
+        "SearchIndexRetryQueueIT",
+        "OrphanedIndexCleanerScopedCleanupIT",
+        "AsyncSearchIndexConsistencyIT",
+        "org/openmetadata/it/tests/search/Reindex*IT.java",
+        "org/openmetadata/it/tests/search/NoDuplicatesDuringReindexIT.java",
+        "org/openmetadata/it/tests/search/StagedIndexUnrefreshedCountIT.java",
+        "org/openmetadata/it/tests/search/DbToEsCountReconciliationIT.java",
+        "org/openmetadata/it/tests/search/SearchCountConsistencyIT.java",
+        "org/openmetadata/it/tests/search/LiveIndexRetryIT.java",
+        "org/openmetadata/it/tests/search/UnsafeReindexConfigIT.java",
+        "org/openmetadata/it/tests/search/ColumnIndexingToggleIT.java",
+        "org/openmetadata/it/tests/search/TestCaseStaleDefinitionReindexIT.java"
+      ]
+    },
+    {
+      "name": "search-mappings",
+      "description": "Index mappings, search index documents, field limits, nested/flattened fields.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/indexes/**",
+        "openmetadata-spec/src/main/resources/elasticsearch/**",
+        "openmetadata-spec/src/main/java/org/openmetadata/search/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/IndexMapping*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchIndexFactory.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchIndexSettings.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchFieldLimits.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/CustomPropertySearchFields.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/models/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/capability/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/validation/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/ParseTags.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/EntityBuilderConstant.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchPropagationLimits.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/PropagationDescriptor.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/Column*"
+      ],
+      "tests": [
+        "IndexTemplateIT",
+        "IndexingLimitsIT",
+        "SearchIndexFieldLimitIT",
+        "SearchIndexImmenseTermIT",
+        "SearchIndexingFieldsParityIT",
+        "ColumnSearchIndexIT",
+        "SearchConsumerFieldBehaviorIT",
+        "org/openmetadata/it/tests/search/IndexMappingTemplatesIT.java",
+        "org/openmetadata/it/tests/search/IndexFieldExplosionIT.java",
+        "org/openmetadata/it/tests/search/NestedHierarchyIndexIT.java",
+        "org/openmetadata/it/tests/search/OwnersNestedMappingIT.java",
+        "org/openmetadata/it/tests/search/FieldNamesAggregationIT.java",
+        "org/openmetadata/it/tests/search/CustomPropertyAggregationIT.java",
+        "org/openmetadata/it/tests/search/ExtensionHighlightSearchIT.java"
+      ]
+    },
+    {
+      "name": "search-query",
+      "description": "Query building, ranking/scoring, search settings, highlights, aggregations, RBAC filters.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/queries/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/QueryFilter*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/LuceneQuerySyntax.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchSourceBuilderFactory.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRankingHelper.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/Search*Filter.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchAggregation*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/AggregationManagementClient.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchResult*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/HighlightFieldClassifier.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/*InheritedFieldEntitySearch.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchUtils.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchConstants.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/security/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/nlq/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/system/SearchSettingsHandler.java",
+        "openmetadata-spec/src/main/resources/json/schema/search/**",
+        "openmetadata-service/src/main/resources/json/data/settings/**"
+      ],
+      "tests": [
+        "SearchResourceIT",
+        "SearchRankingRelevanceIT",
+        "SearchConfigurationIT",
+        "SearchFieldlessQueryIT",
+        "AccentInsensitiveSearchIT",
+        "FlattenedChildrenHighlightSearchIT",
+        "CachedSearchLayerIT",
+        "org/openmetadata/it/tests/search/SearchScoringIT.java",
+        "org/openmetadata/it/tests/search/SearchEntityRankingIT.java",
+        "org/openmetadata/it/tests/search/SearchRelevancyPreviewIT.java",
+        "org/openmetadata/it/tests/search/PerEntitySearchDefaultsIT.java",
+        "org/openmetadata/it/tests/search/LiveSearchSettingsChangeIT.java",
+        "org/openmetadata/it/tests/search/HighlightFieldSaveValidationIT.java"
+      ]
+    },
+    {
+      "name": "search-opensearch",
+      "description": "OpenSearch client code: run the search ITs on PostgreSQL + OpenSearch.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/opensearch/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/**/OpenSearch*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/**/Os*Client*.java",
+        "openmetadata-shaded-deps/opensearch-dep/**"
+      ],
+      "tests": [
+        "SearchResourceIT",
+        "AsyncSearchIndexConsistencyIT",
+        "SearchIndexingFieldsParityIT",
+        "OpensearchHC5ReactorReproIT",
+        "AliasSwapConcreteRemovalIT",
+        "org/openmetadata/it/tests/search/ReindexAliasSwapIT.java",
+        "org/openmetadata/it/tests/search/IndexMappingTemplatesIT.java"
+      ],
+      "engines": [
+        "postgres-opensearch"
+      ]
+    },
+    {
+      "name": "search-elasticsearch",
+      "description": "Elasticsearch client code: run the search ITs on MySQL + Elasticsearch.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/elasticsearch/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/**/ElasticSearch*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/**/Es*Client*.java",
+        "openmetadata-shaded-deps/elasticsearch-dep/**"
+      ],
+      "tests": [
+        "SearchResourceIT",
+        "AsyncSearchIndexConsistencyIT",
+        "SearchIndexingFieldsParityIT",
+        "AliasSwapConcreteRemovalIT",
+        "org/openmetadata/it/tests/search/ReindexAliasSwapIT.java",
+        "org/openmetadata/it/tests/search/IndexMappingTemplatesIT.java"
+      ],
+      "engines": [
+        "mysql-elasticsearch"
+      ]
+    },
+    {
+      "name": "search-vector",
+      "description": "Vector embeddings and semantic search.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/vector/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/RecreateWithEmbeddings.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/llm/**"
+      ],
+      "tests": [
+        "VectorEmbeddingIntegrationIT",
+        "PatchTableEmbeddingIT",
+        "RdfSemanticSearchIT"
+      ]
+    },
+    {
+      "name": "search-fitness",
+      "description": "Search cluster fitness checks.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/fitness/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchClusterMetrics.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchHealthStatus.java"
+      ],
+      "tests": [
+        "SearchClusterFitnessResourceIT",
+        "org/openmetadata/it/tests/search/SearchClusterFitnessReindexE2EIT.java"
+      ]
+    },
+    {
+      "name": "lineage",
+      "description": "Lineage graph, column lineage, OpenLineage ingestion, lineage search.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/lineage/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/lineage/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/LineagePathPreserver.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/ColumnLineageReconciler.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/lineage/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/LineageRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/openlineage/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/openlineage/**",
+        "openmetadata-service/src/main/resources/json/data/lineage/**",
+        "openmetadata-spec/src/main/resources/json/schema/type/entityLineage.json"
+      ],
+      "tests": [
+        "*Lineage*IT"
+      ]
+    },
+    {
+      "name": "events-alerts",
+      "description": "Change events, event subscriptions, alerts, notifications and their templates.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/events/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/notifications/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/formatter/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/events/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/changeEvent/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EventSubscription*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/NotificationTemplate*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ChangeEvent*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/ChangeEventJsonUtils.java",
+        "openmetadata-service/src/main/resources/json/data/notifications/**",
+        "openmetadata-service/src/main/resources/json/data/eventsubscription/**",
+        "openmetadata-service/src/main/resources/json/data/AlertCatalog.json",
+        "openmetadata-spec/src/main/resources/json/schema/events/**"
+      ],
+      "tests": [
+        "org/openmetadata/it/tests/alerts/**",
+        "EventSubscription*IT",
+        "AlertsRuleEvaluator*IT",
+        "NotificationTemplateResourceIT",
+        "ChangeEventParserResourceIT",
+        "ChangeSummaryResourceIT",
+        "*ChangeEvent*IT",
+        "IncidentTaskNotificationIT"
+      ]
+    },
+    {
+      "name": "security-auth",
+      "description": "Authentication, authorization (policies/roles/permissions), bots, sessions, SSO/SAML/LDAP, masking.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/security/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/auth/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/permissions/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/policies/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/bots/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Policy*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Role*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Bot*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TokenRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/scim/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/scim/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/fernet/**",
+        "openmetadata-service/src/main/resources/json/data/policy/**",
+        "openmetadata-service/src/main/resources/json/data/role/**",
+        "openmetadata-service/src/main/resources/json/data/bot/**",
+        "openmetadata-service/src/main/resources/json/data/botUser/**",
+        "openmetadata-spec/src/main/resources/json/schema/security/**",
+        "openmetadata-spec/src/main/resources/json/schema/auth/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/policies/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/teams/role.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/bot.json",
+        "conf/openmetadata.yaml"
+      ],
+      "tests": [
+        "PermissionsResourceIT",
+        "PolicyResourceIT",
+        "RoleResourceIT",
+        "Bot*IT",
+        "SamlSecurityConfigIT",
+        "OAuth2TokenManagerIT",
+        "EmailFirstIdentityIT",
+        "Session*IT",
+        "TokenRevocation*IT",
+        "TestLoginSessionSweepIT",
+        "FeedAccessAuthzIT",
+        "*Permission*IT",
+        "*Privilege*IT",
+        "QueryVisibilityPolicyIT",
+        "ServiceAttributePolicyIT",
+        "PipelineStatusAuthorizationIT",
+        "DomainIsolationIT",
+        "UserResourceIT"
+      ]
+    },
+    {
+      "name": "secrets",
+      "description": "Secrets managers and connection-config encryption.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/secrets/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/fernet/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/services/ingestionpipelines/IngestionPipelineSecrets.java"
+      ],
+      "tests": [
+        "SecretsManagerNullSecretIT",
+        "DatabaseServiceResourceIT",
+        "IngestionPipelineResourceIT",
+        "BotResourceIT",
+        "TestConnectionDefinitionResourceIT"
+      ]
+    },
+    {
+      "name": "teams-users-personas",
+      "description": "Users, teams, personas and their assignment rules.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/teams/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/User*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Team*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Persona*",
+        "openmetadata-spec/src/main/resources/json/schema/entity/teams/**",
+        "openmetadata-service/src/main/resources/json/data/user/**",
+        "openmetadata-service/src/main/resources/json/data/team/**"
+      ],
+      "tests": [
+        "User*IT",
+        "Team*IT",
+        "Persona*IT",
+        "ActivePersonaHeaderIT",
+        "MultiTeamUserFanOutIT",
+        "MultiDomainHasDomainIT"
+      ]
+    },
+    {
+      "name": "domains-data-products",
+      "description": "Domains, data products and domain isolation.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/domains/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Domain*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataProduct*",
+        "openmetadata-spec/src/main/resources/json/schema/entity/domains/**"
+      ],
+      "tests": [
+        "Domain*IT",
+        "DataProduct*IT",
+        "MultiDomainHasDomainIT",
+        "TestCaseCsvDomainIsolationIT"
+      ]
+    },
+    {
+      "name": "glossary-tags",
+      "description": "Glossaries, glossary terms and term relations, classifications, tags and tag recognizers.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/tags/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Glossary*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Tag*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Classification*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/RecognizerFeedback*",
+        "openmetadata-service/src/main/resources/json/data/glossary/**",
+        "openmetadata-service/src/main/resources/json/data/tags/**",
+        "openmetadata-service/src/main/resources/json/data/classification/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/glossary*.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/classification/**"
+      ],
+      "tests": [
+        "Glossary*IT",
+        "Tag*IT",
+        "ClassificationResourceIT",
+        "org/openmetadata/it/tests/repositories/RecognizerFeedbackRepositoryTest.java",
+        "org/openmetadata/it/tests/cache/TagRenameCacheIT.java"
+      ]
+    },
+    {
+      "name": "ontology",
+      "description": "Ontology modeling, relationship types and glossary-term relations.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/ontology/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/ontology/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Ontology*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/RelationshipType*",
+        "openmetadata-service/src/main/resources/json/data/ontology/**"
+      ],
+      "tests": [
+        "Ontology*IT",
+        "RelationshipType*IT",
+        "GlossaryTermRelation*IT",
+        "GlossaryOntologyExportIT"
+      ]
+    },
+    {
+      "name": "rdf",
+      "description": "RDF store, SPARQL, knowledge graph. RDF classes run in the rdf lane against a Fuseki container.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**",
+        "docker/rdf-store/**",
+        "openmetadata-service/src/main/resources/rdf/**",
+        "openmetadata-spec/src/main/resources/rdf/**"
+      ],
+      "tests": [
+        "Rdf*IT",
+        "LodResourceIT",
+        "AgentSparqlResourceIT",
+        "SavedSparqlQueryResourceIT",
+        "GlossaryRdfImportIT",
+        "GlossaryOntologyExportIT",
+        "RdfScaleResourcesTest"
+      ]
+    },
+    {
+      "name": "governance-workflows",
+      "description": "Governance workflow engine (Flowable), workflow definitions/instances, approval tasks, intake forms.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/governance/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/governance/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/WorkflowDefinition*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/WorkflowInstance*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/rules/**",
+        "openmetadata-service/src/main/resources/json/data/governance/**",
+        "openmetadata-service/src/main/resources/json/governance/**",
+        "openmetadata-spec/src/main/resources/json/schema/governance/**"
+      ],
+      "tests": [
+        "WorkflowDefinitionResourceIT",
+        "WorkflowTriggerPermissionsIT",
+        "GlossaryTerm*Approval*IT",
+        "EntityStatusWorkflowOwnershipIT",
+        "IntakeFormResourceIT",
+        "DataAccessRequestValidationIT",
+        "AutoAssignIncidentIT",
+        "AutoCloseIncidentIT",
+        "DataContractValidationAppIT"
+      ]
+    },
+    {
+      "name": "feeds-tasks-activity",
+      "description": "Threads, tasks, announcements, suggestions, activity streams and conversations.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/feeds/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/tasks/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/activity/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/tasks/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Feed*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Task*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Announcement*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Activity*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Suggestion*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Conversation*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/socket/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/ActivityStreamPartitionManager.java",
+        "openmetadata-service/src/main/resources/json/data/taskFormSchemas/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/feed/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/tasks/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/activity/**"
+      ],
+      "tests": [
+        "Task*IT",
+        "ActivityResourceIT",
+        "AnnouncementResourceIT",
+        "FeedAccessAuthzIT",
+        "EntityDeleteTaskCleanupIT",
+        "IncidentTask*IT",
+        "Conversation*IT"
+      ]
+    },
+    {
+      "name": "data-quality",
+      "description": "Test cases/suites/definitions, results, incidents, data-quality dimensions, profiler data.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/dqtests/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/entityProfiles/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestCase*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestSuite*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinition*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Incident*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityProfile*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataQuality*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/incidentSeverityClassifier/**",
+        "openmetadata-service/src/main/resources/json/data/tests/**",
+        "openmetadata-service/src/main/resources/json/data/testCase/**",
+        "openmetadata-service/src/main/resources/json/data/dataQualityDimension/**",
+        "openmetadata-spec/src/main/resources/json/schema/tests/**"
+      ],
+      "tests": [
+        "TestCase*IT",
+        "TestSuite*IT",
+        "TestDefinitionResourceIT",
+        "*Incident*IT",
+        "LatestTestCaseResultListingIT",
+        "DataQuality*IT",
+        "SqlTestDecoratorsIT",
+        "EntityProfileResourceIT",
+        "OrphanedTimeSeriesCleanupIT",
+        "org/openmetadata/it/tests/search/TestCaseStaleDefinitionReindexIT.java"
+      ]
+    },
+    {
+      "name": "data-contracts",
+      "description": "Data contracts, ODCS import/export and contract validation.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/datacontract/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/data/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataContract*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/dataContracts/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/datacontract/**"
+      ],
+      "tests": [
+        "DataContract*IT",
+        "DataAccessRequestValidationIT"
+      ]
+    },
+    {
+      "name": "apps",
+      "description": "Application framework, marketplace, scheduler and the non-search bundled apps.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/*.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/scheduler/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/logging/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/dataRetention/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/autoPilot/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/cache/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/test/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/mcp/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/apps/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/App*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/AppMarketPlaceUtil.java",
+        "openmetadata-service/src/main/resources/json/data/app/**",
+        "openmetadata-service/src/main/resources/json/data/appMarketPlaceDefinition/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/applications/**"
+      ],
+      "tests": [
+        "App*IT",
+        "AppsResourceIT",
+        "DataRetentionAppIT",
+        "BundleWarmupCertificationIT",
+        "DataContractValidationAppIT"
+      ]
+    },
+    {
+      "name": "data-insights",
+      "description": "Data insights app and charts, KPIs, web analytics, report data.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/insights/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/dataInsight/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/datainsight/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/kpi/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/analytics/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataInsight*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Kpi*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ReportData*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/WebAnalytic*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/DataInsight*",
+        "openmetadata-service/src/main/resources/json/data/dataInsight/**",
+        "openmetadata-service/src/main/resources/json/data/analytics/**",
+        "openmetadata-spec/src/main/resources/json/schema/dataInsight/**",
+        "openmetadata-spec/src/main/resources/json/schema/analytics/**"
+      ],
+      "tests": [
+        "DataInsight*IT",
+        "KpiResourceIT",
+        "ReportDataResourceIT",
+        "WebAnalyticEventResourceIT",
+        "EnricherBulkVsHistoryPathEquivalenceIT"
+      ]
+    },
+    {
+      "name": "ingestion-pipelines",
+      "description": "Ingestion pipelines, pipeline-service clients, log streaming, test connections, automations workflows.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/clients/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/logstorage/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/services/ingestionpipelines/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/services/connections/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/automations/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IngestionPipeline*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Workflow*Repository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestConnection*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/monitoring/IngestionProgressTracker.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/monitoring/ServiceProgressStreamer.java",
+        "openmetadata-service/src/main/resources/json/data/testConnections/**",
+        "openmetadata-spec/src/main/resources/json/schema/metadataIngestion/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/automations/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/**",
+        "openmetadata-spec/src/main/java/org/openmetadata/service/**",
+        "openmetadata-spec/src/main/java/org/openmetadata/sdk/PipelineServiceClientInterface.java"
+      ],
+      "tests": [
+        "IngestionPipeline*IT",
+        "OrphanIngestionPipelineCleanupIT",
+        "RunIngestionPipelineForEntityIT",
+        "TestConnectionDefinitionResourceIT",
+        "WorkflowResourceIT",
+        "K8sIngestionPipelineResourceIT"
+      ]
+    },
+    {
+      "name": "k8s",
+      "description": "Kubernetes pipeline client and the OMJob operator.",
+      "sources": [
+        "openmetadata-k8s-operator/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/clients/pipeline/k8s/**"
+      ],
+      "tests": [
+        "K8s*IT",
+        "org/openmetadata/it/k8s/**"
+      ]
+    },
+    {
+      "name": "services",
+      "description": "Shared service-entity code (every *Service entity and the services overview).",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/services/*.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServiceEntityRepository.java",
+        "openmetadata-spec/src/main/resources/json/schema/entity/services/*.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/**"
+      ],
+      "tests": [
+        "ServicesOverviewResourceIT",
+        "ServiceAttributePolicyIT",
+        "*ServiceResourceIT"
+      ]
+    },
+    {
+      "name": "columns",
+      "description": "Column-level APIs: column grid, bulk column updates, column custom properties and types.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/columns/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Column*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/Column*",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/table.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/column/**"
+      ],
+      "tests": [
+        "Column*IT",
+        "OptimisticLockingColumnPatchIT",
+        "DomainAssetsColumnExclusionIT",
+        "org/openmetadata/it/tests/search/ColumnIndexingToggleIT.java"
+      ]
+    },
+    {
+      "name": "custom-properties-types",
+      "description": "Entity types and custom properties.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/types/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TypeRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/CustomProperty*",
+        "openmetadata-spec/src/main/resources/json/schema/entity/type.json"
+      ],
+      "tests": [
+        "TypeResourceIT",
+        "ColumnCustomPropertiesIT",
+        "org/openmetadata/it/tests/search/CustomPropertyAggregationIT.java"
+      ]
+    },
+    {
+      "name": "bulk-csv",
+      "description": "CSV import/export, async CSV jobs and bulk asset operations.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/csv/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/csv/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/*Csv*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/CSV*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/BulkAssets*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/*Bulk*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jobs/**"
+      ],
+      "tests": [
+        "*Csv*IT",
+        "Bulk*IT",
+        "ColumnBulkUpdateIT",
+        "DomainBulkAssetsDryRunIT",
+        "OntologyBulkIT",
+        "UserImportPrivilegeEscalationIT"
+      ]
+    },
+    {
+      "name": "cache",
+      "description": "Entity/relationship/search caches (Redis). Also runs the cache ITs with Redis enabled.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/cache/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/**/*Redis*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/config/CacheConfiguration.java"
+      ],
+      "tests": [
+        "org/openmetadata/it/tests/cache/**",
+        "EntityCache*IT",
+        "CachedSearchLayerIT",
+        "SessionRedisMultiNodeIT",
+        "TokenRevocationRedisMultiNodeIT"
+      ],
+      "engines": [
+        "mysql-elasticsearch",
+        "cache-tests"
+      ]
+    },
+    {
+      "name": "migrations-seed-data",
+      "description": "Schema migrations and seed data. Every IT bootstraps through the migrations; these add the migration ITs, on the database whose SQL changed (see engineRules).",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/migration/**",
+        "bootstrap/sql/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/seeding/**",
+        "openmetadata-service/src/main/resources/json/data/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/OpenMetadataOperations.java"
+      ],
+      "tests": [
+        "*MigrationIT",
+        "ContinuousMigrationIT",
+        "SeedDataPresenceIT",
+        "OpenMetadataOperationsIT",
+        "DbTuneIT"
+      ]
+    },
+    {
+      "name": "system-config",
+      "description": "Application wiring, configuration, system/settings APIs, limits, monitoring, jobs.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/OpenMetadataApplication*.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/OpenMetadataServerHealthCheck.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/config/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/system/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/settings/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/limits/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/limits/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/monitoring/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/initialization/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/dbtune/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/SystemRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/SettingsCache*",
+        "openmetadata-spec/src/main/resources/json/schema/configuration/**",
+        "openmetadata-spec/src/main/resources/json/schema/system/**",
+        "conf/**"
+      ],
+      "tests": [
+        "SystemResourceIT",
+        "ConfigResourceIT",
+        "PrometheusResourceIT",
+        "UserMetricsResourceIT",
+        "DbTuneIT",
+        "IndexingLimitsIT",
+        "SeedDataPresenceIT"
+      ]
+    },
+    {
+      "name": "audit",
+      "description": "Audit log.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/audit/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/audit/**"
+      ],
+      "tests": [
+        "AuditLogResourceIT"
+      ]
+    },
+    {
+      "name": "ai-mcp-context",
+      "description": "AI governance, agents, LLM services, prompt templates, context memory, AI context, MCP server.",
+      "sources": [
+        "openmetadata-mcp/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/aicontext/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/context/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/llm/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/ai/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/mcp/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/context/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/AI*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Agent*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/LLM*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Mcp*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemory*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/PromptTemplate*",
+        "openmetadata-service/src/main/resources/json/data/aiGovernance/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/ai/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/context/**"
+      ],
+      "tests": [
+        "org/openmetadata/it/tests/mcp/**",
+        "Mcp*IT",
+        "AI*IT",
+        "AgentExecutionResourceIT",
+        "ContextMemory*IT",
+        "LLM*IT",
+        "PromptTemplateResourceIT",
+        "OntologyAiResourceIT",
+        "Conversation*IT",
+        "org/openmetadata/it/drive/ContextFileIT.java"
+      ]
+    },
+    {
+      "name": "drives-attachments",
+      "description": "Drive service, directories, files, spreadsheets/worksheets, folders and attachments.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/drives/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/drive/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/attachments/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/attachments/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Directory*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/File*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Spreadsheet*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Worksheet*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Folder*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextFile*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Attachment*",
+        "openmetadata-service/src/main/resources/json/data/directory/**",
+        "openmetadata-service/src/main/resources/json/data/file/**",
+        "openmetadata-service/src/main/resources/json/data/spreadsheet/**",
+        "openmetadata-service/src/main/resources/json/data/worksheet/**",
+        "openmetadata-service/src/main/resources/json/data/driveService/**"
+      ],
+      "tests": [
+        "Directory*IT",
+        "File*IT",
+        "Folder*IT",
+        "Spreadsheet*IT",
+        "Worksheet*IT",
+        "DriveService*IT",
+        "org/openmetadata/it/drive/**",
+        "org/openmetadata/it/attachments/**"
+      ]
+    },
+    {
+      "name": "knowledge-docstore",
+      "description": "Knowledge center pages, doc store and learning resources.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/docstore/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/knowledge/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/learning/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/docstore/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DocStore*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Knowledge*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/LearningResource*",
+        "openmetadata-service/src/main/resources/json/data/document/**",
+        "openmetadata-service/src/main/resources/json/data/learningResource/**"
+      ],
+      "tests": [
+        "DocStoreResourceIT",
+        "KnowledgePageHierarchyIT",
+        "LearningResourceIT",
+        "org/openmetadata/it/knowledge/**"
+      ]
+    },
+    {
+      "name": "queries-usage-metrics",
+      "description": "Queries, query cost, usage and metrics.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/query/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/usage/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/metrics/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Query*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Usage*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Metric*"
+      ],
+      "tests": [
+        "Query*IT",
+        "UsageResourceIT",
+        "Metric*IT",
+        "org/openmetadata/it/tests/mcp/MetricAssetsIT.java"
+      ]
+    },
+    {
+      "name": "certification",
+      "description": "Asset certification and its propagation.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/**/*Certification*"
+      ],
+      "tests": [
+        "*Certification*IT"
+      ]
+    },
+    {
+      "name": "it-harness",
+      "description": "Integration-test harness (bootstrap, server, factories, utilities, shape profiles). The harness's own *Test classes plus every IT that references the changed class.",
+      "sources": [
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/bootstrap/**",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/server/**",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/util/**",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/factories/**",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/bench/**",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/search/**",
+        "openmetadata-integration-tests/src/test/resources/**"
+      ],
+      "tests": [
+        "org/openmetadata/it/bench/*Test.java",
+        "org/openmetadata/it/bootstrap/*Test.java",
+        "org/openmetadata/it/factories/*Test.java",
+        "org/openmetadata/it/search/**/*Test.java",
+        "org/openmetadata/it/server/*Test.java",
+        "org/openmetadata/it/util/*Test.java",
+        "DatabaseSmokeIT"
+      ]
+    }
+  ]
+}
