@@ -425,7 +425,9 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getMentionsFeed(securityContext, domain, days, limit);
+    return viewableOnly(
+        securityContext,
+        activityStreamRepository.getMentionsFeed(securityContext, domain, days, limit));
   }
 
   @GET

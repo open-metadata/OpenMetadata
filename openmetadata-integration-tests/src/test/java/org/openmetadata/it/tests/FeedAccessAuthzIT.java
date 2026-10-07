@@ -39,6 +39,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.feed.CreateAnnouncement;
 import org.openmetadata.schema.api.feed.CreateConversation;
+import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -196,6 +197,34 @@ class FeedAccessAuthzIT {
           eventIds(SdkClients.adminClient(), path).contains(hiddenEvent.toString()),
           path + " must still show admins every event");
     }
+  }
+
+  /**
+   * A mention reaches the caller wherever it was written, so the mentions feed must not hand them
+   * the change event on an entity they cannot view just because someone mentioned them under it.
+   */
+  @Test
+  void mentionsFeed_dropsEventsOnEntitiesTheCallerCannotView(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table restricted = createTable(schema, ns.prefix("mention-restricted"), List.of(PII_SENSITIVE));
+    Table open = createTable(schema, ns.prefix("mention-open"), List.of());
+    User actor = UserTestFactory.createUser(ns, "mention-actor");
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("act_mention"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+    String mention = "<#E::user::" + loggedInUserName(denied) + "> please take a look";
+    UUID hiddenEvent = insertActivity(restricted, actor);
+    UUID shownEvent = insertActivity(open, actor);
+    replyAsAdmin(hiddenEvent, mention);
+    replyAsAdmin(shownEvent, mention);
+
+    List<String> mentions = eventIds(denied, ACTIVITY_PATH + "/mentions?days=1");
+
+    assertTrue(mentions.contains(shownEvent.toString()), "lost a mention on a viewable table");
+    assertFalse(mentions.contains(hiddenEvent.toString()), "leaked a mention on a hidden table");
   }
 
   // ==================== Fetch a feed you cannot view ====================
@@ -571,6 +600,7 @@ class FeedAccessAuthzIT {
             .withId(UUID.randomUUID())
             .withEventType(ActivityEventType.ENTITY_UPDATED)
             .withEntity(table.getEntityReference())
+            .withAbout(entityLink(table))
             .withActor(actor.getEntityReference())
             .withTimestamp(System.currentTimeMillis())
             .withSummary("Updated " + table.getName());
@@ -582,6 +612,20 @@ class FeedAccessAuthzIT {
             MAPPER.writeValueAsString(event),
             RequestOptions.builder().build());
     return event.getId();
+  }
+
+  private static void replyAsAdmin(UUID activityId, String message) throws Exception {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            ACTIVITY_PATH + "/" + activityId + "/replies",
+            MAPPER.writeValueAsString(new CreatePost().withMessage(message)),
+            RequestOptions.builder().build());
+  }
+
+  private static String loggedInUserName(OpenMetadataClient client) throws Exception {
+    return MAPPER.readTree(get(client, "/v1/users/loggedInUser")).path("name").asText();
   }
 
   private static List<String> eventIds(OpenMetadataClient client, String path) throws Exception {
