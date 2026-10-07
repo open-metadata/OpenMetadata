@@ -34,10 +34,14 @@ export const Popover = (props: PopoverProps) => {
       const target = event.target as Element;
       const triggerEl =
         triggerRef && 'current' in triggerRef ? triggerRef.current : null;
-      // A press inside the trigger is the trigger's own business — except on a
-      // button, which `useMenuTrigger` only ever opens with. Pressing the
-      // ComboBox/TagSelect input it also covers just moves the caret.
-      if (triggerEl?.contains(target) && !target.closest('button')) {
+      // Only the trigger when it *is* the toggle button dismisses — Select,
+      // whose `useMenuTrigger` press only ever opens. Everything else inside a
+      // trigger belongs to it: a ComboBox chevron toggles itself, and caret
+      // moves and chip removals are not a dismissal.
+      if (
+        triggerEl?.contains(target) &&
+        target.closest('button') !== triggerEl
+      ) {
         return;
       }
       state?.close();
