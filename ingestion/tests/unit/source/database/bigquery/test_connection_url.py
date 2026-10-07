@@ -59,6 +59,11 @@ def test_get_connection_url_returns_a_url_object():
     assert isinstance(url, URL)
 
 
+def test_get_connection_url_uses_default_scheme_when_unset():
+    url = get_connection_url(_config("my-project", scheme=None))
+    assert url.drivername == "bigquery"
+
+
 def test_get_connection_url_preserves_colon_in_domain_scoped_project_id():
     url = get_connection_url(_config("s3ns:my_project"))
     assert url.host == "s3ns:my_project"

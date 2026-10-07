@@ -15,11 +15,12 @@ import {
   screen,
   waitFor,
   waitForElementToBeRemoved,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { Table } from '../../../generated/entity/data/table';
+import { Team } from '../../../generated/entity/teams/team';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -43,10 +44,6 @@ const mockCustomProperties = [
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
-}));
-
-jest.mock('./PropertyValue', () => ({
-  PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
 jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
@@ -106,34 +103,6 @@ const mockProp = {
   entityType: EntityType.TABLE,
   hasEditAccess: true,
   hasPermission: true,
-  entityDetails: {
-    id: '0e84330a',
-    name: 'cypr081639',
-    fullyQualifiedName: 'cy-da-1705598081639',
-    tags: [],
-    version: 0.1,
-    updatedAt: 1705,
-    updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/databases/',
-    service: {
-      id: '420df68ba',
-      type: 'databaseService',
-      name: 'cy-da348',
-      fullyQualifiedName: 'cy3348',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/services/dat83b567868ba',
-    },
-    serviceType: 'Mysql',
-    default: false,
-    deleted: false,
-    columns: [],
-    votes: {
-      upVotes: 0,
-      downVotes: 0,
-      upVoters: [],
-      downVoters: [],
-    },
-  } as Table,
 };
 
 describe('Test CustomProperty Table Component', () => {
@@ -174,10 +143,15 @@ describe('Test CustomProperty Table Component', () => {
     expect(
       await screen.findByTestId('custom-property-xName-card')
     ).toBeInTheDocument();
-    expect(screen.queryByText('PropertyValue')).not.toBeInTheDocument();
   });
 
-  it('Should render the legacy property values in version view', async () => {
+  it('Should render read-only property rows in version view', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: { extension: { xName: 'Data Platform' } },
+      onUpdate: jest.fn(),
+      filterWidgets: jest.fn(),
+    });
+
     await act(async () => {
       renderWithQueryClient(
         <CustomPropertyTable
@@ -188,7 +162,13 @@ describe('Test CustomProperty Table Component', () => {
       );
     });
 
-    expect(await screen.findByText('PropertyValue')).toBeInTheDocument();
+    const row = await screen.findByTestId('custom-property-xName-row');
+
+    expect(within(row).getByTestId('property-value')).toHaveTextContent(
+      'Data Platform'
+    );
+    expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('add-value-button')).not.toBeInTheDocument();
   });
 
   it('Should save an edited value as the merged entity extension', async () => {
@@ -284,5 +264,88 @@ describe('Test CustomProperty Table Component', () => {
     expect(await screen.findByTestId('property-name')).toHaveTextContent(
       'xName'
     );
+  });
+});
+
+describe('Test CustomProperty Table entity source', () => {
+  // Team and user detail pages sit outside the customizable-page system, so they hand the
+  // entity in as a prop instead of through a GenericProvider.
+  const teamFromProp = {
+    id: 'team-id',
+    name: 'engineering',
+    fullyQualifiedName: 'engineering',
+    extension: { xName: 'from-prop' },
+  } as Team;
+
+  const contextOnUpdate = jest.fn();
+
+  // jest.config sets clearMocks, so only the context override has to be re-applied here.
+  beforeEach(() => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: { extension: { xName: 'from-context' } },
+      onUpdate: contextOnUpdate,
+      filterWidgets: jest.fn(),
+    });
+  });
+
+  const renderWithProps = async (
+    props: Partial<Parameters<typeof CustomPropertyTable>[0]> = {}
+  ) => {
+    await act(async () => {
+      renderWithQueryClient(
+        <CustomPropertyTable
+          hasEditAccess
+          hasPermission
+          entityType={EntityType.TEAM}
+          {...props}
+        />
+      );
+    });
+  };
+
+  it('reads the entity from the entityDetails prop when one is given', async () => {
+    await renderWithProps({ entityDetails: teamFromProp });
+
+    expect(await screen.findByTestId('property-value')).toHaveTextContent(
+      'from-prop'
+    );
+  });
+
+  it('falls back to the generic context when no entityDetails prop is given', async () => {
+    await renderWithProps();
+
+    expect(await screen.findByTestId('property-value')).toHaveTextContent(
+      'from-context'
+    );
+  });
+
+  it('sends extension edits to onEntityUpdate instead of the context handler', async () => {
+    const onEntityUpdate = jest.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await renderWithProps({
+      entityDetails: { ...teamFromProp, extension: { other: 'kept' } } as Team,
+      onEntityUpdate,
+    });
+
+    await user.click(await screen.findByTestId('add-value-button'));
+    await user.type(screen.getByTestId('value-input'), 'edited{Enter}');
+
+    await waitFor(() =>
+      expect(onEntityUpdate).toHaveBeenCalledWith(
+        {
+          ...teamFromProp,
+          extension: { other: 'kept', xName: 'edited' },
+        },
+        'extension'
+      )
+    );
+
+    expect(contextOnUpdate).not.toHaveBeenCalled();
+  });
+
+  it('looks up the property definitions for the team entity type', async () => {
+    await renderWithProps({ entityDetails: teamFromProp });
+
+    expect(getTypeByFQN).toHaveBeenCalledWith(EntityType.TEAM);
   });
 });

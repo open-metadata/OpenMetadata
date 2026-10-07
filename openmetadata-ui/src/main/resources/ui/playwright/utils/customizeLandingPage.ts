@@ -223,7 +223,7 @@ export const removeAndCheckWidget = async (
   // Click on remove widget button
   await widget.locator('[data-testid="more-options-button"]').click();
 
-  await page.locator('.ant-dropdown:visible [data-menu-id*="remove"]').click();
+  await page.getByRole('menuitem', { name: 'Remove' }).click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
@@ -649,7 +649,7 @@ export const verifyWidgetEntityNavigation = async (
   const hasEntities = (await entityItems.count()) > 0;
 
   if (hasEntities) {
-    await expect(entityItems.first()).toBeVisible();
+    await expect(entityItems.filter({ visible: true })).not.toHaveCount(0);
 
     // Get the first entity item
     const firstEntity = entityItems.first();

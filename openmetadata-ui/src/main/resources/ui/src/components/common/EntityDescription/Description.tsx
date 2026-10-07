@@ -18,7 +18,10 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { MessageChatSquare, MessagePlusSquare } from '@untitledui/icons';
+import {
+  MessageChatSquare,
+  MessagePlusSquare,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -169,15 +172,17 @@ const Description = ({
     handleRequestDescription,
   ]);
 
+  const editDescriptionLabel = t('label.edit-entity', {
+    entity: t('label.description'),
+  });
+
   const actionButtons = useMemo(
     () => (
       <div className="tw:flex tw:items-center tw:gap-2">
         {!isVersionView && !isReadOnly && hasEditAccess && (
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: t('label.description'),
-            })}>
+          <Tooltip title={editDescriptionLabel}>
             <Button
+              aria-label={editDescriptionLabel}
               color="secondary"
               data-testid="edit-description"
               // edit-new.svg, not untitled's Edit02: every other edit affordance on an entity
@@ -207,6 +212,7 @@ const Description = ({
       </div>
     ),
     [
+      editDescriptionLabel,
       isReadOnly,
       isVersionView,
       hasEditAccess,

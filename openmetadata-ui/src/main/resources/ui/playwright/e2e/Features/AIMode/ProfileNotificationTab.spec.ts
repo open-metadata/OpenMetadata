@@ -36,6 +36,7 @@ import {
   generateAlertName,
   waitForRecentEventsToFinishExecution,
 } from '../../../utils/alert';
+import { deleteFixtureEntity } from '../../../utils/apiResponse';
 import { getApiContext } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -54,6 +55,10 @@ import {
   navigateToEditAlert,
   saveNewAlertAndVerify,
 } from '../../../utils/profileNotificationAlert';
+import {
+  startWebhookReceiver,
+  stopWebhookReceiver,
+} from '../../../utils/webhook';
 
 // ── Test entities (instantiated in beforeAll) ────────────────────────────────
 
@@ -70,13 +75,14 @@ const SOURCE_NAME_4 = 'conversation';
 const SOURCE_NAME_5 = 'table';
 
 // Admin page fixture — tests call getApiContext(page) for backend operations
-// (delete/restore table), which reads the OIDC token from IndexedDB. storageState
-// only restores cookies/localStorage, not IndexedDB, so we need a real login.
+// (delete/restore table), which reads the OIDC token from IndexedDB. A page
+// restored from storageState alone has cookies and localStorage but no token
+// there; `signIn` writes it, which is what these tests need.
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
-    // eslint-disable-next-line no-restricted-syntax -- getApiContext reads OIDC token from IndexedDB; storageState does not restore it
+    // eslint-disable-next-line no-restricted-syntax -- getApiContext reads the OIDC token from IndexedDB, which signIn writes into this fresh context
     const page = await browser.newPage();
-    await admin.login(page);
+    await admin.signIn(page);
     await use(page);
     await page.close();
   },
@@ -117,7 +123,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-test('Single Filter Alert', { tag: '@quarantine' }, async ({ page }) => {
+test('Single Filter Alert', async ({ page }) => {
   test.slow();
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
@@ -220,7 +226,7 @@ test('Single Filter Alert', { tag: '@quarantine' }, async ({ page }) => {
   });
 });
 
-test('Multiple Filters Alert', { tag: '@quarantine' }, async ({ page }) => {
+test('Multiple Filters Alert', async ({ page }) => {
   test.slow();
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
@@ -322,7 +328,7 @@ test('Multiple Filters Alert', { tag: '@quarantine' }, async ({ page }) => {
   });
 });
 
-test('Task source alert', { tag: '@quarantine' }, async ({ page }) => {
+test('Task source alert', async ({ page }) => {
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
 
@@ -358,7 +364,9 @@ test('Task source alert', { tag: '@quarantine' }, async ({ page }) => {
   });
 });
 
-test('Conversation source alert', { tag: '@quarantine' }, async ({ page }) => {
+test('Conversation source alert', async ({ page }) => {
+  test.slow();
+
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
 
@@ -427,13 +435,16 @@ test('Conversation source alert', { tag: '@quarantine' }, async ({ page }) => {
  * Alert with recent events — admin-only (notification tab is admin-gated).
  * Creates a table-scoped alert, triggers via soft-delete/restore, verifies events.
  */
-test(
-  'Alert with recent events check',
-  { tag: '@quarantine' },
-  async ({ page }) => {
-    test.slow();
-    const ALERT_NAME = generateAlertName();
-    const { apiContext } = await getApiContext(page);
+test('Alert with recent events check', async ({ page }) => {
+  test.slow();
+  const ALERT_NAME = generateAlertName();
+  const { apiContext } = await getApiContext(page);
+  // Set while the alert exists, so a test that stops early still removes it.
+  let createdAlertId: string | undefined;
+
+  try {
+    // A receiver this test runs, so each event is really sent and counted as sent.
+    const destinationEndpoint = await startWebhookReceiver();
     await navigateToAlertsList(page);
 
     await test.step('Create and trigger alert', async () => {
@@ -460,14 +471,15 @@ test(
       });
 
       await page.click('[data-testid="add-destination-button"]');
-      await addInternalDestinationProfile({
+      await addExternalDestinationProfile({
         page,
         destinationNumber: 0,
-        category: 'Owners',
-        type: 'Email',
+        category: 'Webhook',
+        input: destinationEndpoint,
       });
 
       data.alertDetails = await saveNewAlertAndVerify(page);
+      createdAlertId = data.alertDetails.id;
 
       await table.deleteTable(apiContext, false);
       await table.restore(apiContext);
@@ -497,86 +509,92 @@ test(
     await test.step('Delete alert', async () => {
       await navigateToAlertsList(page);
       await deleteAlertFromList(page, data.alertDetails);
+      createdAlertId = undefined;
     });
-  }
-);
-
-test(
-  'Destination should work properly',
-  { tag: '@quarantine' },
-  async ({ page }) => {
-    await navigateToAlertsList(page);
-    await page.getByTestId('add-alert').click();
-
-    await inputAlertInformation({
-      page,
-      name: 'test-name',
-      sourceName: SOURCE_NAME_1,
-    });
-
-    await page.click('[data-testid="add-destination-button"]');
-    await addInternalDestinationProfile({
-      page,
-      destinationNumber: 0,
-      category: 'Owners',
-      type: 'G Chat',
-    });
-
-    await expect(page.getByTestId('test-destination-button')).toBeDisabled();
-
-    await addExternalDestinationProfile({
-      page,
-      destinationNumber: 0,
-      category: 'G Chat',
-      input: 'https://google.com',
-    });
-
-    await page.click('[data-testid="add-destination-button"]');
-    await addExternalDestinationProfile({
-      page,
-      destinationNumber: 1,
-      category: 'Slack',
-      input: 'https://slack.com',
-      advancedConfig: {
-        headers: [{ key: 'header1', value: 'value1' }],
-        queryParams: [{ key: 'param1', value: 'value1' }],
-      },
-    });
-
-    const testButton = page.getByTestId('test-destination-button');
-    await expect(testButton).toBeVisible();
-    await expect(testButton).toBeEnabled();
-
-    const testDestinations = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes('/api/v1/events/subscriptions/testDestination') &&
-        response.request().method() === 'POST'
-    );
-
-    await testButton.click();
-
-    const testResponse = await testDestinations;
-    expect(testResponse.status()).toBe(200);
-    await testResponse.json().then(async (testResults) => {
-      expect(testResults).toHaveLength(2);
-
-      for (const testResult of testResults) {
-        const isGChat = testResult.type === 'GChat';
-
-        await expect(
-          page
-            .getByTestId(`destination-${isGChat ? 0 : 1}`)
-            .getByRole('alert')
-            .getByText(testResult.statusDetails.status)
-        ).toBeAttached();
+  } finally {
+    try {
+      if (createdAlertId) {
+        await deleteFixtureEntity(
+          apiContext,
+          `/api/v1/events/subscriptions/${createdAlertId}?hardDelete=true`
+        );
       }
-    });
+    } finally {
+      await stopWebhookReceiver();
+    }
   }
-);
+});
 
-test('System alert is read-only', { tag: '@quarantine' }, async ({ page }) => {
+test('Destination should work properly', async ({ page }) => {
+  await navigateToAlertsList(page);
+  await page.getByTestId('add-alert').click();
+
+  await inputAlertInformation({
+    page,
+    name: 'test-name',
+    sourceName: SOURCE_NAME_1,
+  });
+
+  await page.click('[data-testid="add-destination-button"]');
+  await addInternalDestinationProfile({
+    page,
+    destinationNumber: 0,
+    category: 'Owners',
+    type: 'G Chat',
+  });
+
+  await expect(page.getByTestId('test-destination-button')).toBeDisabled();
+
+  await addExternalDestinationProfile({
+    page,
+    destinationNumber: 0,
+    category: 'G Chat',
+    input: 'https://google.com',
+  });
+
+  await page.click('[data-testid="add-destination-button"]');
+  await addExternalDestinationProfile({
+    page,
+    destinationNumber: 1,
+    category: 'Slack',
+    input: 'https://slack.com',
+    advancedConfig: {
+      headers: [{ key: 'header1', value: 'value1' }],
+      queryParams: [{ key: 'param1', value: 'value1' }],
+    },
+  });
+
+  const testButton = page.getByTestId('test-destination-button');
+  await expect(testButton).toBeVisible();
+  await expect(testButton).toBeEnabled();
+
+  const testDestinations = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/events/subscriptions/testDestination') &&
+      response.request().method() === 'POST'
+  );
+
+  await testButton.click();
+
+  const testResponse = await testDestinations;
+  expect(testResponse.status()).toBe(200);
+  await testResponse.json().then(async (testResults) => {
+    expect(testResults).toHaveLength(2);
+
+    for (const testResult of testResults) {
+      const isGChat = testResult.type === 'GChat';
+
+      await expect(
+        page
+          .getByTestId(`destination-${isGChat ? 0 : 1}`)
+          .getByRole('alert')
+          .getByText(testResult.statusDetails.status)
+      ).toBeAttached();
+    }
+  });
+});
+
+test('System alert is read-only', async ({ page }) => {
   await navigateToAlertsList(page);
 
   await expect(
@@ -602,7 +620,7 @@ test('System alert is read-only', { tag: '@quarantine' }, async ({ page }) => {
   await expect(page.getByTestId('delete-alert-btn')).not.toBeAttached();
 });
 
-test('Breadcrumb navigation', { tag: '@quarantine' }, async ({ page }) => {
+test('Breadcrumb navigation', async ({ page }) => {
   await navigateToAlertsList(page);
 
   await page.getByTestId('add-alert').click();

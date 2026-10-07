@@ -14,14 +14,19 @@
 package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
+import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
+import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
+import static org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill.backfillMlFeatureTags;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
@@ -30,6 +35,8 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
+import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
@@ -69,5 +76,22 @@ public class Migration extends MigrationProcessImpl {
     // Data contracts stored their entity reference as sent, usually without a name or FQN.
     // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
     rebuildDataContractEntityReferences(collectionDAO);
+    // MlModelRepository now indexes feature tags into tag_usage like every other type with inline
+    // children. That fires only on write, so features tagged before this upgrade would read back
+    // as untagged from any FQN-prefix query. Idempotent. DB-agnostic, so it runs on both engines.
+    backfillMlFeatureTags(collectionDAO);
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        CreationAuditMigration.STEP_NAME,
+        () -> backfillCreationAudit(handle, POSTGRES));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        LifeCycleCreatedSentinelMigration.STEP_NAME,
+        () -> removeCreatedSentinel(handle, POSTGRES));
+    // Alerts the previous release stopped sending, because it could not build one of their
+    // destinations, send again from this release; they start from the upgrade, not their backlog.
+    skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO);
   }
 }

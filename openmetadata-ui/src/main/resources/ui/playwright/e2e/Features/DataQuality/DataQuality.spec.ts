@@ -31,7 +31,6 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
   waitForToastToDisappear,
 } from '../../../utils/common';
 import {
@@ -410,7 +409,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: NEW_COLUMN_TEST_CASE.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -891,9 +889,9 @@ test.describe(
         await failedRunTable.addTestCaseResult(apiContext, testCaseFqn, {
           result: failureResult,
           testCaseStatus: 'Failed',
-          testResultValue: [
-            { name: 'minValue', predictedValue: '1', value: '0' },
-          ],
+          // Named as ingestion names it, not after a parameter, so the banner
+          // must read the expectation from the test's bounds.
+          testResultValue: [{ name: 'rowCount', value: '0' }],
           timestamp: failedTimestamp,
         });
         await waitForIncidentToBeIndexed(
@@ -934,7 +932,7 @@ test.describe(
           banner.getByTestId('test-case-result-expected')
         ).toContainText('Result / Expected');
         await expect(banner.getByTestId('test-case-result-value')).toHaveText(
-          '0 / 1'
+          '0 / 1 – 100'
         );
         await expect(banner.getByTestId('test-case-last-run-time')).toHaveText(
           customFormatDateTime(failedTimestamp, 'MMM d, yyyy, h:mm a')
@@ -1096,13 +1094,13 @@ test.describe(
 
         // get all the filters
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="testPlatforms"]');
+        await page.getByTestId('advanced-filter-option-testPlatforms').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="lastRunRange"]');
+        await page.getByTestId('advanced-filter-option-lastRunRange').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="serviceName"]');
+        await page.getByTestId('advanced-filter-option-serviceName').click();
         await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="tier"]');
+        await page.getByTestId('advanced-filter-option-tier').click();
 
         // Test case search filter
         const searchTestCaseResponse = page.waitForResponse(
@@ -1184,7 +1182,7 @@ test.describe(
         const getTestCase = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="serviceName"]');
+        await page.getByTestId('advanced-filter-option-serviceName').click();
         await getTestCase;
 
         // Test case filter by Tags
@@ -1218,7 +1216,7 @@ test.describe(
         const getTestCaseWithoutTag = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tags"]');
+        await page.getByTestId('advanced-filter-option-tags').click();
         await getTestCaseWithoutTag;
 
         // Test case filter by Tier
@@ -1239,7 +1237,7 @@ test.describe(
         const getTestCaseWithoutTier = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.click('[value="tier"]');
+        await page.getByTestId('advanced-filter-option-tier').click();
         await getTestCaseWithoutTier;
 
         // Test case filter by table name
@@ -1373,7 +1371,7 @@ test.describe(
         expect(page.url()).toBe(url);
 
         await page.getByTestId('advanced-filter').click();
-        await page.click('[value="testPlatforms"]');
+        await page.getByTestId('advanced-filter-option-testPlatforms').click();
 
         await expect(
           page.getByTestId('platform-select-filter')
@@ -1381,7 +1379,9 @@ test.describe(
 
         await page.reload({ waitUntil: 'domcontentloaded' });
 
-        await expect(page.locator('[value="tier"]')).not.toBeVisible();
+        await expect(
+          page.getByTestId('advanced-filter-option-tier')
+        ).not.toBeVisible();
 
         // Apply domain globally
         await page.getByTestId('domain-dropdown').click();
@@ -1573,11 +1573,8 @@ test.describe(
 
           await expect(pageSizeDropdown).toBeVisible();
 
-          // Ant Dropdown opens on hover, so a re-render that shifts the footer out
-          // from under the pointer leaves the menu closed for good.
-          await pageSizeDropdown.hover();
+          await pageSizeDropdown.click();
           await expect(pageSizeMenu).toBeVisible();
-          await waitForAntdPopupToSettle(page);
 
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
@@ -1706,36 +1703,39 @@ test.describe(
         await Promise.all([detailsResponse, resultsResponse]);
         await waitForAllLoadersToDisappear(page);
 
-        const point = page
-          .locator('[data-testid^="test-summary-point-"]')
-          .first();
+        const plot = page
+          .getByTestId('graph-container')
+          .getByRole('group', { name: 'Test Case Results' });
         const tooltip = page.getByTestId('test-summary-tooltip');
 
-        await expect(point).toBeVisible();
-        await point.scrollIntoViewIfNeeded();
-        const pointBox = await point.boundingBox();
+        await expect(plot).toBeVisible();
+        await plot.scrollIntoViewIfNeeded();
+        const plotBox = await plot.boundingBox();
 
-        if (!pointBox) {
+        if (!plotBox) {
           throw new Error(
-            'Expected the test result point to have a bounding box'
+            'Expected the test result chart to have a bounding box'
           );
         }
 
-        // A nearby chart position must not inherit the dot's tooltip activation.
+        // A chart position with no run under it must not open a tooltip.
         await page.mouse.move(
-          pointBox.x + pointBox.width + 3,
-          pointBox.y + pointBox.height / 2
+          plotBox.x + plotBox.width / 2,
+          plotBox.y + plotBox.height * 0.1
         );
         await expect(tooltip).toBeHidden();
 
-        await point.hover();
+        // Runs are SVG paths with no node per dot, so the keyboard opens the
+        // newest run's tooltip. Focus alone may not count as :focus-visible,
+        // so End is what starts the navigation.
+        await plot.focus();
+        await page.keyboard.press('End');
         await expect(tooltip).toBeVisible();
 
         const incidentLink = tooltip.locator('a.tooltip-incident-link');
 
         await expect(incidentLink).toBeVisible();
-        // Recharts used to move the tooltip during this browser-level pointer
-        // transition, preventing Playwright (and users) from reaching the link.
+        // The tooltip must stay put while the pointer travels onto the link.
         await incidentLink.hover();
         await expect(incidentLink).toBeVisible();
         await expect

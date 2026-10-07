@@ -169,8 +169,9 @@ def _build_url(connection: BigQueryConnectionConfig, project_id: str | None = No
     port number, crashing on a non-numeric project id. ``URL.create`` builds
     the object directly, so it is never subjected to that regex.
     """
-    query = {"user_supplied_client": "true"} if _requires_user_supplied_client(connection) else None
-    return URL.create(connection.scheme.value, host=project_id or None, query=query)
+    query = {"user_supplied_client": "true"} if _requires_user_supplied_client(connection) else {}
+    scheme = connection.scheme.value if connection.scheme else "bigquery"
+    return URL.create(scheme, host=project_id or None, query=query)
 
 
 def _requires_user_supplied_client(connection: BigQueryConnectionConfig) -> bool:

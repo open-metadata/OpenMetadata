@@ -31,6 +31,7 @@ import {
 import {
   clickEditContractButton,
   performInitialStepForRules,
+  reloadContractPage,
   saveAndTriggerDataContractValidation,
   triggerContractValidation,
 } from '../../utils/dataContracts';
@@ -100,7 +101,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -146,9 +147,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -194,7 +193,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -247,9 +246,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -295,7 +292,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -348,9 +345,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -395,7 +390,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -448,9 +443,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -488,7 +481,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -528,9 +521,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -567,7 +558,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -607,9 +598,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -648,7 +637,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -695,9 +684,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -735,7 +722,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -781,9 +768,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await waitForAllLoadersToDisappear(page);
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -820,7 +805,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -841,8 +826,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       )?.id;
 
       await expect(async () => {
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
+        await reloadContractPage(page);
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
         ).toContainText('Passed', { timeout: 5_000 });
@@ -865,8 +849,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await waitForAllLoadersToDisappear(page);
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -904,7 +887,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -946,9 +929,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1033,7 +1014,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1074,9 +1055,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1115,7 +1094,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1156,9 +1135,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1198,7 +1175,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1239,9 +1216,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1279,7 +1254,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1320,9 +1295,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1360,7 +1333,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1394,9 +1367,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1433,7 +1404,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1467,9 +1438,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1512,7 +1481,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1588,9 +1557,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1629,7 +1596,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1710,9 +1677,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1747,7 +1712,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1828,7 +1793,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1912,7 +1877,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -1996,7 +1961,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2104,7 +2069,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2156,9 +2121,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2199,7 +2162,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2251,9 +2214,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2294,7 +2255,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2345,9 +2306,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2387,7 +2346,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2438,9 +2397,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2472,9 +2429,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2515,7 +2470,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2557,9 +2512,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2596,7 +2549,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2642,9 +2595,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2683,7 +2634,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2731,9 +2682,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2770,7 +2719,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2818,9 +2767,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2856,7 +2803,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2903,9 +2850,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2942,7 +2887,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -2989,9 +2934,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3027,7 +2970,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -3069,9 +3012,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3108,7 +3049,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -3150,9 +3091,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3188,7 +3127,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -3273,7 +3212,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -3358,7 +3297,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -3407,7 +3346,6 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page
         .getByTestId('query-builder-group-card')
-        .nth(0)
         .locator('[data-testid=advanced-search-value] input[type="date"]')
         .fill(newDate);
 
@@ -3446,7 +3384,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -3498,7 +3436,6 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page
         .getByTestId('query-builder-group-card')
-        .nth(0)
         .locator('[data-testid=advanced-search-value] input[type="date"]')
         .fill(newDate);
 
@@ -3537,7 +3474,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -3588,7 +3525,6 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page
         .getByTestId('query-builder-group-card')
-        .nth(0)
         .locator('[data-testid=advanced-search-value] input[type="date"]')
         .fill(newDate);
 
@@ -3631,7 +3567,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -3682,7 +3618,6 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page
         .getByTestId('query-builder-group-card')
-        .nth(0)
         .locator('[data-testid=advanced-search-value] input[type="date"]')
         .fill(newDate);
 
@@ -3738,7 +3673,7 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-group-card');
       await selectOption(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
@@ -3755,9 +3690,9 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
     await test.step('Add a second rule condition', async () => {
       await page.getByTestId('add-new-rule-btn').click();
 
-      await expect(
-        page.getByTestId('delete-condition-button').first()
-      ).toBeVisible();
+      // Two rules means two delete buttons — asserting the count states what
+      // the step actually proves, and no longer depends on DOM order.
+      await expect(page.getByTestId('delete-condition-button')).toHaveCount(2);
     });
 
     await test.step('Delete the filled rule condition and verify rule error is shown', async () => {

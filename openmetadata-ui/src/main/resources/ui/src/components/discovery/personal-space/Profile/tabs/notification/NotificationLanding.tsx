@@ -11,42 +11,65 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Bell01 } from '@untitledui/icons';
-import { FC } from 'react';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { NotificationView } from './Notification.types';
-
-interface LandingCard {
-  id: string;
-  icon: FC<{ className?: string }>;
-  titleKey: string;
-  descriptionKey: string;
-  view: NotificationView;
-}
-
-const LANDING_CARDS: LandingCard[] = [
-  {
-    id: 'alerts',
-    icon: Bell01,
-    titleKey: 'label.alert-plural',
-    descriptionKey: 'message.alerts-description',
-    view: { type: 'list' },
-  },
-];
-
-interface NotificationLandingProps {
-  onNavigate: (view: NotificationView) => void;
-}
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { useAuth } from '../../../../../../hooks/authHooks';
+import {
+  EXTENSION_POINTS,
+  NotificationSectionContribution,
+} from '../../../../../../utils/ExtensionPointTypes';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import type {
+  NotificationLandingCard,
+  NotificationLandingProps,
+} from './Notification.types';
+import {
+  buildSectionCards,
+  getNotificationMenuItems,
+} from './Notification.utils';
 
 const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
+  const { getContributions } = useApplicationsProvider();
+
+  const cards = useMemo<NotificationLandingCard[]>(() => {
+    const alertsCard: NotificationLandingCard = {
+      id: 'alerts',
+      icon: Bell01,
+      title: t('label.alert-plural'),
+      description: t('message.alerts-description'),
+      view: { type: 'list' },
+    };
+
+    // Downstream builds (e.g. Collate) contribute extra Notification sections;
+    // their cards come from the global-settings Notifications menu.
+    const contributions = getContributions<NotificationSectionContribution>(
+      EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
+    );
+
+    if (contributions.length === 0) {
+      return [alertsCard];
+    }
+
+    return [
+      alertsCard,
+      ...buildSectionCards(
+        getNotificationMenuItems(permissions, Boolean(isAdminUser)),
+        contributions
+      ),
+    ];
+  }, [getContributions, permissions, isAdminUser, t]);
 
   return (
-    <Box
-      className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pt-2 tw:px-8 tw:pb-8"
+    <div
+      className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:px-8 tw:pb-8"
       data-testid="notification-landing">
-      {LANDING_CARDS.map((card) => {
+      {cards.map((card) => {
         const Icon = card.icon;
 
         return (
@@ -76,17 +99,24 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                   <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
-                  <Typography
-                    className="tw:text-primary"
-                    size="text-sm"
-                    weight="semibold">
-                    {t(card.titleKey)}
-                  </Typography>
+                  <Box align="center" direction="row" gap={2}>
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-sm"
+                      weight="semibold">
+                      {card.title}
+                    </Typography>
+                    {card.isBeta && (
+                      <Badge color="gray" size="sm" type="pill-color">
+                        {t('label.beta')}
+                      </Badge>
+                    )}
+                  </Box>
                   <Typography
                     className="tw:text-tertiary tw:line-clamp-2"
                     size="text-sm"
                     weight="regular">
-                    {t(card.descriptionKey)}
+                    {card.description}
                   </Typography>
                 </Box>
               </Box>
@@ -94,7 +124,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
           </Card>
         );
       })}
-    </Box>
+    </div>
   );
 };
 

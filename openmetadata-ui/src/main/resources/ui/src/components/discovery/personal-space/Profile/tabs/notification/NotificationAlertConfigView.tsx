@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -30,10 +30,15 @@ import {
   NotificationTemplate,
   ProviderType,
 } from '../../../../../../generated/entity/events/notificationTemplate';
+import { AlertType as CapabilitiesAlertType } from '../../../../../../generated/events/api/alertCapabilitiesRequest';
 import { Effect } from '../../../../../../generated/events/api/createEventSubscription';
 import { EventFilterRule } from '../../../../../../generated/events/eventFilterRule';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
+import {
+  AlertSelectionProvider,
+  useAlertSelection,
+} from '../../../../../../hooks/useAlertSelection';
 import { getResourceFunctions } from '../../../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
@@ -212,8 +217,8 @@ function NotificationAlertConfigView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const extraFormWidgets = useMemo(
-    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+  const TemplateSection = useMemo(
+    () => alertsClassBase.getAlertAiTemplateSection(),
     []
   );
 
@@ -246,16 +251,27 @@ function NotificationAlertConfigView({
   }, []);
 
   useEffect(() => {
-    if (!isEmpty(extraFormWidgets)) {
+    if (TemplateSection) {
       fetchTemplates();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extraFormWidgets]);
+  }, [TemplateSection]);
 
   useEffect(() => {
     fetchFunctions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The destinations reach who the server says the alert's sources reach, as in every alert view.
+  const viewedSources = useMemo(
+    () => extractAlertViewData(alertDetails, modifiedAlertData).alertResources,
+    [alertDetails, modifiedAlertData]
+  );
+  const selection = useAlertSelection({
+    alertType: CapabilitiesAlertType.Notification,
+    sources: viewedSources,
+    catalog: filterResources,
+  });
 
   const isLoading = useMemo(
     () => Object.values(loadingState).some(Boolean),
@@ -311,33 +327,30 @@ function NotificationAlertConfigView({
 
       <Box className="tw:border-t tw:border-secondary" />
 
-      <NotificationDestinationBridge
-        isViewMode
-        renderValidationField={() => null}
-        values={{
-          destinations,
-          readTimeout: alertReadTimeout,
-          resources: alertResources,
-          timeout: alertTimeout,
-        }}
-        onChange={() => {}}
-      />
+      <AlertSelectionProvider value={selection}>
+        <NotificationDestinationBridge
+          isViewMode
+          renderValidationField={() => null}
+          values={{
+            destinations,
+            readTimeout: alertReadTimeout,
+            resources: alertResources,
+            timeout: alertTimeout,
+          }}
+          onChange={() => {}}
+        />
+      </AlertSelectionProvider>
 
-      {!isEmpty(extraFormWidgets) && (
+      {TemplateSection && (
         <>
-          {Object.entries(extraFormWidgets).map(([name, Widget]) => (
-            <Fragment key={name}>
-              <Box className="tw:border-t tw:border-secondary" />
-              <Widget
-                isViewMode
-                alertDetails={modifiedAlertData}
-                formRef={null as never}
-                loading={isLoading}
-                templateResourcePermission={templateResourcePermission}
-                templates={templates}
-              />
-            </Fragment>
-          ))}
+          <Box className="tw:border-t tw:border-secondary" />
+          <TemplateSection
+            isViewOnly
+            loading={loadingState.templates}
+            templateResourcePermission={templateResourcePermission}
+            templates={templates}
+            value={modifiedAlertData}
+          />
         </>
       )}
     </Box>

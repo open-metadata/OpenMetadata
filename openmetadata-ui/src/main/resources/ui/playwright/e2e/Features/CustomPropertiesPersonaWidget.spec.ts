@@ -22,6 +22,11 @@ import {
   removeCustomPropertyViaApi,
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  clickUntilVisible,
+  waitForAntOverlayToOpen,
+  waitForAriaOverlayToSettle,
+} from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 interface PersonaFixture {
@@ -120,22 +125,29 @@ test.describe(
         await test.step('add a tab with a widget placeholder', async () => {
           await openTableCustomizePage(page, fixture.persona);
           await page.getByRole('button', { name: 'Add tab' }).click();
-          await page.getByTestId('add-tab-input').fill(tabName);
-          await page
-            .getByRole('dialog')
+
+          const addTabDialog = page.getByRole('dialog', { name: 'Add Tab' });
+          await waitForAntOverlayToOpen(addTabDialog);
+          await addTabDialog.getByTestId('add-tab-input').fill(tabName);
+          await addTabDialog
             .getByRole('button', { name: 'Add', exact: true })
             .click();
 
+          await expect(addTabDialog).not.toBeAttached();
           await expect(page.getByTestId(`tab-${tabName}`)).toBeVisible();
         });
 
         await test.step('pick style and properties in the Add Widget dialog', async () => {
-          await page
-            .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-            .getByTestId('add-widget-button')
-            .click();
-
           const dialog = page.getByTestId('add-widget-modal');
+
+          // Closing the add-tab modal re-measures the grid, shifting the placeholder.
+          await clickUntilVisible(
+            page
+              .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+              .getByTestId('add-widget-button'),
+            dialog
+          );
+          await waitForAriaOverlayToSettle(page);
           await dialog.getByTestId('Custom Properties-widget').click();
 
           await expect(dialog.getByTestId('add-widget-button')).toBeDisabled();

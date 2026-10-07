@@ -84,8 +84,8 @@ const selectAssetInPicker = async (page: Page, asset: LinkableAsset) => {
 
   const card = assetCard(page, asset);
   await expect(card).toBeVisible();
-  await card.locator('input[type="checkbox"]').check();
-  await expect(card.locator('input[type="checkbox"]')).toBeChecked();
+  await card.getByTestId('asset-checkbox').check();
+  await expect(card.getByRole('checkbox')).toBeChecked();
 };
 
 test.describe(
@@ -276,7 +276,7 @@ test.describe(
       });
 
       await test.step('Bulk unlink the remaining asset', async () => {
-        await assetCard(page, table).locator('input[type="checkbox"]').check();
+        await assetCard(page, table).getByTestId('asset-checkbox').check();
 
         const removeResponse = page.waitForResponse(
           (response) =>
@@ -308,9 +308,10 @@ test.describe(
       await expect(
         dataConsumerPage.getByTestId(`manage-button-${assetFqn(table)}`)
       ).not.toBeVisible();
+      // The input is visually hidden by react-aria, so assert it isn't rendered.
       await expect(
-        assetCard(dataConsumerPage, table).locator('input[type="checkbox"]')
-      ).not.toBeVisible();
+        assetCard(dataConsumerPage, table).getByRole('checkbox')
+      ).toHaveCount(0);
     });
   }
 );

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Row, Skeleton } from 'antd';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import {
   forwardRef,
@@ -23,7 +24,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
@@ -36,6 +36,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { ManageMenu } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -187,7 +188,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             <Row gutter={[16, 16]}>
               {[1, 2, 3].map((key) => (
                 <Col key={key} span={24}>
-                  <Skeleton active paragraph={{ rows: 2 }} />
+                  <SkeletonParagraph rows={2} />
                 </Col>
               ))}
             </Row>
@@ -220,37 +221,28 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                   showEntityIcon
                   actionPopoverContent={
                     canEditAll ? (
-                      <Dropdown
-                        menu={{
-                          items: [
-                            {
-                              key: 'delete',
-                              label: (
-                                <ManageButtonItemLabel
-                                  description={t('label.remove-entity', {
-                                    entity: t('label.port'),
-                                  })}
-                                  icon={DeleteIcon}
-                                  id="delete-port"
-                                  name={t('label.remove')}
-                                />
-                              ),
-                              onClick: () => handleDeleteClick(port),
-                            },
-                          ],
-                        }}
-                        overlayClassName="manage-dropdown-list-container"
-                        overlayStyle={{ width: '350px' }}
-                        placement="bottomRight"
-                        trigger={['click']}>
-                        <Button
-                          className="flex-center"
-                          data-testid={`port-actions-${port.id}`}
-                          icon={<IconDropdown height={14} width={14} />}
-                          size="small"
-                          type="text"
-                        />
-                      </Dropdown>
+                      <ManageMenu
+                        data-testid={`port-actions-${port.id}`}
+                        items={[
+                          {
+                            key: 'delete',
+                            label: (
+                              <ManageButtonItemLabel
+                                description={t('label.remove-entity', {
+                                  entity: t('label.port'),
+                                })}
+                                icon={DeleteIcon}
+                                id="delete-port"
+                                name={t('label.remove')}
+                              />
+                            ),
+                            onClick: () => handleDeleteClick(port),
+                          },
+                        ]}
+                        label={t('label.manage-entity', {
+                          entity: t('label.port'),
+                        })}
+                      />
                     ) : undefined
                   }
                   className="m-b-sm"

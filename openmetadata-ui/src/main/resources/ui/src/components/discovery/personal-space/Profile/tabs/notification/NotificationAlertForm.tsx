@@ -19,16 +19,21 @@ import { DEFAULT_READ_TIMEOUT } from '../../../../../../constants/Alerts.constan
 import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   NotificationTemplate,
   ProviderType as TemplateProviderType,
 } from '../../../../../../generated/entity/events/notificationTemplate';
+import { AlertType as CapabilitiesAlertType } from '../../../../../../generated/events/api/alertCapabilitiesRequest';
 import {
   AlertType,
   EventSubscription,
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
+import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import {
   createNotificationAlert,
@@ -37,9 +42,14 @@ import {
   updateNotificationAlert,
 } from '../../../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../../../rest/notificationtemplateAPI';
+import {
+  SourceOfTheCatalog,
+  toCapabilitiesInput,
+} from '../../../../../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
 import AlertAiForm from '../../../../../observability/Alerts/AlertAiForm.component';
@@ -58,6 +68,9 @@ interface NotificationAlertFormProps {
   showHint?: boolean;
   onNavigate: (view: NotificationView) => void;
 }
+
+// One array for "nothing selected", so what depends on the sources does not change every render.
+const NO_SOURCES: string[] = [];
 
 type ObservabilityFilterResourceDescriptor = {
   containerEntities?: string[];
@@ -116,25 +129,32 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     useState<ModifiedCreateEventSubscription>(getEmptyFormValues);
 
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [templateResourcePermission, setTemplateResourcePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const extraFormWidgets = useMemo(
-    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+  const hasTemplateSection = useMemo(
+    () => Boolean(alertsClassBase.getAlertAiTemplateSection()),
     []
   );
 
   const isEditMode = Boolean(fqn);
 
-  const selectedTrigger = formData.resources?.[0];
-
-  const resourceDescriptor = useMemo(
-    () => filterResources.find((r) => r.name === selectedTrigger),
-    [filterResources, selectedTrigger]
+  const sources = formData.resources ?? NO_SOURCES;
+  const capabilitiesInput = useMemo(
+    () => toCapabilitiesInput(formData.input),
+    [formData.input]
   );
+  // The server says what the chosen sources support and who they can reach, as in every alert form.
+  const { support } = useAlertSelection({
+    alertType: CapabilitiesAlertType.Notification,
+    sources,
+    input: capabilitiesInput,
+    catalog: filterResources as unknown as SourceOfTheCatalog[],
+  });
 
   const shouldShowFiltersSection = useMemo(
-    () =>
-      selectedTrigger ? !isEmpty(resourceDescriptor?.supportedFilters) : true,
-    [selectedTrigger, resourceDescriptor]
+    () => (isEmpty(sources) ? true : !isEmpty(support.supportedFilters)),
+    [sources, support.supportedFilters]
   );
 
   const fetchData = useCallback(async () => {
@@ -170,11 +190,12 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         );
       }
 
-      if (!isEmpty(extraFormWidgets)) {
+      if (hasTemplateSection) {
         try {
           const permission = await getResourcePermission(
             ResourceEntity.NOTIFICATION_TEMPLATE
           );
+          setTemplateResourcePermission(permission);
           const { canViewAll } = getDerivedPermissionFlags(permission);
           if (canViewAll) {
             const { data } = await getAllNotificationTemplates({
@@ -190,7 +211,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [fqn, t, extraFormWidgets, getResourcePermission]);
+  }, [fqn, t, hasTemplateSection, getResourcePermission]);
 
   useEffect(() => {
     fetchData();
@@ -262,7 +283,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         <Box className="tw:w-1/2" direction="col">
           <AlertAiForm
             alert={alert}
-            containerEntities={resourceDescriptor?.containerEntities}
+            containerEntities={support.containerEntities}
             fieldDocDisplay="popover"
             filterResources={
               filterResources as Parameters<
@@ -281,15 +302,12 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
                 : undefined
             }
             mode={isEditMode ? 'edit' : 'add'}
+            recipientCategories={support.recipientCategories}
             shouldShowActionsSection={false}
             shouldShowFiltersSection={shouldShowFiltersSection}
-            shouldShowTemplateSection={!isEmpty(extraFormWidgets)}
             showHint={showHint}
-            supportedFilters={
-              resourceDescriptor?.supportedFilters as Parameters<
-                typeof AlertAiForm
-              >[0]['supportedFilters']
-            }
+            supportedFilters={support.supportedFilters}
+            templateResourcePermission={templateResourcePermission}
             templates={templates}
             value={formData}
             onChange={setFormData}

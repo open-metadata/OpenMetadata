@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
@@ -19,7 +20,11 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
 
-const expectTourBadge = async (page: Page, step: string, timeout = 30000) => {
+const expectTourBadge = async (
+  page: Page,
+  step: string,
+  timeout = ACTION_TIMEOUT
+) => {
   // A single web-first assertion. The badge re-renders on every step transition,
   // so a separate visibility wait followed by a text poll gave the transition two
   // independent budgets to lose against; toHaveText auto-waits for the element to
@@ -151,7 +156,9 @@ test.describe(
     test.beforeEach('Visit entity details page', async ({ page }) => {
       // Tour is entered from the welcome banner, so this suite must NOT suppress
       // it. The other tour tests already guard against the banner if present.
-      await user.login(page, undefined, undefined, {
+      // The banner is gated on the `loggedInUsers` seed, not on the form, so
+      // signIn() renders it too once the same opt-out is passed.
+      await user.signIn(page, undefined, undefined, {
         suppressWelcomeScreen: false,
       });
     });

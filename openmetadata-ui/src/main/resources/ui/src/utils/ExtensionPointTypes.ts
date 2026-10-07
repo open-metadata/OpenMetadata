@@ -12,6 +12,11 @@
  */
 
 import { ComponentType, ReactElement, ReactNode } from 'react';
+import {
+  TaskDetailDescriptor,
+  TaskStatTilesProps,
+} from '../components/discovery/personal-space/InboxPage/taskDetail.types';
+import { ProfileHeaderOverride } from '../components/discovery/personal-space/Profile/profileNavConfig';
 import { PluginRouteProps } from '../components/Settings/Applications/plugins/AppPlugin';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
@@ -46,6 +51,13 @@ export const EXTENSION_POINTS = {
 
   // User Profile Page
   PROFILE_TABS: 'profile.tabs',
+
+  // Notification settings landing — a downstream build contributes extra
+  // sections (e.g. weekly emails, templates) that render inside the profile
+  // Notification panel. OSS core shows only its built-in cards when nothing
+  // is contributed; the cards themselves come from the global-settings menu
+  // (see NotificationLanding), keyed by the settings option.
+  NOTIFICATION_LANDING_SECTIONS: 'notification.landing-sections',
 
   // Team Details Page
   TEAM_DETAILS_TABS: 'team-details.tabs',
@@ -116,6 +128,13 @@ export interface PluginEntityDetailsContext {
    * (e.g. a compact vs. table layout) via `condition`.
    */
   isAiMode?: boolean;
+  /**
+   * Allows a contributed tab to override the ProfilePage header (breadcrumbs,
+   * title, actions) without needing a separate route. Only provided by
+   * ProfilePage when it maps contributed tabs; other consumers leave it absent.
+   * Pass `null` to clear the override and restore the default header.
+   */
+  onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
 // ============================================================================
@@ -183,6 +202,88 @@ export interface TabContribution {
 
   /** Whether the tab is hidden (alternative to condition) */
   isHidden?: boolean;
+
+  /**
+   * Sidebar group this tab belongs to. Consumers that render tabs in a grouped
+   * side-nav (e.g. ProfilePage) use this to place the item under the right
+   * section header. Defaults to 'credentials' when omitted.
+   */
+  group?: string;
+
+  /**
+   * When true, the host page skips its standard content scroll wrapper and lets
+   * the tab manage its own layout (e.g. a page that needs a sticky footer).
+   */
+  selfContainedLayout?: boolean;
+}
+
+/**
+ * Props passed to a contributed `NotificationSectionContribution.component`.
+ *
+ * A section is expected to clear what it pushed via `onSetHeaderActions` /
+ * `onSetSubTitle` on unmount (e.g. an effect cleanup), the same way the native
+ * alert detail panel does — the panel does not reset this for you.
+ */
+export interface NotificationSectionProps {
+  /**
+   * Inject (or clear, with `null`) the action buttons shown on the right of the
+   * profile content header for this section — e.g. a "Create" button. Mirrors
+   * how the native alert detail panel populates the header.
+   */
+  onSetHeaderActions?: (actions: ReactNode | null) => void;
+
+  /** Navigate back to the Notification landing (e.g. after cancel). */
+  onClose?: () => void;
+
+  /**
+   * Hash path below the section root (`#notification/section/<key>/<subPath>`),
+   * e.g. `add` or `edit/<fqn>`. Empty at the section root.
+   */
+  subPath?: string;
+
+  /**
+   * Navigate within the section; omit `subPath` to return to its root.
+   * `params` become the hash query (e.g. a list's paging), so a section can
+   * carry its state through a sub-page and back; omitted, the query is cleared.
+   */
+  onNavigate?: (
+    subPath?: string,
+    params?: Record<string, string | undefined>
+  ) => void;
+
+  /**
+   * Name the current sub-page (e.g. "Add Template"). The header then shows it
+   * as the title and as a trailing breadcrumb after the section's own crumb,
+   * which becomes clickable back to the section root. `null` clears it.
+   */
+  onSetSubTitle?: (title: string | null) => void;
+}
+
+/**
+ * Notification landing section contribution
+ *
+ * A downstream build contributes a self-contained section component that the
+ * profile Notification panel renders as its own view. The card for it comes
+ * from the global-settings Notifications menu (matched by `key`), so the key
+ * MUST equal that menu option's suffix (e.g. `weekly-emails`).
+ *
+ * @example
+ * ```typescript
+ * registry.contribute<NotificationSectionContribution>({
+ *   extensionPointId: EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS,
+ *   data: { key: 'weekly-emails', component: WeeklyEmailSettingsPage },
+ * });
+ * ```
+ */
+export interface NotificationSectionContribution {
+  /** Settings option suffix this section renders for (e.g. `weekly-emails`). */
+  key: string;
+
+  /** Self-contained component rendered in the Notification panel body. */
+  component: ComponentType<NotificationSectionProps>;
+
+  /** Landing card icon; falls back to the settings menu item's icon. */
+  icon?: ComponentType<{ className?: string }>;
 }
 
 /**
@@ -309,15 +410,34 @@ export interface AppModeSlotContribution {
 }
 
 /**
- * Task-type-specific overview panel for the inbox (`inbox.task-panels`). When
- * `condition(task)` matches, the inbox renders `component` in place of the
- * generic task overview. The first matching contribution wins.
+ * Task-type-specific detail for the inbox (`inbox.task-panels`). When
+ * `condition(task)` matches, the contribution refines how the task's detail pane
+ * renders. The first matching contribution wins.
+ *
+ * OSS describes its own task types; a plugin contributes only the types it owns
+ * (a Data Access Request's access terms, say) and overrides just the slices it
+ * knows better, leaving the layout to the inbox.
  */
 export interface InboxTaskPanelContribution {
   /** Stable key, unique within the slot. */
   key: string;
   /** True when this panel should render for the given task. */
   condition: (task: Task) => boolean;
-  /** Replaces the generic task overview body for a matching task. */
-  component: ComponentType<{ id: string; task: Task }>;
+  /**
+   * Overrides merged over the descriptor the inbox derives for this task —
+   * summary rows, callout, type chip or action labels.
+   */
+  describe?: (
+    task: Task,
+    t: (key: string, options?: Record<string, unknown>) => string
+  ) => Partial<TaskDetailDescriptor>;
+  /** Replaces the asset card's default stat tiles. */
+  stats?: ComponentType<TaskStatTilesProps>;
+  /**
+   * Replaces the generic summary rows with a bespoke body.
+   *
+   * @deprecated Prefer `describe` (and `stats`), which keep the pane's layout,
+   * spacing and callout consistent across task types.
+   */
+  component?: ComponentType<{ id: string; task: Task }>;
 }

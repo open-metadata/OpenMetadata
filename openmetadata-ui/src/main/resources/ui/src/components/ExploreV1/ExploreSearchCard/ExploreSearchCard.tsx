@@ -12,12 +12,14 @@
  */
 import {
   Breadcrumbs,
+  Button as CoreButton,
   Card,
+  Checkbox,
   ClassificationTag,
   Owner,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
@@ -47,8 +49,8 @@ import {
   highlightEntityNameAndDescription,
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stripMarkdown } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -207,27 +209,28 @@ const CheckboxCell = ({
   checked,
   showCheckboxes,
   onCheckboxChange,
+  t,
 }: {
   checked: boolean;
   showCheckboxes: boolean;
   onCheckboxChange?: (checked: boolean) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }) => {
   if (!showCheckboxes) {
     return null;
   }
 
   return (
-    <Col flex="25px">
+    <div className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex-[0_0_25px]">
       <Checkbox
-        checked={checked}
+        aria-label={t('label.select-entity', { entity: t('label.asset') })}
         className="assets-checkbox"
-        onChange={(e) => {
-          onCheckboxChange?.(e.target.checked);
-          e.stopPropagation();
-        }}
-        onClick={(e) => e.stopPropagation()}
+        data-testid="asset-checkbox"
+        isSelected={checked}
+        size="md"
+        onChange={(isSelected) => onCheckboxChange?.(isSelected)}
       />
-    </Col>
+    </div>
   );
 };
 
@@ -249,7 +252,7 @@ const BreadcrumbAndScoreCell = ({
   }
 
   return (
-    <Col className="d-flex justify-between items-center" flex="auto">
+    <div className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex tw:flex-auto tw:items-center tw:justify-between">
       <Breadcrumbs
         autoCollapse
         className={classNames(
@@ -262,15 +265,15 @@ const BreadcrumbAndScoreCell = ({
         <div className="flex items-center gap-1 score-container">
           <ScoreIcon />
 
-          <Typography.Text className="text-xs score">
+          <Typography className="text-xs score">
             <span className="font-normal">
               {t('label.score-label').toUpperCase()}
             </span>
             <span className="font-semibold">{score.toFixed(4)}</span>
-          </Typography.Text>
+          </Typography>
         </div>
       )}
-    </Col>
+    </div>
   );
 };
 
@@ -293,19 +296,19 @@ const EntityTitleColumn = ({
   openEntityInNewPage?: boolean;
   source: ExploreSearchCardProps['source'];
 }) => (
-  <Col
+  <div
+    className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex-[0_0_100%]"
     data-testid={`${
       source.service?.name ? `${source.service.name}-` : 'explore-card-'
-    }${source.name}`}
-    span={24}>
+    }${source.name}`}>
     {isTourOpen ? (
-      <Button data-testid={source.fullyQualifiedName} type="link">
-        <Typography.Text
+      <CoreButton color="link-color" data-testid={source.fullyQualifiedName}>
+        <Typography
           className="text-lg font-medium text-link-color"
           data-testid="entity-header-display-name">
           {renderHighlightedText(searchClassBase.getEntityName(source))}
-        </Typography.Text>
-      </Button>
+        </Typography>
+      </CoreButton>
     ) : (
       <div className="w-full d-flex items-center">
         {entityIcon}
@@ -316,7 +319,7 @@ const EntityTitleColumn = ({
             'm-r-xs': hasGlossaryTermStatus,
           })}
           data-testid="entity-link"
-          state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
+          state={{ breadcrumbData: breadcrumbs }}
           target={searchClassBase.getSearchEntityLinkTarget(
             source,
             openEntityInNewPage
@@ -324,11 +327,11 @@ const EntityTitleColumn = ({
           to={isObject(entityLink) ? entityLink.pathname : entityLink}
           onFocus={handlePrefetch}
           onMouseEnter={handlePrefetch}>
-          <Typography.Text
+          <Typography
             className="text-lg font-medium text-link-color break-word whitespace-normal"
             data-testid="entity-header-display-name">
             {renderHighlightedText(searchClassBase.getEntityName(source))}
-          </Typography.Text>
+          </Typography>
         </Link>
 
         {/* Column docs carry the parent table's certification; a column isn't certified itself */}
@@ -352,7 +355,7 @@ const EntityTitleColumn = ({
         )}
       </div>
     )}
-  </Col>
+  </div>
 );
 
 interface SignalBoosts {
@@ -404,11 +407,12 @@ const SignalBoostsSection = ({
       className="ranking-score-explanation"
       data-testid="ranking-signal-boosts">
       <div className="ranking-details-header">
-        <Typography.Text className="text-xs font-medium">
+        <Typography className="text-xs font-medium">
           {t('label.signal-boost-plural')}
-        </Typography.Text>
-        <Typography.Text
-          className="text-xs text-grey-muted"
+        </Typography>
+        <Typography
+          className="text-xs"
+          color="secondary"
           data-testid="ranking-signal-total">
           {signalBoosts.isCapped && signalBoosts.maxBoost !== undefined
             ? t('message.search-ranking-signal-capped', {
@@ -416,30 +420,31 @@ const SignalBoostsSection = ({
                 raw: formatScoreValue(signalBoosts.rawTotal),
               })
             : `+${formatScoreValue(signalBoosts.total)}`}
-        </Typography.Text>
+        </Typography>
       </div>
       {signalBoosts.contributions.map(({ label, value }) => (
         <div
           className="ranking-score-contributor"
           data-testid="ranking-signal-contributor"
           key={`${label}-${value}`}>
-          <Typography.Text className="text-xs font-medium">
+          <Typography className="text-xs font-medium">
             {`+${formatScoreValue(value)}`}
-          </Typography.Text>
-          <Typography.Text className="text-xs text-grey-muted">
+          </Typography>
+          <Typography className="text-xs" color="secondary">
             {label}
-          </Typography.Text>
+          </Typography>
         </div>
       ))}
       {signalBoosts.lexicalScore !== undefined ? (
-        <Typography.Text
-          className="text-xs text-grey-muted"
+        <Typography
+          className="text-xs"
+          color="secondary"
           data-testid="ranking-score-breakdown">
           {t('message.search-ranking-score-breakdown', {
             lexical: formatScoreValue(signalBoosts.lexicalScore),
             signals: formatScoreValue(signalBoosts.total),
           })}
-        </Typography.Text>
+        </Typography>
       ) : null}
     </div>
   );
@@ -465,15 +470,15 @@ const RankingDetailsSection = ({
   return (
     <div className="ranking-details-container" data-testid="ranking-details">
       <div className="ranking-details-header">
-        <Typography.Text className="ranking-details-title">
+        <Typography className="ranking-details-title">
           {t('label.ranking-detail-plural')}
-        </Typography.Text>
+        </Typography>
         {score !== undefined && (
-          <Typography.Text
+          <Typography
             className="ranking-details-score"
             data-testid="ranking-score">
             {t('label.score')}: {formatScoreValue(score)}
-          </Typography.Text>
+          </Typography>
         )}
       </div>
       {rankingStages.length > 0 ? (
@@ -483,12 +488,10 @@ const RankingDetailsSection = ({
               className="ranking-stage-item"
               data-testid={`ranking-stage-${name}`}
               key={name}>
-              <Typography.Text className="text-xs font-medium">
-                {label}
-              </Typography.Text>
-              <Typography.Text className="text-xs text-grey-muted">
+              <Typography className="text-xs font-medium">{label}</Typography>
+              <Typography className="text-xs" color="secondary">
                 {description}
-              </Typography.Text>
+              </Typography>
             </div>
           ))}
         </div>
@@ -497,28 +500,28 @@ const RankingDetailsSection = ({
         <div
           className="ranking-score-explanation"
           data-testid="ranking-score-explanation">
-          <Typography.Text className="text-xs font-medium">
+          <Typography className="text-xs font-medium">
             {t('label.reason')}
-          </Typography.Text>
+          </Typography>
           {scoreReasons.map(({ description, value }) => (
             <div
               className="ranking-score-contributor"
               data-testid="ranking-score-contributor"
               key={`${description}-${value}`}>
-              <Typography.Text className="text-xs font-medium">
+              <Typography className="text-xs font-medium">
                 {formatScoreValue(value)}
-              </Typography.Text>
-              <Typography.Text className="text-xs text-grey-muted">
+              </Typography>
+              <Typography className="text-xs" color="secondary">
                 {description}
-              </Typography.Text>
+              </Typography>
             </div>
           ))}
         </div>
       ) : null}
       <SignalBoostsSection signalBoosts={signalBoosts} t={t} />
-      <Typography.Text className="text-xs text-grey-muted">
+      <Typography className="text-xs" color="secondary">
         {t('message.search-ranking-signals-explanation')}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 };
@@ -702,18 +705,23 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         const columnDetails: ExtraInfo[] = [];
 
         if (columnSource.table) {
+          const tableLink = searchClassBase.getEntityLink({
+            ...columnSource.table,
+            entityType: EntityType.TABLE,
+          } as SourceType);
           columnDetails.push({
             key: t('label.table'),
             value: (
-              <Link
-                className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
-                title={getEntityName(columnSource.table)}
-                to={searchClassBase.getEntityLink({
-                  ...columnSource.table,
-                  entityType: EntityType.TABLE,
-                } as SourceType)}>
+              <CoreButton
+                ellipsis
+                noTextPadding
+                className="tw:max-w-52 tw:align-middle"
+                color="link-color"
+                href={isString(tableLink) ? tableLink : tableLink.pathname}
+                size="xs"
+                tooltip={getEntityName(columnSource.table)}>
                 {getEntityName(columnSource.table)}
-              </Link>
+              </CoreButton>
             ),
           });
         }
@@ -817,7 +825,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         searchClassBase.getEntityBreadcrumbs(
           source,
           source.entityType as EntityType,
-          false
+          true
         ),
       [source]
     );
@@ -870,10 +878,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         (source as GlossaryTerm).entityStatus !== EntityStatus.Approved;
 
       return (
-        <Row gutter={[4, 8]}>
+        <div className="tw:-mx-0.5 tw:flex tw:flex-wrap tw:gap-y-2">
           <CheckboxCell
             checked={checked}
             showCheckboxes={Boolean(showCheckboxes)}
+            t={t}
             onCheckboxChange={onCheckboxChange}
           />
           <BreadcrumbAndScoreCell
@@ -893,7 +902,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             openEntityInNewPage={openEntityInNewPage}
             source={source}
           />
-        </Row>
+        </div>
       );
     }, [
       breadcrumbs,
@@ -919,7 +928,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
-        onClick={() => {
+        onClick={(e) => {
+          // Toggling selection must not also open the summary panel.
+          if ((e.target as HTMLElement).closest('.assets-checkbox')) {
+            return;
+          }
           handleSummaryPanelDisplay?.(source, tab);
         }}>
         {header}
@@ -940,7 +953,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           t={t}
         />
         {actionPopoverContent && (
-          <Space className="explore-card-actions">{actionPopoverContent}</Space>
+          <div className="explore-card-actions tw:gap-2">
+            {actionPopoverContent}
+          </div>
         )}
       </Card>
     );

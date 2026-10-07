@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card } from '@openmetadata/ui-core-components';
-import { Copy } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Card, Typography } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -50,8 +50,6 @@ import { QueryCardProp } from './TableQueries.interface';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../SchemaEditor/SchemaEditor'))
 );
-
-const { Text } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
   isExpanded = false,
@@ -176,13 +174,13 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const renderCardTitle = () => (
     <Space className="font-normal p-y-xs" size={8}>
-      <Text className="text-sm">{queryDate}</Text>
+      <Typography className="text-sm">{queryDate}</Typography>
       {duration && (
         <>
-          <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-          <Text className="text-sm" data-testid="query-run-duration">
+          <Typography className="text-gray-400">{PIPE_SYMBOL}</Typography>
+          <Typography className="text-sm" data-testid="query-run-duration">
             {duration}
-          </Text>
+          </Typography>
         </>
       )}
     </Space>
@@ -265,7 +263,7 @@ const QueryCard: FC<QueryCardProp> = ({
                 <Button
                   className="flex-center"
                   data-testid="query-entity-copy-button"
-                  icon={<Copy size={16} />}
+                  icon={<Copy01 size={16} />}
                   onClick={onCopyToClipBoard}
                 />
               </Tooltip>

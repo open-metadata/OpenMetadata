@@ -12,7 +12,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { METRIC_HIERARCHY_PEER_LIMIT } from '../../../constants/Metric.constants';
 import { Metric } from '../../../generated/entity/data/metric';
 import { MetricGroup } from '../../../generated/entity/data/metricGroup';
@@ -39,9 +39,14 @@ export const useMetricHierarchyCard = (metric?: Metric) => {
   const [isLoadingChildren, setIsLoadingChildren] = useState(false);
   const [isLoadingSiblings, setIsLoadingSiblings] = useState(false);
 
+  const requestGeneration = useRef(0);
+
   useEffect(() => {
+    requestGeneration.current += 1;
     setAdditionalChildren([]);
     setAdditionalSiblings([]);
+    setIsLoadingChildren(false);
+    setIsLoadingSiblings(false);
   }, [metric?.id]);
 
   const { data, isPending, error, refetch } = useQuery({
@@ -85,6 +90,7 @@ export const useMetricHierarchyCard = (metric?: Metric) => {
     if (!metric?.id || !hasMoreChildren || isLoadingChildren) {
       return;
     }
+    const generation = requestGeneration.current;
     setIsLoadingChildren(true);
     try {
       const next = await getMetricHierarchyContext(metric.id, {
@@ -93,15 +99,22 @@ export const useMetricHierarchyCard = (metric?: Metric) => {
         siblingLimit: 0,
         siblingOffset: 0,
       });
+      if (requestGeneration.current !== generation) {
+        return;
+      }
       setAdditionalChildren((current) =>
         appendUnique(current, (next.children ?? []).map(asMetric))
       );
     } catch (fetchError) {
-      showErrorToast(fetchError as AxiosError);
+      if (requestGeneration.current === generation) {
+        showErrorToast(fetchError as AxiosError);
+      }
 
       throw fetchError;
     } finally {
-      setIsLoadingChildren(false);
+      if (requestGeneration.current === generation) {
+        setIsLoadingChildren(false);
+      }
     }
   }, [hasMoreChildren, isLoadingChildren, loadedChildCount, metric?.id]);
 
@@ -109,6 +122,7 @@ export const useMetricHierarchyCard = (metric?: Metric) => {
     if (!metric?.id || !hasMoreSiblings || isLoadingSiblings) {
       return;
     }
+    const generation = requestGeneration.current;
     setIsLoadingSiblings(true);
     try {
       const next = await getMetricHierarchyContext(metric.id, {
@@ -117,15 +131,22 @@ export const useMetricHierarchyCard = (metric?: Metric) => {
         siblingLimit: METRIC_HIERARCHY_PEER_LIMIT,
         siblingOffset: loadedSiblingCount,
       });
+      if (requestGeneration.current !== generation) {
+        return;
+      }
       setAdditionalSiblings((current) =>
         appendUnique(current, (next.siblings ?? []).map(asMetric))
       );
     } catch (fetchError) {
-      showErrorToast(fetchError as AxiosError);
+      if (requestGeneration.current === generation) {
+        showErrorToast(fetchError as AxiosError);
+      }
 
       throw fetchError;
     } finally {
-      setIsLoadingSiblings(false);
+      if (requestGeneration.current === generation) {
+        setIsLoadingSiblings(false);
+      }
     }
   }, [hasMoreSiblings, isLoadingSiblings, loadedSiblingCount, metric?.id]);
 

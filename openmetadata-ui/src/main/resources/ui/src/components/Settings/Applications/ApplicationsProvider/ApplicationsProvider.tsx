@@ -46,6 +46,12 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   // registration gives those consumers a dependency that actually changes,
   // so they recompute exactly once with contributions in place.
   const [contributionsVersion, setContributionsVersion] = useState(0);
+  // `isLoading` turns false in the same commit as `installedPluginInstances`
+  // is set; the contribution effect below runs after that commit, in a
+  // separate pass. So "not loading" and "contributions registered" are two
+  // different moments — this tracks the second one explicitly instead of
+  // conflating it with `isLoading`.
+  const [contributionsReady, setContributionsReady] = useState(false);
 
   const fetchApplicationList = useCallback(async () => {
     try {
@@ -107,6 +113,9 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   // `contributionsVersion` so such consumers have a deps entry that changes
   // once contributions are actually in.
   useEffect(() => {
+    if (isLoading) {
+      return; // plugin list not final yet
+    }
     installedPluginInstances.forEach((plugin) => {
       try {
         plugin.contributeExtensions?.(extensionRegistry);
@@ -115,7 +124,16 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       }
     });
     setContributionsVersion((version) => version + 1);
-  }, [installedPluginInstances, extensionRegistry]);
+    setContributionsReady(true);
+  }, [installedPluginInstances, extensionRegistry, isLoading]);
+
+  const getContributions = useCallback(
+    <T,>(extensionPointId: string): T[] =>
+      contributionsVersion >= 0
+        ? extensionRegistry.getContributions<T>(extensionPointId)
+        : [],
+    [extensionRegistry, contributionsVersion]
+  );
 
   const appContext = useMemo(() => {
     return {
@@ -124,6 +142,8 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       plugins: installedPluginInstances,
       extensionRegistry,
       contributionsVersion,
+      contributionsReady,
+      getContributions,
     };
   }, [
     applications,
@@ -131,6 +151,8 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     installedPluginInstances,
     extensionRegistry,
     contributionsVersion,
+    contributionsReady,
+    getContributions,
   ]);
 
   return (

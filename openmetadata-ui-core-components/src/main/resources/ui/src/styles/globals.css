@@ -1824,6 +1824,12 @@ Badge's own default neutral border/background instead of the tint. */
   color: var(--tag-color);
 }
 
+.tag-tinted:hover,
+.tag-tinted:focus {
+  outline: none;
+  text-decoration: none;
+}
+
 .tag-accent {
   outline: none;
   border: 1px solid color-mix(in srgb, var(--tag-color) 16%, transparent);
@@ -1833,6 +1839,12 @@ Badge's own default neutral border/background instead of the tint. */
   of stylesheet load order. */
   background-color: transparent !important;
   color: var(--tag-color);
+}
+
+.tag-accent:hover,
+.tag-accent:focus {
+  outline: none;
+  text-decoration: none;
 }
 
 .tag-tinted__close-icon button,
@@ -1854,6 +1866,20 @@ text on the dark surface. Lift the label/icon toward white while keeping the
 hue; the accent border keeps the exact colour. */
 .dark-mode .tag-color-text {
   color: color-mix(in srgb, var(--tag-color) 55%, white) !important;
+}
+
+/* Dark: the 16% tint border disappears on the dark surface. Lift it toward
+white the same way the label is lifted, so the chip keeps a visible edge. */
+.dark-mode .tag-tinted,
+.dark-mode .tag-accent {
+  border-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--tag-color) 55%, white) 38%,
+    transparent
+  );
+}
+.dark-mode .tag-accent {
+  border-left-color: var(--tag-color);
 }
 /* Let the consumer generate utilities for classes used inside the packaged
 core-components bundle. */

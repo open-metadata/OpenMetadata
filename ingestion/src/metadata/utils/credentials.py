@@ -134,7 +134,7 @@ def create_credential_tmp_file(credentials: dict) -> str:
 def build_google_credentials_dict(
     gcp_values: GcpCredentialsValues | GcpExternalAccount,
     single_project: bool = False,
-) -> dict[str, str]:
+) -> dict[str, str | list[str] | dict[str, str] | None]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
     downloaded from GCP with the service_account

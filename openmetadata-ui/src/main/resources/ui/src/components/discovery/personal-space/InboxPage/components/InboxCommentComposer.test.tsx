@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
 const mockOnSave = jest.fn();
 
@@ -19,6 +19,10 @@ let mockCurrentUser: { name?: string; displayName?: string } = {
   name: 'alice',
   displayName: 'Alice Johnson',
 };
+
+let mockEditorContent = '';
+const mockClearEditor = jest.fn();
+const mockSetEditorContent = jest.fn();
 
 jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
@@ -37,23 +41,52 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
 
 jest.mock(
   'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew',
-  () => ({
-    __esModule: true,
-    default: ({
-      onSave,
-      placeHolder,
-    }: {
-      onSave?: (m: string) => void;
-      placeHolder?: string;
-    }) => (
-      <button
-        aria-label="feed-editor"
-        data-placeholder={placeHolder}
-        data-testid="feed-editor"
-        onClick={() => onSave?.('hello')}
-      />
-    ),
-  })
+  () => {
+    const { forwardRef, useImperativeHandle } = jest.requireActual('react');
+
+    return {
+      __esModule: true,
+      default: forwardRef(
+        (
+          {
+            onSave,
+            onTextChange,
+            placeHolder,
+            editAction,
+          }: {
+            onSave?: (m: string) => void;
+            onTextChange?: (m: string) => void;
+            placeHolder?: string;
+            editAction?: React.ReactNode;
+          },
+          ref: React.Ref<unknown>
+        ) => {
+          useImperativeHandle(ref, () => ({
+            getEditorContent: () => mockEditorContent,
+            clearEditorContent: mockClearEditor,
+            setEditorContent: mockSetEditorContent,
+          }));
+
+          return (
+            <>
+              <button
+                aria-label="feed-editor"
+                data-placeholder={placeHolder}
+                data-testid="feed-editor"
+                onClick={() => onSave?.('hello')}
+              />
+              <input
+                aria-label="draft"
+                data-testid="draft-input"
+                onChange={(event) => onTextChange?.(event.target.value)}
+              />
+              {editAction}
+            </>
+          );
+        }
+      ),
+    };
+  }
 );
 
 jest.mock('react-i18next', () => ({
@@ -62,9 +95,32 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Button: ({
+    onClick,
+    isDisabled,
+    ...rest
+  }: {
+    onClick?: () => void;
+    isDisabled?: boolean;
+    'aria-label'?: string;
+    'data-testid'?: string;
+  }) => (
+    <button
+      aria-label={rest['aria-label']}
+      data-testid={rest['data-testid']}
+      disabled={isDisabled}
+      onClick={onClick}
+    />
+  ),
 }));
 
 import InboxCommentComposer from './InboxCommentComposer';
+
+// Stands in for typing: the editor reports its markdown through onTextChange.
+const type = (text: string) =>
+  fireEvent.change(screen.getByTestId('draft-input'), {
+    target: { value: text },
+  });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -81,6 +137,56 @@ describe('InboxCommentComposer', () => {
     expect(avatar).toHaveAttribute('data-display-name', 'Alice Johnson');
   });
 
+  // The design's arrow button replaces the editor's own send button.
+  it('posts and clears the draft from the send button', () => {
+    mockEditorContent = 'Looks right';
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    type('Looks right');
+    fireEvent.click(screen.getByTestId('send-button'));
+
+    expect(mockOnSave).toHaveBeenCalledWith('Looks right');
+    expect(mockClearEditor).toHaveBeenCalled();
+  });
+
+  it('keeps the send button disabled until something is typed', () => {
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    expect(screen.getByTestId('send-button')).toBeDisabled();
+
+    type('   ');
+
+    expect(screen.getByTestId('send-button')).toBeDisabled();
+
+    type('Looks right');
+
+    expect(screen.getByTestId('send-button')).toBeEnabled();
+
+    type('');
+
+    expect(screen.getByTestId('send-button')).toBeDisabled();
+  });
+
+  it('disables the send button again once the comment is sent', () => {
+    mockEditorContent = 'Looks right';
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    type('Looks right');
+    fireEvent.click(screen.getByTestId('send-button'));
+
+    expect(screen.getByTestId('send-button')).toBeDisabled();
+  });
+
+  it('disables the send button again after Enter sends the comment', () => {
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    type('hello');
+    fireEvent.click(screen.getByTestId('feed-editor'));
+
+    expect(mockOnSave).toHaveBeenCalledWith('hello');
+    expect(screen.getByTestId('send-button')).toBeDisabled();
+  });
+
   it('forwards the editor save to onSave', () => {
     render(<InboxCommentComposer onSave={mockOnSave} />);
 
@@ -89,12 +195,38 @@ describe('InboxCommentComposer', () => {
     expect(mockOnSave).toHaveBeenCalledWith('hello');
   });
 
+  // A refused comment comes back to the editor rather than vanishing with it.
+  it('puts the draft back when the save fails', async () => {
+    mockOnSave.mockRejectedValueOnce(new Error('refused'));
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('feed-editor'));
+    });
+
+    expect(mockSetEditorContent).toHaveBeenCalledWith(
+      expect.stringContaining('hello')
+    );
+    expect(screen.getByTestId('send-button')).toBeEnabled();
+  });
+
+  it('leaves the editor empty when the save succeeds', async () => {
+    mockOnSave.mockResolvedValueOnce(undefined);
+    render(<InboxCommentComposer onSave={mockOnSave} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('feed-editor'));
+    });
+
+    expect(mockSetEditorContent).not.toHaveBeenCalled();
+  });
+
   it('passes the default placeholder to the editor', () => {
     render(<InboxCommentComposer onSave={mockOnSave} />);
 
     expect(screen.getByTestId('feed-editor')).toHaveAttribute(
       'data-placeholder',
-      'label.add-comment'
+      'message.leave-a-comment'
     );
   });
 

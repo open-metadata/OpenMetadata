@@ -10,17 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
-  Button,
-  Checkbox,
-  Col,
+  Box,
   Divider,
-  List,
-  Row,
-  Space,
+  EmptyPlaceholder,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Button, Checkbox, Col, List, Row, Space } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -738,12 +734,13 @@ export const AddTestCaseList = ({
                     direction="vertical"
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
-                      <Typography.Paragraph
-                        className="m-0 font-medium text-base w-max-500"
+                      <Typography
+                        as="p"
+                        className="m-0 font-medium text-base w-max-500 tw:text-primary"
                         data-testid={test.name}
                         ellipsis={{ tooltip: true }}>
                         {getEntityName(test)}
-                      </Typography.Paragraph>
+                      </Typography>
 
                       <Checkbox
                         checked={
@@ -754,12 +751,13 @@ export const AddTestCaseList = ({
                         data-testid={`checkbox-${test.name}`}
                       />
                     </Space>
-                    <Typography.Paragraph
-                      className="m-0 w-max-500"
+                    <Typography
+                      as="p"
+                      className="m-0 w-max-500 tw:text-primary"
                       ellipsis={{ tooltip: true }}>
                       {getEntityName(test.testDefinition)}
-                    </Typography.Paragraph>
-                    <Typography.Paragraph className="m-0">
+                    </Typography>
+                    <Typography as="p" className="m-0 tw:text-primary">
                       <Link
                         data-testid="table-link"
                         to={getEntityDetailsPath(
@@ -770,17 +768,17 @@ export const AddTestCaseList = ({
                         onClick={(e) => e.stopPropagation()}>
                         {tableName}
                       </Link>
-                    </Typography.Paragraph>
+                    </Typography>
                     {isColumn && (
                       <Space>
-                        <Typography.Text className="font-medium text-xs">{`${t(
+                        <Typography className="font-medium text-xs tw:text-primary">{`${t(
                           'label.column'
-                        )}:`}</Typography.Text>
-                        <Typography.Text className="text-grey-muted text-xs">
+                        )}:`}</Typography>
+                        <Typography className="text-xs" color="secondary">
                           {replacePlus(
                             getColumnNameFromEntityLink(test.entityLink)
                           ) ?? '--'}
-                        </Typography.Text>
+                        </Typography>
                       </Space>
                     )}
                   </Space>
@@ -901,7 +899,7 @@ export const AddTestCaseList = ({
               data-testid="select-all-test-cases"
               onChange={handlePageSelectAllCheckbox}
             />
-            <Typography.Text>
+            <Typography className="tw:text-primary">
               {loadedSelectedCount > 0 || selectAll
                 ? t('label.n-selected', {
                     count: selectAll
@@ -909,12 +907,10 @@ export const AddTestCaseList = ({
                       : loadedSelectedCount,
                   })
                 : `${t('label.select-all')} (${items.length})`}
-            </Typography.Text>
+            </Typography>
             {showSelectAllTotalLink && (
               <>
-                <Typography.Text className="text-grey-muted" type="secondary">
-                  |
-                </Typography.Text>
+                <Typography color="secondary">|</Typography>
                 <Button
                   className="h-auto p-0 font-normal"
                   data-testid="select-all-total-test-cases"

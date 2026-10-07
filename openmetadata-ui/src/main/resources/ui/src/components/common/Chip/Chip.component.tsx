@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tag, Typography } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,11 +52,14 @@ const Chip = ({
           item.fullyQualifiedName ?? ''
         )}>
         {icon}
-        <Typography.Text
+        <Typography
           className="text-left chip-tag-link chip-name"
-          ellipsis={{ tooltip: getEntityName(item) }}>
+          ellipsis={{
+            tooltip: getEntityName(item),
+            excludeTriggerFromTabOrder: true,
+          }}>
           {getEntityName(item)}
-        </Typography.Text>
+        </Typography>
       </Link>
     </Col>
   );
@@ -66,9 +70,11 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography.Paragraph className="m-t-xs text-sm no-data-chip-placeholder">
+      <Typography
+        as="p"
+        className="m-t-xs text-sm no-data-chip-placeholder tw:mb-3.5!">
         {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
-      </Typography.Paragraph>
+      </Typography>
     );
   }
 
@@ -80,14 +86,17 @@ const Chip = ({
       gutter={[20, 0]}>
       {(isExpanded ? data : data.slice(0, USER_DATA_SIZE)).map(getChipElement)}
       {hasMoreElement && (
-        <Tag
-          className="m-l-xss chip-text cursor-pointer"
+        <Badge
+          bordered={false}
+          className="tw:mr-2 m-l-xss chip-text cursor-pointer"
           data-testid="plus-more-count"
+          size="sm"
+          type="color"
           onClick={() => setIsExpanded(!isExpanded)}>
           {isExpanded
             ? t('label.show-less')
             : `+${listLength - USER_DATA_SIZE} more`}
-        </Tag>
+        </Badge>
       )}
     </Row>
   );

@@ -245,14 +245,14 @@ test.describe(
 
         // Verify entity types
         await expect(
-          table.getByText('table', { exact: true }).first()
-        ).toBeVisible();
+          table.getByText('table', { exact: true }).filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(table.getByText('topic', { exact: true })).toBeVisible();
 
         // Verify status badges via data-testid
         const statusBadges = table.getByTestId('retry-status');
 
-        await expect(statusBadges.first()).toBeVisible();
+        await expect(statusBadges.filter({ visible: true })).not.toHaveCount(0);
         expect(await statusBadges.count()).toBe(3);
 
         // Verify failure reasons

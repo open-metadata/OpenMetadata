@@ -686,6 +686,17 @@ export interface TestServiceConnectionRequest {
      */
     databaseSchema?: string;
     /**
+     * UUIDs of files uploaded to one chat conversation, analyzed instead of a warehouse
+     * service. Every file is loaded into the same in-process DuckDB session, so a query may
+     * join them; serviceName and credentials are not used.
+     */
+    fileIds?: string[];
+    /**
+     * RUNTIME FIELD - The files behind fileIds, resolved by the backend before dispatch. Never
+     * accepted from the client.
+     */
+    files?: QueryRunnerFile[];
+    /**
      * RUNTIME FIELD - Automatically injected by backend from admin
      * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
      * request. The backend fetches this value from the service's QueryRunnerConfig and injects
@@ -1342,8 +1353,7 @@ export interface Connection {
     /**
      * Option to include policy tags as part of column description.
      */
-    includePolicyTags?:       boolean;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    includePolicyTags?: boolean;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
@@ -4436,8 +4446,7 @@ export interface AirflowConnectionConnection {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -4621,96 +4630,6 @@ export enum Provider {
 export enum Region {
     Eu1 = "eu1",
     Us1 = "us1",
-}
-
-/**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    /**
-     * Bucket Name
-     */
-    bucketName?: string;
-    /**
-     * Provide the pattern of the path where the generated sample data file needs to be stored.
-     */
-    filePathPattern?: string;
-    /**
-     * When this field enabled a single parquet file will be created to store sample data,
-     * otherwise we will create a new file per day
-     */
-    overwriteData?: boolean;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:        string;
-    storageConfig?: AwsCredentials;
-    [property: string]: any;
-}
-
-/**
- * AWS credentials required to access the S3 file.
- *
- * AWS credentials configs.
- *
- * AWS credentials for generating MWAA CLI token.
- *
- * AWS credentials configuration.
- */
-export interface AwsCredentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
 }
 
 /**
@@ -4906,8 +4825,7 @@ export interface DatabaseConnectionClass {
     /**
      * Password to connect to MSSQL.
      */
-    password?:                string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    password?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -5118,8 +5036,7 @@ export interface HiveMetastoreConnectionDetails {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -5844,6 +5761,29 @@ export enum AirflowConnectionType {
 export enum CredentialSourceType {
     Team = "team",
     User = "user",
+}
+
+/**
+ * An uploaded file resolved by the backend for in-process analysis.
+ */
+export interface QueryRunnerFile {
+    /**
+     * UUID of the uploaded file (Asset).
+     */
+    fileId: string;
+    /**
+     * Original name of the file. Its extension selects the reader.
+     */
+    fileName: string;
+    /**
+     * Short-lived readable location (presigned URL) of the file.
+     */
+    fileUri: string;
+    /**
+     * Relation name the file is registered under. A multi-sheet workbook registers one relation
+     * per sheet, named tableName_<sheet>.
+     */
+    tableName: string;
 }
 
 /**

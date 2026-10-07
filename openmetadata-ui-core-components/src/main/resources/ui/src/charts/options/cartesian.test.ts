@@ -21,7 +21,7 @@ import type {
   YAXisComponentOption,
 } from 'echarts';
 import { describe, expect, it } from 'vitest';
-import { CHART_PALETTE } from '../palette';
+import { DARK_CHART_PALETTE, LIGHT_CHART_PALETTE } from '../palette';
 import { DARK_CHART_THEME, LIGHT_CHART_THEME } from '../theme';
 import type { ChartOption } from '../types';
 import {
@@ -31,6 +31,7 @@ import {
   buildLineOption,
   toNumberOrNull,
 } from './cartesian';
+import { dataZoomFor } from './common';
 
 interface Row {
   day: string;
@@ -81,6 +82,30 @@ describe('toNumberOrNull', () => {
   });
 });
 
+describe('dataZoomFor', () => {
+  it('sets labelFormatter on the slider only when one is given', () => {
+    const [inside, slider] = dataZoomFor(
+      40,
+      { labelFormatter: (value) => `run ${value}` },
+      20
+    );
+    const format = slider.labelFormatter as (
+      value: number,
+      valueStr: string
+    ) => string;
+
+    expect(format(3, 'a_3')).toBe('run a_3');
+    expect(inside).not.toHaveProperty('labelFormatter');
+    expect(slider.end).toBe(50);
+  });
+
+  it('keeps the slider labels as ECharts defaults them without one', () => {
+    dataZoomFor(40, {}).forEach((zoom) =>
+      expect(zoom).not.toHaveProperty('labelFormatter')
+    );
+  });
+});
+
 describe('buildLineOption', () => {
   it('maps rows onto a category x-axis and one series per key', () => {
     const option = buildLineOption(base, LIGHT_CHART_THEME);
@@ -128,12 +153,12 @@ describe('buildLineOption', () => {
     ]);
   });
 
-  it('cycles palette colours past 15 series and lets an explicit colour win', () => {
+  it('cycles palette colours past 15 series and lets a status colour win', () => {
     const series = Array.from({ length: 16 }, (_, i) => ({
       key: `s${i}`,
       name: `S${i}`,
     }));
-    series[1] = { ...series[1], color: '#123456' } as (typeof series)[number];
+    series[1] = { ...series[1], status: 'failed' } as (typeof series)[number];
     const option = buildLineOption(
       { data: [], xKey: 'x', ariaLabel: 'Many', series },
       LIGHT_CHART_THEME
@@ -142,9 +167,114 @@ describe('buildLineOption', () => {
       (s) => (s.itemStyle as { color: string }).color
     );
 
-    expect(colors[0]).toBe(CHART_PALETTE[0]);
-    expect(colors[1]).toBe('#123456');
-    expect(colors[15]).toBe(CHART_PALETTE[0]);
+    expect(colors[0]).toBe(LIGHT_CHART_PALETTE.series[0]);
+    expect(colors[1]).toBe(LIGHT_CHART_PALETTE.status.failed);
+    expect(colors[15]).toBe(LIGHT_CHART_PALETTE.series[0]);
+  });
+
+  it('takes series colours from the dark palette in dark mode', () => {
+    const option = buildLineOption(
+      {
+        data: [],
+        xKey: 'x',
+        ariaLabel: 'Dark',
+        series: [
+          { key: 'a', name: 'A' },
+          { key: 'b', name: 'B', status: 'success' },
+        ],
+      },
+      DARK_CHART_THEME
+    );
+    const colors = seriesOf(option).map(
+      (s) => (s.itemStyle as { color: string }).color
+    );
+
+    expect(colors).toEqual([
+      DARK_CHART_PALETTE.series[0],
+      DARK_CHART_PALETTE.status.success,
+    ]);
+  });
+
+  it('uses a series colour override before its status or the palette', () => {
+    const option = buildLineOption(
+      {
+        data: [],
+        xKey: 'x',
+        ariaLabel: 'Override',
+        series: [
+          { key: 'a', name: 'A', color: '#123456' },
+          { key: 'b', name: 'B', status: 'success', color: '#abcdef' },
+          { key: 'c', name: 'C' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const colors = seriesOf(option).map(
+      (s) => (s.itemStyle as { color: string }).color
+    );
+
+    expect(colors).toEqual([
+      '#123456',
+      '#abcdef',
+      LIGHT_CHART_PALETTE.series[2],
+    ]);
+  });
+
+  it('sizes the zoom window and the auto threshold from zoomVisiblePoints', () => {
+    const many = Array.from({ length: 600 }, (_, i) => ({
+      day: `d${i}`,
+      passed: i,
+    }));
+    const zoomed = buildBarOption(
+      { ...base, data: many, zoom: 'auto', zoomVisiblePoints: 500 },
+      LIGHT_CHART_THEME
+    );
+    const notZoomed = buildBarOption(
+      {
+        ...base,
+        data: many.slice(0, 500),
+        zoom: 'auto',
+        zoomVisiblePoints: 500,
+      },
+      LIGHT_CHART_THEME
+    );
+    const zooms = zoomed.dataZoom as DataZoomComponentOption[];
+
+    expect(zooms.map((zoom) => zoom.end)).toEqual([
+      (500 / 600) * 100,
+      (500 / 600) * 100,
+    ]);
+    expect(notZoomed.dataZoom).toBeUndefined();
+  });
+
+  it('lets category labels trigger events only when categoryClickable', () => {
+    const clickable = buildBarOption(
+      { ...base, layout: 'horizontal', categoryClickable: true },
+      LIGHT_CHART_THEME
+    );
+    const plain = buildBarOption(
+      { ...base, layout: 'horizontal' },
+      LIGHT_CHART_THEME
+    );
+
+    expect(yAxesOf(clickable)[0].triggerEvent).toBe(true);
+    expect(yAxesOf(plain)[0].triggerEvent).toBeUndefined();
+  });
+
+  it('drops the ECharts tooltip box when the tooltip is bare', () => {
+    const tooltip = buildLineOption(
+      { ...base, tooltip: { bare: true } },
+      LIGHT_CHART_THEME
+    ).tooltip as TooltipComponentOption;
+
+    expect(tooltip).toMatchObject({
+      padding: 0,
+      borderWidth: 0,
+      backgroundColor: 'transparent',
+    });
+    expect(tooltip.extraCssText).toContain('box-shadow:none');
+    // The content card's own shadow would be clipped by a scroll box.
+    expect(tooltip.extraCssText).not.toContain('overflow');
   });
 
   it('hides dots and smooths lines unless the series says otherwise', () => {
@@ -162,6 +292,79 @@ describe('buildLineOption', () => {
 
     expect([first.smooth, first.showSymbol]).toEqual([true, false]);
     expect([second.smooth, second.showSymbol]).toEqual([false, true]);
+  });
+
+  it('styles each point from pointStyle', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        series: [
+          {
+            key: 'passed',
+            name: 'Passed',
+            pointStyle: (datum) =>
+              datum.day === 'Mon'
+                ? { status: 'failed' }
+                : datum.day === 'Tue'
+                ? { hollow: true, status: 'warning' }
+                : undefined,
+          },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [mon, tue, wed] = seriesOf(option)[0].data as Array<{
+      value: unknown;
+      symbol: string;
+      itemStyle?: Record<string, unknown>;
+    }>;
+    const { status } = LIGHT_CHART_PALETTE;
+
+    expect(seriesOf(option)[0].showSymbol).toBe(true);
+    expect(mon).toEqual({
+      value: 3,
+      symbol: 'circle',
+      symbolSize: 8,
+      itemStyle: {
+        color: status.failed,
+        borderColor: LIGHT_CHART_THEME.segmentBorder,
+        borderWidth: 1,
+      },
+    });
+    expect(tue.itemStyle).toEqual({
+      color: 'transparent',
+      borderColor: status.warning,
+      borderWidth: 2,
+    });
+    expect(wed).toEqual({ value: 4, symbol: 'none' });
+  });
+
+  it('gives a selected point a halo in its own colour', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        series: [
+          {
+            key: 'passed',
+            name: 'Passed',
+            status: 'info',
+            pointStyle: () => ({ selected: true }),
+          },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option)[0].data as Array<{
+      itemStyle: Record<string, unknown>;
+    }>;
+
+    expect(first.itemStyle).toEqual(
+      expect.objectContaining({
+        color: LIGHT_CHART_PALETTE.status.info,
+        shadowBlur: 8,
+        shadowColor: LIGHT_CHART_PALETTE.status.info,
+      })
+    );
   });
 
   it('shows the legend only when there is more than one series', () => {
@@ -234,6 +437,61 @@ describe('buildLineOption', () => {
     expect(yLabel.formatter(2500)).toBe('2.5K');
   });
 
+  it('keeps string values on a category value axis', () => {
+    const option = buildLineOption(
+      {
+        data: [
+          { day: 'Mon', min: 'apac' },
+          { day: 'Tue', min: '' },
+          { day: 'Wed', min: 'eu' },
+          { day: 'Thu', min: 42 },
+        ],
+        xKey: 'day',
+        ariaLabel: 'Min',
+        series: [{ key: 'min', name: 'Min' }],
+        yAxis: { type: 'category' },
+      },
+      LIGHT_CHART_THEME
+    );
+
+    expect(yAxesOf(option)[0].type).toBe('category');
+    expect(
+      (yAxesOf(option)[0] as YAXisComponentOption & { data: string[] }).data
+    ).toEqual(['42', 'apac', 'eu']);
+    expect(seriesOf(option)[0].data).toEqual(['apac', null, 'eu', '42']);
+  });
+
+  it('shows raw category ticks unless a formatter is given', () => {
+    const raw = buildLineOption(
+      { ...base, yAxis: { type: 'category' } },
+      LIGHT_CHART_THEME
+    );
+    const formatted = buildLineOption(
+      { ...base, yAxis: { type: 'category', formatter: (v) => `<${v}>` } },
+      LIGHT_CHART_THEME
+    );
+    const rawLabel = yAxesOf(raw)[0].axisLabel as { formatter?: unknown };
+    const formattedLabel = yAxesOf(formatted)[0].axisLabel as {
+      formatter: (v: string) => string;
+    };
+
+    expect(rawLabel.formatter).toBeUndefined();
+    expect(formattedLabel.formatter('eu')).toBe('<eu>');
+  });
+
+  it('still drops non-numeric strings on a value axis', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        data: [{ day: 'Mon', passed: 'apac' as unknown as number }],
+      },
+      LIGHT_CHART_THEME
+    );
+
+    expect(yAxesOf(option)[0].type).toBe('value');
+    expect(seriesOf(option)[0].data).toEqual([null]);
+  });
+
   it('adds a second value axis for series on yAxisIndex 1', () => {
     const option = buildLineOption(
       {
@@ -278,7 +536,7 @@ describe('buildLineOption', () => {
       {
         ...base,
         referenceLines: [
-          { axis: 'y', value: 80, label: 'Target', color: '#ff0000' },
+          { axis: 'y', value: 80, label: 'Target', status: 'failed' },
           { axis: 'x', value: 'Tue' },
         ],
       },
@@ -305,13 +563,35 @@ describe('buildLineOption', () => {
     expect(markLine.data[0]).toMatchObject({
       yAxis: 80,
       label: { formatter: 'Target' },
-      lineStyle: { color: '#ff0000', type: 'dashed' },
+      lineStyle: { color: LIGHT_CHART_PALETTE.status.failed, type: 'dashed' },
     });
     expect(markLine.data[1]).toMatchObject({ xAxis: 'Tue' });
     expect(all[0].markLine).toBeUndefined();
     expect((option.legend as LegendComponentOption).data).toEqual([
       'Passed',
       'Failed',
+    ]);
+  });
+
+  it('labels a reference line at its end unless asked for the start', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        referenceLines: [
+          { axis: 'y', value: 80, label: 'Target' },
+          { axis: 'y', value: 60, label: 'Floor', labelPosition: 'start' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const all = seriesOf(option);
+    const { data } = all[all.length - 1].markLine as {
+      data: Array<{ label: { position: string } }>;
+    };
+
+    expect(data.map(({ label }) => label.position)).toEqual([
+      'insideEndTop',
+      'insideStartTop',
     ]);
   });
 
@@ -358,6 +638,46 @@ describe('buildLineOption', () => {
       buildLineOption({ ...base, zoom: true }, LIGHT_CHART_THEME).dataZoom
     ).toBeDefined();
     expect(buildLineOption(base, LIGHT_CHART_THEME).dataZoom).toBeUndefined();
+  });
+
+  it('labels the zoom slider with the category axis formatter', () => {
+    const option = buildBarOption(
+      {
+        ...base,
+        zoom: true,
+        xAxis: { formatter: (value) => `day ${value}` },
+      },
+      LIGHT_CHART_THEME
+    );
+    const [inside, slider] = option.dataZoom as DataZoomComponentOption[];
+    const labelFormatter = slider.labelFormatter as (
+      value: number,
+      valueStr: string
+    ) => string;
+
+    expect(labelFormatter(1, 'Tue')).toBe('day Tue');
+    expect(inside).not.toHaveProperty('labelFormatter');
+  });
+
+  it('leaves the zoom slider labels alone without an axis formatter', () => {
+    const option = buildBarOption({ ...base, zoom: true }, LIGHT_CHART_THEME);
+    const zooms = option.dataZoom as DataZoomComponentOption[];
+
+    zooms.forEach((zoom) => expect(zoom).not.toHaveProperty('labelFormatter'));
+  });
+
+  it('leaves the zoom slider labels alone on a time axis', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        zoom: true,
+        xAxis: { type: 'time', formatter: (value) => `t ${value}` },
+      },
+      LIGHT_CHART_THEME
+    );
+    const zooms = option.dataZoom as DataZoomComponentOption[];
+
+    zooms.forEach((zoom) => expect(zoom).not.toHaveProperty('labelFormatter'));
   });
 
   it('merges a per-series seriesOption into that series only', () => {
@@ -425,6 +745,32 @@ describe('buildLineOption', () => {
       enabled: true,
       label: { description: 'Test results. Passed, Failed' },
     });
+  });
+});
+
+describe('a chart with a single data row', () => {
+  const oneRow = { ...base, data: [rows[0]] };
+  const twoRows = { ...base, data: rows.slice(0, 2) };
+
+  it('shows the point of a line series without showDots', () => {
+    const option = buildLineOption(oneRow, LIGHT_CHART_THEME);
+
+    expect(seriesOf(option)[0].showSymbol).toBe(true);
+  });
+
+  it('shows the point of an area series without showDots', () => {
+    const option = buildAreaOption(oneRow, LIGHT_CHART_THEME);
+
+    expect(seriesOf(option)[0].showSymbol).toBe(true);
+  });
+
+  it('keeps symbols off for two rows without showDots', () => {
+    expect(
+      seriesOf(buildLineOption(twoRows, LIGHT_CHART_THEME))[0].showSymbol
+    ).toBe(false);
+    expect(
+      seriesOf(buildAreaOption(twoRows, LIGHT_CHART_THEME))[0].showSymbol
+    ).toBe(false);
   });
 });
 
@@ -514,19 +860,19 @@ describe('buildBarOption', () => {
     ).toEqual([0, 4, 4, 0]);
   });
 
-  it('colours each bar from getBarColor', () => {
+  it('colours each bar from getBarStatus', () => {
     const option = buildBarOption(
       {
         ...base,
         series: [base.series[0]],
-        getBarColor: (row: Row) => (row.passed === 5 ? '#00ff00' : undefined),
+        getBarStatus: (row: Row) => (row.passed === 5 ? 'success' : undefined),
       },
       LIGHT_CHART_THEME
     );
 
     expect(seriesOf(option)[0].data).toEqual([
       3,
-      { value: 5, itemStyle: { color: '#00ff00' } },
+      { value: 5, itemStyle: { color: LIGHT_CHART_PALETTE.status.success } },
       4,
     ]);
   });
@@ -592,5 +938,41 @@ describe('buildComposedOption', () => {
     expect(seriesOf(option).map((s) => s.type)).toEqual(['line', 'line']);
     expect(seriesOf(option)[0].areaStyle).toBeDefined();
     expect(seriesOf(option)[1].areaStyle).toBeUndefined();
+  });
+
+  it('draws a band as a stacked transparent base and a filled span', () => {
+    const option = buildComposedOption(
+      {
+        data: [
+          { day: 'Mon', range: [2, 6], value: 4 },
+          { day: 'Tue', range: undefined, value: 5 },
+          { day: 'Wed', range: [3, 8], value: 7 },
+        ],
+        xKey: 'day',
+        ariaLabel: 'Runs',
+        series: [
+          { key: 'range', name: 'Range', type: 'band', status: 'success' },
+          { key: 'value', name: 'Value', type: 'line' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [baseSeries, span, line] = seriesOf(option) as Array<
+      LineSeriesOption & { areaStyle?: { color?: string; opacity?: number } }
+    >;
+
+    expect(baseSeries.id).toBe('range__band-base');
+    expect(baseSeries.data).toEqual([2, null, 3]);
+    expect(span.id).toBe('range__band');
+    expect(span.data).toEqual([4, null, 5]);
+    expect(span.stack).toBe(baseSeries.stack);
+    expect(span.connectNulls).toBe(true);
+    expect(span.areaStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.status.success,
+      opacity: 0.12,
+    });
+    expect(line.id).toBe('value');
+    expect(line.itemStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
+    expect((option.legend as LegendComponentOption).data).toEqual(['Value']);
   });
 });

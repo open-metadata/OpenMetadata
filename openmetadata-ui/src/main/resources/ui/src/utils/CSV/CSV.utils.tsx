@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
-import { Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import type { Column, RenderCellProps } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
@@ -519,7 +518,7 @@ export const renderColumnDataEditor = (
     case 'status':
       return statusRenderer(value as Status);
     case 'glossaryStatus':
-      return <Typography.Text>{glossaryStatus}</Typography.Text>;
+      return <Typography>{glossaryStatus}</Typography>;
     case 'expressionCode':
       return renderExpressionCodeCell(value, row);
     case 'description':
