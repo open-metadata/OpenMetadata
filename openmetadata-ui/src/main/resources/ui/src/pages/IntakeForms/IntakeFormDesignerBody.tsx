@@ -56,7 +56,7 @@ export interface IntakeFormDesignerBodyHandle {
 
 interface IntakeFormDesignerBodyProps {
   entityType: TargetEntityType;
-  initialValue: IntakeForm | null;
+  initialValue: (Omit<IntakeForm, 'id'> & { id?: string }) | null;
   open: boolean;
   onSubmit: (payload: CreateIntakeForm) => Promise<void> | void;
 }

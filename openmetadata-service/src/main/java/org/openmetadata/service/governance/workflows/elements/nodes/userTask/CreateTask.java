@@ -123,6 +123,7 @@ public class CreateTask implements TaskListener {
   private Expression stageDisplayNameExpr;
   private Expression taskStatusExpr;
   private Expression transitionMetadataExpr;
+  private Expression useEntityOwnerFallbackExpr;
 
   @Override
   public void notify(DelegateTask delegateTask) {
@@ -394,7 +395,6 @@ public class CreateTask implements TaskListener {
       Object payload) {
 
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    UUID requestedTaskId = resolveRequestedTaskId(delegateTask);
     String taskName =
         WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_NAME);
     String taskDisplayName =
@@ -433,6 +433,11 @@ public class CreateTask implements TaskListener {
             delegateTask, WorkflowStartVariables.WORKFLOW_DEFINITION_ID);
     UUID resolvedWorkflowDefinitionId =
         resolveWorkflowDefinitionId(delegateTask, workflowDefinitionId);
+    // Entity approval nodes create separate tasks; only a task lifecycle reuses its draft task.
+    UUID requestedTaskId =
+        TaskWorkflowLifecycleResolver.isEntityEventWorkflow(resolvedWorkflowDefinitionId)
+            ? null
+            : resolveRequestedTaskId(delegateTask);
     boolean workflowManagedDraftTask =
         WorkflowVariableResolver.booleanVariable(
             delegateTask, WorkflowStartVariables.TASK_WORKFLOW_MANAGED);
@@ -613,6 +618,12 @@ public class CreateTask implements TaskListener {
                 requestedAssignees != null && !requestedAssignees.isEmpty()
                     ? requestedAssignees
                     : assignees)
+            .withUseEntityOwnerFallback(
+                !Boolean.FALSE
+                    .toString()
+                    .equals(
+                        WorkflowVariableResolver.stringExpression(
+                            useEntityOwnerFallbackExpr, delegateTask)))
             .withReviewers(requestedReviewers)
             .withCreatedBy(createdByRef)
             .withWorkflowInstanceId(workflowInstanceId)

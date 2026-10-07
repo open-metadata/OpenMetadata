@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.governance.workflows.elements.nodes.userTask.Assignees__1.EmptyAssigneeStrategy.WAIT;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.ArrayList;
@@ -136,6 +137,16 @@ public class UserApprovalTask implements NodeInterface {
             .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getConfig().getTransitionMetadata()))
             .build();
 
+    FieldExtension useEntityOwnerFallbackExpr =
+        new FieldExtensionBuilder()
+            .fieldName("useEntityOwnerFallbackExpr")
+            .fieldValue(
+                Boolean.toString(
+                    nodeDefinition.getConfig().getAssignees() == null
+                        || nodeDefinition.getConfig().getAssignees().getEmptyAssigneeStrategy()
+                            != WAIT))
+            .build();
+
     // Force sync execution on the approval subprocess so the entry path
     // (SetApprovalAssigneesImpl → user task creation → CreateTask listener)
     // runs on the caller's thread inside the current transaction. Without this
@@ -175,7 +186,8 @@ public class UserApprovalTask implements NodeInterface {
             stageIdExpr,
             stageDisplayNameExpr,
             taskStatusExpr,
-            transitionMetadataExpr);
+            transitionMetadataExpr,
+            useEntityOwnerFallbackExpr);
 
     ServiceTask autoApproveTask =
         new ServiceTaskBuilder()
@@ -281,7 +293,8 @@ public class UserApprovalTask implements NodeInterface {
       FieldExtension stageIdExpr,
       FieldExtension stageDisplayNameExpr,
       FieldExtension taskStatusExpr,
-      FieldExtension transitionMetadataExpr) {
+      FieldExtension transitionMetadataExpr,
+      FieldExtension useEntityOwnerFallbackExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
             .event("create")
@@ -303,6 +316,7 @@ public class UserApprovalTask implements NodeInterface {
             .addFieldExtension(stageDisplayNameExpr)
             .addFieldExtension(taskStatusExpr)
             .addFieldExtension(transitionMetadataExpr)
+            .addFieldExtension(useEntityOwnerFallbackExpr)
             .build();
 
     FlowableListener completionValidatorListener =
@@ -432,6 +446,7 @@ public class UserApprovalTask implements NodeInterface {
     if (config != null) {
       result.put("addReviewers", config.getOrDefault("addReviewers", true));
       result.put("addOwners", config.getOrDefault("addOwners", false));
+      result.put("addDomainOwners", config.getOrDefault("addDomainOwners", false));
       result.put("emptyAssigneeStrategy", config.getOrDefault("emptyAssigneeStrategy", "none"));
 
       Set<String> users = new HashSet<>();
@@ -439,9 +454,19 @@ public class UserApprovalTask implements NodeInterface {
 
       Object candidatesObj = config.get("candidates");
       if (candidatesObj instanceof List<?> candidates) {
+        result.put(
+            "candidateIds",
+            candidates.stream()
+                .filter(
+                    candidate ->
+                        candidate instanceof Map<?, ?> reference && reference.get("id") != null)
+                .toList());
         for (Object candidate : candidates) {
           if (candidate instanceof Map) {
             Map<String, Object> candidateMap = (Map<String, Object>) candidate;
+            if (candidateMap.get("id") != null) {
+              continue;
+            }
             Object typeObj = candidateMap.get("type");
             Object fqnObj = candidateMap.get("fullyQualifiedName");
             String type = typeObj instanceof String value ? value : null;

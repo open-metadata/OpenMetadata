@@ -1,0 +1,171 @@
+{
+  "title": "CollectMetadataTaskDefinition",
+  "description": "Maintains an assigned metadata task while an entity field fails its check. Stage gates decide whether a missing field blocks advancement.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CollectMetadataTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "collectMetadataTask"
+    },
+    "name": {
+      "description": "Name that identifies an entity.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "config": {
+      "title": "MetadataCollectionConfiguration",
+      "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.MetadataCollectionConfiguration",
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rules": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appliesWhen": {
+          "type": "string"
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "title": "Entity Reference",
+            "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.EntityReference",
+            "properties": {
+              "id": {
+                "description": "Unique identifier that identifies an entity instance.",
+                "type": "string",
+                "format": "uuid"
+              },
+              "type": {
+                "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name of the entity instance.",
+                "type": "string"
+              },
+              "fullyQualifiedName": {
+                "description": "Fully qualified name of the entity instance. For entities such as tables, databases fullyQualifiedName is returned in this field. For entities that don't have name hierarchy such as `user` and `team` this will be same as the `name` field.",
+                "type": "string"
+              },
+              "description": {
+                "description": "Optional description of entity.",
+                "$comment": "@om-field-type",
+                "type": "string"
+              },
+              "displayName": {
+                "description": "Display Name that identifies this entity.",
+                "type": "string"
+              },
+              "deleted": {
+                "description": "If true the entity referred to has been soft-deleted.",
+                "type": "boolean"
+              },
+              "inherited": {
+                "description": "If true the relationship indicated by this entity reference is inherited from the parent entity.",
+                "type": "boolean"
+              },
+              "href": {
+                "description": "Link to the entity resource.",
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": [
+              "id",
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "guidance": {
+          "type": "string"
+        },
+        "example": {
+          "type": "string"
+        },
+        "taskAssignees": {
+          "type": "string",
+          "enum": [
+            "owners",
+            "reviewers",
+            "candidates"
+          ],
+          "default": "owners"
+        },
+        "stage": {
+          "title": "EntityStatus",
+          "description": "Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus` property. Entity types without that property have no lifecycle. When a create request omits the stage, the server assigns the entity type's initial stage.",
+          "type": "string",
+          "javaType": "org.openmetadata.schema.type.EntityStatus",
+          "enum": [
+            "Draft",
+            "In Review",
+            "Approved",
+            "Archived",
+            "Deprecated",
+            "Rejected",
+            "Unprocessed"
+          ]
+        }
+      },
+      "required": [
+        "field",
+        "rules",
+        "taskAssignees",
+        "stage"
+      ],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "relatedEntity"
+      ],
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "required": [
+        "relatedEntity"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "config"
+  ],
+  "additionalProperties": false
+}

@@ -787,9 +787,10 @@ public class WorkflowHandler {
    * another node may not have invalidated.
    */
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
-    RuntimeService runtimeService = processEngine.getRuntimeService();
     try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
-      runtimeService.signalEventReceived(signal, variables);
+      new WorkflowSignalDispatcher(
+              processEngine.getRuntimeService(), processEngine.getRepositoryService())
+          .dispatch(signal, variables);
     }
   }
 

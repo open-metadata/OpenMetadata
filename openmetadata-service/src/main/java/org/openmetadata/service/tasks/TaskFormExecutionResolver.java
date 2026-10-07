@@ -227,6 +227,12 @@ public final class TaskFormExecutionResolver {
     }
 
     TaskExecutionBinding binding = defaultBinding(task);
+    if (binding.handlerType() == HandlerType.APPROVAL
+        && TaskWorkflowLifecycleResolver.isEntityEventWorkflow(task.getWorkflowDefinitionId())) {
+      // Entity workflows own their status changes. Standalone approvals use noOp task workflows
+      // and still need the default action. Explicit schema actions are merged by the caller.
+      return new TaskExecutionPlan(List.of(), List.of());
+    }
 
     return switch (binding.handlerType()) {
       case DESCRIPTION_UPDATE -> new TaskExecutionPlan(

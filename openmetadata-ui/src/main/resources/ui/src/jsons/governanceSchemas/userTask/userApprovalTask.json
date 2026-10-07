@@ -110,13 +110,18 @@
               "default": []
             },
             "emptyAssigneeStrategy": {
-              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen.",
+              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen. 'wait' creates an unassigned task when no eligible assignee is available, without auto-approval or an admin fallback.",
               "type": "string",
               "enum": [
                 "none",
-                "assignAdmins"
+                "assignAdmins",
+                "wait"
               ],
               "default": "none"
+            },
+            "addDomainOwners": {
+              "description": "Resolve owners from the asset’s domains at execution time. For a domain, use its own owners.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false

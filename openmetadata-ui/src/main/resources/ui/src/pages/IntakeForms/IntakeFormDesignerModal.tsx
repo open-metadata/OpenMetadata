@@ -35,7 +35,7 @@ const IntakeFormDesignerModal = ({
   const { t } = useTranslation();
   const bodyRef = useRef<IntakeFormDesignerBodyHandle>(null);
 
-  const title = initialValue
+  const title = initialValue?.id
     ? t('label.edit-entity', {
         entity: t('label.entity-intake-form', {
           entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
@@ -94,7 +94,7 @@ const IntakeFormDesignerModal = ({
                 data-testid="intake-form-submit"
                 size="sm"
                 onClick={() => bodyRef.current?.submit()}>
-                {initialValue ? t('label.save') : t('label.create')}
+                {initialValue?.id ? t('label.save') : t('label.create')}
               </Button>
             </Box>
           </SlideoutMenu.Footer>

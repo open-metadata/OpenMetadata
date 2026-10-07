@@ -11,7 +11,7 @@
     "targetEntityType": {
       "description": "Entity types supported by IntakeForm today.",
       "type": "string",
-      "enum": ["dataProduct", "domain", "glossaryTerm"]
+      "enum": ["dataProduct", "domain", "glossaryTerm", "metric"]
     },
     "fieldKind": {
       "description": "Whether a required field refers to a native entity attribute or a custom property defined via the Type system.",

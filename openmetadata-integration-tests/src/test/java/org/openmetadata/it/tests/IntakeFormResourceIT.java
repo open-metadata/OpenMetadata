@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,11 +34,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDataProduct.DataProductType;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -47,6 +52,7 @@ import org.openmetadata.schema.api.governance.CreateIntakeForm.TargetEntityType;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.governance.IntakeForm;
@@ -56,6 +62,7 @@ import org.openmetadata.schema.entity.governance.IntakeFormRequiredField.FieldKi
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.CustomPropertyConfig;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -172,7 +179,218 @@ public class IntakeFormResourceIT {
   }
 
   private static final List<String> GOVERNANCE_ENTITY_TYPES =
-      List.of("dataProduct", "domain", "glossaryTerm");
+      List.of("dataProduct", "domain", "glossaryTerm", "metric");
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"POST", "PUT"})
+  void metric_botCreationSkipsIntakeRequirements(HttpMethod method, TestNamespace ns)
+      throws Exception {
+    final IntakeForm form = metricFormRequiringBusinessName(ns);
+    final var request = new CreateMetric().withName(ns.prefix("ingested-" + method));
+    try {
+      final Metric created =
+          SdkClients.ingestionBotClient()
+              .getHttpClient()
+              .execute(method, "/v1/metrics", request, Metric.class);
+      try {
+        assertNull(created.getDisplayName());
+        assertEquals("ingestion-bot", created.getUpdatedBy());
+        assertNotNull(SdkClients.adminClient().metrics().get(created.getId().toString()));
+        final var manual = new CreateMetric().withName(ns.prefix("manual-" + method));
+        final InvalidRequestException error =
+            assertThrows(
+                InvalidRequestException.class,
+                () ->
+                    SdkClients.adminClient()
+                        .getHttpClient()
+                        .execute(method, "/v1/metrics", manual, Metric.class));
+        assertTrue(error.getMessage().contains("Business name"));
+      } finally {
+        SdkClients.adminClient()
+            .metrics()
+            .delete(created.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      }
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
+  @Test
+  void metric_botBulkCreationSkipsIntakeRequirements(TestNamespace ns) throws Exception {
+    final IntakeForm form = metricFormRequiringBusinessName(ns);
+    final List<CreateMetric> requests =
+        List.of(
+            new CreateMetric().withName(ns.prefix("bulk-missing-business-name")),
+            new CreateMetric()
+                .withName(ns.prefix("bulk-with-business-name"))
+                .withDisplayName("Revenue"));
+    try {
+      final var result = SdkClients.ingestionBotClient().metrics().bulkCreateOrUpdate(requests);
+      assertEquals(2, result.getNumberOfRowsPassed());
+      assertEquals(0, result.getNumberOfRowsFailed());
+      for (CreateMetric request : requests) {
+        final Metric stored = SdkClients.adminClient().metrics().getByName(request.getName());
+        assertEquals("ingestion-bot", stored.getUpdatedBy());
+        SdkClients.adminClient()
+            .metrics()
+            .delete(stored.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      }
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
+  private static IntakeForm metricFormRequiringBusinessName(TestNamespace ns) throws Exception {
+    return createIntakeForm(
+        new CreateIntakeForm()
+            .withName(ns.prefix("metric-bot-intake"))
+            .withEntityType(TargetEntityType.METRIC)
+            .withEnabled(true)
+            .withFormFields(
+                List.of(
+                    new IntakeFormField()
+                        .withFieldPath("displayName")
+                        .withFieldLabel("Business name")
+                        .withFieldKind(IntakeFormField.FieldKind.NATIVE)
+                        .withRequired(true))));
+  }
+
+  @Test
+  void metric_nativeIntakeFieldsEnforcedOnCreationWithoutBlockingUpdates(TestNamespace ns)
+      throws Exception {
+    Metric legacy =
+        SdkClients.adminClient()
+            .metrics()
+            .create(new CreateMetric().withName(ns.prefix("legacy-metric")));
+    IntakeForm form =
+        createIntakeForm(
+            new CreateIntakeForm()
+                .withName(ns.prefix("metric-intake"))
+                .withEntityType(TargetEntityType.METRIC)
+                .withEnabled(true)
+                .withFormFields(
+                    List.of(
+                        new IntakeFormField()
+                            .withFieldPath("displayName")
+                            .withFieldLabel("Business name")
+                            .withFieldKind(IntakeFormField.FieldKind.NATIVE)
+                            .withRequired(true))));
+    try {
+      assertEquals(form.getId(), getIntakeFormByEntityType("metric").getId());
+      for (String missing : new String[] {null, "", "   "}) {
+        InvalidRequestException error =
+            assertThrows(
+                InvalidRequestException.class,
+                () ->
+                    SdkClients.adminClient()
+                        .metrics()
+                        .create(
+                            new CreateMetric()
+                                .withName(ns.prefix("missing-name"))
+                                .withDisplayName(missing)));
+        assertTrue(error.getMessage().contains("Business name"));
+      }
+      Metric metric =
+          SdkClients.adminClient()
+              .metrics()
+              .create(
+                  new CreateMetric()
+                      .withName(ns.prefix("valid-metric"))
+                      .withDisplayName("Revenue"));
+      assertNotNull(metric.getId());
+      assertThrows(
+          InvalidRequestException.class,
+          () ->
+              SdkClients.adminClient()
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.PUT,
+                      "/v1/metrics",
+                      new CreateMetric().withName(ns.prefix("missing-upsert-name")),
+                      Metric.class));
+      Metric updated =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .execute(
+                  HttpMethod.PUT,
+                  "/v1/metrics",
+                  new CreateMetric()
+                      .withName(legacy.getName())
+                      .withDescription("Existing metric can be edited"),
+                  Metric.class);
+      assertEquals(legacy.getId(), updated.getId());
+      assertEquals("Existing metric can be edited", updated.getDescription());
+      GovernanceWorkflowActions.moveToStage("metric", legacy.getId(), EntityStatus.DRAFT);
+      Metric transitioned = SdkClients.adminClient().metrics().get(legacy.getId().toString());
+      assertEquals("Draft", transitioned.getEntityStatus().value());
+      ArrayNode patch = OBJECT_MAPPER.createArrayNode();
+      patch.addObject().put("op", "remove").put("path", "/displayName");
+      SdkClients.adminClient().metrics().patch(metric.getId(), patch);
+      Metric editable = SdkClients.adminClient().metrics().get(metric.getId().toString());
+      assertNull(editable.getDisplayName());
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
+  @Test
+  void metric_customIntakeFieldsHandleZeroOptionalAndDisableReenable(TestNamespace ns)
+      throws Exception {
+    String cost = ns.prefix("metricCost").replace("-", "");
+    String notes = ns.prefix("metricNotes").replace("-", "");
+    ensureIntegerCustomProperty("metric", cost);
+    ensureStringCustomProperty("metric", notes);
+    IntakeForm form =
+        createIntakeForm(
+            new CreateIntakeForm()
+                .withName(ns.prefix("metric-custom-intake"))
+                .withEntityType(TargetEntityType.METRIC)
+                .withEnabled(true)
+                .withFormFields(
+                    List.of(
+                        customPropertyFormField(cost, true),
+                        customPropertyFormField(notes, false))));
+    try {
+      assertThrows(
+          InvalidRequestException.class,
+          () ->
+              SdkClients.adminClient()
+                  .metrics()
+                  .create(new CreateMetric().withName(ns.prefix("missing-cost"))));
+      Metric metric =
+          SdkClients.adminClient()
+              .metrics()
+              .create(
+                  new CreateMetric()
+                      .withName(ns.prefix("zero-cost"))
+                      .withExtension(Map.of(cost, 0)));
+      assertNotNull(metric.getId());
+      form.setEnabled(false);
+      putIntakeForm(toCreate(form));
+      assertNotNull(
+          SdkClients.adminClient()
+              .metrics()
+              .create(new CreateMetric().withName(ns.prefix("disabled-intake")))
+              .getId());
+      form.setEnabled(true);
+      putIntakeForm(toCreate(form));
+      assertThrows(
+          InvalidRequestException.class,
+          () ->
+              SdkClients.adminClient()
+                  .metrics()
+                  .create(new CreateMetric().withName(ns.prefix("reenabled-intake"))));
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+    assertNotNull(
+        SdkClients.adminClient()
+            .metrics()
+            .create(new CreateMetric().withName(ns.prefix("deleted-intake")))
+            .getId());
+  }
 
   // ---------------------------------------------------------------------------
   // CRUD on IntakeForm itself

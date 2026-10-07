@@ -345,6 +345,11 @@
       "description": "Users or teams assigned to complete this task.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "useEntityOwnerFallback": {
+      "description": "Whether to assign entity owners when this task is created without assignees. Approval workflows disable this for an explicit wait strategy.",
+      "type": "boolean",
+      "default": true
+    },
     "reviewers": {
       "description": "Users or teams who should review this task.",
       "$ref": "../../type/entityReferenceList.json"

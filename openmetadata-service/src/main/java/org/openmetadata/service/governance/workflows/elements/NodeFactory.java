@@ -6,6 +6,7 @@ import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinit
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckChangeDescriptionTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CollectMetadataTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition;
@@ -25,6 +26,7 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckChangeDescriptionTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CollectMetadataTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.DataCompletenessTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RollbackEntityTask;
@@ -72,6 +74,8 @@ public class NodeFactory {
           (RollbackEntityTaskDefinition) nodeDefinition, config);
       case DATA_COMPLETENESS_TASK -> new DataCompletenessTask(
           (DataCompletenessTaskDefinition) nodeDefinition, config);
+      case COLLECT_METADATA_TASK -> new CollectMetadataTask(
+          (CollectMetadataTaskDefinition) nodeDefinition, config, workflowDefinitionName);
       case PARALLEL_GATEWAY -> new ParallelGateway(
           (ParallelGatewayDefinition) nodeDefinition, config);
       case SINK_TASK -> new SinkTask((SinkTaskDefinition) nodeDefinition, config);

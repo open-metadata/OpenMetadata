@@ -1,0 +1,160 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/lifecycleConfiguration.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LifecycleConfiguration",
+  "description": "Optional presentation metadata for guided lifecycle workflows. Executable nodes and edges remain authoritative; editors must verify that the metadata compiles to the saved graph before editing it as stages.",
+  "javaType": "org.openmetadata.schema.governance.workflows.LifecycleConfiguration",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "entityType": {
+      "type": "string",
+      "enum": [
+        "dataProduct",
+        "domain",
+        "glossaryTerm",
+        "metric"
+      ]
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lifecycleGate"
+      }
+    },
+    "sourceWorkflows": {
+      "description": "Names of workflows whose checks were explicitly imported by an administrator. Importing metadata does not suspend or delete these workflows.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "version",
+    "entityType",
+    "gates"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "lifecycleGate": {
+      "type": "object",
+      "properties": {
+        "stage": {
+          "$ref": "../../type/status.json"
+        },
+        "additionalRules": {
+          "description": "Optional advanced JSON Logic condition evaluated in addition to the checklist.",
+          "type": "string",
+          "minLength": 1
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/lifecycleFieldCheck"
+          }
+        }
+      },
+      "required": [
+        "stage",
+        "checks"
+      ],
+      "additionalProperties": false
+    },
+    "lifecycleFieldCheck": {
+      "description": "A field-presence check. Only blocking checks participate in a stage gate. An appliesWhen expression that evaluates to false skips the check.",
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "field",
+            "completeness"
+          ]
+        },
+        "fieldsToCheck": {
+          "description": "Fields for a completeness check; the executable completeness node enforces a non-empty selection.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "minimumScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "requirement": {
+          "type": "string",
+          "enum": [
+            "blocking",
+            "recommended",
+            "optional"
+          ]
+        },
+        "valueType": {
+          "description": "Number and boolean fields accept zero and false as present values.",
+          "type": "string",
+          "enum": [
+            "text",
+            "number",
+            "boolean",
+            "collection"
+          ]
+        },
+        "appliesWhen": {
+          "description": "Optional JSON Logic expression against the entity.",
+          "type": "string",
+          "minLength": 1
+        },
+        "guidance": {
+          "type": "string"
+        },
+        "example": {
+          "type": "string"
+        },
+        "task": {
+          "description": "Optional metadata collection task. The field check, rather than task approval, controls stage advancement.",
+          "type": "object",
+          "properties": {
+            "assignees": {
+              "type": "string",
+              "enum": [
+                "owners",
+                "reviewers",
+                "candidates"
+              ]
+            },
+            "candidates": {
+              "type": "array",
+              "items": {
+                "$ref": "../../type/entityReference.json"
+              }
+            }
+          },
+          "required": [
+            "assignees"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "field",
+        "requirement"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

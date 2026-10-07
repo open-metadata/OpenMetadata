@@ -156,6 +156,7 @@ export interface FieldChange {
 }
 
 export interface WorkflowConfiguration {
+    lifecycle?: LifecycleConfiguration;
     /**
      * If True, all the stage status will be stored in the database.
      */
@@ -163,32 +164,103 @@ export interface WorkflowConfiguration {
 }
 
 /**
- * Governance Workflow Edge.
+ * Optional presentation metadata for guided lifecycle workflows. Executable nodes and edges
+ * remain authoritative; editors must verify that the metadata compiles to the saved graph
+ * before editing it as stages.
  */
-export interface EdgeDefinition {
+export interface LifecycleConfiguration {
+    entityType: EntityType;
+    gates:      LifecycleGate[];
     /**
-     * Defines if the edge will follow a path depending on the source node result.
+     * Names of workflows whose checks were explicitly imported by an administrator. Importing
+     * metadata does not suspend or delete these workflows.
      */
-    condition?: string;
+    sourceWorkflows?: string[];
+    version:          number;
+}
+
+export enum EntityType {
+    DataProduct = "dataProduct",
+    Domain = "domain",
+    GlossaryTerm = "glossaryTerm",
+    Metric = "metric",
+}
+
+export interface LifecycleGate {
     /**
-     * Element from which the edge will start.
+     * Optional advanced JSON Logic condition evaluated in addition to the checklist.
      */
-    from: string;
-    /**
-     * Element on which the edge will end.
-     */
-    to: string;
+    additionalRules?: string;
+    checks:           LifecycleFieldCheck[];
+    stage:            EntityStatus;
 }
 
 /**
- * Owners of this workflow definition.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * A field-presence check. Only blocking checks participate in a stage gate. An appliesWhen
+ * expression that evaluates to false skips the check.
+ */
+export interface LifecycleFieldCheck {
+    /**
+     * Optional JSON Logic expression against the entity.
+     */
+    appliesWhen?: string;
+    example?:     string;
+    field:        string;
+    /**
+     * Fields for a completeness check; the executable completeness node enforces a non-empty
+     * selection.
+     */
+    fieldsToCheck?: string[];
+    guidance?:      string;
+    kind?:          Kind;
+    minimumScore?:  number;
+    requirement:    Requirement;
+    /**
+     * Optional metadata collection task. The field check, rather than task approval, controls
+     * stage advancement.
+     */
+    task?: Task;
+    /**
+     * Number and boolean fields accept zero and false as present values.
+     */
+    valueType?: ValueType;
+}
+
+export enum Kind {
+    Completeness = "completeness",
+    Field = "field",
+}
+
+export enum Requirement {
+    Blocking = "blocking",
+    Optional = "optional",
+    Recommended = "recommended",
+}
+
+/**
+ * Optional metadata collection task. The field check, rather than task approval, controls
+ * stage advancement.
+ */
+export interface Task {
+    assignees:   Assignees;
+    candidates?: EntityReference[];
+}
+
+export enum Assignees {
+    Candidates = "candidates",
+    Owners = "owners",
+    Reviewers = "reviewers",
+}
+
+/**
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Owners of this workflow definition.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -234,6 +306,49 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Number and boolean fields accept zero and false as present values.
+ */
+export enum ValueType {
+    Boolean = "boolean",
+    Collection = "collection",
+    Number = "number",
+    Text = "text",
+}
+
+/**
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
+ * Governance Workflow Edge.
+ */
+export interface EdgeDefinition {
+    /**
+     * Defines if the edge will follow a path depending on the source node result.
+     */
+    condition?: string;
+    /**
+     * Element from which the edge will start.
+     */
+    from: string;
+    /**
+     * Element on which the edge will end.
+     */
+    to: string;
 }
 
 export interface TriggerObject {
