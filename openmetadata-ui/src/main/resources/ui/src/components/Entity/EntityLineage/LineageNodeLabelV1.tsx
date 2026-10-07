@@ -21,7 +21,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  memo,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -50,7 +57,12 @@ interface LineageNodeLabelProps {
   toggleColumnsList?: () => void;
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
+  actions?: ReactNode;
 }
+
+const getFooterChildrenCount = (node: LineageNodeType) =>
+  getEntityChildrenAndLabel(node).childrenCount ||
+  (node.lineageMapChildrenCount ?? 0);
 
 const NodeCountBadge = ({
   count,
@@ -76,9 +88,10 @@ const NodeCountBadge = ({
   ) : null;
 
 const EntityLabel = ({
+  actions,
   node,
   onEntityClick,
-}: Pick<LineageNodeLabelProps, 'node' | 'onEntityClick'>) => {
+}: Pick<LineageNodeLabelProps, 'actions' | 'node' | 'onEntityClick'>) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -90,10 +103,7 @@ const EntityLabel = ({
     };
   }, [node]);
 
-  const { childrenCount } = useMemo(
-    () => getEntityChildrenAndLabel(node),
-    [node]
-  );
+  const childrenCount = useMemo(() => getFooterChildrenCount(node), [node]);
 
   const breadcrumbItems = useMemo(
     () =>
@@ -138,14 +148,15 @@ const EntityLabel = ({
           <Typography
             ellipsis
             as="span"
-            className="m-b-0 d-block text-left entity-header-display-name w-54"
+            className="m-b-0 d-block text-left entity-header-display-name tw:w-full"
             data-testid="entity-header-display-name"
             size="text-md"
             title={entityName}
             weight="medium">
             {onEntityClick ? (
               <Button
-                className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0 tw:truncate"
+                ellipsis
+                className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0"
                 color="link-gray"
                 size="sm"
                 onClick={onEntityClick}>
@@ -188,6 +199,7 @@ const EntityLabel = ({
             </div>
           </div>
         )}
+        {actions}
       </div>
     </div>
   );
@@ -256,10 +268,11 @@ const EntityFooter = ({
   isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelProps) => {
   const { t } = useTranslation();
-  const { childrenHeading, childrenCount } = useMemo(
+  const { childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node]
   );
+  const childrenCount = useMemo(() => getFooterChildrenCount(node), [node]);
 
   const childrenInfoDropdownLabel = useMemo(
     () => `${childrenCount} ${childrenHeading}`,
@@ -338,6 +351,7 @@ const EntityFooter = ({
 };
 
 const LineageNodeLabelV1 = ({
+  actions,
   node,
   onEntityClick,
   isChildrenListExpanded,
@@ -347,7 +361,11 @@ const LineageNodeLabelV1 = ({
 }: LineageNodeLabelProps) => {
   return (
     <div className="custom-node-label-container m-0">
-      <EntityLabel node={node} onEntityClick={onEntityClick} />
+      <EntityLabel
+        actions={actions}
+        node={node}
+        onEntityClick={onEntityClick}
+      />
       <EntityFooter
         isChildrenListExpanded={isChildrenListExpanded}
         isOnlyShowColumnsWithLineageFilterActive={

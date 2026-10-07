@@ -18,6 +18,12 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  Download01,
+  FilterLines,
+  Settings01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import QueryString from 'qs';
 import {
@@ -32,12 +38,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
-import { ReactComponent as DownloadIcon } from '../../../assets/svg/ic-download.svg';
 import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
-import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
-import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-gear.svg';
 import { getLineageDropdownItems } from '../../../constants/AdvancedSearch.constants';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
@@ -260,7 +262,7 @@ const CustomControls: FC<{
       });
       params['mode'] = key;
       handleClearAllFilters();
-      navigate({ search: QueryString.stringify(params) });
+      void navigate({ search: QueryString.stringify(params) });
     },
     [navigate, location.search, handleClearAllFilters]
   );
@@ -281,7 +283,7 @@ const CustomControls: FC<{
         }
       }
 
-      navigate(
+      void navigate(
         {
           search: QueryString.stringify(params, {
             encode: false,
@@ -399,7 +401,7 @@ const CustomControls: FC<{
     return (
       <ButtonUtility
         data-testid="lineage-config"
-        icon={SettingsOutlined}
+        icon={Settings01}
         onClick={handleSettingsClick}
       />
     );
@@ -459,7 +461,7 @@ const CustomControls: FC<{
                       className="tw:text-utility-brand-600 tw:font-normal">
                       {nodeDepth}
                     </Typography>
-                    <DropdownIcon height={12} width={12} />
+                    <ChevronDown height={12} width={12} />
                   </div>
                 </Button>
                 <Dropdown.Popover className="tw:max-w-32">
@@ -523,7 +525,7 @@ const CustomControls: FC<{
             aria-label={t('label.filter-plural')}
             color={filterSelectionActive ? 'primary' : 'secondary'}
             data-testid="filters-button"
-            iconLeading={FilterLinesIcon}
+            iconLeading={FilterLines}
             tooltip={t('label.filter-plural')}
             onClick={toggleFilterSelection}
           />
@@ -542,7 +544,7 @@ const CustomControls: FC<{
           <ButtonUtility
             aria-label={exportButtonLabel}
             data-testid="export-button"
-            icon={DownloadIcon}
+            icon={Download01}
             tooltip={exportButtonLabel}
             onClick={handleExportClick}
           />

@@ -178,17 +178,17 @@ describe('scene URL navigation', () => {
   });
 
   it.each([{}, defaultFocus])(
-    'keeps an asset page on the Asset band when the URL asks for the Layer band, focus %j',
+    'keeps an asset page Layer view focused on its asset, focus %j',
     (focus) => {
       const search = getSceneSearch('', {
-        lens: LineageLens.Service,
+        lens: LineageLens.Domain,
         band: LineageBand.Layer,
         ...focus,
       });
 
       expect(getSceneRequestFromSearch(search, defaultFocus)).toEqual({
-        lens: LineageLens.Service,
-        band: LineageBand.Asset,
+        lens: LineageLens.Domain,
+        band: LineageBand.Layer,
         ...defaultFocus,
       });
     }

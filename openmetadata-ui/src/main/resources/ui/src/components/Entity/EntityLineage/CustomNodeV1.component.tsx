@@ -174,6 +174,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     isNodeRemovable = true,
     isNodeEditable,
     onSceneLineageEdit,
+    onSceneShowFields,
   } = data;
 
   // sync expand state based on column layer active
@@ -181,9 +182,16 @@ const CustomNodeV1 = (props: NodeProps) => {
     setColumnsExpanded(isColumnLevelLineage);
   }, [isColumnLevelLineage]);
 
+  // The Asset band has no field list to expand, so asking for a node's fields
+  // moves the scene to the Field band instead.
   const toggleColumnsExpanded = useCallback(() => {
+    if (sceneBand === LineageBand.Asset && onSceneShowFields) {
+      onSceneShowFields();
+
+      return;
+    }
     setColumnsExpanded((prev) => !prev);
-  }, []);
+  }, [onSceneShowFields, sceneBand]);
 
   const nodeType = type;
   const isSelected = useMemo(() => selectedNode === node, [selectedNode, node]);
@@ -284,31 +292,27 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const nodeLabel = useMemo(() => {
     return (
-      <>
-        <div className="tw:min-w-0 tw:flex-1">
-          <LineageNodeLabelV1
-            isChildrenListExpanded={columnsExpanded}
-            isOnlyShowColumnsWithLineageFilterActive={
-              showColumnsWithLineageOnly
-            }
-            node={node}
-            toggleColumnsList={toggleColumnsExpanded}
-            toggleOnlyShowColumnsWithLineageFilterActive={
-              toggleShowColumnsWithLineageOnly
-            }
-            onEntityClick={onSceneNodeSelect ? handleEntityClick : undefined}
-          />
-        </div>
-        {isNodeEditable && onSceneLineageEdit && (
-          <LineageNodeMenu
-            canDelete={Boolean(isNodeRemovable) && !isRootNode}
-            onDelete={() => onSceneNodeRemove?.(props)}
-            onEdit={(direction, triggerRef) =>
-              onSceneLineageEdit({ nodeId: props.id, direction, triggerRef })
-            }
-          />
-        )}
-      </>
+      <LineageNodeLabelV1
+        actions={
+          isNodeEditable && onSceneLineageEdit ? (
+            <LineageNodeMenu
+              canDelete={Boolean(isNodeRemovable) && !isRootNode}
+              onDelete={() => onSceneNodeRemove?.(props)}
+              onEdit={(direction, triggerRef) =>
+                onSceneLineageEdit({ nodeId: props.id, direction, triggerRef })
+              }
+            />
+          ) : undefined
+        }
+        isChildrenListExpanded={columnsExpanded}
+        isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
+        node={node}
+        toggleColumnsList={toggleColumnsExpanded}
+        toggleOnlyShowColumnsWithLineageFilterActive={
+          toggleShowColumnsWithLineageOnly
+        }
+        onEntityClick={onSceneNodeSelect ? handleEntityClick : undefined}
+      />
     );
   }, [
     node,

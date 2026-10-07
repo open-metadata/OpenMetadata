@@ -229,17 +229,13 @@ export const getSceneRequestFromSearch = (
     isPlatformLineage && !defaultFocus.focusFqn
       ? LineageBand.Layer
       : LineageBand.Asset;
-  const requestedBand =
+  const band =
     Object.values(LineageBand).find((value) => value === params.lineageBand) ??
     defaultBand;
-  // The Layer band (service / database / schema hierarchy) is only reachable
-  // from the main Lineage page; an asset page always shows its own asset.
-  const band =
-    !isPlatformLineage && requestedBand === LineageBand.Layer
-      ? LineageBand.Asset
-      : requestedBand;
+  // An asset page's Layer band (its Service / Domain / Data Product view) stays
+  // focused on that asset; only the main Lineage page shows the whole hierarchy.
   const fallbackFocus: LineageSceneFocus =
-    band === LineageBand.Layer ? {} : defaultFocus;
+    band === LineageBand.Layer && isPlatformLineage ? {} : defaultFocus;
 
   return {
     lens,

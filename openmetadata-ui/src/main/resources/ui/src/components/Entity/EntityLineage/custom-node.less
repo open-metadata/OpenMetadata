@@ -124,7 +124,7 @@
 
         .entity-header-display-name {
           width: auto !important;
-          max-width: 170px;
+          max-width: 100%;
           color: var(--tw-text-color-primary);
           font-size: var(--om-font-size-sm);
           font-weight: var(--om-font-weight-semibold);
@@ -189,7 +189,12 @@
   }
 
   .lineage-node-content {
-    position: relative;
+    // Anchor only the scene drill button. A positioned content box inside the
+    // node's overflow: hidden would also anchor, and so clip, the expand /
+    // collapse handles that sit half outside the node edge.
+    &.has-scene-drill-button {
+      position: relative;
+    }
 
     .lineage-scene-drill-button {
       position: absolute;

@@ -245,6 +245,7 @@ interface SceneFlowNodeData {
   isNodeEditable?: boolean;
   onSceneNodeRemove?: (node: { id: string }) => void;
   onSceneLineageEdit?: (request: LineageEditRequest) => void;
+  onSceneShowFields?: () => void;
 }
 
 interface SceneNodeBounds {
@@ -276,6 +277,13 @@ const getNodeHeight = (
 ) => {
   if (sceneBand === LineageBand.Layer) {
     return SCENE_LAYER_NODE_HEIGHT;
+  }
+  if (
+    sceneBand === LineageBand.Asset &&
+    !isContainerSceneNode(node) &&
+    (node.childrenCount ?? 0) > 0
+  ) {
+    return NODE_HEIGHT_WITH_CHILDREN;
   }
 
   return sceneBand === LineageBand.Field && (node.fields ?? []).length > 0
@@ -548,6 +556,9 @@ const getSceneChildrenPatch = (
   }
 };
 
+const getLeafChildrenCount = (node: LineageSceneNode) =>
+  isContainerSceneNode(node) ? undefined : node.childrenCount;
+
 const toLineageNode = (
   node: LineageSceneNode,
   t: ReturnType<typeof useTranslation>['t']
@@ -569,6 +580,7 @@ const toLineageNode = (
     deleted: sourceEntity.deleted ?? false,
     lineageMapSubtitle: getSceneNodeTypeSubtitle(node, t),
     lineageMapCount: getSceneNodeCount(node, t),
+    lineageMapChildrenCount: getLeafChildrenCount(node),
     serviceType: sourceEntity.serviceType ?? node.serviceType,
     upstreamExpandPerformed: true,
     downstreamExpandPerformed: true,
@@ -1082,7 +1094,13 @@ const LineageMapCanvas = ({
   }, [scene]);
 
   useEffect(() => {
-    setActiveLayer(getActiveLayersFromBand(request.band));
+    const keepsObservability = useLineageStore
+      .getState()
+      .activeLayer.includes(LineageLayer.DataObservability);
+    setActiveLayer([
+      ...getActiveLayersFromBand(request.band),
+      ...(keepsObservability ? [LineageLayer.DataObservability] : []),
+    ]);
     setIsPlatformLineage(Boolean(isPlatformLineage));
   }, [isPlatformLineage, request.band, setActiveLayer, setIsPlatformLineage]);
 
@@ -1138,6 +1156,11 @@ const LineageMapCanvas = ({
       );
     },
     [location.search, navigate, suppressSemanticZoom]
+  );
+
+  const handleShowSceneFields = useCallback(
+    () => updateRequest({ ...request, band: LineageBand.Field }),
+    [request, updateRequest]
   );
 
   const handleOnboardingClose = useCallback(() => {
@@ -1516,6 +1539,7 @@ const LineageMapCanvas = ({
           isNodeRemovable: isRemovableSceneNode(node, scene.edges, nodeById),
           isNodeEditable: canEditScene && isEditableSceneNode(node),
           onSceneLineageEdit: handleSceneLineageEdit,
+          onSceneShowFields: handleShowSceneFields,
           isRootNode: Boolean(node.isOrigin || node.isFocus),
           hasOutgoers: false,
           hasIncomers: false,
@@ -1563,6 +1587,7 @@ const LineageMapCanvas = ({
     handleSceneColumnSelect,
     handleSceneLineageEdit,
     handleSceneNodeSelect,
+    handleShowSceneFields,
     isPlatformLineage,
     requestNodeDelete,
     scene,
@@ -1786,10 +1811,11 @@ const LineageMapCanvas = ({
   );
 
   const handleLensChange = useCallback(
-    (lens: LineageLens) => {
+    (lens: LineageLens, band = request.band) => {
       updateRequest({
         ...request,
         lens,
+        band,
       });
     },
     [request, updateRequest]
@@ -2147,9 +2173,10 @@ const LineageMapCanvas = ({
             scene={scene}
             onBreadcrumbFocus={handleBreadcrumbFocus}
           />
+          <LineageMapStatusPanel error={sceneError} scene={scene} />
         </>
       )}
-      <LineageMapStatusPanel error={sceneError} scene={scene} />
+
       <LineageMapOnboardingDialog
         open={showOnboarding}
         onClose={handleOnboardingClose}

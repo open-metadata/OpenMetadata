@@ -13,6 +13,7 @@
 import {
   Button,
   Dialog,
+  HookForm,
   Input,
   Modal,
   ModalOverlay,
@@ -35,24 +36,23 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation();
-  const { control, handleSubmit, reset } = useForm<LineageConfigFormValues>({
+  const form = useForm<LineageConfigFormValues>({
     defaultValues: getLineageConfigFormValues(config),
   });
 
   useEffect(() => {
     if (visible) {
-      reset(getLineageConfigFormValues(config));
+      form.reset(getLineageConfigFormValues(config));
     }
-  }, [visible, config, reset]);
+  }, [visible, config, form.reset, form]);
 
   // Only the edited fields are emitted, matching the previous AntD onFinish payload.
-  const onSubmit = handleSubmit((values) =>
+  const onSubmit = (values: LineageConfigFormValues) =>
     onSave({
       upstreamDepth: Number(values.upstreamDepth),
       downstreamDepth: Number(values.downstreamDepth),
       nodesPerLayer: Number(values.nodesPerLayer),
-    } as LineageConfig)
-  );
+    } as LineageConfig);
 
   return (
     <ModalOverlay
@@ -66,11 +66,13 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
           width={520}
           onClose={onCancel}>
           <Dialog.Content>
-            <form className="tw:flex tw:flex-col tw:gap-4" onSubmit={onSubmit}>
+            <HookForm<LineageConfigFormValues>
+              form={form}
+              onSubmit={form.handleSubmit(onSubmit)}>
               {LINEAGE_CONFIG_FIELDS.map(
                 ({ name, label, tooltip, testId, min }) => (
                   <Controller
-                    control={control}
+                    control={form.control}
                     key={name}
                     name={name}
                     render={({ field, fieldState }) => (
@@ -105,13 +107,15 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
                   />
                 )
               )}
-            </form>
+            </HookForm>
           </Dialog.Content>
           <Dialog.Footer>
             <Button color="secondary" onPress={onCancel}>
               {t('label.cancel')}
             </Button>
-            <Button color="primary" onPress={() => onSubmit()}>
+            <Button
+              color="primary"
+              onPress={() => form.handleSubmit(onSubmit)()}>
               {t('label.ok')}
             </Button>
           </Dialog.Footer>
