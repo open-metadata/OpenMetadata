@@ -24,8 +24,11 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication;
+import org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -235,5 +238,55 @@ public class SecretsManagerLifecycleTest {
 
     secretsManager.deleteContextPluginConnectionSecrets(encrypted, "my-plugin");
     assertFalse(secretsManager.getSecretsMap().containsKey(fieldPath));
+  }
+
+  @Test
+  void testMicrosoftFabricClientSecretIsStoredAsASecret() {
+    String clientSecret = "fabric-client-secret";
+    MicrosoftFabricConnection encrypted =
+        encryptFabric("fabric-secret", Map.of("clientSecret", clientSecret));
+
+    ClientSecretAuthentication auth = (ClientSecretAuthentication) encrypted.getAuthType();
+    assertNotEquals(clientSecret, auth.getClientSecret());
+    assertTrue(
+        secretsManager
+            .getSecretsMap()
+            .containsKey(fabricSecretId("fabric-secret", "clientsecret")));
+  }
+
+  @Test
+  void testMicrosoftFabricCertificateCredentialsAreStoredAsSecrets() {
+    Map<String, String> certificate =
+        Map.of(
+            "certificate", "fabric-certificate",
+            "privateKey", "fabric-private-key",
+            "privateKeyPassphrase", "fabric-passphrase");
+    MicrosoftFabricConnection encrypted = encryptFabric("fabric-cert", certificate);
+
+    CertificateAuthentication auth = (CertificateAuthentication) encrypted.getAuthType();
+    assertNotEquals(certificate.get("certificate"), auth.getCertificate());
+    assertNotEquals(certificate.get("privateKey"), auth.getPrivateKey());
+    assertNotEquals(certificate.get("privateKeyPassphrase"), auth.getPrivateKeyPassphrase());
+    for (String field : List.of("certificate", "privatekey", "privatekeypassphrase")) {
+      assertTrue(
+          secretsManager.getSecretsMap().containsKey(fabricSecretId("fabric-cert", field)), field);
+    }
+  }
+
+  private MicrosoftFabricConnection encryptFabric(
+      String serviceName, Map<String, String> authType) {
+    Map<String, Object> connection =
+        Map.of(
+            "hostPort", "workspace.datawarehouse.fabric.example.test",
+            "clientId", "fabric-client-id",
+            "tenantId", "fabric-tenant-id",
+            "authType", authType);
+    return (MicrosoftFabricConnection)
+        secretsManager.encryptServiceConnectionConfig(
+            connection, "MicrosoftFabric", serviceName, ServiceType.DATABASE);
+  }
+
+  private String fabricSecretId(String serviceName, String field) {
+    return secretsManager.buildSecretId(true, "database", serviceName) + "/authtype/" + field;
   }
 }
