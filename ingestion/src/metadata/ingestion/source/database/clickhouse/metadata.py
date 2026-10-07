@@ -95,8 +95,8 @@ ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
 )
 Inspector.get_mview_names = get_mview_names
 ClickHouseDialect.get_mview_names = get_mview_names_dialect
-Inspector.get_table_names_and_engines = get_table_names_and_engines
-ClickHouseDialect.get_table_names_and_engines = get_table_names_and_engines_dialect
+Inspector.get_table_names_and_engines = get_table_names_and_engines  # pyright: ignore[reportAttributeAccessIssue]
+ClickHouseDialect.get_table_names_and_engines = get_table_names_and_engines_dialect  # pyright: ignore[reportAttributeAccessIssue]
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
@@ -130,12 +130,13 @@ class ClickhouseSource(CommonDbSourceService):
         logic on how to handle table types, e.g., external, foreign,...
         """
 
+        table_rows = self.inspector.get_table_names_and_engines(schema_name) or []  # pyright: ignore[reportAttributeAccessIssue]
         regular_tables = [
             TableNameAndType(
                 name=table_name,
                 type_=TableType.DeltaLake if _is_delta_lake_engine(engine) else TableType.Regular,
             )
-            for table_name, engine in self.inspector.get_table_names_and_engines(schema_name) or []
+            for table_name, engine in table_rows
         ]
         material_tables = [
             TableNameAndType(name=table_name, type_=TableType.MaterializedView)

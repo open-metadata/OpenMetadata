@@ -142,7 +142,7 @@ def get_mview_names_dialect(self, connection, schema=None, **kw):
     return [row.name for row in rows]
 
 
-def get_table_names_and_engines(self, schema=None):
+def get_table_names_and_engines(self, schema: str | None = None) -> list[tuple[str, str]]:  # pyright: ignore[reportMissingParameterType]
     """Return (name, engine) pairs for regular tables in `schema`.
 
     Mirrors the base ``get_table_names`` filter but also yields the storage
@@ -154,7 +154,7 @@ def get_table_names_and_engines(self, schema=None):
 
 
 @reflection.cache
-def get_table_names_and_engines_dialect(self, connection, schema=None, **kw):
+def get_table_names_and_engines_dialect(self, connection, schema: str | None = None, **kw) -> list[tuple[str, str]]:  # pyright: ignore[reportMissingParameterType]
     query = text(CLICKHOUSE_TABLE_NAMES_AND_ENGINES)
     database = schema or connection.engine.url.database
     rows = self._execute(connection, query, database=database)
