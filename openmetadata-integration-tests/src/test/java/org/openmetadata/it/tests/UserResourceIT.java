@@ -597,9 +597,23 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   // The navbar selection is personal: only the user can change it, so tests set it as that user.
   private static User patchDefaultDomainAsSelf(User user) {
-    return SdkClients.createClient(user.getName(), user.getEmail(), new String[] {})
-        .users()
-        .update(user.getId().toString(), user);
+    return clientFor(user).users().update(user.getId().toString(), user);
+  }
+
+  // Clears the selection as the user, with the same JSON Patch the navbar sends.
+  private static void clearDefaultDomainAsSelf(User user) {
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch.addObject().put("op", "add").put("path", "/defaultDomain").putNull("value");
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch);
+  }
+
+  // A user whose token resolves back to it (lowercase name matching its email), so tests can act
+  // as that user.
+  private static CreateUser selfLoginUserRequest() {
+    String userName = "navuser" + UUID.randomUUID().toString().substring(0, 8);
+    return new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org");
   }
 
   @Test
@@ -631,7 +645,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .withName(ns.prefix("navdomain"))
                     .withDomainType(CreateDomain.DomainType.AGGREGATE)
                     .withDescription("navbar selection"));
-    User user = createEntity(createMinimalRequest(ns));
+    User user = createEntity(selfLoginUserRequest());
     assertNull(user.getDefaultDomain());
 
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
@@ -643,8 +657,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals(domain.getFullyQualifiedName(), reread.getDefaultDomain().getFullyQualifiedName());
 
     // Clearing the selection must persist too.
-    reread.setDefaultDomain(null);
-    patchDefaultDomainAsSelf(reread);
+    clearDefaultDomainAsSelf(reread);
     assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
   }
 
@@ -659,7 +672,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .withName(ns.prefix("keptdomain"))
                     .withDomainType(CreateDomain.DomainType.AGGREGATE)
                     .withDescription("navbar selection kept across PUT"));
-    CreateUser create = createMinimalRequest(ns);
+    CreateUser create = selfLoginUserRequest();
     User user = createEntity(create);
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
     patchDefaultDomainAsSelf(user);
@@ -675,7 +688,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_defaultDomainMustBeARealDomain(TestNamespace ns) {
-    User user = createEntity(createMinimalRequest(ns));
+    User user = createEntity(selfLoginUserRequest());
     user.setDefaultDomain(new EntityReference().withId(UUID.randomUUID()).withType("domain"));
     assertThrows(Exception.class, () -> patchDefaultDomainAsSelf(user));
     assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
@@ -693,7 +706,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .withName(ns.prefix("doomed"))
                     .withDomainType(CreateDomain.DomainType.AGGREGATE)
                     .withDescription("will be deleted"));
-    User user = createEntity(createMinimalRequest(ns));
+    User user = createEntity(selfLoginUserRequest());
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
     patchDefaultDomainAsSelf(user);
     assertNotNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
