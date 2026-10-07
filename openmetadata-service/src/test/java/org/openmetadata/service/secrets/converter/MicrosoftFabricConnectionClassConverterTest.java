@@ -68,7 +68,13 @@ class MicrosoftFabricConnectionClassConverterTest {
             "privateKey", "fixture-private-key");
 
     // Left untyped, these secrets would be stored in the clear and returned unmasked.
-    assertThrows(IllegalArgumentException.class, () -> convert(mixed));
+    IllegalArgumentException thrown =
+        assertThrows(IllegalArgumentException.class, () -> convert(mixed));
+
+    assertEquals(
+        "Microsoft Fabric authType must match exactly one authentication option: a client secret,"
+            + " or a certificate with its private key.",
+        thrown.getMessage());
   }
 
   @Test

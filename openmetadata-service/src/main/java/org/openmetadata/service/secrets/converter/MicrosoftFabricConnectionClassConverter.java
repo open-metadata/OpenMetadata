@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication;
 import org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication;
@@ -30,6 +31,9 @@ public class MicrosoftFabricConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> AUTH_TYPE_CLASSES =
       List.of(ClientSecretAuthentication.class, CertificateAuthentication.class);
+  private static final String AMBIGUOUS_AUTH_TYPE_MESSAGE =
+      "Microsoft Fabric authType must match exactly one authentication option: a client secret,"
+          + " or a certificate with its private key.";
 
   public MicrosoftFabricConnectionClassConverter() {
     super(MicrosoftFabricConnection.class);
@@ -40,9 +44,17 @@ public class MicrosoftFabricConnectionClassConverter extends ClassConverter {
     MicrosoftFabricConnection microsoftFabricConnection =
         (MicrosoftFabricConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(microsoftFabricConnection.getAuthType(), AUTH_TYPE_CLASSES)
+    typedAuthType(microsoftFabricConnection.getAuthType())
         .ifPresent(microsoftFabricConnection::setAuthType);
 
     return microsoftFabricConnection;
+  }
+
+  private Optional<Object> typedAuthType(Object authType) {
+    try {
+      return tryToConvertOrFail(authType, AUTH_TYPE_CLASSES);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(AMBIGUOUS_AUTH_TYPE_MESSAGE, e);
+    }
   }
 }
