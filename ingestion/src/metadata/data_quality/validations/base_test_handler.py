@@ -84,6 +84,8 @@ DIMENSION_IMPACT_SCORE_KEY = "impact_score"
 DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
 DIMENSION_SUM_VALUE_KEY = "sum_value"  # For statistical validators weighted calculations
+# Value of the one row an unevaluated dimension column reports: its query never returned a group.
+DIMENSION_NOT_EVALUATED_LABEL = "(not evaluated)"
 
 
 def reportable_bound(bound: object) -> float | None:
@@ -248,9 +250,6 @@ class BaseTestValidator(ABC):
             logger.debug("Executing dimensional validation for test case: %s", self.test_case.fullyQualifiedName)
             logger.debug("Dimension columns: %s", self.test_case.dimensionColumns)
 
-            if not self.are_dimension_columns_valid():
-                return test_result
-
             try:
                 dimension_results = self._run_dimensional_validation()
                 if dimension_results:
@@ -263,6 +262,7 @@ class BaseTestValidator(ABC):
                     test_result.dimensionResults = test_case_dimension_results
                     logger.debug("Attached %d dimension results to main test result", len(test_case_dimension_results))
                     self._roll_up_dimension_results(test_result, test_case_dimension_results)
+                    self._report_unevaluated_dimensions(test_result, test_case_dimension_results)
                 else:
                     logger.debug("Dimensional validation completed with no results")
 
@@ -330,6 +330,65 @@ class BaseTestValidator(ABC):
         rollup = result_messages.dimension_rollup_sentence(failed_groups)
         test_result.result = f"{test_result.result} {rollup}" if test_result.result else rollup
 
+    @staticmethod
+    def _report_unevaluated_dimensions(
+        test_result: TestCaseResult,
+        dimension_results: list[TestCaseDimensionResult],
+    ) -> None:
+        """Name the dimension columns that could not be evaluated in the test case message
+
+        An aborted dimension never produced a verdict, so it does not change the test case status
+        under any policy: the status is the aggregate's, rolled up with the groups that were
+        evaluated. Saying so in the message keeps a timed out dimension from passing unnoticed.
+        """
+        if test_result.testCaseStatus is TestCaseStatus.Aborted:
+            return
+
+        unevaluated = [
+            dimension_value.name
+            for dimension_result in dimension_results
+            if dimension_result.testCaseStatus is TestCaseStatus.Aborted
+            for dimension_value in dimension_result.dimensionValues
+        ]
+        if not unevaluated:
+            return
+
+        sentence = result_messages.unevaluated_dimensions_sentence(unevaluated)
+        test_result.result = f"{test_result.result} {sentence}" if test_result.result else sentence
+
+    def _rollback_session(self) -> None:
+        """Leave the session usable after a failed query
+
+        Postgres aborts the whole transaction on an error, so without a rollback every later
+        query on the session -- the next dimension column, the next test case -- fails too.
+        Pandas runners have no session and nothing to roll back.
+        """
+        session = getattr(self.runner, "session", None)
+        if session is None:
+            return
+        try:
+            session.rollback()
+        except Exception as exc:
+            logger.debug("Could not roll back the session after a failed dimensional query: %s", exc)
+
+    def _aborted_dimension_result(self, dimension_column: str, exc: BaseException) -> DimensionResult:
+        """The one row a dimension column reports when its grouped query could not run
+
+        It has no group to describe, so it carries the column under a placeholder value and the
+        error as its message. A SQLAlchemy error spells out the whole statement it ran, so the
+        driver's own error is reported instead: that is the part that says what went wrong.
+        """
+        cause = getattr(exc, "orig", None) or exc
+        return self.get_dimension_result_object(
+            dimension_values={dimension_column: DIMENSION_NOT_EVALUATED_LABEL},
+            test_case_status=TestCaseStatus.Aborted,
+            result=(
+                f"Dimension {dimension_column} could not be evaluated ({_root_error_type(exc)}): "
+                f"{_keep_head(str(cause).strip(), MAX_ERROR_MESSAGE_CHARS)}"
+            ),
+            test_result_value=[],
+        )
+
     def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:  # noqa: B027
         """Hook for failed row sampling. No-op by default.
 
@@ -364,42 +423,44 @@ class BaseTestValidator(ABC):
         Override this method only if you need completely different dimensional logic.
         Most validators should just implement _execute_dimensional_validation instead.
 
+        A dimension column whose query fails -- a database error, a timeout, a column that no
+        longer exists -- reports one `Aborted` row instead of disappearing, and the other columns
+        still run. A validator that does not support dimensions reports nothing, as before.
+
         Returns:
             List[DimensionResult]: List of dimension-specific test results
         """
+        dimension_columns = self.test_case.dimensionColumns or []
+        if not dimension_columns:
+            return []
+
         try:
-            dimension_columns = self.test_case.dimensionColumns or []
-            if not dimension_columns:
-                return []
-
             column: SQALikeColumn | Column = self.get_column()
-
             test_params = self._get_test_parameters()
             metrics_to_compute = self._get_metrics_to_compute(test_params)
             top_n = self._get_top_dimensions()
-
-            dimension_results = []
-            for dimension_column in dimension_columns:
-                try:
-                    dimension_col = self.get_column(dimension_column)
-
-                    single_dimension_results = self._execute_dimensional_validation(
-                        column, dimension_col, metrics_to_compute, test_params, top_n
-                    )
-
-                    dimension_results.extend(single_dimension_results)
-
-                except Exception as exc:
-                    logger.warning(f"Error executing dimensional query for column {dimension_column}: {exc}")
-                    logger.debug(traceback.format_exc())
-                    continue
-
-            return dimension_results  # noqa: TRY300
-
         except Exception as exc:
-            logger.warning(f"Error executing dimensional validation: {exc}")
+            logger.warning(f"Error preparing dimensional validation: {exc}")
             logger.debug(traceback.format_exc())
-            return []
+            return [self._aborted_dimension_result(dimension_column, exc) for dimension_column in dimension_columns]
+
+        dimension_results = []
+        for dimension_column in dimension_columns:
+            try:
+                dimension_col = self.get_column(dimension_column)
+                dimension_results.extend(
+                    self._execute_dimensional_validation(column, dimension_col, metrics_to_compute, test_params, top_n)
+                )
+            except NotImplementedError:
+                logger.warning("%s does not support dimensional validation", self.__class__.__name__)
+                return []
+            except Exception as exc:
+                logger.warning(f"Error executing dimensional query for column {dimension_column}: {exc}")
+                logger.debug(traceback.format_exc())
+                self._rollback_session()
+                dimension_results.append(self._aborted_dimension_result(dimension_column, exc))
+
+        return dimension_results
 
     def _get_test_parameters(self) -> dict:
         """Get test-specific parameters from test case

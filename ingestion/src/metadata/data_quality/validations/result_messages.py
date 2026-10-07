@@ -377,3 +377,19 @@ def dimension_rollup_sentence(failed_groups: list[str], listed: int = 5) -> str:
         f"{len(failed_groups)} {groups} failed ({named}), and the ANY_DIMENSION policy fails the "
         "test case when any group fails."
     )
+
+
+def unevaluated_dimensions_sentence(dimension_columns: list[str]) -> str:
+    """Name the dimension columns whose grouped query did not run.
+
+    Args:
+        dimension_columns: dimension columns that reported an aborted row
+
+    Returns:
+        str: e.g. "Dimension region could not be evaluated, so its groups are not part of this
+             result."
+    """
+    named = ", ".join(dimension_columns)
+    if len(dimension_columns) == 1:
+        return f"Dimension {named} could not be evaluated, so its groups are not part of this result."
+    return f"Dimensions {named} could not be evaluated, so their groups are not part of this result."

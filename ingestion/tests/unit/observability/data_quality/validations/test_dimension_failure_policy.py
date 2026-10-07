@@ -16,11 +16,15 @@ and `John` (20 rows) on half of them, so the age column is 25% null overall. A 6
 passes the aggregate and John, and fails Eve.
 """
 
+import sqlite3
+from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.exc import OperationalError
 
 from metadata.data_quality.validations import result_messages
 from metadata.data_quality.validations.column.sqlalchemy.columnValueMeanToBeBetween import (
@@ -43,14 +47,14 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
 
 
-def build_test_case(parameter_values, top_dimensions=None):
+def build_test_case(parameter_values, top_dimensions=None, dimension_columns=("name",)):
     return TestCase(
         name="my_test_case",
         entityLink=ENTITY_LINK_AGE,
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=parameter_values,
-        dimensionColumns=["name"],
+        dimensionColumns=list(dimension_columns),
         topDimensions=top_dimensions,
         computePassedFailedRowCount=True,
     )  # type: ignore
@@ -60,13 +64,14 @@ def policy_param(policy):
     return [] if policy is None else [TestCaseParameterValue(name="dimensionFailurePolicy", value=policy)]
 
 
-def not_null_within_60_percent(policy):
+def not_null_within_60_percent(policy, dimension_columns=("name",)):
     return build_test_case(
         [
             TestCaseParameterValue(name="threshold", value="60"),
             TestCaseParameterValue(name="thresholdUnit", value="PERCENTAGE"),
             *policy_param(policy),
-        ]
+        ],
+        dimension_columns=dimension_columns,
     )
 
 
@@ -225,3 +230,70 @@ def test_unset_bounds_are_left_out_of_dimension_results(create_sqlite_table):
 
     assert res.dimensionResults
     assert all(dim.minBound is None and dim.maxBound == 31 for dim in res.dimensionResults)
+
+
+@contextmanager
+def failing_grouped_queries(runner):
+    """Make the database reject every grouped query, as a statement timeout would"""
+    engine = runner.session.get_bind()
+
+    def reject(conn, cursor, statement, parameters, context, executemany):
+        if "GROUP BY" in statement.upper():
+            raise OperationalError(statement, parameters, sqlite3.OperationalError("interrupted"))
+
+    event.listen(engine, "before_cursor_execute", reject)
+    try:
+        yield
+    finally:
+        event.remove(engine, "before_cursor_execute", reject)
+
+
+def aborted_dimensions(result):
+    return [dim.dimensionKey for dim in result.dimensionResults or [] if dim.testCaseStatus == TestCaseStatus.Aborted]
+
+
+@pytest.mark.parametrize("policy", ["OVERALL_ONLY", "ANY_DIMENSION"])
+def test_a_failed_grouped_query_reports_an_aborted_dimension(create_sqlite_table, policy):
+    """Eve breaches, but her group was never evaluated: the test case keeps the aggregate verdict"""
+    with failing_grouped_queries(create_sqlite_table):
+        res = run(create_sqlite_table, ColumnValuesToBeNotNullValidator, not_null_within_60_percent(policy))
+
+    assert res.testCaseStatus == TestCaseStatus.Success
+    assert aborted_dimensions(res) == ["name=(not evaluated)"]
+    assert "Dimension name could not be evaluated" in res.result
+    assert res.dimensionResults[0].result == "Dimension name could not be evaluated (OperationalError): interrupted"
+
+
+def test_a_missing_dimension_column_reports_an_aborted_dimension(create_sqlite_table):
+    res = run(
+        create_sqlite_table,
+        ColumnValuesToBeNotNullValidator,
+        not_null_within_60_percent("ANY_DIMENSION", dimension_columns=("dropped_column",)),
+    )
+
+    assert res.testCaseStatus == TestCaseStatus.Success
+    assert aborted_dimensions(res) == ["dropped_column=(not evaluated)"]
+    assert "Dimension dropped_column could not be evaluated" in res.result
+
+
+def test_the_other_dimension_columns_still_roll_up(create_sqlite_table):
+    """One column cannot run; the one that can still fails the test case under ANY_DIMENSION"""
+    res = run(
+        create_sqlite_table,
+        ColumnValuesToBeNotNullValidator,
+        not_null_within_60_percent("ANY_DIMENSION", dimension_columns=("dropped_column", "name")),
+    )
+
+    assert res.testCaseStatus == TestCaseStatus.Failed
+    assert aborted_dimensions(res) == ["dropped_column=(not evaluated)"]
+    statuses = {dim.dimensionKey: dim.testCaseStatus for dim in res.dimensionResults}
+    assert statuses["name=Eve"] == TestCaseStatus.Failed
+    assert "1 dimension group failed (name=Eve)" in res.result
+    assert "Dimension dropped_column could not be evaluated" in res.result
+
+
+def test_an_evaluated_dimension_adds_nothing_to_the_message(create_sqlite_table):
+    res = run(create_sqlite_table, ColumnValuesToBeNotNullValidator, not_null_within_60_percent("OVERALL_ONLY"))
+
+    assert aborted_dimensions(res) == []
+    assert "could not be evaluated" not in res.result
