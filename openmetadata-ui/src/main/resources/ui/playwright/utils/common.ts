@@ -545,23 +545,29 @@ export const waitForToastToDisappear = async (
 };
 
 /**
- * Waits until the toast stack holds no toast, so a click on something beneath it
- * cannot be swallowed.
+ * Activates `locator` with the keyboard instead of the mouse.
  *
- * The toast region renders fixed at bottom-center — the same spot as many
- * dialogs' action buttons (Test Connection's Done/OK, for one). The backend fans
- * async-delete notifications from parallel workers' cleanup out to every socket
- * of the logged-in user, so unrelated "…deleted successfully!" toasts can pile up
- * over a button and intercept the click. A count assertion is used instead of a
- * message-filtered `waitFor` because the intercepting toast can be any of them —
- * `toHaveCount(0)` retries until the whole stack has drained and never trips
- * strict mode.
+ * Reach for this whenever a control can sit under the toast stack: pagination
+ * rows, dialog footers (Test Connection's Done/OK), anything near the bottom of
+ * the viewport. The toast region renders fixed at bottom-center, and the backend
+ * fans async-delete/job notifications from parallel workers' cleanup out to every
+ * socket of the logged-in user, so an unrelated "…deleted successfully!" toast can
+ * cover a button and swallow the click.
+ *
+ * Waiting for the stack to drain first does not work: it is refilled by processes
+ * this test does not control, so emptiness is a race no timeout wins. A key press
+ * cannot be intercepted by anything drawn on top, and it is still a real user
+ * interaction — unlike `click({ force: true })`, which skips every actionability
+ * check and would happily "click" a genuinely broken control.
+ *
+ * Only for controls the browser activates with Enter (buttons, links, menu items).
+ * A checkbox needs Space, and a custom widget may need its own key.
  */
-export const waitForToastStackToClear = async (
-  page: Page,
-  timeout?: number
-) => {
-  await expect(page.getByTestId('alert-bar')).toHaveCount(0, { timeout });
+export const clickIgnoringToasts = async (locator: Locator) => {
+  // Asserted explicitly so a disabled control fails as "not enabled" rather than
+  // as an opaque focus timeout.
+  await expect(locator).toBeEnabled();
+  await locator.press('Enter');
 };
 
 /**

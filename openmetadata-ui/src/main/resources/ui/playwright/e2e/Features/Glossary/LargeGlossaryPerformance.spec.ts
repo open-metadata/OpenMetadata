@@ -14,7 +14,7 @@ import test, { expect, Page } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../../../constant/common';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../../utils/common';
+import { clickIgnoringToasts, createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
@@ -177,9 +177,7 @@ test.describe('Large Glossary Performance Tests', () => {
         response.url().includes('after=')
     );
 
-    // Keyboard, not mouse: background toasts render over the pagination controls
-    // and refill faster than they drain, so a click can be intercepted.
-    await pagination.getByTestId('next').press('Enter');
+    await clickIgnoringToasts(pagination.getByTestId('next'));
 
     const nextPageResponse = await nextPageRequest;
     expect(nextPageResponse.status()).toBe(200);
@@ -195,7 +193,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(pagination.getByTestId('previous')).toBeEnabled();
 
     // Going back returns to the first page.
-    await pagination.getByTestId('previous').press('Enter');
+    await clickIgnoringToasts(pagination.getByTestId('previous'));
     await waitForAllLoadersToDisappear(
       page.locator('[data-testid="glossary-terms-scroll-container"]')
     );
