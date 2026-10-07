@@ -189,11 +189,6 @@ class BaseTestValidator(ABC):
     _evaluation_scope: EvaluationScopeRuntimeParameters | None = None
     _bound_widening: tuple[tuple, tuple] | None = None
 
-    # Names of the parameters a between test reads its bounds from. Each dimension result reports
-    # the bounds it was evaluated against under these keys of `test_params`.
-    MIN_BOUND: str | None = None
-    MAX_BOUND: str | None = None
-
     # How this validator's metric behaves once only part of the table is read. Overridden by
     # validators whose metric a sample distorts, so the result message can say so.
     SAMPLING_STABILITY: SamplingStability = SamplingStability.STABLE
@@ -938,7 +933,12 @@ class BaseTestValidator(ABC):
 
         test_result_values = self._get_test_result_values(metric_values)
         impact_score = row.get(DIMENSION_IMPACT_SCORE_KEY, 0.0)
+        # Between validators name their bound parameters in `MIN_BOUND`/`MAX_BOUND`, and their
+        # `test_params` hold the bounds each group was evaluated against under those names. Read
+        # here rather than declared on this class, which would widen the subclasses' `str`.
         params = test_params or {}
+        min_bound_param = getattr(self, "MIN_BOUND", None)
+        max_bound_param = getattr(self, "MAX_BOUND", None)
 
         return self.get_dimension_result_object(
             dimension_values={dimension_col_name: dimension_value},
@@ -949,8 +949,8 @@ class BaseTestValidator(ABC):
             passed_rows=evaluation["passed_rows"],
             failed_rows=evaluation["failed_rows"],
             impact_score=impact_score,
-            min_bound=params.get(self.MIN_BOUND) if self.MIN_BOUND else None,
-            max_bound=params.get(self.MAX_BOUND) if self.MAX_BOUND else None,
+            min_bound=params.get(min_bound_param) if min_bound_param else None,
+            max_bound=params.get(max_bound_param) if max_bound_param else None,
         )
 
     @staticmethod
