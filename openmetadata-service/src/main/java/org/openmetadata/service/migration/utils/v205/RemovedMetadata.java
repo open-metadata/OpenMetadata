@@ -258,13 +258,20 @@ final class RemovedMetadata {
     return restored;
   }
 
+  /** Constraints whose newest removal was an ingestion bot in the window. */
   private List<JsonNode> removedConstraints() {
+    final Set<List<Object>> seen = new HashSet<>();
     final List<JsonNode> removed = new ArrayList<>();
     for (final JsonNode version : versionsInWindow()) {
-      if (isIngestionBotChange(version, null, 0)) {
-        changes(version, TABLE_CONSTRAINTS::equals).stream()
-            .filter(FieldChange::deleted)
-            .forEach(change -> asArray(change.oldValue()).forEach(removed::add));
+      final boolean byBot = isIngestionBotChange(version, null, 0);
+      for (final FieldChange change : changes(version, TABLE_CONSTRAINTS::equals)) {
+        if (change.deleted()) {
+          for (final JsonNode constraint : asArray(change.oldValue())) {
+            if (seen.add(constraintKey(constraint)) && byBot) {
+              removed.add(constraint);
+            }
+          }
+        }
       }
     }
     return removed;

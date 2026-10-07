@@ -201,6 +201,21 @@ class RemovedMetadataTest {
     assertEquals(array(primaryKey), target.get("tableConstraints"));
   }
 
+  @Test
+  void leavesAConstraintAUserDeletedAfterABotRemovedIt() {
+    String primaryKey = array(constraint("PRIMARY_KEY", "a")).toString();
+    List<JsonNode> history =
+        List.of(
+            withColumns(
+                change(version(1_700, USER), "fieldsDeleted", "tableConstraints", primaryKey, null),
+                column("a", "")),
+            change(version(1_600, BOT), "fieldsAdded", "tableConstraints", null, primaryKey),
+            change(version(1_500, BOT), "fieldsDeleted", "tableConstraints", primaryKey, null));
+
+    ObjectNode target = current(history);
+    assertEquals(0, new RemovedMetadata(history, target, SINCE).restoreConstraints());
+  }
+
   /**
    * usage-bot's daily lifeCycle PATCH restamps the current version with its own name while keeping
    * the changeDescription of whoever really wrote it; changeSummary still names that writer.
