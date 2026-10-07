@@ -13,7 +13,7 @@
 
 import { Page } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
-import { expect, test as baseTest } from '../../support/fixtures/userPages';
+import { test as baseTest, expect } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -25,12 +25,15 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import { waitForOwnerIndexed } from '../../utils/polling';
+import {
+  waitForEntityFieldIndexed,
+  waitForOwnerIndexed,
+} from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
-  RightPanelPageObject,
   RIGHT_PANEL_TAB,
+  RightPanelPageObject,
 } from '../PageObject/Explore/RightPanelPageObject';
 import {
   addOwnerInKCPanel,
@@ -697,9 +700,24 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           const descriptionText = `Description to remove - ${uuid()}`;
           await localOverview.editDescription(descriptionText);
+          await waitForEntityFieldIndexed(
+            authenticatedPage,
+            knowledgeCenter.responseData.fullyQualifiedName,
+            'page',
+            { match: { description: descriptionText } },
+            { timeout: 90_000 }
+          );
           await localOverview.shouldShowDescriptionWithText(descriptionText);
 
           await localOverview.editDescription('');
+
+          await waitForEntityFieldIndexed(
+            authenticatedPage,
+            knowledgeCenter.responseData.fullyQualifiedName,
+            'page',
+            { bool: { must_not: [{ match: { description: descriptionText } }] } },
+            { timeout: 90_000 }
+          );
 
           await navigateToKCEntity(
             authenticatedPage,
@@ -707,10 +725,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
           );
           await rightPanel.waitForPanelVisible();
 
-          const descElement = authenticatedPage
-            .locator('.description-section')
-            .getByText(descriptionText);
-          await expect(descElement).not.toBeVisible();
+          await localOverview.shouldShowEmptyDescription();
         } finally {
           await afterAction();
         }
