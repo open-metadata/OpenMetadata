@@ -878,7 +878,7 @@ export const updateDescriptionForChildren = async (
   // icons settle, so a single click can land without dispatching (target moves
   // between mousedown and mouseup) and the modal never opens. Retry until it does.
   const modal = page.getByTestId('markdown-editor');
-  await clickUntilVisible(editButton, modal, { force: 'onRetry' });
+  await clickUntilVisible(editButton, modal);
 
   // Wait for editor to be ready
   const modalEditor = modal.locator(descriptionBox);
