@@ -90,7 +90,10 @@ import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordin
 import {
   decideReauth,
   hasReplacedToken,
+  hasSignedOutSince,
   markReauthAttempt,
+  markSignedOut,
+  SIGNED_OUT_AT_KEY,
   waitForSiblingToken,
 } from '../../../utils/Auth/AuthCoordinator/ReauthGuard';
 import { isReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
@@ -377,19 +380,28 @@ export const AuthProvider = ({
   // never starts.
   const isHandlingRefreshFailureRef = useRef(false);
 
-  // Handler to perform logout within application
-  const onLogoutHandler = useCallback(async () => {
+  // Signs this tab out. `endIdpSession` is false when another tab already
+  // signed out: that tab ended the identity provider session and recorded the
+  // sign-out, so this one only clears its own state.
+  const signOut = useCallback(async (endIdpSession: boolean) => {
     isSigningOutRef.current = true;
+    if (endIdpSession) {
+      // Before anything else: some providers' logout navigates this page
+      // away, and the other tabs must still see the sign-out.
+      markSignedOut();
+    }
     // Same reason for an armed proactive-renewal timer firing after logout.
     authCoordinator.pause();
     try {
       // Let SSO complete the logout process. Swallow failures so local
       // cleanup always runs — a rejected OIDC end-session call must not
       // leave the user half-logged-out with a stale persona session key.
-      try {
-        await authenticatorRef.current?.invokeLogout();
-      } catch {
-        // SSO logout failed; proceed with local cleanup anyway
+      if (endIdpSession) {
+        try {
+          await authenticatorRef.current?.invokeLogout();
+        } catch {
+          // SSO logout failed; proceed with local cleanup anyway
+        }
       }
 
       clearPersonaSession();
@@ -449,6 +461,27 @@ export const AuthProvider = ({
       isHandlingRefreshFailureRef.current = false;
     }
   }, []);
+
+  // Handler to perform logout within application
+  const onLogoutHandler = useCallback(() => signOut(true), [signOut]);
+
+  // Signing out in one tab signs every tab out. Without this the others kept
+  // showing a signed-in app until their next request failed.
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === SIGNED_OUT_AT_KEY &&
+        event.newValue &&
+        !isSigningOutRef.current &&
+        useApplicationStore.getState().isAuthenticated
+      ) {
+        signOut(false);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [signOut]);
 
   /**
    * Stores redirect URL for successful login
@@ -553,6 +586,7 @@ export const AuthProvider = ({
   };
 
   const waitForSiblingReauth = async (staleToken: string) => {
+    const waitStartedAt = Date.now();
     setApplicationLoading(true);
     if (await waitForSiblingToken(staleToken)) {
       // The sibling stored a fresh token, but a Sign-out click during the
@@ -561,6 +595,14 @@ export const AuthProvider = ({
       // establish the session from the sibling's token, silently undoing
       // the user's explicit Sign out. Let the logout finish instead.
       if (isSigningOutRef.current) {
+        return;
+      }
+      // A sign-out, here or in another tab, finished while this tab waited
+      // (the wait can last minutes). The sibling's token belongs to a session
+      // the user already ended: sign out rather than reload into it.
+      if (hasSignedOutSince(waitStartedAt)) {
+        signOutAfterRefreshFailure(false);
+
         return;
       }
       window.location.reload();

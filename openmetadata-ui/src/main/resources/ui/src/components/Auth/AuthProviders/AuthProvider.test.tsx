@@ -30,7 +30,10 @@ import { fetchAuthenticationConfig } from '../../../rest/miscAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
 import {
   decideReauth,
+  hasSignedOutSince,
   markReauthAttempt,
+  markSignedOut,
+  SIGNED_OUT_AT_KEY,
   waitForSiblingToken,
 } from '../../../utils/Auth/AuthCoordinator/ReauthGuard';
 import { ReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
@@ -111,7 +114,10 @@ jest.mock('../../../utils/Auth/AuthCoordinator/ReauthGuard', () => ({
   hasReplacedToken: jest.requireActual(
     '../../../utils/Auth/AuthCoordinator/ReauthGuard'
   ).hasReplacedToken,
+  hasSignedOutSince: jest.fn().mockReturnValue(false),
   markReauthAttempt: jest.fn(),
+  markSignedOut: jest.fn(),
+  SIGNED_OUT_AT_KEY: 'om-signed-out-at',
   waitForSiblingToken: jest.fn(),
 }));
 
@@ -787,6 +793,22 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
         expect(mockInvokeLogout).toHaveBeenCalled();
       });
 
+      it('signs out instead of reloading when a sign-out finished during the wait', async () => {
+        // The logout (here or in another tab) completed while this tab
+        // waited, so the sibling's fresh token belongs to an ended session.
+        (waitForSiblingToken as jest.Mock).mockResolvedValue(true);
+        (hasSignedOutSince as jest.Mock).mockReturnValueOnce(true);
+        await mountWithStoredToken();
+
+        await reportFailure(REAUTH_REQUIRED);
+
+        await waitFor(() =>
+          expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false)
+        );
+
+        expect(reload).not.toHaveBeenCalled();
+      });
+
       it('handles the next refresh failure after standing down for a logout', async () => {
         // The recovery that stood down for the logout returned without
         // navigating, and logout lands on /signin without a reload. If the
@@ -900,6 +922,75 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     expect(decideReauth).not.toHaveBeenCalled();
 
     mockGetOidcToken.mockResolvedValue('');
+  });
+
+  describe('signing out in one tab signs out every tab', () => {
+    const { useApplicationStore: applicationStore } = jest.requireMock(
+      '../../../hooks/useApplicationStore'
+    ) as { useApplicationStore: { getState: jest.Mock } };
+
+    const signOutInAnotherTab = () =>
+      act(async () => {
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: SIGNED_OUT_AT_KEY,
+            newValue: String(Date.now()),
+          })
+        );
+      });
+
+    afterEach(() => {
+      applicationStore.getState.mockReturnValue({
+        currentUser: { name: 'test' },
+      });
+    });
+
+    it('records the sign-out for other tabs before ending the identity provider session', async () => {
+      const logout = await renderForLogout();
+
+      await act(async () => {
+        logout();
+      });
+
+      expect(markSignedOut).toHaveBeenCalledTimes(1);
+      expect(
+        (markSignedOut as jest.Mock).mock.invocationCallOrder[0]
+      ).toBeLessThan(mockInvokeLogout.mock.invocationCallOrder[0]);
+    });
+
+    it('signs this tab out locally when another tab signs out', async () => {
+      applicationStore.getState.mockReturnValue({
+        currentUser: { name: 'test' },
+        isAuthenticated: true,
+      });
+      await renderForLogout();
+      mockSetIsAuthenticated.mockClear();
+      mockClearOidcToken.mockClear();
+
+      await signOutInAnotherTab();
+
+      await waitFor(() =>
+        expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false)
+      );
+
+      expect(mockClearOidcToken).toHaveBeenCalled();
+      // The other tab already ended the provider session and recorded it.
+      expect(mockInvokeLogout).not.toHaveBeenCalled();
+      expect(markSignedOut).not.toHaveBeenCalled();
+    });
+
+    it('ignores another tab signing out when this tab is not signed in', async () => {
+      applicationStore.getState.mockReturnValue({
+        currentUser: {},
+        isAuthenticated: false,
+      });
+      await renderForLogout();
+      mockSetIsAuthenticated.mockClear();
+
+      await signOutInAnotherTab();
+
+      expect(mockSetIsAuthenticated).not.toHaveBeenCalledWith(false);
+    });
   });
 
   it('clears isSigningOutRef even when a logout cleanup step throws (try/finally)', async () => {
