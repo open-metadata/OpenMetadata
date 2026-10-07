@@ -142,6 +142,13 @@ const matchAssetToken = (
   return null;
 };
 
+// The title reads as plain text in the heading's font and colour; only the
+// hover underline says it links to the asset. `!` beats the legacy
+// `.prose-typography a` rule (fonts.less), which makes Typography's links 14px
+// and blue.
+const TITLE_LINK_CLASS =
+  'tw:[font:inherit]! tw:text-inherit! tw:no-underline! tw:hover:underline!';
+
 interface AssetSpan {
   index: number;
   end: number;
@@ -198,7 +205,10 @@ const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
     return (
       <>
         {titleText.slice(0, assetIndex)}
-        <Link data-testid="task-about-link" to={aboutPath}>
+        <Link
+          className={TITLE_LINK_CLASS}
+          data-testid="task-about-link"
+          to={aboutPath}>
           {titleText.slice(assetIndex, assetEnd)}
         </Link>
         {titleText.slice(assetEnd)}
@@ -209,7 +219,10 @@ const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
   if (aboutPath) {
     // No asset token in the title: the whole title links to the asset.
     return (
-      <Link data-testid="task-about-link" to={aboutPath}>
+      <Link
+        className={TITLE_LINK_CLASS}
+        data-testid="task-about-link"
+        to={aboutPath}>
         {titleText}
       </Link>
     );
