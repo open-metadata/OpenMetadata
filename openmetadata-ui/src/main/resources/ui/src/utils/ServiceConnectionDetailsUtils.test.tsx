@@ -164,6 +164,28 @@ describe('getKeyValues', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
+  it('skips a filter pattern whose includes and excludes are both empty', () => {
+    render(
+      <div>
+        {getKeyValues({
+          obj: {
+            databaseFilterPattern: { includes: [], excludes: [] },
+            schemaFilterPattern: { includes: ['public'], excludes: [] },
+          },
+          schemaPropertyObject: {},
+          schema: {},
+          serviceCategory: 'databaseServices',
+        })}
+      </div>
+    );
+
+    expect(
+      screen.queryByText('databaseFilterPattern:')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('schemaFilterPattern:')).toBeInTheDocument();
+    expect(screen.getByText('public')).toBeInTheDocument();
+  });
+
   it('renders false and zero rather than dropping them as empty values', () => {
     renderConnection({ enabled: false, retries: 0 });
 

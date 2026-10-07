@@ -99,7 +99,7 @@ const renderFilterPattern = (
   description?: string,
   title?: string
 ) => {
-  if (isEmpty(value)) {
+  if (isEmpty(value.includes) && isEmpty(value.excludes)) {
     return null;
   }
 

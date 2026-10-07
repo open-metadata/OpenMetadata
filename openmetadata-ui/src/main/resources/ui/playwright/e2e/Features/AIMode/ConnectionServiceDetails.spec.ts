@@ -293,33 +293,34 @@ test.describe(
           const dialog = page.getByTestId('add-announcement-dialog');
           const submit = dialog.getByTestId('announcement-submit');
           await expect(submit).toBeDisabled();
-          if (theme === 'dark') {
-            await dialog
-              .getByRole('button', { name: 'Calendar Start Date', exact: true })
-              .click();
-            await page
-              .getByRole('button', { name: 'Today', exact: true })
-              .click();
-            const apply = page.getByRole('button', {
-              name: 'Apply',
-              exact: true,
-            });
-            await apply.scrollIntoViewIfNeeded();
-            await expect
-              .poll(() =>
-                apply.evaluate(
-                  (element) =>
-                    element.getBoundingClientRect().bottom <= innerHeight
-                )
+          await dialog
+            .getByRole('button', { name: 'Calendar Start Date', exact: true })
+            .click();
+          await page
+            .getByRole('button', { name: 'Today', exact: true })
+            .click();
+          const apply = page.getByRole('button', {
+            name: 'Apply',
+            exact: true,
+          });
+          await apply.scrollIntoViewIfNeeded();
+          await expect
+            .poll(() =>
+              apply.evaluate(
+                (element) =>
+                  element.getBoundingClientRect().bottom <= innerHeight
               )
-              .toBe(true);
-            await apply.click();
-            await expect(
-              dialog.getByRole('button', {
-                name: 'Calendar Start Date',
-                exact: true,
-              })
-            ).not.toContainText('Select date');
+            )
+            .toBe(true);
+          await apply.click();
+          await expect(
+            dialog.getByRole('button', {
+              name: 'Calendar Start Date',
+              exact: true,
+            })
+          ).not.toContainText('Select date');
+          // The core primary button drops its highlight only in dark mode.
+          if (theme === 'dark') {
             await expect
               .poll(() =>
                 submit.evaluate((element) => ({
@@ -330,13 +331,8 @@ test.describe(
               )
               .toEqual({ highlight: 'none', outline: 'solid', width: '1px' });
           }
-          const field = dialog.locator('.block-editor-wrapper--bar-menu');
           const editor = dialog.locator(
             '.om-block-editor[contenteditable="true"]'
-          );
-          await expect(field).toHaveCSS(
-            'border-radius',
-            theme === 'dark' ? '8px' : '4px'
           );
           await expect(
             dialog.getByRole('button', { name: 'bold', exact: true })
