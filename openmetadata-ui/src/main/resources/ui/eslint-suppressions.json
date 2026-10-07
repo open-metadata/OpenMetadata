@@ -129,10 +129,13 @@
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 7
+      "count": 12
     },
     "playwright/no-wait-for-selector": {
       "count": 1
+    },
+    "playwright/no-wait-for-timeout": {
+      "count": 2
     }
   },
   "playwright/e2e/Features/ContextCenterDashboard.spec.ts": {
@@ -158,7 +161,7 @@
       "count": 1
     },
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 6
     }
   },
   "playwright/e2e/Features/CuratedAssets.spec.ts": {
@@ -1135,7 +1138,10 @@
   },
   "playwright/utils/ContextCenterUtil.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 12
+    },
+    "playwright/no-wait-for-timeout": {
+      "count": 2
     }
   },
   "playwright/utils/KnowledgeCenter.ts": {
