@@ -11,12 +11,23 @@ import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 class ContextMemoryStatusTransitionTest {
+
+  @Test
+  void unprocessedMemoriesCanBeResolvedAndReviewedMemoriesCanBeExplicitlyRequeued() {
+    assertTrue(MEMORY.allows(EntityStatus.UNPROCESSED, EntityStatus.APPROVED));
+    assertTrue(MEMORY.allows(EntityStatus.UNPROCESSED, EntityStatus.REJECTED));
+    assertTrue(MEMORY.allows(EntityStatus.UNPROCESSED, EntityStatus.DEPRECATED));
+    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.UNPROCESSED));
+    assertTrue(MEMORY.allows(EntityStatus.REJECTED, EntityStatus.UNPROCESSED));
+  }
+
   private static final EntityLifecycle MEMORY = ContextMemoryRepository.LIFECYCLE;
 
   @Test
-  void memoryIsDraftApprovedOrArchived() {
+  void memoryStagesIncludePendingAndResolvedStates() {
     assertEquals(
         Set.of(
+            EntityStatus.UNPROCESSED,
             EntityStatus.DRAFT,
             EntityStatus.APPROVED,
             EntityStatus.DEPRECATED,

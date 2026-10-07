@@ -3386,6 +3386,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // SEARCH INDEX TESTS
   // ===================================================================
 
+  /** Allows entity-specific lifecycle prerequisites for ordinary search fixtures. */
+  protected K createSearchRequest(TestNamespace ns) {
+    return createMinimalRequest(ns);
+  }
+
   /**
    * Test: Entity with null description shows INCOMPLETE in search
    * Equivalent to: get_entityWithNullDescriptionFromSearch in EntityResourceTest
@@ -5849,7 +5854,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void checkCreatedEntity(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index (async indexing may take time)
@@ -5877,7 +5882,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(supportsSoftDelete);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index before delete
@@ -5913,7 +5918,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void checkIndexCreated(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // Poll until entity appears in search index
@@ -5941,7 +5946,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(supportsPatch);
 
-    K createRequest = createMinimalRequest(ns);
+    K createRequest = createSearchRequest(ns);
     T entity = createEntity(createRequest);
 
     // First wait for entity to appear in search index
