@@ -12,17 +12,22 @@
 Unit tests for ClassificationRunManager.
 """
 
+from copy import deepcopy
 from unittest.mock import Mock, create_autospec
 
 import pytest
+from requests.exceptions import Timeout
 
+from _openmetadata_testutils.factories.metadata.generated.schema.type.recognizer import ExactTermsRecognizerFactory
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
     ConflictResolution,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.type.basic import EntityName
+from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii.classification_manager import ClassificationManager
+from metadata.pii.classification_manager import MAX_CACHE_ENTRIES, ClassificationManager
 
 
 class TestClassificationRunManager:
@@ -136,7 +141,7 @@ class TestClassificationRunManager:
     ):
         """Test fetching tags from multiple classifications."""
 
-        def list_entities_side_effect(entity, fields, params):
+        def list_entities_side_effect(entity, fields, params, **_):
             if params.get("parent") == "PII":
                 return [email_tag_pii]
             elif params.get("parent") == "General":  # noqa: RET505
@@ -205,3 +210,300 @@ class TestClassificationRunManager:
 
         # Should return empty list on error
         assert tags == []
+
+    def test_partial_page_failure_keeps_valid_tags_and_retries(self, metadata, pii_classification, email_tag_pii):
+        calls = 0
+
+        def tags(*_, **__):
+            nonlocal calls
+            calls += 1
+            yield email_tag_pii
+            if calls == 1:
+                raise RuntimeError("private response")
+
+        metadata.list_all_entities.side_effect = tags
+        status = Status()
+        manager = ClassificationManager(metadata, status=status)
+
+        assert manager.get_enabled_tags([pii_classification]) == [email_tag_pii]
+        assert len(status.failures) == 1
+        assert "private response" not in status.failures[0].error
+        assert manager.get_enabled_tags([pii_classification]) == [email_tag_pii]
+        assert calls == 2
+
+    def test_empty_results_are_cached(self, metadata, pii_classification):
+        metadata.list_all_entities.return_value = []
+        manager = ClassificationManager(metadata)
+
+        assert manager.get_enabled_classifications() == []
+        assert manager.get_enabled_classifications() == []
+        assert manager.get_enabled_tags([pii_classification]) == []
+        assert manager.get_enabled_tags([pii_classification]) == []
+        assert metadata.list_all_entities.call_count == 2
+
+    def test_parse_diagnostics_filter_disabled_and_unselected(self, pii_classification, email_tag_pii):
+        raw_valid = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        raw_invalid = {**deepcopy(raw_valid), "name": "SPI", "fullyQualifiedName": "PII.SPI"}
+        raw_invalid["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+        raw_invalid["recognizers"][0]["name"] = "acct-name"
+        raw_invalid["recognizers"][0]["recognizerConfig"]["patterns"][0]["regex"] = "private-pattern"
+        raw_disabled = {
+            **raw_invalid,
+            "name": "Disabled",
+            "fullyQualifiedName": "PII.Disabled",
+            "autoClassificationEnabled": False,
+        }
+        raw_other = {**raw_invalid, "name": "Other", "fullyQualifiedName": "Other.Bad"}
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.return_value = {
+            "data": [raw_valid, raw_invalid, raw_disabled, raw_other],
+            "paging": {"total": 4},
+        }
+        status = Status()
+        manager = ClassificationManager(sdk, status=status)
+
+        tags = manager.get_enabled_tags([pii_classification])
+
+        assert [tag.name.root for tag in tags] == [email_tag_pii.name.root]
+        assert len(status.failures) == 1
+        assert "PII.SPI" in status.failures[0].error
+        assert "acct-name" in status.failures[0].error
+        assert "supportedLanguage" in status.failures[0].error
+        assert "private-pattern" not in status.failures[0].error
+
+    def test_partial_classification_fetch_retains_candidates_and_retries(self, metadata, pii_classification):
+        calls = 0
+
+        def classifications(*_, **__):
+            nonlocal calls
+            calls += 1
+            yield pii_classification
+            if calls == 1:
+                raise RuntimeError("private response")
+
+        metadata.list_all_entities.side_effect = classifications
+        status = Status()
+        manager = ClassificationManager(metadata, status=status)
+
+        assert manager.get_enabled_classifications() == [pii_classification]
+        assert len(status.failures) == 1
+        assert manager.get_enabled_classifications() == [pii_classification]
+        assert calls == 2
+
+    def test_cache_is_bounded(self, metadata, pii_classification):
+        metadata.list_all_entities.return_value = [pii_classification]
+        manager = ClassificationManager(metadata)
+
+        for index in range(MAX_CACHE_ENTRIES + 1):
+            manager.get_enabled_classifications([f"Other{index}"])
+
+        assert len(manager._classification_cache) == MAX_CACHE_ENTRIES
+        metadata.list_all_entities.return_value = []
+        manager.get_enabled_tags([pii_classification])
+        for index in range(MAX_CACHE_ENTRIES + 1):
+            manager.get_enabled_tags([pii_classification.model_copy(update={"name": EntityName(root=f"Other{index}")})])
+        assert len(manager._tags_cache) == MAX_CACHE_ENTRIES
+
+    def test_invalid_middle_page_keeps_later_tags_and_other_classification(
+        self, pii_classification, general_classification, email_tag_pii, phone_tag_pii, credit_card_tag_general
+    ):
+        invalid = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        invalid["name"] = "SPI"
+        invalid["fullyQualifiedName"] = "PII.SPI"
+        invalid["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.side_effect = [
+            {
+                "data": [email_tag_pii.model_dump(mode="json", exclude_none=True)],
+                "paging": {"total": 3, "after": "middle"},
+            },
+            {"data": [invalid], "paging": {"total": 3, "after": "last"}},
+            {"data": [phone_tag_pii.model_dump(mode="json", exclude_none=True)], "paging": {"total": 3}},
+            {"data": [credit_card_tag_general.model_dump(mode="json", exclude_none=True)], "paging": {"total": 1}},
+        ]
+        status = Status()
+
+        tags = ClassificationManager(sdk, status=status).get_enabled_tags([pii_classification, general_classification])
+
+        assert [tag.name.root for tag in tags] == ["Email", "Phone", "CreditCard"]
+        assert len(status.failures) == 1
+        assert "PII.SPI" in status.failures[0].error
+
+    def test_diagnostic_names_second_failing_recognizer(self, pii_classification, email_tag_pii):
+        raw = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        bad_recognizer = deepcopy(raw["recognizers"][0])
+        bad_recognizer["name"] = "second-recognizer"
+        bad_recognizer["recognizerConfig"].pop("supportedLanguage")
+        bad_recognizer["recognizerConfig"]["patterns"][0]["regex"] = "private-pattern"
+        raw["recognizers"].append(bad_recognizer)
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.return_value = {"data": [raw], "paging": {"total": 1}}
+        status = Status()
+
+        assert ClassificationManager(sdk, status=status).get_enabled_tags([pii_classification]) == []
+        assert len(status.failures) == 1
+        assert "second-recognizer" in status.failures[0].error
+        assert "supportedLanguage" in status.failures[0].error
+        assert "private-pattern" not in status.failures[0].error
+        assert "PatternRecognizer" not in status.failures[0].error
+
+    def test_fetch_diagnostic_uses_http_status_without_response_body(self, metadata, pii_classification):
+        error = Exception("private response body")
+        error.status_code = 503
+        metadata.list_all_entities.side_effect = error
+        status = Status()
+
+        assert ClassificationManager(metadata, status=status).get_enabled_tags([pii_classification]) == []
+        assert status.failures[0].error.endswith("HTTP 503")
+        assert "private response body" not in status.failures[0].error
+
+    def test_classification_parse_reports_only_relevant_enabled_selection(self, pii_classification):
+        valid = pii_classification.model_dump(mode="json", exclude_none=True)
+        invalid_selected = deepcopy(valid)
+        invalid_selected.pop("description")
+        invalid_selected["autoClassificationConfig"]["enabled"] = True
+        invalid_excluded = {**deepcopy(invalid_selected), "name": "Other", "fullyQualifiedName": "Other"}
+        invalid_disabled = deepcopy(invalid_selected)
+        invalid_disabled["autoClassificationConfig"]["enabled"] = False
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.return_value = {
+            "data": [valid, invalid_selected, invalid_excluded, invalid_disabled],
+            "paging": {"total": 4},
+        }
+        status = Status()
+
+        classifications = ClassificationManager(sdk, status=status).get_enabled_classifications(["PII"])
+
+        assert [classification.name.root for classification in classifications] == ["PII"]
+        assert len(status.failures) == 1
+        assert "PII" in status.failures[0].error
+        assert "description" in status.failures[0].error
+
+    def test_exact_terms_error_names_its_branch_field(self, pii_classification, email_tag_pii):
+        raw = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        raw["recognizers"][0]["name"] = "exact-terms"
+        raw["recognizers"][0]["recognizerConfig"] = ExactTermsRecognizerFactory.create().model_dump(
+            mode="json", exclude_none=True
+        )
+        raw["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.return_value = {"data": [raw], "paging": {"total": 1}}
+        status = Status()
+
+        assert ClassificationManager(sdk, status=status).get_enabled_tags([pii_classification]) == []
+        assert len(status.failures) == 1
+        assert "exact-terms" in status.failures[0].error
+        assert "supportedLanguage" in status.failures[0].error
+        assert "patterns" not in status.failures[0].error
+        assert "ExactTermsRecognizer" not in status.failures[0].error
+
+    def test_invalid_exact_terms_language_names_its_field(self, pii_classification, email_tag_pii):
+        raw = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        raw["recognizers"][0]["recognizerConfig"] = ExactTermsRecognizerFactory.create().model_dump(
+            mode="json", exclude_none=True
+        )
+        raw["recognizers"][0]["recognizerConfig"]["supportedLanguage"] = "unsupported-language"
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.return_value = {"data": [raw], "paging": {"total": 1}}
+        status = Status()
+
+        assert ClassificationManager(sdk, status=status).get_enabled_tags([pii_classification]) == []
+        assert "supportedLanguage" in status.failures[0].error
+        assert "unsupported-language" not in status.failures[0].error
+
+    def test_unknown_recognizer_type_reports_type_without_raw_value(self, pii_classification, email_tag_pii):
+        raw = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        raw["recognizers"][0]["name"] = "acct-recognizer"
+        raw["recognizers"][0]["recognizerConfig"]["type"] = "private-bogus-type"
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.return_value = {"data": [raw], "paging": {"total": 1}}
+        status = Status()
+
+        assert ClassificationManager(sdk, status=status).get_enabled_tags([pii_classification]) == []
+        assert len(status.failures) == 1
+        assert "acct-recognizer" in status.failures[0].error
+        assert status.failures[0].error.endswith("invalid type")
+        assert "private-bogus-type" not in status.failures[0].error
+        assert "patterns" not in status.failures[0].error
+
+    @pytest.mark.parametrize("invalid_type", [["private"], {"private": "type"}])
+    def test_unhashable_recognizer_type_preserves_neighbors(
+        self, pii_classification, email_tag_pii, phone_tag_pii, invalid_type
+    ):
+        bad = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        bad["name"] = "SPI"
+        bad["fullyQualifiedName"] = "PII.SPI"
+        bad["recognizers"][0]["recognizerConfig"]["type"] = invalid_type
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.return_value = {
+            "data": [
+                email_tag_pii.model_dump(mode="json", exclude_none=True),
+                bad,
+                phone_tag_pii.model_dump(mode="json", exclude_none=True),
+            ],
+            "paging": {"total": 3},
+        }
+        status = Status()
+
+        tags = ClassificationManager(sdk, status=status).get_enabled_tags([pii_classification])
+
+        assert [tag.name.root for tag in tags] == ["Email", "Phone"]
+        assert len(status.failures) == 1
+        assert status.failures[0].error.endswith("invalid type")
+        assert "private" not in status.failures[0].error
+
+    def test_punctuated_long_identifiers_remain_visible_in_diagnostic(self, pii_classification, email_tag_pii):
+        raw = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        tag_name = "PII.Special:$@#" + "x" * 2200 + "TAIL"
+        raw["fullyQualifiedName"] = tag_name
+        raw["recognizers"][0]["name"] = "acct-num@tenant#1"
+        raw["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.return_value = {"data": [raw], "paging": {"total": 1}}
+        status = Status()
+
+        assert ClassificationManager(sdk, status=status).get_enabled_tags([pii_classification]) == []
+        assert len(status.failures) == 1
+        assert status.failures[0].name == tag_name
+        assert tag_name in status.failures[0].error
+        assert "acct-num@tenant#1" in status.failures[0].error
+
+    def test_control_characters_in_identifier_do_not_break_status_line(self, pii_classification, email_tag_pii):
+        raw = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        raw["fullyQualifiedName"] = "PII.Special\nName"
+        raw["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.return_value = {"data": [raw], "paging": {"total": 1}}
+        status = Status()
+
+        assert ClassificationManager(sdk, status=status).get_enabled_tags([pii_classification]) == []
+        assert status.failures[0].name == "PII.Special?Name"
+        assert "\n" not in status.failures[0].error
+
+    def test_timeout_diagnostic_omits_transport_message(self, metadata, pii_classification):
+        metadata.list_all_entities.side_effect = Timeout("private URL")
+        status = Status()
+
+        assert ClassificationManager(metadata, status=status).get_enabled_tags([pii_classification]) == []
+        assert status.failures[0].error.endswith("request timed out")
+        assert "private URL" not in status.failures[0].error

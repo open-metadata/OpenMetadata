@@ -62,7 +62,7 @@ class TagProcessor(AutoClassificationProcessor):
 
         # Initialize new components
         if classification_manager is None:
-            classification_manager = ClassificationManager(metadata)
+            classification_manager = ClassificationManager(metadata, status=self.status)
         self.run_manager = classification_manager
 
         self.conflict_resolver = ConflictResolver()
