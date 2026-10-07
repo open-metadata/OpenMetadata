@@ -44,8 +44,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     'om-playwright/no-blanket-test-slow': 1,
     // The merged fixes target named elements in replyAnnouncement,
     // DomainFilterQueryFilter, ActivityFeed, and SearchExport; the core
-    // Popover/Dropdown migration also removed a positional locator.
-    'om-playwright/no-positional-locator': 605,
+    // Popover/Dropdown migration and ChangeSummaryBadge's scoped button
+    // lookup also removed positional locators.
+    'om-playwright/no-positional-locator': 604,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 18,
