@@ -364,9 +364,9 @@ We welcome contributions from the community. You can help improve metadata schem
 
 See the contribution guide in this repository to get started.
 
-- [How To Contribute](https://docs.open-metadata.org/developers/contribute)
-- [Development Environment Setup](https://docs.open-metadata.org/developers/contribute/development-environment-setup)
-- [Build Code & Run Tests](https://docs.open-metadata.org/developers/contribute/build-code-and-run-tests)
+- [How To Contribute](https://docs.open-metadata.org/latest/developers/contribute)
+- [Development Environment Setup](https://docs.open-metadata.org/latest/developers/contribute/development-environment-setup)
+- [Build Code & Run Tests](https://docs.open-metadata.org/latest/developers/contribute/build-code-and-run-tests)
 
 ---
 
