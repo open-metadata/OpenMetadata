@@ -164,7 +164,7 @@ Fill in `.github/pull_request_template.md` with everything gathered above. Show 
 
 - **List every test run locally.** CI on the PR no longer runs the integration tests or Playwright,
   so the description is the only record of what ran before review. The Java block names each class
-  it ran with its counts. Under the other Tests sections, list everything else you ran — pytest
+  it ran with its counts, and gives a module run in full as counts. Under the other Tests sections, list everything else you ran — pytest
   files, Jest specs, Playwright specs, manual checks — with pass/fail counts, and say what you did
   not run and why.
 - **Link the counterpart PR.** When the change needs an openmetadata-collate (or

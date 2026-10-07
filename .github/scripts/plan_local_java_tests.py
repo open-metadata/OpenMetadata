@@ -60,6 +60,11 @@ SKIP_UNIT_TESTS = [
 # step tests never need.
 SKIP_REPACKAGE = "-Dspring-boot.repackage.skip=true"
 INLINE_CLASS_LIMIT = 30
+# GitHub rejects a PR description over 65,536 characters, and the template, the author's text
+# and the Playwright block share that with this block. A <details> block only hides text, so
+# class lists past CLASS_LIST_BUDGET are reduced to counts instead.
+GITHUB_BODY_LIMIT = 65_536
+CLASS_LIST_BUDGET = 20_000
 
 
 @dataclass
@@ -80,6 +85,7 @@ class Command:
     argv: list[str]
     report_dirs: list[str]
     expected_classes: list[str] = field(default_factory=list)
+    full_suite_dirs: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -168,6 +174,20 @@ def collect_changed_files(repo_root: Path, base: str) -> list[str]:
         repo_root, "ls-files", "--others", "--exclude-standard"
     ).splitlines()
     return sorted({path for path in [*tracked, *untracked] if path})
+
+
+def has_uncommitted_changes(repo_root: Path, ignore: list[str]) -> bool:
+    """Whether the run tested code the commit doesn't hold.
+
+    The plan reads untracked files too, but only those outside the map's `ignore` list
+    count: an editor or tool file must not mark every run.
+    """
+    if git(repo_root, "status", "--porcelain", "--untracked-files=no"):
+        return True
+    untracked = git(
+        repo_root, "ls-files", "--others", "--exclude-standard"
+    ).splitlines()
+    return any(path and not matches(path, ignore) for path in untracked)
 
 
 class Repo:
@@ -456,7 +476,10 @@ class Planner:
             mapped = True
             self._add_smoke(plan, f"engine-specific {path}", engines)
 
-        if not mapped and not self._is_test_source(path):
+        # An IT-tree helper no IT reaches is a gap too; skipping it would record NOT NEEDED.
+        if not mapped and (
+            path.startswith(self.repo.it_root + "/") or not self._is_test_source(path)
+        ):
             plan.unmapped_files.append(path)
             self._add_smoke(plan, f"unmapped {path}", engines)
 
@@ -492,9 +515,7 @@ class Planner:
             if any(self._it_pattern_matches(relative, name, p) for p in rule["tests"]):
                 plan.not_run_locally[relative] = rule["where"]
                 return
-        if any(
-            self._it_pattern_matches(relative, name, p) for p in self.maven["neverRun"]
-        ):
+        if self._never_run(relative):
             return
         selection = plan.integration_tests.setdefault(relative, Selection())
         selection.reasons.add(reason)
@@ -502,6 +523,12 @@ class Planner:
             selection.engines.update(engines)
         else:
             selection.wants_default = True
+
+    def _never_run(self, relative: str) -> bool:
+        name = self.repo.it_classes[relative]
+        return any(
+            self._it_pattern_matches(relative, name, p) for p in self.maven["neverRun"]
+        )
 
     @staticmethod
     def _it_pattern_matches(relative: str, name: str, pattern: str) -> bool:
@@ -516,22 +543,38 @@ class Planner:
     def _add_referencing_its(
         self, plan: Plan, path: str, symbol: str, engines: set[str]
     ) -> bool:
+        """Select the ITs that use `symbol`, directly or through other IT-tree classes.
+
+        Helpers often reach the tests only through another helper (AuthBackend ->
+        TokenRefresher -> SdkClients -> every IT), and a neverRun base class such as
+        BaseEntityIT reaches them through its subclasses, so both are followed.
+        """
         prefix = self.repo.it_root + "/"
-        referencing = [
-            hit[len(prefix) :]
-            for hit in self.repo.referencing_files(symbol, [self.repo.it_root])
-            if hit != path and hit[len(prefix) :] in self.repo.it_classes
-        ]
+        referencing: set[str] = set()
+        seen = {path}
+        followed = {symbol}
+        pending = [symbol]
+        while pending and len(referencing) <= self.it_reference_cap:
+            for hit in self.repo.referencing_files(pending.pop(), [self.repo.it_root]):
+                if hit in seen:
+                    continue
+                seen.add(hit)
+                relative = hit[len(prefix) :]
+                if relative in self.repo.it_classes and not self._never_run(relative):
+                    referencing.add(relative)
+                elif simple_name(hit) not in followed:
+                    followed.add(simple_name(hit))
+                    pending.append(simple_name(hit))
         if not referencing:
             return False
         if len(referencing) > self.it_reference_cap:
             self._add_smoke(
                 plan,
-                f"{symbol} is used by {len(referencing)} ITs (over the cap of {self.it_reference_cap})",
+                f"{symbol} is used by more ITs than the cap of {self.it_reference_cap}",
                 engines,
             )
             return True
-        for relative in referencing:
+        for relative in sorted(referencing):
             self._add_it(plan, relative, f"uses {symbol}", engines)
         return True
 
@@ -709,6 +752,10 @@ class Planner:
                         f"{module}/target/surefire-reports" for module in modules
                     ],
                     expected_classes=classes,
+                    full_suite_dirs=[
+                        f"{module}/target/surefire-reports"
+                        for module in sorted(plan.full_unit_modules)
+                    ],
                 )
             )
 
@@ -838,7 +885,11 @@ def audit_impact_map(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
 def print_plan(plan: Plan, planner: Planner) -> None:
     print(f"Changed files vs base: {len(plan.changed_files)}")
     if not plan.has_tests():
-        print("\nNo Java tests are impacted by this change.")
+        print(
+            "\nNo impacted Java test runs locally."
+            if plan.not_run_locally
+            else "\nNo Java tests are impacted by this change."
+        )
     for module, reasons in sorted(plan.full_unit_modules.items()):
         print(f"\n[unit] {module}: FULL suite ({'; '.join(sorted(reasons))})")
     for module, tests in sorted(plan.unit_tests.items()):
@@ -896,6 +947,7 @@ class StepResult:
     classes_run: set[str] = field(default_factory=set)
     failed_tests: list[str] = field(default_factory=list)
     class_counts: dict[str, list[int]] = field(default_factory=dict)
+    class_dirs: dict[str, str] = field(default_factory=dict)
 
     @property
     def missing_classes(self) -> list[str]:
@@ -940,6 +992,7 @@ def collect_reports(
                 result.skipped += int(node.get("skipped", 0))
                 name = node.get("name", "").rsplit(".", 1)[-1]
                 result.classes_run.add(name)
+                result.class_dirs[name] = directory
                 counts = result.class_counts.setdefault(name, [0, 0, 0])
                 counts[0] += int(node.get("tests", 0))
                 counts[1] += int(node.get("skipped", 0))
@@ -1012,37 +1065,76 @@ def describe_class(name: str, counts: list[int]) -> str:
     return f"`{name}` ({', '.join(parts)})"
 
 
+def count_classes(result: StepResult, names: list[str]) -> str:
+    executed = sum(
+        result.class_counts[name][0] - result.class_counts[name][1] for name in names
+    )
+    return f"{plural(len(names), 'class')}, {plural(executed, 'test')} executed"
+
+
+def split_full_suites(result: StepResult) -> tuple[dict[str, list[str]], list[str]]:
+    """The classes of each module the step ran in full, and the classes it ran by name."""
+    full = set(result.command.full_suite_dirs)
+    suites: dict[str, list[str]] = {}
+    named: list[str] = []
+    for name in sorted(result.class_counts):
+        directory = result.class_dirs.get(name)
+        if directory in full:
+            suites.setdefault(directory, []).append(name)
+        else:
+            named.append(name)
+    return suites, named
+
+
 def render_tests_run(results: list[StepResult]) -> list[str]:
     """Every class each step ran, so the PR states exactly what was tested before review.
 
-    A step with more classes than INLINE_CLASS_LIMIT (a full unit suite) is listed in a
-    collapsed block, which keeps the PR body under GitHub's 65,536-character limit.
+    A module run in full is given as counts: openmetadata-service's class list alone is
+    ~55,000 characters. If the other lists still pass CLASS_LIST_BUDGET, the longest are
+    cut to counts too. Failed tests and all-skipped classes are named above it either way.
     """
+    splits = [split_full_suites(result) for result in results]
+    listings = [
+        ", ".join(describe_class(name, result.class_counts[name]) for name in named)
+        for result, (_, named) in zip(results, splits)
+    ]
+    excess = sum(map(len, listings)) - CLASS_LIST_BUDGET
+    counted_only: set[int] = set()
+    for index in sorted(
+        range(len(listings)), key=lambda i: len(listings[i]), reverse=True
+    ):
+        if excess <= 0:
+            break
+        counted_only.add(index)
+        excess -= len(listings[index])
+
     lines = ["", "**Tests run locally**", ""]
     collapsed: list[str] = []
     concurrent = False
-    for result in results:
+    for index, (result, (suites, named)) in enumerate(zip(results, splits)):
         title = f"{result.command.kind} · {result.command.label}"
-        names = sorted(result.class_counts)
-        described = [describe_class(name, result.class_counts[name]) for name in names]
-        executed = result.tests - result.skipped
-        if not names:
-            lines.append(f"- {title}: no test reports")
-        elif len(names) <= INLINE_CLASS_LIMIT:
-            lines.append(f"- {title}: {', '.join(described)}")
-        else:
-            lines.append(
-                f"- {title}: {len(names)} classes, {executed} tests executed (listed below)"
+        parts = [
+            f"full {directory.split('/target/', 1)[0]} suite, {count_classes(result, names)}"
+            for directory, names in sorted(suites.items())
+        ]
+        if named and index in counted_only:
+            parts.append(
+                f"{count_classes(result, named)} (too many to list in the PR description)"
             )
+        elif len(named) > INLINE_CLASS_LIMIT:
+            parts.append(f"{count_classes(result, named)} (listed below)")
             collapsed += [
                 "",
-                f"<details><summary>{title}: {len(names)} classes</summary>",
+                f"<details><summary>{title}: {plural(len(named), 'class')}</summary>",
                 "",
-                ", ".join(described),
+                listings[index],
                 "",
                 "</details>",
             ]
-        concurrent |= result.command.kind == "integration" and len(names) > 1
+        elif named:
+            parts.append(listings[index])
+        lines.append(f"- {title}: {'; '.join(parts) or 'no test reports'}")
+        concurrent |= result.command.kind == "integration" and len(named) > 1
     if concurrent:
         lines += [
             "",
@@ -1056,6 +1148,12 @@ def overall_status(plan: Plan, results: list[StepResult]) -> str:
     if len(results) < len(plan.commands) or any(not r.passed for r in results):
         return "FAILED"
     return "PASSED"
+
+
+def commit_line(commit: str, base: str, dirty: bool) -> str:
+    return f"- Commit: `{commit[:12]}` (base `{base}`)" + (
+        " — uncommitted changes were present" if dirty else ""
+    )
 
 
 def render_block(
@@ -1072,8 +1170,7 @@ def render_block(
         BLOCK_START,
         f"**Local Java test run: {status}**",
         "",
-        f"- Commit: `{commit[:12]}` (base `{base}`)"
-        + (" — uncommitted changes were present" if dirty else ""),
+        commit_line(commit, base, dirty),
         f"- Finished: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · {run_minutes} min",
         "",
         "| Step | Scope | Classes | Tests | Failed | Skipped | Min | Result |",
@@ -1164,16 +1261,23 @@ def render_block(
     return "\n".join(lines) + "\n"
 
 
-def render_no_tests_block(commit: str, base: str) -> str:
+def render_no_tests_block(plan: Plan, commit: str, base: str, dirty: bool) -> str:
+    if plan.not_run_locally:
+        summary = [
+            "**Local Java test run: NOT NEEDED** — the impacted tests don't run locally:",
+            "",
+            *[
+                f"- `{simple_name(r)}` → {where}"
+                for r, where in sorted(plan.not_run_locally.items())
+            ],
+        ]
+    else:
+        summary = [
+            "**Local Java test run: NOT NEEDED** — no Java unit or integration test is impacted."
+        ]
     return (
         "\n".join(
-            [
-                BLOCK_START,
-                "**Local Java test run: NOT NEEDED** — no Java unit or integration test is impacted.",
-                "",
-                f"- Commit: `{commit[:12]}` (base `{base}`)",
-                BLOCK_END,
-            ]
+            [BLOCK_START, *summary, "", commit_line(commit, base, dirty), BLOCK_END]
         )
         + "\n"
     )
@@ -1208,10 +1312,17 @@ def update_pr_body(repo_root: Path, block: str, heading_text: str) -> None:
             text=True,
         ).stdout
     )
+    body = upsert_block(pr.get("body") or "", block, heading_text)
+    if len(body) > GITHUB_BODY_LIMIT:
+        raise SystemExit(
+            f"The PR description would be {len(body):,} characters, over GitHub's limit of "
+            f"{GITHUB_BODY_LIMIT:,}. Shorten the rest of it, then re-run with --update-pr; "
+            f"the block is in {RESULTS_MARKDOWN}."
+        )
     with tempfile.NamedTemporaryFile(
         "w", suffix=".md", delete=False, encoding="utf-8"
     ) as body_file:
-        body_file.write(upsert_block(pr.get("body") or "", block, heading_text))
+        body_file.write(body)
     subprocess.run(
         ["gh", "pr", "edit", str(pr["number"]), "--body-file", body_file.name],
         cwd=repo_root,
@@ -1315,9 +1426,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     commit = git(repo_root, "rev-parse", "HEAD")
-    dirty = bool(git(repo_root, "status", "--porcelain", "--untracked-files=no"))
+    dirty = has_uncommitted_changes(repo_root, impact_map["ignore"])
     if not plan.commands:
-        block = render_no_tests_block(commit, args.base)
+        block = render_no_tests_block(plan, commit, args.base, dirty)
         results: list[StepResult] = []
     else:
         if any(command.kind == "integration" for command in plan.commands):

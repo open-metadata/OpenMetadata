@@ -543,7 +543,10 @@ def check_java_impact_map():
     sys.modules[spec.name] = planner
     spec.loader.exec_module(planner)
     impact_map = json.loads(read(JAVA_IMPACT_MAP))
-    problems = planner.audit_impact_map(planner.Repo(pathlib.Path(REPO), impact_map), impact_map)
+    try:
+        problems = planner.audit_impact_map(planner.Repo(pathlib.Path(REPO), impact_map), impact_map)
+    except SystemExit as exc:  # the planner exits on a map/pom mismatch; main() catches only Exception
+        problems = [str(exc)]
     return [Warn("java-impact-map", JAVA_IMPACT_MAP, 1, problem) for problem in problems]
 
 

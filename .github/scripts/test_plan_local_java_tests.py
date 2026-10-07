@@ -3,6 +3,7 @@ from __future__ import annotations
 import fnmatch
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -170,6 +171,58 @@ def test_nightly_and_never_run_classes_are_reported_not_run() -> None:
     }
 
 
+def test_it_helper_selects_the_its_that_reach_it_through_other_helpers() -> None:
+    _, plan = plan_for(f"{IT_TESTS}/MergedMetricMigrationFixture.java")
+
+    assert its(plan) == {"MetricMigrationIT": ["mysql-elasticsearch"]}
+    assert plan.unmapped_files == []
+
+
+def test_it_helper_no_test_reaches_is_a_gap_that_falls_back_to_smoke() -> None:
+    helper = "openmetadata-integration-tests/src/test/java/org/openmetadata/it/auth/NoSuchHelper.java"
+
+    _, plan = plan_for(helper)
+
+    assert plan.unmapped_files == [helper]
+    assert set(its(plan)) == set(IMPACT_MAP["smoke"])
+
+
+def test_tests_that_only_run_nightly_are_named_in_the_not_needed_block() -> None:
+    uiit = next(
+        path for path in REPO.files if path.endswith("SimpleReindexTriggerUIIT.java")
+    )
+    _, plan = plan_for(uiit)
+
+    block = PLANNER.render_no_tests_block(
+        plan, "0123456789abcdef", "origin/main", False
+    )
+
+    assert plan.commands == []
+    assert "NOT NEEDED** — the impacted tests don't run locally" in block
+    assert "`SimpleReindexTriggerUIIT` →" in block
+
+
+def test_untracked_files_the_plan_reads_mark_the_run_uncommitted(
+    tmp_path: Path,
+) -> None:
+    def git(*args: str) -> None:
+        isolated = ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"]
+        subprocess.run(
+            ["git", *isolated, *args], cwd=tmp_path, check=True, capture_output=True
+        )
+
+    git("init", "-q")
+    (tmp_path / "pom.xml").write_text("<project/>")
+    git("add", "pom.xml")
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init")
+    ignore = ["*.md"]
+
+    (tmp_path / "notes.md").write_text("scratch")
+    assert not PLANNER.has_uncommitted_changes(tmp_path, ignore)
+    (tmp_path / "NewIT.java").write_text("class NewIT {}")
+    assert PLANNER.has_uncommitted_changes(tmp_path, ignore)
+
+
 def test_ui_and_docs_only_change_selects_nothing() -> None:
     _, plan = plan_for(
         "openmetadata-ui/src/main/resources/ui/src/App.tsx",
@@ -299,24 +352,80 @@ def test_results_block_lists_every_class_each_step_ran(tmp_path: Path) -> None:
     ) in text
 
 
-def test_a_full_suite_is_listed_collapsed() -> None:
-    command = PLANNER.Command("unit", "openmetadata-service (full suite)", [], [], [])
+def test_a_long_class_list_is_collapsed() -> None:
+    command = PLANNER.Command("integration", "mysql-elasticsearch · parallel", [], [])
     result = PLANNER.StepResult(
         command,
         exit_code=0,
         minutes=9.0,
         tests=400,
-        class_counts={f"C{i}Test": [10, 0, 0] for i in range(40)},
+        class_counts={f"C{i}IT": [10, 0, 0] for i in range(40)},
     )
 
     text = "\n".join(PLANNER.render_tests_run([result]))
 
     assert "40 classes, 400 tests executed (listed below)" in text
     assert (
-        "<details><summary>unit · openmetadata-service (full suite): 40 classes</summary>"
+        "<details><summary>integration · mysql-elasticsearch · parallel: 40 classes</summary>"
         in text
     )
-    assert "`C39Test` (10 passed)" in text
+    assert "`C39IT` (10 passed)" in text
+
+
+def test_a_module_run_in_full_is_counted_and_classes_selected_by_name_are_listed() -> (
+    None
+):
+    service = "openmetadata-service/target/surefire-reports"
+    mcp = "openmetadata-mcp/target/surefire-reports"
+    command = PLANNER.Command(
+        "unit",
+        "openmetadata-service (full suite), openmetadata-mcp (1 class)",
+        [],
+        [service, mcp],
+        ["McpToolsTest"],
+        [service],
+    )
+    full_suite = {f"C{i}Test": [10, 1, 0] for i in range(1000)}
+    result = PLANNER.StepResult(
+        command,
+        exit_code=0,
+        minutes=30.0,
+        class_counts={**full_suite, "McpToolsTest": [3, 0, 0]},
+        class_dirs={**{name: service for name in full_suite}, "McpToolsTest": mcp},
+    )
+
+    text = "\n".join(PLANNER.render_tests_run([result]))
+
+    assert (
+        "full openmetadata-service suite, 1000 classes, 9000 tests executed; "
+        "`McpToolsTest` (3 passed)"
+    ) in text
+    assert "C999Test" not in text
+
+
+def test_class_lists_past_the_budget_are_cut_to_counts() -> None:
+    def step(engine: str) -> object:
+        return PLANNER.StepResult(
+            PLANNER.Command("integration", f"{engine} · parallel", [], []),
+            exit_code=0,
+            minutes=60.0,
+            class_counts={
+                f"SomeLongEntityNameResource{i}IT": [20, 0, 0] for i in range(400)
+            },
+        )
+
+    text = "\n".join(
+        PLANNER.render_tests_run(
+            [step("mysql-elasticsearch"), step("postgres-opensearch")]
+        )
+    )
+
+    assert len(text) < PLANNER.CLASS_LIST_BUDGET + 2_000
+    assert (
+        "400 classes, 8000 tests executed (too many to list in the PR description)"
+        in text
+    )
+    assert "SomeLongEntityNameResource399IT" in text
 
 
 def test_a_step_that_ran_no_tests_is_not_a_pass() -> None:

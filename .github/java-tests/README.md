@@ -38,10 +38,13 @@ adds tests:
    area: search (core, indexing, mappings, query, engines, vector), lineage, events/alerts,
    security, governance, data quality, apps, RDF, migrations, and so on.
 5. **References from the test side.** A change to an SDK class or an IT harness class selects
-   the ITs that use it. Past `integrationTestReferenceCap` users, the smoke set runs instead.
+   the ITs that use it, directly or through other harness classes and `neverRun` base classes
+   (`AuthBackend` → `TokenRefresher` → `SdkClients` → every IT). Past
+   `integrationTestReferenceCap` users, the smoke set runs instead.
 6. **Smoke.** `sharedInfrastructure` (poms, shaded deps, the SDK, `BaseEntityIT`) and any
-   production file no rule maps add the `smoke` set. Unmapped files are listed as **impact-map
-   gaps**; close a gap by adding a mapping in the same PR rather than living with smoke.
+   production file or IT harness class no rule reaches add the `smoke` set. Unmapped files are
+   listed as **impact-map gaps**; close a gap by adding a mapping in the same PR rather than
+   living with smoke.
 
 Each selected IT runs in the failsafe execution CI uses for it, read from
 `openmetadata-integration-tests/pom.xml`. Classes in `integrationTests.globalStateTests`,
