@@ -711,8 +711,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
