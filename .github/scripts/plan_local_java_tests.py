@@ -59,6 +59,7 @@ SKIP_UNIT_TESTS = [
 # cannot compile the service. Repackaging the k8s operator's boot jar is the one slow packaging
 # step tests never need.
 SKIP_REPACKAGE = "-Dspring-boot.repackage.skip=true"
+INLINE_CLASS_LIMIT = 30
 
 
 @dataclass
@@ -905,7 +906,7 @@ class StepResult:
         """Classes that reported tests but executed none: an assumption skipped them all."""
         return sorted(
             name
-            for name, (tests, skipped) in self.class_counts.items()
+            for name, (tests, skipped, _failed) in self.class_counts.items()
             if tests and tests == skipped
         )
 
@@ -939,9 +940,10 @@ def collect_reports(
                 result.skipped += int(node.get("skipped", 0))
                 name = node.get("name", "").rsplit(".", 1)[-1]
                 result.classes_run.add(name)
-                counts = result.class_counts.setdefault(name, [0, 0])
+                counts = result.class_counts.setdefault(name, [0, 0, 0])
                 counts[0] += int(node.get("tests", 0))
                 counts[1] += int(node.get("skipped", 0))
+                counts[2] += int(node.get("failures", 0)) + int(node.get("errors", 0))
                 for case in node.findall("testcase"):
                     if (
                         case.find("failure") is not None
@@ -998,6 +1000,56 @@ def run_commands(repo_root: Path, plan: Plan, keep_going: bool) -> list[StepResu
             )
             break
     return results
+
+
+def describe_class(name: str, counts: list[int]) -> str:
+    tests, skipped, failed = counts
+    parts = [f"{tests - skipped - failed} passed"]
+    if failed:
+        parts.append(f"{failed} failed")
+    if skipped:
+        parts.append(f"{skipped} skipped")
+    return f"`{name}` ({', '.join(parts)})"
+
+
+def render_tests_run(results: list[StepResult]) -> list[str]:
+    """Every class each step ran, so the PR states exactly what was tested before review.
+
+    A step with more classes than INLINE_CLASS_LIMIT (a full unit suite) is listed in a
+    collapsed block, which keeps the PR body under GitHub's 65,536-character limit.
+    """
+    lines = ["", "**Tests run locally**", ""]
+    collapsed: list[str] = []
+    concurrent = False
+    for result in results:
+        title = f"{result.command.kind} · {result.command.label}"
+        names = sorted(result.class_counts)
+        described = [describe_class(name, result.class_counts[name]) for name in names]
+        executed = result.tests - result.skipped
+        if not names:
+            lines.append(f"- {title}: no test reports")
+        elif len(names) <= INLINE_CLASS_LIMIT:
+            lines.append(f"- {title}: {', '.join(described)}")
+        else:
+            lines.append(
+                f"- {title}: {len(names)} classes, {executed} tests executed (listed below)"
+            )
+            collapsed += [
+                "",
+                f"<details><summary>{title}: {len(names)} classes</summary>",
+                "",
+                ", ".join(described),
+                "",
+                "</details>",
+            ]
+        concurrent |= result.command.kind == "integration" and len(names) > 1
+    if concurrent:
+        lines += [
+            "",
+            "_Per-class counts come from failsafe's reports, which can credit a test to the wrong "
+            "class when classes run concurrently; the step totals above are exact._",
+        ]
+    return lines + collapsed
 
 
 def overall_status(plan: Plan, results: list[StepResult]) -> str:
@@ -1061,6 +1113,7 @@ def render_block(
             "Every test skipped, so these exercised nothing (check their assumptions — usually the engine): "
             + ", ".join(f"`{name}`" for name in skipped_only),
         ]
+    lines += render_tests_run(results)
 
     reasons = [
         f"- `{trigger}` ← {', '.join(f'`{path}`' for path in sorted(paths)[:5])}"

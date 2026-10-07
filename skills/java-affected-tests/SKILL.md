@@ -64,6 +64,9 @@ IT step pays. Big classes add their own time; CI's parallel lane runs 334 classe
   selected class. A green `BUILD SUCCESS` with zero tests is a failure.
 - Results: `target/java-tests/local-pr-results.md`. Before the PR exists, paste it between the
   `local-java-test-results` markers under "Backend integration tests". Never edit the block.
+- The block's "Tests run locally" list names every class each step ran, with its counts. That
+  list is the PR's record of what ran before review, so tests you ran by hand outside the planner
+  go in the PR's Tests section too.
 
 ## 4. When something fails
 

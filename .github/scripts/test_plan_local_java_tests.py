@@ -270,6 +270,55 @@ def test_reports_count_failures_and_selected_classes_that_never_ran(
     assert not result.passed
 
 
+def test_results_block_lists_every_class_each_step_ran(tmp_path: Path) -> None:
+    reports = tmp_path / "failsafe-reports"
+    reports.mkdir()
+    for name, tests, failures, skipped in (
+        ("TableResourceIT", 40, 1, 2),
+        ("UserResourceIT", 12, 0, 0),
+    ):
+        (reports / f"TEST-org.openmetadata.it.tests.{name}.xml").write_text(
+            f'<testsuite name="org.openmetadata.it.tests.{name}" tests="{tests}" '
+            f'failures="{failures}" errors="0" skipped="{skipped}"/>'
+        )
+    command = PLANNER.Command(
+        "integration",
+        "mysql-elasticsearch · parallel",
+        [],
+        ["failsafe-reports"],
+        ["TableResourceIT", "UserResourceIT"],
+    )
+    result = PLANNER.StepResult(command, exit_code=1, minutes=3.0)
+    PLANNER.collect_reports(tmp_path, command.report_dirs, result)
+
+    text = "\n".join(PLANNER.render_tests_run([result]))
+
+    assert (
+        "- integration · mysql-elasticsearch · parallel: "
+        "`TableResourceIT` (37 passed, 1 failed, 2 skipped), `UserResourceIT` (12 passed)"
+    ) in text
+
+
+def test_a_full_suite_is_listed_collapsed() -> None:
+    command = PLANNER.Command("unit", "openmetadata-service (full suite)", [], [], [])
+    result = PLANNER.StepResult(
+        command,
+        exit_code=0,
+        minutes=9.0,
+        tests=400,
+        class_counts={f"C{i}Test": [10, 0, 0] for i in range(40)},
+    )
+
+    text = "\n".join(PLANNER.render_tests_run([result]))
+
+    assert "40 classes, 400 tests executed (listed below)" in text
+    assert (
+        "<details><summary>unit · openmetadata-service (full suite): 40 classes</summary>"
+        in text
+    )
+    assert "`C39Test` (10 passed)" in text
+
+
 def test_a_step_that_ran_no_tests_is_not_a_pass() -> None:
     command = PLANNER.Command("integration", "lane", [], [], [])
 

@@ -139,6 +139,15 @@ If the user can't attach the recording yet, mark the section `TODO: attach recor
 
 Fill in `.github/pull_request_template.md` with everything gathered above. Show the user the full draft for review before creating.
 
+- **List every test run locally.** CI on the PR no longer runs the integration tests or Playwright,
+  so the description is the only record of what ran before review. The Java block names each class
+  it ran with its counts. Under the other Tests sections, list everything else you ran — pytest
+  files, Jest specs, Playwright specs, manual checks — with pass/fail counts, and say what you did
+  not run and why.
+- **Link the counterpart PR.** When the change needs an openmetadata-collate (or
+  openmetadata-nightly) PR too, link each PR from the other's description; each lists the tests run
+  in its own repo.
+
 ### Step 7 — Create or update the PR
 
 **New PR** (use a HEREDOC so formatting survives):
@@ -170,6 +179,8 @@ Refuse to open the PR if any of these are missing — surface them to the user i
 - [ ] At least one "Type of change" box is checked
 - [ ] Large PR has a high-level design section filled in (not `N/A`)
 - [ ] Tests section lists actual files and coverage numbers (not placeholders)
+- [ ] The description lists every test run locally (the Java block's classes plus every other suite
+      run), and links the counterpart Collate PR when there is one
 - [ ] UI changes have a screen recording attached or marked as TODO with the PR opened as draft
 - [ ] Java / schema / migration / pom changes: the `local-java-test-results` block reads PASSED (or
       NOT NEEDED) for the current commit — a FAILED block or no block means draft, not ready
