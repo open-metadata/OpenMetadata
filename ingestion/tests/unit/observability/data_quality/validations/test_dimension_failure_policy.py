@@ -22,6 +22,7 @@ from uuid import uuid4
 
 import pytest
 
+from metadata.data_quality.validations import result_messages
 from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeNotNull import (
     ColumnValuesToBeNotNullValidator,
 )
@@ -184,3 +185,11 @@ def test_get_dimension_failure_policy(parameter_values, expected):
     validator = ColumnValuesToBeNotNullValidator(MagicMock(), build_test_case(parameter_values), EXECUTION_DATE)
 
     assert validator.get_dimension_failure_policy() is expected
+
+
+def test_rollup_sentence_summarises_groups_beyond_the_listed_ones():
+    groups = [f"name=g{i}" for i in range(7)]
+
+    sentence = result_messages.dimension_rollup_sentence(groups)
+
+    assert sentence.startswith("7 dimension groups failed (name=g0, name=g1, name=g2, name=g3, name=g4 and 2 more)")
