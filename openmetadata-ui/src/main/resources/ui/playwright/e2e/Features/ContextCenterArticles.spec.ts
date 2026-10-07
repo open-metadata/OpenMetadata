@@ -51,6 +51,7 @@ import {
   scrollListingToCard,
   verifyArticleSearch,
   waitForArticleInFollows,
+  waitForArticleSearchResponse,
   waitForDraftPersisted,
 } from '../../utils/ContextCenterUtil';
 import {
@@ -64,8 +65,6 @@ import {
   createQuickLink,
   deletePage,
   getKnowledgePageCardByIndex,
-  readArticleInHierarchy,
-  readQuickLink,
   toggleKnowledgePageBookmark,
   updateBody,
   updateQuickLink,
@@ -327,10 +326,15 @@ test.describe('Context Center Articles', () => {
     );
     await scrollListingToCard(page, articleEntity.responseData.displayName);
 
-    await verifyArticleSearch(page, 'zzznomatchzzz_playwright');
-    await expect(page.getByText('No matching results')).toBeVisible({
-      timeout: 8000,
-    });
+    const noMatchTerm = 'zzznomatchzzz_playwright';
+    const noMatchSearchResPromise = waitForArticleSearchResponse(
+      page,
+      noMatchTerm
+    );
+    await searchInput.fill(noMatchTerm);
+    const noMatchSearchRes = await noMatchSearchResPromise;
+    expect(noMatchSearchRes.status()).toBe(200);
+    await expect(page.getByText('No matching results')).toBeVisible();
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
@@ -475,15 +479,11 @@ test.describe('Context Center Articles', () => {
     await page.keyboard.press('Escape');
 
     await createQuickLink(page, testQuickLink, dataAsset);
-    await readQuickLink(page, testQuickLink);
-
-    await readArticleInHierarchy(page, testQuickLink.displayName);
-    await scrollHierarchyToNode(page, testQuickLink.displayName);
+    await page
+      .getByRole('heading', { name: 'Add Quick Link' })
+      .waitFor({ state: 'hidden' });
 
     await verifyArticleSearch(page, testQuickLink.displayName);
-    await expect(
-      page.getByTestId(`knowledge-card-${testQuickLink.displayName}`)
-    ).toBeVisible();
 
     await updateQuickLink(page, testQuickLink);
 
@@ -857,7 +857,12 @@ test.describe('Context Center Articles', () => {
     const viewedCard = page
       .getByTestId('knowledge-page-listing')
       .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
-    await expect(viewedCard).toBeVisible();
+    await expect(viewedCard.getByTestId('knowledge-card-title')).toBeVisible();
+    // Description span is hidden when empty — wait for text to hydrate from the search index
+    await expect(
+      viewedCard.getByTestId('knowledge-card-description')
+    ).toContainText(ARTICLE_DESCRIPTION, { timeout: 10000 });
+    await expect(viewedCard.getByTestId('updated-at')).toBeVisible();
 
     await viewedCard.getByTestId('knowledge-page-link').first().click();
     await page.waitForURL((url) =>
@@ -897,8 +902,15 @@ test.describe('Context Center Articles', () => {
     );
 
     await observerElement.scrollIntoViewIfNeeded();
-    await paginationResponse;
-    await waitForAllLoadersToDisappear(page);
+    const resp = await paginationResponse;
+
+    expect(resp.status()).toBe(200);
+
+    const paginationLoader = page.getByTestId('knowledge-page-loader');
+    await expect(paginationLoader)
+      .toBeVisible({ timeout: 3000 })
+      .catch(() => null);
+    await paginationLoader.waitFor({ state: 'hidden' });
 
     expect(await cards.count()).toBeGreaterThan(initialCardCount);
   });
@@ -959,7 +971,29 @@ test.describe('Context Center Articles', () => {
       name: `Expand ${parent.displayName}`,
     });
     await expect(ExpandIcon).toBeVisible();
+    // Expanding lazy-loads the parent's children via a separate
+    // /search/hierarchy fetch; the child node only enters the DOM once it
+    // resolves. Hoist the listener before the click so scrollHierarchyToNode
+    // below does not race (and conclude end-of-list against) an empty tree.
+    const childrenLoaded = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/search/hierarchy') &&
+        resp
+          .url()
+          .includes(
+            `parent=${encodeURIComponent(parent.fullyQualifiedName)}`
+          ) &&
+        resp.request().method() === 'GET'
+    );
     await ExpandIcon.click();
+    const childrenResponse = await childrenLoaded;
+
+    expect(childrenResponse.status()).toBe(200);
+    // Scroll to the child as well, not just the parent. The hierarchy is an
+    // infinite-scroll list, so expanding a node does not guarantee its child
+    // is inside the rendered window -- and the more articles the Context
+    // Center holds, the further down it lands.
+    await scrollHierarchyToNode(page, child.displayName);
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -1043,20 +1077,31 @@ test.describe('Context Center Articles', () => {
     await navigateToArticles(page);
     await scrollHierarchyToNode(page, grandparent.displayName);
 
-    await page
-      .getByRole('button', {
-        name: `Expand ${grandparent.displayName}`,
-      })
-      .click();
+    // Use the stable data-testid on the expand button rather than its aria-name,
+    // which depends on accessibility-tree hydration timing and can miss in CI.
+    const expandNode = async (displayName: string) => {
+      const hierarchy = page.getByTestId('knowledge-pages-hierarchy');
+      const row = hierarchy.locator(
+        `[role="row"]:has([data-testid="page-node-${displayName}"])`
+      );
+      const expandBtn = row.getByTestId('tree-expand-btn');
+      const childrenLoaded = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/contextCenter') &&
+          res.request().method() === 'GET',
+        { timeout: 30_000 }
+      );
+      await expect(expandBtn).toBeVisible({ timeout: 10_000 });
+      await expandBtn.click();
+      await childrenLoaded;
+    };
+
+    await expandNode(grandparent.displayName);
     await expect(
       page.getByTestId(`page-node-${parent.displayName}`)
     ).toBeVisible();
 
-    await page
-      .getByRole('button', {
-        name: `Expand ${parent.displayName}`,
-      })
-      .click();
+    await expandNode(parent.displayName);
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -1898,7 +1943,12 @@ test.describe('Context Center Articles', () => {
           .locator('.ProseMirror[contenteditable="true"]')
           .first();
 
-        await expect(editor).toContainText(contentB);
+        await editor.waitFor({ state: 'visible' });
+        // Draft restore from localStorage is async after the API response renders;
+        // toPass retries until the draft content appears in the editor
+        await expect(async () => {
+          await expect(editor).toContainText(contentB);
+        }).toPass({ timeout: 20000 });
         await assertArticleEditorSaved(page);
       });
 

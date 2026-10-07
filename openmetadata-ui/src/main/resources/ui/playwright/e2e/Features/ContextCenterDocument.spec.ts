@@ -1210,7 +1210,16 @@ test.describe('Context Center - Documents Page', () => {
     const tree = page.getByRole('treegrid', { name: 'Folders' });
     const folderRow = await revealFolderRow(page, folderName);
 
+    const folderFilesResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        res.url().includes(`folderId=${folder.id}`) &&
+        !res.url().includes('after=') &&
+        res.request().method() === 'GET'
+    );
     await folderRow.getByRole('button', { name: 'Expand' }).click();
+    const folderFilesRes = await folderFilesResPromise;
+    expect(folderFilesRes.status()).toBe(200);
 
     await expect(folderRow).toHaveAttribute('aria-expanded', 'true');
     await expect(tree.getByText(fileName, { exact: true })).toBeVisible();
