@@ -22,7 +22,6 @@ import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
-  getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -217,11 +216,15 @@ test('should search for empty or null filters', async ({ page }) => {
 test('should show correct count for tier filter options from aggregation', async ({
   page,
 }) => {
-  const { apiContext } = await getApiContext(page);
-  const res = await apiContext.get(
-    '/api/v1/search/query?q=&index=dataAsset&from=0&size=0&deleted=false'
+  // The Tier dropdown renders the aggregations of the page's own results
+  // query. Asserting against that same response keeps the expected counts in
+  // sync even when parallel workers tier assets between two separate queries.
+  const pageSearchResponse = page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
   );
-  const data = await res.json();
+  await page.reload();
+  const data = await (await pageSearchResponse).json();
+  await waitForAllLoadersToDisappear(page);
   const buckets: { key: string; doc_count: number }[] =
     data.aggregations['sterms#tier.tagFQN']?.buckets ?? [];
 

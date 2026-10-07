@@ -265,9 +265,9 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('searchBox').click();
     await page.getByTestId('searchBox').fill(table1.entityResponseData.name);
 
-    await expect(page.locator('.ant-popover-inner-content')).not.toContainText(
-      table1.entityResponseData.name
-    );
+    await expect(
+      page.locator('.customise-search-overlay, .global-search-overlay')
+    ).not.toContainText(table1.entityResponseData.name);
   });
 
   test('Should not display domain and owner of deleted asset in suggestions when showDeleted is off', async ({

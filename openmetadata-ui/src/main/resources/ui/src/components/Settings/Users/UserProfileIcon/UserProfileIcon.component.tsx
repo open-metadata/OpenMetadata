@@ -11,24 +11,30 @@
  *  limitations under the License.
  */
 
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Radio, Tooltip } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Badge, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import { Radio, Tooltip } from 'antd';
 import { isEmpty, orderBy } from 'lodash';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  ReactNode,
+  SVGProps,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
 import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
 import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
-import { TERM_ADMIN, TERM_USER } from '../../../../constants/constants';
+import { TERM_ADMIN } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
   getImageWithResolutionAndFallback,
@@ -45,58 +51,65 @@ import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
 import './user-profile-icon.less';
 
-// Toggle owns its label markup, so scope the typography override here to keep
-// the shared AI menu styling unchanged while matching the Classic mode row.
-const CLASSIC_THEME_SWITCHER_CLASS =
-  'tw:w-full tw:pl-6 tw:[&>div>p]:text-xs tw:[&>div>p]:font-semibold';
+const LIST_ITEM_CLASS = 'tw:pl-6';
 
-type ListMenuItemProps = {
+type ListSectionProps = {
+  id: string;
+  icon: FC<SVGProps<SVGSVGElement>>;
+  title: string;
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
-  readMoreLabelRenderer: (count: number) => ReactNode;
-  readMoreKey: string;
+  getItemHref?: (item: EntityReference) => string;
+  onItemAction?: (item: EntityReference) => void;
+  readMore: (count: number) => ReactNode;
   sizeLimit?: number;
-  itemKey: string;
 };
 
-const renderLimitedListMenuItem = ({
+const renderListSection = ({
+  id,
+  icon: Icon,
+  title,
   listItems,
   labelRenderer,
-  readMoreLabelRenderer,
+  getItemHref,
+  onItemAction,
+  readMore,
   sizeLimit = 2,
-  readMoreKey,
-  itemKey,
-}: ListMenuItemProps) => {
-  const remainingCount =
-    listItems.length ?? 0 > sizeLimit
-      ? (listItems.length ?? sizeLimit) - sizeLimit
-      : 0;
-
+}: ListSectionProps) => {
   const items = listItems.slice(0, sizeLimit);
+  const remainingCount = Math.max(listItems.length - sizeLimit, 0);
+  const isReadOnly = !getItemHref && !onItemAction;
 
-  return isEmpty(items)
-    ? [
-        {
-          label: getEmptyTextFromUserProfileItem(itemKey),
-          key: readMoreKey.replace('more', 'no'),
-          disabled: true,
-        },
-      ]
-    : [
-        ...(items?.map((item) => ({
-          label: labelRenderer(item),
-          key: item.id,
-          disabled: ['roles', 'inheritedRoles'].includes(itemKey),
-        })) ?? []),
-        ...[
-          remainingCount > 0
-            ? {
-                label: readMoreLabelRenderer(remainingCount),
-                key: readMoreKey ?? 'more-item',
-              }
-            : null,
-        ],
-      ];
+  return (
+    <Dropdown.Section id={id}>
+      <Dropdown.SectionHeader className="tw:flex tw:items-center tw:gap-2 tw:px-4 tw:py-2 tw:text-sm tw:font-medium tw:text-primary">
+        <Icon className="tw:text-fg-quaternary" height={20} width={20} />
+        {title}
+      </Dropdown.SectionHeader>
+      {isEmpty(items) ? (
+        <Dropdown.Item
+          isDisabled
+          className={LIST_ITEM_CLASS}
+          id={`no-${id}`}
+          label={getEmptyTextFromUserProfileItem(id)}
+        />
+      ) : (
+        items.map((item) => (
+          <Dropdown.Item
+            className={LIST_ITEM_CLASS}
+            href={getItemHref?.(item)}
+            id={`${id}-${item.id ?? item.name}`}
+            isDisabled={isReadOnly}
+            key={item.id ?? item.name}
+            textValue={getEntityName(item)}
+            onAction={onItemAction ? () => onItemAction(item) : undefined}>
+            {labelRenderer(item)}
+          </Dropdown.Item>
+        ))
+      )}
+      {remainingCount > 0 && readMore(remainingCount)}
+    </Dropdown.Section>
+  );
 };
 
 export const UserProfileIcon = () => {
@@ -112,17 +125,12 @@ export const UserProfileIcon = () => {
     currentUser?.profile?.images
   );
   const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
 
     return false;
   }, []);
-
-  const handleSelectedPersonaChange = async (persona: EntityReference) => {
-    setSelectedPersona(persona);
-  };
 
   useEffect(() => {
     if (profilePicture) {
@@ -132,11 +140,8 @@ export const UserProfileIcon = () => {
     }
   }, [profilePicture]);
 
-  const { userName, teams, roles, inheritedRoles, personas } = useMemo(() => {
-    const userName = getEntityName(currentUser) || TERM_USER;
-
+  const { teams, roles, inheritedRoles, personas } = useMemo(() => {
     return {
-      userName,
       roles: currentUser?.isAdmin
         ? [
             ...(currentUser?.roles ?? []),
@@ -164,79 +169,51 @@ export const UserProfileIcon = () => {
   }, [currentUser, currentUser?.personas, currentUser?.inheritedPersonas]);
 
   const personaLabelRenderer = useCallback(
-    (item: EntityReference) => {
-      const isDefaultPersona = defaultPersona?.id === item.id;
+    (item: EntityReference) => (
+      <div
+        className="tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-2"
+        data-testid="persona-label">
+        <div className="tw:flex tw:min-w-0 tw:items-center default-persona-container">
+          <Typography ellipsis={{ tooltip: true }}>
+            {getEntityName(item)}
+          </Typography>
 
-      return (
-        <div
-          className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
-          data-testid="persona-label"
-          role="button"
-          tabIndex={0}
-          onClick={() => handleSelectedPersonaChange(item)}
-          onKeyDown={handleKeyboardActivation(
-            () => handleSelectedPersonaChange(item),
-            true
-          )}>
-          <div className="d-flex items-center default-persona-container">
-            <Typography ellipsis={{ tooltip: true }}>
-              {getEntityName(item)}
-            </Typography>
-
-            {isDefaultPersona && (
-              <Badge
-                className="tw:mr-2 tw:ml-1 tw:font-medium tw:shadow-xs"
-                color="brand"
-                data-testid="default-persona-tag"
-                size="sm"
-                type="color">
-                {t('label.default')}
-              </Badge>
-            )}
-          </div>
-
-          <Radio checked={selectedPersona?.id === item.id} />
+          {defaultPersona?.id === item.id && (
+            <Badge
+              className="tw:mr-2 tw:ml-1 tw:font-medium tw:shadow-xs"
+              color="brand"
+              data-testid="default-persona-tag"
+              size="sm"
+              type="color">
+              {t('label.default')}
+            </Badge>
+          )}
         </div>
-      );
-    },
-    [handleSelectedPersonaChange, selectedPersona, defaultPersona, t]
+
+        <Radio checked={selectedPersona?.id === item.id} />
+      </div>
+    ),
+    [selectedPersona, defaultPersona, t]
   );
 
-  const teamLabelRenderer = useCallback(
-    (item: EntityReference) => (
-      <Link
-        className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
-        to={getTeamAndUserDetailsPath(item.name as string)}>
-        {getEntityName(item)}
-      </Link>
-    ),
+  const getTeamHref = useCallback(
+    (item: EntityReference) => getTeamAndUserDetailsPath(item.name as string),
     []
   );
 
-  const readMoreTeamRenderer = useCallback(
-    (count: number, isPersona?: boolean) =>
-      isPersona ? (
-        <Typography
-          className="more-teams-pill"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowAllPersona(true);
-          }}>
-          {count} {t('label.more')}
-        </Typography>
-      ) : (
-        <Link
-          className="more-teams-pill"
-          to={getUserPath(currentUser?.name as string)}>
-          {count} {t('label.more')}
-        </Link>
-      ),
-    [currentUser, t]
-  );
+  const userPath = getUserPath(currentUser?.name as string);
 
-  const handleCloseDropdown = useCallback(() => {
-    setIsDropdownOpen(false);
-  }, []);
+  const renderMoreItem = useCallback(
+    (id: string, count: number) => (
+      <Dropdown.Item
+        className={LIST_ITEM_CLASS}
+        href={userPath}
+        id={`more-${id}`}
+        label={`${count} ${t('label.more')}`}
+      />
+    ),
+    [userPath, t]
+  );
 
   const sortedPersonas = useMemo(() => {
     if (!personas?.length) {
@@ -270,207 +247,28 @@ export const UserProfileIcon = () => {
     ];
   }, [personas, defaultPersona?.id, selectedPersona?.id]);
 
-  const items: ItemType[] = useMemo(
-    () => [
-      {
-        key: 'user',
-        icon: '',
-        label: (
-          <Link
-            data-testid="user-name"
-            to={getUserPath(currentUser?.name as string)}
-            onClick={handleCloseDropdown}>
-            <Typography
-              as="p"
-              className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
-              ellipsis={{ rows: 1, tooltip: true }}>
-              {t('label.view-entity', { entity: t('label.profile') })}
-            </Typography>
-          </Link>
-        ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'personas',
-        icon: '',
-        children: renderLimitedListMenuItem({
-          listItems: sortedPersonas,
-          readMoreKey: 'more-persona',
-          sizeLimit: showAllPersona ? sortedPersonas.length : 2,
-          labelRenderer: personaLabelRenderer,
-          readMoreLabelRenderer: (count) => readMoreTeamRenderer(count, true),
-          itemKey: 'personas',
-        }),
-        label: (
-          <div className="d-flex items-center gap-2">
-            <PersonaIcon className="text-base-color" height={20} width={20} />
-            <span className="font-medium text-grey-900">
-              {t('label.switch-persona')}
-            </span>
-          </div>
-        ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'roles',
-        icon: '',
-        children: renderLimitedListMenuItem({
-          listItems: roles ?? [],
-          labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTeamRenderer,
-          readMoreKey: 'more-roles',
-          itemKey: 'roles',
-        }),
-        label: (
-          <div className="text-base-color d-flex items-center gap-2">
-            <RoleIcon height={20} width={20} />
-            <span className="font-medium text-grey-900">
-              {t('label.role-plural')}
-            </span>
-          </div>
-        ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'inheritedRoles',
-        icon: '',
-        children: renderLimitedListMenuItem({
-          listItems: inheritedRoles ?? [],
-          labelRenderer: getEntityName,
-          readMoreLabelRenderer: readMoreTeamRenderer,
-          readMoreKey: 'more-inherited-roles',
-          itemKey: 'inheritedRoles',
-        }),
-        label: (
-          <div className="d-flex items-center gap-2">
-            <IconStruct className="text-base-color" height={20} width={20} />
-            <span className="font-medium text-grey-900">
-              {t('label.inherited-role-plural')}
-            </span>
-          </div>
-        ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'teams',
-        icon: '',
-        children: renderLimitedListMenuItem({
-          listItems: teams ?? [],
-          readMoreKey: 'more-teams',
-          labelRenderer: teamLabelRenderer,
-          readMoreLabelRenderer: readMoreTeamRenderer,
-          itemKey: 'teams',
-        }),
-        label: (
-          <div className="d-flex items-center gap-2">
-            <TeamIcon className="text-base-color" height={20} width={20} />
-            <span className="font-medium text-grey-900">
-              {t('label.team-plural')}
-            </span>
-          </div>
-        ),
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'app-mode',
-        icon: '',
-        label: <InterfaceModeMenuItem />,
-        type: 'group',
-      },
-      ...navbarUtilClassBase.getUserProfileExtraItems(),
-      {
-        type: 'divider',
-      },
-      // A group label keeps the embedded switch non-selectable so Ant Design
-      // does not close the dropdown while the user previews the new theme.
-      {
-        key: 'theme-mode',
-        icon: '',
-        label: <ThemeModeSwitcher className={CLASSIC_THEME_SWITCHER_CLASS} />,
-        type: 'group',
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'logout',
-        icon: '',
-        label: (
-          <Button
-            className="text-primary d-flex items-center gap-2 p-0 font-medium"
-            type="text"
-            onClick={onLogoutHandler}>
-            <LogoutIcon height={20} width={20} />
-            {t('label.logout')}
-          </Button>
-        ),
-        type: 'group',
-      },
-    ],
-    [
-      currentUser,
-      userName,
-      selectedPersona,
-      teams,
-      roles,
-      personas,
-      showAllPersona,
-      sortedPersonas,
-      inheritedRoles,
-      t,
-    ]
-  );
-
   return (
-    <Dropdown
-      menu={{
-        items,
-        defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
-        rootClassName: 'profile-dropdown w-68 p-x-md p-y-sm',
-      }}
-      open={isDropdownOpen}
-      overlayClassName="user-profile-dropdown-overlay"
-      trigger={['click']}
-      onOpenChange={setIsDropdownOpen}>
-      <Button
-        className="user-profile-btn flex-center"
-        data-testid="dropdown-profile"
-        icon={
-          isImgUrlValid ? (
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onError load fallback
-            <img
-              alt={getEntityName(currentUser)}
-              className="app-bar-user-profile-pic"
-              data-testid="app-bar-user-profile-pic"
-              referrerPolicy="no-referrer"
-              src={profilePicture ?? ''}
-              onError={handleOnImageError}
-            />
-          ) : (
-            <ProfilePicture
-              displayName={currentUser?.name}
-              name={currentUser?.name ?? ''}
-              width="40"
-            />
-          )
-        }
-        size="large"
-        type="text">
+    <Dropdown.Root>
+      <AriaButton
+        className="user-profile-btn tw:flex tw:cursor-pointer tw:items-center tw:gap-4 tw:bg-transparent tw:p-0"
+        data-testid="dropdown-profile">
+        {isImgUrlValid ? (
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onError load fallback
+          <img
+            alt={getEntityName(currentUser)}
+            className="app-bar-user-profile-pic"
+            data-testid="app-bar-user-profile-pic"
+            referrerPolicy="no-referrer"
+            src={profilePicture ?? ''}
+            onError={handleOnImageError}
+          />
+        ) : (
+          <ProfilePicture
+            displayName={currentUser?.name}
+            name={currentUser?.name ?? ''}
+            width="40"
+          />
+        )}
         <div className="name-persona-container">
           <Tooltip title={getEntityName(currentUser)}>
             <Typography
@@ -490,7 +288,81 @@ export const UserProfileIcon = () => {
           </Typography>
         </div>
         <DropDownIcon width={12} />
-      </Button>
-    </Dropdown>
+      </AriaButton>
+      <Dropdown.Popover
+        className="user-profile-dropdown-overlay tw:w-68"
+        placement="bottom end">
+        <Dropdown.Menu
+          aria-label={getEntityName(currentUser)}
+          className="profile-dropdown"
+          selectionMode="none">
+          <Dropdown.Item
+            data-testid="user-name"
+            href={userPath}
+            id="user"
+            label={t('label.view-entity', { entity: t('label.profile') })}
+          />
+          <Dropdown.Separator />
+          {renderListSection({
+            id: 'personas',
+            icon: PersonaIcon,
+            title: t('label.switch-persona'),
+            listItems: sortedPersonas,
+            sizeLimit: showAllPersona ? sortedPersonas.length : 2,
+            labelRenderer: personaLabelRenderer,
+            onItemAction: setSelectedPersona,
+            readMore: (count) => (
+              <Dropdown.Item
+                className={LIST_ITEM_CLASS}
+                id="more-persona"
+                label={`${count} ${t('label.more')}`}
+                shouldCloseOnSelect={false}
+                onAction={() => setShowAllPersona(true)}
+              />
+            ),
+          })}
+          <Dropdown.Separator />
+          {renderListSection({
+            id: 'roles',
+            icon: RoleIcon,
+            title: t('label.role-plural'),
+            listItems: roles ?? [],
+            labelRenderer: getEntityName,
+            readMore: (count) => renderMoreItem('roles', count),
+          })}
+          <Dropdown.Separator />
+          {renderListSection({
+            id: 'inheritedRoles',
+            icon: IconStruct,
+            title: t('label.inherited-role-plural'),
+            listItems: inheritedRoles ?? [],
+            labelRenderer: getEntityName,
+            readMore: (count) => renderMoreItem('inherited-roles', count),
+          })}
+          <Dropdown.Separator />
+          {renderListSection({
+            id: 'teams',
+            icon: TeamIcon,
+            title: t('label.team-plural'),
+            listItems: teams ?? [],
+            labelRenderer: getEntityName,
+            getItemHref: getTeamHref,
+            readMore: (count) => renderMoreItem('teams', count),
+          })}
+          <Dropdown.Separator />
+          <Dropdown.Item
+            icon={LogoutIcon}
+            id="logout"
+            label={t('label.logout')}
+            onAction={onLogoutHandler}
+          />
+        </Dropdown.Menu>
+        <div className="tw:flex tw:flex-col tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
+          <InterfaceModeMenuItem />
+          {navbarUtilClassBase.getUserProfileExtraItems()}
+          <ThemeModeSwitcher className="tw:w-full" />
+        </div>
+      </Dropdown.Popover>
+    </Dropdown.Root>
   );
 };
