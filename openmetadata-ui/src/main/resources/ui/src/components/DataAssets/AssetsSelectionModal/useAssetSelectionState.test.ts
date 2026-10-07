@@ -994,6 +994,61 @@ describe('useAssetSelectionState', () => {
       expect(result.current.assetJobResponse).toEqual({ jobId: 'job-1' });
     });
 
+    it('should handle our own terminal event that beats the save response', async () => {
+      // The server queues the job before it writes the response, so a small job
+      // can report COMPLETED while the hook still has no job id to match on.
+      let resolveSave!: (value: unknown) => void;
+      (addAssetsToGlossaryTerm as jest.Mock).mockReturnValue(
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        })
+      );
+
+      const { result } = renderAssetSelectionState();
+
+      await waitFor(() => {
+        expect(result.current.items).toHaveLength(1);
+      });
+
+      act(() => {
+        result.current.handleCardClick({
+          id: '1',
+          entityType: 'table',
+        } as never);
+      });
+
+      act(() => {
+        result.current.onSaveAction();
+      });
+
+      const handler = mockSocket.on.mock.calls[0][1];
+
+      act(() => {
+        handler(
+          JSON.stringify({
+            jobId: 'job-1',
+            status: 'COMPLETED',
+            result: { status: 'success' },
+          })
+        );
+      });
+
+      expect(mockOnSave).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolveSave({ jobId: 'job-1' });
+      });
+
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalled();
+        expect(mockOnCancel).toHaveBeenCalled();
+      });
+
+      // Replayed, not parked in the in-progress state waiting for an event that
+      // has already been and gone.
+      expect(result.current.assetJobResponse).toBeUndefined();
+    });
+
     it('should ignore an activity when no job is in flight', async () => {
       const { result } = renderAssetSelectionState();
 
