@@ -29,9 +29,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONObject;
@@ -455,20 +457,44 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (response.statusCode() == 200) {
         return getResponse(200, response.body()).withRunId(runId);
       }
-    } catch (IOException | URISyntaxException e) {
-      throw IngestionPipelineDeploymentException.byMessage(
-          pipelineName, TRIGGER_ERROR, e.getMessage());
+    } catch (IOException | URISyntaxException | IngestionRunnerUnavailableException e) {
+      // IngestionRunnerUnavailableException: Airflow was down when the trigger URL was built,
+      // before its API version was known.
+      throw triggerFailure(pipelineName, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw IngestionPipelineDeploymentException.byMessage(
-          pipelineName, TRIGGER_ERROR, e.getMessage());
+      throw triggerFailure(pipelineName, e);
     }
 
-    throw IngestionPipelineDeploymentException.byMessage(
+    throw IngestionPipelineDeploymentException.triggerFailed(
         pipelineName,
-        TRIGGER_ERROR,
-        "Failed to trigger IngestionPipeline",
-        Response.Status.fromStatusCode(response.statusCode()));
+        String.format("Airflow answered the trigger with HTTP %d", response.statusCode()),
+        upstreamStatus(response.statusCode()));
+  }
+
+  // Java's HTTP client can throw a ConnectException with no message.
+  static IngestionPipelineDeploymentException triggerFailure(String pipelineName, Exception cause) {
+    return IngestionPipelineDeploymentException.triggerFailed(
+        pipelineName,
+        Objects.requireNonNullElse(cause.getMessage(), cause.getClass().getSimpleName()),
+        triggerFailureStatus(cause));
+  }
+
+  // 503 only for an Airflow that gave no answer, as a retry can then succeed. A failed TLS
+  // handshake reached Airflow and fails the same way until the certificates are fixed, and a
+  // malformed Airflow URL is the server's configuration to fix.
+  private static Response.Status triggerFailureStatus(Exception cause) {
+    return switch (cause) {
+      case SSLException tlsFailure -> Response.Status.BAD_GATEWAY;
+      case URISyntaxException malformedUrl -> Response.Status.INTERNAL_SERVER_ERROR;
+      default -> Response.Status.SERVICE_UNAVAILABLE;
+    };
+  }
+
+  // Airflow can answer with a status Response.Status does not name, such as Airflow 3's 422.
+  private static Response.Status upstreamStatus(int statusCode) {
+    return Objects.requireNonNullElse(
+        Response.Status.fromStatusCode(statusCode), Response.Status.BAD_GATEWAY);
   }
 
   // The run id goes along too: the worker reports under it, so the queued status the server records

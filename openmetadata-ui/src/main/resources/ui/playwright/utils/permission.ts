@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   DATA_CONSUMER_RULES,
   ORGANIZATION_POLICY_RULES,
@@ -145,7 +146,7 @@ export const validateViewPermissions = async (
     await expect(
       editDisplayNameButton.filter({ visible: true })
     ).not.toHaveCount(0, {
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
   } else {
     await expect(

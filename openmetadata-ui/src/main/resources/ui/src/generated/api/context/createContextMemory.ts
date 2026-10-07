@@ -31,8 +31,8 @@ export interface CreateContextMemory {
      */
     domains?: string[];
     /**
-     * Lifecycle stage the memory starts in. When omitted, the memory starts Approved. A
-     * Deprecated memory requires supersededBy.
+     * Lifecycle stage the memory starts in. When omitted, the memory starts Unprocessed and is
+     * excluded from grounding until Approved. A Deprecated memory requires supersededBy.
      */
     entityStatus?:          EntityStatus;
     machineRepresentation?: MachineRepresentation;
@@ -82,8 +82,8 @@ export interface CreateContextMemory {
 }
 
 /**
- * Lifecycle stage the memory starts in. When omitted, the memory starts Approved. A
- * Deprecated memory requires supersededBy.
+ * Lifecycle stage the memory starts in. When omitted, the memory starts Unprocessed and is
+ * excluded from grounding until Approved. A Deprecated memory requires supersededBy.
  *
  * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
  * property. Entity types without that property have no lifecycle. When a create request

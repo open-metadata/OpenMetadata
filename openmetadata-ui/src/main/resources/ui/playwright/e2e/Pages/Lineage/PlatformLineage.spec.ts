@@ -14,6 +14,7 @@ import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
+import { DatabaseClass } from '../../../support/entity/DatabaseClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
@@ -30,11 +31,19 @@ import {
   visitLineageTab,
 } from '../../../utils/lineage';
 import { sidebarClick } from '../../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
 
-// Create a table with '/' in the name to test encoding functionality
+// Create a table with '/' in the name to test encoding functionality.
+// Its database is owned rather than the shard's shared one: the database
+// lineage scene draws every table and edge other specs put under the shared
+// database, and there the scene request failed or this table's schema node
+// never rendered.
 const tableNameWithSlash = `pw-table-with/slash-${uuid()}`;
-const table = new TableClass({ name: tableNameWithSlash });
+const table = new TableClass({
+  name: tableNameWithSlash,
+  database: new DatabaseClass(),
+});
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
@@ -56,6 +65,12 @@ test.beforeAll(async ({ browser }) => {
     ],
   });
 
+  await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+  await table.delete(apiContext);
   await afterAction();
 });
 
@@ -99,16 +114,18 @@ test.describe('Entity Lineage tab', () => {
         'entityResponseData.databaseSchema.fullyQualifiedName',
         ''
       );
-      const tableSceneResponse = page.waitForResponse(
+      const tableSceneResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
-          new URL(response.url()).searchParams.get('focusFqn') === nodeFqn
+          new URL(response.url()).searchParams.get('focusFqn') === nodeFqn,
+        200
       );
       await suggestions.getByTestId(`option-${nodeFqn}`).click();
       await expect
         .poll(() => new URL(page.url()).pathname)
         .toBe(`/lineage/table/${encodeURIComponent(nodeFqn)}`);
-      expect((await tableSceneResponse).ok()).toBeTruthy();
+      await tableSceneResponse;
 
       await expect(
         page.locator('[data-testid="lineage-details"]')
@@ -119,16 +136,18 @@ test.describe('Entity Lineage tab', () => {
       await sidebarClick(page, SidebarItem.LINEAGE);
       await entitySearch.fill(db);
       await suggestions.getByTestId(`option-${dbFqn}`).waitFor();
-      const databaseSceneResponse = page.waitForResponse(
+      const databaseSceneResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
-          new URL(response.url()).searchParams.get('focusFqn') === dbFqn
+          new URL(response.url()).searchParams.get('focusFqn') === dbFqn,
+        200
       );
       await suggestions.getByTestId(`option-${dbFqn}`).click();
       await expect
         .poll(() => new URL(page.url()).pathname)
         .toBe(`/lineage/database/${encodeURIComponent(dbFqn)}`);
-      expect((await databaseSceneResponse).ok()).toBeTruthy();
+      await databaseSceneResponse;
 
       await expect(page.getByTestId('lineage-details')).toBeVisible();
       await expectLineageNodeVisible(page, schemaFqn);

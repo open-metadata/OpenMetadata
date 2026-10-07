@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -140,7 +141,7 @@ test.describe('Right Panel Test Suite', () => {
     // beforeEach slow, stacked tripled budgets let a single failing attempt
     // grind for 9 minutes before reporting (hook 3m + nested hook 3m + test
     // 3m — run 32500973433) instead of failing fast.
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
@@ -198,7 +199,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -211,7 +212,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -442,7 +443,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -455,7 +456,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -1117,7 +1118,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -1335,7 +1336,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -1574,7 +1575,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.beforeAll(async ({ browser }) => {
         // Bounded hook budget — see the suite-level beforeAll comment.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -1589,7 +1590,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(
@@ -2118,7 +2119,7 @@ test.describe('Right Panel Test Suite', () => {
 
       test.afterAll(async ({ browser }) => {
         // Bounded hook budget — see deleteEntitiesSequentially.
-        test.setTimeout(120_000);
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await deleteEntitiesSequentially(

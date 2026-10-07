@@ -18,7 +18,6 @@ from metadata.ingestion.api.steps import Processor, Sink
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
-from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
@@ -41,15 +40,8 @@ class ProfilerWorkflow(IngestionWorkflow):
         self.workflow_config.successThreshold = 80
 
     def _get_source_class(self):
-        if self.config.source.serviceName:
-            self.import_source_class()
-            return OpenMetadataSource
-        logger.info(
-            "Database Service name not provided, we will scan all the tables "
-            "available within data source and locate table entity in OpenMetadata "
-            "to ingest profiler data."
-        )
-        return OpenMetadataSourceExt
+        self.import_source_class()
+        return OpenMetadataSource
 
     def set_steps(self):
         # TODO: Clean after https://github.com/open-metadata/OpenMetadata/issues/21259

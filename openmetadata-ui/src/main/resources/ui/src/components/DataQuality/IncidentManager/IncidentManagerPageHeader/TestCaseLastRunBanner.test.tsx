@@ -66,6 +66,7 @@ const testCaseWith = (
 
 const defaultProps: TestCaseLastRunBannerProps = {
   incidentTask: MOCK_TASK_DATA[1],
+  nextRunTimestamp: null,
   taskLinkInfo: { label: '#9', path: INCIDENT_PATH },
   testCase: testCaseWith('tableRowCountToEqual', [
     { name: 'value', value: '1000' },
@@ -120,10 +121,11 @@ describe('TestCaseLastRunBanner', () => {
       );
       expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveClass(
         {
-          [TestCaseStatus.Aborted]: 'tw:text-warning-primary',
-          [TestCaseStatus.Failed]: 'tw:text-error-primary',
+          // The -700 steps: the -600 text tokens fall below AA on the tint.
+          [TestCaseStatus.Aborted]: 'tw:text-utility-warning-700',
+          [TestCaseStatus.Failed]: 'tw:text-utility-error-700',
           [TestCaseStatus.Queued]: 'tw:text-brand-primary',
-          [TestCaseStatus.Success]: 'tw:text-success-primary',
+          [TestCaseStatus.Success]: 'tw:text-utility-success-700',
         }[testCaseStatus]
       );
       expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
@@ -257,7 +259,7 @@ describe('TestCaseLastRunBanner', () => {
       'label.aborted'
     );
     expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveClass(
-      'tw:text-warning-primary'
+      'tw:text-utility-warning-700'
     );
     expect(
       screen.getByTestId(LAST_RUN_BANNER_TEST_IDS[TestCaseStatus.Aborted])
@@ -413,6 +415,50 @@ describe('TestCaseLastRunBanner', () => {
       TEXT_XS_CLASS
     );
   });
+
+  it.each<[string, Partial<TestCaseLastRunBannerProps>]>([
+    [
+      'a latest run',
+      {
+        testCaseResult: {
+          result: 'All rows passed',
+          testCaseStatus: TestCaseStatus.Success,
+          timestamp: TEST_CASE_RESULT_TIMESTAMP,
+        },
+        testCaseStatus: TestCaseStatus.Success,
+      },
+    ],
+    ['no run yet', {}],
+  ])(
+    'shows an unknown next run as a dash, not as unscheduled, with %s',
+    (_, props) => {
+      renderBanner({ ...props, nextRunTimestamp: undefined });
+
+      const nextRun = screen.getByTestId(NEXT_RUN_TEST_ID);
+
+      expect(nextRun).toHaveTextContent('label.next · —');
+      expect(nextRun).not.toHaveTextContent('label.not-scheduled');
+    }
+  );
+
+  it.each<[string, number | null | undefined, string]>([
+    [
+      'a run is scheduled',
+      Date.now() + 3_600_000,
+      'message.test-case-first-run-scheduled',
+    ],
+    ['nothing is scheduled', null, 'message.test-case-not-run-yet'],
+    ['the schedule is unknown', undefined, 'message.test-case-has-not-run'],
+  ])(
+    'asks for a pipeline in the not-run banner only when it knows nothing is scheduled: %s',
+    (_, nextRunTimestamp, messageKey) => {
+      renderBanner({ nextRunTimestamp });
+
+      expect(screen.getByTestId(NO_RUN_BANNER_TEST_ID)).toHaveTextContent(
+        messageKey
+      );
+    }
+  );
 
   it('does not show a negative duration when a cached next run has passed', () => {
     const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(2_000);

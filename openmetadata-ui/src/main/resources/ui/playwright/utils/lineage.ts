@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { escapeRegExp, get, isEmpty } from 'lodash';
+import { LONG_ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ChartClass } from '../support/entity/ChartClass';
@@ -1378,7 +1379,7 @@ export const verifyExportLineagePNG = async (
     const [download] = await Promise.all([
       // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
       // render enough headroom before the download event fires.
-      page.waitForEvent('download', { timeout: 120_000 }),
+      page.waitForEvent('download', { timeout: LONG_ACTION_TIMEOUT }),
       page.click(
         '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
       ),

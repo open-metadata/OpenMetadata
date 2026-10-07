@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Badge, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { Popover, Space } from 'antd';
+import {
+  Badge,
+  HoverCard,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -184,11 +189,11 @@ export const IngestionRecentRuns = <
             isNumber(endDate) || isNumber(startDate) || isNumber(r?.timestamp);
 
           return showTooltip ? (
-            <Popover
+            <HoverCard
               content={getRunTooltipContent(r.timestamp, startDate, endDate, t)}
               key={`${runId}-timestamp`}>
               {status}
-            </Popover>
+            </HoverCard>
           ) : (
             status
           );

@@ -906,7 +906,7 @@ describe('TagsSection', () => {
   describe('popover anchoring', () => {
     it('should anchor the popover to the left edge of the selector, not centre it', async () => {
       // The anchor is the full-width `.tag-selector-display` div, so a centred placement ('top')
-      // throws the popover into the middle of a wide container. `bottomLeft` pins it to the
+      // throws the popover into the middle of a wide container. `bottom start` pins it to the
       // anchor's left edge, matching how GlossaryTermsSection anchors its own popover.
       render(<TagsSection {...defaultProps} />);
 
@@ -915,7 +915,7 @@ describe('TagsSection', () => {
       const { popoverProps } = (TagSelectableList as unknown as jest.Mock).mock
         .calls[0][0];
 
-      expect(popoverProps.placement).toBe('bottomLeft');
+      expect(popoverProps.placement).toBe('bottom start');
     });
   });
 });

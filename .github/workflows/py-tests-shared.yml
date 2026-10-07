@@ -64,6 +64,8 @@ jobs:
     outputs:
       python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
       e2e: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.e2e }}
+      # PRs run unit tests only; the integration suite runs in the merge queue (and on dispatch).
+      integration: ${{ github.event_name == 'workflow_dispatch' && 'true' || github.event_name == 'merge_group' && steps.filter.outputs.python || 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -122,7 +124,7 @@ jobs:
   build-distribution:
     name: Build Backend Distribution
     needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' }}
+    if: ${{ needs.changes.outputs.integration == 'true' }}
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
@@ -168,7 +170,7 @@ jobs:
   prepare-spacy-model:
     name: Prepare spaCy model
     needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' }}
+    if: ${{ needs.changes.outputs.python == 'true' && (inputs.run-unit-tests || needs.changes.outputs.integration == 'true') }}
     timeout-minutes: 10
     runs-on: ubuntu-latest
     concurrency:
@@ -322,7 +324,7 @@ jobs:
   py-integration-tests:
     name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
     needs: [changes, build-distribution, prepare-spacy-model]
-    if: ${{ needs.changes.outputs.python == 'true' }}
+    if: ${{ needs.changes.outputs.integration == 'true' }}
     timeout-minutes: 180
     runs-on: ubuntu-latest
     strategy:
@@ -538,6 +540,7 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           PYTHON_CHANGED: ${{ needs.changes.outputs.python }}
+          RUN_INTEGRATION: ${{ needs.changes.outputs.integration }}
           BUILD_RESULT: ${{ needs.build-distribution.result }}
           UNIT_RESULT: ${{ needs.py-unit-tests.result }}
           INTEGRATION_RESULT: ${{ needs.py-integration-tests.result }}
@@ -553,10 +556,15 @@ jobs:
             expected_unit="success"
           fi
 
+          expected_integration="skipped"
+          if [ "$RUN_INTEGRATION" = "true" ]; then
+            expected_integration="success"
+          fi
+
           if [ "$PYTHON_CHANGED" = "true" ]; then
-            if [ "$BUILD_RESULT" != "success" ] || [ "$INTEGRATION_RESULT" != "success" ] \
+            if [ "$BUILD_RESULT" != "$expected_integration" ] || [ "$INTEGRATION_RESULT" != "$expected_integration" ] \
                || [ "$UNIT_RESULT" != "$expected_unit" ]; then
-              echo "Expected Python jobs did not succeed: build=$BUILD_RESULT unit=$UNIT_RESULT (expected $expected_unit) integration=$INTEGRATION_RESULT"
+              echo "Expected Python jobs did not succeed: build=$BUILD_RESULT integration=$INTEGRATION_RESULT (expected $expected_integration) unit=$UNIT_RESULT (expected $expected_unit)"
               exit 1
             fi
           elif [ "$PYTHON_CHANGED" = "false" ]; then
@@ -573,7 +581,7 @@ jobs:
 
   py-combine-coverage:
     needs: [changes, py-unit-tests, py-integration-tests]
-    if: ${{ always() && inputs.run-coverage && needs.changes.outputs.python == 'true' && needs.py-unit-tests.result == 'success' && needs.py-integration-tests.result == 'success' }}
+    if: ${{ always() && inputs.run-coverage && needs.changes.outputs.python == 'true' && needs.py-unit-tests.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.py-integration-tests.result) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     continue-on-error: true
@@ -611,7 +619,11 @@ jobs:
       - name: Prepare coverage files
         run: |
           cd ingestion
-          [ -f coverage-data/coverage-unit/.coverage ] && mv coverage-data/coverage-unit/.coverage .coverage.unit
+          shopt -s nullglob
+          # download-artifact extracts a lone match (unit-only PR runs) straight into path, not path/<name>/
+          for f in coverage-data/coverage-unit/.coverage coverage-data/.coverage; do
+            [ -f "$f" ] && mv "$f" .coverage.unit
+          done
           for dir in coverage-data/coverage-integration-*/; do
             shard=$(basename "$dir" | sed 's/coverage-integration-//')
             [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"

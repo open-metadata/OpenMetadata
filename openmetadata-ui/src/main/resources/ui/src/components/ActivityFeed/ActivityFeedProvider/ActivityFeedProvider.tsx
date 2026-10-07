@@ -175,7 +175,9 @@ const fetchTaskList = (
   const scoped = { statusGroup: taskStatusGroup, ...common };
 
   if (feedFilterType === FeedFilter.MENTIONS) {
-    return listTasks({ ...mentionedTaskParams(scope), ...common });
+    // `scoped`, not `common`: mentioned tasks are status-filtered like every
+    // other branch. mentionedTaskParams never sets statusGroup, so no collision.
+    return listTasks({ ...mentionedTaskParams(scope), ...scoped });
   }
 
   if (isOwnProfile(scope)) {
@@ -616,44 +618,51 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       reactionType: ReactionType,
       reactionOperation: ReactionOperation
     ) => {
-      if (isThread) {
-        const conversation =
+      try {
+        if (isThread) {
+          const conversation =
+            reactionOperation === ReactionOperation.ADD
+              ? await addConversationReaction(feedId, reactionType)
+              : await removeConversationReaction(feedId, reactionType);
+          setEntityThread((current) =>
+            current.map((item) => (item.id === feedId ? conversation : item))
+          );
+          setSelectedThread((current) =>
+            current?.id === feedId ? conversation : current
+          );
+
+          return;
+        }
+
+        const reply =
           reactionOperation === ReactionOperation.ADD
-            ? await addConversationReaction(feedId, reactionType)
-            : await removeConversationReaction(feedId, reactionType);
+            ? await addConversationReplyReaction(feedId, post.id, reactionType)
+            : await removeConversationReplyReaction(
+                feedId,
+                post.id,
+                reactionType
+              );
+        const updateReplies = (replies?: ConversationReply[]) =>
+          (replies ?? []).map((item) => (item.id === reply.id ? reply : item));
         setEntityThread((current) =>
-          current.map((item) => (item.id === feedId ? conversation : item))
+          current.map((conversation) =>
+            conversation.id === feedId
+              ? {
+                  ...conversation,
+                  replies: updateReplies(conversation.replies),
+                }
+              : conversation
+          )
         );
         setSelectedThread((current) =>
-          current?.id === feedId ? conversation : current
+          current?.id === feedId
+            ? { ...current, replies: updateReplies(current.replies) }
+            : current
         );
-
-        return;
+        setActivityReplies(updateReplies);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-
-      const reply =
-        reactionOperation === ReactionOperation.ADD
-          ? await addConversationReplyReaction(feedId, post.id, reactionType)
-          : await removeConversationReplyReaction(
-              feedId,
-              post.id,
-              reactionType
-            );
-      const updateReplies = (replies?: ConversationReply[]) =>
-        (replies ?? []).map((item) => (item.id === reply.id ? reply : item));
-      setEntityThread((current) =>
-        current.map((conversation) =>
-          conversation.id === feedId
-            ? { ...conversation, replies: updateReplies(conversation.replies) }
-            : conversation
-        )
-      );
-      setSelectedThread((current) =>
-        current?.id === feedId
-          ? { ...current, replies: updateReplies(current.replies) }
-          : current
-      );
-      setActivityReplies(updateReplies);
     },
     []
   );
