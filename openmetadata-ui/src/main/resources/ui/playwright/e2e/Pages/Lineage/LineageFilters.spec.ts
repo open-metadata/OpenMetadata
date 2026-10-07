@@ -307,7 +307,7 @@ test.describe('Lineage Filters', () => {
               .click();
 
             const lineageRes = page.waitForResponse(
-              '**/api/v1/lineage/scene?*'
+              '/api/v1/lineage/getLineage?*'
             );
             await page.getByTestId('update-btn').click();
             await lineageRes;
@@ -784,7 +784,7 @@ test.describe('Lineage Filters', () => {
       await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page.getByTestId('drop-down-menu').getByText(databaseName).click();
 
-      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
@@ -832,7 +832,7 @@ test.describe('Lineage Filters', () => {
         .getByText(databaseSchemaName)
         .click();
 
-      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
@@ -877,7 +877,7 @@ test.describe('Lineage Filters', () => {
       await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page.getByTestId('drop-down-menu').getByText(columnName).click();
 
-      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
       await page.getByTestId('update-btn').click();
       await lineageRes;
 

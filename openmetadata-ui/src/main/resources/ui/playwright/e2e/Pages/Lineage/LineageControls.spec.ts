@@ -26,7 +26,6 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   connectEdgeBetweenNodesViaAPI,
-  dismissLineageMapOnboarding,
   performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -176,31 +175,47 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await performZoomOut(page);
     });
 
-    test('Verify unsupported DQ overlay is hidden in scene mode', async ({
-      page,
-    }) => {
+    test('Verify DQ layer toggle activation', async ({ page }) => {
       await page.getByTestId('lineage-layer-btn').click();
 
-      await expect(
-        page.getByTestId('lineage-layer-observability-btn')
-      ).not.toBeVisible();
-      await expect(
-        page.getByTestId('lineage-layer-lens-service')
-      ).not.toBeVisible();
-      await expect(
-        page.getByTestId('lineage-layer-band-LAYER')
-      ).not.toBeVisible();
-      await expect(page.getByTestId('lineage-layer-band-ASSET')).toBeVisible();
-      await expect(page.getByTestId('lineage-layer-band-FIELD')).toBeVisible();
+      const observabilityBtn = page.getByTestId(
+        'lineage-layer-observability-btn'
+      );
+      await expect(observabilityBtn).toBeVisible();
+
+      await expect(observabilityBtn).not.toHaveAttribute('data-selected');
+
+      await observabilityBtn.click();
+      await page.keyboard.press('Escape');
+
+      await page.getByTestId('lineage-layer-btn').click();
+      await expect(observabilityBtn).toHaveAttribute('data-selected');
+    });
+
+    test('Verify DQ layer toggle off removes highlights', async ({ page }) => {
+      await page.getByTestId('lineage-layer-btn').click();
+
+      const observabilityBtn = page.getByTestId(
+        'lineage-layer-observability-btn'
+      );
+
+      await observabilityBtn.click();
+      await page.keyboard.press('Escape');
+
+      await page.getByTestId('lineage-layer-btn').click();
+      await expect(observabilityBtn).toHaveAttribute('data-selected');
+
+      await observabilityBtn.click();
+      await page.keyboard.press('Escape');
+
+      await page.getByTestId('lineage-layer-btn').click();
+      await expect(observabilityBtn).not.toHaveAttribute('data-selected');
     });
   });
 
   test.describe('Error Handling', () => {
     test('Verify invalid entity search handling', async ({ page }) => {
-      const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
       await sidebarClick(page, SidebarItem.LINEAGE);
-      expect((await sceneResponse).ok()).toBeTruthy();
-      await dismissLineageMapOnboarding(page);
 
       await waitForAllLoadersToDisappear(page);
 

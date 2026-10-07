@@ -190,7 +190,7 @@ test.describe('Data asset lineage', () => {
           await fitToScreen(page);
         }
 
-        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
         await page.reload({ waitUntil: 'domcontentloaded' });
         await lineageRes;
 
@@ -288,7 +288,7 @@ test.describe('Data asset lineage', () => {
       });
 
       await test.step('Remove lineage between nodes for the entity', async () => {
-        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
         await page.reload({ waitUntil: 'domcontentloaded' });
         await lineageRes;
         await waitForAllLoadersToDisappear(page);
@@ -463,9 +463,8 @@ test.describe('Column Level Lineage', () => {
 
       await test.step('Verify column lineage survives a reload', async () => {
         // Re-navigate instead of page.reload(): visitLineageTab waits on a
-        // fresh /lineage/scene response (which is what proves the edge
-        // persisted server-side) and handles the onboarding dialog and full
-        // screen view. fitToScreen matters because the canvas only draws
+        // fresh /lineage/getLineage response (which is what proves the edge
+        // persisted server-side) and opens the full screen view. fitToScreen matters because the canvas only draws
         // edges for nodes inside the viewport.
         await table.visitEntityPage(page);
         await visitLineageTab(page);
@@ -517,7 +516,9 @@ test.describe('Column Level Lineage', () => {
     }
   });
 
-  test('Verify band selection stays available to editors', async ({ page }) => {
+  test('Verify the column layer stays available to editors', async ({
+    page,
+  }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass();
 
@@ -527,25 +528,25 @@ test.describe('Column Level Lineage', () => {
       await table.visitEntityPage(page);
       await visitLineageTab(page);
 
-      const fieldBandBtn = page.getByTestId('lineage-layer-band-FIELD');
+      const columnLayerBtn = page.getByTestId('lineage-layer-column-btn');
       const layerControl = page.getByTestId('lineage-layer-btn');
 
-      await test.step('Verify the FIELD band is inactive initially', async () => {
+      await test.step('Verify the column layer is inactive initially', async () => {
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(fieldBandBtn).not.toHaveAttribute('data-selected');
+        await expect(columnLayerBtn).not.toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });
 
-      await test.step('Switch to the FIELD band without an edit mode', async () => {
+      await test.step('Turn on the column layer without an edit mode', async () => {
         await expect(layerControl).not.toHaveCSS('pointer-events', 'none');
 
         await activateColumnLayer(page);
 
-        await expect
-          .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
-          .toBe('FIELD');
+        await page.click('[data-testid="lineage-layer-btn"]');
+        await expect(columnLayerBtn).toHaveAttribute('data-selected');
+        await clickOutside(page);
         await expect(layerControl).not.toHaveCSS('pointer-events', 'none');
       });
     } finally {

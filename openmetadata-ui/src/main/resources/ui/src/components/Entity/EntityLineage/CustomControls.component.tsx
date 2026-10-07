@@ -533,13 +533,11 @@ const CustomControls: FC<{
         <div className="tw:flex tw:gap-4 tw:items-center">
           {tabsSection}
 
-          {activeTab === 'impact_analysis' && (
-            <LineageTimeFilter
-              endTime={timeFilter?.endTime}
-              startTime={timeFilter?.startTime}
-              onChange={setTimeFilter}
-            />
-          )}
+          <LineageTimeFilter
+            endTime={timeFilter?.endTime}
+            startTime={timeFilter?.startTime}
+            onChange={setTimeFilter}
+          />
 
           <ButtonUtility
             aria-label={exportButtonLabel}

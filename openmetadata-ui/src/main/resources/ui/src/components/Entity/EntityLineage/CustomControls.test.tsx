@@ -286,7 +286,7 @@ describe('CustomControls', () => {
     });
 
     expect(screen.getByTestId('lineage-search-select')).toBeInTheDocument();
-    expect(screen.queryByTestId('lineage-time-filter')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lineage-time-filter')).toBeInTheDocument();
   });
 
   it('shows SearchBar when in impact analysis mode', () => {
