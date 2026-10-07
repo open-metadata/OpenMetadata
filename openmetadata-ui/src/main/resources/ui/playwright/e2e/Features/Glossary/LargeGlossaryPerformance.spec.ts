@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage, waitForToastStackToClear } from '../../../utils/common';
@@ -263,7 +264,7 @@ test.describe('Large Glossary Performance Tests', () => {
 
       // Wait for the button text to change to "Expand All"
       await expect(expandAllButton).toContainText('Expand All', {
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
     }
 
@@ -278,7 +279,7 @@ test.describe('Large Glossary Performance Tests', () => {
     });
 
     // Wait for expansion to complete (max 30 seconds)
-    await expect(expandAllButton).toBeEnabled({ timeout: 30000 });
+    await expect(expandAllButton).toBeEnabled({ timeout: ACTION_TIMEOUT });
     await expect(expandAllButton).toContainText('Collapse All');
 
     // Verify some child terms are visible

@@ -12,6 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { getEncodedFqn } from './entity';
+import { waitForAggregation } from './searchAggregation';
 
 type EntityFields = {
   id: string;
@@ -358,16 +359,14 @@ export const fillRule = async (
       await expect
         .poll(
           async () => {
+            const aggregation = waitForAggregation(
+              page,
+              { value: searchData },
+              { timeout: 5_000 }
+            ).catch(() => null);
             await dropdownInput.fill('');
             await dropdownInput.fill(searchData);
-
-            await page
-              .waitForResponse(
-                (response) =>
-                  response.url().includes('/api/v1/search/aggregate'),
-                { timeout: 5_000 }
-              )
-              .catch(() => null);
+            await aggregation;
 
             return countMatchingOptions();
           },

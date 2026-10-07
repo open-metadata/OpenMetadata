@@ -51,6 +51,13 @@ export const EXTENSION_POINTS = {
   // User Profile Page
   PROFILE_TABS: 'profile.tabs',
 
+  // Notification settings landing — a downstream build contributes extra
+  // sections (e.g. weekly emails, templates) that render inside the profile
+  // Notification panel. OSS core shows only its built-in cards when nothing
+  // is contributed; the cards themselves come from the global-settings menu
+  // (see NotificationLanding), keyed by the settings option.
+  NOTIFICATION_LANDING_SECTIONS: 'notification.landing-sections',
+
   // Team Details Page
   TEAM_DETAILS_TABS: 'team-details.tabs',
 
@@ -187,6 +194,75 @@ export interface TabContribution {
 
   /** Whether the tab is hidden (alternative to condition) */
   isHidden?: boolean;
+}
+
+/**
+ * Props passed to a contributed `NotificationSectionContribution.component`.
+ *
+ * A section is expected to clear what it pushed via `onSetHeaderActions` /
+ * `onSetSubTitle` on unmount (e.g. an effect cleanup), the same way the native
+ * alert detail panel does — the panel does not reset this for you.
+ */
+export interface NotificationSectionProps {
+  /**
+   * Inject (or clear, with `null`) the action buttons shown on the right of the
+   * profile content header for this section — e.g. a "Create" button. Mirrors
+   * how the native alert detail panel populates the header.
+   */
+  onSetHeaderActions?: (actions: ReactNode | null) => void;
+
+  /** Navigate back to the Notification landing (e.g. after cancel). */
+  onClose?: () => void;
+
+  /**
+   * Hash path below the section root (`#notification/section/<key>/<subPath>`),
+   * e.g. `add` or `edit/<fqn>`. Empty at the section root.
+   */
+  subPath?: string;
+
+  /**
+   * Navigate within the section; omit `subPath` to return to its root.
+   * `params` become the hash query (e.g. a list's paging), so a section can
+   * carry its state through a sub-page and back; omitted, the query is cleared.
+   */
+  onNavigate?: (
+    subPath?: string,
+    params?: Record<string, string | undefined>
+  ) => void;
+
+  /**
+   * Name the current sub-page (e.g. "Add Template"). The header then shows it
+   * as the title and as a trailing breadcrumb after the section's own crumb,
+   * which becomes clickable back to the section root. `null` clears it.
+   */
+  onSetSubTitle?: (title: string | null) => void;
+}
+
+/**
+ * Notification landing section contribution
+ *
+ * A downstream build contributes a self-contained section component that the
+ * profile Notification panel renders as its own view. The card for it comes
+ * from the global-settings Notifications menu (matched by `key`), so the key
+ * MUST equal that menu option's suffix (e.g. `weekly-emails`).
+ *
+ * @example
+ * ```typescript
+ * registry.contribute<NotificationSectionContribution>({
+ *   extensionPointId: EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS,
+ *   data: { key: 'weekly-emails', component: WeeklyEmailSettingsPage },
+ * });
+ * ```
+ */
+export interface NotificationSectionContribution {
+  /** Settings option suffix this section renders for (e.g. `weekly-emails`). */
+  key: string;
+
+  /** Self-contained component rendered in the Notification panel body. */
+  component: ComponentType<NotificationSectionProps>;
+
+  /** Landing card icon; falls back to the settings menu item's icon. */
+  icon?: ComponentType<{ className?: string }>;
 }
 
 /**

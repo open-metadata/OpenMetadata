@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
@@ -53,11 +54,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      // Wait for dropdown to ensure options are visible
-      // Antd dropdowns often render in portal, so we look for text 'Yesterday' globaly or in dropdown
-      const yesterdayOption = page
-        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-        .getByText('Yesterday', { exact: true });
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       await expect(yesterdayOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -108,9 +108,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page
-        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-        .getByText('Yesterday', { exact: true });
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       await yesterdayOption.click();
 
       // Verify Time filter is active
@@ -184,9 +185,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page
-        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-        .getByText('Yesterday', { exact: true });
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       // Wait for API response
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
@@ -224,9 +226,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page
-        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-        .getByText('Yesterday', { exact: true });
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
       );
@@ -245,9 +248,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const last7DaysOption = page
-        .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-        .getByText('Last 7 days', { exact: true });
+      const last7DaysOption = page.getByRole('menuitem', {
+        name: 'Last 7 days',
+        exact: true,
+      });
       await expect(last7DaysOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -486,15 +490,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
       await pageSizeDropdown.click();
 
-      // Select 50
-
-      // Let's rely on text globally in the portal
-      const option50Global = page
-        .locator(
-          '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu-item'
-        )
-        .filter({ hasText: '50' })
-        .first();
+      const option50Global = page.getByRole('menuitem', { name: /^50 \// });
 
       if (await option50Global.isVisible()) {
         const auditLogResponse = page.waitForResponse(
@@ -775,7 +771,7 @@ test.describe(
       // job, so the download must not depend on it arriving.
       await test.step('Export completes and downloads the result', async () => {
         const download = await page.waitForEvent('download', {
-          timeout: 120_000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         expect(download.suggestedFilename()).toContain('audit_logs_');

@@ -12,23 +12,19 @@
  */
 
 import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
-import { DateRangeObject } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../hooks/authHooks';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
-import {
-  getEndOfDayInMillis,
-  getStartOfDayInMillis,
-} from '../../../../utils/date-time/DateTimeUtils';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-import InboxFilterBar from './components/InboxFilterBar';
 import {
+  DEFAULT_INBOX_DATE_PRESET,
+  formatInboxCount,
   getDefaultInboxDateRange,
+  getInboxDateRange,
+  InboxCount,
   InboxDateRange,
-  InboxScope,
+  INBOX_DATE_RANGE_OPTIONS,
 } from './inbox.utils';
 import InboxPage from './InboxPage';
 import ActivityTab from './tabs/ActivityTab';
@@ -39,24 +35,21 @@ export type InboxTabKey = 'activity' | 'tasks';
 
 const DEFAULT_TAB: InboxTabKey = 'activity';
 
-// A soft pill with no outline, brand-tinted on the selected tab. The tab's own
-// `badge` prop draws an outlined pill, so the count is rendered here instead.
-const renderTabLabel = (label: string, count: number) =>
+// The same outlined count badge as the Activity sub-tabs, brand on the selected
+// tab. The tab's own `badge` prop draws a pill, so the count is rendered here.
+const renderTabLabel = (label: string, count: InboxCount) =>
   function TabLabel({ isSelected }: { isSelected: boolean }) {
     return (
       <>
         {label}
-        {count > 0 && (
+        {count.total > 0 && (
           <Badge
-            bordered={false}
-            className={classNames(
-              'tw:px-2.5',
-              !isSelected && 'tw:bg-utility-gray-100'
-            )}
+            // Keeps a badged tab as tall as a bare one.
+            className="tw:-my-px"
             color={isSelected ? 'brand' : 'gray'}
             size="sm"
-            type="pill-color">
-            {count}
+            type="color">
+            {formatInboxCount(count)}
           </Badge>
         )}
       </>
@@ -70,56 +63,39 @@ const renderTabLabel = (label: string, count: number) =>
  */
 const InboxContent: React.FC = () => {
   const { t } = useTranslation();
-  const { isAdminUser } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   // Sub-tab derived from path so it's deep-linkable.
   const selectedTab: InboxTabKey =
     pathname === PERSONAL_SPACE_ROUTES.INBOX_TASKS ? 'tasks' : DEFAULT_TAB;
 
-  // Mirrors OSS ActivityFeedTab: activity is always the current user's own
-  // events; only the conversation fallback widens for admins (every
-  // conversation) vs. everyone else (owned/followed threads).
-  const effectiveScope: InboxScope = isAdminUser ? 'all' : 'me';
-
-  const defaultDateRange = useMemo(
-    () =>
-      ({ ...getDefaultInboxDateRange(), key: 'last30days' } as DateRangeObject),
-    []
-  );
-
   const storedDateRange = usePersonalSpaceStore((s) => s.inboxDateRange);
   const setInboxDateRange = usePersonalSpaceStore((s) => s.setInboxDateRange);
   const [dateRange, setDateRange] = useState<InboxDateRange>(
-    storedDateRange ?? defaultDateRange
+    () =>
+      storedDateRange ?? {
+        ...getDefaultInboxDateRange(),
+        key: DEFAULT_INBOX_DATE_PRESET,
+      }
   );
-  // Tracks whether the active window differs from the default 30-day range, so
-  // an empty Activity feed can show the "no results" vs first-run empty state.
-  // Compare on the preset key (not timestamps, which drift between mounts).
-  const [isDateFiltered, setIsDateFiltered] = useState<boolean>(
-    Boolean(storedDateRange) && storedDateRange?.key !== defaultDateRange.key
-  );
+  // A narrowed window turns an empty feed into "no activity in this period".
+  // Compared on the preset key: timestamps drift between mounts.
+  const isDateFiltered = dateRange.key !== DEFAULT_INBOX_DATE_PRESET;
 
   // Counts come from a shared fetch (not the mounted tab) so both tab badges
   // stay accurate when switching between Activity and Tasks.
-  const { activityCount, taskCount } = useInboxCounts(
-    effectiveScope,
-    dateRange
-  );
+  const { activityCount, taskCount } = useInboxCounts(dateRange);
 
-  const handleDateRangeChange = useCallback(
-    (value: DateRangeObject) => {
+  const handleDatePresetChange = useCallback(
+    (key: string) => {
       const nextRange: InboxDateRange = {
-        startTs: getStartOfDayInMillis(value.startTs),
-        endTs: getEndOfDayInMillis(value.endTs),
-        key: value.key,
-        title: value.title,
+        ...getInboxDateRange(INBOX_DATE_RANGE_OPTIONS[key].days),
+        key,
       };
       setDateRange(nextRange);
       setInboxDateRange(nextRange);
-      setIsDateFiltered(value.key !== defaultDateRange.key);
     },
-    [setInboxDateRange, defaultDateRange.key]
+    [setInboxDateRange]
   );
 
   const onTabChange = useCallback(
@@ -145,7 +121,10 @@ const InboxContent: React.FC = () => {
           {renderTabLabel(t('label.activity'), activityCount)}
         </Tabs.Item>
         <Tabs.Item id="tasks">
-          {renderTabLabel(t('label.triage'), taskCount)}
+          {renderTabLabel(t('label.triage'), {
+            total: taskCount,
+            isCapped: false,
+          })}
         </Tabs.Item>
       </Tabs.List>
     </Tabs>
@@ -156,15 +135,10 @@ const InboxContent: React.FC = () => {
       <TasksTab />
     ) : (
       <Box className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col" direction="col">
-        <InboxFilterBar
-          dateRange={dateRange}
-          defaultDateRange={defaultDateRange}
-          onDateRangeChange={handleDateRangeChange}
-        />
         <ActivityTab
           dateRange={dateRange}
           isFiltered={isDateFiltered}
-          scope={effectiveScope}
+          onDatePresetChange={handleDatePresetChange}
         />
       </Box>
     );
