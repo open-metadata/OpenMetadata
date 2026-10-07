@@ -36,6 +36,7 @@ import {
   visitGlossaryPage,
   waitForAntdModalToSettle,
 } from '../../utils/common';
+import { openPlaceholderWidgetPicker } from '../../utils/customizeDetails';
 import {
   selectDataProduct,
   selectDomain,
@@ -45,6 +46,10 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
+import {
+  clickUntilVisible,
+  waitForResponseWithStatus,
+} from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 test.describe(
@@ -340,8 +345,11 @@ test.describe(
       await adminUser.signIn(adminPage);
       await redirectToHomePage(adminPage);
 
-      const personaListResponse =
-        adminPage.waitForResponse('/api/v1/personas?*');
+      const personaListResponse = waitForResponseWithStatus(
+        adminPage,
+        (response) => response.url().includes('/api/v1/personas?'),
+        200
+      );
       await settingClick(adminPage, GlobalSettingOptions.PERSONA);
       await personaListResponse;
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
@@ -366,20 +374,8 @@ test.describe(
 
       await expect(adminPage.getByTestId('tab-Description Tab')).toBeVisible();
 
-      // Wait for dialog to close
-      await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
-      await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
-
       // Add Description widget to custom tab
-      const addWidgetButton = adminPage
-        .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-        .getByTestId('add-widget-button');
-      await addWidgetButton.waitFor({ state: 'visible' });
-      await expect(addWidgetButton).toBeEnabled();
-      await addWidgetButton.click();
-      await adminPage
-        .getByTestId('widget-info-tabs')
-        .waitFor({ state: 'visible' });
+      await openPlaceholderWidgetPicker(adminPage);
 
       await adminPage
         .getByTestId('add-widget-modal')
@@ -420,12 +416,14 @@ test.describe(
         .locator('visible=true');
       await expect(descriptionWidget).toBeVisible();
 
-      // Widget truncates long content behind a "more" button
-      const moreButton = descriptionWidget.getByRole('button', {
-        name: 'more',
-      });
-      await expect(moreButton).toBeVisible();
-      await moreButton.click();
+      // Widget truncates long content behind a "more" button. The widget is
+      // still growing (lazy editor content, grid height/width re-layout) when
+      // the button first shows, so a click can land on its old position and
+      // be swallowed; retry until the expanded state is rendered.
+      await clickUntilVisible(
+        descriptionWidget.getByTestId('read-more-button'),
+        descriptionWidget.getByTestId('read-less-button')
+      );
 
       await verifyEndOfDescriptionReachable(descriptionWidget, userPage);
 

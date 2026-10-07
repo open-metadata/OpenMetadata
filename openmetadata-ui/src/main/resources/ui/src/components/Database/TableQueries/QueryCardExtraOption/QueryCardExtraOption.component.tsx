@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, MenuProps, Space, Tooltip } from 'antd';
+import {
+  Badge,
+  ButtonUtility,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
+import { Button, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -23,7 +27,6 @@ import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../../assets/svg/thumbs-up-outline.svg';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -88,30 +91,22 @@ const QueryCardExtraOption = ({
   }, [query]);
 
   const dropdownItems = useMemo(() => {
-    const items: MenuProps['items'] = [
+    return [
       {
         key: 'edit-query',
         label: t('label.edit'),
-        icon: (
-          <EditIcon height={16} opacity={canEditQuery ? 1 : 0.5} width={16} />
-        ),
+        icon: EditIcon,
         disabled: !canEditQuery,
-        onClick: () => onEditClick(true),
-        title: canEditQuery ? undefined : t(NO_PERMISSION_FOR_ACTION),
+        onAction: () => onEditClick(true),
       },
       {
         key: 'delete-query',
         label: t('label.delete'),
-        icon: (
-          <DeleteIcon height={16} opacity={canDelete ? 1 : 0.5} width={16} />
-        ),
+        icon: DeleteIcon,
         disabled: !canDelete,
-        onClick: () => setShowDeleteModal(true),
-        title: canDelete ? undefined : t(NO_PERMISSION_FOR_ACTION),
+        onAction: () => setShowDeleteModal(true),
       },
     ];
-
-    return items;
   }, [canEditQuery, canDelete]);
 
   const queryLine = useMemo(() => {
@@ -210,30 +205,39 @@ const QueryCardExtraOption = ({
         </Button>
       </Tooltip>
 
-      <Dropdown
-        destroyPopupOnHide
-        arrow={{ pointAtCenter: true }}
-        menu={{
-          items: dropdownItems,
-          style: {
-            minWidth: '120px',
-          },
-        }}
-        placement="bottomRight"
-        trigger={['click']}>
-        <Tooltip
-          title={t('label.manage-entity', {
+      <Dropdown.Root>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="query-btn"
+          icon={IconDropdown}
+          size="xs"
+          tooltip={t('label.manage-entity', {
             entity: t('label.query'),
-          })}>
-          <Button
-            className="flex-center button-size"
-            data-testid="query-btn"
-            icon={<IconDropdown />}
-            size="small"
-            type="text"
-          />
-        </Tooltip>
-      </Dropdown>
+          })}
+        />
+        <Dropdown.Popover className="tw:w-auto tw:min-w-30">
+          <Dropdown.Menu
+            aria-label={t('label.manage-entity', {
+              entity: t('label.query'),
+            })}
+            disabledKeys={dropdownItems
+              .filter((item) => item.disabled)
+              .map((item) => item.key)}
+            selectionMode="none">
+            {dropdownItems.map((item) => (
+              <Dropdown.Item
+                data-testid={item.key}
+                icon={item.icon}
+                id={item.key}
+                key={item.key}
+                textValue={item.label}
+                onAction={item.onAction}>
+                {item.label}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
       <ConfirmationModal
         bodyText={t('message.delete-entity-permanently', {
           entityType: t('label.query'),

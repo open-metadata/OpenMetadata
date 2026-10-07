@@ -12,6 +12,7 @@
  */
 
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import {
@@ -86,7 +87,7 @@ test.describe('App Runs History logs viewer (mocked external app)', () => {
 
     await test.step('Open the logs modal from the run row', async () => {
       const recentRunsTab = page.getByRole('tab', { name: /recent run/i });
-      await expect(recentRunsTab).toBeVisible({ timeout: 30000 });
+      await expect(recentRunsTab).toBeVisible({ timeout: ACTION_TIMEOUT });
       await recentRunsTab.click();
 
       await expect(

@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { SelectablePopoverProps } from '../../common/AnchoredPopover/AnchoredPopover';
 
 export interface DataProductsSelectListV1Props {
   selectedDataProducts?: DataProduct[];
   onUpdate: (dataProducts: DataProduct[]) => Promise<void>;
   children: React.ReactNode;
-  popoverProps?: {
-    placement?: 'bottomLeft' | 'bottomRight';
-    open?: boolean;
-    onOpenChange?: (open: boolean) => void;
-  };
+  popoverProps?: SelectablePopoverProps;
   listHeight?: number;
   fetchOptions: (
     searchText: string,

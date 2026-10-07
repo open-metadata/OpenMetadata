@@ -1,0 +1,85 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Clock,
+  ShieldTick,
+  User01,
+  Users01,
+} from '@openmetadata/ui-core-components/icons';
+
+import type {
+  MembersLandingCard,
+  StageState,
+  TimeWindowOption,
+} from './Members.types';
+
+export const LANDING_CARDS: MembersLandingCard[] = [
+  {
+    id: 'teams',
+    icon: Users01,
+    titleKey: 'label.team-plural',
+    descriptionKey: 'message.members-teams-description',
+    view: { type: 'teams' },
+  },
+  {
+    id: 'users',
+    icon: User01,
+    titleKey: 'label.user-plural',
+    descriptionKey: 'message.members-users-description',
+    view: { type: 'users' },
+  },
+  {
+    id: 'admins',
+    icon: ShieldTick,
+    titleKey: 'label.admin-plural',
+    descriptionKey: 'message.members-admins-description',
+    view: { type: 'admins' },
+  },
+  {
+    id: 'online-users',
+    icon: Clock,
+    titleKey: 'label.online-user-plural',
+    descriptionKey: 'message.members-online-users-description',
+    view: { type: 'online-users' },
+  },
+];
+
+export const TIME_WINDOW_OPTIONS: TimeWindowOption[] = [
+  { value: 5, labelKey: 'label.last-n-minutes', labelParams: { n: 5 } },
+  { value: 60, labelKey: 'label.last-hour' },
+  { value: 1440, labelKey: 'label.last-24-hours' },
+  { value: 10080, labelKey: 'label.last-7-days' },
+  { value: 43200, labelKey: 'label.last-30-days' },
+  { value: 0, labelKey: 'label.all-time' },
+];
+
+export const DEFAULT_TIME_WINDOW = 1440;
+
+// Import-result CSV column keys folded into the status badge, plus the empty-cell
+// placeholder used by the result table.
+export const IMPORT_RESULT_STATUS_KEY = 'status';
+export const IMPORT_RESULT_DETAILS_KEY = 'details';
+export const IMPORT_RESULT_EMPTY_PLACEHOLDER = '--';
+
+export const WIDGET_CLASS =
+  'tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3';
+
+// Status-chip utility pairs (bg-utility-{c}-50 + text-utility-{c}-700) — these flip
+// together for dark mode; the plain bg-/fg- status tokens collapse to adjacent shades
+// in dark (e.g. bg-success-secondary vs fg-success-primary) and hide the icon.
+export const STAGE_ICON_CLASS: Record<StageState, string> = {
+  done: 'tw:bg-utility-success-50 tw:text-utility-success-700',
+  active: 'tw:bg-utility-brand-50 tw:text-utility-brand-700',
+  pending: 'tw:bg-tertiary tw:text-fg-quaternary',
+};

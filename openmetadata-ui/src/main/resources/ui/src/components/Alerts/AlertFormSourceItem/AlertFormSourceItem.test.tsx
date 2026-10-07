@@ -117,10 +117,16 @@ describe('AlertFormSourceItem', () => {
     expect(screen.getByTestId('existing-filter')).toBeVisible();
     expect(screen.getByTestId('existing-destination')).toBeVisible();
 
+    // The source field holds several sources, so switching takes the old one away first.
+    const [removeAll] = within(
+      screen.getByTestId('source-select')
+    ).getAllByRole('button');
+    await user.click(removeAll);
     await user.click(
       within(screen.getByTestId('source-select')).getByRole('combobox')
     );
     await user.click(screen.getByTestId('dashboard-option'));
+    await user.keyboard('{Escape}');
 
     await waitFor(() =>
       expect(screen.queryByTestId('existing-filter')).not.toBeInTheDocument()

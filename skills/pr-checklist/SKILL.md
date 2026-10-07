@@ -83,13 +83,36 @@ mvn jacoco:report -pl openmetadata-service
 mvn test -pl openmetadata-integration-tests -Dtest=<NewIT>
 ```
 
-**Ingestion (Python):**
+**Ingestion (Python):** PR checks run only the unit tests (`py-tests` → "Unit Tests & Static
+Checks"); `tests/integration/` runs **only in the merge queue**. So if the diff touches `ingestion/`,
+you MUST run every unit and integration test that covers a changed file locally before opening the PR.
+An integration break you skip here first shows up as a merge-queue ejection.
+
+List those tests: the changed test files, plus every test that imports a changed `src/metadata` module:
 ```bash
-source env/bin/activate
 cd ingestion
-make unit_ingestion_dev_env
-python -m pytest tests/unit/<changed_path>/ --cov=metadata.<module> --cov-report=term-missing
+changed=$(git diff --name-only --diff-filter=d origin/main...HEAD -- . | sed 's|^ingestion/||')
+{
+  grep -E '^tests/(unit|integration)/.*test_[^/]*\.py$' <<<"$changed"
+  for f in $(grep -E '^src/metadata/.*\.py$' <<<"$changed"); do
+    mod=$(sed -E 's|^src/||; s|/__init__\.py$||; s|\.py$||; s|/|.|g' <<<"$f")
+    grep -rlE --include='*.py' "${mod//./\\.}([^a-zA-Z0-9_]|$)" tests/unit tests/integration
+  done
+} | sort -u > /tmp/affected-tests.txt
 ```
+This finds `from metadata.x.y import z`. It misses `from metadata.x import y`, so also add the
+connector's `tests/integration/<connector>/` directory when you change a connector.
+
+Run them. Integration tests need a local server (`./docker/run_local_docker.sh -m no-ui -i false`) and Docker, for testcontainers:
+```bash
+source ../env/bin/activate
+grep '^tests/unit/' /tmp/affected-tests.txt | xargs -r python -m pytest -n auto --cov=metadata --cov-report=term-missing
+grep '^tests/integration/' /tmp/affected-tests.txt | xargs -r python -m pytest
+```
+Put the commands you ran and their pass/fail counts in the PR body, under "Unit tests" and
+"Ingestion integration tests". If the list is very large (you changed a shared module like
+`metadata/utils/`), run the full unit suite with `nox --no-venv -s unit-tests`. Then run the
+integration directories for the connectors you touched, and say in the PR body that you ran a subset.
 
 **Frontend unit tests (Jest):**
 ```bash
@@ -165,6 +188,7 @@ Refuse to open the PR if any of these are missing — surface them to the user i
 - [ ] Tests section lists actual files and coverage numbers (not placeholders)
 - [ ] UI changes have a screen recording attached or marked as TODO with the PR opened as draft
 - [ ] Manual test steps are concrete and reproducible
+- [ ] `ingestion/` changes: affected unit **and** integration tests were run locally (Step 3), with results in the PR body
 - [ ] Cross-layer checks for the change type pass (`make generate`, `mvn spotless:apply`, `yarn lint`, etc.)
 
 ## Common Gaps to Watch For

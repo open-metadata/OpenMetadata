@@ -20,6 +20,7 @@ from enum import Enum
 
 from pydantic import ValidationError
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data import container
 from metadata.generated.schema.entity.data.container import (
@@ -44,7 +45,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.custom_pydantic import format_validation_error
@@ -76,7 +76,6 @@ from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.s3_utils import list_s3_objects
 from metadata.utils.storage_utils import COLD_STORAGE_CLASSES, is_excluded_artifact
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 
 logger = ingestion_logger()
 
@@ -195,48 +194,29 @@ class S3Source(StorageServiceSource):
                 bucket_name = parts[0]
         return bucket_name
 
-    def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
-        """
-        Pick up the tags registered in the context
-        searching by entity FQN
-        """
-        try:
-            tag_labels = []
-            for tag_and_category in self.context.get().tags or []:
-                if tag_and_category.fqn and tag_and_category.fqn.root == entity_fqn:
-                    tag_label = get_tag_label(
-                        metadata=self.metadata,
-                        tag_name=tag_and_category.tag_request.name.root,
-                        classification_name=tag_and_category.classification_request.name.root,
-                    )
-                    if tag_label:
-                        tag_labels.append(tag_label)
-            return tag_labels or None  # noqa: TRY300
-        except Exception as exc:
-            logger.debug(f"Failed to ingest tags due to: {exc}")
-            logger.debug(traceback.format_exc())
-
-        return None
-
     def yield_container_tags(
         self, container_details: S3ContainerDetails
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each container
         """
+        if not self.source_config.includeTags:
+            return
         try:
             if container_details.container_fqn:
                 tags_list = self._fetch_s3_tags(container_details)
                 for tag in tags_list:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=FullyQualifiedEntityName(container_details.container_fqn),
-                        tags=[tag.Value],
-                        classification_name=tag.Key,
-                        tag_description="S3 TAG VALUE",
-                        classification_description="S3 TAG KEY",
+                    yield from self.register_tag(
+                        entity_fqn=container_details.container_fqn,
+                        definition=TagDefinition(
+                            classification_name=tag.Key,
+                            tag_name=tag.Value,
+                            tag_description="S3 TAG VALUE",
+                            classification_description="S3 TAG KEY",
+                        ),
                     )
         except Exception as exc:
-            logger.debug(f"Failed to ingest tags due to: {exc}")
+            logger.debug("Failed to ingest tags due to: %s", exc)
             logger.debug(traceback.format_exc())
 
     def _fetch_s3_tags(self, container_details: S3ContainerDetails) -> list[S3Tag]:

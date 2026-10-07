@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { clickOutside, redirectToExplorePage } from './common';
 import {
   applyGlossaryPicker,
@@ -168,7 +169,7 @@ export const openEntitySummaryPanel = async ({
       // callback that hangs until the whole test times out.
       await page.waitForURL(/[?&]search=[^&]+/, {
         waitUntil: 'domcontentloaded',
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       });
 
       const tab = page

@@ -231,7 +231,8 @@ describe('AppDetails component', () => {
       GlobalSettingOptions.APPLICATIONS
     );
 
-    // disable app
+    // disable app; the menu closes after each action, so reopen it
+    fireEvent.click(screen.getByTestId('manage-button'));
     ConfirmAction('label.disable');
 
     expect(mockUninstallApp).toHaveBeenCalledWith(expect.anything(), false);

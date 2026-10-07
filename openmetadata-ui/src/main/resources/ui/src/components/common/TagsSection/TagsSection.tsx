@@ -154,13 +154,12 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         hasPermission={hasPermission}
         popoverProps={{
           // The anchor is the full-width `.tag-selector-display` div below, not the pencil, so a
-          // centered placement ('top' → align points bc/tc) pushes the popover to the middle of a
-          // wide container. `bottomLeft` pins it to the anchor's left edge, matching how
+          // centered placement ('top') pushes the popover to the middle of a
+          // wide container. `bottom start` pins it to the anchor's left edge, matching how
           // GlossaryTermsSection anchors its own popover.
-          placement: 'bottomLeft',
+          placement: 'bottom start',
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
-          overlayClassName: 'tag-select-popover',
         }}
         selectedTags={editingTags}
         onCancel={() => {

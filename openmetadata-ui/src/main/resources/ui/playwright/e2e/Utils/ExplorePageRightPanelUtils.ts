@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 
@@ -61,7 +62,7 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
     await waitForAllLoadersToDisappear(page);
   }
 
-  await searchBar.waitFor({ state: 'visible', timeout: 30000 });
+  await searchBar.waitFor({ state: 'visible', timeout: ACTION_TIMEOUT });
   await searchBar.scrollIntoViewIfNeeded();
 
   const searchResponse = page.waitForResponse(
