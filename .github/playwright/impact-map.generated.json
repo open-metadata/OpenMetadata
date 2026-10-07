@@ -7449,14 +7449,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Modals/AnnouncementModal/AnnouncementForm.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.component.tsx"
       ],
       "specs": [
@@ -8386,14 +8378,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/Services.tsx"
       ],
       "specs": [
@@ -9171,7 +9155,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"
       ]
     },
@@ -9683,26 +9666,9 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/Table/DraggableMenu/DraggableMenuItem.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/Table/DraggableMenu/DraggableMenuItemV2.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/Table/TableV2.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts"
       ]
@@ -12343,7 +12309,6 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/ServiceMainTabContent.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/MetricAssets.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/SchemaSearch.spec.ts",
@@ -12355,7 +12320,6 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ServiceVersionPage/ServiceVersionMainTabContent.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/MetricAssets.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/SchemaSearch.spec.ts",
@@ -12595,14 +12559,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/CSV/CSVUtilsClassBase.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/utils/ClassificationUtils.tsx"
       ],
       "specs": [
@@ -12633,7 +12589,6 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityBulkEdit/EntityBulkEditUtils.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts"
