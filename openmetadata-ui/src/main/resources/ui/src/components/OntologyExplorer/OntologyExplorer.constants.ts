@@ -368,9 +368,6 @@ const BORDER_PRIMARY_FALLBACK = '#D5D7DA';
 const BORDER_SECONDARY_TOKEN = 'var(--tw-color-border-secondary)';
 
 export const EDGE_STROKE_COLOR = BORDER_PRIMARY_TOKEN;
-// SVG presentation attributes do not resolve CSS variables, so DOM-drawn
-// edges resolve the token first and fall back to this.
-export const EDGE_STROKE_COLOR_FALLBACK = BORDER_PRIMARY_FALLBACK;
 export const DATA_MODE_ASSET_EDGE_STROKE_COLOR = BORDER_SECONDARY_TOKEN;
 export const DIMMED_NODE_OPACITY = 0.32;
 export const DIMMED_EDGE_OPACITY = 0.12;
