@@ -328,6 +328,66 @@ class TestAthenaService(unittest.TestCase):
             TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.Iceberg)
         ]
 
+    def test_query_table_names_and_types_delta(self):
+        # Parameters captured byte-for-byte from a real AWS Glue get_table response, written by
+        # the Athena CREATE EXTERNAL TABLE ... TBLPROPERTIES ('table_type'='DELTA') DDL against a
+        # live delta-rs table (account 654654299202, ap-south-1). Athena writes table_type in
+        # lowercase ("delta") and also spark.sql.sources.provider=delta, so the match must be
+        # case-insensitive across both keys.
+        mock_glue_client = MagicMock()
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [
+            {
+                "TableList": [
+                    {
+                        "Name": MOCK_TABLE_NAME,
+                        "Parameters": {
+                            "EXTERNAL": "TRUE",
+                            "spark.sql.sources.schema.part.0": (
+                                '{"type":"struct","fields":[{"name":"id","type":"long",'
+                                '"nullable":true,"metadata":{}},{"name":"name","type":"string",'
+                                '"nullable":true,"metadata":{}}]}'
+                            ),
+                            "spark.sql.partitionProvider": "catalog",
+                            "spark.sql.sources.schema.numParts": "1",
+                            "spark.sql.sources.provider": "delta",
+                            "delta.lastUpdateVersion": "0",
+                            "delta.lastCommitTimestamp": "1791387883367",
+                            "table_type": "delta",
+                        },
+                    }
+                ]
+            }
+        ]
+        mock_glue_client.get_paginator.return_value = mock_paginator
+        self.athena_source.glue_client = mock_glue_client
+        assert self.athena_source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
+            TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.DeltaLake)
+        ]
+
+    def test_query_table_names_and_types_iceberg_wins_over_delta(self):
+        # A UniForm table can carry both markers. The Iceberg check runs first, so it stays Iceberg.
+        mock_glue_client = MagicMock()
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [
+            {
+                "TableList": [
+                    {
+                        "Name": MOCK_TABLE_NAME,
+                        "Parameters": {
+                            "table_type": "ICEBERG",
+                            "spark.sql.sources.provider": "delta",
+                        },
+                    }
+                ]
+            }
+        ]
+        mock_glue_client.get_paginator.return_value = mock_paginator
+        self.athena_source.glue_client = mock_glue_client
+        assert self.athena_source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
+            TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.Iceberg)
+        ]
+
     def test_yield_database(self):
         assert list(self.athena_source.yield_database(database_name=MOCK_DATABASE.name.root)) == EXPECTED_DATABASES
 

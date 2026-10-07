@@ -153,9 +153,17 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
                 for page in paginator.paginate(**paginate_params):
                     for table in page.get("TableList", []):
                         params = table.get("Parameters", {})
-                        table_type = (
-                            TableType.Iceberg if params.get("table_type") == ICEBERG_TABLE_TYPE else TableType.External
-                        )
+                        if params.get("table_type") == ICEBERG_TABLE_TYPE:
+                            # iceberg tables carry table_type=ICEBERG in the Glue DDL
+                            # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
+                            table_type = TableType.Iceberg
+                        elif self._is_delta_table(params):
+                            # Kept after the Iceberg check so a UniForm table carrying both markers
+                            # stays Iceberg. Athena DDL writes table_type=DELTA, Spark and the crawler
+                            # write spark.sql.sources.provider=delta; producers disagree on case.
+                            table_type = TableType.DeltaLake
+                        else:
+                            table_type = TableType.External
                         results.append(TableNameAndType(name=table["Name"], type_=table_type))
                 return results  # noqa: TRY300
             except Exception as exc:
@@ -165,6 +173,19 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
             TableNameAndType(name=name, type_=TableType.External)
             for name in self.inspector.get_table_names(schema_name) or []
         ]
+
+    @staticmethod
+    def _is_delta_table(parameters: dict | None) -> bool:
+        """A Delta table is marked by table_type=DELTA (Athena DDL) or
+        spark.sql.sources.provider=delta (Spark/crawler). Producers disagree on case, so both
+        keys are compared case-insensitively. Mirrors GlueSource._is_delta_table but reads the
+        raw boto3 get_tables Parameters dict rather than the Glue TableParameters model."""
+        if not parameters:
+            return False
+        return any(
+            isinstance(parameters.get(key), str) and parameters[key].lower() == "delta"
+            for key in ("table_type", "spark.sql.sources.provider")
+        )
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
