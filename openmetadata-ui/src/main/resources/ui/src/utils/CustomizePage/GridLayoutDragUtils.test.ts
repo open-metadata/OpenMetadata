@@ -18,8 +18,12 @@ import {
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import type { WidgetConfig } from '../../interface/customization.interface';
 import {
+  FULL_PANEL_WIDTH,
   getColumnLockedDragHandlers,
+  getGridRowAt,
+  getLeftPanelFlowLayout,
   getLeftPanelHeight,
+  HALF_PANEL_WIDTH,
   placeWidgetBesideLeftPanel,
   placeWidgetInLeftPanel,
 } from './GridLayoutDragUtils';
@@ -99,47 +103,91 @@ describe('getColumnLockedDragHandlers', () => {
   });
 });
 
+// Glossary term Overview defaults: stored uncompacted, Tags past the column.
+const buildGlossaryTermChildren = (): Layout[] => [
+  { i: 'description', x: 0, y: 0, w: 1, h: 2 },
+  { i: 'synonyms', x: 0, y: 1, w: 0.5, h: 2 },
+  { i: 'references', x: 0, y: 2, w: 0.5, h: 2 },
+  { i: 'tags', x: 3, y: 2, w: 0.5, h: 2 },
+  { i: 'relatedTerms', x: 0, y: 3, w: 1, h: 2 },
+];
+
+const toPositions = (children: Layout[] = []) =>
+  children.map(({ i, x, y, w }) => ({ i, x, y, w }));
+
+describe('getLeftPanelFlowLayout', () => {
+  it('lays stored widgets out the way view mode draws them', () => {
+    expect(
+      toPositions(getLeftPanelFlowLayout(buildGlossaryTermChildren()))
+    ).toEqual([
+      { i: 'description', x: 0, y: 0, w: 1 },
+      { i: 'synonyms', x: 0, y: 2, w: 0.5 },
+      { i: 'references', x: 0.5, y: 2, w: 0.5 },
+      { i: 'tags', x: 0, y: 4, w: 0.5 },
+      { i: 'relatedTerms', x: 0, y: 6, w: 1 },
+    ]);
+  });
+
+  it('closes a gap view mode cannot draw', () => {
+    const children: Layout[] = [
+      { i: 'description', x: 0, y: 0, w: 1, h: 2 },
+      { i: 'domain', x: 0.5, y: 2, w: 0.5, h: 2 },
+    ];
+
+    expect(toPositions(getLeftPanelFlowLayout(children))).toEqual([
+      { i: 'description', x: 0, y: 0, w: 1 },
+      { i: 'domain', x: 0, y: 2, w: 0.5 },
+    ]);
+  });
+
+  it('keeps widths that add up to the panel on one line', () => {
+    const children: Layout[] = [
+      { i: 'wide', x: 0, y: 0, w: 4 / 6, h: 2 },
+      { i: 'narrow', x: 4 / 6, y: 0, w: 2 / 6, h: 1 },
+      { i: 'next', x: 0, y: 2, w: 1, h: 1 },
+    ];
+
+    expect(
+      getLeftPanelFlowLayout(children).map(({ i, y }) => ({ i, y }))
+    ).toEqual([
+      { i: 'wide', y: 0 },
+      { i: 'narrow', y: 0 },
+      { i: 'next', y: 2 },
+    ]);
+  });
+
+  it('does not mutate the stored children', () => {
+    const children = buildGlossaryTermChildren();
+
+    getLeftPanelFlowLayout(children);
+
+    expect(children[3]).toMatchObject({ x: 3, y: 2 });
+  });
+});
+
 describe('getLeftPanelHeight', () => {
   const toPixels = (rows: number) =>
     rows * GRID_ROW_HEIGHT + (rows - 1) * GRID_VERTICAL_MARGIN;
 
-  it('fits the nested grid as react-grid-layout lays it out', () => {
-    // Glossary term Overview defaults: stored uncompacted, Tags past the
-    // single column. Laid out, they need 8 rows.
-    const children: Layout[] = [
-      { i: 'description', x: 0, y: 0, w: 1, h: 2 },
-      { i: 'synonyms', x: 0, y: 1, w: 0.5, h: 2 },
-      { i: 'references', x: 0, y: 2, w: 0.5, h: 2 },
-      { i: 'tags', x: 3, y: 2, w: 0.5, h: 2 },
-      { i: 'relatedTerms', x: 0, y: 3, w: 1, h: 2 },
-    ];
+  it('fits the nested grid as the edit grid lays it out', () => {
+    // Laid out, the glossary term defaults need 8 rows.
     const nestedGridPixels = toPixels(8) + 2 * GRID_VERTICAL_MARGIN;
 
-    expect(toPixels(getLeftPanelHeight(children))).toBeCloseTo(
-      nestedGridPixels
-    );
-  });
-
-  it('does not mutate the stored children', () => {
-    const children: Layout[] = [{ i: 'tags', x: 3, y: 2, w: 0.5, h: 2 }];
-
-    getLeftPanelHeight(children);
-
-    expect(children[0]).toMatchObject({ x: 3, y: 2 });
+    expect(
+      toPixels(getLeftPanelHeight(buildGlossaryTermChildren()))
+    ).toBeCloseTo(nestedGridPixels);
   });
 });
 
-// Lays a nested left-panel grid out the way react-grid-layout renders it:
-// pulled back inside the column, then compacted upward.
-const layOutPanel = (children: WidgetConfig[] = []) =>
-  utils.compact(
-    children.map((child) => ({
-      ...child,
-      x: Math.min(child.x, 1 - child.w),
-    })),
-    'vertical',
-    1
-  );
+describe('getGridRowAt', () => {
+  const rowPitch = GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN;
+
+  it('returns the row an offset falls in, never above the first', () => {
+    expect(getGridRowAt(-10)).toBe(0);
+    expect(getGridRowAt(rowPitch - 1)).toBe(0);
+    expect(getGridRowAt(rowPitch)).toBe(1);
+  });
+});
 
 const buildTabLayout = (): WidgetConfig[] => [
   {
@@ -159,64 +207,76 @@ const buildTabLayout = (): WidgetConfig[] => [
 ];
 
 const getPanelChildren = (layout: WidgetConfig[]) =>
-  layOutPanel(
+  toPositions(
     layout.find(({ i }) => i === DetailPageWidgetKeys.LEFT_PANEL)?.children
-  ).map(({ i, x, y, w }) => ({ i, x, y, w }));
+  );
 
 describe('placeWidgetInLeftPanel', () => {
   const [, domain] = buildTabLayout();
 
   it('keeps a side widget square, in the half beside its neighbour', () => {
-    const placed = placeWidgetInLeftPanel(
-      buildTabLayout(),
-      domain,
-      2,
-      0.5,
-      COLS
-    );
+    const placed = placeWidgetInLeftPanel(buildTabLayout(), domain, {
+      row: 2,
+      x: HALF_PANEL_WIDTH,
+      w: HALF_PANEL_WIDTH,
+    });
 
     expect(placed.map(({ i }) => i)).not.toContain('domain');
-    expect(getPanelChildren(placed)).toEqual(
-      expect.arrayContaining([
-        { i: 'description', x: 0, y: 0, w: 1 },
-        { i: 'synonyms', x: 0, y: 2, w: 0.5 },
-        { i: 'domain', x: 0.5, y: 2, w: 0.5 },
-      ])
-    );
+    expect(getPanelChildren(placed)).toEqual([
+      { i: 'description', x: 0, y: 0, w: 1 },
+      { i: 'synonyms', x: 0, y: 2, w: 0.5 },
+      { i: 'domain', x: 0.5, y: 2, w: 0.5 },
+    ]);
   });
 
-  it('pushes the widget already in that half below it', () => {
-    const placed = placeWidgetInLeftPanel(buildTabLayout(), domain, 2, 0, COLS);
+  it('takes the slot it lands on and moves that widget along', () => {
+    const placed = placeWidgetInLeftPanel(buildTabLayout(), domain, {
+      row: 2,
+      x: 0,
+      w: HALF_PANEL_WIDTH,
+    });
 
-    expect(getPanelChildren(placed)).toEqual(
-      expect.arrayContaining([
-        { i: 'domain', x: 0, y: 2, w: 0.5 },
-        { i: 'synonyms', x: 0, y: 4, w: 0.5 },
-      ])
-    );
+    expect(getPanelChildren(placed)).toEqual([
+      { i: 'description', x: 0, y: 0, w: 1 },
+      { i: 'domain', x: 0, y: 2, w: 0.5 },
+      { i: 'synonyms', x: 0.5, y: 2, w: 0.5 },
+    ]);
   });
 
-  it('spans the panel with a widget wider than the side column', () => {
-    const placed = placeWidgetInLeftPanel(
-      buildTabLayout(),
-      { ...domain, w: 3 },
-      1,
-      0.5,
-      COLS
-    );
+  it('spans the panel when placed full width', () => {
+    const placed = placeWidgetInLeftPanel(buildTabLayout(), domain, {
+      row: 1,
+      x: HALF_PANEL_WIDTH,
+      w: FULL_PANEL_WIDTH,
+    });
 
-    expect(getPanelChildren(placed)).toEqual(
-      expect.arrayContaining([
-        { i: 'description', x: 0, y: 0, w: 1 },
-        { i: 'domain', x: 0, y: 2, w: 1 },
-        { i: 'synonyms', x: 0, y: 4, w: 0.5 },
-      ])
-    );
+    expect(getPanelChildren(placed)).toEqual([
+      { i: 'description', x: 0, y: 0, w: 1 },
+      { i: 'domain', x: 0, y: 2, w: 1 },
+      { i: 'synonyms', x: 0, y: 4, w: 0.5 },
+    ]);
   });
 
-  it('lands in the drawn slot when the stored positions were never compacted', () => {
-    // Stored as the defaults are: Tags past the single column and every widget
-    // a row lower than drawn. Drawn: Synonyms | Tags, then References | (empty).
+  it('lands left when dropped alone in the right half, as view mode draws it', () => {
+    const layout = buildTabLayout();
+    layout[0].children = [{ i: 'description', x: 0, y: 0, w: 1, h: 2 }];
+
+    expect(
+      getPanelChildren(
+        placeWidgetInLeftPanel(layout, domain, {
+          row: 2,
+          x: HALF_PANEL_WIDTH,
+          w: HALF_PANEL_WIDTH,
+        })
+      )
+    ).toEqual([
+      { i: 'description', x: 0, y: 0, w: 1 },
+      { i: 'domain', x: 0, y: 2, w: 0.5 },
+    ]);
+  });
+
+  it('lands among the stored widgets where view mode draws them', () => {
+    // Drawn: Synonyms | References, then Tags | (empty).
     const layout = buildTabLayout();
     layout[0].children = [
       { i: 'synonyms', x: 0, y: 1, w: 0.5, h: 2 },
@@ -225,41 +285,29 @@ describe('placeWidgetInLeftPanel', () => {
     ];
 
     expect(
-      getPanelChildren(placeWidgetInLeftPanel(layout, domain, 2, 0.5, COLS))
-    ).toEqual(
-      expect.arrayContaining([
-        { i: 'synonyms', x: 0, y: 0, w: 0.5 },
-        { i: 'tags', x: 0.5, y: 0, w: 0.5 },
-        { i: 'references', x: 0, y: 2, w: 0.5 },
-        { i: 'domain', x: 0.5, y: 2, w: 0.5 },
-      ])
-    );
-  });
-
-  it('takes the slot of a widget stored past the last column', () => {
-    // Tags is stored past the column, level with Description; it is drawn in
-    // the right half below Description, where the Domain widget is dropped.
-    const layout = buildTabLayout();
-    layout[0].children = [
-      { i: 'description', x: 0, y: 0, w: 1, h: 2 },
-      { i: 'tags', x: 3, y: 0, w: 0.5, h: 2 },
-    ];
-
-    expect(
-      getPanelChildren(placeWidgetInLeftPanel(layout, domain, 2, 0.5, COLS))
-    ).toEqual(
-      expect.arrayContaining([
-        { i: 'domain', x: 0.5, y: 2, w: 0.5 },
-        { i: 'tags', x: 0.5, y: 4, w: 0.5 },
-      ])
-    );
+      getPanelChildren(
+        placeWidgetInLeftPanel(layout, domain, {
+          row: 2,
+          x: HALF_PANEL_WIDTH,
+          w: HALF_PANEL_WIDTH,
+        })
+      )
+    ).toEqual([
+      { i: 'synonyms', x: 0, y: 0, w: 0.5 },
+      { i: 'references', x: 0.5, y: 0, w: 0.5 },
+      { i: 'tags', x: 0, y: 2, w: 0.5 },
+      { i: 'domain', x: 0.5, y: 2, w: 0.5 },
+    ]);
   });
 
   it('keeps the widget config', () => {
-    const placed = placeWidgetInLeftPanel(buildTabLayout(), domain, 2, 0, COLS);
+    const placed = placeWidgetInLeftPanel(buildTabLayout(), domain, {
+      row: 2,
+      x: 0,
+      w: HALF_PANEL_WIDTH,
+    });
 
-    expect(placed[0].children?.[0]).toMatchObject({
-      i: 'domain',
+    expect(placed[0].children?.find(({ i }) => i === 'domain')).toMatchObject({
       config: { size: 'small' },
     });
   });
@@ -272,7 +320,9 @@ describe('placeWidgetBesideLeftPanel', () => {
     const placed = placeWidgetBesideLeftPanel(tabLayout, description, 2, COLS);
     const panel = placed.find(({ i }) => i === DetailPageWidgetKeys.LEFT_PANEL);
 
-    expect(panel?.children?.map(({ i }) => i)).toEqual(['synonyms']);
+    expect(toPositions(panel?.children)).toEqual([
+      { i: 'synonyms', x: 0, y: 0, w: 0.5 },
+    ]);
     expect(
       utils
         .compact(placed, 'vertical', COLS)

@@ -3713,6 +3713,7 @@
     "assigned-you-a-new-task-lowercase": "分配了一个新任务给您",
     "assigning-team-entity-description": "添加{{entity}}到{{name}}, 该{{entity}}将会被{{name}}团队中的所有人及其子团队继承",
     "at-least-one-policy": "至少一个策略",
+    "at-least-one-widget-in-panel": "此面板中必须至少保留一个组件。",
     "atomic-facts-ai-should-remember": "Atomic facts the AI should remember.",
     "attribute-name-already-exists": "该概念下已存在同名属性。",
     "audio-playback-not-supported": "您的浏览器不支持音频播放。",

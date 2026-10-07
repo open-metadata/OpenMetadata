@@ -3713,6 +3713,7 @@
     "assigned-you-a-new-task-lowercase": "새로운 작업이 당신에게 할당되었습니다",
     "assigning-team-entity-description": "{{name}}에 {{entity}}를 추가하세요. 이 {{entity}}는 {{name}} 팀의 모든 사용자와 {{name}} 아래의 모든 팀에 상속됩니다",
     "at-least-one-policy": "최소 하나의 정책을 입력하세요",
+    "at-least-one-widget-in-panel": "이 패널에는 위젯이 하나 이상 남아 있어야 합니다.",
     "atomic-facts-ai-should-remember": "Atomic facts the AI should remember.",
     "attribute-name-already-exists": "이 이름의 속성이 이미 이 개념에 존재합니다.",
     "audio-playback-not-supported": "사용 중인 브라우저는 오디오 재생을 지원하지 않습니다.",

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import { Children, isValidElement, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { LeftPanelContainer } from './LeftPanelContainer';
@@ -19,6 +19,7 @@ import { LeftPanelContainer } from './LeftPanelContainer';
 const mockGridProps: {
   current?: {
     children?: ReactNode;
+    layout?: Layout[];
     onLayoutChange?: (layout: Layout[]) => void;
   };
 } = {};
@@ -100,12 +101,16 @@ describe('LeftPanelContainer', () => {
     );
   });
 
-  it('edits the card on the six tab-grid columns it spans and saves card fractions', () => {
+  it('edits the card on the columns it spans, in the layout view mode draws', () => {
     const onUpdate = jest.fn();
     render(
       <LeftPanelContainer
         isEditView
-        layout={[{ i: 'KnowledgePanel.Tags', x: 0.5, y: 0, w: 0.5, h: 2 }]}
+        editColumns={6}
+        layout={[
+          { i: 'KnowledgePanel.Description', x: 0, y: 0, w: 1, h: 2 },
+          { i: 'KnowledgePanel.Tags', x: 0.5, y: 2, w: 0.5, h: 2 },
+        ]}
         type={PageType.GlossaryTerm}
         onUpdate={onUpdate}
       />
@@ -115,23 +120,24 @@ describe('LeftPanelContainer', () => {
       'data-cols',
       '6'
     );
+    // Tags alone in the right half is a gap view mode cannot draw, so the
+    // edit grid shows it on the left.
+    expect(mockGridProps.current?.layout).toEqual([
+      { i: 'KnowledgePanel.Description', x: 0, y: 0, w: 6, h: 2 },
+      { i: 'KnowledgePanel.Tags', x: 0, y: 2, w: 3, h: 2 },
+    ]);
 
-    const [item] = Children.toArray(mockGridProps.current?.children);
-
-    expect(isValidElement(item) && item.props['data-grid']).toMatchObject({
-      x: 3,
-      w: 3,
-    });
-
-    // Resized to four of the six columns, one column in from the left.
+    // Tags resized to four of the six columns and moved one column in.
     act(() =>
       mockGridProps.current?.onLayoutChange?.([
-        { i: 'KnowledgePanel.Tags', x: 1, y: 0, w: 4, h: 2 },
+        { i: 'KnowledgePanel.Description', x: 0, y: 0, w: 6, h: 2 },
+        { i: 'KnowledgePanel.Tags', x: 1, y: 2, w: 4, h: 2 },
       ])
     );
 
     expect(onUpdate).toHaveBeenCalledWith([
-      { i: 'KnowledgePanel.Tags', x: 1 / 6, y: 0, w: 4 / 6, h: 2 },
+      { i: 'KnowledgePanel.Description', x: 0, y: 0, w: 1, h: 2 },
+      { i: 'KnowledgePanel.Tags', x: 0, y: 2, w: 4 / 6, h: 2 },
     ]);
   });
 });

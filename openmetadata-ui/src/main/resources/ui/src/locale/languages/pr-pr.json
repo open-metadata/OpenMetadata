@@ -3713,6 +3713,7 @@
     "assigned-you-a-new-task-lowercase": "وظیفه جدیدی به شما اختصاص داده شده است.",
     "assigning-team-entity-description": "یک {{entity}} را به {{name}} اضافه کنید. این {{entity}} به تمامی کاربران تیم {{name}} و تمام تیم‌های زیرمجموعه {{name}} به ارث خواهد رسید.",
     "at-least-one-policy": "حداقل یک سیاست وارد کنید.",
+    "at-least-one-widget-in-panel": "حداقل یک ویجت باید در این پنل باقی بماند.",
     "atomic-facts-ai-should-remember": "واقعیت‌های مستقلی که هوش مصنوعی باید به خاطر بسپارد.",
     "attribute-name-already-exists": "ویژگی‌ای با این نام از قبل در این مفهوم وجود دارد.",
     "audio-playback-not-supported": "مرورگر شما از پخش صوت پشتیبانی نمی‌کند.",

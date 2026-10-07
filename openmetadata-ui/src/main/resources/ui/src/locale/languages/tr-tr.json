@@ -3713,6 +3713,7 @@
     "assigned-you-a-new-task-lowercase": "size yeni bir görev atandı",
     "assigning-team-entity-description": "{{name}} takımına bir {{entity}} ekleyin. Bu {{entity}}, {{name}} takımındaki tüm kullanıcılar ve {{name}} altındaki tüm takımlar tarafından miras alınacaktır",
     "at-least-one-policy": "En az bir politika girin",
+    "at-least-one-widget-in-panel": "Bu panelde en az bir widget kalmalıdır.",
     "atomic-facts-ai-should-remember": "Atomic facts the AI should remember.",
     "attribute-name-already-exists": "Bu ada sahip bir özellik bu kavramda zaten mevcut.",
     "audio-playback-not-supported": "Tarayıcınız ses oynatmayı desteklemiyor.",

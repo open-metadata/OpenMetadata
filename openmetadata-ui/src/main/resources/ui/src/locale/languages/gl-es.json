@@ -3713,6 +3713,7 @@
     "assigned-you-a-new-task-lowercase": "asignóuseche unha nova tarefa",
     "assigning-team-entity-description": "Engade un {{entity}} a {{name}}. Este {{entity}} será herdado por todos os usuarios do equipo {{name}}, así como por todos os equipos por baixo {{name}}.",
     "at-least-one-policy": "Introduce polo menos unha política",
+    "at-least-one-widget-in-panel": "Polo menos un widget debe permanecer neste panel.",
     "atomic-facts-ai-should-remember": "Atomic facts the AI should remember.",
     "attribute-name-already-exists": "Xa existe unha propiedade con este nome neste concepto.",
     "audio-playback-not-supported": "O teu navegador non soporta a reproducción de audio.",

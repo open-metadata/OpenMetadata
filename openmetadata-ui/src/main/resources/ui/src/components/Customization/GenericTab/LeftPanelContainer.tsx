@@ -25,7 +25,7 @@ import type { WidgetConfig } from '../../../pages/CustomizablePage/CustomizableP
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import {
   fromLeftPanelEditGrid,
-  LEFT_PANEL_EDIT_COLS,
+  getLeftPanelFlowLayout,
   toLeftPanelEditGrid,
 } from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -59,6 +59,9 @@ interface GenericTabProps {
   isEditView: boolean;
   handleOpenAddWidgetModal?: () => void;
   handlePlaceholderWidgetKey?: (value: string) => void;
+  // Columns of the edit grid: the ones the panel spans in the tab grid.
+  editColumns?: number;
+  onDrag?: ItemCallback;
   onDragStop?: ItemCallback;
 }
 
@@ -69,14 +72,30 @@ export const LeftPanelContainer = ({
   isEditView = false,
   handleOpenAddWidgetModal,
   handlePlaceholderWidgetKey,
+  editColumns = 1,
+  onDrag,
   onDragStop,
 }: GenericTabProps) => {
   const handleRemoveWidget = (widgetKey: string) => {
     onUpdate(layout.filter((widget) => widget.i !== widgetKey));
   };
 
-  const handleLayoutChange = (editLayout: Layout[]) => {
-    onUpdate(editLayout.map(fromLeftPanelEditGrid));
+  // The edit grid is controlled and always shows the flow layout view mode
+  // draws, so a widget moved or resized into a gap snaps to where it will show.
+  const editLayout = useMemo(
+    () =>
+      getLeftPanelFlowLayout(layout).map((widget) =>
+        toLeftPanelEditGrid(widget, editColumns)
+      ),
+    [layout, editColumns]
+  );
+
+  const handleLayoutChange = (gridLayout: Layout[]) => {
+    onUpdate(
+      getLeftPanelFlowLayout(
+        gridLayout.map((widget) => fromLeftPanelEditGrid(widget, editColumns))
+      )
+    );
   };
 
   const handleWidgetConfigChange = (
@@ -123,10 +142,7 @@ export const LeftPanelContainer = ({
       }
 
       return (
-        <div
-          data-grid={toLeftPanelEditGrid(widget)}
-          id={widget.i}
-          key={widget.i}>
+        <div id={widget.i} key={widget.i}>
           {widgetComponent}
         </div>
       );
@@ -159,13 +175,15 @@ export const LeftPanelContainer = ({
         useCSSTransforms
         verticalCompact
         className="grid-container"
-        cols={LEFT_PANEL_EDIT_COLS}
+        cols={editColumns}
         containerPadding={[16, 16]}
         isDraggable={isEditView}
         isResizable={isEditView}
+        layout={editLayout}
         margin={[type === PageType.GlossaryTerm ? 16 : 0, 16]}
         preventCollision={false}
         rowHeight={100}
+        onDrag={onDrag}
         onDragStop={onDragStop}
         onLayoutChange={handleLayoutChange}>
         {widgets}

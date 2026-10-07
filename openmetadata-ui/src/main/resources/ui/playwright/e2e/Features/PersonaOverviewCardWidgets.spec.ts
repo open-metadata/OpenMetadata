@@ -171,7 +171,8 @@ const getCardColumns = async (widget: Locator, card: Locator) => {
   const toSixths = (width: number) => Math.round((width / cardBox.width) * 6);
 
   return {
-    start: toSixths(widgetBox.x - cardBox.x),
+    // View mode's row reaches a little past the card's left edge.
+    start: Math.max(0, toSixths(widgetBox.x - cardBox.x)),
     span: toSixths(widgetBox.width),
   };
 };
@@ -224,30 +225,65 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.slow();
 
     const card = adminPage.locator(OVERVIEW_CARD);
+    const dropTarget = adminPage.getByTestId('left-panel-drop-target');
     const domain = adminPage.locator(byId('KnowledgePanel.Domain'));
     const cardDomain = card.locator(byId('KnowledgePanel.Domain'));
     const description = card.locator(byId('KnowledgePanel.Description'));
+    const owners = adminPage.locator(byId('KnowledgePanel.Owners'));
 
-    await test.step('drop the Domain widget onto the card', async () => {
+    await test.step("keeps the card's only widget in it", async () => {
       await openCustomizePage(adminPage, 'DataProduct');
 
+      await expect(description).toBeVisible();
       await expect(domain).toBeVisible();
       await expect(cardDomain).toHaveCount(0);
 
       await scrollIntoViewAndSettle(card);
-      const descriptionBox = await getBox(description);
-      // Right half of the card, over the Description widget it lands below.
-      await dragToPoint(
-        adminPage,
-        domain.getByTestId('drag-widget-button'),
-        descriptionBox.x + descriptionBox.width * 0.75,
-        descriptionBox.y + descriptionBox.height * 0.75
+      const [ownersBox, descriptionBox] = await Promise.all([
+        getBox(owners),
+        getBox(description),
+      ]);
+      await description.getByTestId('drag-widget-button').hover();
+      await adminPage.mouse.down();
+      await adminPage.mouse.move(
+        ownersBox.x + ownersBox.width / 2,
+        descriptionBox.y + descriptionBox.height / 2,
+        { steps: 10 }
       );
 
+      await expect(dropTarget).toHaveAttribute('data-drop-target', 'beside');
+
+      await adminPage.mouse.up();
+
+      await toastNotification(
+        adminPage,
+        'At least one widget has to stay in this panel.'
+      );
+      await expect(description).toBeVisible();
+    });
+
+    await test.step('drop the Domain widget onto the card', async () => {
+      await scrollIntoViewAndSettle(card);
+      const descriptionBox = await getBox(description);
+      await domain.getByTestId('drag-widget-button').hover();
+      await adminPage.mouse.down();
+      // Right half of the card, over the Description widget it lands below.
+      await adminPage.mouse.move(
+        descriptionBox.x + descriptionBox.width * 0.75,
+        descriptionBox.y + descriptionBox.height * 0.75,
+        { steps: 10 }
+      );
+
+      await expect(dropTarget).toHaveAttribute('data-drop-target', 'panel');
+
+      await adminPage.mouse.up();
+
+      await expect(dropTarget).not.toHaveAttribute('data-drop-target');
       await expect(cardDomain).toBeVisible();
+      // Alone on its line, it sits on the left, where view mode draws it.
       await expect
         .poll(() => getCardColumns(cardDomain, card))
-        .toEqual({ start: 3, span: 3 });
+        .toEqual({ start: 0, span: 3 });
       await expect.poll(() => isBelow(cardDomain, description)).toBe(true);
 
       await savePageLayout(adminPage);
@@ -259,7 +295,7 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(cardDomain).toBeVisible();
       await expect
         .poll(() => getCardColumns(cardDomain, card))
-        .toEqual({ start: 3, span: 3 });
+        .toEqual({ start: 0, span: 3 });
       await expect.poll(() => isBelow(cardDomain, description)).toBe(true);
     });
 
@@ -293,12 +329,16 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect
         .poll(() => isBelow(entityDomain, entityDescription))
         .toBe(true);
+      // The same columns as in the edit grid.
+      await expect
+        .poll(() => getCardColumns(entityDomain, entityCard))
+        .toEqual({ start: 0, span: 3 });
     });
 
     await test.step('drop it right of the card into the side column', async () => {
       await scrollIntoViewAndSettle(cardDomain);
       const [ownersBox, cardDomainBox] = await Promise.all([
-        getBox(adminPage.locator(byId('KnowledgePanel.Owners'))),
+        getBox(owners),
         getBox(cardDomain),
       ]);
       // Over the side column, level with the widget being moved.
@@ -377,6 +417,69 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect
         .poll(() => getCardColumns(description, card))
         .toEqual({ start: 0, span: 6 });
+
+      await savePageLayout(adminPage);
+    });
+  });
+
+  test('moves a side widget into the Glossary Term Overview card and back out', async ({
+    adminPage,
+  }) => {
+    const card = adminPage.locator(OVERVIEW_CARD);
+    const owner = adminPage.locator(byId('KnowledgePanel.Owner'));
+    const cardOwner = card.locator(byId('KnowledgePanel.Owner'));
+    const tags = card.locator(byId('KnowledgePanel.Tags'));
+    const references = card.locator(byId('KnowledgePanel.References'));
+
+    await test.step('drop the Owner widget beside Tags', async () => {
+      await openCustomizePage(adminPage, 'GlossaryTerm');
+
+      await expect(owner).toBeVisible();
+      await expect(cardOwner).toHaveCount(0);
+
+      await scrollIntoViewAndSettle(tags);
+      const tagsBox = await getBox(tags);
+      // The empty right half of the line Tags is on.
+      await dragToPoint(
+        adminPage,
+        owner.getByTestId('drag-widget-button'),
+        tagsBox.x + tagsBox.width * 1.5,
+        tagsBox.y + tagsBox.height / 2
+      );
+
+      await expect(cardOwner).toBeVisible();
+      await expect
+        .poll(() => getCardColumns(cardOwner, card))
+        .toEqual({ start: 3, span: 3 });
+      await expect.poll(() => isRightOf(cardOwner, tags)).toBe(true);
+      await expect.poll(() => isBelow(cardOwner, references)).toBe(true);
+
+      await savePageLayout(adminPage);
+    });
+
+    await test.step('keeps its place in the card after reload', async () => {
+      await openCustomizePage(adminPage, 'GlossaryTerm');
+
+      await expect(cardOwner).toBeVisible();
+      await expect
+        .poll(() => getCardColumns(cardOwner, card))
+        .toEqual({ start: 3, span: 3 });
+    });
+
+    await test.step('drop it right of the card into the side column', async () => {
+      await scrollIntoViewAndSettle(cardOwner);
+      const cardOwnerBox = await getBox(cardOwner);
+      const cardBox = await getBox(card);
+      await dragToPoint(
+        adminPage,
+        cardOwner.getByTestId('drag-widget-button'),
+        cardBox.x + cardBox.width + 100,
+        cardOwnerBox.y + cardOwnerBox.height / 2
+      );
+
+      await expect(owner).toBeVisible();
+      await expect(cardOwner).toHaveCount(0);
+      await expect.poll(() => isRightOf(owner, card)).toBe(true);
 
       await savePageLayout(adminPage);
     });
