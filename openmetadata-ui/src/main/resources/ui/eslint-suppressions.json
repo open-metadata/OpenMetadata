@@ -598,9 +598,6 @@
   "playwright/e2e/Pages/TasksUIFlow.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 5
-    },
-    "playwright/no-wait-for-selector": {
-      "count": 4
     }
   },
   "playwright/e2e/Pages/TestSuite.spec.ts": {

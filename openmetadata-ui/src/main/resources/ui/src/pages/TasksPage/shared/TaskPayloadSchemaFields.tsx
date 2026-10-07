@@ -563,8 +563,8 @@ const TaskPayloadSchemaFields = ({
         isRequired={requiredFields.has(fieldName)}
         key={fieldName}
         label={label}
-        selectedKey={getFieldValue(fieldName) as string | undefined}
-        onSelectionChange={(value) => updateField(fieldName, value)}>
+        value={(getFieldValue(fieldName) as string | undefined) ?? null}
+        onChange={(value) => updateField(fieldName, value)}>
         {(fieldSchema?.enum ?? []).map((value) => (
           <Select.Item id={value} key={value} label={value} />
         ))}

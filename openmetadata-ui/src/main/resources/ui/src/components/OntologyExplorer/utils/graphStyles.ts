@@ -412,7 +412,7 @@ export function glossaryComboHeaderFill(stroke: string): string {
   };
 
   if (stroke.startsWith('var(')) {
-    const m = stroke.match(/^var\((--tw-color-[a-z0-9-]+)-\d{2,3}\)$/i);
+    const m = /^var\((--tw-color-[a-z0-9-]+)-\d{2,3}\)$/i.exec(stroke);
     if (m) {
       return getCanvasColor(`var(${m[1]}-50)`, blendTowardSurface());
     }
