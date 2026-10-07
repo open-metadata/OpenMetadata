@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1908 endpoints** across 75 resource packages · 1898 carry a summary.
+**1917 endpoints** across 75 resource packages · 1907 carry a summary.
 
 ## (root)
 
@@ -1332,6 +1332,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 |---|---|---|
 | `POST` | `/v1/ontology/ai/drafts` | Generate a reviewable ontology change-set Draft |
 | `POST` | `/v1/ontology/ai/mappings/suggestions` | Propose reviewable external concept mappings |
+| `POST` | `/v1/ontology/ai/memories/jobs` | Queue a reviewable glossary draft from published memories |
+| `GET` | `/v1/ontology/ai/memories/jobs/{jobId}` | Get a memory derivation job |
+| `GET` | `/v1/ontology/ai/memories/{memoryId}/proposals` | List active ontology drafts proposed from a memory |
 | `POST` | `/v1/ontology/ai/relationships/suggestions` | Propose reviewable ontology relationships |
 | `POST` | `/v1/ontology/ai/sparql` | Generate a visible read-only SPARQL query |
 | `POST` | `/v1/ontology/bulk` | Validate or create a Draft from a typed ontology bulk operation |
@@ -1493,6 +1496,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/v1/lod/entity/{entityType}/{id}` | Dereference an OpenMetadata entity IRI |
+| `POST` | `/v1/rdf` | Execute a permissioned read-only SPARQL SELECT for agent tools |
 | `GET` | `/v1/rdf/debug/glossary-relations` | Debug glossary term relations in RDF |
 | `GET` | `/v1/rdf/entity/{entityType}/{id}` | Get entity as RDF |
 | `GET` | `/v1/rdf/entity/{entityType}/{id}/diff` | Diff two RDF entity versions |
@@ -1531,7 +1535,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/rdf/search/similar/{entityType}/{id}` | Find similar entities |
 | `GET` | `/v1/rdf/sparql` | Execute SPARQL query via GET |
 | `POST` | `/v1/rdf/sparql` | Execute SPARQL query via POST |
-| `POST` | `/v1/rdf/sparql/agent` | Execute a permissioned read-only SPARQL SELECT for agent tools |
 | `POST` | `/v1/rdf/sparql/update` | Execute SPARQL UPDATE |
 | `POST` | `/v1/rdf/sql/query` | Execute SQL query over RDF data |
 | `POST` | `/v1/rdf/sql/translate` | Translate SQL to SPARQL |
@@ -2015,6 +2018,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/system/security/config` | Get complete security configuration |
 | `PATCH` | `/v1/system/security/config` | Patch security configuration |
 | `PUT` | `/v1/system/security/config` | Update complete security configuration |
+| `POST` | `/v1/system/security/test-login/credentials` | Complete an LDAP or Basic Test Login with credentials |
+| `GET` | `/v1/system/security/test-login/result/{testSessionId}` | Get the outcome of a Test Login |
+| `POST` | `/v1/system/security/test-login/start` | Start an interactive Test Login against a candidate security configuration |
 | `POST` | `/v1/system/security/test-login/validate-token` | Validate an OIDC id_token against a candidate security configuration |
 | `POST` | `/v1/system/security/validate` | Validate security configuration |
 | `GET` | `/v1/system/services/count` | List all services counts |
@@ -2028,6 +2034,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/system/settings/glossaryTermRelationSettings/relationTypes/{name}` | Update a glossary term relation type |
 | `GET` | `/v1/system/settings/profilerConfiguration` | Get profiler configuration setting |
 | `PUT` | `/v1/system/settings/reset/{name}` | Reset a setting to default |
+| `GET` | `/v1/system/settings/source` | Where settings take their values from |
+| `POST` | `/v1/system/settings/source/{configType}/adopt` | Use the deployment configuration for stored settings |
 | `GET` | `/v1/system/settings/{name}` | Get a setting |
 | `PATCH` | `/v1/system/settings/{settingName}` | Patch a setting |
 | `GET` | `/v1/system/status` | Validate the OpenMetadata deployment |
@@ -2269,6 +2277,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/metadata/types/customProperties` |  |
 | `GET` | `/v1/metadata/types/fields/workflowTriggerFields` | Get workflow trigger fields |
 | `GET` | `/v1/metadata/types/fields/{entityType}` |  |
+| `GET` | `/v1/metadata/types/lifecycleStages` | Get entity lifecycle stages |
 | `GET` | `/v1/metadata/types/name/{entityType}/customProperties` | Get custom properties for an entity type |
 | `PATCH` | `/v1/metadata/types/name/{fqn}` | Update a type using name. |
 | `DELETE` | `/v1/metadata/types/name/{name}` | Delete a type by name |
