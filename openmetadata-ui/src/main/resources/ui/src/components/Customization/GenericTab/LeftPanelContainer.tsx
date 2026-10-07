@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { isUndefined } from 'lodash';
+import { isUndefined, orderBy } from 'lodash';
 import { lazy, useMemo } from 'react';
 import type {
   ItemCallback,
@@ -138,7 +138,9 @@ export const LeftPanelContainer = ({
       return getWidgetFromLayout(layout);
     }
 
-    return layout?.map((widget: WidgetConfig) => {
+    // The edit grid saves its widgets in list order, which need not match where
+    // they sit, so view mode lays them out by row and then column.
+    return orderBy(layout, ['y', 'x']).map((widget: WidgetConfig) => {
       return (
         <Col id={widget.i} key={widget.i} span={Math.round(widget.w * 24)}>
           {getWidgetsFromKey(type, widget)}

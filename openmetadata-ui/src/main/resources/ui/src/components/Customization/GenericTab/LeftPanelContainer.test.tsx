@@ -68,6 +68,29 @@ describe('LeftPanelContainer', () => {
     expect(container.firstElementChild).toHaveClass('left-panel-content');
   });
 
+  it('shows widgets in view mode by row and then column, not saved order', () => {
+    // Saved as the edit grid leaves a widget dropped below Description: first.
+    const { container } = render(
+      <LeftPanelContainer
+        {...commonProps}
+        isEditView={false}
+        layout={[
+          { i: 'KnowledgePanel.Domain', x: 0.5, y: 2, w: 0.5, h: 2 },
+          { i: 'KnowledgePanel.Description', x: 0, y: 0, w: 1, h: 2 },
+          { i: 'KnowledgePanel.Tags', x: 0, y: 2, w: 0.5, h: 2 },
+        ]}
+      />
+    );
+
+    expect(
+      Array.from(container.firstElementChild?.children ?? [], ({ id }) => id)
+    ).toEqual([
+      'KnowledgePanel.Description',
+      'KnowledgePanel.Tags',
+      'KnowledgePanel.Domain',
+    ]);
+  });
+
   it('applies left panel padding in edit mode', () => {
     render(<LeftPanelContainer {...commonProps} isEditView />);
 
