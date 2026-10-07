@@ -67,9 +67,9 @@ make java_affected_run ARGS="--ci-run <run-id> --update-pr"   # records the pass
 ```
 
 `--ci-run` accepts only a passed run of an integration-test workflow (`maven.ciWorkflows`) on
-`HEAD` whose lane jobs ran and passed (a run whose change detection skipped them still concludes
-"success"), and stands in for the lane steps on that workflow's engine. Unit steps and suite
-steps such as search-it still run locally.
+`HEAD`, and stands in only for the lanes whose jobs (`laneJobs`) ran and passed in that run. A run
+whose change detection skipped its lanes still concludes "success", and the Redis workflow has no
+rdf lane, so those steps, unit steps and suites such as search-it still run locally.
 
 Each selected IT runs in the failsafe execution CI uses for it, read from
 `openmetadata-integration-tests/pom.xml`. Classes in `integrationTests.globalStateTests`,

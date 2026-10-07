@@ -372,9 +372,18 @@ def test_changed_methods_come_from_hunk_headers_and_changed_declarations(
 def test_ci_run_stands_in_only_for_a_passed_it_workflow_run_on_head(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    mysql = IMPACT_MAP["maven"]["ciWorkflows"]["mysql-elasticsearch"]["workflow"]
-    lane = [{"name": "Integration Test Lane (parallel)", "conclusion": "success"}]
-    # A workflow whose lanes were skipped by its change detection still concludes success.
+    workflows = IMPACT_MAP["maven"]["ciWorkflows"]
+    mysql = workflows["mysql-elasticsearch"]["workflow"]
+    redis = workflows["cache-tests"]["workflow"]
+
+    def lanes(*names: str) -> list[dict[str, str]]:
+        return [
+            {"name": f"Integration Test Lane ({name})", "conclusion": "success"}
+            for name in names
+        ]
+
+    every_lane = lanes("parallel", "global-state", "multi-node", "retry-queue", "rdf")
+    # A workflow whose change detection skipped its lanes still concludes success.
     skipped = [
         {
             "name": "Integration Test Lane (${{ matrix.lane.name }})",
@@ -382,11 +391,18 @@ def test_ci_run_stands_in_only_for_a_passed_it_workflow_run_on_head(
         }
     ]
     runs = {
-        "1": ("abc", "success", mysql, lane),
-        "2": ("old", "success", mysql, lane),
-        "3": ("abc", "failure", mysql, lane),
-        "4": ("abc", "success", "Playwright", lane),
+        "1": ("abc", "success", mysql, every_lane),
+        "2": ("old", "success", mysql, every_lane),
+        "3": ("abc", "failure", mysql, every_lane),
+        "4": ("abc", "success", "Playwright", every_lane),
         "5": ("abc", "success", mysql, skipped),
+        "6": (
+            "abc",
+            "success",
+            redis,
+            lanes("parallel", "global-state", "multi-node", "retry-queue"),
+        ),
+        "7": ("abc", "success", mysql, lanes("parallel", "global-state", "rdf")),
     }
 
     def gh_run_view(argv, **_):
@@ -396,20 +412,32 @@ def test_ci_run_stands_in_only_for_a_passed_it_workflow_run_on_head(
         return subprocess.CompletedProcess(argv, 0, stdout=json.dumps(run), stderr="")
 
     monkeypatch.setattr(PLANNER.subprocess, "run", gh_run_view)
-    workflows = IMPACT_MAP["maven"]["ciWorkflows"]
 
     assert PLANNER.ci_evidence(REPO_ROOT, ["1"], "abc", workflows) == {
-        "mysql-elasticsearch": "https://ci/1"
+        "mysql-elasticsearch": {
+            "url": "https://ci/1",
+            "lanes": {"parallel", "isolated", "rdf"},
+        }
     }
+    # The Redis workflow runs no rdf lane, so its runs never cover an rdf step.
+    assert PLANNER.ci_evidence(REPO_ROOT, ["6"], "abc", workflows)["cache-tests"][
+        "lanes"
+    ] == {"parallel", "isolated"}
+    # The isolated lane is three CI jobs; one missing leaves it to the local run.
+    assert PLANNER.ci_evidence(REPO_ROOT, ["7"], "abc", workflows)[
+        "mysql-elasticsearch"
+    ]["lanes"] == {"parallel", "rdf"}
     for unusable in ("2", "3", "4", "5"):
         with pytest.raises(SystemExit):
             PLANNER.ci_evidence(REPO_ROOT, [unusable], "abc", workflows)
 
 
-def test_lane_steps_a_ci_run_covers_are_not_run_locally(
+def test_steps_a_ci_run_covers_are_not_run_locally(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    _, plan = plan_for(f"{SERVICE}/util/AsciiTable.java")
+    _, plan = plan_for(
+        f"{IT_TESTS}/RdfResourceIT.java", f"{SERVICE}/util/AsciiTable.java"
+    )
     ran: list[list[str]] = []
 
     def run(argv, **_):
@@ -417,19 +445,23 @@ def test_lane_steps_a_ci_run_covers_are_not_run_locally(
         return subprocess.CompletedProcess(argv, 0)
 
     monkeypatch.setattr(PLANNER.subprocess, "run", run)
-    lanes = set(IMPACT_MAP["maven"]["lanes"])
-    results = PLANNER.run_commands(
-        tmp_path, plan, True, {"mysql-elasticsearch": "https://ci/1"}, lanes
-    )
+    ci = {
+        "mysql-elasticsearch": {
+            "url": "https://ci/6",
+            "lanes": {"parallel", "isolated"},
+        }
+    }
+    results = PLANNER.run_commands(tmp_path, plan, True, ci)
 
-    covered = [
-        result
+    by_lane = {
+        result.command.lane: result
         for result in results
         if result.command.engine == "mysql-elasticsearch"
-        and result.command.lane in lanes
-    ]
-    assert covered and all(result.ci_url == "https://ci/1" for result in covered)
-    assert not any("-Pmysql-elasticsearch" in argv for argv in ran)
+    }
+    assert by_lane["parallel"].ci_url == "https://ci/6"
+    assert by_lane["rdf"].ci_url == ""
+    assert any("-DintegrationTests.lane=rdf" in argv for argv in ran)
+    assert not any("-DintegrationTests.lane=parallel" in argv for argv in ran)
 
 
 def test_commands_in_the_pr_abbreviate_long_class_lists() -> None:

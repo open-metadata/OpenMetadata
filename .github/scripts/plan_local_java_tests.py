@@ -1542,14 +1542,15 @@ def ci_evidence(
     repo_root: Path,
     run_ids: list[str],
     head: str,
-    workflows: dict[str, dict[str, str]],
-) -> dict[str, str]:
-    """Engine -> URL of a passed CI integration-test run on HEAD, for each --ci-run.
+    workflows: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Engine -> the URL of a passed CI run on HEAD and the lanes it covers, per --ci-run.
 
-    The run's integration-test jobs must have run and passed: a workflow whose IT job was
-    skipped still concludes "success".
+    A lane counts only if every job `laneJobs` names for it ran and passed in that run: a
+    workflow may not run a lane at all (the Redis workflow has no rdf lane), and one whose
+    change detection skipped its lanes still concludes "success".
     """
-    covered: dict[str, str] = {}
+    covered: dict[str, dict[str, Any]] = {}
     for run_id in run_ids:
         run = json.loads(
             subprocess.run(
@@ -1585,32 +1586,40 @@ def ci_evidence(
             raise SystemExit(
                 f"--ci-run {run_id} is {run['status']}/{run['conclusion'] or '-'}, not a passed run."
             )
-        it_jobs = [
-            job
-            for job in run.get("jobs", [])
-            if fnmatch.fnmatchcase(job["name"], workflows[engine]["jobs"])
-        ]
-        if not it_jobs or any(job["conclusion"] != "success" for job in it_jobs):
+        passed = {
+            job["name"] for job in run.get("jobs", []) if job["conclusion"] == "success"
+        }
+        lanes = {
+            lane
+            for lane, jobs in workflows[engine]["laneJobs"].items()
+            if jobs and set(jobs) <= passed
+        }
+        if not lanes:
             raise SystemExit(
-                f"--ci-run {run_id} did not run and pass its integration-test jobs "
-                f"('{workflows[engine]['jobs']}'); they were skipped or failed."
+                f"--ci-run {run_id} ran no integration-test lane to the end: its lane jobs were "
+                "skipped or failed."
             )
-        covered[engine] = run["url"]
+        covered[engine] = {"url": run["url"], "lanes": lanes}
     return covered
+
+
+def ci_url(ci: dict[str, dict[str, Any]], command: Command) -> str | None:
+    """The CI run that stands in for a step, if one covers its engine and lane."""
+    evidence = ci.get(command.engine)
+    return evidence["url"] if evidence and command.lane in evidence["lanes"] else None
 
 
 def run_commands(
     repo_root: Path,
     plan: Plan,
     keep_going: bool,
-    ci: dict[str, str] | None = None,
-    ci_lanes: set[str] = frozenset(),
+    ci: dict[str, dict[str, Any]] | None = None,
 ) -> list[StepResult]:
-    """Run the plan's steps. A lane step on an engine `ci` covers is taken from that run:
-    the CI workflow runs every lane in full."""
+    """Run the plan's steps. A step a CI run covers is taken from that run, which ran its
+    whole lane on that engine."""
     results: list[StepResult] = []
     for command in plan.commands:
-        url = (ci or {}).get(command.engine) if command.lane in ci_lanes else None
+        url = ci_url(ci or {}, command)
         if url:
             results.append(StepResult(command, 0, 0.0, ci_url=url))
             continue
@@ -2076,10 +2085,8 @@ def main(argv: list[str] | None = None) -> int:
         ci = ci_evidence(
             repo_root, args.ci_run, commit, planner.maven.get("ciWorkflows", {})
         )
-        ci_lanes = set(planner.maven["lanes"])
         if any(
-            command.kind == "integration"
-            and not (command.engine in ci and command.lane in ci_lanes)
+            command.kind == "integration" and not ci_url(ci, command)
             for command in plan.commands
         ):
             problem = docker_ready(repo_root)
@@ -2095,7 +2102,7 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 return 1
-        results = run_commands(repo_root, plan, args.keep_going, ci, ci_lanes)
+        results = run_commands(repo_root, plan, args.keep_going, ci)
         block = render_block(plan, planner, results, commit, args.base, dirty)
 
     markdown_path = repo_root / RESULTS_MARKDOWN

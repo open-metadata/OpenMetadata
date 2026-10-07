@@ -99,9 +99,10 @@ gh run watch <run-id>
 make java_affected_run ARGS="--ci-run <run-id> --update-pr"
 ```
 
-`--ci-run` takes only a passed run of an integration-test workflow on `HEAD`. It covers the lane
-steps on that workflow's engine; unit steps and steps on other engines or suites (search-it)
-still run locally. Repeat `--ci-run` for a second engine's workflow.
+`--ci-run` takes only a passed run of an integration-test workflow on `HEAD`, and covers only the
+lanes whose jobs ran and passed in it. Everything else still runs locally: unit steps, search-it,
+other engines, and lanes the workflow doesn't run (the Redis workflow has no rdf lane). Repeat
+`--ci-run` for a second engine's workflow.
 
 ## 4. When something fails
 

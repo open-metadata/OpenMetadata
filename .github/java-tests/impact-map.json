@@ -81,15 +81,48 @@
     "ciWorkflows": {
       "mysql-elasticsearch": {
         "workflow": "Integration Tests - MySQL + Elasticsearch",
-        "jobs": "Integration Test Lane*"
+        "laneJobs": {
+          "parallel": [
+            "Integration Test Lane (parallel)"
+          ],
+          "isolated": [
+            "Integration Test Lane (global-state)",
+            "Integration Test Lane (multi-node)",
+            "Integration Test Lane (retry-queue)"
+          ],
+          "rdf": [
+            "Integration Test Lane (rdf)"
+          ]
+        }
       },
       "postgres-opensearch": {
         "workflow": "Integration Tests - PostgreSQL + OpenSearch",
-        "jobs": "Integration Test Lane*"
+        "laneJobs": {
+          "parallel": [
+            "Integration Test Lane (parallel)"
+          ],
+          "isolated": [
+            "Integration Test Lane (global-state)",
+            "Integration Test Lane (multi-node)",
+            "Integration Test Lane (retry-queue)"
+          ],
+          "rdf": [
+            "Integration Test Lane (rdf)"
+          ]
+        }
       },
       "cache-tests": {
         "workflow": "Integration Tests - PostgreSQL + Elasticsearch + Redis",
-        "jobs": "Integration Test Lane*"
+        "laneJobs": {
+          "parallel": [
+            "Integration Test Lane (parallel)"
+          ],
+          "isolated": [
+            "Integration Test Lane (global-state)",
+            "Integration Test Lane (multi-node)",
+            "Integration Test Lane (retry-queue)"
+          ]
+        }
       }
     }
   },
