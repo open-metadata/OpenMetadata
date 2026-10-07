@@ -1064,7 +1064,9 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
     }
 
     // Wait for the loader to appear then disappear (loader may flash quickly)
-    await expect(loader).toBeVisible({ timeout: 3000 }).catch(() => null);
+    await expect(loader)
+      .toBeVisible({ timeout: 3000 })
+      .catch(() => null);
     await loader.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => null);
 
     await expect

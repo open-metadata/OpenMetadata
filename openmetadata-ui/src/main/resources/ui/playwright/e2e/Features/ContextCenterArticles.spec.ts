@@ -31,8 +31,8 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  ARTICLE_DESCRIPTION,
   ARTICLES_URL,
+  ARTICLE_DESCRIPTION,
   assertArticleEditorSaved,
   cleanupCurrentArticle,
   createArticleFromButton,
@@ -70,7 +70,7 @@ import {
   updateQuickLink,
   updateTags,
   verifyNotificationAndClick,
-  waitForAutoSave
+  waitForAutoSave,
 } from '../../utils/KnowledgeCenter';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
@@ -480,10 +480,11 @@ test.describe('Context Center Articles', () => {
     await page.keyboard.press('Escape');
 
     await createQuickLink(page, testQuickLink, dataAsset);
-    await page.getByRole('heading', { name: 'Add Quick Link' }).waitFor({ state: 'hidden' });
+    await page
+      .getByRole('heading', { name: 'Add Quick Link' })
+      .waitFor({ state: 'hidden' });
 
     await verifyArticleSearch(page, testQuickLink.displayName);
-    
 
     await updateQuickLink(page, testQuickLink);
 
