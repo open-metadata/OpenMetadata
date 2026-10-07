@@ -20,7 +20,7 @@ from abc import ABC
 from collections.abc import Iterable
 from typing import Any
 
-import confluent_kafka
+import confluent_kafka.admin
 from cachetools import LRUCache
 from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.schema_registry.avro import AvroDeserializer
@@ -116,7 +116,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         try:
-            schema_type_map = {key.lower(): value.value for key, value in SchemaType.__members__.items()}
+            schema_type_map = {key.lower(): value for key, value in SchemaType.__members__.items()}
             logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
             logger.info(f"Fetching topic config {topic_details.topic_name}")
@@ -146,7 +146,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
                 topic.messageSchema = Topic(
                     schemaText=topic_schema.schema_str,
-                    schemaType=schema_type_map.get(schema_type, SchemaType.Other.value),
+                    schemaType=schema_type_map.get(schema_type, SchemaType.Other),
                     schemaFields=schema_fields if schema_fields is not None else [],
                 )
             else:
@@ -322,8 +322,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 # confluent_kafka.schema_registry.avro stacks `import *` from _async, _sync
                 # and common, so a type checker binds AvroDeserializer to the wrong class;
                 # at runtime _sync wins and these keywords are correct.
-                deserializer = AvroDeserializer(  # pyright: ignore[reportCallIssue]
-                    schema_str=schema, schema_registry_client=self.schema_registry_client
+                deserializer = AvroDeserializer(
+                    schema_str=schema,  # pyright: ignore[reportCallIssue]
+                    schema_registry_client=self.schema_registry_client,  # pyright: ignore[reportCallIssue]
                 )
                 self._avro_deserializers[schema] = deserializer
             return str(deserializer(bytes(record), None))
