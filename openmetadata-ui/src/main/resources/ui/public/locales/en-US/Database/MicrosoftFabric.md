@@ -16,7 +16,7 @@ OpenMetadata uses Service Principal authentication to connect to Microsoft Fabri
 
 2. **Create a credential for the application**, either a client secret or a certificate:
    - **Client secret:** in your registered app, go to `Certificates & secrets` > `Client secrets` > `New client secret`, choose an expiration period, click `Add`, and copy the secret **value** (not the secret ID). The value is shown only once.
-   - **Certificate:** go to `Certificates & secrets` > `Certificates` > `Upload certificate` and upload the public certificate (`.cer`, `.crt` or `.pem`). Keep its private key, it is entered in the connection and never uploaded to Microsoft Entra ID. A certificate avoids long-lived shared secrets: only a signed assertion leaves the ingestion runner.
+   - **Certificate:** go to `Certificates & secrets` > `Certificates` > `Upload certificate` and upload the public certificate (`.cer`, `.crt` or `.pem`). Keep its private key, it is entered in the connection and never uploaded to Microsoft Entra ID. A certificate avoids long-lived shared secrets: the private key stays on the ingestion runner, which sends only an assertion signed with that key and the public certificate.
 
 3. **Grant Permissions to Fabric Workspace:**
    - Navigate to your Fabric workspace in <a href="https://app.fabric.microsoft.com" target="_blank">Microsoft Fabric</a>
