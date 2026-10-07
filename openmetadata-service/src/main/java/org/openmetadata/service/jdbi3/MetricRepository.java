@@ -82,6 +82,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.resources.metrics.MetricResource;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -442,10 +443,10 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void storeEntity(Metric metric, boolean update) {
-    // Intake requirements apply when creating a metric, including PUT upserts. Adding a
-    // requirement later must not block metadata edits or workflow status updates.
+    // Intake governs human creation, including PUT upserts; ingestion and later metadata edits
+    // must not be blocked by requirements intended for the creation form.
     if (!update) {
-      IntakeFormValidator.validate(metric, METRIC);
+      validateIntakeForCreation(metric);
     }
     store(metric, update);
   }
@@ -458,8 +459,15 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void storeEntities(List<Metric> entities) {
-    entities.forEach(metric -> IntakeFormValidator.validate(metric, METRIC));
+    entities.forEach(this::validateIntakeForCreation);
     storeMany(entities);
+  }
+
+  private void validateIntakeForCreation(final Metric metric) {
+    if (nullOrEmpty(metric.getUpdatedBy())
+        || !SubjectContext.getSubjectContext(metric.getUpdatedBy()).isBot()) {
+      IntakeFormValidator.validate(metric, METRIC);
+    }
   }
 
   @Override

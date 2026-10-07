@@ -9,16 +9,12 @@ import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
-import io.github.resilience4j.retry.Retry;
-import io.github.resilience4j.retry.RetryConfig;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -42,14 +38,6 @@ import org.openmetadata.service.util.Registry;
 public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   public static final String GOVERNANCE_BOT = "governance-bot";
 
-  private static final RetryConfig RETRY_CONFIG =
-      RetryConfig.custom()
-          .maxAttempts(3)
-          .waitDuration(Duration.ofMillis(100))
-          .retryOnException(WorkflowEventConsumer::isTransientDatabaseError)
-          .build();
-
-  private final Retry retry = Retry.of("workflow-event-consumer", RETRY_CONFIG);
   private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
 
@@ -128,19 +116,6 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     }
   }
 
-  private static boolean isTransientDatabaseError(Throwable e) {
-    String rootCauseMessage = ExceptionUtils.getRootCauseMessage(e);
-    if (rootCauseMessage == null) {
-      return false;
-    }
-    String lowerMessage = rootCauseMessage.toLowerCase();
-    return lowerMessage.contains("deadlock")
-        || lowerMessage.contains("lock wait timeout")
-        || lowerMessage.contains("try restarting transaction")
-        || lowerMessage.contains("updated by another transaction concurrently")
-        || lowerMessage.contains("optimisticlockingfailureexception");
-  }
-
   public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
       throws EventPublisherException {
     EventType eventType = event.getEventType();
@@ -185,9 +160,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
       if (variables != null && !variables.isEmpty()) {
         LOG.info("WorkflowEventConsumer - Triggering with signal: {}", signal);
-        Retry.decorateRunnable(
-                retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
-            .run();
+        WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
       }
     } catch (EntityNotFoundException e) {
       LOG.debug(

@@ -26,6 +26,39 @@ import org.openmetadata.service.jdbi3.TaskRepository;
 @ExtendWith(TestNamespaceExtension.class)
 class LifecycleMetadataTasksIT {
   @Test
+  void cancelsAnOpenTaskAfterLeavingItsStageAndReopensItOnReturn(TestNamespace namespace) {
+    final Domain domain = createDomain(namespace);
+    try {
+      final var configuration =
+          configuration()
+              .withTaskAssignees(TaskAssignees.CANDIDATES)
+              .withCandidates(
+                  List.of(
+                      Entity.getEntityReferenceByName(
+                          Entity.USER, "shared_user1", Include.NON_DELETED)));
+      final var service = service();
+      final String key = "stage-change:Draft";
+      service.reconcile(domain, configuration, key);
+      final JsonNode original = onlyTask(domain);
+      assertEquals("Open", original.get("status").asText());
+
+      final Domain advanced = updateStage(domain, EntityStatus.IN_REVIEW);
+      service.reconcile(advanced, configuration, key);
+      service.reconcile(advanced, configuration, key);
+      final JsonNode cancelled = onlyTask(domain);
+      assertEquals(original.get("id"), cancelled.get("id"));
+      assertEquals("Cancelled", cancelled.get("status").asText());
+
+      service.reconcile(updateStage(domain, EntityStatus.DRAFT), configuration, key);
+      final JsonNode reopened = onlyTask(domain);
+      assertEquals(original.get("id"), reopened.get("id"));
+      assertEquals("Open", reopened.get("status").asText());
+    } finally {
+      cleanup(domain);
+    }
+  }
+
+  @Test
   void reusesCompletesAndReopensARealMetadataTask(TestNamespace namespace) {
     final Domain domain = createDomain(namespace);
     try {
@@ -122,6 +155,15 @@ class LifecycleMetadataTasksIT {
             HttpMethod.PATCH,
             "/v1/domains/" + domain.getId(),
             List.of(Map.of("op", "add", "path", "/description", "value", value))),
+        Domain.class);
+  }
+
+  private static Domain updateStage(Domain domain, EntityStatus stage) {
+    return JsonUtils.convertValue(
+        execute(
+            HttpMethod.PATCH,
+            "/v1/domains/" + domain.getId(),
+            List.of(Map.of("op", "add", "path", "/entityStatus", "value", stage.value()))),
         Domain.class);
   }
 

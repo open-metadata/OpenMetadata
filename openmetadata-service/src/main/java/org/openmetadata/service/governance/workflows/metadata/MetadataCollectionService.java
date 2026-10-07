@@ -52,7 +52,7 @@ public final class MetadataCollectionService {
     if (!applies || complete) {
       existing.filter(this::isOpen).ifPresent(task -> finish(task, complete));
     } else if (configuration.getStage() != entity.getEntityStatus()) {
-      return;
+      existing.filter(this::isOpen).ifPresent(task -> finish(task, false));
     } else if (existing.isEmpty()) {
       createMissingTask(entity, configuration, id);
     } else if (!Boolean.TRUE.equals(existing.get().getDeleted()) && !isOpen(existing.get())) {

@@ -787,46 +787,10 @@ public class WorkflowHandler {
    * another node may not have invalidated.
    */
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
-    RuntimeService runtimeService = processEngine.getRuntimeService();
     try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
-      // A broadcast includes suspended start subscriptions and Flowable aborts the entire
-      // delivery when it encounters one. Dispatch only to active subscribers so pausing one
-      // workflow does not prevent other workflows from receiving the same entity event.
-      for (var subscription :
-          runtimeService
-              .createEventSubscriptionQuery()
-              .eventType("signal")
-              .eventName(signal)
-              .list()) {
-        ProcessDefinition definition =
-            processEngine
-                .getRepositoryService()
-                .createProcessDefinitionQuery()
-                .processDefinitionId(subscription.getProcessDefinitionId())
-                .active()
-                .singleResult();
-        if (definition == null) {
-          continue;
-        }
-        if (subscription.getExecutionId() == null) {
-          runtimeService
-              .createProcessInstanceBuilder()
-              .processDefinitionId(definition.getId())
-              .startEventId(subscription.getActivityId())
-              .variables(new LinkedHashMap<>(variables))
-              .start();
-        } else {
-          Execution execution =
-              runtimeService
-                  .createExecutionQuery()
-                  .executionId(subscription.getExecutionId())
-                  .singleResult();
-          if (execution != null && !execution.isSuspended()) {
-            runtimeService.signalEventReceived(
-                signal, execution.getId(), new LinkedHashMap<>(variables));
-          }
-        }
-      }
+      new WorkflowSignalDispatcher(
+              processEngine.getRuntimeService(), processEngine.getRepositoryService())
+          .dispatch(signal, variables);
     }
   }
 

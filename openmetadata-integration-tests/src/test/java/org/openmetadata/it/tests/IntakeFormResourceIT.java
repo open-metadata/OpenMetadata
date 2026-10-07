@@ -34,6 +34,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -178,6 +180,82 @@ public class IntakeFormResourceIT {
 
   private static final List<String> GOVERNANCE_ENTITY_TYPES =
       List.of("dataProduct", "domain", "glossaryTerm", "metric");
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"POST", "PUT"})
+  void metric_botCreationSkipsIntakeRequirements(HttpMethod method, TestNamespace ns)
+      throws Exception {
+    final IntakeForm form = metricFormRequiringBusinessName(ns);
+    final var request = new CreateMetric().withName(ns.prefix("ingested-" + method));
+    try {
+      final Metric created =
+          SdkClients.ingestionBotClient()
+              .getHttpClient()
+              .execute(method, "/v1/metrics", request, Metric.class);
+      try {
+        assertNull(created.getDisplayName());
+        assertEquals("ingestion-bot", created.getUpdatedBy());
+        assertNotNull(SdkClients.adminClient().metrics().get(created.getId().toString()));
+        final var manual = new CreateMetric().withName(ns.prefix("manual-" + method));
+        final InvalidRequestException error =
+            assertThrows(
+                InvalidRequestException.class,
+                () ->
+                    SdkClients.adminClient()
+                        .getHttpClient()
+                        .execute(method, "/v1/metrics", manual, Metric.class));
+        assertTrue(error.getMessage().contains("Business name"));
+      } finally {
+        SdkClients.adminClient()
+            .metrics()
+            .delete(created.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      }
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
+  @Test
+  void metric_botBulkCreationSkipsIntakeRequirements(TestNamespace ns) throws Exception {
+    final IntakeForm form = metricFormRequiringBusinessName(ns);
+    final List<CreateMetric> requests =
+        List.of(
+            new CreateMetric().withName(ns.prefix("bulk-missing-business-name")),
+            new CreateMetric()
+                .withName(ns.prefix("bulk-with-business-name"))
+                .withDisplayName("Revenue"));
+    try {
+      final var result = SdkClients.ingestionBotClient().metrics().bulkCreateOrUpdate(requests);
+      assertEquals(2, result.getNumberOfRowsPassed());
+      assertEquals(0, result.getNumberOfRowsFailed());
+      for (CreateMetric request : requests) {
+        final Metric stored = SdkClients.adminClient().metrics().getByName(request.getName());
+        assertEquals("ingestion-bot", stored.getUpdatedBy());
+        SdkClients.adminClient()
+            .metrics()
+            .delete(stored.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      }
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
+  private static IntakeForm metricFormRequiringBusinessName(TestNamespace ns) throws Exception {
+    return createIntakeForm(
+        new CreateIntakeForm()
+            .withName(ns.prefix("metric-bot-intake"))
+            .withEntityType(TargetEntityType.METRIC)
+            .withEnabled(true)
+            .withFormFields(
+                List.of(
+                    new IntakeFormField()
+                        .withFieldPath("displayName")
+                        .withFieldLabel("Business name")
+                        .withFieldKind(IntakeFormField.FieldKind.NATIVE)
+                        .withRequired(true))));
+  }
 
   @Test
   void metric_nativeIntakeFieldsEnforcedOnCreationWithoutBlockingUpdates(TestNamespace ns)
