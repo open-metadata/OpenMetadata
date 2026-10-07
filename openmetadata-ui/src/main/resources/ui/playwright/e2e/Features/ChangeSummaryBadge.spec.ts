@@ -125,7 +125,9 @@ test.describe(
           .getByTestId('ai-suggested-badge')
           .first();
 
-        await badge.hover();
+        // React Aria opens a tooltip on hover only after a pointer press on the
+        // page; keyboard focus on the trigger opens it regardless.
+        await page.getByRole('button').filter({ has: badge }).focus();
 
         const tooltip = page.getByRole('tooltip');
 
