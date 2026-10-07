@@ -180,6 +180,10 @@ export const useTaskStatusCounts = (
 export interface UseTaskQueueOptions {
   scope?: TaskListScope;
   onCountChange?: (count: number) => void;
+  // The status to open on, and each choice after, for a host that shows it
+  // (an entity's Tasks badge) or keeps it while the queue is unmounted.
+  initialStatus?: TaskStatusFilter;
+  onStatusChange?: (status: TaskStatusFilter) => void;
   // After an action changed a task: its entity may have changed with it (an
   // approved description, a new owner), so its page can re-read itself.
   onTaskChange?: () => void;
@@ -193,6 +197,8 @@ export interface UseTaskQueueOptions {
 export const useTaskQueue = ({
   scope = VISIBLE_TASKS,
   onCountChange,
+  initialStatus = 'open',
+  onStatusChange,
   onTaskChange,
 }: UseTaskQueueOptions = {}) => {
   const { t } = useTranslation();
@@ -200,7 +206,7 @@ export const useTaskQueue = ({
   const [selectedTaskId, setSelectedTaskId] = useState<string>();
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
-  const [status, setStatus] = useState<TaskStatusFilter>('open');
+  const [status, setStatus] = useState<TaskStatusFilter>(initialStatus);
   const [search, setSearch] = useState('');
   // The query the server is filtering on. Kept apart from `search` so typing
   // stays responsive while the request trails it.
@@ -214,10 +220,14 @@ export const useTaskQueue = ({
 
   // A new tab offers other statuses, so a choice made for the last one would
   // only hide rows; start the new tab unfiltered.
-  const handleStatusChange = useCallback((next: TaskStatusFilter) => {
-    setStatus(next);
-    setStatusFilter([]);
-  }, []);
+  const handleStatusChange = useCallback(
+    (next: TaskStatusFilter) => {
+      setStatus(next);
+      setStatusFilter([]);
+      onStatusChange?.(next);
+    },
+    [onStatusChange]
+  );
 
   const scopeKey = getTaskScopeKey(scope);
   const statusCounts = useTaskStatusCounts(scope);

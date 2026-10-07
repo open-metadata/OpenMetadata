@@ -70,9 +70,23 @@ jest.mock('../../discovery/personal-space/InboxPage/tabs/ActivityTab', () => ({
 
 jest.mock('./ActivityFeedTasks', () => ({
   __esModule: true,
-  default: ({ scope, leading }: { scope: unknown; leading: ReactNode }) => (
-    <div data-scope={JSON.stringify(scope)} data-testid="tasks-view">
+  default: ({
+    scope,
+    leading,
+    status,
+    onStatusChange,
+  }: {
+    scope: unknown;
+    leading: ReactNode;
+    status: string;
+    onStatusChange: (status: string) => void;
+  }) => (
+    <div
+      data-scope={JSON.stringify(scope)}
+      data-status={status}
+      data-testid="tasks-view">
       {leading}
+      <button onClick={() => onStatusChange('closed')}>pick-closed</button>
     </div>
   ),
 }));
@@ -132,6 +146,24 @@ describe('ActivityFeed', () => {
         screen.getByTestId('tasks-view').getAttribute('data-scope') ?? ''
       )
     ).toEqual({ type: 'assignee', assignee: 'harsh.vador' });
+  });
+
+  // The badge counts the Status chosen in the Tasks view, kept across views.
+  it('counts the chosen Status on the Tasks badge', () => {
+    render(<ActivityFeed defaultView="tasks" entityLink={TABLE_LINK} />);
+
+    expect(screen.getByTestId('tasks-view')).toHaveAttribute(
+      'data-status',
+      'open'
+    );
+
+    fireEvent.click(screen.getByText('pick-closed'));
+
+    expect(screen.getByTestId('view-tasks')).toHaveAttribute('data-badge', '1');
+    expect(screen.getByTestId('tasks-view')).toHaveAttribute(
+      'data-status',
+      'closed'
+    );
   });
 
   // No open task is nothing to count, not a "0".

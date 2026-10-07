@@ -23,6 +23,7 @@ import {
   INBOX_DATE_RANGE_OPTIONS,
 } from '../../discovery/personal-space/InboxPage/inbox.utils';
 import ActivityTab from '../../discovery/personal-space/InboxPage/tabs/ActivityTab';
+import type { TaskStatusFilter } from '../../discovery/personal-space/InboxPage/useTaskQueue';
 import ActivityFeedTasks from './ActivityFeedTasks';
 import { useActivityFeedCounts } from './useActivityFeedCounts';
 
@@ -67,6 +68,9 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
     },
     [onViewChange]
   );
+  // The Tasks badge counts the Status chosen in the Tasks view, which keeps it
+  // when the view switches away and back.
+  const [taskStatus, setTaskStatus] = useState<TaskStatusFilter>('open');
   // Read when the feed mounts, so a page left open keeps a current window.
   const [dateRange, setDateRange] = useState<InboxDateRange>(() => ({
     ...getDefaultInboxDateRange(),
@@ -92,7 +96,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
         <Tabs.Item badge={getInboxTabBadge(activityCount)} id="activity">
           {t('label.activity')}
         </Tabs.Item>
-        <Tabs.Item badge={taskCounts.open || undefined} id="tasks">
+        <Tabs.Item badge={taskCounts[taskStatus] || undefined} id="tasks">
           {t('label.task-plural')}
         </Tabs.Item>
       </Tabs.List>
@@ -118,6 +122,8 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
         <ActivityFeedTasks
           leading={viewSwitch}
           scope={taskScope}
+          status={taskStatus}
+          onStatusChange={setTaskStatus}
           onTaskChange={onTaskChange}
         />
       )}

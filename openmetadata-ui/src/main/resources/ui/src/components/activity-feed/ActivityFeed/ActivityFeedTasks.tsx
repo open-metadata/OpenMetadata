@@ -47,6 +47,9 @@ export interface ActivityFeedTasksProps {
   scope: TaskListScope;
   // The host's control for the bar's left side (the Activity / Tasks switch).
   leading?: ReactNode;
+  // The Status choice, kept by the host across views and shown on its badge.
+  status?: TaskStatusFilter;
+  onStatusChange?: (status: TaskStatusFilter) => void;
   onTaskChange?: () => void;
 }
 
@@ -58,10 +61,17 @@ export interface ActivityFeedTasksProps {
 const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
   scope,
   leading,
+  status,
+  onStatusChange,
   onTaskChange,
 }) => {
   const { t } = useTranslation();
-  const queue = useTaskQueue({ scope, onTaskChange });
+  const queue = useTaskQueue({
+    scope,
+    initialStatus: status,
+    onStatusChange,
+    onTaskChange,
+  });
   const typeOptions = useTaskTypeOptions(queue.tasks, queue.typeFilter);
 
   const statusOptions = useMemo(

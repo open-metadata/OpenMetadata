@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import {
   TaskListScope,
   useTaskQueue,
@@ -130,6 +130,22 @@ describe('useTaskQueue', () => {
 
     expect(capturedQueryKey).not.toEqual(inboxKey);
     expect(capturedQueryKey).toContain('entity:svc.db.schema.table');
+  });
+
+  // A host keeps the choice while the queue is unmounted and shows its count.
+  it('opens on the given status and reports each choice', () => {
+    const onStatusChange = jest.fn();
+    const { result } = renderHook(() =>
+      useTaskQueue({ scope: ENTITY, initialStatus: 'closed', onStatusChange })
+    );
+
+    expect(result.current.status).toBe('closed');
+    expect(capturedQueryKey).toContain('closed');
+
+    act(() => result.current.handleStatusChange('all'));
+
+    expect(result.current.status).toBe('all');
+    expect(onStatusChange).toHaveBeenCalledWith('all');
   });
 });
 
