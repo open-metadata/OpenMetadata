@@ -472,12 +472,12 @@ class AIContextBuilderTest {
   }
 
   @Test
-  void collectGlossaryFqns_takesGlossarySourceOnlyFromTableAndColumns() {
+  void collectGlossaryFqns_keepsColumnBindingsOutOfTableDefinitions() {
     Set<String> fqns = AIContextBuilder.collectGlossaryFqns(sampleTable());
     assertTrue(fqns.contains("Business.Order"), "table-level glossary term missing");
-    assertTrue(fqns.contains("Business.CustomerId"), "column-level glossary term missing");
+    assertFalse(fqns.contains("Business.CustomerId"), "column term flattened into table context");
     assertTrue(fqns.stream().noneMatch(f -> f.startsWith("PII.")), "classification tag leaked in");
-    assertEquals(2, fqns.size());
+    assertEquals(1, fqns.size());
   }
 
   @Test

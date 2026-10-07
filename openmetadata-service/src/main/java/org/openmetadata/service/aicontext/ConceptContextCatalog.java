@@ -1,0 +1,195 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.openmetadata.service.aicontext;
+
+import static org.openmetadata.service.aicontext.ConceptContextBuilder.CANDIDATE_PAGE_SIZE;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.Function;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.aicontext.Observability;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.aicontext.ConceptContextBuilder.CandidatePage;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+
+/** Catalog boundary for concept resolution; cursor and page storage are request-local and bounded. */
+@Slf4j
+final class ConceptContextCatalog implements ConceptContextBuilder.Catalog {
+  private final Authorizer authorizer;
+  private final SecurityContext securityContext;
+  private final Function<Table, Observability> profileLoader;
+  private final Function<Table, TableData> sampleLoader;
+  private List<Object> searchAfter;
+
+  ConceptContextCatalog(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      Function<Table, Observability> profileLoader,
+      Function<Table, TableData> sampleLoader) {
+    this.authorizer = authorizer;
+    this.securityContext = securityContext;
+    this.profileLoader = profileLoader;
+    this.sampleLoader = sampleLoader;
+  }
+
+  @Override
+  public CandidatePage candidates(EntityInterface concept, int offset) {
+    return concept instanceof GlossaryTerm term
+        ? taggedTables(term, offset)
+        : metricAssets(concept, offset);
+  }
+
+  private CandidatePage taggedTables(GlossaryTerm term, int offset) {
+    SearchRequest request =
+        AIContextFinder.tagSearchRequest(
+                term.getFullyQualifiedName(),
+                Entity.getSearchRepository().getIndexOrAliasName(Entity.TABLE),
+                CANDIDATE_PAGE_SIZE)
+            .withSortFieldParam("id.keyword")
+            .withSortOrder("asc")
+            .withSearchAfter(searchAfter)
+            .withIncludeAggregations(false);
+    try (Response response = Entity.getSearchRepository().search(request, subject())) {
+      String json = (String) response.getEntity();
+      JsonNode hits = JsonUtils.readTree(json).path("hits").path("hits");
+      List<EntityReference> references = new ArrayList<>();
+      AIContextFinder.parseTagHits(json, references);
+      searchAfter = nextCursor(hits);
+      if (hits.size() == CANDIDATE_PAGE_SIZE && searchAfter.isEmpty()) {
+        throw new IllegalStateException(
+            "Missing search cursor while resolving " + term.getFullyQualifiedName());
+      }
+      return new CandidatePage(
+          references, offset + hits.size(), hits.size() == CANDIDATE_PAGE_SIZE);
+    } catch (IOException e) {
+      throw new UncheckedIOException(
+          "Failed to resolve bound tables for " + term.getFullyQualifiedName(), e);
+    }
+  }
+
+  private static List<Object> nextCursor(JsonNode hits) {
+    List<Object> cursor = new ArrayList<>();
+    if (!hits.isEmpty()) {
+      hits.get(hits.size() - 1)
+          .path("sort")
+          .forEach(value -> cursor.add(JsonUtils.convertValue(value, Object.class)));
+    }
+    return cursor;
+  }
+
+  private SubjectContext subject() {
+    return securityContext == null ? null : DefaultAuthorizer.getSubjectContext(securityContext);
+  }
+
+  private static CandidatePage metricAssets(EntityInterface metric, int offset) {
+    List<EntityRelationshipRecord> records =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findToWithOffset(
+                metric.getId(),
+                Entity.METRIC,
+                List.of(Relationship.APPLIED_TO.ordinal()),
+                offset,
+                CANDIDATE_PAGE_SIZE);
+    List<EntityReference> references =
+        Entity.getEntityRelationshipRepository().getEntityReferences(records, Include.NON_DELETED);
+    return new CandidatePage(
+        references, offset + records.size(), records.size() == CANDIDATE_PAGE_SIZE);
+  }
+
+  @Override
+  public Table table(EntityReference reference) {
+    Table table = null;
+    try {
+      table = Entity.getEntity(reference, "columns,tags", Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Concept context: table {} disappeared during resolution",
+          reference.getFullyQualifiedName());
+    }
+    return table;
+  }
+
+  @Override
+  public boolean canView(String type, String fqn) {
+    return fqn != null
+        && AIContextBuilder.canViewKnowledge(
+            authorizer, securityContext, type, fqn, MetadataOperation.VIEW_BASIC);
+  }
+
+  @Override
+  public ContextMemory memory(UUID id) {
+    ContextMemory memory = null;
+    try {
+      ContextMemory loaded =
+          Entity.getEntity(
+              Entity.CONTEXT_MEMORY,
+              id,
+              ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "relatedEntities"),
+              Include.NON_DELETED);
+      if (securityContext != null) {
+        ContextMemoryVisibility.enforceVisibility(loaded, securityContext);
+      }
+      memory = loaded;
+    } catch (EntityNotFoundException | ForbiddenException e) {
+      LOG.debug("Concept context: source memory {} is unavailable to caller", id);
+    }
+    return memory;
+  }
+
+  @Override
+  public Query query(EntityReference reference) {
+    Query query = null;
+    try {
+      query = Entity.getEntity(reference, "", Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Concept context: evidence query {} is no longer available", reference.getId());
+    }
+    return query;
+  }
+
+  @Override
+  public Observability profile(Table table) {
+    return profileLoader.apply(table);
+  }
+
+  @Override
+  public TableData sampleData(Table table) {
+    return sampleLoader.apply(table);
+  }
+}

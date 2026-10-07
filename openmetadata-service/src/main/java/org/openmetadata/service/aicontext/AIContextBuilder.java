@@ -62,6 +62,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
+import org.openmetadata.schema.type.aicontext.ConceptContext;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
@@ -220,9 +221,10 @@ public class AIContextBuilder {
             .withUpstreamEdges(upstreamEdges)
             .withDownstream(edgeFqns(downstreamEdges))
             .withDownstreamEdges(downstreamEdges)
-            .withAssetContext(buildAssetContext(entity))
             .withObservability(resolveObservability(entity, dataQuality))
             .withGeneratedAt(System.currentTimeMillis());
+    context.withAssetContext(
+        buildAssetContext(entity, context.getMetrics(), context.getArticles()));
     applyKnowledgeBudget(context);
     return context;
   }
@@ -238,6 +240,11 @@ public class AIContextBuilder {
   void applyKnowledgeBudget(AIContext context) {
     int remaining = knowledgeBudgetChars;
     remaining = fitItems(context.getGlossaryTerms(), remaining);
+    if (context.getAssetContext() != null && context.getAssetContext().getTable() != null) {
+      for (FieldContext field : listOrEmpty(context.getAssetContext().getTable().getColumns())) {
+        remaining = fitItems(field.getGlossaryTerms(), remaining);
+      }
+    }
     remaining = fitItems(context.getMetrics(), remaining);
     remaining = fitItems(context.getArticles(), remaining);
     logDegradation(context);
@@ -459,10 +466,15 @@ public class AIContextBuilder {
   }
 
   private void applyProfile(Observability observability, EntityInterface entity) {
-    if (authorizer != null && securityContext != null) {
+    if (authorizer != null
+        && securityContext != null
+        && canViewKnowledge(
+            Entity.TABLE, entity.getFullyQualifiedName(), MetadataOperation.VIEW_DATA_PROFILE)) {
       try {
         TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-        Table profiled = repository.getLatestTableProfile(fqn, true, authorizer, securityContext);
+        Table profiled =
+            repository.getLatestTableProfile(
+                entity.getFullyQualifiedName(), true, authorizer, securityContext);
         populateProfile(observability, profiled);
       } catch (Exception e) {
         LOG.warn("AIContext: failed to load profile for {}: {}", fqn, e.getMessage());
@@ -696,11 +708,13 @@ public class AIContextBuilder {
 
   private static String fieldsFor(String entityType) {
     String result;
-    if (Entity.TABLE.equals(entityType)) {
-      result = TABLE_FIELDS;
-    } else {
-      result = supportsTags(entityType) ? DEFAULT_FIELDS : "";
-    }
+    result =
+        switch (entityType) {
+          case Entity.TABLE -> TABLE_FIELDS;
+          case Entity.GLOSSARY_TERM -> "tags,relatedTerms,attributes,synonyms";
+          case Entity.METRIC -> "tags,relatedMetrics";
+          default -> supportsTags(entityType) ? DEFAULT_FIELDS : "";
+        };
     return result;
   }
 
@@ -733,9 +747,6 @@ public class AIContextBuilder {
   static Set<String> collectGlossaryFqns(EntityInterface entity) {
     Set<String> fqns = new LinkedHashSet<>();
     addGlossaryFqns(entity.getTags(), fqns);
-    if (entity instanceof Table table) {
-      collectColumnGlossary(table.getColumns(), fqns);
-    }
     return fqns;
   }
 
@@ -754,13 +765,6 @@ public class AIContextBuilder {
       if (tag.getSource() == TagLabel.TagSource.GLOSSARY) {
         into.add(tag.getTagFQN());
       }
-    }
-  }
-
-  private static void collectColumnGlossary(List<Column> columns, Set<String> into) {
-    for (Column column : listOrEmpty(columns)) {
-      addGlossaryFqns(column.getTags(), into);
-      collectColumnGlossary(column.getChildren(), into);
     }
   }
 
@@ -951,9 +955,13 @@ public class AIContextBuilder {
 
   private List<KnowledgeItem> resolveMetrics(EntityInterface entity) {
     List<KnowledgeItem> items = new ArrayList<>();
+    List<EntityReference> references = new ArrayList<>(findAttachedMetrics(entity));
+    if (entity instanceof Metric metric) {
+      references.addAll(listOrEmpty(metric.getRelatedMetrics()));
+    }
     addItems(
         items,
-        capList(findAttachedMetrics(entity), MAX_KNOWLEDGE_ITEMS),
+        capList(references.stream().distinct().toList(), MAX_KNOWLEDGE_ITEMS),
         this::toMetricKnowledgeItem);
     return items;
   }
@@ -1064,15 +1072,40 @@ public class AIContextBuilder {
     return item;
   }
 
-  private AssetContext buildAssetContext(EntityInterface entity) {
+  private AssetContext buildAssetContext(
+      EntityInterface entity, List<KnowledgeItem> metrics, List<KnowledgeItem> articles) {
     AssetContext context = new AssetContext();
     if (entity instanceof Table table) {
-      context.withTable(buildTableContext(table).withSampleData(resolveSampleData(table)));
+      TableContext tableContext = buildTableContext(table).withSampleData(resolveSampleData(table));
+      tableContext.getColumns().forEach(this::resolveFieldGlossary);
+      context.withTable(tableContext);
     }
-    if (entity instanceof Metric metric) {
-      context.withGeneric(buildMetricContext(metric));
+    if (entity instanceof GlossaryTerm || entity instanceof Metric) {
+      ConceptContext concept =
+          new ConceptContextBuilder(
+                  new ConceptContextCatalog(
+                      authorizer,
+                      securityContext,
+                      table -> resolveObservability(table, null),
+                      this::resolveSampleData))
+              .build(entity, metrics, articles);
+      context.withConceptContext(concept);
+      if (entity instanceof Metric metric) {
+        context.withGeneric(buildMetricContext(metric, concept));
+      }
     }
     return context;
+  }
+
+  private void resolveFieldGlossary(FieldContext field) {
+    List<KnowledgeItem> terms = new ArrayList<>();
+    for (KnowledgeItem reference : listOrEmpty(field.getGlossaryTerms())) {
+      KnowledgeItem term = toGlossaryKnowledgeItem(reference.getFullyQualifiedName());
+      if (term != null) {
+        terms.add(term);
+      }
+    }
+    field.withGlossaryTerms(terms);
   }
 
   private TableData resolveSampleData(Table table) {
@@ -1120,13 +1153,16 @@ public class AIContextBuilder {
    * get_asset_context about a metric returned only its description, while the same expression was
    * already reachable through get_knowledge_content and as attached knowledge of a table.
    */
-  private static GenericAssetContext buildMetricContext(Metric metric) {
+  private static GenericAssetContext buildMetricContext(Metric metric, ConceptContext concept) {
     MetricExpression expression = metric.getMetricExpression();
-    GenericAssetContext context = null;
-    if (expression != null && !nullOrEmpty(expression.getCode())) {
-      context = new GenericAssetContext().withDefinition(expression.getCode());
-    }
-    return context;
+    return new GenericAssetContext()
+        .withDefinition(expression == null ? null : expression.getCode())
+        .withSourceAssets(
+            listOrEmpty(concept.getBindings()).stream()
+                .filter(binding -> Entity.TABLE.equals(binding.getAssetType()))
+                .map(binding -> binding.getAssetFqn())
+                .distinct()
+                .toList());
   }
 
   /**
@@ -1210,21 +1246,37 @@ public class AIContextBuilder {
   }
 
   static List<FieldContext> toFieldContexts(List<Column> columns) {
+    return toFieldContexts(columns, "");
+  }
+
+  private static List<FieldContext> toFieldContexts(List<Column> columns, String parentName) {
     List<FieldContext> fields = new ArrayList<>();
     for (Column column : listOrEmpty(columns)) {
+      String name = parentName.isEmpty() ? column.getName() : parentName + "." + column.getName();
+      Set<String> terms = new LinkedHashSet<>();
+      addGlossaryFqns(column.getTags(), terms);
       fields.add(
           new FieldContext()
-              .withName(column.getName())
+              .withName(name)
               .withDataType(columnType(column))
               .withDataTypeEnum(column.getDataType() == null ? null : column.getDataType().value())
               .withConstraint(
                   column.getConstraint() == null ? null : column.getConstraint().value())
-              .withDescription(unescapeRichText(column.getDescription())));
+              .withDescription(unescapeRichText(column.getDescription()))
+              .withGlossaryTerms(
+                  capped(terms, MAX_KNOWLEDGE_ITEMS).stream()
+                      .map(
+                          term ->
+                              new KnowledgeItem()
+                                  .withType(KnowledgeItem.Type.GLOSSARY_TERM)
+                                  .withFullyQualifiedName(term))
+                      .toList()));
+      fields.addAll(toFieldContexts(column.getChildren(), name));
     }
     return fields;
   }
 
-  private static String columnType(Column column) {
+  static String columnType(Column column) {
     String display = column.getDataTypeDisplay();
     return !nullOrEmpty(display)
         ? display

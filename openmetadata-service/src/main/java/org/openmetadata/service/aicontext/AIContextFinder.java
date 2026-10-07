@@ -232,21 +232,10 @@ public class AIContextFinder {
     List<EntityReference> refs = new ArrayList<>();
     try {
       SearchRequest request =
-          new SearchRequest()
-              .withQuery(
-                  String.format(
-                      "** AND (tags.tagFQN:\"%s\")", ReindexingUtil.escapeDoubleQuotes(tagFqn)))
-              .withSize(MAX_ASSETS_PER_ITEM)
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-              .withFrom(0)
-              .withFetchSource(true)
-              .withTrackTotalHits(false)
-              .withSortFieldParam("_score")
-              .withDeleted(false)
-              .withSortOrder("desc")
-              // Routing only reads identity fields; restricting _source keeps the tag search
-              // light on assets with large documents (wide tables, long descriptions).
-              .withIncludeSourceFields(List.of("fullyQualifiedName", "entityType"));
+          tagSearchRequest(
+              tagFqn,
+              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS),
+              MAX_ASSETS_PER_ITEM);
       Response response = Entity.getSearchRepository().search(request, subjectContext);
       parseTagHits((String) response.getEntity(), refs);
     } catch (Exception e) {
@@ -255,7 +244,24 @@ public class AIContextFinder {
     return refs;
   }
 
-  private static void parseTagHits(String json, List<EntityReference> refs) {
+  static SearchRequest tagSearchRequest(String tagFqn, String index, int size) {
+    return new SearchRequest()
+        .withQuery(
+            String.format("** AND (tags.tagFQN:\"%s\")", ReindexingUtil.escapeDoubleQuotes(tagFqn)))
+        .withSize(size)
+        .withIndex(index)
+        .withFrom(0)
+        .withFetchSource(true)
+        .withTrackTotalHits(false)
+        .withSortFieldParam("_score")
+        .withDeleted(false)
+        .withSortOrder("desc")
+        // Routing only reads identity fields; restricting _source keeps the tag search
+        // light on assets with large documents (wide tables, long descriptions).
+        .withIncludeSourceFields(List.of("fullyQualifiedName", "entityType"));
+  }
+
+  static void parseTagHits(String json, List<EntityReference> refs) {
     ArrayNode hits = (ArrayNode) JsonUtils.extractValue(json, "hits", "hits");
     if (hits != null) {
       for (JsonNode hit : hits) {

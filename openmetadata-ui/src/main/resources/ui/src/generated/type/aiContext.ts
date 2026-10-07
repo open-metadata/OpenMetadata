@@ -57,7 +57,8 @@ export interface AIContext {
      */
     generatedAt?: number;
     /**
-     * Approved glossary terms attached to the asset (asset-level and field/column-level).
+     * Approved glossary terms attached to the asset itself. Column-level definitions are
+     * preserved on each fieldContext.glossaryTerms.
      */
     glossaryTerms?: KnowledgeItem[];
     /**
@@ -160,16 +161,346 @@ export enum Type {
 /**
  * Type-specific structural context for the asset.
  *
- * Type-specific structural context. Exactly one sub-context is populated, selected by the
- * asset's entity type. New asset types are added as new optional sub-contexts here without
- * breaking existing consumers.
+ * Type-specific structural context, selected by the asset's entity type. Metrics carry both
+ * their generic expression/source-assets context and conceptContext. New asset types are
+ * added as optional sub-contexts without breaking existing consumers.
  */
 export interface AssetContext {
-    dashboard?: DashboardContext;
-    generic?:   GenericAssetContext;
-    pipeline?:  PipelineContext;
-    table?:     TableContext;
-    topic?:     TopicContext;
+    conceptContext?: ConceptContext;
+    dashboard?:      DashboardContext;
+    generic?:        GenericAssetContext;
+    pipeline?:       PipelineContext;
+    table?:          TableContext;
+    topic?:          TopicContext;
+}
+
+/**
+ * A business concept's definition and its physical bindings, related metrics and
+ * saved-query evidence. Counts include only caller-visible bindings, including those
+ * omitted by the response caps.
+ */
+export interface ConceptContext {
+    /**
+     * Declared ontology attributes, including their units and ENUM values.
+     */
+    attributes?: OntologyAttribute[];
+    bindings?:   ConceptBinding[];
+    definition?: string;
+    evidence?:   ConceptEvidence[];
+    /**
+     * Applied or related metrics with their expressions, sharing the envelope's knowledge
+     * budget.
+     */
+    metrics?:      KnowledgeItem[];
+    relatedTerms?: TermRelation[];
+    synonyms?:     string[];
+    /**
+     * Actual number of caller-visible assets with bindings, before the ten-asset cap.
+     */
+    totalAssets?: number;
+    /**
+     * Actual number of caller-visible asset and column bindings, before the per-asset and
+     * asset-count caps.
+     */
+    totalBindings?: number;
+    /**
+     * True when bindings were omitted by the ten-asset or 25-bindings-per-asset cap.
+     */
+    truncated?: boolean;
+}
+
+/**
+ * A typed attribute governed by an ontology concept.
+ */
+export interface OntologyAttribute {
+    dataType: DataType;
+    /**
+     * Exact RDF datatype IRI preserved for ontology round trips.
+     */
+    datatypeIri?: string;
+    /**
+     * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+     */
+    declaringTerm?: EntityReference;
+    /**
+     * Human-readable meaning of the attribute.
+     */
+    description?: string;
+    /**
+     * Allowed values when dataType is ENUM.
+     */
+    enumValues?: string[];
+    /**
+     * Stable identifier used by drafts and version diffs.
+     */
+    id: string;
+    /**
+     * True when the attribute is contributed by an ancestor concept rather than declared on the
+     * concept itself. Only set on computed `effectiveAttributes`; never valid inside a
+     * concept's own `attributes`.
+     */
+    inherited?: boolean;
+    /**
+     * Canonical IRI of the OWL datatype property.
+     */
+    iri?: string;
+    /**
+     * Whether the attribute identifies instances of the concept.
+     */
+    isIdentifier: boolean;
+    /**
+     * Name of the attribute within its concept.
+     */
+    name: string;
+    /**
+     * Optional unit IRI or display symbol.
+     */
+    unit?: string;
+}
+
+/**
+ * Supported value type for an ontology attribute.
+ */
+export enum DataType {
+    Boolean = "BOOLEAN",
+    Date = "DATE",
+    Decimal = "DECIMAL",
+    Enum = "ENUM",
+    Integer = "INTEGER",
+    String = "STRING",
+}
+
+/**
+ * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Resolved first-class relationship type.
+ *
+ * Reference to the related glossary term.
+ *
+ * Reference (id, name, type) to the service the asset belongs to, when applicable.
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
+}
+
+/**
+ * One asset or column that realizes a glossary term or supplies a metric. Profiles and
+ * samples are permission checked and PII masked.
+ */
+export interface ConceptBinding {
+    assetFqn:  string;
+    assetType: string;
+    /**
+     * Fully qualified column name. Absent for an asset-level binding.
+     */
+    column?:   string;
+    dataType?: string;
+    profile?:  ColumnProfileSummary;
+    /**
+     * Up to ten stored sample values for this column, available only with VIEW_SAMPLE_DATA and
+     * existing PII masking. These are representative samples, not the complete value set.
+     */
+    sampleValues?: any[];
+}
+
+/**
+ * Latest profiled shape of a column: the signals an LLM needs to write accurate filters
+ * (null ratio, cardinality, observed value bounds).
+ */
+export interface ColumnProfileSummary {
+    /**
+     * Top observed values with counts and percentages (plus an 'Others' bucket), when the
+     * profiler computed it — lets an agent write exact filter predicates.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
+     * Number of distinct values observed.
+     */
+    distinctCount?: number;
+    /**
+     * Observed maximum value (numeric/date columns).
+     */
+    max?: string;
+    /**
+     * Mean value (numeric/date columns; the profiler stores string-length stats here for text
+     * columns).
+     */
+    mean?: number;
+    /**
+     * Median value (numeric/date columns; the profiler stores string-length stats here for text
+     * columns).
+     */
+    median?: number;
+    /**
+     * Observed minimum value (numeric/date columns).
+     */
+    min?:  string;
+    name?: string;
+    /**
+     * Fraction of rows where this column is null (0..1).
+     */
+    nullProportion?: number;
+    /**
+     * Fraction of rows whose value occurs exactly once (0..1) — near 1 suggests a
+     * key/identifier column.
+     */
+    uniqueProportion?: number;
+}
+
+/**
+ * Top observed values with counts and percentages (plus an 'Others' bucket), when the
+ * profiler computed it — lets an agent write exact filter predicates.
+ *
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
+}
+
+/**
+ * A caller-visible, non-deleted saved Query linked by id through the concept's source
+ * memories.
+ */
+export interface ConceptEvidence {
+    fullyQualifiedName?: string;
+    id?:                 string;
+    lastRunAt?:          number;
+    /**
+     * Last execution status, only when recorded by the query provider. Absence means unknown,
+     * not successful.
+     */
+    lastRunStatus?:  string;
+    query?:          string;
+    queryTruncated?: boolean;
+}
+
+/**
+ * This schema defines the TermRelation type used for establishing typed semantic
+ * relationships between glossary terms.
+ */
+export interface TermRelation {
+    /**
+     * Time the relationship was first persisted.
+     */
+    createdAt?: number;
+    /**
+     * User who first authored or imported the relationship.
+     */
+    createdBy?: string;
+    /**
+     * Unique identifier of this relation edge.
+     */
+    id?: string;
+    /**
+     * How this relation edge originated. Defaults to 'Manual'.
+     */
+    provenance?: Provenance;
+    /**
+     * Resolved first-class relationship type.
+     */
+    relationshipType?: EntityReference;
+    /**
+     * Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to
+     * 'relatedTo' for backward compatibility.
+     */
+    relationType?: string;
+    /**
+     * Approval status of this relation edge.
+     */
+    status?: EntityStatus;
+    /**
+     * Reference to the related glossary term.
+     */
+    term: EntityReference;
+}
+
+/**
+ * How this relation edge originated. Defaults to 'Manual'.
+ *
+ * How this relation edge originated.
+ */
+export enum Provenance {
+    AISuggested = "AiSuggested",
+    Imported = "Imported",
+    Inferred = "Inferred",
+    Manual = "Manual",
+}
+
+/**
+ * Approval status of this relation edge.
+ *
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -227,7 +558,12 @@ export interface FieldContext {
      */
     dataTypeEnum?: string;
     description?:  string;
-    name?:         string;
+    /**
+     * Approved, caller-visible glossary definitions bound to this field, rather than to the
+     * whole asset.
+     */
+    glossaryTerms?: KnowledgeItem[];
+    name?:          string;
 }
 
 /**
@@ -442,76 +778,6 @@ export interface Observability {
 }
 
 /**
- * Latest profiled shape of a column: the signals an LLM needs to write accurate filters
- * (null ratio, cardinality, observed value bounds).
- */
-export interface ColumnProfileSummary {
-    /**
-     * Top observed values with counts and percentages (plus an 'Others' bucket), when the
-     * profiler computed it — lets an agent write exact filter predicates.
-     */
-    cardinalityDistribution?: CardinalityDistribution;
-    /**
-     * Number of distinct values observed.
-     */
-    distinctCount?: number;
-    /**
-     * Observed maximum value (numeric/date columns).
-     */
-    max?: string;
-    /**
-     * Mean value (numeric/date columns; the profiler stores string-length stats here for text
-     * columns).
-     */
-    mean?: number;
-    /**
-     * Median value (numeric/date columns; the profiler stores string-length stats here for text
-     * columns).
-     */
-    median?: number;
-    /**
-     * Observed minimum value (numeric/date columns).
-     */
-    min?:  string;
-    name?: string;
-    /**
-     * Fraction of rows where this column is null (0..1).
-     */
-    nullProportion?: number;
-    /**
-     * Fraction of rows whose value occurs exactly once (0..1) — near 1 suggests a
-     * key/identifier column.
-     */
-    uniqueProportion?: number;
-}
-
-/**
- * Top observed values with counts and percentages (plus an 'Others' bucket), when the
- * profiler computed it — lets an agent write exact filter predicates.
- *
- * Cardinality distribution showing top categories with an 'Others' bucket.
- */
-export interface CardinalityDistribution {
-    /**
-     * Flag indicating that all values in the column are unique, so no distribution is
-     * calculated.
-     */
-    allValuesUnique?: boolean;
-    /**
-     * List of category names including 'Others'.
-     */
-    categories?: string[];
-    /**
-     * List of counts corresponding to each category.
-     */
-    counts?: number[];
-    /**
-     * List of percentages corresponding to each category.
-     */
-    percentages?: number[];
-}
-
-/**
  * Data-quality standing of the asset, so an agent can caveat its answer when tests are
  * failing or an incident is open.
  */
@@ -524,55 +790,4 @@ export interface DataQuality {
     openIncidents?: number;
     passed?:        number;
     total?:         number;
-}
-
-/**
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Reference (id, name, type) to the service the asset belongs to, when applicable.
- */
-export interface EntityReference {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * If true the relationship indicated by this entity reference is inherited from the parent
-     * entity.
-     */
-    inherited?: boolean;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
 }
