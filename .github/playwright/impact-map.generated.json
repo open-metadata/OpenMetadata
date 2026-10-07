@@ -7165,6 +7165,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal.tsx"
       ],
       "specs": [
