@@ -14,7 +14,7 @@ import test, { expect, Page } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../../../constant/common';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage, waitForToastStackToClear } from '../../../utils/common';
+import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
@@ -177,10 +177,13 @@ test.describe('Large Glossary Performance Tests', () => {
         response.url().includes('after=')
     );
 
-    // Background async notifications stack at bottom-center over the
-    // pagination controls and intercept the click; drain the toast stack first.
-    await waitForToastStackToClear(page);
-    await pagination.getByTestId('next').click();
+    // Activated with the keyboard, not the mouse: the toast region renders fixed
+    // at bottom-center over the pagination controls, and the backend fans async
+    // notifications out to every socket of the logged-in user, so a parallel
+    // worker can refill the stack faster than it drains — waiting for it to be
+    // empty is a race no timeout wins. `press` still asserts the control is
+    // visible and enabled, and no overlay can swallow a key event.
+    await pagination.getByTestId('next').press('Enter');
 
     const nextPageResponse = await nextPageRequest;
     expect(nextPageResponse.status()).toBe(200);
@@ -196,8 +199,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(pagination.getByTestId('previous')).toBeEnabled();
 
     // Going back returns to the first page.
-    await waitForToastStackToClear(page);
-    await pagination.getByTestId('previous').click();
+    await pagination.getByTestId('previous').press('Enter');
     await waitForAllLoadersToDisappear(
       page.locator('[data-testid="glossary-terms-scroll-container"]')
     );

@@ -13,7 +13,13 @@
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import { UIEventHandler, useCallback, useEffect, useState } from 'react';
+import {
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ES_UPDATE_DELAY,
@@ -120,6 +126,9 @@ export const useAssetSelectionState = ({
 
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [assetJobResponse, setAssetJobResponse] = useState<CSVExportResponse>();
+  // Mirrors the in-flight job id for the socket listener, which is registered once
+  // per socket and would otherwise close over a stale `assetJobResponse`.
+  const activeJobIdRef = useRef<string>();
   const [aggregations, setAggregations] = useState<Aggregations>();
   const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
@@ -284,6 +293,7 @@ export const useAssetSelectionState = ({
           setFailedStatus(res as BulkOperationResult);
         }
       } else {
+        activeJobIdRef.current = (res as CSVExportResponse).jobId;
         setAssetJobResponse(res as CSVExportResponse);
       }
     },
@@ -531,7 +541,19 @@ export const useAssetSelectionState = ({
       socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, (newActivity) => {
         if (newActivity) {
           const activity = JSON.parse(newActivity);
+          // The channel is per-user, not per-drawer: every bulk-asset job this
+          // user runs — another browser tab, another entity, a parallel E2E
+          // worker signed in as the same admin — lands here. Acting on a
+          // foreign job's terminal event closed this drawer and discarded the
+          // selection the user was still building, so only our own job counts.
+          if (
+            !activeJobIdRef.current ||
+            activity.jobId !== activeJobIdRef.current
+          ) {
+            return;
+          }
           if (activity.status === 'COMPLETED') {
+            activeJobIdRef.current = undefined;
             setAssetJobResponse(undefined);
             if (activity.result.status === 'success') {
               onSave?.();
@@ -540,6 +562,7 @@ export const useAssetSelectionState = ({
               setFailedStatus(activity.result);
             }
           } else if (activity.status === 'FAILED') {
+            activeJobIdRef.current = undefined;
             setExportJob(activity);
             setAssetJobResponse(undefined);
           }

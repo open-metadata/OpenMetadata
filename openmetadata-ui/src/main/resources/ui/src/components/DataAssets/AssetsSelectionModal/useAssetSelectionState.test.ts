@@ -850,6 +850,46 @@ describe('useAssetSelectionState', () => {
   });
 
   describe('websocket bulk assets channel', () => {
+    // The channel is per-user: a job started from another tab/entity also lands
+    // here, so every assertion below goes through a job this hook actually
+    // started and the listener is expected to match on its jobId.
+    const startBulkJob = async (
+      result: ReturnType<typeof renderAssetSelectionState>['result']
+    ) => {
+      await waitFor(() => {
+        expect(result.current.items).toHaveLength(1);
+      });
+
+      act(() => {
+        result.current.handleCardClick({
+          id: '1',
+          entityType: 'table',
+        } as never);
+      });
+
+      await act(async () => {
+        result.current.onSaveAction();
+      });
+
+      await waitFor(() => {
+        expect(result.current.assetJobResponse).toEqual({ jobId: 'job-1' });
+      });
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('1')], 1)
+      );
+      (addAssetsToGlossaryTerm as jest.Mock).mockResolvedValue({
+        jobId: 'job-1',
+      });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it('should register and unregister the BULK_ASSETS_CHANNEL listener', () => {
       const { unmount } = renderAssetSelectionState();
 
@@ -865,12 +905,14 @@ describe('useAssetSelectionState', () => {
 
     it('should call onSave/onCancel when a COMPLETED success activity arrives', async () => {
       const { result } = renderAssetSelectionState();
+      await startBulkJob(result);
 
       const handler = mockSocket.on.mock.calls[0][1];
 
       act(() => {
         handler(
           JSON.stringify({
+            jobId: 'job-1',
             status: 'COMPLETED',
             result: { status: 'success' },
           })
@@ -887,6 +929,7 @@ describe('useAssetSelectionState', () => {
 
     it('should set failedStatus when a COMPLETED failure activity arrives', async () => {
       const { result } = renderAssetSelectionState();
+      await startBulkJob(result);
 
       const handler = mockSocket.on.mock.calls[0][1];
       const failureResult = { status: 'failure', failedRequest: [] };
@@ -894,6 +937,7 @@ describe('useAssetSelectionState', () => {
       act(() => {
         handler(
           JSON.stringify({
+            jobId: 'job-1',
             status: 'COMPLETED',
             result: failureResult,
           })
@@ -907,12 +951,14 @@ describe('useAssetSelectionState', () => {
 
     it('should set exportJob and clear assetJobResponse when a FAILED activity arrives', async () => {
       const { result } = renderAssetSelectionState();
+      await startBulkJob(result);
 
       const handler = mockSocket.on.mock.calls[0][1];
 
       act(() => {
         handler(
           JSON.stringify({
+            jobId: 'job-1',
             status: 'FAILED',
             error: 'job failed',
           })
@@ -926,6 +972,51 @@ describe('useAssetSelectionState', () => {
       });
 
       expect(result.current.assetJobResponse).toBeUndefined();
+    });
+
+    it('should ignore an activity for a job this hook did not start', async () => {
+      const { result } = renderAssetSelectionState();
+      await startBulkJob(result);
+
+      const handler = mockSocket.on.mock.calls[0][1];
+
+      act(() => {
+        handler(
+          JSON.stringify({
+            jobId: 'someone-elses-job',
+            status: 'COMPLETED',
+            result: { status: 'success' },
+          })
+        );
+      });
+
+      expect(mockOnSave).not.toHaveBeenCalled();
+      expect(mockOnCancel).not.toHaveBeenCalled();
+      expect(result.current.assetJobResponse).toEqual({ jobId: 'job-1' });
+    });
+
+    it('should ignore an activity when no job is in flight', async () => {
+      const { result } = renderAssetSelectionState();
+
+      await waitFor(() => {
+        expect(mockSocket.on).toHaveBeenCalled();
+      });
+
+      const handler = mockSocket.on.mock.calls[0][1];
+
+      act(() => {
+        handler(
+          JSON.stringify({
+            jobId: 'someone-elses-job',
+            status: 'COMPLETED',
+            result: { status: 'success' },
+          })
+        );
+      });
+
+      expect(mockOnSave).not.toHaveBeenCalled();
+      expect(mockOnCancel).not.toHaveBeenCalled();
+      expect(result.current.failedStatus).toBeUndefined();
     });
   });
 });
