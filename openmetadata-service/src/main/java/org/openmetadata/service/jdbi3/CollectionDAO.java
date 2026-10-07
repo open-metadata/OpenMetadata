@@ -1625,6 +1625,12 @@ public interface CollectionDAO {
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlQuery(
+        "SELECT extension FROM entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT (:extensionPrefix, '.%')")
+    List<String> getExtensionNames(
+        @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
+
+    @SqlQuery(
         "SELECT id, extension, json "
             + "FROM entity_extension "
             + "WHERE id IN (<ids>) AND extension LIKE :extension "
