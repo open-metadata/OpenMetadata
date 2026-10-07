@@ -33,7 +33,8 @@ export const pickDateInCorePicker = async (
     .filter({ has: page.getByRole('grid') });
   await expect(calendar).toBeVisible();
 
-  const heading = calendar.getByRole('heading');
+  // React Aria marks the calendar's month heading aria-hidden.
+  const heading = calendar.getByRole('heading', { includeHidden: true });
   const targetMonth = year * 12 + (month - 1);
   const MAX_MONTH_STEPS = 240;
   for (let step = 0; step < MAX_MONTH_STEPS; step++) {
