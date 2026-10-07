@@ -34,7 +34,6 @@ import org.openmetadata.service.rdf.agent.AgentSparqlResult;
 import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -65,12 +64,10 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
   private static final String NO_INFERENCE = "none";
   private static final String SELECT_QUERY_TYPE = "SELECT";
   private final GuardedQueryExecutor guardedQueryExecutor;
-  private final Supplier<RdfProjectionState> projectionStateSupplier;
 
   public SparqlQueryTool() {
     super();
     guardedQueryExecutor = SparqlQueryExecutionGuard.shared()::execute;
-    projectionStateSupplier = RdfProjectionStateResolver::resolveConfigured;
   }
 
   SparqlQueryTool(Supplier<RdfRepository> repositorySupplier) {
@@ -86,9 +83,8 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
       Supplier<RdfRepository> repositorySupplier,
       GuardedQueryExecutor guardedQueryExecutor,
       Supplier<RdfProjectionState> projectionStateSupplier) {
-    super(repositorySupplier);
+    super(repositorySupplier, projectionStateSupplier);
     this.guardedQueryExecutor = Objects.requireNonNull(guardedQueryExecutor);
-    this.projectionStateSupplier = Objects.requireNonNull(projectionStateSupplier);
   }
 
   /**
@@ -142,14 +138,6 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
     return isAdministrator(securityContext)
         ? executeAsAdministrator(securityContext, parameters, sparql)
         : executeWithAgentProfile(securityContext, parameters, sparql);
-  }
-
-  /**
-   * Resolves the caller the way {@code Authorizer#authorizeAdmin} does, so administrator status has
-   * one definition. The permission check already ran, so this only picks the execution profile.
-   */
-  private static boolean isAdministrator(final CatalogSecurityContext securityContext) {
-    return DefaultAuthorizer.getSubjectContext(securityContext).isAdmin();
   }
 
   private Result executeAsAdministrator(

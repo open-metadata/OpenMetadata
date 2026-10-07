@@ -34,17 +34,34 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 class FindByTagToolTest {
 
   private static final Authorizer AUTHORIZER = mock(Authorizer.class);
   private static final CatalogSecurityContext SECURITY_CONTEXT = mock(CatalogSecurityContext.class);
+
+  private MockedStatic<DefaultAuthorizer> subjects;
+
+  @BeforeEach
+  void callersAreAdministrators() {
+    subjects = RdfToolAuthorization.resolvingCallersAs(true);
+  }
+
+  @AfterEach
+  void releaseTheCallerResolution() {
+    subjects.close();
+  }
 
   @Test
   void rejectsMissingTagFqn() {
@@ -189,6 +206,66 @@ class FindByTagToolTest {
     assertEquals(500, result.limit());
     assertEquals(0, result.returnedCount());
     assertEquals(List.of(), result.results());
+  }
+
+  @Test
+  void aNonAdministratorIsToldToRetryWhileTheProjectionRebuildsAndNothingIsRead() {
+    RdfToolAuthorization.resolveCallersAs(subjects, false);
+    final RdfRepository repository = enabledRepository();
+
+    assertThrows(
+        RdfRetryLaterException.class,
+        () ->
+            projectionTool(repository, RdfProjectionState.REBUILDING)
+                .execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("tagFqn", "PII.Sensitive")));
+
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void aNonAdministratorIsNotToldToRetryWhenTheProjectionIsDegraded() {
+    RdfToolAuthorization.resolveCallersAs(subjects, false);
+    final RdfRepository repository = enabledRepository();
+
+    assertThrows(
+        RdfProjectionDegradedException.class,
+        () ->
+            projectionTool(repository, RdfProjectionState.DEGRADED)
+                .execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("tagFqn", "PII.Sensitive")));
+
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void aNonAdministratorIsAnsweredOnceTheProjectionIsReady() throws IOException {
+    RdfToolAuthorization.resolveCallersAs(subjects, false);
+    final RdfRepository repository = enabledRepository();
+    when(repository.executeSparqlQuery(anyString(), anyString()))
+        .thenReturn("{\"results\":{\"bindings\":[]}}");
+
+    final FindByTagTool.Result result =
+        projectionTool(repository, RdfProjectionState.READY)
+            .execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("tagFqn", "PII.Sensitive"));
+
+    assertEquals(0, result.returnedCount());
+  }
+
+  @Test
+  void anAdministratorIsAnsweredWhateverTheProjectionState() throws IOException {
+    final RdfRepository repository = enabledRepository();
+    when(repository.executeSparqlQuery(anyString(), anyString()))
+        .thenReturn("{\"results\":{\"bindings\":[]}}");
+
+    final FindByTagTool.Result result =
+        projectionTool(repository, RdfProjectionState.DEGRADED)
+            .execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("tagFqn", "PII.Sensitive"));
+
+    assertEquals(0, result.returnedCount());
+  }
+
+  private static FindByTagTool projectionTool(
+      final RdfRepository repository, final RdfProjectionState state) {
+    return new FindByTagTool(() -> repository, () -> state);
   }
 
   @Test

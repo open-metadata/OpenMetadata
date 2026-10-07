@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.jena.query.ParameterizedSparqlString;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -41,6 +42,12 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
 
   FindByTagTool(Supplier<RdfRepository> repositorySupplier) {
     super(repositorySupplier);
+  }
+
+  FindByTagTool(
+      Supplier<RdfRepository> repositorySupplier,
+      Supplier<RdfProjectionState> projectionStateSupplier) {
+    super(repositorySupplier, projectionStateSupplier);
   }
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -76,6 +83,7 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
     int limit = clamp(parameters.integer("limit", DEFAULT_LIMIT), 1, MAX_LIMIT);
     int offset = Math.max(parameters.integer("offset", 0), 0);
     RdfRepository repository = repository();
+    requireReadyProjectionForNonAdmin(securityContext);
     String sparql = buildSparql(tagFqn, entityType, limit, offset);
     String json =
         guardedRead(

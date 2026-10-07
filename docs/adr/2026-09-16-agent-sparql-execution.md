@@ -480,8 +480,15 @@ configuration.
   same `OFFSET`. This is a transport limit, separate from the completeness status. A row of a column
   FQN and an asset IRI is about 205 bytes, so the published column-lineage query pages by 250 rows
   (about 51 KB); 400 rows overflowed the budget in the integration test.
-- The other tools that read the graph (`entity_neighborhood`, `find_by_tag`) execute only inside
-  the shared timeout and concurrency guard once non-admins can call them.
+- The other tools that read the graph (`entity_neighborhood`, `find_by_tag` and `ontology_describe`
+  with a `resource`) execute inside the shared timeout and concurrency guard once non-admins can
+  call them, and for non-admins they apply the same `READY` check as `sparql_query`. A rebuild that
+  runs in place empties and refills the graph, and the projection is marked not ready while it
+  does; without the check, "everything tagged X" would return a partial list with nothing marking
+  it partial, and an agent turned away by `sparql_query` would fall back to exactly these tools.
+  The check is `AgentSparqlService.requireReadyProjection`, the one `sparql_query` runs, and it
+  raises the same errors (below). Administrators are not gated, as with administrator
+  `sparql_query`; `ontology_describe` without a `resource` serves a static file and is not gated.
 - Agent-profile errors keep their stable code in the MCP error message and are mapped onto the
   statuses the MCP dispatcher already uses (it has no 503 and no "unavailable" telemetry category):
 

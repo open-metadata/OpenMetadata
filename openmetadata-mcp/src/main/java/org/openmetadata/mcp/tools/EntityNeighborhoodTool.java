@@ -24,6 +24,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -48,6 +49,12 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
 
   EntityNeighborhoodTool(Supplier<RdfRepository> repositorySupplier) {
     super(repositorySupplier);
+  }
+
+  EntityNeighborhoodTool(
+      Supplier<RdfRepository> repositorySupplier,
+      Supplier<RdfProjectionState> projectionStateSupplier) {
+    super(repositorySupplier, projectionStateSupplier);
   }
 
   /** A single directed edge to a neighbor; {@code neighborLabel} is omitted when absent. */
@@ -82,6 +89,7 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
     int depth = clamp(parameters.integer("depth", DEFAULT_DEPTH), MIN_DEPTH, MAX_DEPTH);
     int limit = clamp(parameters.integer("limit", DEFAULT_LIMIT), MIN_LIMIT, MAX_LIMIT);
     RdfRepository repository = repository();
+    requireReadyProjectionForNonAdmin(securityContext);
 
     return queryNeighborhood(
         securityContext, repository, entity.uri(repository.getBaseUri()), depth, limit);

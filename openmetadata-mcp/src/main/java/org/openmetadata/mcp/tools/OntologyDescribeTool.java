@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfIriValidator;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -35,6 +36,12 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
 
   OntologyDescribeTool(Supplier<RdfRepository> repositorySupplier) {
     super(repositorySupplier);
+  }
+
+  OntologyDescribeTool(
+      Supplier<RdfRepository> repositorySupplier,
+      Supplier<RdfProjectionState> projectionStateSupplier) {
+    super(repositorySupplier, projectionStateSupplier);
   }
 
   /**
@@ -111,6 +118,7 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
       RdfSerializationFormat format,
       int maxBytes) {
     RdfRepository repository = repository();
+    requireReadyProjectionForNonAdmin(securityContext);
     // The guard call stays outside any catch: QueryCapacityException and QueryTimeoutException
     // carry their own 429/503 classification, and folding them into an IllegalStateException here
     // would report a busy or slow triplestore as an opaque server error.

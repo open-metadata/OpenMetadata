@@ -17,26 +17,39 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.rdf.agent.AgentSparqlException;
+import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.resources.rdf.RdfQueryResourceContext;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
 
   private final Supplier<RdfRepository> repositorySupplier;
+  protected final Supplier<RdfProjectionState> projectionStateSupplier;
 
   protected RdfMcpTool() {
     this(RdfRepository::getInstanceOrNull);
   }
 
   protected RdfMcpTool(Supplier<RdfRepository> repositorySupplier) {
+    this(repositorySupplier, RdfProjectionStateResolver::resolveConfigured);
+  }
+
+  protected RdfMcpTool(
+      Supplier<RdfRepository> repositorySupplier,
+      Supplier<RdfProjectionState> projectionStateSupplier) {
     this.repositorySupplier = Objects.requireNonNull(repositorySupplier);
+    this.projectionStateSupplier = Objects.requireNonNull(projectionStateSupplier);
   }
 
   protected final RdfRepository repository() {
@@ -45,6 +58,31 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
       throw new RdfNotEnabledException();
     }
     return repository;
+  }
+
+  /**
+   * Non-admin reads wait for a {@code READY} projection, the rule {@code sparql_query} gets through
+   * {@link AgentSparqlService}, so a half-rebuilt graph is never presented as the answer.
+   * Administrators read the graph as it is, as they do through {@code sparql_query}. Call it after
+   * {@link #repository()}, so a deployment without RDF is reported first.
+   */
+  protected final void requireReadyProjectionForNonAdmin(
+      final CatalogSecurityContext securityContext) {
+    if (!isAdministrator(securityContext)) {
+      try {
+        AgentSparqlService.requireReadyProjection(projectionStateSupplier);
+      } catch (AgentSparqlException failure) {
+        throw AgentSparqlToolErrors.toToolException(failure);
+      }
+    }
+  }
+
+  /**
+   * Resolves the caller the way {@code Authorizer#authorizeAdmin} does, so administrator status has
+   * one definition. The permission check already ran, so this only picks what the caller gets.
+   */
+  protected static boolean isAdministrator(final CatalogSecurityContext securityContext) {
+    return DefaultAuthorizer.getSubjectContext(securityContext).isAdmin();
   }
 
   @Override
