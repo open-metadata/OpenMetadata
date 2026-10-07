@@ -308,7 +308,8 @@ class TestUnityCatalogIncrementalSource:
         processor.get_changed.return_value = {"chg"}
         source.incremental_table_processor = processor
         source.context.get_global.return_value = SimpleNamespace(deleted_tables=[])
-        source.client.tables.get.side_effect = Exception("boom")
+        # The hand-rolled GET is what can fail now; tables.get is no longer called.
+        source.client.api_client.do.side_effect = Exception("boom")
 
         result = list(UnitycatalogSource._get_incremental_tables(source, "cat", "schema1"))
 
