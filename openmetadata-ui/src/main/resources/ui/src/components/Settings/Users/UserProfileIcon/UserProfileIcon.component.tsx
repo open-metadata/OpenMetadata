@@ -280,8 +280,7 @@ export const UserProfileIcon = () => {
 
           <Typography
             className="name-persona-text"
-            data-testid="default-persona"
-            ellipsis={{ tooltip: true }}>
+            data-testid="default-persona">
             {isEmpty(selectedPersona)
               ? t('label.default')
               : getEntityName(selectedPersona)}

@@ -216,20 +216,20 @@ test('should search for empty or null filters', async ({ page }) => {
 test('should show correct count for tier filter options from aggregation', async ({
   page,
 }) => {
-  // The Tier dropdown renders the aggregations of the page's own results
-  // query. Asserting against that same response keeps the expected counts in
-  // sync even when parallel workers tier assets between two separate queries.
-  const pageSearchResponse = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
-  );
-  await page.reload();
-  const data = await (await pageSearchResponse).json();
+  // Assert against the aggregation the dropdown itself renders. A separate
+  // API query races parallel workers that tier assets in between, and its
+  // bucket order/size need not match the options the dropdown shows.
+  const tierAggregation = waitForAggregation(page, {
+    field: 'tier.tagFQN',
+    value: null,
+  });
+  await page.getByTestId('search-dropdown-Tier').click();
+  const data = await (await tierAggregation).json();
   await waitForAllLoadersToDisappear(page);
   const buckets: { key: string; doc_count: number }[] =
     data.aggregations['sterms#tier.tagFQN']?.buckets ?? [];
 
-  await page.getByTestId('search-dropdown-Tier').click();
-  await waitForAllLoadersToDisappear(page);
+  expect(buckets.length).toBeGreaterThan(0);
 
   for (const bucket of buckets) {
     await expect(
