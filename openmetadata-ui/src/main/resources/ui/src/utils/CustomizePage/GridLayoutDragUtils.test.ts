@@ -140,13 +140,14 @@ describe('getGridRowAt', () => {
   });
 });
 
-// Lays a nested left-panel grid out the way react-grid-layout renders it.
+// Lays a nested left-panel grid out the way react-grid-layout renders it:
+// pulled back inside the column, then compacted upward.
 const layOutPanel = (children: WidgetConfig[] = []) =>
   utils.compact(
-    utils.correctBounds(
-      children.map((child) => ({ ...child })),
-      { cols: 1 }
-    ),
+    children.map((child) => ({
+      ...child,
+      x: Math.min(child.x, 1 - child.w),
+    })),
     'vertical',
     1
   );
@@ -242,6 +243,25 @@ describe('placeWidgetInLeftPanel', () => {
         { i: 'tags', x: 0.5, y: 0, w: 0.5 },
         { i: 'references', x: 0, y: 2, w: 0.5 },
         { i: 'domain', x: 0.5, y: 2, w: 0.5 },
+      ])
+    );
+  });
+
+  it('takes the slot of a widget stored past the last column', () => {
+    // Tags is stored past the column, level with Description; it is drawn in
+    // the right half below Description, where the Domain widget is dropped.
+    const layout = buildTabLayout();
+    layout[0].children = [
+      { i: 'description', x: 0, y: 0, w: 1, h: 2 },
+      { i: 'tags', x: 3, y: 0, w: 0.5, h: 2 },
+    ];
+
+    expect(
+      getPanelChildren(placeWidgetInLeftPanel(layout, domain, 2, 0.5, COLS))
+    ).toEqual(
+      expect.arrayContaining([
+        { i: 'domain', x: 0.5, y: 2, w: 0.5 },
+        { i: 'tags', x: 0.5, y: 4, w: 0.5 },
       ])
     );
   });

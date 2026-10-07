@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, Locator, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
   ECustomizedDataAssets,
@@ -28,6 +28,7 @@ import {
   clickOutside,
   getApiContext,
   redirectToHomePage,
+  scrollIntoViewAndSettle,
   toastNotification,
   waitForAntdModalToSettle,
 } from '../../utils/common';
@@ -55,6 +56,9 @@ const navigationPersona = new PersonaClass();
 // layout, so the tab-order test gets its own persona and user; otherwise it
 // inherits that layout whenever both tests run in the same worker.
 const glossaryTermPersona = new PersonaClass();
+// The Overview card tests save `overviewCardPersona`'s Domain and Data Product
+// layouts, so they get their own persona to keep them out of the tests above.
+const overviewCardPersona = new PersonaClass();
 const adminUser = new AdminClass();
 const user = new UserClass();
 const glossaryTermUser = new UserClass();
@@ -97,6 +101,7 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
   await persona.create(apiContext);
   await navigationPersona.create(apiContext);
   await glossaryTermPersona.create(apiContext);
+  await overviewCardPersona.create(apiContext);
 
   // Assign persona to user to validate page changes
   await user.patch({
@@ -168,6 +173,7 @@ test.afterAll('Cleanup Customize tests', async ({ browser }) => {
   await persona.delete(apiContext);
   await navigationPersona.delete(apiContext);
   await glossaryTermPersona.delete(apiContext);
+  await overviewCardPersona.delete(apiContext);
   await afterAction();
 });
 
@@ -991,5 +997,235 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         userPage.getByRole('tab', { name: 'Data Products' })
       ).toBeVisible();
     });
+  });
+});
+
+const byId = (id: string) => `[id="${id}"]`;
+
+const OVERVIEW_CARD = byId('KnowledgePanel.LeftPanel');
+
+const openCustomizePage = async (page: Page, pageType: string) => {
+  await page.goto(
+    `/customize-page/${encodeURIComponent(
+      overviewCardPersona.responseData.fullyQualifiedName ??
+        overviewCardPersona.data.name
+    )}/${pageType}`
+  );
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('customize-tab-card')).toBeVisible();
+  await expect(page.locator(OVERVIEW_CARD)).toBeVisible();
+};
+
+const savePageLayout = async (page: Page) => {
+  await page.getByTestId('save-button').click();
+  await toastNotification(
+    page,
+    /^Page layout (created|updated) successfully\.$/
+  );
+};
+
+const getBox = async (locator: Locator) => {
+  await expect(locator).toBeVisible();
+  const box = await locator.boundingBox();
+  if (!box) {
+    throw new Error('Expected the element to have a bounding box');
+  }
+
+  return box;
+};
+
+// The drop point is a spot on the card, not an element: the dragged widget
+// covers whatever is under the pointer, so locator.dragTo cannot target it.
+// Callers scroll the card into view first, so the point is on screen and the
+// hover does not scroll it away.
+const dragToPoint = async (
+  page: Page,
+  handle: Locator,
+  x: number,
+  y: number
+) => {
+  await handle.hover();
+  await page.mouse.down();
+  await page.mouse.move(x, y, { steps: 10 });
+  await page.mouse.up();
+};
+
+// Share of the Overview card's width a widget takes, to the nearest half.
+const getCardWidthShare = async (widget: Locator, card: Locator) => {
+  const [widgetBox, cardBox] = await Promise.all([
+    widget.boundingBox(),
+    card.boundingBox(),
+  ]);
+
+  return widgetBox && cardBox
+    ? Math.round((widgetBox.width / cardBox.width) * 2) / 2
+    : null;
+};
+
+test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test('moves a side widget into the Overview card and back out', async ({
+    adminPage,
+  }) => {
+    const card = adminPage.locator(OVERVIEW_CARD);
+    const domain = adminPage.locator(byId('KnowledgePanel.Domain'));
+    const cardDomain = card.locator(byId('KnowledgePanel.Domain'));
+    const description = card.locator(byId('KnowledgePanel.Description'));
+
+    await test.step('drop the Domain widget onto the card', async () => {
+      await openCustomizePage(adminPage, 'DataProduct');
+
+      await expect(domain).toBeVisible();
+      await expect(cardDomain).toHaveCount(0);
+
+      await scrollIntoViewAndSettle(card);
+      const descriptionBox = await getBox(description);
+      // Right half of the card, over the Description widget it lands below.
+      await dragToPoint(
+        adminPage,
+        domain.getByTestId('drag-widget-button'),
+        descriptionBox.x + descriptionBox.width * 0.75,
+        descriptionBox.y + descriptionBox.height * 0.75
+      );
+
+      await expect(cardDomain).toBeVisible();
+      await expect.poll(() => getCardWidthShare(cardDomain, card)).toBe(0.5);
+
+      await savePageLayout(adminPage);
+    });
+
+    await test.step('keeps it in the card after reload', async () => {
+      await openCustomizePage(adminPage, 'DataProduct');
+
+      await expect(cardDomain).toBeVisible();
+    });
+
+    await test.step('drop it right of the card into the side column', async () => {
+      await scrollIntoViewAndSettle(cardDomain);
+      const [ownersBox, cardDomainBox] = await Promise.all([
+        getBox(adminPage.locator(byId('KnowledgePanel.Owners'))),
+        getBox(cardDomain),
+      ]);
+      // Over the side column, level with the widget being moved.
+      await dragToPoint(
+        adminPage,
+        cardDomain.getByTestId('drag-widget-button'),
+        ownersBox.x + ownersBox.width / 2,
+        cardDomainBox.y + cardDomainBox.height / 2
+      );
+
+      await expect(domain).toBeVisible();
+      await expect(cardDomain).toHaveCount(0);
+
+      await savePageLayout(adminPage);
+    });
+
+    await test.step('keeps it in the side column after reload', async () => {
+      await openCustomizePage(adminPage, 'DataProduct');
+
+      await expect(domain).toBeVisible();
+      await expect(cardDomain).toHaveCount(0);
+    });
+  });
+
+  test('resizes a widget in the Overview card between half and full width', async ({
+    adminPage,
+  }) => {
+    const card = adminPage.locator(OVERVIEW_CARD);
+    const description = card.locator(byId('KnowledgePanel.Description'));
+    const resizeHandle = description.locator(
+      ':scope > .react-resizable-handle'
+    );
+
+    const resizeBy = async (offset: number) => {
+      await scrollIntoViewAndSettle(description);
+      const handleBox = await getBox(resizeHandle);
+      await dragToPoint(
+        adminPage,
+        resizeHandle,
+        handleBox.x + handleBox.width / 2 + offset,
+        handleBox.y + handleBox.height / 2
+      );
+    };
+
+    await test.step('shrink the Description widget to half the card', async () => {
+      await openCustomizePage(adminPage, 'Domain');
+
+      await expect.poll(() => getCardWidthShare(description, card)).toBe(1);
+
+      const cardBox = await getBox(card);
+      await resizeBy(-cardBox.width / 2);
+
+      await expect.poll(() => getCardWidthShare(description, card)).toBe(0.5);
+
+      await savePageLayout(adminPage);
+    });
+
+    await test.step('keeps the half width after reload', async () => {
+      await openCustomizePage(adminPage, 'Domain');
+
+      await expect.poll(() => getCardWidthShare(description, card)).toBe(0.5);
+    });
+
+    await test.step('grow it back to the full card', async () => {
+      const cardBox = await getBox(card);
+      await resizeBy(cardBox.width / 2);
+
+      await expect.poll(() => getCardWidthShare(description, card)).toBe(1);
+
+      await savePageLayout(adminPage);
+    });
+  });
+
+  test('offers the Custom Properties widget on Domain and Data Product pages', async ({
+    adminPage,
+  }) => {
+    for (const pageType of ['Domain', 'DataProduct']) {
+      await test.step(`${pageType} Add Widget list`, async () => {
+        await openCustomizePage(adminPage, pageType);
+        await openPlaceholderWidgetPicker(adminPage);
+
+        await expect(
+          adminPage
+            .getByTestId('add-widget-modal')
+            .getByTestId('Custom Properties-widget')
+        ).toBeVisible();
+      });
+    }
+  });
+
+  test('keeps the Overview card widgets inside the card, above the add-widget slot', async ({
+    adminPage,
+  }) => {
+    await openCustomizePage(adminPage, 'GlossaryTerm');
+
+    const card = adminPage.locator(OVERVIEW_CARD);
+    const relatedTerms = card.locator(byId('KnowledgePanel.RelatedTerms'));
+    const addWidgetSlot = adminPage.getByTestId(
+      'ExtraWidget.EmptyWidgetPlaceholder'
+    );
+
+    await expect(relatedTerms).toBeVisible();
+    await expect(addWidgetSlot).toBeVisible();
+
+    // Related Terms is the card's last widget; before the card was sized to
+    // its widgets it spilled past the card and under the add-widget slot.
+    await expect
+      .poll(async () => {
+        const [cardBox, relatedTermsBox, slotBox] = await Promise.all([
+          card.boundingBox(),
+          relatedTerms.boundingBox(),
+          addWidgetSlot.boundingBox(),
+        ]);
+        if (!cardBox || !relatedTermsBox || !slotBox) {
+          return false;
+        }
+        const relatedTermsBottom = relatedTermsBox.y + relatedTermsBox.height;
+
+        return (
+          relatedTermsBottom <= cardBox.y + cardBox.height &&
+          relatedTermsBottom <= slotBox.y
+        );
+      })
+      .toBe(true);
   });
 });

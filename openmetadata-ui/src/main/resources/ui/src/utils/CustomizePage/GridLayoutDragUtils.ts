@@ -77,12 +77,12 @@ export const getColumnLockedDragHandlers = (cols: number) => {
  * the last column or a gap above an item.
  */
 const getDrawnLayout = <T extends Layout>(layout: T[], cols: number): T[] => {
-  // correctBounds mutates the items it is given; compact drops unknown fields.
+  // compact drops unknown fields, so only the drawn x and y are copied back.
   const drawn = utils.compact(
-    utils.correctBounds(
-      layout.map((item) => ({ ...item })),
-      { cols }
-    ),
+    layout.map((item) => ({
+      ...item,
+      x: Math.max(0, Math.min(item.x, cols - item.w)),
+    })),
     'vertical',
     cols
   );
@@ -91,7 +91,6 @@ const getDrawnLayout = <T extends Layout>(layout: T[], cols: number): T[] => {
     ...item,
     x: drawn[index].x,
     y: drawn[index].y,
-    w: drawn[index].w,
   }));
 };
 
@@ -105,7 +104,10 @@ const getDrawnLayout = <T extends Layout>(layout: T[], cols: number): T[] => {
  * of one margin top and bottom, which is the fraction added to its rows.
  */
 export const getLeftPanelHeight = (children: Layout[] = []) => {
-  const rows = utils.bottom(getDrawnLayout(children, 1));
+  const rows = Math.max(
+    0,
+    ...getDrawnLayout(children, 1).map(({ y, h }) => y + h)
+  );
 
   return (
     rows + (2 * GRID_VERTICAL_MARGIN) / (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN)
