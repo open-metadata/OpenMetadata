@@ -1,6 +1,11 @@
-import type { RefAttributes } from 'react';
+import { mergeRefs } from '@react-aria/utils';
+import type { Ref, RefAttributes } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import type { PopoverProps as AriaPopoverProps } from 'react-aria-components';
-import { Popover as AriaPopover } from 'react-aria-components';
+import {
+  Popover as AriaPopover,
+  OverlayTriggerStateContext,
+} from 'react-aria-components';
 import { cx } from '@/utils/cx';
 
 interface PopoverProps extends AriaPopoverProps, RefAttributes<HTMLElement> {
@@ -8,6 +13,51 @@ interface PopoverProps extends AriaPopoverProps, RefAttributes<HTMLElement> {
 }
 
 export const Popover = (props: PopoverProps) => {
+  const state = useContext(OverlayTriggerStateContext);
+  const popoverRef = useRef<HTMLElement>(null);
+
+  // `isNonModal` below also switches off react-aria's outside-press dismissal
+  // (`usePopover` derives `isDismissable: !isNonModal`), and the blur-based
+  // dismissal left over ignores a blur whose relatedTarget is null — exactly a
+  // press on any non-focusable part of the page. Nor does the trigger close the
+  // popup itself: `useMenuTrigger` only ever *opens* on press start, relying on
+  // the modal underlay to swallow the press. So dismissal is owned here, as
+  // filter-select and tree-select already do for the same reason.
+  useEffect(() => {
+    if (!state?.isOpen) {
+      return;
+    }
+    const closeOnOutsidePointerDown = (event: Event) => {
+      const target = event.target as Element | null;
+      // react-aria renders this subtree a second time, detached, to build its
+      // collection; that copy has no popover element and borrows whatever
+      // overlay state is in scope, so it must not dismiss anything.
+      if (!popoverRef.current || !target?.isConnected) {
+        return;
+      }
+      // Inside this popover, or an overlay opened from it.
+      if (target.closest('[data-react-aria-top-layer]')) {
+        return;
+      }
+      // Pressing the trigger of an open popup must close it here, and the press
+      // must not reach the trigger, or it reopens in the same gesture.
+      if (target.closest('[aria-expanded="true"]')) {
+        event.stopPropagation();
+      }
+      state.close();
+    };
+    // Capture: an overlay stopping propagation would otherwise hide the press.
+    document.addEventListener('pointerdown', closeOnOutsidePointerDown, true);
+
+    return () => {
+      document.removeEventListener(
+        'pointerdown',
+        closeOnOutsidePointerDown,
+        true
+      );
+    };
+  }, [state]);
+
   return (
     <AriaPopover
       // Combobox/select popups must be non-modal: modal popovers apply
@@ -48,6 +98,7 @@ export const Popover = (props: PopoverProps) => {
             : props.className
         )
       }
+      ref={mergeRefs(popoverRef, props.ref as Ref<HTMLElement>)}
     />
   );
 };

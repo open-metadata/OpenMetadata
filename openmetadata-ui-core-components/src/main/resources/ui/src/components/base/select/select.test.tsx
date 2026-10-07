@@ -13,7 +13,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button, Dialog, DialogTrigger, Modal } from 'react-aria-components';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Select } from './select';
 
 describe('Select in a modal', () => {
@@ -56,4 +56,55 @@ describe('Select in a modal', () => {
       await waitFor(() => expect(trigger).toHaveFocus());
     }
   );
+});
+
+describe('Select dismissal', () => {
+  const renderSelect = () =>
+    render(
+      <>
+        <div data-testid="outside">outside</div>
+        <Select
+          aria-label="Entity type"
+          items={[{ id: 'TABLE', label: 'TABLE' }]}>
+          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+        </Select>
+      </>
+    );
+
+  it('closes the listbox when pressing outside', async () => {
+    const user = userEvent.setup();
+    renderSelect();
+
+    await user.click(screen.getByRole('button', { name: /Entity type/ }));
+    expect(await screen.findByRole('listbox')).toBeVisible();
+
+    await user.click(screen.getByTestId('outside'));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    );
+  });
+
+  // jsdom has no PointerEvent, so react-aria falls back to mouse events and
+  // `user.click` would reopen from the mousedown our handler does not see.
+  // Dispatching the press the browser would send keeps the assertion honest.
+  it('closes when pressing the trigger of an open popup', async () => {
+    const user = userEvent.setup();
+    renderSelect();
+
+    const trigger = screen.getByRole('button', { name: /Entity type/ });
+    await user.click(trigger);
+    expect(await screen.findByRole('listbox')).toBeVisible();
+
+    const press = new Event('pointerdown', { bubbles: true });
+    const reachedTrigger = vi.fn();
+    trigger.addEventListener('pointerdown', reachedTrigger);
+    trigger.dispatchEvent(press);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    );
+    // Stopped in the capture phase, so the press cannot reopen the popup.
+    expect(reachedTrigger).not.toHaveBeenCalled();
+  });
 });
