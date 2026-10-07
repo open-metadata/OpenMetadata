@@ -154,16 +154,20 @@ public class ActivityStreamRepository {
             limit));
   }
 
+  /**
+   * Activity whose replies mention the current user or one of their teams, optionally only the
+   * activity about one entity (the entityLink's entity, matched as {@code /activity/about} does).
+   */
   public ResultList<ActivityEvent> getMentionsFeed(
-      SecurityContext securityContext, String domain, int days, int limit) {
+      SecurityContext securityContext, String domain, String entityLink, int days, int limit) {
     String userName = securityContext.getUserPrincipal().getName();
-    return result(
-        listByMentions(
+    MentionScope scope =
+        new MentionScope(
             currentUser(securityContext).getId().toString(),
             getTeamIds(userName),
             getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days),
-            limit));
+            buildAboutFqnHash(entityLink));
+    return result(listByMentions(scope, afterTimestamp(days), limit));
   }
 
   public ResultList<ActivityEvent> getActivityByEntityLink(
@@ -506,23 +510,49 @@ public class ActivityStreamRepository {
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
 
+  /** Who is mentioned, within which domains, and optionally about which entity. */
+  private record MentionScope(
+      String userId, List<String> teamIds, List<UUID> domainIds, String aboutFqnHash) {}
+
   /** List activity whose replies mention a user or one of their teams. */
-  private List<ActivityEvent> listByMentions(
-      String userId, List<String> teamIds, List<UUID> domainIds, long afterTimestamp, int limit) {
-    List<String> teams = nullOrEmpty(teamIds) ? List.of(NO_TEAM_ID) : teamIds;
-    List<String> domainIdStrings =
-        nullOrEmpty(domainIds) ? List.of() : domainIds.stream().map(UUID::toString).toList();
+  private List<ActivityEvent> listByMentions(MentionScope scope, long afterTimestamp, int limit) {
+    List<String> teams = nullOrEmpty(scope.teamIds()) ? List.of(NO_TEAM_ID) : scope.teamIds();
+    List<String> domainIds =
+        nullOrEmpty(scope.domainIds())
+            ? List.of()
+            : scope.domainIds().stream().map(UUID::toString).toList();
     List<String> jsonList =
-        domainIdStrings.isEmpty()
-            ? activityStreamDAO.listByMentions(userId, teams, afterTimestamp, limit)
-            : activityStreamDAO.listByMentionsAndDomains(
-                userId,
-                teams,
-                JsonUtils.pojoToJson(domainIdStrings),
-                domainIdStrings,
-                afterTimestamp,
-                limit);
+        nullOrEmpty(scope.aboutFqnHash())
+            ? listMentionRows(scope.userId(), teams, domainIds, afterTimestamp, limit)
+            : listMentionRowsAbout(scope, teams, domainIds, afterTimestamp, limit);
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
+  }
+
+  private List<String> listMentionRows(
+      String userId, List<String> teams, List<String> domainIds, long afterTimestamp, int limit) {
+    return domainIds.isEmpty()
+        ? activityStreamDAO.listByMentions(userId, teams, afterTimestamp, limit)
+        : activityStreamDAO.listByMentionsAndDomains(
+            userId, teams, JsonUtils.pojoToJson(domainIds), domainIds, afterTimestamp, limit);
+  }
+
+  private List<String> listMentionRowsAbout(
+      MentionScope scope,
+      List<String> teams,
+      List<String> domainIds,
+      long afterTimestamp,
+      int limit) {
+    return domainIds.isEmpty()
+        ? activityStreamDAO.listByMentionsAbout(
+            scope.userId(), teams, scope.aboutFqnHash(), afterTimestamp, limit)
+        : activityStreamDAO.listByMentionsAboutAndDomains(
+            scope.userId(),
+            teams,
+            scope.aboutFqnHash(),
+            JsonUtils.pojoToJson(domainIds),
+            domainIds,
+            afterTimestamp,
+            limit);
   }
 
   /** List activity events by EntityLink (about field). */

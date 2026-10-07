@@ -365,7 +365,8 @@ public class ActivityResource {
       operationId = "getMentionsActivityFeed",
       summary = "Get activity whose replies mention the current user",
       description =
-          "Get activity events with a reply that mentions the current user or one of their teams.",
+          "Get activity events with a reply that mentions the current user or one of their teams, "
+              + "optionally only those about one entity.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -378,6 +379,9 @@ public class ActivityResource {
   public ResultList<ActivityEvent> getMentionsFeed(
       @Context SecurityContext securityContext,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
+      @Parameter(description = "Only activity about this entity (EntityLink string)")
+          @QueryParam("entityLink")
+          String entityLink,
       @Parameter(description = "Number of days to look back")
           @DefaultValue("7")
           @Min(1)
@@ -390,7 +394,11 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getMentionsFeed(securityContext, domain, days, limit);
+    if (entityLink != null) {
+      authorizeEntityLinkView(securityContext, entityLink);
+    }
+    return activityStreamRepository.getMentionsFeed(
+        securityContext, domain, entityLink, days, limit);
   }
 
   @GET

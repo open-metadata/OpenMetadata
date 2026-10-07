@@ -2341,6 +2341,51 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         "Unrelated text should not match");
   }
 
+  @Test
+  void testListEndpointSearchesWithinEntity(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-search-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    Table otherTable = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    String text = "Backfill refunds " + ns.prefix("search");
+    Task match = createTaskWithDisplayName(ns, "list-search-match", table, text);
+    Task noMatch = createTaskWithDisplayName(ns, "list-search-other", table, "Unrelated work");
+    Task otherEntity = createTaskWithDisplayName(ns, "list-search-elsewhere", otherTable, text);
+
+    List<UUID> found = searchTaskIdsAbout(table.getFullyQualifiedName(), text);
+
+    assertTrue(found.contains(match.getId()), "A matching task on the entity is returned");
+    assertFalse(found.contains(noMatch.getId()), "A task on the entity that does not match is not");
+    assertFalse(
+        found.contains(otherEntity.getId()), "A matching task on another entity is not returned");
+  }
+
+  private Task createTaskWithDisplayName(
+      TestNamespace ns, String name, Table table, String displayName) {
+    return SdkClients.adminClient()
+        .tasks()
+        .create(createTaskRequestAboutTable(ns, name, table).withDisplayName(displayName));
+  }
+
+  private List<UUID> searchTaskIdsAbout(String aboutEntity, String query) throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tasks",
+                null,
+                RequestOptions.builder()
+                    .queryParam("aboutEntity", aboutEntity)
+                    .queryParam("q", query)
+                    .queryParam("limit", "100")
+                    .build());
+    List<UUID> ids = new ArrayList<>();
+    JsonUtils.readTree(response)
+        .path("data")
+        .forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
   private List<UUID> searchVisibleTaskIds(String query) throws Exception {
     String response =
         SdkClients.user1Client()
