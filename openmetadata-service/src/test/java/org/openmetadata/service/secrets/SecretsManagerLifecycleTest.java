@@ -273,6 +273,46 @@ public class SecretsManagerLifecycleTest {
     }
   }
 
+  @Test
+  void testHardDeleteRemovesASecretAMigrationLeftAtItsOldPath() {
+    // 2.1.0 moves Fabric's clientSecret under authType without moving its vault entry, so the
+    // stored reference still points at the pre-migration path.
+    String serviceName = "fabric-migrated";
+    String legacySecretId =
+        secretsManager.buildSecretId(true, "database", serviceName) + "/clientsecret";
+    secretsManager.storeSecret(legacySecretId, "legacy-client-secret");
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        fabricConfig(Map.of("clientSecret", "secret:" + legacySecretId)),
+        "MicrosoftFabric",
+        serviceName,
+        ServiceType.DATABASE);
+
+    assertFalse(secretsManager.getSecretsMap().containsKey(legacySecretId));
+  }
+
+  @Test
+  void testHardDeleteKeepsASecretReferencedFromOutsideTheService() {
+    String sharedSecretId = "/shared/vault/fabric-client-secret";
+    secretsManager.storeSecret(sharedSecretId, "managed-by-the-user");
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        fabricConfig(Map.of("clientSecret", "secret:" + sharedSecretId)),
+        "MicrosoftFabric",
+        "fabric-shared-reference",
+        ServiceType.DATABASE);
+
+    assertTrue(secretsManager.getSecretsMap().containsKey(sharedSecretId));
+  }
+
+  private Map<String, Object> fabricConfig(Map<String, String> authType) {
+    return Map.of(
+        "hostPort", "workspace.datawarehouse.fabric.example.test",
+        "clientId", "fabric-client-id",
+        "tenantId", "fabric-tenant-id",
+        "authType", authType);
+  }
+
   private MicrosoftFabricConnection encryptFabric(
       String serviceName, Map<String, String> authType) {
     Map<String, Object> connection =
