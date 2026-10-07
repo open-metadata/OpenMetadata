@@ -7697,6 +7697,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard.tsx"
       ],
       "specs": [
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
@@ -8496,6 +8497,7 @@
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
@@ -9429,6 +9431,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/PopOverCard/PopoverTitle.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
     },

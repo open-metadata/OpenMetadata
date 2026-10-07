@@ -38,9 +38,12 @@ const DefaultPersonaRow: React.FC<DefaultPersonaRowProps> = ({
   const { currentUser } = useApplicationStore();
   const isSelf = currentUser?.name === userData.name;
   const canEdit = (isAdminUser || isSelf) && !userData.deleted;
+  const explicitDefaultPersona = userData.defaultPersona?.inherited
+    ? undefined
+    : userData.defaultPersona;
 
   const [draftDefaultId, setDraftDefaultId] = useState<string | undefined>(
-    userData.defaultPersona?.id
+    explicitDefaultPersona?.id
   );
 
   // Only personas the user belongs to (direct + inherited) are selectable as the
@@ -68,9 +71,13 @@ const DefaultPersonaRow: React.FC<DefaultPersonaRowProps> = ({
 
   const handleSave = async () => {
     const nextDefault = personaPool.find((p) => p.id === draftDefaultId);
-    if (nextDefault?.id !== userData.defaultPersona?.id) {
+    if (nextDefault?.id !== explicitDefaultPersona?.id) {
       await updateUserDetails(
-        { defaultPersona: nextDefault },
+        {
+          defaultPersona: nextDefault
+            ? { ...nextDefault, inherited: false }
+            : undefined,
+        },
         'defaultPersona'
       );
     }
@@ -103,10 +110,10 @@ const DefaultPersonaRow: React.FC<DefaultPersonaRowProps> = ({
         <ChipView
           label={t('label.default-persona')}
           noDataPlaceholder={t('message.no-default-persona')}
-          values={userData.defaultPersona ? [userData.defaultPersona] : []}
+          values={explicitDefaultPersona ? [explicitDefaultPersona] : []}
         />
       }
-      onEnterEdit={() => setDraftDefaultId(userData.defaultPersona?.id)}
+      onEnterEdit={() => setDraftDefaultId(explicitDefaultPersona?.id)}
       onSave={handleSave}
     />
   );
