@@ -235,6 +235,10 @@ export interface ParameterFieldsProps {
   // `dimensionFailurePolicy` rolls dimension group verdicts up into the test
   // case status, so it only means something on a dimension-level test.
   isDimensionalTest?: boolean;
+  // Renders only these parameters. A dynamic assertion learns the bounds, so
+  // the static-bound inputs are hidden while the parameters that still apply
+  // to learned bounds stay editable.
+  onlyParams?: readonly string[];
 }
 
 const ParameterFields: React.FC<ParameterFieldsProps> = ({
@@ -243,6 +247,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   table,
   testDefinitionDoc,
   isDimensionalTest = false,
+  onlyParams,
 }) => {
   const { t } = useTranslation();
 
@@ -455,7 +460,11 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   // definition declares it further down (tableCustomSQLQuery does). Pulling it
   // up is only safe when the threshold it belongs beside is declared too,
   // otherwise the unit would be skipped and never rendered.
-  const params = definition.parameterDefinition;
+  const params = onlyParams
+    ? definition.parameterDefinition?.filter((param) =>
+        onlyParams.includes(param.name ?? '')
+      )
+    : definition.parameterDefinition;
   const thresholdUnitParam = params?.some(
     (param) => param.name === THRESHOLD_PARAM
   )
