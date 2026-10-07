@@ -440,7 +440,7 @@ class BaseTestValidator(ABC):
             metrics_to_compute = self._get_metrics_to_compute(test_params)
             top_n = self._get_top_dimensions()
         except Exception as exc:
-            logger.warning(f"Error preparing dimensional validation: {exc}")
+            logger.warning("Error preparing dimensional validation: %s", exc)
             logger.debug(traceback.format_exc())
             return [self._aborted_dimension_result(dimension_column, exc) for dimension_column in dimension_columns]
 
