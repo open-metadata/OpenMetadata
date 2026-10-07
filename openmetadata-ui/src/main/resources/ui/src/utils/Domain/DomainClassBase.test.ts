@@ -12,6 +12,7 @@
  */
 
 import { createElement } from 'react';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import domainClassBase, {
   DomainClassBase,
@@ -142,6 +143,14 @@ describe('DomainClassBase', () => {
       const tabs = instance.getDomainDetailPageTabsIds();
 
       expect(tabs.at(-1)?.id).toBe(EntityTabs.DATA_OBSERVABILITY);
+    });
+  });
+
+  describe('getCommonWidgetList', () => {
+    it('lets the Custom Properties widget be added back to the layout', () => {
+      expect(
+        instance.getCommonWidgetList().map((w) => w.fullyQualifiedName)
+      ).toContain(DetailPageWidgetKeys.CUSTOM_PROPERTIES);
     });
   });
 

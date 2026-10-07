@@ -31,5 +31,7 @@ declare module 'react-grid-layout' {
       compactType: 'vertical' | 'horizontal' | null,
       cols: number
     ) => Layout[];
+    correctBounds: (layout: Layout[], bounds: { cols: number }) => Layout[];
+    bottom: (layout: Layout[]) => number;
   };
 }

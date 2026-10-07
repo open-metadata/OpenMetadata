@@ -13,12 +13,21 @@
 import { Col, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import { lazy, useMemo } from 'react';
-import type { ReactGridLayoutProps } from 'react-grid-layout';
+import type {
+  ItemCallback,
+  Layout,
+  ReactGridLayoutProps,
+} from 'react-grid-layout';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import type { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
+import {
+  fromLeftPanelEditGrid,
+  LEFT_PANEL_EDIT_COLS,
+  toLeftPanelEditGrid,
+} from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './generic-tab.less';
 
@@ -50,6 +59,7 @@ interface GenericTabProps {
   isEditView: boolean;
   handleOpenAddWidgetModal?: () => void;
   handlePlaceholderWidgetKey?: (value: string) => void;
+  onDragStop?: ItemCallback;
 }
 
 export const LeftPanelContainer = ({
@@ -59,9 +69,14 @@ export const LeftPanelContainer = ({
   isEditView = false,
   handleOpenAddWidgetModal,
   handlePlaceholderWidgetKey,
+  onDragStop,
 }: GenericTabProps) => {
   const handleRemoveWidget = (widgetKey: string) => {
     onUpdate(layout.filter((widget) => widget.i !== widgetKey));
+  };
+
+  const handleLayoutChange = (editLayout: Layout[]) => {
+    onUpdate(editLayout.map(fromLeftPanelEditGrid));
   };
 
   const handleWidgetConfigChange = (
@@ -108,7 +123,10 @@ export const LeftPanelContainer = ({
       }
 
       return (
-        <div data-grid={widget} id={widget.i} key={widget.i}>
+        <div
+          data-grid={toLeftPanelEditGrid(widget)}
+          id={widget.i}
+          key={widget.i}>
           {widgetComponent}
         </div>
       );
@@ -139,14 +157,15 @@ export const LeftPanelContainer = ({
         useCSSTransforms
         verticalCompact
         className="grid-container"
-        cols={1}
+        cols={LEFT_PANEL_EDIT_COLS}
         containerPadding={[16, 16]}
         isDraggable={isEditView}
         isResizable={isEditView}
         margin={[type === PageType.GlossaryTerm ? 16 : 0, 16]}
         preventCollision={false}
         rowHeight={100}
-        onLayoutChange={onUpdate}>
+        onDragStop={onDragStop}
+        onLayoutChange={handleLayoutChange}>
         {widgets}
       </ReactGridLayout>
     );

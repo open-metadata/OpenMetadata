@@ -18,11 +18,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Button, Card, Col, Input, Modal } from 'antd';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
-import { lazy, useCallback, useMemo, useState } from 'react';
-import RGL, { Layout, WidthProvider } from 'react-grid-layout';
+import { lazy, useCallback, useMemo, useRef, useState } from 'react';
+import RGL, { ItemCallback, Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import {
   CommonWidgetType,
+  GRID_VERTICAL_MARGIN,
   TAB_GRID_MAX_COLUMNS,
 } from '../../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
@@ -51,7 +52,13 @@ import {
   getAddWidgetHandler,
   mergeGridLayout,
 } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
-import { getColumnLockedDragHandlers } from '../../../utils/CustomizePage/GridLayoutDragUtils';
+import {
+  getColumnLockedDragHandlers,
+  getGridRowAt,
+  getLeftPanelHeight,
+  placeWidgetBesideLeftPanel,
+  placeWidgetInLeftPanel,
+} from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CustomPropertiesTabLayoutSection } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesTabLayoutSection';
@@ -103,9 +110,23 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
 const COLUMN_LOCKED_DRAG_HANDLERS =
   getColumnLockedDragHandlers(TAB_GRID_MAX_COLUMNS);
 
+const isPointerInRect = ({ clientX, clientY }: MouseEvent, rect: DOMRect) =>
+  clientX >= rect.left &&
+  clientX <= rect.right &&
+  clientY >= rect.top &&
+  clientY <= rect.bottom;
+
 export type CustomizeTabWidgetProps = WidgetCommonProps;
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
+
+interface CrossPanelDrop {
+  widget: WidgetConfig;
+  row: number;
+  // Left (0) or right (0.5) half of the panel, for a drop into it.
+  x: number;
+  intoLeftPanel: boolean;
+}
 
 export const CustomizeTabWidget = () => {
   const { currentPage, currentPageType, updateCurrentPage } =
@@ -125,6 +146,12 @@ export const CustomizeTabWidget = () => {
     items.find((i) => i.editable)?.id ?? null
   );
   const [editableItem, setEditableItem] = useState<Tab | null>(null);
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  // react-grid-layout calls onLayoutChange right after onDragStop, before React
+  // re-renders, with the dropped widget already removed from its grid. A widget
+  // dropped across the left panel edge is handed to that call so it commits in
+  // the same update, instead of the call overwriting it with the stale layout.
+  const crossPanelDropRef = useRef<CrossPanelDrop | null>(null);
 
   const tabLayouts = useMemo(() => {
     const layout =
@@ -138,9 +165,15 @@ export const CustomizeTabWidget = () => {
       (widget) => widget.i === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
     );
 
-    return hasEmptyWidgetPlaceholder
+    const layoutWithPlaceholder = hasEmptyWidgetPlaceholder
       ? layout
       : getLayoutWithEmptyWidgetPlaceholder(layout, 2, 3);
+
+    return layoutWithPlaceholder.map((widget) =>
+      widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+        ? { ...widget, h: getLeftPanelHeight(widget.children) }
+        : widget
+    );
   }, [items, activeKey]);
 
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
@@ -257,10 +290,28 @@ export const CustomizeTabWidget = () => {
           );
         }
 
+        const drop = crossPanelDropRef.current;
+        const isDropOutOfPanel = drop && !drop.intoLeftPanel;
+        if (isDropOutOfPanel) {
+          crossPanelDropRef.current = null;
+        }
+
         updateCurrentPage({
           ...currentPage,
           tabs: items.map((item) =>
-            item.id === activeKey ? { ...item, layout: newLayout } : item
+            item.id === activeKey
+              ? {
+                  ...item,
+                  layout: isDropOutOfPanel
+                    ? placeWidgetBesideLeftPanel(
+                        newLayout,
+                        drop.widget,
+                        drop.row,
+                        TAB_GRID_MAX_COLUMNS
+                      )
+                    : newLayout,
+                }
+              : item
           ),
         } as Page);
       }
@@ -333,6 +384,36 @@ export const CustomizeTabWidget = () => {
     );
   }, [tabLayouts]);
 
+  // A panel widget dropped right of the panel moves into the side column. The
+  // last one stays: handleSideLayoutUpdate ignores an empty panel layout.
+  const handleLeftPanelDragStop: ItemCallback = (
+    layout,
+    _oldItem,
+    newItem,
+    _placeholder,
+    event
+  ) => {
+    const panelRect = leftPanelRef.current?.getBoundingClientRect();
+    const widget = leftPanelWidget?.children?.find(({ i }) => i === newItem.i);
+    if (!panelRect || !leftPanelWidget || !widget) {
+      return;
+    }
+    if (layout.length === 1 || event.clientX <= panelRect.right) {
+      return;
+    }
+
+    layout.splice(
+      layout.findIndex(({ i }) => i === newItem.i),
+      1
+    );
+    crossPanelDropRef.current = {
+      widget,
+      x: 0,
+      intoLeftPanel: false,
+      row: leftPanelWidget.y + getGridRowAt(event.clientY - panelRect.top),
+    };
+  };
+
   const getWidgetFromLayout = (layout: WidgetConfig[]) => {
     return layout.map((widget) => {
       let widgetComponent = null;
@@ -354,13 +435,16 @@ export const CustomizeTabWidget = () => {
         );
       } else if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
         widgetComponent = (
-          <LeftPanelContainer
-            isEditView
-            key={widget.i}
-            layout={leftPanelWidget?.children ?? ([] as WidgetConfig[])}
-            type={currentPageType as PageType}
-            onUpdate={handleSideLayoutUpdate}
-          />
+          <div ref={leftPanelRef}>
+            <LeftPanelContainer
+              isEditView
+              key={widget.i}
+              layout={leftPanelWidget?.children ?? ([] as WidgetConfig[])}
+              type={currentPageType as PageType}
+              onDragStop={handleLeftPanelDragStop}
+              onUpdate={handleSideLayoutUpdate}
+            />
+          </div>
         );
       } else {
         widgetComponent = (
@@ -401,16 +485,31 @@ export const CustomizeTabWidget = () => {
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
       if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
+        const layout = mergeGridLayout(
+          getUniqueFilteredLayout(updatedLayout),
+          tabLayouts
+        );
+        const drop = crossPanelDropRef.current;
+        const isDropIntoPanel = drop?.intoLeftPanel;
+        if (isDropIntoPanel) {
+          crossPanelDropRef.current = null;
+        }
+
         updateCurrentPage({
           ...currentPage,
           tabs: items.map((item) =>
             item.id === activeKey
               ? {
                   ...item,
-                  layout: mergeGridLayout(
-                    getUniqueFilteredLayout(updatedLayout),
-                    tabLayouts
-                  ),
+                  layout: isDropIntoPanel
+                    ? placeWidgetInLeftPanel(
+                        layout,
+                        drop.widget,
+                        drop.row,
+                        drop.x,
+                        TAB_GRID_MAX_COLUMNS
+                      )
+                    : layout,
                 }
               : item
           ),
@@ -419,6 +518,44 @@ export const CustomizeTabWidget = () => {
     },
     [tabLayouts]
   );
+
+  // A side widget dropped over the left panel moves into the panel at the row
+  // under the pointer.
+  const handleDragStop: ItemCallback = (
+    layout,
+    oldItem,
+    newItem,
+    placeholder,
+    event,
+    element
+  ) => {
+    const panelRect = leftPanelRef.current?.getBoundingClientRect();
+    const widget = tabLayouts.find(({ i }) => i === newItem.i);
+    if (!panelRect || !widget || !isPointerInRect(event, panelRect)) {
+      COLUMN_LOCKED_DRAG_HANDLERS.onDragStop(
+        layout,
+        oldItem,
+        newItem,
+        placeholder,
+        event,
+        element
+      );
+
+      return;
+    }
+
+    layout.splice(
+      layout.findIndex(({ i }) => i === newItem.i),
+      1
+    );
+    crossPanelDropRef.current = {
+      widget,
+      intoLeftPanel: true,
+      // The panel's grid starts one margin of padding below its top.
+      row: getGridRowAt(event.clientY - panelRect.top - GRID_VERTICAL_MARGIN),
+      x: event.clientX < panelRect.left + panelRect.width / 2 ? 0 : 0.5,
+    };
+  };
 
   const handleMainPanelAddWidget = useCallback(
     (
@@ -578,8 +715,9 @@ export const CustomizeTabWidget = () => {
               margin={[16, 16]}
               preventCollision={false}
               rowHeight={100}
-              onLayoutChange={handleLayoutUpdate}
-              {...COLUMN_LOCKED_DRAG_HANDLERS}>
+              onDrag={COLUMN_LOCKED_DRAG_HANDLERS.onDrag}
+              onDragStop={handleDragStop}
+              onLayoutChange={handleLayoutUpdate}>
               {widgets}
             </ReactGridLayout>
           )}
