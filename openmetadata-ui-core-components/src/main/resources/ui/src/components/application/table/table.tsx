@@ -6,7 +6,7 @@ import type {
   TdHTMLAttributes,
   ThHTMLAttributes,
 } from 'react';
-import { createContext, isValidElement, useContext } from 'react';
+import { createContext, forwardRef, isValidElement, useContext } from 'react';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import {
   ArrowDown,
@@ -518,27 +518,30 @@ interface TableCellProps
   ref?: Ref<HTMLTableCellElement>;
 }
 
-const TableCell = ({ className, children, ...props }: TableCellProps) => {
-  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
-  const { selectionBehavior } = useTableOptions();
+const TableCell = forwardRef<HTMLTableCellElement, Omit<TableCellProps, 'ref'>>(
+  function TableCell({ className, children, ...props }, ref) {
+    const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
+    const { selectionBehavior } = useTableOptions();
 
-  return (
-    <AriaCell
-      {...props}
-      className={(state) =>
-        cx(
-          'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-          TABLE_SIZES[size].cellPadding,
+    return (
+      <AriaCell
+        {...props}
+        className={(state) =>
+          cx(
+            'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+            TABLE_SIZES[size].cellPadding,
 
-          selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
+            selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
 
-          typeof className === 'function' ? className(state) : className
-        )
-      }>
-      {children}
-    </AriaCell>
-  );
-};
+            typeof className === 'function' ? className(state) : className
+          )
+        }
+        ref={ref}>
+        {children}
+      </AriaCell>
+    );
+  }
+);
 TableCell.displayName = 'TableCell';
 
 const TableCard = {
