@@ -386,9 +386,12 @@ function parseColorToRgbTriplet(val: string): [number, number, number] | null {
 function mixAccentLikeScale50(rgb: [number, number, number]): string {
   const t = GLOSSARY_HEADER_MIX_ACCENT;
   const clamp = (n: number) => Math.min(255, Math.max(0, n));
-  const r = clamp(Math.round(rgb[0] * t + 255 * (1 - t)));
-  const g = clamp(Math.round(rgb[1] * t + 255 * (1 - t)));
-  const b = clamp(Math.round(rgb[2] * t + 255 * (1 - t)));
+  const surface = parseColorToRgbTriplet(
+    getCanvasColor(NODE_FILL_DEFAULT, '#ffffff')
+  ) ?? [255, 255, 255];
+  const r = clamp(Math.round(rgb[0] * t + surface[0] * (1 - t)));
+  const g = clamp(Math.round(rgb[1] * t + surface[1] * (1 - t)));
+  const b = clamp(Math.round(rgb[2] * t + surface[2] * (1 - t)));
   const x = (n: number) => n.toString(16).padStart(2, '0');
 
   return `#${x(r)}${x(g)}${x(b)}`;
@@ -396,10 +399,10 @@ function mixAccentLikeScale50(rgb: [number, number, number]): string {
 
 /**
  * Glossary combo header: light "50" wash matching the glossary accent (title + border stroke).
- * For `var(--color-*-scale)` strokes, resolves `var(--color-*-50)`. For hex palette strokes, blends toward white.
+ * Token strokes use the palette’s 50 shade. Stored custom colors blend toward the active surface.
  */
 export function glossaryComboHeaderFill(stroke: string): string {
-  const blendTowardWhite = (): string => {
+  const blendTowardSurface = (): string => {
     const resolved = stroke.startsWith('var(')
       ? getCanvasColor(stroke, '#94a3b8')
       : stroke;
@@ -409,13 +412,13 @@ export function glossaryComboHeaderFill(stroke: string): string {
   };
 
   if (stroke.startsWith('var(')) {
-    const m = stroke.match(/^var\((--color-[a-z0-9-]+)-\d{2,3}\)$/i);
+    const m = stroke.match(/^var\((--tw-color-[a-z0-9-]+)-\d{2,3}\)$/i);
     if (m) {
-      return getCanvasColor(`var(${m[1]}-50)`, blendTowardWhite());
+      return getCanvasColor(`var(${m[1]}-50)`, blendTowardSurface());
     }
   }
 
-  return blendTowardWhite();
+  return blendTowardSurface();
 }
 
 export const LABEL_PLACEMENT_BOTTOM = 'bottom';
@@ -591,17 +594,17 @@ const STUDIO_EDGE_LABEL_PADDING: [number, number, number, number] = [
   2, 7, 2, 7,
 ];
 const STUDIO_EDGE_BORDER_BY_COLOR: Record<string, string> = {
-  '#079455': '#ABEFC6',
-  '#0e9384': '#99E5D9',
-  '#1570ef': '#D1E9FF',
-  '#3538cd': '#C7D7FE',
-  '#5925dc': '#D9D6FE',
-  '#6172f3': '#C7D7FE',
-  '#717680': '#E9EAEB',
-  '#7a5af8': '#E3DEFC',
-  '#c11574': '#FCCEEE',
-  '#dc6803': '#FEDF89',
-  '#e31b54': '#FECDD6',
+  '#079455': 'var(--tw-color-utility-success-200)',
+  '#0e9384': 'var(--tw-color-utility-teal-200)',
+  '#1570ef': 'var(--tw-color-utility-brand-200)',
+  '#3538cd': 'var(--tw-color-utility-indigo-200)',
+  '#5925dc': 'var(--tw-color-utility-violet-200)',
+  '#6172f3': 'var(--tw-color-utility-indigo-200)',
+  '#717680': 'var(--tw-color-utility-gray-200)',
+  '#7a5af8': 'var(--tw-color-utility-purple-200)',
+  '#c11574': 'var(--tw-color-utility-pink-200)',
+  '#dc6803': 'var(--tw-color-utility-warning-200)',
+  '#e31b54': 'var(--tw-color-utility-rose-200)',
 };
 
 export function getEffectiveRelationColor(
@@ -648,7 +651,7 @@ const getEdgeLabelBackgroundFill = (
   getColor: (cssVar: string, fallback: string) => string
 ): string => {
   if (studioMode) {
-    return '#FFFFFF';
+    return getColor(EDGE_LABEL_BG_FILL, '#FFFFFF');
   }
 
   return meta
@@ -663,7 +666,10 @@ const getEdgeLabelBackgroundStroke = (
   getColor: (cssVar: string, fallback: string) => string
 ): string => {
   if (studioMode) {
-    return studioBorderColor ?? '#E9EAEB';
+    return getColor(
+      studioBorderColor ?? 'var(--tw-color-border-primary)',
+      '#E9EAEB'
+    );
   }
 
   return meta ? 'none' : getColor(EDGE_LABEL_BG_STROKE, '#FFF');

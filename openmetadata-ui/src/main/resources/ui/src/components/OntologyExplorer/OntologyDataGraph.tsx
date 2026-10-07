@@ -405,7 +405,7 @@ const OntologyDataGraph = ({
           getEffectiveRelationColor(
             layout.edge.relationType,
             relationshipType
-          ) ?? 'var(--color-border-brand)';
+          ) ?? 'var(--tw-color-border-brand)';
         const color =
           effectiveColor.startsWith('var(') && relationshipType
             ? getRelationshipHexColor(relationshipType)
