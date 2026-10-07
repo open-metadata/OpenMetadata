@@ -2755,7 +2755,9 @@ class DbtUnitTest(TestCase):
 
         def fake_get_table_entity(table_fqn):
             if table_fqn == expected_fqn:
-                return MagicMock()
+                table = MagicMock()
+                table.id.root = uuid.uuid4()
+                return table
             return None
 
         with patch.object(self.dbt_source_obj, "_get_table_entity", side_effect=fake_get_table_entity):  # noqa: SIM117
