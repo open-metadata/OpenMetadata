@@ -263,9 +263,15 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
         ".github/scripts/playwright_cache_fingerprint.py": "FORMAT_VERSION = 'v1'\n",
         "ingestion/Dockerfile.ci": "COPY ingestion /home/airflow/ingestion\n",
         "ingestion/setup.py": "NAME = 'ingestion'\n",
-        "openmetadata-spec/schema.json": "{}",
+        "ingestion/src/metadata/cmd.py": "print('cli')\n",
+        "ingestion/src/metadata/data_quality/data/README.md": "package data\n",
+        "ingestion/examples/sample_data/tables.json": "{}",
+        "ingestion/scripts/strip_spacy_test_fixture.sh": "rm -rf fixture\n",
+        "openmetadata-spec/src/main/resources/json/schema/entity/table.json": "{}",
+        "openmetadata-spec/src/main/antlr4/org/openmetadata/schema/Fqn.g4": "grammar Fqn;\n",
         "scripts/datamodel_generation.py": "print('generate')\n",
         "openmetadata-airflow-apis/setup.py": "NAME = 'airflow-apis'\n",
+        "docker/development/docker-compose-postgres.yml": "services: {}\n",
     }
     for relative, content in inputs.items():
         write(tmp_path, relative, content)
@@ -275,6 +281,61 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
         before = fingerprints.fingerprint("ingestion", root=tmp_path)
         write(tmp_path, relative, f"{inputs[relative]}# changed\n")
         assert fingerprints.fingerprint("ingestion", root=tmp_path) != before
+
+
+def test_ingestion_fingerprint_ignores_files_the_image_never_builds_from(
+    tmp_path: Path,
+) -> None:
+    write(tmp_path, "ingestion/Dockerfile.ci", "COPY ingestion /home/airflow/ingestion\n")
+    ignored = (
+        "pom.xml",
+        "docker/development/Dockerfile",
+        "ingestion/tests/unit/test_cli.py",
+        "ingestion/docs/connector.md",
+        "ingestion/README.md",
+        "ingestion/Dockerfile",
+        "ingestion/Makefile",
+        "ingestion/noxfile.py",
+        "ingestion/.ruff-g004-baseline.json",
+        "ingestion/.basedpyright/baseline.json",
+        "ingestion/stubs/google/cloud/__init__.pyi",
+        "ingestion/operators/docker/Dockerfile.ci",
+        "openmetadata-spec/pom.xml",
+        "openmetadata-spec/src/main/java/org/openmetadata/schema/Entity.java",
+        "openmetadata-spec/src/main/resources/elasticsearch/en/table_index_mapping.json",
+        "openmetadata-spec/src/main/resources/rdf/ontology/openmetadata.ttl",
+        "openmetadata-spec/src/test/resources/json/entity/table.json",
+        "openmetadata-airflow-apis/tests/unit/test_deploy.py",
+        "openmetadata-airflow-apis/development/airflow/airflow.cfg",
+        "openmetadata-airflow-apis/README.md",
+    )
+    for relative in ignored:
+        write(tmp_path, relative, "before\n")
+    initialize_repository(tmp_path)
+
+    before = fingerprints.fingerprint("ingestion", root=tmp_path)
+    for relative in ignored:
+        write(tmp_path, relative, "after\n")
+    assert fingerprints.fingerprint("ingestion", root=tmp_path) == before
+
+    selected = fingerprints.select_files("ingestion", sorted(ignored), tmp_path)
+    assert selected == []
+
+
+def test_ingestion_fingerprint_reads_every_path_dockerfile_ci_copies() -> None:
+    """A new COPY source must be fingerprinted, or the image goes stale silently."""
+    dockerfile = (ROOT / "ingestion/Dockerfile.ci").read_text()
+    sources = [
+        line.split()[-2]
+        for line in dockerfile.splitlines()
+        if line.startswith("COPY ") and "--from=" not in line
+    ]
+    assert sources
+    for source in sources:
+        assert fingerprints.matches_prefix(source, fingerprints.INGESTION_PREFIXES) or any(
+            prefix.startswith(f"{source}/") for prefix in fingerprints.INGESTION_PREFIXES
+        ), source
+        assert fingerprints.is_runtime_ingestion_file(source), source
 
 
 def token(email: str, session_id: str, expiry: int = 4_000_000_000) -> str:
