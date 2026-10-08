@@ -216,9 +216,9 @@ test('should search for empty or null filters', async ({ page }) => {
 test('should show correct count for tier filter options from aggregation', async ({
   page,
 }) => {
-  // Assert against the aggregation the dropdown itself renders. A separate
-  // API query races parallel workers that tier assets in between, and its
-  // bucket order/size need not match the options the dropdown shows.
+  // Read the expected counts from the aggregation the dropdown itself renders:
+  // a separate API call is a second snapshot, and other workers tagging assets
+  // with a tier in between shift the counts.
   const tierAggregation = waitForAggregation(page, {
     field: 'tier.tagFQN',
     value: null,

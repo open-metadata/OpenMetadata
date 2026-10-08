@@ -106,15 +106,15 @@ const getBox = async (locator: Locator) => {
 
 // The drop point is a spot on the card, not an element: the dragged widget
 // covers whatever is under the pointer, so locator.dragTo cannot target it.
-// Callers scroll the card into view first, so the point is on screen and the
-// hover does not scroll it away.
+// Hovering the handle scrolls it into view, which moves everything else, so the
+// point is measured after the hover and not before it.
 const dragToPoint = async (
   page: Page,
   handle: Locator,
-  x: number,
-  y: number
+  getPoint: () => Promise<{ x: number; y: number }>
 ) => {
   await handle.hover();
+  const { x, y } = await getPoint();
   await page.mouse.down();
   await page.mouse.move(x, y, { steps: 10 });
   await page.mouse.up();
@@ -201,11 +201,11 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(cardDomain).toHaveCount(0);
 
       await scrollIntoViewAndSettle(card);
+      await description.getByTestId('drag-widget-button').hover();
       const [ownersBox, descriptionBox] = await Promise.all([
         getBox(owners),
         getBox(description),
       ]);
-      await description.getByTestId('drag-widget-button').hover();
       await adminPage.mouse.down();
       await adminPage.mouse.move(
         ownersBox.x + ownersBox.width / 2,
@@ -226,8 +226,8 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('drop the Domain widget onto the card', async () => {
       await scrollIntoViewAndSettle(card);
-      const descriptionBox = await getBox(description);
       await domain.getByTestId('drag-widget-button').hover();
+      const descriptionBox = await getBox(description);
       await adminPage.mouse.down();
       // Right half of the card, over the Description widget it lands below.
       await adminPage.mouse.move(
@@ -317,16 +317,21 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('drop it right of the card into the side column', async () => {
       await scrollIntoViewAndSettle(cardDomain);
-      const [ownersBox, cardDomainBox] = await Promise.all([
-        getBox(owners),
-        getBox(cardDomain),
-      ]);
       // Over the side column, level with the widget being moved.
       await dragToPoint(
         adminPage,
         cardDomain.getByTestId('drag-widget-button'),
-        ownersBox.x + ownersBox.width / 2,
-        cardDomainBox.y + cardDomainBox.height / 2
+        async () => {
+          const [ownersBox, cardDomainBox] = await Promise.all([
+            getBox(owners),
+            getBox(cardDomain),
+          ]);
+
+          return {
+            x: ownersBox.x + ownersBox.width / 2,
+            y: cardDomainBox.y + cardDomainBox.height / 2,
+          };
+        }
       );
 
       await expect(domain).toBeVisible();
@@ -356,13 +361,14 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     const resizeBy = async (offset: number) => {
       await scrollIntoViewAndSettle(description);
-      const handleBox = await getBox(resizeHandle);
-      await dragToPoint(
-        adminPage,
-        resizeHandle,
-        handleBox.x + handleBox.width / 2 + offset,
-        handleBox.y + handleBox.height / 2
-      );
+      await dragToPoint(adminPage, resizeHandle, async () => {
+        const handleBox = await getBox(resizeHandle);
+
+        return {
+          x: handleBox.x + handleBox.width / 2 + offset,
+          y: handleBox.y + handleBox.height / 2,
+        };
+      });
     };
 
     await test.step('shrink the Description widget to half the card', async () => {
@@ -418,13 +424,18 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(cardOwner).toHaveCount(0);
 
       await scrollIntoViewAndSettle(tags);
-      const tagsBox = await getBox(tags);
       // The empty right half of the line Tags is on.
       await dragToPoint(
         adminPage,
         owner.getByTestId('drag-widget-button'),
-        tagsBox.x + tagsBox.width * 1.5,
-        tagsBox.y + tagsBox.height / 2
+        async () => {
+          const tagsBox = await getBox(tags);
+
+          return {
+            x: tagsBox.x + tagsBox.width * 1.5,
+            y: tagsBox.y + tagsBox.height / 2,
+          };
+        }
       );
 
       await expect(cardOwner).toBeVisible();
@@ -448,13 +459,20 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('drop it right of the card into the side column', async () => {
       await scrollIntoViewAndSettle(cardOwner);
-      const cardOwnerBox = await getBox(cardOwner);
-      const cardBox = await getBox(card);
       await dragToPoint(
         adminPage,
         cardOwner.getByTestId('drag-widget-button'),
-        cardBox.x + cardBox.width + 100,
-        cardOwnerBox.y + cardOwnerBox.height / 2
+        async () => {
+          const [cardOwnerBox, cardBox] = await Promise.all([
+            getBox(cardOwner),
+            getBox(card),
+          ]);
+
+          return {
+            x: cardBox.x + cardBox.width + 100,
+            y: cardOwnerBox.y + cardOwnerBox.height / 2,
+          };
+        }
       );
 
       await expect(owner).toBeVisible();

@@ -18,6 +18,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
@@ -723,6 +724,7 @@ class PowerBIUnitTest(TestCase):
             mock_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
+        self.powerbi.context = TopologyContextManager(self.powerbi.topology)
 
     @pytest.mark.order(1)
     @patch.object(
