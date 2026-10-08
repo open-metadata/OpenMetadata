@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "ขั้นของวงจรชีวิต",
     "like": "ถูกใจ",
     "like-with-count": "ถูกใจ · {{count}}",
+    "liked-with-count": "ถูกใจแล้ว · {{count}}",
     "line": "บรรทัด",
     "line-plural": "บรรทัดหลายรายการ",
     "lineage": "ลำดับชั้น",

@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "Lebenszyklusphase",
     "like": "Gefällt mir",
     "like-with-count": "Gefällt mir · {{count}}",
+    "liked-with-count": "Gelikt · {{count}}",
     "line": "Linie",
     "line-plural": "Linien",
     "lineage": "Abstammung",

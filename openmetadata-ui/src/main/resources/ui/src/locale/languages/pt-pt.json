@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "Fase do ciclo de vida",
     "like": "Gosto",
     "like-with-count": "Gosto · {{count}}",
+    "liked-with-count": "Gostei · {{count}}",
     "line": "Linha",
     "line-plural": "Linhas",
     "lineage": "Linhagem",

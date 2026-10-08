@@ -61,12 +61,20 @@
     }
   }
 
-  .ql-editor,
+  // `.editor-container` matches the FeedEditor's own 100px minimum, which
+  // otherwise wins once the editor holds any text.
+  .editor-container .ql-editor,
   .ql-editor.ql-blank {
     min-height: 44px;
     padding: 12px 48px 12px 14px;
     background-color: transparent;
     border-radius: 10px;
+  }
+
+  // A list starts at the text's edge: the item's own padding holds the
+  // marker, without the list indenting it a second time.
+  .ql-editor ol {
+    padding-left: 0;
   }
 
   // The @/# suggestion list, in the core Dropdown's style: a padded overlay

@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "مرحلة دورة الحياة",
     "like": "إعجاب",
     "like-with-count": "إعجاب · {{count}}",
+    "liked-with-count": "أعجبني · {{count}}",
     "line": "خط",
     "line-plural": "خطوط",
     "lineage": "سلسلة البيانات",

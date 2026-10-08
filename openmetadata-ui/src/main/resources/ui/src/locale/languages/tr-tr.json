@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "Yaşam döngüsü aşaması",
     "like": "Beğen",
     "like-with-count": "Beğen · {{count}}",
+    "liked-with-count": "Beğenildi · {{count}}",
     "line": "Çizgi",
     "line-plural": "Çizgiler",
     "lineage": "Veri Soyu",

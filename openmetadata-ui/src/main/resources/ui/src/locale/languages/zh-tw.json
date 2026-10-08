@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "生命週期階段",
     "like": "讚",
     "like-with-count": "讚 · {{count}}",
+    "liked-with-count": "已按讚 · {{count}}",
     "line": "線",
     "line-plural": "線",
     "lineage": "血緣",

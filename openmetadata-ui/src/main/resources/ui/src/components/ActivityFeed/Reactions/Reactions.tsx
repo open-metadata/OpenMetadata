@@ -17,6 +17,8 @@ import {
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
+import { FaceSmile } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { groupBy } from 'lodash';
 import { FC, MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +27,10 @@ import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
 } from '../../../constants/reactions.constant';
-import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../enums/reactions.enum';
 import {
   Reaction as ReactionProp,
   ReactionType,
@@ -34,15 +39,22 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
 
+const isPill = (variant: ReactionsVariant) => variant === ReactionsVariant.Pill;
+
 interface ReactionsProps {
   reactions: ReactionProp[];
+  variant?: ReactionsVariant;
   onReactionSelect: (
     reaction: ReactionType,
     operation: ReactionOperation
   ) => void | Promise<void>;
 }
 
-const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
+const Reactions: FC<ReactionsProps> = ({
+  reactions,
+  variant = ReactionsVariant.Default,
+  onReactionSelect,
+}) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const { currentUser } = useApplicationStore();
@@ -90,6 +102,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
           key={reaction}
           reaction={reaction}
           reactionList={reactionListValue}
+          variant={variant}
           onReactionSelect={onReactionSelect}
         />
       )
@@ -98,7 +111,10 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
 
   return (
     <div
-      className="tw:inline-flex tw:items-center tw:gap-2"
+      className={classNames(
+        'tw:inline-flex tw:items-center',
+        isPill(variant) ? 'tw:gap-1.5' : 'tw:gap-2'
+      )}
       data-testid="feed-reaction-container">
       {emojis}
       <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
@@ -106,10 +122,20 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
           aria-label={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),
           })}
-          className="tw:size-[22px] tw:rounded-md! tw:p-[3px]!"
+          className={
+            isPill(variant)
+              ? 'tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover'
+              : 'tw:size-[22px] tw:rounded-md! tw:p-[3px]!'
+          }
           color="tertiary"
           data-testid="add-reactions"
-          iconLeading={<AddReactionIcon data-icon height={16} width={16} />}
+          iconLeading={
+            isPill(variant) ? (
+              <FaceSmile data-icon size={16} />
+            ) : (
+              <AddReactionIcon data-icon height={16} width={16} />
+            )
+          }
           size="xs"
           title={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),

@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "Estágio do ciclo de vida",
     "like": "Curtir",
     "like-with-count": "Curtir · {{count}}",
+    "liked-with-count": "Curtido · {{count}}",
     "line": "Linha",
     "line-plural": "Linhas",
     "lineage": "Linhagem",

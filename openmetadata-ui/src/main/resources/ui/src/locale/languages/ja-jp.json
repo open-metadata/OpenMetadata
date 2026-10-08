@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "ライフサイクルステージ",
     "like": "いいね",
     "like-with-count": "いいね · {{count}}",
+    "liked-with-count": "いいね済み · {{count}}",
     "line": "行",
     "line-plural": "行",
     "lineage": "リネージ",

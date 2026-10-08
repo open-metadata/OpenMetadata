@@ -479,7 +479,7 @@ describe('ActivityFeedItem', () => {
 
     expect(mockSendReaction).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId('activity-like')).toHaveTextContent(
-      'label.like-with-count'
+      'label.liked-with-count'
     );
     expect(screen.getByTestId('react-btn')).toHaveTextContent('r1');
   });
@@ -564,7 +564,7 @@ describe('ActivityFeedItem', () => {
       'add'
     );
     expect(screen.getByTestId('activity-like')).toHaveTextContent(
-      'label.like-with-count'
+      'label.liked-with-count'
     );
     expect(screen.getByTestId('activity-like')).toHaveAttribute(
       'aria-pressed',
@@ -593,6 +593,24 @@ describe('ActivityFeedItem', () => {
       'remove'
     );
     expect(screen.getByTestId('activity-like')).toHaveTextContent('label.like');
+  });
+
+  // Others' likes are counted; only the viewer's own reads "Liked".
+  it("counts others' likes without marking the card liked", () => {
+    const likedByOthers = {
+      ...baseActivity,
+      reactions: [{ reactionType: 'thumbsUp', user: { id: 'u2' } }],
+    } as unknown as ActivityEvent;
+
+    render(<ActivityFeedItem activity={likedByOthers} />);
+
+    expect(screen.getByTestId('activity-like')).toHaveTextContent(
+      'label.like-with-count'
+    );
+    expect(screen.getByTestId('activity-like')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
   });
 
   describe('thread', () => {

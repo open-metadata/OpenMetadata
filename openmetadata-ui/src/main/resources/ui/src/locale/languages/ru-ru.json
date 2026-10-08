@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "Этап жизненного цикла",
     "like": "Нравится",
     "like-with-count": "Нравится · {{count}}",
+    "liked-with-count": "Понравилось · {{count}}",
     "line": "Очередь",
     "line-plural": "Очереди",
     "lineage": "Происхождение",

@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "जीवनचक्र टप्पा",
     "like": "आवडले",
     "like-with-count": "आवडले · {{count}}",
+    "liked-with-count": "तुम्हाला आवडले · {{count}}",
     "line": "रेषा",
     "line-plural": "रेषा",
     "lineage": "वंशावळ",

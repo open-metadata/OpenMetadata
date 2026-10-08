@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "שלב מחזור החיים",
     "like": "אהבתי",
     "like-with-count": "אהבתי · {{count}}",
+    "liked-with-count": "אהבת · {{count}}",
     "line": "שורה",
     "line-plural": "שורות",
     "lineage": "שושלת",

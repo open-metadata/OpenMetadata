@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "مرحله چرخه حیات",
     "like": "پسندیدن",
     "like-with-count": "پسندیدن · {{count}}",
+    "liked-with-count": "پسندیده شد · {{count}}",
     "line": "خط",
     "line-plural": "خطوط",
     "lineage": "شجره داده",

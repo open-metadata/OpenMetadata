@@ -1776,6 +1776,7 @@
     "lifecycle-stage": "Levenscyclusfase",
     "like": "Vind ik leuk",
     "like-with-count": "Vind ik leuk · {{count}}",
+    "liked-with-count": "Leuk gevonden · {{count}}",
     "line": "Lijn",
     "line-plural": "Lijnen",
     "lineage": "Herkomst",
