@@ -64,6 +64,7 @@ from metadata.ingestion.source.database.databricks.client import DatabricksClien
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
 )
+from metadata.ingestion.source.database.databricks.metadata import _quote_identifier
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_SQL_STATEMENT_TEST,
@@ -188,20 +189,12 @@ class DatabricksEngineWrapper:
             self._inspector = inspect(self.engine)
         return self._inspector
 
-    def _quote_identifier(self, identifier: str) -> str:
-        """Catalog and schema names come from the workspace, so they are untrusted.
-
-        Not via the dialect preparer: databricks-sqlalchemy leaves `escape_quote`
-        at `"` up to 2.0.9, which the pin allows, so it would not escape at all.
-        """
-        return f"`{identifier.replace('`', '``')}`"
-
     def get_schemas(self, schema_name: str | None = None):
         """Get schemas and cache them"""
         if schema_name is not None:
             if self.first_catalog:
                 with self.engine.connect() as connection:
-                    connection.execute(text(f"USE CATALOG {self._quote_identifier(self.first_catalog)}"))
+                    connection.execute(text(f"USE CATALOG {_quote_identifier(self.first_catalog)}"))
             self.first_schema = schema_name
             return [schema_name]
         if self.schemas is None:
@@ -235,7 +228,7 @@ class DatabricksEngineWrapper:
         catalog, schema = self._require_resolved_catalog_and_schema()
         with self.engine.connect() as connection:
             tables = connection.execute(
-                text(f"SHOW TABLES IN {self._quote_identifier(catalog)}.{self._quote_identifier(schema)}")
+                text(f"SHOW TABLES IN {_quote_identifier(catalog)}.{_quote_identifier(schema)}")
             )
             return tables.fetchmany(DEFAULT_SAMPLE_ROWS)
 
@@ -245,9 +238,7 @@ class DatabricksEngineWrapper:
             self.get_schemas()
         catalog, schema = self._require_resolved_catalog_and_schema()
         with self.engine.connect() as connection:
-            views = connection.execute(
-                text(f"SHOW VIEWS IN {self._quote_identifier(catalog)}.{self._quote_identifier(schema)}")
-            )
+            views = connection.execute(text(f"SHOW VIEWS IN {_quote_identifier(catalog)}.{_quote_identifier(schema)}"))
             return views.fetchmany(DEFAULT_SAMPLE_ROWS)
 
     def get_catalogs(self, catalog_name: str | None = None):

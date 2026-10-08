@@ -42,12 +42,15 @@ _impala_type_to_sqlalchemy_type.update(
 def _quote_identifier(identifier: str) -> str:
     """Quote one untrusted Impala identifier.
 
-    `ImpalaIdentifierPreparer` leaves `escape_quote` at `"`, so the preparer
-    cannot do this. Impala has no in-identifier escape either, so doubling
-    keeps the name inside the backticks and the statement fails to parse
-    rather than naming a different table.
+    Impala's lexer (``QuotedIdentifier = `(\\.|[^`])*` ``) treats a backslash as
+    an escape and has no way to represent a literal backtick, so a name holding
+    either cannot be safely quoted -- e.g. a name ending in ``\\`` escapes the
+    closing backtick and leaves the identifier open. Reject those names rather
+    than emit SQL that could break out of the quotes.
     """
-    return f"`{identifier.replace('`', '``')}`"
+    if "`" in identifier or "\\" in identifier:
+        raise ValueError(f"Unsupported Impala identifier: {identifier!r}")
+    return f"`{identifier}`"
 
 
 def get_impala_table_or_view_names(connection, schema=None, target_type="table"):
