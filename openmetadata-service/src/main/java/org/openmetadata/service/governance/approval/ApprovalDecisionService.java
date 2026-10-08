@@ -19,16 +19,24 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response.Status;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
+import org.openmetadata.schema.governance.changeRequest.ChangeDecision;
+import org.openmetadata.schema.governance.changeRequest.ChangeDecisionType;
+import org.openmetadata.schema.governance.changeRequest.ChangeRef;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.governance.changeRequest.DecisionType;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
@@ -53,7 +61,7 @@ public final class ApprovalDecisionService {
   public static void recordForTask(
       Task task,
       TaskResolutionType resolution,
-      Integer revisionNumber,
+      ChangeRequestReview review,
       String comment,
       String user) {
     DecisionType decision = resolution == null ? null : DECISIONS.get(resolution);
@@ -62,10 +70,12 @@ public final class ApprovalDecisionService {
             ? ChangeRequestService.dao().changeRequestDAO().findByTaskId(task.getId())
             : null;
     if (request != null) {
-      Integer reviewed = revisionNumber == null ? revisionOf(task) : revisionNumber;
-      requireRevision(reviewed);
+      ChangeRequestReview reviewed = review == null ? ChangeRequestReview.ofRevision(null) : review;
+      Integer revisionNumber = reviewed.revision() == null ? revisionOf(task) : reviewed.revision();
+      requireRevision(revisionNumber);
+      Choice choice = choiceOf(request, decision, reviewed);
       if (decision == DecisionType.APPROVE) {
-        requireApplicable(request);
+        requireApplicable(request, approvedWithPriorReviews(request, choice, user));
       }
       EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
       repository.executeInTransaction(
@@ -73,8 +83,99 @@ public final class ApprovalDecisionService {
               recordLocked(
                   repository,
                   request,
-                  new Proposed(decision, reviewed, task.getId(), comment, user)));
+                  new Proposed(decision, revisionNumber, task.getId(), comment, user, choice)));
     }
+  }
+
+  /**
+   * The changes a decision approves and rejects. Without per-change decisions it covers the whole
+   * revision and both lists stay unset; a decision that approves every change is recorded the same
+   * way.
+   */
+  private record Choice(
+      List<ChangeRef> approved, List<ChangeRef> rejected, List<MutationOp> approvedOps) {}
+
+  private static List<MutationOp> approvedWithPriorReviews(
+      ChangeRequest request, Choice choice, String user) {
+    List<ApprovalDecision> reviews = new ArrayList<>(decisions(request.getActiveRevisionId()));
+    reviews.add(
+        new ApprovalDecision()
+            .withDecision(DecisionType.APPROVE)
+            .withDecidedBy(user)
+            .withApprovedChanges(choice.approved())
+            .withRejectedChanges(choice.rejected()));
+    return ChangeSelection.of(choice.approvedOps(), reviews, request.getRequestedBy()).approved();
+  }
+
+  private static Choice choiceOf(
+      ChangeRequest request, DecisionType decision, ChangeRequestReview review) {
+    List<MutationOp> ops = ChangeRequestService.activeRevision(request).getOps();
+    Choice choice = new Choice(null, null, ops);
+    if (review.perChange()) {
+      Map<String, MutationOp> byTarget = new LinkedHashMap<>();
+      ops.forEach(op -> byTarget.put(MutationPlanner.targetOf(op), op));
+      List<ChangeRef> approved = new ArrayList<>();
+      List<ChangeRef> rejected = new ArrayList<>();
+      Set<String> decided = new HashSet<>();
+      for (ChangeDecision change : review.changeDecisions()) {
+        if (change == null || change.getField() == null || change.getDecision() == null) {
+          throw new BadRequestException("Each change decision requires a field and a decision");
+        }
+        String target = MutationPlanner.targetOf(change.getField(), change.getKey());
+        requireChange(byTarget, decided, target, change);
+        ChangeRef ref = new ChangeRef().withField(change.getField()).withKey(change.getKey());
+        (change.getDecision() == ChangeDecisionType.APPROVE ? approved : rejected).add(ref);
+      }
+      choice = choiceFor(decision, approved, rejected, byTarget, decided);
+    }
+    return choice;
+  }
+
+  private static void requireChange(
+      Map<String, MutationOp> byTarget, Set<String> decided, String target, ChangeDecision change) {
+    if (!byTarget.containsKey(target)) {
+      throw new BadRequestException(
+          "The change request has no change to %s %s"
+              .formatted(change.getField(), Objects.toString(change.getKey(), ""))
+              .trim());
+    }
+    if (!decided.add(target)) {
+      throw new BadRequestException(
+          "The change to %s %s is decided more than once"
+              .formatted(change.getField(), Objects.toString(change.getKey(), ""))
+              .trim());
+    }
+  }
+
+  private static Choice choiceFor(
+      DecisionType decision,
+      List<ChangeRef> approved,
+      List<ChangeRef> rejected,
+      Map<String, MutationOp> byTarget,
+      Set<String> decided) {
+    boolean everyChangeDecided = decided.size() == byTarget.size();
+    if (approved.isEmpty() && !(everyChangeDecided && decision == DecisionType.REJECT)) {
+      throw new BadRequestException(
+          "Approve at least one change, or reject all of them by rejecting the task");
+    }
+    if (!approved.isEmpty() && decision != DecisionType.APPROVE) {
+      throw new BadRequestException("A task that approves changes is resolved as Approved");
+    }
+    Choice choice = new Choice(null, null, List.copyOf(byTarget.values()));
+    if (!approved.isEmpty() && (!rejected.isEmpty() || !everyChangeDecided)) {
+      byTarget.forEach(
+          (target, op) -> {
+            if (!decided.contains(target)) {
+              rejected.add(new ChangeRef().withField(op.getField()).withKey(op.getKey()));
+            }
+          });
+      List<MutationOp> approvedOps =
+          approved.stream()
+              .map(ref -> byTarget.get(MutationPlanner.targetOf(ref.getField(), ref.getKey())))
+              .toList();
+      choice = new Choice(approved, rejected.isEmpty() ? null : rejected, approvedOps);
+    }
+    return choice;
   }
 
   /**
@@ -100,7 +201,13 @@ public final class ApprovalDecisionService {
               insert(
                   locked,
                   revision,
-                  new Proposed(DecisionType.APPROVE, revisionNumber, null, reason, GOVERNANCE_BOT));
+                  new Proposed(
+                      DecisionType.APPROVE,
+                      revisionNumber,
+                      null,
+                      reason,
+                      GOVERNANCE_BOT,
+                      new Choice(null, null, revision.getOps())));
             }
           }
           return locked;
@@ -112,7 +219,12 @@ public final class ApprovalDecisionService {
   }
 
   private record Proposed(
-      DecisionType decision, int revisionNumber, UUID taskId, String comment, String user) {}
+      DecisionType decision,
+      int revisionNumber,
+      UUID taskId,
+      String comment,
+      String user,
+      Choice choice) {}
 
   private static ApprovalDecision recordLocked(
       EntityRepository<?> repository, ChangeRequest snapshot, Proposed proposed) {
@@ -123,12 +235,20 @@ public final class ApprovalDecisionService {
     ChangeRevision revision = ChangeRequestService.activeRevision(request);
     ApprovalDecision existing = existingDecision(revision.getId(), proposed.user());
     ApprovalDecision result = existing == null ? insert(request, revision, proposed) : existing;
-    if (result.getDecision() != proposed.decision()) {
+    if (result.getDecision() != proposed.decision()
+        || !sameChanges(result.getApprovedChanges(), proposed.choice().approved())
+        || !sameChanges(result.getRejectedChanges(), proposed.choice().rejected())) {
       throw conflict(
           "%s already recorded %s on revision %d"
               .formatted(proposed.user(), result.getDecision().value(), proposed.revisionNumber()));
     }
     return result;
+  }
+
+  private static boolean sameChanges(List<ChangeRef> stored, List<ChangeRef> proposed) {
+    Set<ChangeRef> storedChanges = stored == null ? Set.of() : Set.copyOf(stored);
+    Set<ChangeRef> proposedChanges = proposed == null ? Set.of() : Set.copyOf(proposed);
+    return storedChanges.equals(proposedChanges);
   }
 
   private static void requireDecidable(ChangeRequest request, Proposed proposed) {
@@ -173,8 +293,12 @@ public final class ApprovalDecisionService {
     return revision;
   }
 
-  private static void requireApplicable(ChangeRequest request) {
-    ChangeApplyService.Applicability applicability = ChangeApplyService.applicability(request);
+  private static void requireApplicable(ChangeRequest request, List<MutationOp> approvedOps) {
+    if (approvedOps.isEmpty()) {
+      return;
+    }
+    ChangeApplyService.Applicability applicability =
+        ChangeApplyService.applicability(request, approvedOps);
     if (!applicability.applicable()) {
       ChangeRequestService.flagConflicts(request.getId(), applicability);
       throw conflict(
@@ -210,6 +334,8 @@ public final class ApprovalDecisionService {
             .withDecidedBy(proposed.user())
             .withTaskId(proposed.taskId())
             .withComment(proposed.comment())
+            .withApprovedChanges(proposed.choice().approved())
+            .withRejectedChanges(proposed.choice().rejected())
             .withDecidedAt(System.currentTimeMillis());
     ChangeRequestService.dao().approvalDecisionDAO().insert(decision);
     return decision;

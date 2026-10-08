@@ -53,6 +53,7 @@ import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
+import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -153,7 +154,8 @@ public class TaskWorkflowHandler {
 
   /**
    * Resolve a task, first recording the resolver's decision in the catalog when the task reviews a
-   * change request. {@code changeRequestRevision} names the revision the resolver reviewed.
+   * change request. {@code review} names the revision the resolver reviewed and, when they decided
+   * change by change, their decision on each.
    */
   public Task resolveTask(
       Task task,
@@ -163,7 +165,7 @@ public class TaskWorkflowHandler {
       Object resolvedPayload,
       String comment,
       String user,
-      Integer changeRequestRevision) {
+      ChangeRequestReview review) {
     UUID taskId = task.getId();
     TaskAvailableTransition selectedTransition =
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
@@ -176,8 +178,7 @@ public class TaskWorkflowHandler {
         effectiveResolutionType,
         user);
 
-    ApprovalDecisionService.recordForTask(
-        task, effectiveResolutionType, changeRequestRevision, comment, user);
+    ApprovalDecisionService.recordForTask(task, effectiveResolutionType, review, comment, user);
 
     // During migration cutover, legacy workflow tasks can be converted to Task entities before
     // workflowInstanceId is backfilled. Runtime-task presence is the source of truth in that case.

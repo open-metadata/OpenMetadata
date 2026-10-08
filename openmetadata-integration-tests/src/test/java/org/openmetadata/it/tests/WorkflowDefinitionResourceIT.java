@@ -112,6 +112,8 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.governance.changeRequest.ChangeDecision;
+import org.openmetadata.schema.governance.changeRequest.ChangeDecisionType;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
@@ -4453,6 +4455,176 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  void test_partlyApprovedRequestPublishesTagsAndDiscardsDescription(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "partial");
+    deployHookWorkflow(
+        SdkClients.adminClient(),
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description", "tags"));
+    String requestId =
+        submit(
+            glossary,
+            """
+        [{"op":"replace","path":"/description","value":"discarded description"},
+         {"op":"add","path":"/tags","value":[{"tagFQN":"PII.Sensitive","source":"Classification","labelType":"Manual","state":"Confirmed"}]}]
+        """);
+    Task first = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(first, TaskResolutionType.Approved, approve("tags").withKey("PII.Sensitive"));
+
+    awaitRequestStatus(requestId, "Applied");
+    Glossary partly =
+        SdkClients.adminClient().glossaries().get(glossary.getId().toString(), "tags");
+    assertTrue(partly.getTags().stream().anyMatch(tag -> "PII.Sensitive".equals(tag.getTagFQN())));
+    assertEquals(PUBLISHED_DESCRIPTION, partly.getDescription());
+    assertTrue(eventTypes(requestHistory(requestId, "events")).contains("PartiallyApplied"));
+    assertEquals(1, requestHistory(requestId, "revisions").size());
+    assertEquals(first.getId().toString(), changeRequest(requestId).get("taskId").asText());
+    JsonNode decisions = requestHistory(requestId, "decisions");
+    assertEquals(
+        "description", decisions.get(0).get("rejectedChanges").get(0).get("field").asText());
+  }
+
+  @Test
+  void test_rejectedChangeOfAPartlyApprovedRequestIsDropped(TestNamespace ns) throws Exception {
+    Glossary glossary = twoFieldGatedGlossary(ns, "partialReject");
+    String requestId =
+        submit(glossary, descriptionAndDisplayName("rejected text", "approved name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(
+        task, TaskResolutionType.Approved, approve("displayName"), reject("description"));
+
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals("approved name", after.getDisplayName());
+    assertEquals(PUBLISHED_DESCRIPTION, after.getDescription());
+    assertEquals(1, changeRequest(requestId).get("activeRevisionNumber").asInt());
+  }
+
+  @Test
+  void test_partialApprovalRefusesASelectionThatDecidesNothingOrUnknownChanges(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = twoFieldGatedGlossary(ns, "partialInvalid");
+    String requestId = submit(glossary, descriptionAndDisplayName("text", "name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> resolveChanges(task, TaskResolutionType.Approved, approve("owners")))
+            .getStatusCode());
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    resolveChanges(
+                        task,
+                        TaskResolutionType.Approved,
+                        approve("description"),
+                        approve("description")))
+            .getStatusCode());
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> resolveChanges(task, TaskResolutionType.Rejected, reject("description")))
+            .getStatusCode());
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> resolveChanges(task, TaskResolutionType.Rejected, approve("description")))
+            .getStatusCode());
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+  }
+
+  @Test
+  void test_reviewerCanApproveTheChangesAConflictDoesNotTouch(TestNamespace ns) throws Exception {
+    Glossary glossary = twoFieldGatedGlossary(ns, "partialConflict");
+    String requestId = submit(glossary, descriptionAndDisplayName("stale text", "approved name"));
+    Task task = awaitRequestTask(requestId, glossary);
+    patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
+    assertEquals(
+        409, assertThrows(OpenMetadataException.class, () -> approve(task)).getStatusCode());
+
+    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals(1, changeRequest(requestId).get("activeRevisionNumber").asInt());
+    Glossary after = glossaryById(glossary);
+    assertEquals("approved name", after.getDisplayName());
+    assertEquals("ingested description", after.getDescription());
+  }
+
+  @Test
+  void test_twoReviewersApplyOnlyTheirCommonSelection(TestNamespace ns) throws Exception {
+    Glossary glossary = twoReviewerGatedGlossary(ns);
+    String requestId =
+        submit(glossary, descriptionAndDisplayName("discarded text", "approved name"));
+    Task task = awaitRequestTask(requestId, glossary);
+    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals("published name", glossaryById(glossary).getDisplayName());
+    SdkClients.user3Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new org.openmetadata.schema.api.tasks.ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved));
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("approved name", glossaryById(glossary).getDisplayName());
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    assertEquals(1, requestHistory(requestId, "revisions").size());
+  }
+
+  @Test
+  void test_secondReviewerIgnoresDriftInDiscardedChanges(TestNamespace ns) throws Exception {
+    Glossary glossary = twoReviewerGatedGlossary(ns);
+    String requestId =
+        submit(glossary, descriptionAndDisplayName("discarded text", "approved name"));
+    Task task = awaitRequestTask(requestId, glossary);
+    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
+    patchAs(
+        SdkClients.ingestionBotClient(), glossary, descriptionPatch("new published description"));
+    SdkClients.user3Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new org.openmetadata.schema.api.tasks.ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved));
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("approved name", glossaryById(glossary).getDisplayName());
+    assertEquals("new published description", descriptionOf(glossary));
+    assertEquals(1, requestHistory(requestId, "revisions").size());
+  }
+
+  @Test
+  void test_disjointReviewerSelectionsRejectTheRequest(TestNamespace ns) throws Exception {
+    Glossary glossary = twoReviewerGatedGlossary(ns);
+    String requestId =
+        submit(glossary, descriptionAndDisplayName("discarded text", "discarded name"));
+    Task task = awaitRequestTask(requestId, glossary);
+    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
+    SdkClients.user3Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new org.openmetadata.schema.api.tasks.ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withChangeDecisions(List.of(approve("description"))));
+    awaitRequestStatus(requestId, "Rejected");
+    assertEquals("published name", glossaryById(glossary).getDisplayName());
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    assertEquals(1, requestHistory(requestId, "revisions").size());
+  }
+
+  @Test
   void test_ungatedFieldChangedSinceSubmitKeepsTheNewerValue(TestNamespace ns) throws Exception {
     Glossary glossary = reviewedGlossary(ns, "drift");
     String requestId =
@@ -5099,6 +5271,69 @@ public class WorkflowDefinitionResourceIT {
         glossary.getFullyQualifiedName(),
         List.of("description"));
     return glossary;
+  }
+
+  private Glossary twoFieldGatedGlossary(TestNamespace ns, String tag) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, tag);
+    deployHookWorkflow(
+        SdkClients.adminClient(),
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description", "displayName"));
+    return glossary;
+  }
+
+  private Glossary twoReviewerGatedGlossary(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("partialTwoReviewers"))
+                    .withDisplayName("published name")
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(shared.USER2_REF))
+                    .withReviewers(List.of(shared.USER1_REF, shared.USER3_REF)));
+    String name = "hookGate" + UUID.randomUUID().toString().substring(0, 8);
+    String json =
+        hookWorkflowJson(
+                name,
+                "glossary",
+                glossary.getFullyQualifiedName(),
+                List.of("description", "displayName"))
+            .replace("\"approvalThreshold\": 1", "\"approvalThreshold\": 2");
+    CreateWorkflowDefinition create = MAPPER.readValue(json, CreateWorkflowDefinition.class);
+    WorkflowDefinition workflow = SdkClients.adminClient().workflowDefinitions().create(create);
+    trackWorkflowFromJson(MAPPER.valueToTree(workflow));
+    waitForWorkflowDeployment(SdkClients.adminClient(), name);
+    return glossary;
+  }
+
+  private static String descriptionAndDisplayName(String description, String displayName) {
+    return ("[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"},"
+            + "{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"%s\"}]")
+        .formatted(description, displayName);
+  }
+
+  private static ChangeDecision approve(String field) {
+    return new ChangeDecision().withField(field).withDecision(ChangeDecisionType.APPROVE);
+  }
+
+  private static ChangeDecision reject(String field) {
+    return new ChangeDecision().withField(field).withDecision(ChangeDecisionType.REJECT);
+  }
+
+  // USER1 reviews the task's revision change by change.
+  private void resolveChanges(Task task, TaskResolutionType resolution, ChangeDecision... changes) {
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new org.openmetadata.schema.api.tasks.ResolveTask()
+                .withResolutionType(resolution)
+                .withComment("partial review")
+                .withChangeDecisions(List.of(changes)));
   }
 
   private static String descriptionPatch(String value) {

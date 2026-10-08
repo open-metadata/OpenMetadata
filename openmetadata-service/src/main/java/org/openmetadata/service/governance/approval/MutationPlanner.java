@@ -284,8 +284,13 @@ public final class MutationPlanner {
     return value == null || value.isMissingNode() ? NullNode.getInstance() : value;
   }
 
-  private static String targetOf(MutationOp op) {
-    return "%s|%s".formatted(op.getField(), Objects.toString(op.getKey(), ""));
+  /** The change an op makes, as reviewers name it: its field and, for an element, its key. */
+  static String targetOf(MutationOp op) {
+    return targetOf(op.getField(), op.getKey());
+  }
+
+  static String targetOf(String field, String key) {
+    return "%s|%s".formatted(field, Objects.toString(key, ""));
   }
 
   private static MessageDigest sha256() {

@@ -64,6 +64,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
@@ -903,19 +904,12 @@ public class TaskRepository extends EntityRepository<Task> {
       Object resolvedPayload,
       String comment,
       String user,
-      Integer changeRequestRevision) {
+      ChangeRequestReview review) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
     return TaskWorkflowHandler.getInstance()
         .resolveTask(
-            task,
-            transitionId,
-            resolutionType,
-            newValue,
-            resolvedPayload,
-            comment,
-            user,
-            changeRequestRevision);
+            task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
   }
 
   /**

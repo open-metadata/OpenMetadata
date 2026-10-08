@@ -23,7 +23,6 @@ import java.util.TreeSet;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
 import org.openmetadata.schema.governance.changeRequest.ChangeApplication;
 import org.openmetadata.schema.governance.changeRequest.ChangeConflict;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
@@ -80,15 +79,18 @@ public final class ChangeApplyService {
    * runs. Nothing is saved.
    */
   public static Applicability applicability(ChangeRequest request) {
+    return applicability(request, ChangeRequestService.activeRevision(request).getOps());
+  }
+
+  /** Whether {@code ops}, changes of the active revision, still apply to the asset as published. */
+  public static Applicability applicability(ChangeRequest request, List<MutationOp> ops) {
     EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
     Applicability result;
     try (FreshReadScope.Handle fresh = FreshReadScope.enter();
         EntityCacheBypass.Handle bypass = EntityCacheBypass.skip()) {
-      ChangeRevision revision = ChangeRequestService.activeRevision(request);
       JsonNode currentTree =
-          JsonUtils.valueToTree(readCurrent(repository, request.getEntityId(), revision.getOps()));
-      MutationPlanner.ConflictSplit split =
-          MutationPlanner.splitConflicts(currentTree, revision.getOps());
+          JsonUtils.valueToTree(readCurrent(repository, request.getEntityId(), ops));
+      MutationPlanner.ConflictSplit split = MutationPlanner.splitConflicts(currentTree, ops);
       result =
           split.gatedConflicts().isEmpty()
               ? validated(repository, request, currentTree, split)
@@ -166,18 +168,19 @@ public final class ChangeApplyService {
   }
 
   private static boolean hasEligibleApproval(ChangeRequest request) {
-    List<ApprovalDecision> decisions =
-        ApprovalDecisionService.decisions(request.getActiveRevisionId());
-    boolean rejected = decisions.stream().anyMatch(d -> d.getDecision() == DecisionType.REJECT);
-    boolean approved =
-        decisions.stream()
-            .anyMatch(
-                d ->
-                    d.getDecision() == DecisionType.APPROVE
-                        && !d.getDecidedBy().equals(request.getRequestedBy()));
-    // An administrator override publishes without review; it is recorded as its own decision.
-    boolean overridden = decisions.stream().anyMatch(d -> d.getDecision() == DecisionType.OVERRIDE);
-    return overridden || (approved && !rejected);
+    return ApprovalDecisionService.decisions(request.getActiveRevisionId()).stream()
+        .anyMatch(
+            decision ->
+                decision.getDecision() == DecisionType.OVERRIDE
+                    || (decision.getDecision() == DecisionType.APPROVE
+                        && !decision.getDecidedBy().equals(request.getRequestedBy())));
+  }
+
+  private static ChangeSelection selection(ChangeRequest request, ChangeRevision revision) {
+    return ChangeSelection.of(
+        revision.getOps(),
+        ApprovalDecisionService.decisions(revision.getId()),
+        request.getRequestedBy());
   }
 
   private static void refuse(ChangeRequest request, int revisionNumber) {
@@ -200,14 +203,23 @@ public final class ChangeApplyService {
         : request;
   }
 
+  // The review is final: publish the selected subset and discard the rest.
   private static ChangeRequest applyRevision(
       EntityRepository<?> repository, ChangeRequest request, ChangeRevision revision) {
-    EntityInterface current = readCurrent(repository, request.getEntityId(), revision.getOps());
+    ChangeSelection selection = selection(request, revision);
+    if (selection.approved().isEmpty()) {
+      return ChangeRequestService.finish(
+          request.getId(),
+          revision.getRevisionNumber(),
+          ChangeRequestStatus.REJECTED,
+          "No changes were approved by all reviewers");
+    }
+    EntityInterface current = readCurrent(repository, request.getEntityId(), selection.approved());
     JsonNode currentTree = JsonUtils.valueToTree(current);
     MutationPlanner.ConflictSplit split =
-        MutationPlanner.splitConflicts(currentTree, revision.getOps());
+        MutationPlanner.splitConflicts(currentTree, selection.approved());
     return split.gatedConflicts().isEmpty()
-        ? publish(repository, request, revision, currentTree, split)
+        ? publish(repository, request, revision, currentTree, split, selection)
         : markConflicted(request, currentTree, split.gatedConflicts());
   }
 
@@ -228,7 +240,8 @@ public final class ChangeApplyService {
       ChangeRequest request,
       ChangeRevision revision,
       JsonNode currentTree,
-      MutationPlanner.ConflictSplit split) {
+      MutationPlanner.ConflictSplit split,
+      ChangeSelection selection) {
     JsonPatch patch =
         JsonUtils.getJsonPatch(
             currentTree.toString(),
@@ -240,6 +253,10 @@ public final class ChangeApplyService {
     ChangeRequestService.dao()
         .changeApplicationDAO()
         .insert(application(request, revision, published, split.dropped()));
+    return finishApplied(request, selection);
+  }
+
+  private static ChangeRequest finishApplied(ChangeRequest request, ChangeSelection selection) {
     ChangeRequestStatus from = request.getStatus();
     ChangeRequestService.dao()
         .changeRequestDAO()
@@ -248,7 +265,14 @@ public final class ChangeApplyService {
                 .withStatus(ChangeRequestStatus.APPLIED)
                 .withStatusReason(null)
                 .withConflicts(List.of()));
-    ChangeRequestLifecycle.record(request, LifecycleEventType.APPLIED, from, null, null);
+    ChangeRequestLifecycle.record(
+        request,
+        selection.partial() ? LifecycleEventType.PARTIALLY_APPLIED : LifecycleEventType.APPLIED,
+        from,
+        null,
+        selection.rejected().isEmpty()
+            ? null
+            : "Rejected: %s".formatted(ChangeSelection.describe(selection.rejected())));
     return request;
   }
 
