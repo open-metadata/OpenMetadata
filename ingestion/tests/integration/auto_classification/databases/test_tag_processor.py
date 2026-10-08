@@ -122,7 +122,8 @@ def run_autoclassification(
     load_metadata: MetadataWorkflow,
     autoclassification_config,
 ) -> AutoClassificationWorkflow:
-    return run_workflow(AutoClassificationWorkflow, autoclassification_config)
+    # Workflow creation replaces dict config values with models; keep the shared fixture reusable.
+    return run_workflow(AutoClassificationWorkflow, deepcopy(autoclassification_config))
 
 
 def test_it_returns_the_expected_classifications(
@@ -212,6 +213,9 @@ def test_it_returns_the_expected_classifications(
                 "abn": ["PII.Sensitive"],
                 "acn": ["PII.Sensitive"],
                 "sg_nric": ["PII.Sensitive"],
+                "sku": [],
+                "ticket_id": [],
+                "shipment_ref": [],
             },
         ),
         (ClassificationLanguage.es, "identifier_es", {"nif": ["PII.Sensitive"], "nie": ["PII.Sensitive"]}),
@@ -244,5 +248,5 @@ def test_identifier_formats_are_persisted_by_classification_workflow(
         assert [label.tagFQN.root for label in by_name[name].tags] == tag_fqns
 
     if language is ClassificationLanguage.en:
-        assert "SgFinRecognizer" in by_name["sg_nric"].tags[0].reason
-        assert all("SgFinRecognizer" not in label.reason for label in by_name["sg_nric_typo"].tags)
+        assert any("ValidatedSgFinRecognizer" in (label.reason or "") for label in by_name["sg_nric"].tags)
+        assert all("ValidatedSgFinRecognizer" not in (label.reason or "") for label in by_name["sg_nric_typo"].tags)

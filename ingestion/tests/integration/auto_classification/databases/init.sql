@@ -38,10 +38,14 @@ CREATE TABLE identifier_en (
     abn VARCHAR(30),
     acn VARCHAR(30),
     sg_nric VARCHAR(30),
-    sg_nric_typo VARCHAR(30)
+    sg_nric_typo VARCHAR(30),
+    sku VARCHAR(30),
+    ticket_id VARCHAR(30),
+    shipment_ref VARCHAR(80)
 );
 INSERT INTO identifier_en VALUES
-    ('gb82 west 1234 5698 7654 32', 't15lp0010d', '51-824-753-556', '004-085-616', 'S1234567D', 'S1234567E');
+    ('gb82 west 1234 5698 7654 32', 't15lp0010d', '51-824-753-556', '004-085-616', 'S1234567D', 'S1234567E',
+     'S1234567D', '004-085-616', 'gb82 west 1234 5698 7654 32');
 
 CREATE TABLE identifier_es (nif VARCHAR(30), nie VARCHAR(30));
 INSERT INTO identifier_es VALUES ('12345678z', 'x1234567l');
