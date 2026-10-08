@@ -1267,7 +1267,9 @@ const TeamDetailsV1 = ({
                 count={tab.count}
                 id={tab.key}
                 isActive={currentTab === tab.key}
-                name={tab.label}
+                // Contributions may carry an i18n key or a literal; `t` returns
+                // the input unchanged when it isn't a known key.
+                name={t(tab.label)}
               />
             ) : (
               tab.label
@@ -1276,7 +1278,7 @@ const TeamDetailsV1 = ({
           children: <TabComponent {...extensionContext} />,
         };
       });
-  }, [extensionRegistry, currentTeam.id, currentTab]);
+  }, [extensionRegistry, currentTeam.id, currentTab, t]);
 
   const allTabs = useMemo(() => [...tabs, ...pluginTabs], [tabs, pluginTabs]);
 

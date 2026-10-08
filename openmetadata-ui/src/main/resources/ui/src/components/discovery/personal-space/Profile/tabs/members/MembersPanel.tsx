@@ -21,7 +21,10 @@ import { ResourceEntity } from '../../../../../../context/PermissionProvider/Per
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { EXTENSION_POINTS } from '../../../../../../utils/ExtensionPointTypes';
+import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { MembersPanelProps, MembersView } from './Members.types';
 import {
@@ -43,12 +46,14 @@ const TEAM_DETAIL = 'team-detail' as const;
 const TEAMS_ADD = 'teams-add' as const;
 const TEAMS_IMPORT = 'teams-import' as const;
 const USER_CREATE = 'user-create' as const;
+const SECTION = 'section' as const;
 
 const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { state: hashState, setHash } = useSettingsHash();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
+  const { getContributions } = useApplicationsProvider();
 
   // Create permissions gate the form views directly, since those views are
   // reachable by deep-linking the hash even when the create button is hidden.
@@ -82,6 +87,19 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     },
     [setHash]
   );
+
+  // The contribution backing the active `section` view, if any. A hash naming an
+  // unknown key (stale deep link, app uninstalled) resolves to undefined and
+  // falls through to the landing view rather than rendering a blank panel.
+  const activeSection = useMemo(() => {
+    if (view.type !== SECTION) {
+      return undefined;
+    }
+
+    return getContributions<MembersSectionContribution>(
+      EXTENSION_POINTS.MEMBERS_LANDING_SECTIONS
+    ).find((contribution) => contribution.key === view.key);
+  }, [view, getContributions]);
 
   // A form view reached without the matching create permission (e.g. via a deep
   // link) renders the lock placeholder instead of the form.
@@ -154,7 +172,18 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     }
 
     const { crumbsByType, titleByType, iconByType, descByType } =
-      buildMembersHeaderMaps(view, t, resolvedTeamName);
+      buildMembersHeaderMaps(
+        view,
+        t,
+        resolvedTeamName,
+        activeSection && {
+          title: t(activeSection.titleKey),
+          description: activeSection.descriptionKey
+            ? t(activeSection.descriptionKey)
+            : undefined,
+          icon: activeSection.icon,
+        }
+      );
     const pick = (node: React.ReactNode) =>
       isTeamsOrDetailView(view) ? node : undefined;
 
@@ -177,6 +206,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     detailHeaderTitleInput,
     detailHeaderTitleSuffix,
     resolvedTeamName,
+    activeSection,
   ]);
 
   const permissionPlaceholder = (
@@ -282,6 +312,29 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       return <MembersOnlineUsersPanel onNavigate={onNavigate} />;
     }
 
+    if (view.type === SECTION) {
+      if (!activeSection) {
+        return <MembersLanding onNavigate={onNavigate} />;
+      }
+
+      const { component: SectionComponent, key } = activeSection;
+
+      // Gutters match the other Members views (MembersLanding, team detail), so
+      // a contributed section doesn't have to re-derive the panel's padding.
+      return (
+        <div className="tw:px-8 tw:pb-8">
+          <SectionComponent
+            subPath={view.subPath}
+            onClose={() => onNavigate({ type: 'landing' })}
+            onNavigate={(subPath) =>
+              onNavigate({ type: SECTION, key, subPath })
+            }
+            onSetHeaderActions={(actions) => setPanelHeaderActions(actions)}
+          />
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -289,7 +342,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
 
   return (
     <EntityExportModalProvider>
-      <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto">{content}</div>
+      {/* `flex flex-col` so a child sizing itself with `flex-1` (the team views)
+          gets a bounded height to scroll within. */}
+      <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
+        {content}
+      </div>
     </EntityExportModalProvider>
   );
 };

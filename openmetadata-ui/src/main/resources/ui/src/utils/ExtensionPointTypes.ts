@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ComponentType, ReactElement, ReactNode } from 'react';
+import { ComponentType, FC, ReactElement, ReactNode } from 'react';
 import {
   TaskDetailDescriptor,
   TaskStatTilesProps,
@@ -58,6 +58,12 @@ export const EXTENSION_POINTS = {
   // is contributed; the cards themselves come from the global-settings menu
   // (see NotificationLanding), keyed by the settings option.
   NOTIFICATION_LANDING_SECTIONS: 'notification.landing-sections',
+
+  // Members settings landing — a downstream build contributes extra sections
+  // (e.g. SCIM provisioning) that render inside the profile Members panel as
+  // their own view, with a card on the Members landing grid. OSS core shows
+  // only its built-in cards when nothing is contributed.
+  MEMBERS_LANDING_SECTIONS: 'members.landing-sections',
 
   // Team Details Page
   TEAM_DETAILS_TABS: 'team-details.tabs',
@@ -284,6 +290,48 @@ export interface NotificationSectionContribution {
 
   /** Landing card icon; falls back to the settings menu item's icon. */
   icon?: ComponentType<{ className?: string }>;
+}
+
+/**
+ * Members landing section contribution
+ *
+ * A downstream build contributes a self-contained section that the profile
+ * Members panel renders as its own view (`#members/section/<key>`), with a card
+ * appended to the Members landing grid. Unlike the Notification sections, the
+ * card's label/description come from the contribution itself — there is no
+ * global-settings menu entry to borrow them from.
+ *
+ * @example
+ * ```typescript
+ * registry.contribute<MembersSectionContribution>({
+ *   extensionPointId: EXTENSION_POINTS.MEMBERS_LANDING_SECTIONS,
+ *   data: {
+ *     key: 'provisioning',
+ *     component: UserAndTeamProvisioning,
+ *     titleKey: 'label.provisioning',
+ *     descriptionKey: 'message.user-and-team-provisioning-desc',
+ *   },
+ * });
+ * ```
+ */
+export interface MembersSectionContribution {
+  /** Hash segment this section renders for (e.g. `provisioning`). */
+  key: string;
+
+  /** Self-contained component rendered in the Members panel body. */
+  component: ComponentType<NotificationSectionProps>;
+
+  /**
+   * Landing card icon. Typed `FC` (not `ComponentType`) to match the icon maps
+   * in `Members.utils`, which the panel feeds this straight into.
+   */
+  icon?: FC<{ className?: string }>;
+
+  /** i18n key for the landing card title and the section's header/breadcrumb. */
+  titleKey: string;
+
+  /** i18n key for the landing card description and the section's header. */
+  descriptionKey?: string;
 }
 
 /**

@@ -22,7 +22,24 @@ jest.mock('react-i18next', () => ({
 
 import MembersLanding from './MembersLanding';
 
+// The landing grid reads contributed sections through this provider; default to
+// none so the built-in cards are asserted in isolation.
+const mockGetContributions = jest.fn().mockReturnValue([]);
+jest.mock(
+  '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      getContributions: mockGetContributions,
+    }),
+  })
+);
+
+
 describe('MembersLanding', () => {
+  beforeEach(() => {
+    mockGetContributions.mockReturnValue([]);
+  });
+
   it('renders 4 landing cards', () => {
     const onNavigate = jest.fn();
     render(<MembersLanding onNavigate={onNavigate} />);
@@ -40,5 +57,41 @@ describe('MembersLanding', () => {
     fireEvent.click(screen.getByTestId('members-card-teams'));
 
     expect(onNavigate).toHaveBeenCalledWith({ type: 'teams' });
+  });
+
+  it('appends a card for each contributed section', () => {
+    mockGetContributions.mockReturnValue([
+      {
+        key: 'provisioning',
+        component: () => null,
+        titleKey: 'label.provisioning',
+        descriptionKey: 'message.provisioning-desc',
+      },
+    ]);
+
+    render(<MembersLanding onNavigate={jest.fn()} />);
+
+    // Built-ins stay, the contributed card is added after them.
+    expect(screen.getByTestId('members-card-teams')).toBeInTheDocument();
+    expect(screen.getByTestId('members-card-provisioning')).toBeInTheDocument();
+  });
+
+  it('navigates a contributed card to its section view', () => {
+    const onNavigate = jest.fn();
+    mockGetContributions.mockReturnValue([
+      {
+        key: 'provisioning',
+        component: () => null,
+        titleKey: 'label.provisioning',
+      },
+    ]);
+
+    render(<MembersLanding onNavigate={onNavigate} />);
+    fireEvent.click(screen.getByTestId('members-card-provisioning'));
+
+    expect(onNavigate).toHaveBeenCalledWith({
+      type: 'section',
+      key: 'provisioning',
+    });
   });
 });

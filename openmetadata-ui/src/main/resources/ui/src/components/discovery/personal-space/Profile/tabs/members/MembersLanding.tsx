@@ -12,20 +12,41 @@
  */
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { FC } from 'react';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { EXTENSION_POINTS } from '../../../../../../utils/ExtensionPointTypes';
+import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
 import { LANDING_CARDS } from './Members.constants';
-import type { MembersSubPanelProps } from './Members.types';
+import type { MembersLandingCard, MembersSubPanelProps } from './Members.types';
 
 const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
+  const { getContributions } = useApplicationsProvider();
+
+  // Downstream builds (e.g. Collate) contribute extra Members sections; each
+  // gets a card after the built-in four, routing to `#members/section/<key>`.
+  const cards = useMemo<MembersLandingCard[]>(() => {
+    const contributed = getContributions<MembersSectionContribution>(
+      EXTENSION_POINTS.MEMBERS_LANDING_SECTIONS
+    ).map<MembersLandingCard>((contribution) => ({
+      id: contribution.key,
+      icon: contribution.icon ?? Users01,
+      titleKey: contribution.titleKey,
+      descriptionKey: contribution.descriptionKey ?? '',
+      view: { type: 'section', key: contribution.key },
+    }));
+
+    return [...LANDING_CARDS, ...contributed];
+  }, [getContributions]);
 
   return (
     <Box
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:px-8 tw:pb-8"
       data-testid="members-landing">
-      {LANDING_CARDS.map((card) => {
+      {cards.map((card) => {
         const Icon = card.icon;
 
         return (
@@ -53,12 +74,14 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
                     weight="semibold">
                     {t(card.titleKey)}
                   </Typography>
-                  <Typography
-                    className="tw:text-tertiary tw:line-clamp-2"
-                    size="text-sm"
-                    weight="regular">
-                    {t(card.descriptionKey)}
-                  </Typography>
+                  {card.descriptionKey && (
+                    <Typography
+                      className="tw:text-tertiary tw:line-clamp-2"
+                      size="text-sm"
+                      weight="regular">
+                      {t(card.descriptionKey)}
+                    </Typography>
+                  )}
                 </Box>
               </Box>
             </Card.Content>

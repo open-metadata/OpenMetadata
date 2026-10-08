@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import React, { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
@@ -142,9 +142,22 @@ jest.mock('../../../../../common/Table/TableV2', () =>
 
 import MembersTeamDetail from './MembersTeamDetail';
 
+// Contributed team tabs (e.g. Collate's SQL Studio) come through this provider;
+// default to none so only the native tabs are asserted.
+const mockGetContributions = jest.fn().mockReturnValue([]);
+jest.mock(
+  '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      getContributions: mockGetContributions,
+    }),
+  })
+);
+
 describe('MembersTeamDetail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetContributions.mockReturnValue([]);
   });
 
   it('renders team detail after loading', async () => {
@@ -178,5 +191,60 @@ describe('MembersTeamDetail', () => {
     await waitFor(() => {
       expect(screen.getByTestId('team-info-widgets')).toBeInTheDocument();
     });
+  });
+
+  it('renders a contributed tab and passes it the team id', async () => {
+    const PluginTab = jest
+      .fn()
+      .mockImplementation(({ teamId }: { teamId?: string }) => (
+        <div data-testid="plugin-tab">{teamId}</div>
+      ));
+    mockGetContributions.mockReturnValue([
+      { key: 'sql-studio', label: 'SQL Studio', component: PluginTab },
+    ]);
+
+    renderWithRouter(
+      <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+    );
+
+    const tab = await screen.findByRole('tab', { name: 'SQL Studio' });
+
+    fireEvent.click(tab);
+
+    expect(await screen.findByTestId('plugin-tab')).toBeInTheDocument();
+    expect(PluginTab).toHaveBeenCalledWith(
+      expect.objectContaining({ teamId: expect.any(String) }),
+      expect.anything()
+    );
+  });
+
+  it('renders the custom properties tab', async () => {
+    renderWithRouter(
+      <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+    );
+
+    expect(
+      await screen.findByRole('tab', { name: /custom-property/ })
+    ).toBeInTheDocument();
+  });
+
+  it('gives the tab body a scrollable block container', async () => {
+    renderWithRouter(
+      <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+    );
+
+    await screen.findByTestId('team-detail');
+
+    const body = document.querySelector('.tw\\:overflow-y-auto.tw\\:py-4');
+
+    // Measured in Chromium: as a flex container the tab content becomes a flex
+    // item and shrinks to the container height, so scrollHeight never exceeds
+    // clientHeight and `overflow-y-auto` has nothing to scroll. It must stay a
+    // block, and must not grow its flex parent (`min-h-0`).
+    expect(body).not.toHaveClass('tw:flex');
+    expect(body).not.toHaveClass('tw:flex-col');
+    expect(body).toHaveClass('tw:min-h-0');
+    expect(body).toHaveClass('tw:flex-1');
+    expect(body).toHaveClass('tw:w-full');
   });
 });
