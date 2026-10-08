@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -173,16 +172,17 @@ const DomainsWidget = ({
       <div className="entity-list-body">
         <div className="domains-widget-grid">
           {domains.slice(0, PAGE_SIZE_BASE).map((domain) => (
-            <Button
+            <button
               className={classNames('domain-card', {
                 'domain-card-full': isFullSize,
                 'p-0': !isFullSize,
               })}
               data-testid={`domain-card-${domain.id || domain.name}`}
               key={domain.id}
+              type="button"
               onClick={() => handleDomainClick(domain)}>
               {isFullSize ? (
-                <div className="d-flex gap-2">
+                <Box gap={2}>
                   <div
                     className="domain-card-full-icon"
                     style={{ background: domain.style?.color }}>
@@ -203,10 +203,10 @@ const DomainsWidget = ({
                       </span>
                     </div>
                   </div>
-                </div>
+                </Box>
               ) : (
-                <div
-                  className="d-flex domain-card-bar"
+                <Box
+                  className="domain-card-bar"
                   style={{ borderLeftColor: domain.style?.color }}>
                   <div className="domain-card-content">
                     <span className="domain-card-title">
@@ -226,9 +226,9 @@ const DomainsWidget = ({
                       {assetsCounts[domain.fullyQualifiedName ?? ''] ?? 0}
                     </span>
                   </div>
-                </div>
+                </Box>
               )}
-            </Button>
+            </button>
           ))}
         </div>
       </div>

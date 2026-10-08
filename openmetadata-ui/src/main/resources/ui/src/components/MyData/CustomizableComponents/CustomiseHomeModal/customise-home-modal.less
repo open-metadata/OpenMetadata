@@ -36,19 +36,19 @@
 
         &.active {
           font-weight: @font-semibold;
-          background-color: @primary-button-background;
-          color: @blue-9;
+          background-color: var(--om-color-bg-brand);
+          color: var(--om-color-text-brand);
         }
       }
 
       .sidebar-widget-item {
         align-items: flex-start;
-        color: @grey-600;
+        color: var(--om-color-text-tertiary);
         font-weight: @font-regular;
         padding: @padding-xs @padding-md @padding-xs @padding-lg;
 
         &:hover {
-          background: @primary-50;
+          background: var(--om-color-bg-primary-hover);
         }
 
         &.selected {
@@ -90,12 +90,12 @@
   }
 
   .customise-home-modal-footer {
-    border-top: 1px solid @grey-200;
+    border-top: 1px solid var(--om-color-border-secondary);
   }
 }
 
 .widget-count {
-  color: @blue-9;
-  background-color: @alert-info-icon-bg-1;
+  color: var(--om-color-text-brand);
+  background-color: var(--om-color-bg-brand);
   padding: var(--om-space-2) @padding-xs;
 }

@@ -339,7 +339,7 @@ const CustomiseHomeModal = ({
             </div>
           </Box>
           <Box
-            className="customise-home-modal-footer p-box tw:bg-primary"
+            className="customise-home-modal-footer p-box"
             gap={3}
             justify="end">
             <Button

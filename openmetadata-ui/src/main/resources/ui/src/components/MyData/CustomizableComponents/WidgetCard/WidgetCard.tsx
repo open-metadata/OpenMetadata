@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from '@openmetadata/ui-core-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,6 @@ import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../hooks/useCustomizeStore';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
-import './widget-card.less';
 
 interface WidgetCardProps {
   widget: DocStoreDocument;
@@ -63,35 +62,42 @@ const WidgetCard = ({
   return (
     <Card
       isClickable
-      className={`widget-card h-full d-flex flex-col ${
-        isSelected ? 'selected' : ''
-      }`}
+      className="widget-card tw:flex tw:h-full tw:flex-col tw:overflow-hidden"
       data-testid={widget.fullyQualifiedName}
+      isSelected={isSelected}
       onClick={handleClick}>
-      <div className="widget-card-content d-flex justify-between items-center flex-1">
+      <Box className="widget-card-content tw:relative tw:min-h-0 tw:flex-1">
         <img
           alt={widget.name}
-          className="h-full w-full"
+          className="tw:h-full tw:w-full tw:object-cover"
           data-testid="widget-image"
           src={widgetImage}
         />
         {isSelected && (
-          <div className="check-box bg-white border-radius-sm p-sm d-flex items-center justify-center">
-            <CheckIcon className="check-icon" />
-          </div>
+          <Box
+            align="center"
+            className="tw:absolute tw:top-2 tw:right-2 tw:rounded-md tw:border tw:border-secondary tw:bg-surface tw:p-1.5 tw:text-fg-brand-primary"
+            data-testid="widget-selected-check"
+            justify="center">
+            <CheckIcon className="tw:size-4" />
+          </Box>
         )}
-      </div>
-      <div className="p-t-md p-x-sm">
-        <Typography className="text-sm font-medium">
+      </Box>
+      <Box
+        className="tw:shrink-0 tw:px-4 tw:pt-3 tw:pb-4"
+        direction="col"
+        gap={1}>
+        <Typography className="tw:text-primary" size="text-sm" weight="medium">
           {startCase(widget.name)}
         </Typography>
         <Typography
           as="p"
-          className="widget-desc m-t-xs text-xs font-regular"
-          data-testid="widget-description">
+          className="widget-desc tw:m-0 tw:text-tertiary"
+          data-testid="widget-description"
+          size="text-xs">
           {widget.description ?? t('message.no-description-available')}
         </Typography>
-      </div>
+      </Box>
     </Card>
   );
 };

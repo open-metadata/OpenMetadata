@@ -11,21 +11,13 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
-@import (reference) '../../../styles/fonts.less';
 
 .feed-widget-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   .activity-feed-user-name a {
-    color: @grey-900;
-  }
-
-  .ant-card-body {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    padding: 0;
+    color: var(--om-color-text-primary);
   }
 
   .feed-content {
@@ -49,11 +41,11 @@
   }
 
   .feed-card-header-v2-timestamp {
-    color: @grey-500;
+    color: var(--om-color-text-quaternary);
     font-size: @size-sm;
   }
 
   .header-link {
-    color: @primary-7;
+    color: var(--om-color-link);
   }
 }

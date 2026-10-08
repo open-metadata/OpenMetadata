@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { toString } from 'lodash';
 import type { Bucket } from 'Models';
 import { useMemo } from 'react';
@@ -53,15 +52,17 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
       className="no-underline"
       data-testid={`data-asset-service-${key}`}
       to={redirectLink}>
-      <Card className="service-card" data-testid="service-card" size="small">
-        <div
-          className="d-flex justify-center items-center"
-          data-testid="service-icon">
+      <Box
+        align="center"
+        className="service-card tw:h-full tw:cursor-pointer tw:rounded-lg tw:bg-surface tw:px-5 tw:py-3 tw:text-center tw:transition-colors tw:duration-300 tw:ease-in-out tw:hover:bg-primary_hover"
+        data-testid="service-card"
+        direction="col">
+        <Box align="center" data-testid="service-icon" justify="center">
           <DataAssetServiceLogo className="h-8" serviceType={key} />
-        </div>
+        </Box>
 
         <Typography
-          className="m-t-sm text-sm text-grey-body font-medium truncate w-full d-inline-block"
+          className="tw:mt-3 tw:inline-block tw:w-full tw:truncate tw:text-sm tw:font-medium tw:text-primary"
           data-testid={`service-name-${key}`}>
           {formattedServiceType}
         </Typography>
@@ -70,7 +71,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
           className="data-asset-badge m-t-sm"
           label={toString(doc_count)}
         />
-      </Card>
+      </Box>
     </Link>
   );
 };

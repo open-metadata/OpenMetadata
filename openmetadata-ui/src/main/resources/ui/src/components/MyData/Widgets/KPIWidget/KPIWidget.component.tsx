@@ -17,7 +17,7 @@ import {
   ChartSeries,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Col, Row } from 'antd';
+import { Grid, GridItem } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -273,8 +273,8 @@ const KPIWidget = ({
 
   const kpiChartData = useMemo(() => {
     return (
-      <Row className="p-t-sm p-x-md" gutter={[16, 16]}>
-        <Col span={isFullSizeWidget ? 16 : 24}>
+      <Grid className="tw:px-4 tw:pt-3" gap="4">
+        <GridItem span={isFullSizeWidget ? 16 : 24}>
           <AreaChart<KpiChartRow>
             ariaLabel={t('label.kpi-title')}
             data={rows}
@@ -287,16 +287,16 @@ const KPIWidget = ({
             xKey="day"
             yAxis={yAxis}
           />
-        </Col>
+        </GridItem>
 
         {!isUndefined(kpiLatestResults) &&
           !isEmpty(kpiLatestResults) &&
           isFullSizeWidget && (
-            <Col className="h-full" span={8}>
+            <GridItem className="tw:h-full" span={8}>
               <KPILegend isFullSize kpiLatestResultsRecord={kpiLatestResults} />
-            </Col>
+            </GridItem>
           )}
-      </Row>
+      </Grid>
     );
   }, [
     isFullSizeWidget,
@@ -360,7 +360,7 @@ const KPIWidget = ({
       header={widgetHeader}
       loading={isKPIListLoading || isLoading}>
       <div className="kpi-widget-container" data-testid="kpi-widget">
-        <div className="widget-content flex-1 h-full">
+        <div className="widget-content tw:h-full tw:flex-1">
           {isEmpty(kpiList) || isEmpty(kpiResults) ? emptyState : kpiChartData}
         </div>
       </div>

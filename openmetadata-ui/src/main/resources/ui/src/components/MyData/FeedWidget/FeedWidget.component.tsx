@@ -141,7 +141,7 @@ const MyFeedWidgetInternal = ({
           emptyState
         ) : (
           <div className="entity-list-body">
-            <div className="cards-scroll-container flex-1 overflow-y-auto">
+            <div className="cards-scroll-container tw:flex-1 tw:overflow-y-auto">
               <ActivityFeedListV1New
                 isFeedWidget
                 activityList={activityEvents.slice(0, PAGE_SIZE_BASE)}
@@ -214,7 +214,7 @@ const MyFeedWidgetInternal = ({
       header={widgetHeader}
       loading={isActivityLoading}>
       <div className="feed-widget-container" id="feedWidgetData">
-        <div className="feed-content flex-1">
+        <div className="feed-content">
           {widgetBody}
           <WidgetFooter
             moreButtonLink={userActivityFeedLink}

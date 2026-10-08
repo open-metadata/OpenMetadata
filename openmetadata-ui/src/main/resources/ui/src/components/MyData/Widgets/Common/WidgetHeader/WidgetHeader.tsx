@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { DragOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { DotsGrid, Edit01 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Layout } from 'react-grid-layout';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { WidgetConfig } from '../../../../../pages/CustomizablePage/CustomizablePage.interface';
 import WidgetMoreOptions from '../WidgetMoreOptions/WidgetMoreOptions';
 import WidgetSortFilter from '../WidgetSortFilter/WidgetSortFilter';
@@ -59,6 +63,8 @@ const WidgetHeader = ({
   title,
   widgetKey,
 }: WidgetHeaderProps) => {
+  const { t } = useTranslation();
+
   const handleSizeChange = (value: number) => {
     if (handleLayoutUpdate) {
       const updatedLayout = currentLayout?.map((layout: WidgetConfig) =>
@@ -88,56 +94,60 @@ const WidgetHeader = ({
   );
 
   return (
-    <Row
-      className={`widget-header ${className}`}
+    <Box
+      align="center"
+      className={classNames('widget-header', className)}
       data-testid="widget-header"
-      justify="space-between">
-      <Col
-        className="d-flex items-center h-full min-h-8 widget-header-left-col"
-        flex="1">
+      gap={2}
+      justify="between">
+      <Box align="center" className="tw:h-full tw:min-h-8 tw:min-w-0 tw:flex-1">
         {icon && (
-          <div className="d-flex h-6 w-6 m-r-xs header-title-icon">{icon}</div>
+          <Box className="header-title-icon tw:mr-2 tw:size-6 tw:shrink-0 tw:text-fg-tertiary">
+            {icon}
+          </Box>
         )}
         <Typography
           as="p"
-          className="widget-title cursor-pointer"
+          className="widget-title tw:cursor-pointer"
           data-testid="widget-title"
           ellipsis={{ tooltip: true }}
           onClick={onTitleClick}>
           {title}
         </Typography>
-      </Col>
+      </Box>
 
-      <Col flex="none">
-        <div className="flex gap-2">
-          {isEditView ? (
-            <>
-              <DragOutlined
-                className="drag-widget-icon cursor-pointer widget-header-options widget-header-drag-button"
-                data-testid="drag-widget-button"
-                size={20}
+      <Box align="center" className="tw:shrink-0" gap={2}>
+        {isEditView ? (
+          <>
+            {/* Grid drag handle: react-grid-layout starts a drag on mousedown here. */}
+            <span
+              aria-hidden
+              className="drag-widget-icon tw:flex tw:cursor-grab tw:rounded-md tw:border tw:border-primary tw:bg-surface tw:p-1.5 tw:text-fg-quaternary tw:select-none tw:active:cursor-grabbing"
+              data-testid="drag-widget-button">
+              <DotsGrid className="tw:size-5" />
+            </span>
+            {onEditClick && (
+              <ButtonUtility
+                aria-label={t('label.edit-widget')}
+                color="secondary"
+                data-testid="edit-widget-button"
+                icon={Edit01}
+                isDisabled={disableEdit}
+                size="sm"
+                onPress={onEditClick}
               />
-              {onEditClick && (
-                <Button
-                  className="widget-header-options widget-header-edit-button"
-                  data-testid="edit-widget-button"
-                  disabled={disableEdit}
-                  icon={<EditIcon height={20} width={20} />}
-                  onClick={onEditClick}
-                />
-              )}
+            )}
 
-              <WidgetMoreOptions
-                menuItems={WIDGET_MORE_MENU_ITEMS}
-                onMenuClick={handleMoreClick}
-              />
-            </>
-          ) : (
-            sortFilter
-          )}
-        </div>
-      </Col>
-    </Row>
+            <WidgetMoreOptions
+              menuItems={WIDGET_MORE_MENU_ITEMS}
+              onMenuClick={handleMoreClick}
+            />
+          </>
+        ) : (
+          sortFilter
+        )}
+      </Box>
+    </Box>
   );
 };
 

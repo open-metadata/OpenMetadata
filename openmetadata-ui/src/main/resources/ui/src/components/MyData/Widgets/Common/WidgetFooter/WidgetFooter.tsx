@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { ArrowRightOutlined } from '@ant-design/icons';
-import { Divider } from '@openmetadata/ui-core-components';
-import { Button, Row } from 'antd';
+import { Button, Divider } from '@openmetadata/ui-core-components';
+import { ArrowRight } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import './widget-footer.less';
 
@@ -38,18 +38,27 @@ const WidgetFooter = ({
   }
 
   return (
-    <div className={`widget-footer ${className}`} data-testid="widget-footer">
-      {showMoreButton && (onMoreClick || moreButtonLink) && (
-        <Row className="widget-footer">
-          <Divider className="mb-0 mt-0" />
+    <div
+      className={classNames('widget-footer', className)}
+      data-testid="widget-footer">
+      {(onMoreClick || moreButtonLink) && (
+        <>
+          <Divider />
           <Button
-            className="text-primary hover:underline w-full footer-view-more-button"
+            className="footer-view-more-button tw:my-2 tw:h-10 tw:w-full tw:justify-center tw:font-normal"
+            color="link-color"
             href={moreButtonLink}
-            type="link">
+            iconTrailing={
+              <ArrowRight
+                className="tw:size-4"
+                data-icon="trailing"
+                data-testid="arrow-right-icon"
+              />
+            }
+            onPress={onMoreClick}>
             {moreButtonText || t('label.view-more')}
-            <ArrowRightOutlined data-testid="arrow-right-icon" />
           </Button>
-        </Row>
+        </>
       )}
     </div>
   );

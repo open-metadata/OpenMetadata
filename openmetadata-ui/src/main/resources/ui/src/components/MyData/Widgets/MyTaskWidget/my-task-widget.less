@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-@import '../../../../styles/variables.less';
-
-.right-panel-heading {
-  margin-bottom: var(--om-space-8) !important;
-  color: @text-grey-muted;
-}
-
+// Shared with KnowledgeCenter RelatedDataAssets, which relies on this stylesheet being loaded.
 .right-panel-list-item:last-child {
   border-bottom: none;
 }
@@ -26,7 +20,7 @@
   padding: var(--om-space-12) var(--om-space-24);
 
   &:hover {
-    background-color: @grey-1;
+    background-color: var(--om-color-bg-secondary);
   }
 
   .entity-button-icon {
@@ -51,20 +45,6 @@
   flex-direction: column;
   height: 100%;
 
-  .ant-card-body {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    padding: 0;
-    overflow: hidden;
-  }
-
-  .my-task-header {
-    flex-shrink: 0;
-    padding: var(--om-space-12) var(--om-space-20);
-    border-bottom: 1px solid @grey-15;
-  }
-
   .widget-content {
     flex: 1;
     display: flex;
@@ -81,36 +61,14 @@
     min-height: 0;
   }
 
-  .my-task-footer,
   .widget-footer {
     flex-shrink: 0;
     margin-top: auto;
-    width: 100%;
-    background-color: var(--tw-color-bg-primary);
-    border-bottom-right-radius: var(--om-radius-xl);
-    border-bottom-left-radius: var(--om-radius-xl);
-  }
-
-  .ant-dropdown-menu-item {
-    padding: @padding-md @padding-lg;
-    height: 40px;
-
-    &:hover {
-      color: @blue-34;
-      background-color: @blue-33;
-      font-weight: @font-medium;
-    }
-  }
-
-  .ant-dropdown-menu-item-active {
-    color: @blue-34;
-    background-color: @blue-33;
-    font-weight: @font-medium;
   }
 
   .task-feed-card-v1-new {
-    padding-top: @size-xs;
-    padding-bottom: @size-xs;
+    padding-top: var(--om-space-8);
+    padding-bottom: var(--om-space-8);
   }
 }
 
@@ -119,13 +77,7 @@
   max-width: 150px;
 
   &:hover {
-    background-color: @grey-1;
-    border-color: @primary-color;
-  }
-
-  .widget-header-menu {
-    padding: var(--om-space-8);
-    border-radius: var(--om-radius-xl);
+    background-color: var(--om-color-bg-primary-hover);
   }
 }
 

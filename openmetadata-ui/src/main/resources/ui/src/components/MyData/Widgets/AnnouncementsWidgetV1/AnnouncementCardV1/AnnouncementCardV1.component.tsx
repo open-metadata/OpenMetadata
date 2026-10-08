@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,13 +62,17 @@ const AnnouncementCardV1 = ({
   const entityIcon = useMemo(() => getEntityIcon(entityType), [entityType]);
 
   const gradientBackground = currentBackgroundColor
-    ? `linear-gradient(270deg, #ffffff -12.07%, ${currentBackgroundColor} 500.72%)`
+    ? `linear-gradient(270deg, var(--om-color-bg-surface) -12.07%, ${currentBackgroundColor} 500.72%)`
     : undefined;
 
   return (
-    <Card
-      className={classNames('announcement-card-v1', disabled ? 'disabled' : '')}
+    <Box
+      className={classNames(
+        'announcement-card-v1 tw:text-primary',
+        disabled ? 'disabled' : ''
+      )}
       data-testid={`announcement-card-v1-${announcement.id}`}
+      direction="col"
       onClick={onClick}>
       <AnnouncementCardV1Content
         backgroundColor={gradientBackground}
@@ -89,7 +92,7 @@ const AnnouncementCardV1 = ({
           {t('message.no-announcement-message')}
         </Typography>
       )}
-    </Card>
+    </Box>
   );
 };
 
