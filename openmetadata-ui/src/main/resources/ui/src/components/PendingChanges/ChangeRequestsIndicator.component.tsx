@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Badge,
-  Button,
-  Popover,
-  PopoverTrigger,
-} from '@openmetadata/ui-core-components';
+import { Badge, Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,13 +19,10 @@ import {
   ChangeRequestStatus,
 } from '../../generated/governance/changeRequest/changeRequest';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import {
-  getChangeRequestsForEntity,
-  withdrawChangeRequest,
-} from '../../rest/changeRequestsAPI';
+import { getChangeRequestsForEntity } from '../../rest/changeRequestsAPI';
 import { PENDING_CHANGE_EVENT } from '../../rest/pendingChangeInterceptor';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ChangeRequestChanges from './ChangeRequestChanges/ChangeRequestChanges.component';
+import { showErrorToast } from '../../utils/ToastUtils';
+import PendingChangesModal from './PendingChangesModal/PendingChangesModal.component';
 
 interface ChangeRequestsIndicatorProps {
   entityId: string;
@@ -41,54 +33,9 @@ const OPEN_STATUSES = new Set([
   ChangeRequestStatus.Approved,
 ]);
 
-const RequestCard = ({
-  request,
-  isOwn,
-  onWithdraw,
-}: {
-  request: ChangeRequest;
-  isOwn: boolean;
-  onWithdraw: (request: ChangeRequest) => void;
-}) => {
-  const { t } = useTranslation();
-  const canWithdraw = isOwn && request.status === ChangeRequestStatus.Pending;
-
-  return (
-    <div
-      className="tw:flex tw:flex-col tw:gap-2 tw:border-b tw:border-secondary tw:py-3 tw:last:border-b-0"
-      data-testid={`change-request-${request.id}`}>
-      <div className="tw:flex tw:items-center tw:justify-between tw:gap-2">
-        <span className="tw:text-sm tw:font-semibold tw:text-primary">
-          {isOwn ? t('label.you') : request.requestedBy}
-        </span>
-        <Badge color="gray" size="sm">
-          {t('label.revision-number', {
-            number: request.activeRevisionNumber,
-          })}
-        </Badge>
-      </div>
-      {request.status === ChangeRequestStatus.Approved && (
-        <Badge color="success" size="sm">
-          {t('label.approved')}
-        </Badge>
-      )}
-      <ChangeRequestChanges ops={request.activeRevision?.ops} />
-      {canWithdraw && (
-        <Button
-          color="secondary"
-          data-testid="withdraw-change-request"
-          size="sm"
-          onClick={() => onWithdraw(request)}>
-          {t('label.withdraw')}
-        </Button>
-      )}
-    </div>
-  );
-};
-
 /**
  * Shows the change requests waiting for approval on an asset. The asset itself keeps serving its
- * published values; these are the proposals. Review happens on each request's task.
+ * published values; these are the proposals, opened for review in the pending changes modal.
  */
 const ChangeRequestsIndicator = ({
   entityId,
@@ -96,6 +43,7 @@ const ChangeRequestsIndicator = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [requests, setRequests] = useState<ChangeRequest[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
 
   const fetchRequests = useCallback(async () => {
     if (!entityId) {
@@ -117,16 +65,6 @@ const ChangeRequestsIndicator = ({
       window.removeEventListener(PENDING_CHANGE_EVENT, fetchRequests);
   }, [fetchRequests]);
 
-  const handleWithdraw = async (request: ChangeRequest) => {
-    try {
-      await withdrawChangeRequest(request.id, request.activeRevisionNumber);
-      showSuccessToast(t('message.change-request-withdrawn'));
-      await fetchRequests();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   if (requests.length === 0) {
     return null;
   }
@@ -138,26 +76,28 @@ const ChangeRequestsIndicator = ({
   );
 
   return (
-    <PopoverTrigger>
-      <Button color="secondary" data-testid="pending-change-requests" size="sm">
+    <>
+      <Button
+        className="tw:shrink-0 tw:whitespace-nowrap"
+        color="secondary"
+        data-testid="pending-change-requests"
+        iconTrailing={
+          <Badge color="brand" size="sm">
+            {requests.length}
+          </Badge>
+        }
+        size="sm"
+        onClick={() => setIsOpen(true)}>
         {t('label.pending-changes')}
-        <Badge className="tw:ml-2" color="brand" size="sm">
-          {requests.length}
-        </Badge>
       </Button>
-      <Popover
-        className="tw:w-96 tw:max-h-120 tw:overflow-y-auto tw:px-4"
-        placement="bottom end">
-        {ordered.map((request) => (
-          <RequestCard
-            isOwn={request.requestedBy === currentUser?.name}
-            key={request.id}
-            request={request}
-            onWithdraw={handleWithdraw}
-          />
-        ))}
-      </Popover>
-    </PopoverTrigger>
+      {isOpen && (
+        <PendingChangesModal
+          requests={ordered}
+          onChange={fetchRequests}
+          onClose={() => setIsOpen(false)}
+        />
+      )}
+    </>
   );
 };
 

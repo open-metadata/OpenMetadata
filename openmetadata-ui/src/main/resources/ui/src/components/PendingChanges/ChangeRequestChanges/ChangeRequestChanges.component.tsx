@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from '@openmetadata/ui-core-components';
-import { startCase } from 'lodash';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { groupBy, startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -27,81 +27,113 @@ interface ChangeRequestChangesProps {
   ops?: MutationOp[];
 }
 
-const KIND_COLOR = {
-  [ChangeKind.Added]: 'success',
-  [ChangeKind.Removed]: 'error',
-  [ChangeKind.Updated]: 'brand',
-} as const;
-
-const ValueList = ({
-  values,
-  struck = false,
+const ValueChip = ({
+  value,
+  removed = false,
 }: {
-  values: ChangeValue[];
-  struck?: boolean;
-}) => (
-  <span
-    className={`tw:flex tw:flex-wrap tw:gap-x-2 tw:gap-y-1 tw:break-all ${
-      struck ? 'tw:line-through tw:text-tertiary' : 'tw:text-secondary'
-    }`}>
-    {values.map((value) =>
-      value.link ? (
-        <Link
-          className="tw:text-brand-secondary"
-          key={value.text}
-          to={value.link}>
-          {value.text}
+  value: ChangeValue;
+  removed?: boolean;
+}) => {
+  const label = removed ? value.text : `+ ${value.text}`;
+
+  return (
+    <Badge
+      className={`tw:size-auto tw:max-w-full tw:whitespace-normal tw:break-words ${
+        removed ? 'tw:line-through' : ''
+      }`}
+      color={removed ? 'error' : 'success'}
+      size="sm"
+      type="color">
+      {value.link ? (
+        <Link className="tw:text-current" to={value.link}>
+          {label}
         </Link>
       ) : (
-        <span key={value.text}>{value.text}</span>
-      )
-    )}
-  </span>
-);
+        label
+      )}
+    </Badge>
+  );
+};
 
-const EntryRow = ({
+const EntryChips = ({
   change,
   testIdPrefix,
 }: {
   change: ChangeEntry;
   testIdPrefix: string;
-}) => {
+}) => (
+  <span
+    className="tw:contents"
+    data-testid={`${testIdPrefix}-${change.field}-${change.kind}`}>
+    {change.previous.map((value) => (
+      <ValueChip removed key={`previous-${value.text}`} value={value} />
+    ))}
+    {change.values.map((value) => (
+      <ValueChip
+        key={value.text}
+        removed={change.kind === ChangeKind.Removed}
+        value={value}
+      />
+    ))}
+  </span>
+);
+
+// `+1 added · −1 removed`, or `updated` for a replaced single value.
+const useFieldSummary = (entries: ChangeEntry[]) => {
   const { t } = useTranslation();
-  const kindLabel = {
-    [ChangeKind.Added]: t('label.added'),
-    [ChangeKind.Removed]: t('label.removed'),
-    [ChangeKind.Updated]: t('label.updated'),
-  }[change.kind];
+  const count = (kind: ChangeKind) =>
+    entries
+      .filter((change) => change.kind === kind)
+      .reduce((sum, change) => sum + change.values.length, 0);
+  const added = count(ChangeKind.Added);
+  const removed = count(ChangeKind.Removed);
+
+  return [
+    added ? t('label.count-added', { count: added }) : '',
+    removed ? t('label.count-removed', { count: removed }) : '',
+    count(ChangeKind.Updated) ? t('label.updated-lowercase') : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+};
+
+const FieldChanges = ({
+  field,
+  entries,
+  testIdPrefix,
+}: {
+  field: string;
+  entries: ChangeEntry[];
+  testIdPrefix: string;
+}) => {
+  const summary = useFieldSummary(entries);
 
   return (
-    <li
-      className="tw:flex tw:flex-col tw:gap-1 tw:text-sm"
-      data-testid={`${testIdPrefix}-${change.field}-${change.kind}`}>
-      <span className="tw:flex tw:items-center tw:gap-2">
-        <span className="tw:font-medium tw:text-primary">
-          {startCase(change.field)}
-        </span>
-        <Badge color={KIND_COLOR[change.kind]} size="sm">
-          {kindLabel}
-        </Badge>
+    <li className="tw:flex tw:flex-col tw:gap-2">
+      <span className="tw:flex tw:items-baseline tw:gap-2">
+        <Typography as="span" size="text-sm" weight="semibold">
+          {startCase(field)}
+        </Typography>
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          {summary}
+        </Typography>
       </span>
-      {change.previous.length > 0 && (
-        <span className="tw:flex tw:gap-2">
-          <span className="tw:text-tertiary">{t('label.previous')}</span>
-          <ValueList struck values={change.previous} />
-        </span>
-      )}
-      <ValueList
-        struck={change.kind === ChangeKind.Removed}
-        values={change.values}
-      />
+      <div className="tw:flex tw:flex-wrap tw:gap-1.5">
+        {entries.map((change) => (
+          <EntryChips
+            change={change}
+            key={`${change.field}-${change.kind}`}
+            testIdPrefix={testIdPrefix}
+          />
+        ))}
+      </div>
     </li>
   );
 };
 
 /**
- * What a change request proposes, read field by field: each change says whether it adds, removes
- * or updates a value, shows the previous value of an update, and links tags, glossary terms and
+ * What a change request proposes, read field by field: each field lists the values it gains and
+ * loses (an update shows the previous value struck through), and links tags, glossary terms and
  * entities by their fully qualified name. Column changes are listed per column.
  */
 const ChangeRequestChanges = ({ ops }: ChangeRequestChangesProps) => {
@@ -110,7 +142,7 @@ const ChangeRequestChanges = ({ ops }: ChangeRequestChangesProps) => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3"
+      className="tw:flex tw:flex-col tw:gap-5"
       data-testid="change-request-changes">
       {sections.map((section) => {
         const testIdPrefix = section.column
@@ -119,25 +151,28 @@ const ChangeRequestChanges = ({ ops }: ChangeRequestChangesProps) => {
 
         return (
           <div
-            className="tw:flex tw:flex-col tw:gap-2"
+            className="tw:flex tw:flex-col tw:gap-3"
             data-testid={section.column ? testIdPrefix : 'change-asset'}
             key={section.column ?? 'asset'}>
             {section.column && (
-              <span className="tw:text-sm tw:font-semibold tw:text-primary">
+              <Typography as="span" size="text-sm" weight="semibold">
                 {`${t('label.column')} ${section.column}`}
-              </span>
+              </Typography>
             )}
             <ul
-              className={`tw:flex tw:flex-col tw:gap-2 ${
+              className={`tw:flex tw:flex-col tw:gap-4 ${
                 section.column ? 'tw:pl-3' : ''
               }`}>
-              {section.entries.map((change) => (
-                <EntryRow
-                  change={change}
-                  key={`${change.field}-${change.kind}`}
-                  testIdPrefix={testIdPrefix}
-                />
-              ))}
+              {Object.entries(groupBy(section.entries, 'field')).map(
+                ([field, entries]) => (
+                  <FieldChanges
+                    entries={entries}
+                    field={field}
+                    key={field}
+                    testIdPrefix={testIdPrefix}
+                  />
+                )
+              )}
             </ul>
           </div>
         );
