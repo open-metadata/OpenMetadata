@@ -148,6 +148,25 @@ def test_card_rejects_invalid_enclosing_candidate(text):
         (UrlRecognizer, "URL", "<https://example.com/path.>", "https://example.com/path.", 0.6),
         (UrlRecognizer, "URL", "<https://example.com/path,>", "https://example.com/path,", 0.6),
         (UrlRecognizer, "URL", "'https://example.com/path,'", "https://example.com/path,", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.5:8080/health", "10.0.0.5", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "192.168.1.1/index.html", "192.168.1.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://10.0.0.1/file", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://10.0.0.1/share", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "src_ip:10.0.0.1", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "client_ip:10.0.0.1", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "dead_key:10.0.0.1:65535/health", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/abc", "10.0.0.0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234/abc", "10.1.2.3", 0.6),
+        (UrlRecognizer, "URL", 'He said "visit https://example.com."', "https://example.com", 0.6),
+        (UrlRecognizer, "URL", "'example.com,'", "example.com", 0.5),
+        (UrlRecognizer, "URL", "<https://example.com.>", "https://example.com", 0.6),
+        (UrlRecognizer, "URL", '"https://example.com/?x=1."', "https://example.com/?x=1.", 0.6),
+        (UrlRecognizer, "URL", "<https://example.com#part,>", "https://example.com#part,", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/24foo", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/2025.json", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/8.1", "10.0.0.1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "IP 2001:db8::1 recorded", "2001:db8::1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "é 192.168.1.1 and 2001:db8::1", "192.168.1.1", 0.6),
         (
@@ -207,10 +226,19 @@ def test_url_candidate_above_preprocessing_limit_is_bounded():
         (IpRecognizer, "IP_ADDRESS", "10.1.2.3:65536"),
         (IpRecognizer, "IP_ADDRESS", "10.1.2.3:abc"),
         (IpRecognizer, "IP_ADDRESS", "10.0.0.0/33"),
-        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/abc"),
         (IpRecognizer, "IP_ADDRESS", "10.0.0.0/8/24"),
         (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234/8"),
-        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234/abc"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/99999"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/24:80"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/24/path"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/" + "9" * 5000),
+        (IpRecognizer, "IP_ADDRESS", "abc:10.0.0.1"),
+        (IpRecognizer, "IP_ADDRESS", "::ffff:999.10.0.0.1"),
+        (IpRecognizer, "IP_ADDRESS", "bad_key:::ffff:999.10.0.0.1"),
+        (IpRecognizer, "IP_ADDRESS", "dead_key:2001:db8::1g"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/8:12"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::10.0.0.1g"),
         (IpRecognizer, "IP_ADDRESS", "2001:db8::1/129"),
     ],
 )
@@ -749,3 +777,31 @@ class TestDecorateRecognizer:
         composed = decorate_recognizer()
 
         assert callable(composed)
+
+
+def test_keyed_network_candidates_keep_unicode_offsets_and_metadata():
+    text = "é src_ip:10.0.0.1/path; client_ip:192.168.1.1:8080/health"
+    recognizer = recognizer_factories.get(IpRecognizer, IpRecognizer)()
+    results = recognizer.analyze(text, ["IP_ADDRESS"])
+    assert [(result.start, result.end) for result in results] == [(9, 17), (34, 45)]
+    assert [text[result.start : result.end] for result in results] == ["10.0.0.1", "192.168.1.1"]
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_IDENTIFIER_KEY] == recognizer.id for result in results
+    )
+
+
+def test_delimited_bare_urls_keep_independent_unicode_spans():
+    text = 'é "https://example.com." and <https://example.org,>'
+    recognizer = recognizer_factories.get(UrlRecognizer, UrlRecognizer)()
+    results = recognizer.analyze(text, ["URL"])
+    assert [(result.start, result.end) for result in results] == [(3, 22), (30, 49)]
+    assert [text[result.start : result.end] for result in results] == ["https://example.com", "https://example.org"]
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_IDENTIFIER_KEY] == recognizer.id for result in results
+    )

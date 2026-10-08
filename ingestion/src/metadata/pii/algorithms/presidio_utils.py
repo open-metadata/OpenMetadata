@@ -298,9 +298,9 @@ class UrlRecognizer(PresidioUrlRecognizer):
             try:
                 has_scheme = candidate.lower().startswith(("http://", "https://"))
                 parsed = urlsplit(candidate if has_scheme else f"//{candidate}")
-                if not parsed.path and not parsed.query and not parsed.fragment and candidate[-1] in "!;":
-                    end -= 1
-                    candidate = text[start:end]
+                if not parsed.path and not parsed.query and not parsed.fragment and candidate[-1] in ".,!;":
+                    candidate = candidate.rstrip(".,!;")
+                    end = start + len(candidate)
                     parsed = urlsplit(candidate if has_scheme else f"//{candidate}")
                 host = parsed.hostname
                 port = parsed.port
@@ -328,6 +328,16 @@ def url_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] 
     return UrlRecognizer(supported_language=supported_language, context=context)
 
 
+def _has_invalid_cidr_suffix(
+    text: str, suffix: re.Match[str], token_end: int, address_end: int, max_prefixlen: int
+) -> bool:
+    prefix = suffix.group(1)
+    if token_end != address_end or len(prefix) > 3 or int(prefix) > max_prefixlen:
+        return True
+    suffix_end = token_end + suffix.end()
+    return suffix_end < len(text) and text[suffix_end] in "/:%-"
+
+
 class IpRecognizer(PresidioIpRecognizer):
     def __init__(self, *, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None):
         super().__init__(
@@ -348,14 +358,18 @@ class IpRecognizer(PresidioIpRecognizer):
         regex_flags: int | None = None,
     ) -> list[RecognizerResult]:
         results: list[RecognizerResult] = []
-        for match in re.finditer(r"(?<![\w:.%-])[0-9a-fA-F:][\w:.%-]*[.:%][\w:.%-]*", text):
+        for match in re.finditer(r"[\w:.%-]+", text):
             start, end = match.span()
             token_end = end
-            in_url_authority = bool(re.search(r"https?://\[?$", text[max(0, start - 10) : start], re.IGNORECASE))
+            key, separator, _ = text[start:end].partition(":")
+            # Hex-only prefixes can be malformed IPv6; never salvage their IPv4 tail.
+            if separator and re.fullmatch(r"[a-zA-Z_]\w*", key) and re.search(r"[^0-9a-fA-F]", key):
+                start += len(key) + 1
+            in_url_authority = bool(re.search(r"[a-zA-Z][a-zA-Z0-9+.-]*://\[?$", text[max(0, start - 64) : start]))
             while end > start and text[end - 1] == ".":
                 end -= 1
             candidate = text[start:end]
-            if len(candidate) > 45:
+            if not any(char in candidate for char in ".:") or len(candidate) > 45:
                 continue
             if candidate.count(":") == 1:
                 address, _, port = candidate.rpartition(":")
@@ -373,16 +387,9 @@ class IpRecognizer(PresidioIpRecognizer):
             except ValueError:
                 continue
             if not in_url_authority and token_end < len(text) and text[token_end] == "/":
-                if token_end != end:
-                    continue
-                suffix = re.match(r"/(\d{1,3})", text[token_end:])
-                if suffix is None or int(suffix.group(1)) > parsed_address.max_prefixlen:
-                    continue
-                suffix_end = end + suffix.end()
-                if suffix_end < len(text) and (
-                    text[suffix_end].isalnum()
-                    or text[suffix_end] in "_/:%-"
-                    or (text[suffix_end] == "." and text[suffix_end + 1 : suffix_end + 2].isdigit())
+                suffix = re.match(r"/(\d+)(?![\w.])", text[token_end:])
+                if suffix is not None and _has_invalid_cidr_suffix(
+                    text, suffix, token_end, end, parsed_address.max_prefixlen
                 ):
                     continue
             for result in super().analyze(candidate, entities, nlp_artifacts, regex_flags):
