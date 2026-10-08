@@ -51,7 +51,8 @@ const SIGN_IN_ROUTE = '/signin';
 
 const pathnameOf = (url: string) => new URL(url, 'http://localhost').pathname;
 
-const isSignInRoute = (url: string) => pathnameOf(url).startsWith(SIGN_IN_ROUTE);
+const isSignInRoute = (url: string) =>
+  pathnameOf(url).startsWith(SIGN_IN_ROUTE);
 
 type StorageStateFile = {
   cookies?: { name: string; value: string }[];
@@ -228,12 +229,7 @@ const annotateRecovery = (description: string) => {
 
 // A test that deliberately lands here (to log in as another user) is not a
 // failed restore, whatever state its storage happens to be in.
-const AUTH_ROUTES = [
-  SIGN_IN_ROUTE,
-  '/signup',
-  '/forgot-password',
-  '/callback',
-];
+const AUTH_ROUTES = [SIGN_IN_ROUTE, '/signup', '/forgot-password', '/callback'];
 
 const isAuthRoute = (url: string) =>
   AUTH_ROUTES.some((route) => pathnameOf(url).startsWith(route));
