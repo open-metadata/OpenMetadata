@@ -282,7 +282,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  protected void applyInheritance(Domain entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(Domain entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritExperts(entity, fields, parent);
   }
@@ -446,7 +446,7 @@ public class DomainRepository extends EntityRepository<Domain> {
     result.withSuccessRequest(success);
 
     if (!dryRun && result.getStatus().equals(ApiStatus.SUCCESS)) {
-      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
               entityInterface.getVersion(), isAdd, request.getAssets(), null);
@@ -825,7 +825,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Domain entity, String fields) {
+  public EntityInterface<?> getParentEntity(Domain entity, String fields) {
     return entity.getParent() != null
         ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED)
         : null;

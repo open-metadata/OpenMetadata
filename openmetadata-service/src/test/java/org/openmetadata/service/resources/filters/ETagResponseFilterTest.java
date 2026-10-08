@@ -33,7 +33,7 @@ class ETagResponseFilterTest {
 
   @Test
   void getResponseGetsETagAndCacheControl() {
-    EntityInterface entity = entity(1.2, 111L);
+    EntityInterface<?> entity = entity(1.2, 111L);
     ContainerResponseContext res = response(OK, entity);
 
     filter.filter(request("GET", null), res);
@@ -44,7 +44,7 @@ class ETagResponseFilterTest {
 
   @Test
   void mutationResponsesGetETag() {
-    EntityInterface entity = entity(2.0, 222L);
+    EntityInterface<?> entity = entity(2.0, 222L);
 
     ContainerResponseContext patch = response(OK, entity);
     filter.filter(request("PATCH", null), patch);
@@ -74,7 +74,7 @@ class ETagResponseFilterTest {
 
   @Test
   void getWithMatchingIfNoneMatchBecomes304() {
-    EntityInterface entity = entity(3.1, 333L);
+    EntityInterface<?> entity = entity(3.1, 333L);
     String etag = EntityETag.generateETag(entity);
     ContainerResponseContext res = response(OK, entity);
 
@@ -92,7 +92,7 @@ class ETagResponseFilterTest {
     // (stale body). Before the content-based ETag fix this returned 304 and the header stuck.
     UUID id = UUID.randomUUID();
     String staleEtag = EntityETag.generateETag(table(id, 1.0, 100L, 0));
-    EntityInterface afterVote = table(id, 1.0, 100L, 1);
+    EntityInterface<?> afterVote = table(id, 1.0, 100L, 1);
     ContainerResponseContext res = response(OK, afterVote);
 
     filter.filter(request("GET", staleEtag), res);
@@ -104,7 +104,7 @@ class ETagResponseFilterTest {
 
   @Test
   void mutationWithMatchingIfNoneMatchIsNotShortCircuited() {
-    EntityInterface entity = entity(3.1, 333L);
+    EntityInterface<?> entity = entity(3.1, 333L);
     String etag = EntityETag.generateETag(entity);
     ContainerResponseContext res = response(OK, entity);
 
@@ -125,7 +125,7 @@ class ETagResponseFilterTest {
 
   @Test
   void nonSuccessResponseGetsNoETag() {
-    EntityInterface entity = entity(1.0, 1L);
+    EntityInterface<?> entity = entity(1.0, 1L);
     ContainerResponseContext res =
         response(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), entity);
 
@@ -150,7 +150,7 @@ class ETagResponseFilterTest {
     return res;
   }
 
-  private static EntityInterface entity(double version, long updatedAt) {
+  private static EntityInterface<?> entity(double version, long updatedAt) {
     return new Table()
         .withId(UUID.randomUUID())
         .withName("etag_table")
@@ -158,7 +158,7 @@ class ETagResponseFilterTest {
         .withUpdatedAt(updatedAt);
   }
 
-  private static EntityInterface table(UUID id, double version, long updatedAt, int upVotes) {
+  private static EntityInterface<?> table(UUID id, double version, long updatedAt, int upVotes) {
     return new Table()
         .withId(id)
         .withName("etag_table")

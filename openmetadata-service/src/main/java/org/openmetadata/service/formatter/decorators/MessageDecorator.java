@@ -87,7 +87,7 @@ public interface MessageDecorator<T> {
   T buildTestMessage();
 
   @SneakyThrows
-  default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
+  default String buildEntityUrl(String entityType, EntityInterface<?> entityInterface) {
     String fqn = resolveFullyQualifiedName(entityType, entityInterface);
     String entityUrl = "";
     switch (entityType) {
@@ -131,10 +131,10 @@ public interface MessageDecorator<T> {
   }
 
   // Helper function to resolve FQN if null or empty
-  private String resolveFullyQualifiedName(String entityType, EntityInterface entityInterface) {
+  private String resolveFullyQualifiedName(String entityType, EntityInterface<?> entityInterface) {
     String fqn = entityInterface.getFullyQualifiedName();
     if (CommonUtil.nullOrEmpty(fqn)) {
-      EntityInterface result =
+      EntityInterface<?> result =
           Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
       fqn = result.getFullyQualifiedName();
     }
@@ -152,7 +152,7 @@ public interface MessageDecorator<T> {
                     ? conversation.getId().toString()
                     : conversation.getEntityRef().getFullyQualifiedName();
               } else {
-                EntityInterface entityInterface = getEntity(event);
+                EntityInterface<?> entityInterface = getEntity(event);
                 return entityInterface.getFullyQualifiedName();
               }
             });

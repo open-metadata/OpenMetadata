@@ -891,7 +891,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Run a read-only SPARQL query (SELECT, ASK, DESCRIBE, CONSTRUCT) against the OpenMetadata knowledge graph. Use this when the question is graph-shaped — e.g. 'all tables with FK references into customers.id', 'all upstream tables of dashboard X', 'columns tagged PII whose null count > 0'. UPDATE / INSERT / DELETE / DROP / LOAD / CLEAR / CREATE are rejected; use the admin REST endpoint for writes. SERVICE clauses against external endpoints are rejected unless on the federation allowlist, which is empty and disabled by default - so in a default deployment this tool never reaches outside the local graph. Returns the result body in the chosen format (default 'json' for SELECT/ASK; 'turtle' is recommended for DESCRIBE/CONSTRUCT). Body is capped at maxBytes (default and maximum 80000 bytes, matching the MCP response budget); when it does not fit you get a prefix plus 'truncated': true and the full 'byteCount'. Narrow the query with LIMIT rather than raising maxBytes. A 'warning' field appears when the requested inferenceLevel could not be applied because the graph was too large - results are then NOT inferred. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "description": "Run a read-only SPARQL query (SELECT, ASK, DESCRIBE, CONSTRUCT) against the OpenMetadata knowledge graph. Use this when the question is graph-shaped — e.g. 'all tables with FK references into customers.id', 'all upstream tables of dashboard X', 'columns tagged PII whose null count > 0'. UPDATE / INSERT / DELETE / DROP / LOAD / CLEAR / CREATE are rejected; use the admin REST endpoint for writes. SERVICE clauses against external endpoints are rejected unless on the federation allowlist, which is empty and disabled by default - so in a default deployment this tool never reaches outside the local graph. Returns the result body in the chosen format (default 'json' for SELECT/ASK; 'turtle' is recommended for DESCRIBE/CONSTRUCT). Body is capped at maxBytes (default and maximum: the server's MCP response budget); when it does not fit you get a prefix plus 'truncated': true and the full 'byteCount'. Narrow the query with LIMIT rather than raising maxBytes. A 'warning' field appears when the requested inferenceLevel could not be applied because the graph was too large - results are then NOT inferred. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -911,8 +911,7 @@
           },
           "maxBytes": {
             "type": "integer",
-            "description": "Cap on the response body size in bytes. Default 80000, which is also the maximum; min 1024. Values above the maximum are clamped, because a larger body is discarded wholesale by the response budget.",
-            "default": 80000
+            "description": "Cap on the response body size in bytes. Defaults to the server's MCP response budget, which is also the maximum; min 1024. Values above the maximum are clamped, because a larger body is discarded wholesale by the response budget."
           }
         },
         "required": [
@@ -1029,8 +1028,7 @@
           },
           "maxBytes": {
             "type": "integer",
-            "description": "Cap on the report body size in bytes. Default 80000, which is also the maximum; min 1024.",
-            "default": 80000
+            "description": "Cap on the report body size in bytes. Defaults to the server's MCP response budget, which is also the maximum; min 1024."
           }
         }
       }
@@ -1058,8 +1056,7 @@
           },
           "maxBytes": {
             "type": "integer",
-            "description": "Cap on the body size in bytes. Default 80000, which is also the maximum; min 1024.",
-            "default": 80000
+            "description": "Cap on the body size in bytes. Defaults to the server's MCP response budget, which is also the maximum; min 1024."
           }
         }
       }

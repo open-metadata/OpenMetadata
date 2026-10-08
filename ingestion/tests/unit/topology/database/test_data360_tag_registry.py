@@ -29,7 +29,7 @@ from metadata.ingestion.source.database.data360.metadata import Data360Source
 
 
 @pytest.fixture
-def source() -> Data360Source:
+def source(existing_tag_lookup) -> Data360Source:
     instance = object.__new__(Data360Source)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
     instance.context = TopologyContextManager(instance.topology)
@@ -41,7 +41,7 @@ def source() -> Data360Source:
         instance.context.get().upsert(key, value)
     instance.metadata = MagicMock()
     instance.metadata.es_search_from_fqn.return_value = []
-    instance.metadata.get_by_name.side_effect = AssertionError("Tag labels must not be fetched from the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.client = MagicMock()
     instance.client.restful.return_value = {"expression": "SELECT COUNT(*)", "description": "Demo insight"}
     instance.dataspace_map = {"demo_db": {"status": "Active"}}

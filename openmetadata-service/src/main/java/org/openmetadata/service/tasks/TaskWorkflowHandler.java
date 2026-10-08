@@ -613,7 +613,7 @@ public class TaskWorkflowHandler {
     }
 
     try {
-      EntityInterface entity = Entity.getEntity(aboutRef, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(aboutRef, "*", Include.ALL);
       EntityRepository<?> repository = Entity.getEntityRepository(aboutRef.getType());
 
       List<TaskExecutionAction> actions =
@@ -638,7 +638,7 @@ public class TaskWorkflowHandler {
   private void executeConfiguredActions(
       List<TaskExecutionAction> actions,
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -663,7 +663,7 @@ public class TaskWorkflowHandler {
 
   private void applyDescriptionAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String newValue,
@@ -721,7 +721,7 @@ public class TaskWorkflowHandler {
 
   private void applyMergeTagsAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String newValue,
@@ -781,7 +781,7 @@ public class TaskWorkflowHandler {
   }
 
   private void patchEntityTags(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       List<TagLabel> tagsToAdd,
@@ -790,7 +790,7 @@ public class TaskWorkflowHandler {
   }
 
   private void patchEntityTags(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       List<TagLabel> updatedTags) {
@@ -805,7 +805,7 @@ public class TaskWorkflowHandler {
 
   @SuppressWarnings("unchecked")
   private boolean patchFieldTags(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
@@ -852,7 +852,7 @@ public class TaskWorkflowHandler {
       return;
     }
     Object patchedEntity = response.entity();
-    if (!(patchedEntity instanceof EntityInterface entityInterface)) {
+    if (!(patchedEntity instanceof EntityInterface<?> entityInterface)) {
       return;
     }
     try {
@@ -890,7 +890,7 @@ public class TaskWorkflowHandler {
     return merged;
   }
 
-  private String resolveTagTargetFqn(EntityInterface entity, String fieldPath) {
+  private String resolveTagTargetFqn(EntityInterface<?> entity, String fieldPath) {
     if (fieldPath == null || fieldPath.isEmpty() || "tags".equals(fieldPath)) {
       return entity.getFullyQualifiedName();
     }
@@ -983,7 +983,7 @@ public class TaskWorkflowHandler {
 
   private void applyReplaceOwnersAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -1020,7 +1020,7 @@ public class TaskWorkflowHandler {
 
   private void applyApplyTierAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -1051,7 +1051,7 @@ public class TaskWorkflowHandler {
 
   private void applyReplaceDomainsAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -1087,7 +1087,11 @@ public class TaskWorkflowHandler {
   }
 
   private void applyPatchEntityFieldAction(
-      Task task, EntityInterface entity, String user, Object payload, TaskExecutionAction action) {
+      Task task,
+      EntityInterface<?> entity,
+      String user,
+      Object payload,
+      TaskExecutionAction action) {
     if (action.entityField() == null) {
       LOG.warn(
           "[TaskWorkflowHandler] Missing entity field binding for patchEntityField action on task '{}'",
@@ -1138,7 +1142,7 @@ public class TaskWorkflowHandler {
   private void applySuggestion(
       Task task,
       Object payload,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user) {
     if (payload == null) return;
@@ -1208,7 +1212,7 @@ public class TaskWorkflowHandler {
   }
 
   private void applyEntityLevelTags(
-      EntityInterface entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
+      EntityInterface<?> entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
     String originalJson = JsonUtils.pojoToJson(entity);
     List<TagLabel> mergedTags =
         org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence(

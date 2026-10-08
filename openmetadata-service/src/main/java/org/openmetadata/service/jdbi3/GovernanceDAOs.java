@@ -92,7 +92,7 @@ public interface GovernanceDAOs {
 
     @Override
     default int listCount(ListFilter filter) {
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
       String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
 
@@ -117,7 +117,7 @@ public interface GovernanceDAOs {
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
       String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
 
@@ -142,7 +142,7 @@ public interface GovernanceDAOs {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
       String hierarchyFilter = filter.getQueryParam("hierarchyFilter");
       String offsetParam = filter.getQueryParam("offset");

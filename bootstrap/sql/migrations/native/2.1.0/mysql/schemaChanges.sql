@@ -706,6 +706,30 @@ PREPARE container_parent_children_index_stmt FROM @container_parent_children_ind
 EXECUTE container_parent_children_index_stmt;
 DEALLOCATE PREPARE container_parent_children_index_stmt;
 
+-- Announcement status is derived from startTime/endTime on every read and the ?status= filter
+-- compares the window directly. Nothing rewrote the stored value when the window opened or
+-- closed, so it only went stale: drop the column (its index goes with it) and the stored value.
+SET @announcement_status_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND column_name = 'status'
+    ),
+    'ALTER TABLE announcement_entity DROP COLUMN status',
+    'SELECT 1'
+  )
+);
+PREPARE announcement_status_column_stmt FROM @announcement_status_column_ddl;
+EXECUTE announcement_status_column_stmt;
+DEALLOCATE PREPARE announcement_status_column_stmt;
+
+UPDATE announcement_entity
+SET json = JSON_REMOVE(json, '$.status')
+WHERE JSON_EXTRACT(json, '$.status') IS NOT NULL;
+
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

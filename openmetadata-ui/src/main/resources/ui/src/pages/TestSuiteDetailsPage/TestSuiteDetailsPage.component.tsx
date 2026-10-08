@@ -230,7 +230,7 @@ const TestSuiteDetailsPage = () => {
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
-    fetchTestCases,
+    handleTestCasesRemoved,
     handleTestCaseSearch,
     handleSortTestCase,
     handleAddTestCaseSubmit,
@@ -326,7 +326,7 @@ const TestSuiteDetailsPage = () => {
             {renderDescription()}
             <div className="tw:w-full">
               <DataQualityTab
-                afterDeleteAction={fetchTestCases}
+                afterDeleteAction={handleTestCasesRemoved}
                 breadcrumbData={incidentUrlState}
                 fetchTestCases={handleSortTestCase}
                 hasActiveFilters={Boolean(testCaseSearchQuery.trim())}
@@ -377,7 +377,7 @@ const TestSuiteDetailsPage = () => {
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
     flags,
-    fetchTestCases,
+    handleTestCasesRemoved,
     incidentUrlState,
     handleSortTestCase,
     isLoading,

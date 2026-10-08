@@ -3,76 +3,76 @@ package org.openmetadata.service.governance;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.type.EntityStatus;
 
-/**
- * The lifecycle stages an entity type uses and the moves allowed between them. Every type draws its
- * stages from the shared {@link EntityStatus} vocabulary. Most use the general stages and can move
- * between any of them; a type with a lifecycle of its own declares the stages it uses, including
- * any that only it has, and each stage's next stages.
- */
-public record EntityLifecycle(Map<EntityStatus, Set<EntityStatus>> transitions) {
-  /**
-   * The stages a type uses unless it declares its own lifecycle. A stage added to the vocabulary for
-   * one type is not among them, so it stays out of every lifecycle that does not declare it.
-   */
+/** A lifecycle policy using the status vocabulary generated from its entity's schema. */
+public record EntityLifecycle<S extends Enum<S>>(
+    EntityStatusAdapter<S> adapter, Map<S, Set<S>> transitions) {
   public static final Set<EntityStatus> GENERAL_STAGES =
-      Collections.unmodifiableSet(
-          EnumSet.of(
-              EntityStatus.DRAFT,
-              EntityStatus.IN_REVIEW,
-              EntityStatus.APPROVED,
-              EntityStatus.ARCHIVED,
-              EntityStatus.DEPRECATED,
-              EntityStatus.REJECTED,
-              EntityStatus.UNPROCESSED));
+      Collections.unmodifiableSet(EnumSet.allOf(EntityStatus.class));
+  public static final EntityLifecycle<EntityStatus> GENERAL = anyMoveBetween(EntityStatus.class);
 
-  /** Any move between the general stages. */
-  public static final EntityLifecycle GENERAL = anyMoveBetween(GENERAL_STAGES);
+  public EntityLifecycle(Class<S> statusType, Map<S, Set<S>> transitions) {
+    this(new EntityStatusAdapter<>(statusType), transitions);
+  }
 
-  /** Each stage the type uses, mapped to the stages it can move to; a final stage maps to none. */
   public EntityLifecycle {
-    Map<EntityStatus, Set<EntityStatus>> copy = new EnumMap<>(EntityStatus.class);
-    transitions.forEach((from, to) -> copy.put(from, unmodifiableStages(to)));
+    Map<S, Set<S>> copy = new EnumMap<>(adapter.statusType());
+    transitions.forEach((from, to) -> copy.put(from, Set.copyOf(to)));
     requireMovesBetweenOwnStages(copy);
+    requireSchemaVocabulary(adapter, copy.keySet());
     transitions = Collections.unmodifiableMap(copy);
   }
 
-  public Set<EntityStatus> stages() {
+  public Set<S> stages() {
     return transitions.keySet();
   }
 
-  public boolean includes(EntityStatus stage) {
+  public List<String> stageCodes() {
+    return adapter.codes();
+  }
+
+  public Map<String, List<String>> transitionCodes() {
+    Map<String, List<String>> codes = new LinkedHashMap<>();
+    transitions.forEach(
+        (from, to) ->
+            codes.put(adapter.code(from), to.stream().map(adapter::code).sorted().toList()));
+    return Collections.unmodifiableMap(codes);
+  }
+
+  public boolean includes(S stage) {
     return transitions.containsKey(stage);
   }
 
-  /** Whether an entity can move between two stages; one saved without a stage can take any. */
-  public boolean allows(EntityStatus from, EntityStatus to) {
+  public boolean includesCode(String code) {
+    return stageCodes().contains(code);
+  }
+
+  public boolean allows(S from, S to) {
     return from == null ? includes(to) : transitions.getOrDefault(from, Set.of()).contains(to);
   }
 
-  private static EntityLifecycle anyMoveBetween(Set<EntityStatus> stages) {
-    Map<EntityStatus, Set<EntityStatus>> transitions = new EnumMap<>(EntityStatus.class);
-    for (EntityStatus from : stages) {
-      Set<EntityStatus> to = EnumSet.copyOf(stages);
+  public boolean allowsCodes(String from, String to) {
+    return includesCode(to)
+        && (from == null
+            || (includesCode(from) && allows(adapter.resolve(from), adapter.resolve(to))));
+  }
+
+  private static <S extends Enum<S>> EntityLifecycle<S> anyMoveBetween(Class<S> statusType) {
+    Map<S, Set<S>> transitions = new EnumMap<>(statusType);
+    for (S from : statusType.getEnumConstants()) {
+      Set<S> to = EnumSet.allOf(statusType);
       to.remove(from);
       transitions.put(from, to);
     }
-    return new EntityLifecycle(transitions);
+    return new EntityLifecycle<>(statusType, transitions);
   }
 
-  private static Set<EntityStatus> unmodifiableStages(Set<EntityStatus> stages) {
-    Set<EntityStatus> copy = EnumSet.noneOf(EntityStatus.class);
-    copy.addAll(stages);
-    return Collections.unmodifiableSet(copy);
-  }
-
-  // A declaration that moves to a stage it does not list is a mistake in the code declaring it,
-  // so it fails when the lifecycle is built rather than when an entity first takes that move.
-  private static void requireMovesBetweenOwnStages(
-      Map<EntityStatus, Set<EntityStatus>> transitions) {
+  private static <S extends Enum<S>> void requireMovesBetweenOwnStages(Map<S, Set<S>> transitions) {
     transitions.values().stream()
         .flatMap(Set::stream)
         .filter(stage -> !transitions.containsKey(stage))
@@ -80,8 +80,18 @@ public record EntityLifecycle(Map<EntityStatus, Set<EntityStatus>> transitions) 
         .ifPresent(
             stage -> {
               throw new IllegalArgumentException(
-                  "A lifecycle can only move between its own stages, but one moves to "
-                      + stage.value());
+                  "A lifecycle can only move between its own stages, but one moves to " + stage);
             });
+  }
+
+  private static <S extends Enum<S>> void requireSchemaVocabulary(
+      EntityStatusAdapter<S> adapter, Set<S> stages) {
+    if (!stages.equals(Set.copyOf(adapter.statuses()))) {
+      throw new IllegalArgumentException(
+          "Lifecycle stages must match "
+              + adapter.statusType().getSimpleName()
+              + " schema vocabulary: "
+              + adapter.codes());
+    }
   }
 }

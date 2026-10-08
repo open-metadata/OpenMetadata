@@ -19,9 +19,9 @@ import { EntityClass } from '../support/entity/EntityClass';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { UserClass } from '../support/user/UserClass';
 import {
+  clickIgnoringToasts,
   redirectToHomePage,
   toastNotification,
-  waitForToastStackToClear,
 } from './common';
 import {
   addMultiOwner,
@@ -208,12 +208,9 @@ export const testConnection = async (page: Page) => {
 
   await expect(testConnectionDialog).toBeVisible();
 
-  // The toast stack renders bottom-center, over the dialog's Done/OK button; a
-  // background "…deleted successfully!" toast from a parallel worker's cleanup
-  // can otherwise swallow this click. Wait for the stack to drain first.
-  await waitForToastStackToClear(page, 30_000);
-
-  await testConnectionDialog.getByRole('button', { name: /Done|OK/ }).click();
+  await clickIgnoringToasts(
+    testConnectionDialog.getByRole('button', { name: /Done|OK/ })
+  );
 
   // Wait for the success badge or the warning badge to appear
   const statusBadge = page.locator(

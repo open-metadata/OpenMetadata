@@ -80,7 +80,7 @@ class PatchEntityToolTest {
   @Test
   void execute_refusesToPatchAnotherUsersPrivateMemory() {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
     ContextMemory memory =
         new ContextMemory()
             .withId(UUID.randomUUID())
@@ -128,9 +128,9 @@ class PatchEntityToolTest {
     ImpersonationContext.setImpersonatedBy("McpApplicationBot");
 
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
-    RestUtil.PatchResponse<EntityInterface> patchResponse =
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
+    RestUtil.PatchResponse<EntityInterface<?>> patchResponse =
         new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED);
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(patchResponse);
@@ -169,9 +169,9 @@ class PatchEntityToolTest {
   @Test
   void execute_withNoImpersonationContext_passesNullImpersonatedBy() {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
-    RestUtil.PatchResponse<EntityInterface> patchResponse =
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
+    RestUtil.PatchResponse<EntityInterface<?>> patchResponse =
         new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED);
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(patchResponse);
@@ -212,9 +212,9 @@ class PatchEntityToolTest {
     ImpersonationContext.setImpersonatedBy("McpApplicationBot");
 
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
-    RestUtil.PatchResponse<EntityInterface> patchResponse =
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
+    RestUtil.PatchResponse<EntityInterface<?>> patchResponse =
         new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED);
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(patchResponse);
@@ -243,8 +243,8 @@ class PatchEntityToolTest {
   @Test
   void execute_authorizesWithPatchResourceContext() {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
     when(mockRepo.getPatchFields()).thenReturn(new Fields(Set.of()));
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(
@@ -342,8 +342,8 @@ class PatchEntityToolTest {
     // the tool description itself advertises - because the paths do not exist in '{}'. Whether a
     // path exists is the repository's question to answer against the real entity.
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
     when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
         .thenReturn(
             new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED));

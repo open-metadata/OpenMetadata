@@ -809,6 +809,12 @@ export class OverviewPageObject extends RightPanelBase {
       .waitFor({ state: 'visible' });
   }
 
+  async shouldShowEmptyDescription(): Promise<void> {
+    await expect(
+      this.descriptionSection.getByText('No description added')
+    ).toBeVisible();
+  }
+
   /**
    * Assert internal fields of the Overview tab for the given asset type.
    * Verifies key sections always rendered in DataAssetSummaryPanelV1: description, tags, tier, owners, domains, glossary.

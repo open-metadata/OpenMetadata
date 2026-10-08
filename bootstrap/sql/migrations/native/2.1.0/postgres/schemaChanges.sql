@@ -571,3 +571,12 @@ ALTER TABLE storage_container_entity
 -- invalid entry, then re-run the migration.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_storage_container_entity_parent_children
   ON storage_container_entity (parentFqnHash, deleted, name, id);
+
+-- Announcement status is derived from startTime/endTime on every read and the ?status= filter
+-- compares the window directly. Nothing rewrote the stored value when the window opened or
+-- closed, so it only went stale: drop the column, its index and the stored value.
+DROP INDEX IF EXISTS idx_announcement_status;
+ALTER TABLE announcement_entity DROP COLUMN IF EXISTS status;
+UPDATE announcement_entity
+SET json = json - 'status'
+WHERE json ->> 'status' IS NOT NULL;

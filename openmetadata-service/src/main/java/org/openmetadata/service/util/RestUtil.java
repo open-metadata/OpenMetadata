@@ -185,7 +185,7 @@ public final class RestUtil {
       }
       // EntityInterface is an optional capability of T; the ETag applies when the body is an
       // entity.
-      if (entity instanceof org.openmetadata.schema.EntityInterface entityInterface) {
+      if (entity instanceof org.openmetadata.schema.EntityInterface<?> entityInterface) {
         EntityETag.addETagHeader(responseBuilder, entityInterface);
       }
       return responseBuilder.build();

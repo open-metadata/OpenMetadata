@@ -30,6 +30,8 @@ export interface ChartSeriesData {
 
 export interface PlatformInsightsWidgetProps
   extends ServiceInsightWidgetCommonProps {
+  /** Embedded service details show the full chart grid without a collapse control. */
+  variant?: 'default' | 'embedded';
   chartsData: ChartSeriesData[];
   isLoading: boolean;
 }

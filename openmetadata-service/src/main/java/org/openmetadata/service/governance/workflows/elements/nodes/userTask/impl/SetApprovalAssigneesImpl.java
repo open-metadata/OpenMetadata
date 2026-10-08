@@ -70,7 +70,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       String relationshipFields =
           getRelationshipFieldsForAssigneeResolution(
               entityLink.getEntityType(), entitySupportsReviewers);
-      EntityInterface entity = Entity.getEntity(entityLink, relationshipFields, Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(entityLink, relationshipFields, Include.ALL);
 
       Set<String> assignees = new LinkedHashSet<>();
 
@@ -426,7 +426,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
   }
 
   private List<EntityReference> resolveEffectiveReviewers(
-      String entityType, EntityInterface entity) {
+      String entityType, EntityInterface<?> entity) {
     if (entity.getReviewers() != null && !entity.getReviewers().isEmpty()) {
       return entity.getReviewers();
     }

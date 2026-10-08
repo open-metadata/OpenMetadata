@@ -72,7 +72,7 @@ public class ETagResponseFilter implements ContainerResponseFilter {
   private static boolean shouldEmitETag(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     boolean result = false;
-    if (responseContext.getEntity() instanceof EntityInterface) {
+    if (responseContext.getEntity() instanceof EntityInterface<?>) {
       String method = requestContext.getMethod();
       int status = responseContext.getStatus();
       boolean successfulRead = GET.equals(method) && status == Response.Status.OK.getStatusCode();
@@ -88,7 +88,7 @@ public class ETagResponseFilter implements ContainerResponseFilter {
 
   private static void applyETag(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-    String etag = EntityETag.generateETag((EntityInterface) responseContext.getEntity());
+    String etag = EntityETag.generateETag((EntityInterface<?>) responseContext.getEntity());
     if (etag != null) {
       responseContext.getHeaders().putSingle(HttpHeaders.ETAG, etag);
       responseContext.getHeaders().putSingle(HttpHeaders.CACHE_CONTROL, CACHE_CONTROL_VALUE);

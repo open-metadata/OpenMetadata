@@ -153,7 +153,7 @@ public class FilterEntityImpl implements JavaDelegate {
       List<String> includeFields,
       String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
     // A null change description means a Create event.
     ChangeDescription change = entity.getChangeDescription();

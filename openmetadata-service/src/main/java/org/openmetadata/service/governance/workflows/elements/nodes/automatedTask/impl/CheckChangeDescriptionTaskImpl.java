@@ -60,7 +60,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
       DelegateExecution execution, String entityLinkStr, ChangeRequestRun changeRequest) {
     // Parse entity
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-    EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "", Include.ALL);
 
     // A change-request run evaluates the pending revision it reviews; any other run evaluates the
     // entity's persisted change. No change description means a create event -> true.

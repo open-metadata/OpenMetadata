@@ -523,6 +523,73 @@ describe('TestCaseFormBody', () => {
     });
   });
 
+  describe('dimension failure policy with a dynamic assertion', () => {
+    const DYNAMIC_DIMENSIONAL_DEFINITION = {
+      ...DYNAMIC_DEFINITION,
+      parameterDefinition: [
+        ...(DYNAMIC_DEFINITION.parameterDefinition ?? []),
+        {
+          name: 'dimensionFailurePolicy',
+          displayName: 'Dimension Failure Policy',
+          dataType: 'STRING',
+          optionValues: ['OVERALL_ONLY', 'ANY_DIMENSION'],
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const renderWithDynamicAssertion = async (testLevel: TestLevel) => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [DYNAMIC_DIMENSIONAL_DEFINITION],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE }, { testLevel });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: TEST_DEFINITION_FQN,
+          label: 'Column Values To Be Between',
+        } as never);
+      });
+
+      expect(
+        await screen.findByTestId('parameter-minValue')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        formRef?.setValue('useDynamicAssertion', true);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('parameter-minValue')
+        ).not.toBeInTheDocument();
+      });
+    };
+
+    it('keeps the policy on a dimension-level test once the bounds are learned', async () => {
+      await renderWithDynamicAssertion(TestLevel.COLUMN_DIMENSION);
+
+      expect(
+        screen.getByTestId('parameter-dimensionFailurePolicy')
+      ).toBeInTheDocument();
+    });
+
+    it('still hides the policy on a column-level test', async () => {
+      await renderWithDynamicAssertion(TestLevel.COLUMN);
+
+      expect(
+        screen.queryByTestId('parameter-dimensionFailurePolicy')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it('shows the compute-row-count switch only when the definition supports it', async () => {
     mockGetListTestDefinitions.mockResolvedValue({
       data: [ROW_LEVEL_DEFINITION],

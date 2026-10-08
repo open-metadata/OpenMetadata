@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  Card,
   Dialog,
   Modal,
   ModalOverlay,
@@ -1612,7 +1613,7 @@ const BulkEntityImportPage = () => {
   );
 
   const renderUploadStep = () => (
-    <div className="csv-import-card csv-import-upload-card">
+    <Card className="csv-import-card csv-import-upload-card tw:p-6">
       <div className="csv-import-stack">
         <div className="csv-import-copy">
           <h2>
@@ -1665,7 +1666,7 @@ const BulkEntityImportPage = () => {
           {t('message.import-entity-csv-tip', { entity: entityDisplayName })}
         </Alert>
       </div>
-    </div>
+    </Card>
   );
 
   const renderColumnReference = () => (
@@ -1723,7 +1724,7 @@ const BulkEntityImportPage = () => {
   );
 
   const renderImportProgress = () => (
-    <div className="csv-import-card csv-import-progress-card">
+    <Card className="csv-import-card csv-import-progress-card tw:p-6">
       <div className="csv-import-progress-content">
         <div className="csv-import-progress-icon">
           <RefreshCw01 className="csv-import-spin" />
@@ -1774,7 +1775,7 @@ const BulkEntityImportPage = () => {
           {t('label.cancel-entity', { entity: t('label.import') })}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 
   const shouldRenderMetricImportEditor = useMemo(
@@ -1872,7 +1873,7 @@ const BulkEntityImportPage = () => {
 
     if (validationData?.abortReason) {
       return (
-        <div className="csv-import-card m-t-lg">
+        <Card className="csv-import-card m-t-lg tw:p-6">
           <div className="csv-import-abort-state">
             <p className="text-center" data-testid="abort-reason">
               <strong className="d-block">{t('label.aborted')}</strong>{' '}
@@ -1885,7 +1886,7 @@ const BulkEntityImportPage = () => {
               {t('label.back')}
             </Button>
           </div>
-        </div>
+        </Card>
       );
     }
 
@@ -1893,7 +1894,7 @@ const BulkEntityImportPage = () => {
   };
 
   const renderStepOneContent = () => (
-    <div className="csv-import-card">
+    <Card className="csv-import-card tw:p-6">
       <div className="csv-import-stack">
         <div className="csv-import-grid-toolbar">
           <div>
@@ -1927,7 +1928,7 @@ const BulkEntityImportPage = () => {
         </div>
         {editDataGrid}
       </div>
-    </div>
+    </Card>
   );
 
   const renderStepTwoContent = () => {
@@ -1940,7 +1941,7 @@ const BulkEntityImportPage = () => {
     }
 
     return (
-      <div className="csv-import-card">
+      <Card className="csv-import-card tw:p-6">
         <div className="csv-import-stack">
           <div className="csv-import-results-header">
             {importOperationSummary && (
@@ -1954,7 +1955,7 @@ const BulkEntityImportPage = () => {
 
           <div>
             {validateCSVData && (
-              <div className="om-rdg csv-import-results-rdg">
+              <Box className="om-rdg csv-import-results-rdg">
                 <LazyDataGrid
                   className="rdg-light"
                   columns={importResultColumns}
@@ -1964,11 +1965,11 @@ const BulkEntityImportPage = () => {
                   }
                   rows={validateCSVData.dataSource}
                 />
-              </div>
+              </Box>
             )}
           </div>
         </div>
-      </div>
+      </Card>
     );
   };
 

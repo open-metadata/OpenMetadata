@@ -67,7 +67,7 @@ class SetApprovalAssigneesImplTest {
   @Mock private Expression assigneesExpr;
   @Mock private Expression assigneesVarNameExpr;
   @Mock private Expression inputNamespaceMapExpr;
-  @Mock private EntityInterface mockEntity;
+  @Mock private EntityInterface<?> mockEntity;
 
   @SuppressWarnings("rawtypes")
   @Mock
