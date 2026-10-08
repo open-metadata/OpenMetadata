@@ -32,6 +32,7 @@ on:
       - "bootstrap/**"
       - "docker/rdf-store/**"
       - ".github/scripts/classify_test_outcome.py"
+      - ".github/scripts/configure_docker_storage.sh"
       - ".github/workflows/integration-tests-mysql-elasticsearch.yml"
   # Integration tests run in the merge queue (plus main pushes and manual dispatch), not on
   # PRs: before review, `make java_affected_run` runs the ITs a PR impacts on the author's
@@ -95,6 +96,7 @@ jobs:
               - 'bootstrap/**'
               - 'docker/rdf-store/**'
               - '.github/scripts/classify_test_outcome.py'
+              - '.github/scripts/configure_docker_storage.sh'
               - '.github/workflows/integration-tests-mysql-elasticsearch.yml'
 
   integration-test-build:
@@ -213,7 +215,24 @@ jobs:
           - name: retry-queue
           - name: rdf
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # A lane grows the disk by ~8 GB (7.1 GB of Testcontainers images plus Maven state),
+      # and ubuntu-latest starts with ~86 GB free on its 145 GB root, so the 2-5 minute
+      # Free Disk Space purge (30 GiB of Android/.NET/Haskell/apt/tool-cache) bought
+      # nothing. The script moves Docker onto /mnt when the runner has a separate data
+      # disk, and otherwise fails unless the root has 32 GB free; only then fall back to
+      # the purge, so a smaller runner image still gets the old headroom.
+      - name: Use runner data disk for Docker
+        id: docker-storage
+        continue-on-error: true
+        run: bash .github/scripts/configure_docker_storage.sh
+
       - name: Free Disk Space (Ubuntu)
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
         uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2.0.0
         with:
           tool-cache: true
@@ -224,10 +243,10 @@ jobs:
           docker-images: false
           swap-storage: true
 
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
+      - name: Use runner data disk for Docker (after freeing disk)
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
+        run: bash .github/scripts/configure_docker_storage.sh
+
       - name: Cache Maven dependencies
         uses: actions/cache@v6
         with:
