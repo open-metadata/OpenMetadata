@@ -21,11 +21,11 @@ import { ResourceEntity } from '../../../../../../context/PermissionProvider/Per
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
-import { EXTENSION_POINTS } from '../../../../../../utils/ExtensionPointTypes';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
+import { EXTENSION_POINTS } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
-import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { MembersPanelProps, MembersView } from './Members.types';
 import {
   buildMembersHeaderMaps,
@@ -221,6 +221,85 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     </Box>
   );
 
+  // The two team forms share a "go back to where you came from" ternary; split
+  // out of renderView so those branches don't count against its budget.
+  const renderTeamForm = () => {
+    if (view.type === TEAMS_ADD) {
+      const parentFqn = view.parentFqn;
+      const back = () =>
+        parentFqn
+          ? onNavigate({ type: TEAM_DETAIL, fqn: parentFqn, name: parentFqn })
+          : onNavigate({ type: 'teams' });
+
+      return (
+        <MembersAddTeamForm
+          parentTeamFqn={parentFqn}
+          onCancel={back}
+          onSave={back}
+        />
+      );
+    }
+
+    if (view.type !== TEAMS_IMPORT) {
+      return null;
+    }
+
+    const { fqn, importType } = view;
+    const back = () =>
+      fqn === 'Organization'
+        ? onNavigate({ type: 'teams' })
+        : onNavigate({ type: TEAM_DETAIL, fqn, name: fqn });
+
+    return (
+      <MembersImportForm fqn={fqn} importType={importType} onClose={back} />
+    );
+  };
+
+  // Split out of renderView so its branches don't count against that function's
+  // complexity budget.
+  const renderSection = () => {
+    if (view.type !== SECTION || !activeSection) {
+      return <MembersLanding onNavigate={onNavigate} />;
+    }
+
+    const { component: SectionComponent, key } = activeSection;
+
+    // Gutters match the other Members views (MembersLanding, team detail), so a
+    // contributed section doesn't have to re-derive the panel's padding.
+    return (
+      <div className="tw:px-8 tw:pb-8">
+        <SectionComponent
+          subPath={view.subPath}
+          onClose={() => onNavigate({ type: 'landing' })}
+          onNavigate={(subPath) => onNavigate({ type: SECTION, key, subPath })}
+          onSetHeaderActions={(actions) => setPanelHeaderActions(actions)}
+        />
+      </div>
+    );
+  };
+
+  // The tail of the view chain, split out so neither half exceeds the
+  // complexity budget. A dispatch map would collapse the branching, but it
+  // defines its renderers during render, which react/no-unstable-nested-
+  // components rejects.
+  const renderSecondaryView = () => {
+    if (view.type === USER_CREATE) {
+      return (
+        <MembersCreateUserForm isAdmin={view.isAdmin} onNavigate={onNavigate} />
+      );
+    }
+
+    if (view.type === 'online-users') {
+      return <MembersOnlineUsersPanel onNavigate={onNavigate} />;
+    }
+
+    if (view.type === SECTION) {
+      return renderSection();
+    }
+
+    return null;
+  };
+
   const renderView = () => {
     if (view.type === 'landing') {
       return <MembersLanding onNavigate={onNavigate} />;
@@ -250,92 +329,25 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       );
     }
 
-    if (view.type === TEAMS_ADD) {
-      const parentFqn = view.parentFqn;
-      const back = () =>
-        parentFqn
-          ? onNavigate({ type: TEAM_DETAIL, fqn: parentFqn, name: parentFqn })
-          : onNavigate({ type: 'teams' });
-
-      return (
-        <MembersAddTeamForm
-          parentTeamFqn={parentFqn}
-          onCancel={back}
-          onSave={back}
-        />
-      );
+    if (view.type === TEAMS_ADD || view.type === TEAMS_IMPORT) {
+      return renderTeamForm();
     }
 
-    if (view.type === TEAMS_IMPORT) {
-      const { fqn, importType } = view;
-      const back = () =>
-        fqn === 'Organization'
-          ? onNavigate({ type: 'teams' })
-          : onNavigate({ type: TEAM_DETAIL, fqn, name: fqn });
-
+    if (view.type === 'users' || view.type === 'admins') {
+      // Keyed so switching Users <-> Admins remounts the panel: both render the
+      // same component type, and its fetch effects don't depend on isAdmin, so
+      // without a key React would keep the instance and show the stale list.
       return (
-        <MembersImportForm fqn={fqn} importType={importType} onClose={back} />
-      );
-    }
-
-    if (view.type === 'users') {
-      return (
-        // Keyed so switching Users <-> Admins remounts the panel: both render the
-        // same component type, and its fetch effects don't depend on isAdmin, so
-        // without a key React would keep the instance and show the stale list.
         <MembersUsersPanel
-          key="users"
+          isAdmin={view.type === 'admins'}
+          key={view.type}
           onNavigate={onNavigate}
           onSetHeader={setPanelHeader}
         />
       );
     }
 
-    if (view.type === 'admins') {
-      return (
-        <MembersUsersPanel
-          isAdmin
-          key="admins"
-          onNavigate={onNavigate}
-          onSetHeader={setPanelHeader}
-        />
-      );
-    }
-
-    if (view.type === USER_CREATE) {
-      return (
-        <MembersCreateUserForm isAdmin={view.isAdmin} onNavigate={onNavigate} />
-      );
-    }
-
-    if (view.type === 'online-users') {
-      return <MembersOnlineUsersPanel onNavigate={onNavigate} />;
-    }
-
-    if (view.type === SECTION) {
-      if (!activeSection) {
-        return <MembersLanding onNavigate={onNavigate} />;
-      }
-
-      const { component: SectionComponent, key } = activeSection;
-
-      // Gutters match the other Members views (MembersLanding, team detail), so
-      // a contributed section doesn't have to re-derive the panel's padding.
-      return (
-        <div className="tw:px-8 tw:pb-8">
-          <SectionComponent
-            subPath={view.subPath}
-            onClose={() => onNavigate({ type: 'landing' })}
-            onNavigate={(subPath) =>
-              onNavigate({ type: SECTION, key, subPath })
-            }
-            onSetHeaderActions={(actions) => setPanelHeaderActions(actions)}
-          />
-        </div>
-      );
-    }
-
-    return null;
+    return renderSecondaryView();
   };
 
   const content = isDeniedFormView ? permissionPlaceholder : renderView();

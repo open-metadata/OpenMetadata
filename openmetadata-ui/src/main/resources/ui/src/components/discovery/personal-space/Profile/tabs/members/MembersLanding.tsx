@@ -16,9 +16,9 @@ import { Users01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { EXTENSION_POINTS } from '../../../../../../utils/ExtensionPointTypes';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
+import { EXTENSION_POINTS } from '../../../../../../utils/ExtensionPointTypes';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { LANDING_CARDS } from './Members.constants';
 import type { MembersLandingCard, MembersSubPanelProps } from './Members.types';
 

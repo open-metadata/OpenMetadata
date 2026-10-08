@@ -34,7 +34,6 @@ jest.mock(
   })
 );
 
-
 describe('MembersLanding', () => {
   beforeEach(() => {
     mockGetContributions.mockReturnValue([]);

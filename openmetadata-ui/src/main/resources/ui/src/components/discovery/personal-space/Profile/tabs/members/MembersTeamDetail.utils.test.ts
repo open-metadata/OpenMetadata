@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Team,
-  TeamType,
-} from '../../../../../../generated/entity/teams/team';
+import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import {
   getAvailableTabs,
   getTabLabel,
@@ -79,13 +76,7 @@ describe('getTabLabel', () => {
   const t = (key: string) => key;
 
   it('labels custom properties without a count', () => {
-    const label = getTabLabel(
-      'custom-properties',
-      t,
-      {} as Team,
-      0,
-      0
-    );
+    const label = getTabLabel('custom-properties', t, {} as Team, 0, 0);
 
     expect(label).toBe('label.custom-property-plural');
   });

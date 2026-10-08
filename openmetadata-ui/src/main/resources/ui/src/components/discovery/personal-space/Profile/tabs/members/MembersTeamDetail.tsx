@@ -63,6 +63,10 @@ import {
 } from '../../../../../../rest/teamsAPI';
 import { getUsers, updateUserDetail } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import {
+  EXTENSION_POINTS,
+  type TabContribution,
+} from '../../../../../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
@@ -72,6 +76,11 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
 import Loader from '../../../../../common/Loader/Loader';
@@ -79,6 +88,7 @@ import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextE
 import type { ExpandableConfig } from '../../../../../common/Table/Table.interface';
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { MembersTeamDetailProps } from './Members.types';
 import MembersAssetsTab from './MembersAssetsTab';
 import MembersInlineEntityTab from './MembersInlineEntityTab';
@@ -105,16 +115,6 @@ import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 import MembersTeamsTab from './MembersTeamsTab';
 import MembersUsersTab from './MembersUsersTab';
 import { profileHash } from './profileHash.utils';
-import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import type {
-  CustomPropertyProps,
-  ExtentionEntitiesKeys,
-} from '../../../../../common/CustomPropertyTable/CustomPropertyTable.interface';
-import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import {
-  EXTENSION_POINTS,
-  type TabContribution,
-} from '../../../../../../utils/ExtensionPointTypes';
 import { useMembersTeamHeader } from './useMembersTeamHeader';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
@@ -1055,11 +1055,35 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   const canEditDescInline = (canEditAll || canEditDescription) && !team.deleted;
 
-  const renderActiveTab = () => {
+  // The contributed-plugin tab and the custom-properties tab, split out so
+  // their branches don't count against renderActiveTab's complexity budget.
+  // Returns null when neither applies, so the native switch runs.
+  const renderExtraTab = () => {
     if (activePluginTab) {
       const PluginTabComponent = activePluginTab.component;
 
       return <PluginTabComponent teamId={team.id} />;
+    }
+
+    if (activeTab === CUSTOM_PROPERTIES) {
+      return (
+        <CustomPropertyTable<EntityType.TEAM>
+          entityDetails={team}
+          entityType={EntityType.TEAM}
+          hasEditAccess={Boolean(canEditCustomFields) && !team.deleted}
+          hasPermission={Boolean(canViewCustomFields)}
+          onEntityUpdate={handleTeamExtensionUpdate}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const renderActiveTab = () => {
+    const extraTab = renderExtraTab();
+    if (extraTab) {
+      return extraTab;
     }
 
     switch (activeTab) {
@@ -1142,16 +1166,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             onItemCleared={handleItemCleared}
             onItemInserted={handleItemInserted}
             onStartAdd={() => handleStartAdd('defaultRoles')}
-          />
-        );
-      case CUSTOM_PROPERTIES:
-        return (
-          <CustomPropertyTable<EntityType.TEAM>
-            entityDetails={team}
-            entityType={EntityType.TEAM}
-            hasEditAccess={Boolean(canEditCustomFields) && !team.deleted}
-            hasPermission={Boolean(canViewCustomFields)}
-            onEntityUpdate={handleTeamExtensionUpdate}
           />
         );
       default:

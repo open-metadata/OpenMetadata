@@ -154,6 +154,17 @@ function parseTeamsSubPath(parts: string[]): MembersView {
   return { type: TEAM_DETAIL, fqn, name: fqn };
 }
 
+// `section/<key>[/<subPath>]` — a contributed section owns everything below its
+// key, so the remainder is handed through untouched. Extracted (like
+// parseTeamsSubPath) to keep hashSubPathToView within the complexity budget.
+function parseSectionSubPath(parts: string[]): MembersView {
+  const [, key, ...rest] = parts;
+
+  return key
+    ? { type: SECTION, key, subPath: rest.join('/') || undefined }
+    : { type: 'landing' };
+}
+
 export function hashSubPathToView(subPath: string): MembersView {
   if (!subPath) {
     return { type: 'landing' };
@@ -174,15 +185,8 @@ export function hashSubPathToView(subPath: string): MembersView {
         : { type: 'admins' };
     case ONLINE_USERS:
       return { type: 'online-users' };
-    case SECTION: {
-      // `section/<key>[/<subPath>]` — a contributed section owns everything
-      // below its key, so the remainder is handed through untouched.
-      const [, key, ...rest] = parts;
-
-      return key
-        ? { type: SECTION, key, subPath: rest.join('/') || undefined }
-        : { type: 'landing' };
-    }
+    case SECTION:
+      return parseSectionSubPath(parts);
     default:
       return { type: 'landing' };
   }
