@@ -7787,6 +7787,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/NotificationBox/NotificationBox.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Glossary.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyAuthoringInspector.tsx"
       ],
       "specs": [
