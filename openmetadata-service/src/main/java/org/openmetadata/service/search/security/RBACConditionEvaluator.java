@@ -408,6 +408,7 @@ public class RBACConditionEvaluator {
       clauses.add(queryBuilderFactory.termsQuery("id.keyword", ids));
     }
     collector.addMust(queryBuilderFactory.boolQuery().should(clauses));
+  }
 
   public void matchAnyDomain(List<String> domainFqns, ConditionCollector collector) {
     List<OMQueryBuilder> domainQueries = new ArrayList<>();
@@ -423,7 +424,6 @@ public class RBACConditionEvaluator {
       case 1 -> collector.addMust(domainQueries.get(0));
       default -> collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
     }
-
   }
 
   public void matchAnyCertification(
