@@ -34,6 +34,7 @@ import {
   switchInboxTaskStatus,
   VIEW_ALL_RULE,
   visitTriage,
+  waitForTaskTransitions,
 } from '../../../utils/inbox';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { performUserLogin } from '../../../utils/user';
@@ -133,15 +134,10 @@ const expectResolveBody = (
   }
 };
 
-const readTransitionIds = async (taskId: string) => {
-  const apiContext = await getWorkerAdminAPIContext();
-  const task = await okJson<{ availableTransitions?: { id: string }[] }>(
-    await apiContext.get(`/api/v1/tasks/${taskId}?fields=availableTransitions`),
-    `Read transitions of task ${taskId}`
-  );
-
-  return (task.availableTransitions ?? []).map(({ id }) => id);
-};
+// The UI has loaded the task's actions once its button is enabled, and the
+// seed waited for every workflow to attach them, so this is what it sends.
+const readTransitionIds = async (taskId: string) =>
+  waitForTaskTransitions(await getWorkerAdminAPIContext(), taskId);
 
 const tableLink = (table: TableClass) =>
   `<#E::table::${table.entityResponseData.fullyQualifiedName}>`;
@@ -238,6 +234,13 @@ const seedQueue = async (
   ]);
   await driveInboxTask(apiContext, closed.id, ['approve']);
   await driveInboxTask(apiContext, outcome.id, ['reject']);
+  // Settle every open task's workflow before a test reads it, so the UI and
+  // the test see the same transitions.
+  await Promise.all(
+    created
+      .filter(({ id }) => id !== closed.id && id !== outcome.id)
+      .map(({ id }) => waitForTaskTransitions(apiContext, id))
+  );
 
   return {
     tasks: {
@@ -356,7 +359,6 @@ test.describe(
       queue,
     }) => {
       const task = queue.tasks.approve;
-      const transitionIds = await readTransitionIds(task.id);
       await visitTriage(page);
       const row = await searchInboxTask(page, task);
       await row.click();
@@ -366,6 +368,7 @@ test.describe(
       await test.step('Approve resolves against the task’s own transitions', async () => {
         const approve = panel.getByTestId('task-approve');
         await expect(approve).toBeEnabled();
+        const transitionIds = await readTransitionIds(task.id);
         const resolved = waitForResponseWithStatus(page, isResolve, 200);
         // The tab badges re-count once the task moves.
         const recount = waitForResponseWithStatus(
@@ -437,12 +440,12 @@ test.describe(
       queue,
     }) => {
       const task = queue.tasks.approvalToApprove;
-      const transitionIds = await readTransitionIds(task.id);
       await visitTriage(page);
       const panel = await openInboxTask(page, task);
 
       const approve = panel.getByTestId('task-approve');
       await expect(approve).toBeEnabled();
+      const transitionIds = await readTransitionIds(task.id);
       const resolved = waitForResponseWithStatus(page, isResolve, 200);
       await approve.click();
       const response = await resolved;
@@ -459,12 +462,12 @@ test.describe(
       queue,
     }) => {
       const task = queue.tasks.approvalToReject;
-      const transitionIds = await readTransitionIds(task.id);
       await visitTriage(page);
       const panel = await openInboxTask(page, task);
 
       const reject = panel.getByTestId('task-reject');
       await expect(reject).toBeEnabled();
+      const transitionIds = await readTransitionIds(task.id);
       const resolved = waitForResponseWithStatus(page, isResolve, 200);
       await reject.click();
       // A workflow's Reject asks for a comment; a legacy one resolves at once.

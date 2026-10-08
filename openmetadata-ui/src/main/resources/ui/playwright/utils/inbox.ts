@@ -299,6 +299,31 @@ const readTransitionIds = async (
   return (task.availableTransitions ?? []).map(({ id }) => id);
 };
 
+/**
+ * The ids of a task's workflow transitions, once the workflow has attached
+ * them: it does so after create answers. A task with no workflow never offers
+ * any, so an empty list after the wait means a legacy task.
+ */
+export const waitForTaskTransitions = async (
+  apiContext: APIRequestContext,
+  taskId: string
+): Promise<string[]> => {
+  let transitionIds: string[] = [];
+  await expect
+    .poll(
+      async () => {
+        transitionIds = await readTransitionIds(apiContext, taskId);
+
+        return transitionIds.length > 0;
+      },
+      { timeout: 20_000, intervals: [1_000] }
+    )
+    .toBe(true)
+    .catch(() => undefined);
+
+  return transitionIds;
+};
+
 const driveStep = async (
   apiContext: APIRequestContext,
   taskId: string,
@@ -317,20 +342,7 @@ const driveStep = async (
     return;
   }
 
-  // The workflow attaches a task's transitions after create answers.
-  let transitionIds: string[] = [];
-  await expect
-    .poll(
-      async () => {
-        transitionIds = await readTransitionIds(apiContext, taskId);
-
-        return transitionIds.length > 0;
-      },
-      { timeout: 20_000, intervals: [1_000] }
-    )
-    .toBe(true)
-    // A task with no workflow never offers one; checked below.
-    .catch(() => undefined);
+  const transitionIds = await waitForTaskTransitions(apiContext, taskId);
 
   const legacyResolution = { approve: 'Approved', reject: 'Rejected' }[step];
   const offered = transitionIds.includes(step);
