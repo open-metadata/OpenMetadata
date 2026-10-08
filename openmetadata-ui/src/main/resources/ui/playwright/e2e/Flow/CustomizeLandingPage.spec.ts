@@ -285,9 +285,7 @@ test.describe(
         // Confirm reset in modal
         const resetResponse = adminPage.waitForResponse('/api/v1/docStore/*');
 
-        await adminPage
-          .getByRole('button', { name: 'Reset', exact: true })
-          .click();
+        await adminPage.getByTestId('unsaved-changes-modal-save').click();
 
         await resetResponse;
 
