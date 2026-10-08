@@ -104,11 +104,9 @@ const getHeaderTagsClassName = (
   showThread: boolean | undefined,
   entityRefType?: string
 ): string =>
-  classNames('d-flex gap-1', {
+  classNames('d-flex', {
     'header-container-card': !showThread,
     'flex-wrap': showThread && entityRefType !== EntityType.CONTAINER,
-    'items-start': showThread && entityRefType === EntityType.CONTAINER,
-    ' items-center': showThread && entityRefType !== EntityType.CONTAINER,
   });
 
 const computeFeedId = (feed?: Conversation, activity?: ActivityEvent): string =>
@@ -460,8 +458,7 @@ const ActivityFeedCardNew = ({
               </div>
               {!isPost && (
                 <Box
-                  inline
-                  align="center"
+                  align={getHeaderAlign(showThread, entityRef?.type)}
                   className={`layout-space layout-space-horizontal ${getHeaderTagsClassName(
                     showThread,
                     entityRef?.type
@@ -656,8 +653,7 @@ const ActivityFeedCardNew = ({
               </Box>
               {!isPost && (
                 <Box
-                  inline
-                  align="center"
+                  align={getHeaderAlign(showThread, entityRef?.type)}
                   className={`layout-space layout-space-horizontal ${getHeaderTagsClassName(
                     showThread,
                     entityRef?.type
