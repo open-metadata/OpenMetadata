@@ -78,7 +78,7 @@ public abstract class BaseSDKTest {
   /**
    * Clean up an entity after test
    */
-  protected void cleanupEntity(EntityInterface entity) {
+  protected void cleanupEntity(EntityInterface<?> entity) {
     if (entity != null && entity.getId() != null) {
       try {
         // TODO: Implement generic delete once available in client
@@ -90,7 +90,7 @@ public abstract class BaseSDKTest {
     }
   }
 
-  private String getEntityEndpoint(EntityInterface entity) {
+  private String getEntityEndpoint(EntityInterface<?> entity) {
     String entityType = entity.getEntityReference().getType();
     return "/v1/" + entityType.toLowerCase() + "s";
   }
@@ -98,7 +98,7 @@ public abstract class BaseSDKTest {
   /**
    * Assert that two entities are equivalent (ignoring server-generated fields)
    */
-  protected void assertEntitiesEqual(EntityInterface expected, EntityInterface actual) {
+  protected void assertEntitiesEqual(EntityInterface<?> expected, EntityInterface<?> actual) {
     // Compare key fields, ignoring server-generated ones like version, updatedAt, etc.
     assertEquals(expected.getName(), actual.getName());
     assertEquals(expected.getDescription(), actual.getDescription());

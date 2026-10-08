@@ -52,7 +52,7 @@ class AlertsRuleEvaluatorUndeclaredFieldTest {
 
   @Test
   void matchAnyDomain_entityTypeWithoutDomains_returnsFalseInsteadOfThrowing() {
-    EntityRepository<EntityInterface> repository = repositoryDeclaring(true, false);
+    EntityRepository<EntityInterface<?>> repository = repositoryDeclaring(true, false);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(() -> Entity.getEntityClassFromType(Entity.DOMAIN)).thenReturn(Domain.class);
       entityMock.when(() -> Entity.getEntityRepository(Entity.DOMAIN)).thenReturn(repository);
@@ -67,7 +67,7 @@ class AlertsRuleEvaluatorUndeclaredFieldTest {
 
   @Test
   void matchAnyOwnerName_entityTypeWithoutOwners_returnsFalseInsteadOfThrowing() {
-    EntityRepository<EntityInterface> repository = repositoryDeclaring(false, true);
+    EntityRepository<EntityInterface<?>> repository = repositoryDeclaring(false, true);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(() -> Entity.getEntityClassFromType(Entity.USER)).thenReturn(User.class);
       entityMock.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(repository);
@@ -82,7 +82,7 @@ class AlertsRuleEvaluatorUndeclaredFieldTest {
 
   @Test
   void matchAnyDomain_entityTypeDeclaringDomains_stillResolvesThemFromTheStore() {
-    EntityRepository<EntityInterface> repository = repositoryDeclaring(true, true);
+    EntityRepository<EntityInterface<?>> repository = repositoryDeclaring(true, true);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(() -> Entity.getEntityClassFromType(Entity.TABLE)).thenReturn(Table.class);
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
@@ -125,15 +125,15 @@ class AlertsRuleEvaluatorUndeclaredFieldTest {
         .thenThrow(new IllegalArgumentException("Invalid field name " + field));
   }
 
-  private static EntityRepository<EntityInterface> repositoryDeclaring(
+  private static EntityRepository<EntityInterface<?>> repositoryDeclaring(
       boolean owners, boolean domains) {
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
     when(repository.isSupportsOwners()).thenReturn(owners);
     when(repository.isSupportsDomains()).thenReturn(domains);
     return repository;
   }
 
-  private static ChangeEvent event(String entityType, EntityInterface entity) {
+  private static ChangeEvent event(String entityType, EntityInterface<?> entity) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEventType(EventType.ENTITY_UPDATED)

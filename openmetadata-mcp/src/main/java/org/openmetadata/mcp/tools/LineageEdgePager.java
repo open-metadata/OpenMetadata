@@ -34,8 +34,9 @@ final class LineageEdgePager {
    */
   private static final int ANNOTATION_HEADROOM_CHARS = 5_000;
 
-  private static final int PAGE_CHARS_LIMIT =
-      McpResponseTrim.MAX_RESPONSE_CHARS - ANNOTATION_HEADROOM_CHARS;
+  private static int pageCharsLimit() {
+    return McpResponseTrim.maxResponseChars() - ANNOTATION_HEADROOM_CHARS;
+  }
 
   /**
    * The edges one page holds per direction, the index of its first edge, where the next page
@@ -95,7 +96,7 @@ final class LineageEdgePager {
    */
   private static boolean isTooLargeForAnyResponse(SlimLineage slim, DirectedEdge edge) {
     return McpResponseTrim.serializedLength(JsonUtils.getMap(withEdges(slim, List.of(edge))))
-        > PAGE_CHARS_LIMIT;
+        > pageCharsLimit();
   }
 
   /**
@@ -106,7 +107,7 @@ final class LineageEdgePager {
   private static int fittingCount(SlimLineage slim, List<DirectedEdge> window) {
     int count = window.size();
     if (McpResponseTrim.serializedLength(JsonUtils.getMap(withEdges(slim, window)))
-        > PAGE_CHARS_LIMIT) {
+        > pageCharsLimit()) {
       long overhead =
           McpResponseTrim.serializedLength(JsonUtils.getMap(withEdges(slim, List.of())));
       long available = Math.max(0, ResponseBudget.defaultBudgetChars() - overhead);

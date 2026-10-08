@@ -181,6 +181,20 @@ describe('Typography ellipsis tooltip', () => {
     expect(wrapper).toHaveClass('tw:inline-block', 'tw:max-w-full');
   });
 
+  it('clips an inline ellipsis on the text element so the "…" takes its color', () => {
+    render(
+      <Typography ellipsis className="tw:text-white">
+        Inline text
+      </Typography>
+    );
+
+    expect(screen.getByText('Inline text')).toHaveClass(
+      'tw:block',
+      'tw:truncate',
+      'tw:text-white'
+    );
+  });
+
   it('shows the tooltip when only a block inner element overflows', async () => {
     vi.restoreAllMocks();
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);

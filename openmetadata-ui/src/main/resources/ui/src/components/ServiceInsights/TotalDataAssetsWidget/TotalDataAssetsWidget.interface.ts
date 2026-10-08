@@ -17,6 +17,8 @@ import {
 
 export interface TotalAssetsWidgetProps
   extends ServiceInsightWidgetCommonProps {
+  /** Embedded service details already provide the surrounding page layout. */
+  variant?: 'default' | 'embedded';
   isLoading: boolean;
   totalAssetsCount: TotalAssetsCount[];
 }

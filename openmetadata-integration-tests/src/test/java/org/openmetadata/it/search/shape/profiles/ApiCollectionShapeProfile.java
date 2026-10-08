@@ -26,7 +26,7 @@ public final class ApiCollectionShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new APICollection()
         .withId(ctx.id())
         .withName("apiCollection")
