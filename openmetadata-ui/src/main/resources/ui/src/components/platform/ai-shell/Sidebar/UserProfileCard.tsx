@@ -32,7 +32,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
 }) => (
   <Card
     className={classNames(
-      'tw:rounded-2xl tw:shadow-xs',
+      'tw:bg-primary tw:shadow-xs',
       compact
         ? 'tw:mx-auto tw:w-14 tw:p-1.5'
         : 'tw:w-full tw:py-2.5 tw:pr-2.5 tw:pl-3 tw:has-[[aria-expanded=true]]:border-brand-subtle tw:has-[[aria-expanded=true]]:bg-brand-primary'
@@ -55,7 +55,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
           <AIUserMenu />
           <Box
             align="center"
-            className="tw:size-10 tw:shrink-0 tw:rounded-[11px] tw:border tw:border-secondary tw:bg-primary"
+            className="tw:size-10 tw:shrink-0 tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
             justify="center">
             <InboxIconButton />
           </Box>

@@ -65,11 +65,11 @@ import { getLanguageName, getUserPersonas } from './AIUserMenu.utils';
 
 const SUBMENU_LIST_CLASS = 'tw:max-h-72 tw:overflow-y-auto';
 
-// Collate account-menu metrics; the core popover is 248px wide with 8px corners.
-const POPOVER_CLASS = 'tw:rounded-2xl tw:outline-secondary';
+// 12px corners and the design's menu border; the core popover outline is fainter.
+const POPOVER_CLASS = 'tw:rounded-xl tw:outline-secondary';
 
 // The core item paints its row on its first child, so `*:` reshapes that row.
-const ROW_CLASS = 'tw:*:rounded-[9px]';
+const ROW_CLASS = 'tw:*:rounded-xl';
 
 const ICON_CLASS = 'tw:size-4 tw:shrink-0';
 
@@ -116,11 +116,7 @@ const MenuRow = ({
       )}>
       {label}
     </span>
-    {value && (
-      <span className="tw:shrink-0 tw:text-[13px] tw:text-tertiary">
-        {value}
-      </span>
-    )}
+    {value && <span className="tw:shrink-0 tw:text-primary">{value}</span>}
     {hasSubmenu && <ChevronRight aria-hidden className={CHEVRON_CLASS} />}
   </Box>
 );
@@ -141,7 +137,7 @@ const ContextRow = ({
       className="tw:*:data-icon:size-[17px]"
       color="brand"
       icon={icon}
-      radius="lg"
+      radius="xl"
       shape="square"
       size="sm"
     />
@@ -170,7 +166,7 @@ const OptionRow = ({
     {leading}
     <span
       className={classNames(
-        'tw:flex-1 tw:truncate tw:font-medium',
+        'tw:flex-1 tw:truncate',
         !isSelected && 'tw:text-primary'
       )}>
       {label}
@@ -345,7 +341,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           className={classNames(
             'tw:relative tw:flex tw:cursor-pointer tw:items-center tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
             collapsed
-              ? 'tw:size-11 tw:justify-center tw:rounded-[11px] tw:aria-expanded:bg-brand-secondary'
+              ? 'tw:size-11 tw:justify-center tw:rounded-xl tw:aria-expanded:bg-brand-secondary'
               : 'tw:min-h-11 tw:min-w-0 tw:flex-1 tw:gap-2.5 tw:rounded-md'
           )}
           data-testid="ask-ai-user-menu-trigger">
@@ -364,7 +360,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
         placement="right bottom">
         <Dropdown.Menu selectionMode="none">
           <Dropdown.Item
-            className="tw:*:px-2 tw:*:py-[11px]"
+            className="tw:*:rounded-xl tw:*:px-2 tw:*:py-[11px]"
             data-testid="ai-user-menu-profile"
             id="profile"
             textValue={displayName}
@@ -413,7 +409,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
 
           <SubmenuTrigger>
             <Dropdown.Item
-              className="tw:*:rounded-[10px]"
+              className={ROW_CLASS}
               data-testid="ai-user-menu-persona"
               id="persona"
               textValue={t('label.active-persona')}>
@@ -457,7 +453,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
                             leading={
                               <Avatar
                                 className={classNames(
-                                  'tw:size-6.5 tw:rounded-lg tw:*:text-xs tw:*:font-medium',
+                                  'tw:size-6.5 tw:rounded-xl tw:*:text-xs tw:*:font-medium',
                                   isSelected
                                     ? 'tw:bg-brand-solid tw:text-primary_on-brand'
                                     : 'tw:text-tertiary'
@@ -500,19 +496,23 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
               <Dropdown.Menu
                 className={SUBMENU_LIST_CLASS}
                 selectionMode="none">
-                {navbarUtilClassBase.getHelpItems().map((item) => (
-                  <Dropdown.Item
-                    icon={item.icon}
-                    id={item.key}
-                    key={item.key}
-                    label={
-                      item.key === HELP_ITEMS_ENUM.VERSION && appVersion
-                        ? t('label.version-number', { version: appVersion })
-                        : t(item.label)
-                    }
-                    onAction={() => handleHelpItemAction(item)}
-                  />
-                ))}
+                {navbarUtilClassBase.getHelpItems().map((item) => {
+                  const label =
+                    item.key === HELP_ITEMS_ENUM.VERSION && appVersion
+                      ? t('label.version-number', { version: appVersion })
+                      : t(item.label);
+
+                  return (
+                    <Dropdown.Item
+                      className={ROW_CLASS}
+                      id={item.key}
+                      key={item.key}
+                      textValue={label}
+                      onAction={() => handleHelpItemAction(item)}>
+                      <MenuRow icon={item.icon} label={label} />
+                    </Dropdown.Item>
+                  );
+                })}
               </Dropdown.Menu>
             </Dropdown.Popover>
           </SubmenuTrigger>
@@ -572,7 +572,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
               />
             </Dropdown.Item>
             <Dropdown.Popover
-              className={classNames(POPOVER_CLASS, 'tw:w-55 tw:rounded-[14px]')}
+              className={classNames(POPOVER_CLASS, 'tw:w-55')}
               placement="right top">
               <Dropdown.Menu selectedKeys={[theme]}>
                 <Dropdown.Item

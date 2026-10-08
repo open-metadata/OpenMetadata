@@ -383,7 +383,7 @@ describe('AIUserMenu', () => {
         {
           key: 'version',
           label: 'label.version',
-          icon: null,
+          icon: () => null,
           isExternal: false,
           link: '',
         },

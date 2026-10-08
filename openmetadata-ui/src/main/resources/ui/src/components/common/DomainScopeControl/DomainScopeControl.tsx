@@ -157,7 +157,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     return (
       <Dropdown.Item
         isDisabled
-        className="tw:*:rounded-[10px]"
+        className="tw:*:rounded-xl"
         data-testid="ask-domain-scope"
         textValue={t('label.domain-scope')}>
         <Tooltip
@@ -173,7 +173,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
 
   return (
     <Dropdown.Item
-      className="tw:*:rounded-[10px]"
+      className="tw:*:rounded-xl"
       data-testid="ask-domain-scope"
       // The picker anchors to this row, so the profile menu must stay open.
       shouldCloseOnSelect={false}
@@ -196,7 +196,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
           // submenus' 4px gap.
           offset={MENU_PICKER_OFFSET}
           placement="right top"
-          popoverClassName="tw:w-75 tw:rounded-2xl tw:outline-secondary"
+          popoverClassName="tw:w-75 tw:rounded-xl tw:outline-secondary"
           popoverProps={{ open: isOpen, onOpenChange: setIsOpen }}
           restrictedDomains={restrictedDomains}
           selectedDomain={activeDomainEntityRef}
