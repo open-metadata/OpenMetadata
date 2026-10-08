@@ -40,6 +40,7 @@ import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import { DomainMismatchAlert } from '../../../components/common/DomainMismatchAlert/DomainMismatchAlert.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
@@ -1236,6 +1237,10 @@ export const DataAssetsHeader = ({
         )}
         data-testid="data-assets-header">
         {tableClassBase.getRequestDataAccessBanner()}
+        <DomainMismatchAlert
+          domains={(dataAsset as EntitiesWithDomainField).domains}
+          entityId={dataAsset.id ?? ''}
+        />
 
         <div
           className={classNames(

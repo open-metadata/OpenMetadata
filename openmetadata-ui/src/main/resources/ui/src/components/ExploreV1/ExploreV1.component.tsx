@@ -79,6 +79,7 @@ import {
 import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
+import { DomainFilterChip } from '../common/DomainFilterChip/DomainFilterChip.component';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
@@ -409,6 +410,7 @@ const ExploreFilterStatusRow = ({
             onRemoveBrowseLevel={handleRemoveBrowseLevel}
             onRemoveValue={handleRemoveQuickFilterValue}
           />
+          <DomainFilterChip className="tw:mt-2" />
         </div>
       )}
       {isElasticSearchIssue ? (

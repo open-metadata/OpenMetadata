@@ -12,7 +12,10 @@
  */
 
 import { EntityType } from '../enums/entity.enum';
-import { getQueryFilterToIncludeDomain } from './DomainFilterUtils';
+import {
+  getQueryFilterToIncludeDomain,
+  isOutsideSelectedDomain,
+} from './DomainFilterUtils';
 
 describe('getQueryFilterToIncludeDomain', () => {
   const domainFqn = 'Domain.A';
@@ -123,5 +126,37 @@ describe('getQueryFilterToIncludeDomain', () => {
         },
       });
     });
+  });
+});
+
+describe('isOutsideSelectedDomain', () => {
+  const ALL = 'All Domains';
+  const ref = (fqn: string) => ({
+    id: fqn,
+    type: 'domain',
+    fullyQualifiedName: fqn,
+  });
+
+  it('is outside when no domain matches the selection', () => {
+    expect(isOutsideSelectedDomain([ref('Marketing')], 'Sales', ALL)).toBe(
+      true
+    );
+  });
+
+  it('treats the selected domain and its sub-domains as inside', () => {
+    expect(isOutsideSelectedDomain([ref('Sales')], 'Sales', ALL)).toBe(false);
+    expect(isOutsideSelectedDomain([ref('Sales.EMEA')], 'Sales', ALL)).toBe(
+      false
+    );
+  });
+
+  it('does not treat a name sharing the prefix as a sub-domain', () => {
+    expect(isOutsideSelectedDomain([ref('SalesOps')], 'Sales', ALL)).toBe(true);
+  });
+
+  it('is never outside for All Domains or an entity without a domain', () => {
+    expect(isOutsideSelectedDomain([ref('Marketing')], ALL, ALL)).toBe(false);
+    expect(isOutsideSelectedDomain([], 'Sales', ALL)).toBe(false);
+    expect(isOutsideSelectedDomain(undefined, 'Sales', ALL)).toBe(false);
   });
 });

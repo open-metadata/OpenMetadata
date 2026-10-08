@@ -24,13 +24,16 @@ import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../utils/common';
 import {
   checkAssetsCount,
+  clearDomainFromNavbar,
   selectDataProduct,
   selectDomain,
+  switchNavbarDomain,
 } from '../../utils/domain';
 import {
   fillDeleteConfirmationIfPresent,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
@@ -715,8 +718,12 @@ test.describe('Domain Assets Tab Operations', () => {
 
 test.describe('Domain Global Dropdown', () => {
   test('Select domain from global dropdown filters explore', async ({
-    page,
+    browser,
   }) => {
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
+    const { page, afterAction: pickerDone } = await loginAsIsolatedAdmin(
+      browser
+    );
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
 
@@ -741,10 +748,15 @@ test.describe('Domain Global Dropdown', () => {
     } finally {
       await domain.delete(apiContext);
       await afterAction();
+      await pickerDone();
     }
   });
 
-  test('Clear domain selection returns to All Domains', async ({ page }) => {
+  test('Clear domain selection returns to All Domains', async ({ browser }) => {
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
+    const { page, afterAction: pickerDone } = await loginAsIsolatedAdmin(
+      browser
+    );
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
 
@@ -760,10 +772,8 @@ test.describe('Domain Global Dropdown', () => {
       );
 
       if (await domainOption.isVisible()) {
-        await domainOption.click();
-
-        await page.getByTestId('domain-dropdown').click();
-        await page.getByTestId('tree-node-All Domains').click();
+        await switchNavbarDomain(page, () => domainOption.click());
+        await clearDomainFromNavbar(page);
 
         await expect(page.getByTestId('domain-dropdown')).toContainText(
           'All Domains'
@@ -772,6 +782,7 @@ test.describe('Domain Global Dropdown', () => {
     } finally {
       await domain.delete(apiContext);
       await afterAction();
+      await pickerDone();
     }
   });
 });

@@ -107,6 +107,7 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import {
   ManageMenu,
@@ -1034,6 +1035,11 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
+          <DomainMismatchAlert
+            className="tw:mx-5"
+            domains={dataProduct.domains}
+            entityId={dataProduct.id}
+          />
           <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-center tw:justify-between">
             <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader

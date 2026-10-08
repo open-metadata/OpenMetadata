@@ -38,6 +38,8 @@ import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -47,6 +49,9 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -590,6 +595,210 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     User updated = patchEntity(user.getId().toString(), user);
 
     assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  // The navbar selection is personal: only the user can change it, so tests set it as that user.
+  private static User patchDefaultDomainAsSelf(User user) {
+    return clientFor(user).users().update(user.getId().toString(), user);
+  }
+
+  // Clears the selection as the user, with the same JSON Patch the navbar sends.
+  private static void clearDefaultDomainAsSelf(User user) {
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch.addObject().put("op", "add").put("path", "/defaultDomain").putNull("value");
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch);
+  }
+
+  // A user whose token resolves back to it (lowercase name matching its email), so tests can act
+  // as that user.
+  private static CreateUser selfLoginUserRequest() {
+    String userName = "navuser" + UUID.randomUUID().toString().substring(0, 8);
+    return new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org");
+  }
+
+  @Test
+  void test_otherUsersCannotChangeTheDefaultDomain(TestNamespace ns) {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("othersdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("someone else's pick"));
+    User user = createEntity(createMinimalRequest(ns));
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+
+    assertThrows(Exception.class, () -> patchEntity(user.getId().toString(), user));
+    assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+  }
+
+  @Test
+  void test_defaultDomainRoundTripsThroughPatch(TestNamespace ns) {
+    // The navbar domain selection is persisted on the user; a PATCH that changes only
+    // defaultDomain must be stored and served back on a fresh read.
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("navbar selection"));
+    User user = createEntity(selfLoginUserRequest());
+    assertNull(user.getDefaultDomain());
+
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    User reread = Users.get(user.getId().toString(), "defaultDomain");
+    assertNotNull(reread.getDefaultDomain(), "defaultDomain must persist through PATCH");
+    assertEquals(domain.getId(), reread.getDefaultDomain().getId());
+    assertEquals(domain.getFullyQualifiedName(), reread.getDefaultDomain().getFullyQualifiedName());
+
+    // Clearing the selection must persist too.
+    clearDefaultDomainAsSelf(reread);
+    assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+  }
+
+  @Test
+  void test_putWithoutDefaultDomainKeepsTheSelection(TestNamespace ns) {
+    // A PUT body (CreateUser) has no defaultDomain, so a PUT must not clear the saved selection.
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("keptdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("navbar selection kept across PUT"));
+    CreateUser create = selfLoginUserRequest();
+    User user = createEntity(create);
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/users", create.withDescription("updated by PUT"), User.class);
+
+    User reread = Users.get(user.getId().toString(), "defaultDomain");
+    assertNotNull(reread.getDefaultDomain(), "a PUT must keep the saved navbar selection");
+    assertEquals(domain.getId(), reread.getDefaultDomain().getId());
+  }
+
+  @Test
+  void test_defaultDomainMustBeARealDomain(TestNamespace ns) {
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(UUID.randomUUID()).withType("domain"));
+    assertThrows(Exception.class, () -> patchDefaultDomainAsSelf(user));
+    assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+  }
+
+  @Test
+  void test_deletingSelectedDomainDoesNotEmptyLists(TestNamespace ns) {
+    // A user whose navbar pick is later deleted must fall back to "no selection", not to
+    // lists scoped to a domain that no longer exists (which would come back empty).
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("doomed"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("will be deleted"));
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+    assertNotNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+
+    SdkClients.adminClient()
+        .domains()
+        .delete(
+            domain.getId().toString(), java.util.Map.of("hardDelete", "true", "recursive", "true"));
+
+    // The stale selection is cleared on read; listing as this user is unfiltered again.
+    assertNull(
+        Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain(),
+        "a deleted domain must not linger as the user's selection");
+  }
+
+  @Test
+  void test_glossaryTermsFollowTheirEffectiveDomain(TestNamespace ns) {
+    // A child's effective domain is its own, else its parent's.
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navTerms"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("navbar pick"));
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("navG"))
+                    .withDescription("glossary in the picked domain")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    GlossaryTerm term =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("inheritsDomain")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("no domain of its own"));
+    Domain otherDomain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navOther"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("another domain"));
+    GlossaryTerm otherTerm =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("ownOtherDomain")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("its own domain overrides the glossary's")
+                    .withDomains(List.of(otherDomain.getFullyQualifiedName())));
+    String userName = "navterms" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String email = userName + "@test.openmetadata.org";
+    User user = createEntity(new CreateUser().withName(userName).withEmail(email));
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.addQueryParam("glossary", glossary.getId().toString());
+    ListResponse<GlossaryTerm> terms =
+        SdkClients.createClient(email, email, new String[] {}).glossaryTerms().list(params);
+
+    assertTrue(
+        terms.getData().stream().anyMatch(t -> t.getId().equals(term.getId())),
+        "a term inheriting the selected domain from its glossary must be listed");
+    assertTrue(
+        terms.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
+        "a term whose own domain is outside the selection must not be listed");
+
+    // The glossary page lists a glossary's terms by its FQN (directChildrenOf), not by id.
+    ListParams byFqn = new ListParams();
+    byFqn.setLimit(100);
+    byFqn.addQueryParam("directChildrenOf", glossary.getFullyQualifiedName());
+    ListResponse<GlossaryTerm> children =
+        SdkClients.createClient(email, email, new String[] {}).glossaryTerms().list(byFqn);
+    assertTrue(
+        children.getData().stream().anyMatch(t -> t.getId().equals(term.getId())),
+        "directChildrenOf must list the term inheriting the selected domain");
+    assertTrue(
+        children.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
+        "directChildrenOf must not list a term whose own domain is outside the selection");
   }
 
   @Test

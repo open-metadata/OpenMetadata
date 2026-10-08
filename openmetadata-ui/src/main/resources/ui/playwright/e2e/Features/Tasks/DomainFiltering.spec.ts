@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
+import { APIRequestContext, Page } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { createNewPage } from '../../../utils/common';
+import {
+  clearPersistedDomain,
+  setPersistedDomain,
+} from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { loginAsIsolatedAdmin } from '../../../utils/isolatedDomainUser';
 import {
   waitForTaskCountResponse,
   waitForTaskListResponse,
@@ -23,39 +29,17 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const DOMAIN_STORAGE_KEY = 'om_domains';
-
-const setActiveDomainInStorage = async (
-  page: Parameters<typeof test>[0]['page'],
+// The navbar pick is saved on the user (defaultDomain) and applied on load, so tests switch
+// domains as a throwaway admin to keep the pick out of parallel tests.
+const switchDomain = async (
+  apiContext: APIRequestContext,
+  page: Page,
   domain?: Domain['responseData']
 ) => {
-  await page.evaluate(
-    ({ storageKey, activeDomain, activeDomainEntityRef }) => {
-      window.localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          state: {
-            activeDomain,
-            activeDomainEntityRef,
-          },
-          version: 0,
-        })
-      );
-    },
-    {
-      storageKey: DOMAIN_STORAGE_KEY,
-      activeDomain: domain?.fullyQualifiedName ?? 'All Domains',
-      activeDomainEntityRef: domain
-        ? {
-            id: domain.id,
-            type: 'domain',
-            name: domain.name,
-            displayName: domain.displayName,
-            fullyQualifiedName: domain.fullyQualifiedName,
-          }
-        : null,
-    }
-  );
+  await (domain
+    ? setPersistedDomain(apiContext, domain.id ?? '')
+    : clearPersistedDomain(apiContext));
+  await page.reload();
 };
 
 test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
@@ -145,70 +129,99 @@ test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
   });
 
   test('switching domain triggers feed API refetch on entity page', async ({
-    page,
+    browser,
   }) => {
-    await tableInDomainA.visitEntityPage(page);
-    await waitForAllLoadersToDisappear(page);
+    const { page, apiContext, afterAction } = await loginAsIsolatedAdmin(
+      browser
+    );
 
-    const activityFeedTab = page.getByTestId('activity_feed');
-    await activityFeedTab.click();
-    await waitForAllLoadersToDisappear(page);
+    try {
+      await tableInDomainA.visitEntityPage(page);
+      await waitForAllLoadersToDisappear(page);
 
-    const taskApiResponse = waitForTaskCountResponse(page);
+      const activityFeedTab = page.getByTestId('activity_feed');
+      await activityFeedTab.click();
+      await waitForAllLoadersToDisappear(page);
 
-    await setActiveDomainInStorage(page, domainA.responseData);
-    await page.reload();
-    const response = await taskApiResponse;
+      const taskApiResponse = waitForTaskCountResponse(page);
 
-    expect(response.status()).toBe(200);
+      await switchDomain(apiContext, page, domainA.responseData);
+      const response = await taskApiResponse;
+
+      expect(response.status()).toBe(200);
+      expect(response.url()).toContain(
+        `domain=${encodeURIComponent(
+          domainA.responseData.fullyQualifiedName ?? ''
+        )}`
+      );
+    } finally {
+      await afterAction();
+    }
   });
 
   test('switching to different domain triggers new feed API call', async ({
-    page,
+    browser,
   }) => {
-    await tableInDomainA.visitEntityPage(page);
-    await waitForAllLoadersToDisappear(page);
+    const { page, apiContext, afterAction } = await loginAsIsolatedAdmin(
+      browser
+    );
 
-    const activityFeedTab = page.getByTestId('activity_feed');
-    await activityFeedTab.click();
-    await waitForAllLoadersToDisappear(page);
+    try {
+      await tableInDomainA.visitEntityPage(page);
+      await waitForAllLoadersToDisappear(page);
 
-    await setActiveDomainInStorage(page, domainA.responseData);
-    await page.reload();
-    await waitForAllLoadersToDisappear(page);
+      const activityFeedTab = page.getByTestId('activity_feed');
+      await activityFeedTab.click();
+      await waitForAllLoadersToDisappear(page);
 
-    const taskApiResponse = waitForTaskCountResponse(page);
+      await switchDomain(apiContext, page, domainA.responseData);
+      await waitForAllLoadersToDisappear(page);
 
-    await setActiveDomainInStorage(page, domainB.responseData);
-    await page.reload();
-    const response = await taskApiResponse;
+      const taskApiResponse = waitForTaskCountResponse(page);
 
-    expect(response.status()).toBe(200);
+      await switchDomain(apiContext, page, domainB.responseData);
+      const response = await taskApiResponse;
+
+      expect(response.status()).toBe(200);
+      expect(response.url()).toContain(
+        `domain=${encodeURIComponent(
+          domainB.responseData.fullyQualifiedName ?? ''
+        )}`
+      );
+    } finally {
+      await afterAction();
+    }
   });
 
   test('selecting All Domains removes domain filter from feed API call', async ({
-    page,
+    browser,
   }) => {
-    await tableInDomainA.visitEntityPage(page);
-    await waitForAllLoadersToDisappear(page);
+    const { page, apiContext, afterAction } = await loginAsIsolatedAdmin(
+      browser
+    );
 
-    const activityFeedTab = page.getByTestId('activity_feed');
-    await activityFeedTab.click();
-    await waitForAllLoadersToDisappear(page);
+    try {
+      await tableInDomainA.visitEntityPage(page);
+      await waitForAllLoadersToDisappear(page);
 
-    await setActiveDomainInStorage(page, domainA.responseData);
-    await page.reload();
-    await waitForAllLoadersToDisappear(page);
+      const activityFeedTab = page.getByTestId('activity_feed');
+      await activityFeedTab.click();
+      await waitForAllLoadersToDisappear(page);
 
-    const taskApiResponse = waitForTaskCountResponse(page);
+      await switchDomain(apiContext, page, domainA.responseData);
+      await waitForAllLoadersToDisappear(page);
 
-    await setActiveDomainInStorage(page);
-    await page.reload();
-    const response = await taskApiResponse;
+      const taskApiResponse = waitForTaskCountResponse(page);
 
-    expect(response.status()).toBe(200);
-    const responseUrl = response.url();
-    expect(responseUrl).not.toContain('domain=');
+      await switchDomain(apiContext, page);
+      const response = await taskApiResponse;
+
+      expect(response.status()).toBe(200);
+      const responseUrl = response.url();
+      expect(responseUrl).not.toContain('domain=');
+    } finally {
+      await afterAction();
+    }
   });
 });
 
@@ -339,23 +352,30 @@ test.describe('Domain Filtering - Entity Page Activity Feed', () => {
   });
 
   test('entity page activity feed refetches when domain is switched', async ({
-    page,
+    browser,
   }) => {
-    await tableInDomain.visitEntityPage(page);
-    await waitForAllLoadersToDisappear(page);
+    const { page, apiContext, afterAction } = await loginAsIsolatedAdmin(
+      browser
+    );
 
-    const activityFeedTab = page.getByTestId('activity_feed');
-    await activityFeedTab.click();
-    await waitForAllLoadersToDisappear(page);
+    try {
+      await tableInDomain.visitEntityPage(page);
+      await waitForAllLoadersToDisappear(page);
 
-    // Switch domain and verify feeds API is called
-    const taskApiResponse = waitForTaskCountResponse(page);
+      const activityFeedTab = page.getByTestId('activity_feed');
+      await activityFeedTab.click();
+      await waitForAllLoadersToDisappear(page);
 
-    await setActiveDomainInStorage(page, domain.responseData);
-    await page.reload();
-    const response = await taskApiResponse;
+      // Switch domain and verify feeds API is called
+      const taskApiResponse = waitForTaskCountResponse(page);
 
-    expect(response.status()).toBe(200);
+      await switchDomain(apiContext, page, domain.responseData);
+      const response = await taskApiResponse;
+
+      expect(response.status()).toBe(200);
+    } finally {
+      await afterAction();
+    }
   });
 
   test('entity page shows task cards for entity in selected domain', async ({

@@ -85,8 +85,10 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
             new HashSet<>(),
             false,
             null,
-            activePersona);
+            activePersona,
+            ActiveDomainContext.resolve(catalogPrincipal.getName(), false));
     requestContext.setSecurityContext(catalogSecurityContext);
     ActivePersonaContext.setActivePersona(activePersona);
+    ActiveDomainContext.setActiveDomain(catalogSecurityContext.activeDomain());
   }
 }

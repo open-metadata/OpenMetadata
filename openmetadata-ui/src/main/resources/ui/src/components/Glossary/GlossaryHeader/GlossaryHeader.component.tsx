@@ -70,6 +70,7 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import {
   ManageMenu,
   ManageMenuItem,
@@ -802,6 +803,13 @@ const GlossaryHeader = ({
   return (
     <>
       {!isAiMode && <div className="tw:mb-3">{breadcrumbEl}</div>}
+      {!isVersionView && selectedData && (
+        <DomainMismatchAlert
+          className="tw:mb-3"
+          domains={selectedData.domains}
+          entityId={selectedData.id}
+        />
+      )}
       <PageHeader
         actions={
           <GlossaryHeaderActions

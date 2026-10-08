@@ -200,7 +200,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
   static final String FIELDS =
-      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences,extension";
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,defaultDomain,personaPreferences,extension";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -1129,6 +1129,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         continue;
       }
       String path = patchOpObject.getString("path");
+      if (path.startsWith("/defaultDomain") && !isSelf) {
+        throw new AuthorizationException("Users can only update their own default domain");
+      }
       if (isPrivilegedUserPatchPath(path)) {
         authorizer.authorizeAdmin(securityContext);
         continue;

@@ -201,4 +201,22 @@ describe('searchAPI tests', () => {
       })
     );
   });
+
+  it('rawSearchQuery marks a picker search to skip the navbar domain filter', async () => {
+    const get = jest.fn().mockResolvedValue({ data: mockTableSearchResponse });
+    jest.mock('./axiosClient', () => ({ get }));
+    const { SKIP_DOMAIN_FILTER_HEADER } = require('../constants/constants');
+    const { rawSearchQuery } = require('./searchAPI');
+
+    await rawSearchQuery({
+      searchIndex: SearchIndex.TABLE,
+      skipDomainFilter: true,
+    });
+    await rawSearchQuery({ searchIndex: SearchIndex.TABLE });
+
+    expect(get.mock.calls[0][1].headers).toEqual({
+      [SKIP_DOMAIN_FILTER_HEADER]: 'true',
+    });
+    expect(get.mock.calls[1][1].headers).toBeUndefined();
+  });
 });

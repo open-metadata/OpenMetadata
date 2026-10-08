@@ -51,6 +51,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -70,6 +72,7 @@ import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -117,6 +120,7 @@ class JwtFilterTest {
   @AfterEach
   void clearRequestContext() {
     ActivePersonaContext.clear();
+    ActiveDomainContext.clear();
   }
 
   @Test
@@ -205,7 +209,12 @@ class JwtFilterTest {
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
     when(context.getHeaderString(JwtFilter.ACTIVE_PERSONA_HEADER)).thenReturn(activePersona);
 
-    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
+    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class);
+        MockedStatic<SubjectCache> subjectCache =
+            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("sam"))
+          .thenReturn(new User().withName("sam"));
       jwtFilter.filter(context);
       entity.verifyNoInteractions();
     }
@@ -217,6 +226,86 @@ class JwtFilterTest {
         (CatalogSecurityContext) securityContextArgument.getValue();
     assertEquals(activePersona, catalogSecurityContext.activePersona());
     assertEquals(activePersona, ActivePersonaContext.getActivePersona());
+  }
+
+  @Test
+  void testActiveDomainIsResolvedFromTheCachedUser() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    EntityReference selected =
+        new EntityReference().withId(UUID.randomUUID()).withType("domain").withName("Sales");
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<SubjectCache> subjectCache =
+        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("sam"))
+          .thenReturn(new User().withName("sam").withDefaultDomain(selected));
+      jwtFilter.filter(context);
+    }
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContextArgument.capture());
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) securityContextArgument.getValue();
+    assertEquals(selected, catalogSecurityContext.activeDomain());
+    assertEquals(selected, ActiveDomainContext.getActiveDomain());
+  }
+
+  @Test
+  void testPersonalAccessTokensCarryNoActiveDomain() {
+    // The navbar selection is a UI preference: scripts and SDK calls using a personal access token
+    // list without it.
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<UserTokenCache> userTokenCache =
+            org.mockito.Mockito.mockStatic(UserTokenCache.class);
+        MockedStatic<SubjectCache> subjectCache =
+            org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+      userTokenCache.when(() -> UserTokenCache.isTokenValid("sam", jwt)).thenReturn(true);
+      subjectCache
+          .when(() -> SubjectCache.getUserContext("sam"))
+          .thenReturn(
+              new User()
+                  .withName("sam")
+                  .withDefaultDomain(
+                      new EntityReference().withId(UUID.randomUUID()).withType("domain")));
+      jwtFilter.filter(context);
+    }
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContextArgument.capture());
+    assertNull(((CatalogSecurityContext) securityContextArgument.getValue()).activeDomain());
+    assertNull(ActiveDomainContext.getActiveDomain());
+  }
+
+  @Test
+  void testBotsCarryNoActiveDomain() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "ingestion-bot")
+            .withClaim(JwtFilter.BOT_CLAIM, true)
+            .sign(algorithm);
+
+    try (MockedStatic<SubjectCache> subjectCache =
+        org.mockito.Mockito.mockStatic(SubjectCache.class)) {
+      CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(jwt);
+
+      assertNull(securityContext.activeDomain());
+      subjectCache.verifyNoInteractions();
+    }
   }
 
   @Test

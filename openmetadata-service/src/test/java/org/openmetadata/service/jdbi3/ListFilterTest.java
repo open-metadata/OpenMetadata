@@ -184,6 +184,73 @@ class ListFilterTest {
   }
 
   @Test
+  void getDomainCondition_appliedForDataAssetEntityType() {
+    // A data-asset list is scoped to the selected domain (navbar global domain filter).
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("entityType", "table");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "data-asset list should be scoped by the selected domain");
+  }
+
+  @Test
+  void getDomainCondition_matchesEveryGivenDomainId() {
+    // The navbar filter passes the selected domain and its sub-domains as resolved ids.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam(
+        "domainId", "11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains(
+            "fromId IN ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222')"));
+    assertFalse(condition.contains("domain_entity"));
+  }
+
+  @Test
+  void getDomainCondition_bindsAnIdThatIsNotAUuid() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "x') OR ('1'='1");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(condition.contains("fromId IN (:domainId_0)"));
+    assertEquals("x) OR (1=1", filter.getQueryParams().get("domainId_0"));
+  }
+
+  @Test
+  void getDomainCondition_restrictsMembershipRowsToTheListedType() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table");
+    assertTrue(
+        filter.getCondition("table_entity").contains("entity_relationship.toEntity = 'table'"));
+
+    filter.addQueryParam("domainAccessControl", "true");
+    String accessCondition = filter.getCondition("table_entity");
+    assertTrue(accessCondition.contains("er.toEntity = 'table'"));
+    assertTrue(accessCondition.contains("er2.toEntity = 'table'"));
+  }
+
+  @Test
+  void getDomainCondition_ignoresAnEntityTypeThatIsNotAPlainName() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table' OR '1'='1");
+    assertFalse(filter.getCondition("table_entity").contains("toEntity"));
+  }
+
+  @Test
+  void getDomainCondition_appliedWhenEntityTypeUnset_backwardCompatible() {
+    // Existing ?domain= callers do not set entityType; that path must keep working unchanged.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "explicit ?domain= without entityType must still apply (backward-compatible)");
+  }
+
+  @Test
   void getAssignee_dottedUsername_hashesNameAsSingleFqnComponent() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("assignee", "john.doe");

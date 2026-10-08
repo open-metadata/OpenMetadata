@@ -110,6 +110,7 @@ export const fetchDataProductsElasticSearch = async (
   const queryFilter = buildDomainFilter(domainFQNs);
 
   const res = await searchQuery({
+    skipDomainFilter: true,
     query: searchText,
     filters: '',
     pageNumber: page,
