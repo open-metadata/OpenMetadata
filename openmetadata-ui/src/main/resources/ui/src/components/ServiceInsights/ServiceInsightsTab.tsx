@@ -47,6 +47,10 @@ import {
   getFormattedAgentsListFromAgentsLiveInfo,
 } from '../../utils/AgentsStatusWidgetUtils';
 import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../../utils/AsyncUtils';
+import {
   getCurrentDayStartGMTinMillis,
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
@@ -239,23 +243,22 @@ const ServiceInsightsTab = ({
         const startTs = workflowStatesData?.mainInstanceState?.startedAt
           ? workflowStatesData.mainInstanceState.startedAt
           : getDayAgoStartGMTinMillis(6);
-        const recentRunStatusesPromise = collateAIagentsList.map((automation) =>
-          getAiAutomationRuns(automation.id, startTs, endTs)
+        // An agent whose runs fail to load shows no recent runs.
+        const statusData = await runWithConcurrencyLimit(
+          collateAIagentsList,
+          BULK_ACTION_CONCURRENCY,
+          (automation) =>
+            getAiAutomationRuns(automation.id, startTs, endTs).catch(() => [])
         );
 
-        const statusData = await Promise.allSettled(recentRunStatusesPromise);
-
-        recentRunStatuses = statusData.reduce((acc, cv, index) => {
+        recentRunStatuses = statusData.reduce((acc, runs, index) => {
           const automation = collateAIagentsList[index];
           const template =
             getAutomationTemplate(automation.name) ?? automation.name;
 
           return {
             ...acc,
-            [template]:
-              cv.status === 'fulfilled'
-                ? cv.value.map(automationRunToAppRunRecord)
-                : [],
+            [template]: (runs ?? []).map(automationRunToAppRunRecord),
           };
         }, {});
       }

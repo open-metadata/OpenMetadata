@@ -35,7 +35,7 @@ import { Paging } from '../../../../../generated/type/paging';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import { useTableFilters } from '../../../../../hooks/useTableFilters';
 import {
-  deployIngestionPipelineById,
+  deployIngestionPipelines,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
 import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServicePureUtils';
@@ -133,34 +133,37 @@ export const IngestionPipelineList = ({
   );
 
   const handleBulkRedeploy = useCallback(async () => {
-    const selectedPipelines =
-      pipelines?.filter(
-        (p) =>
-          p.fullyQualifiedName && selectedRowKeys.includes(p.fullyQualifiedName)
+    const pipelineIds =
+      pipelines?.flatMap((p) =>
+        p.id &&
+        p.fullyQualifiedName &&
+        selectedRowKeys.includes(p.fullyQualifiedName)
+          ? [p.id]
+          : []
       ) ?? [];
-
-    const promises = (selectedPipelines ?? [])?.map((pipeline) =>
-      deployIngestionPipelineById(pipeline.id ?? '')
-    );
+    const errorMessage = t('server.ingestion-workflow-operation-error', {
+      operation: 'updating',
+      displayName: '',
+    });
 
     setDeploying(true);
 
     try {
-      await Promise.all(promises);
+      const failed = (await deployIngestionPipelines(pipelineIds)).find(
+        ({ code }) => code !== 200
+      );
 
-      showSuccessToast(
-        `${t('label.pipeline-plural')} ${t('label.re-deploy')} ${capitalize(
-          t('label.successfully-lowercase')
-        )}`
-      );
+      if (failed) {
+        showErrorToast(failed.reason ?? errorMessage);
+      } else {
+        showSuccessToast(
+          `${t('label.pipeline-plural')} ${t('label.re-deploy')} ${capitalize(
+            t('label.successfully-lowercase')
+          )}`
+        );
+      }
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.ingestion-workflow-operation-error', {
-          operation: 'updating',
-          displayName: '',
-        })
-      );
+      showErrorToast(error as AxiosError, errorMessage);
     } finally {
       setPipelineTypeFilter(undefined);
       setSelectedRowKeys([]);

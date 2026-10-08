@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components/charts';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, round } from 'lodash';
+import { isEmpty, round } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -31,18 +31,9 @@ import {
 } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
-import {
-  Kpi,
-  KpiResult,
-  KpiTargetType,
-} from '../../../../generated/dataInsight/kpi/kpi';
-import { UIKpiResult } from '../../../../interface/data-insight.interface';
+import { Kpi, KpiTargetType } from '../../../../generated/dataInsight/kpi/kpi';
 import { DataInsightCustomChartResult } from '../../../../rest/DataInsightAPI';
-import {
-  getLatestKpiResult,
-  getListKpiResult,
-  getListKPIs,
-} from '../../../../rest/KpiAPI';
+import { getListKpiResult, getListKPIs } from '../../../../rest/KpiAPI';
 import {
   getDataInsightTooltip,
   HIDDEN_CHART_LEGEND,
@@ -54,6 +45,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import {
   buildKpiChartRows,
+  getKpiLatestResults,
   getYAxisTicks,
   KpiChartRow,
 } from '../../../../utils/KPI/KPIUtils';
@@ -81,8 +73,11 @@ const KPIWidget = ({
   const [kpiResults, setKpiResults] = useState<
     Record<string, DataInsightCustomChartResult['results']>
   >({});
-  const [kpiLatestResults, setKpiLatestResults] =
-    useState<Record<string, UIKpiResult>>();
+  // The list is fetched with its latest results (the `kpiResult` field), so no per-KPI request.
+  const kpiLatestResults = useMemo(
+    () => getKpiLatestResults(kpiList),
+    [kpiList]
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const widgetData = useMemo(() => {
@@ -130,55 +125,11 @@ const KPIWidget = ({
     }
   };
 
-  const fetchKpiLatestResults = async () => {
-    setIsLoading(true);
-    try {
-      const promises = kpiList.map((kpi) =>
-        getLatestKpiResult(kpi.fullyQualifiedName ?? '')
-      );
-      const responses = await Promise.allSettled(promises);
-
-      const latestResults = responses.reduce((previous, curr) => {
-        if (curr.status === 'fulfilled') {
-          const resultValue: KpiResult = curr.value;
-          const kpiName = resultValue.kpiFqn ?? '';
-
-          // get the current kpi
-          const kpi = kpiList.find((k) => k.fullyQualifiedName === kpiName);
-
-          // get the kpiTarget
-          const kpiTarget = kpi?.targetValue;
-
-          if (!isUndefined(kpi) && !isUndefined(kpiTarget)) {
-            return {
-              ...previous,
-              [kpiName]: {
-                ...resultValue,
-                target: kpiTarget,
-                metricType: kpi?.metricType,
-                startDate: kpi?.startDate,
-                endDate: kpi?.endDate,
-                displayName: kpi.displayName ?? kpiName,
-              },
-            };
-          }
-        }
-
-        return previous;
-      }, {} as Record<string, UIKpiResult>);
-      setKpiLatestResults(latestResults);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const fetchKpiList = async () => {
     try {
       setIsKPIListLoading(true);
       const response = await getListKPIs({
-        fields: TabSpecificField.DATA_INSIGHT_CHART,
+        fields: `${TabSpecificField.DATA_INSIGHT_CHART},${TabSpecificField.KPI_RESULT}`,
       });
       setKpiList(response.data);
       if (response?.data?.length) {
@@ -289,13 +240,11 @@ const KPIWidget = ({
           />
         </Col>
 
-        {!isUndefined(kpiLatestResults) &&
-          !isEmpty(kpiLatestResults) &&
-          isFullSizeWidget && (
-            <Col className="h-full" span={8}>
-              <KPILegend isFullSize kpiLatestResultsRecord={kpiLatestResults} />
-            </Col>
-          )}
+        {!isEmpty(kpiLatestResults) && isFullSizeWidget && (
+          <Col className="h-full" span={8}>
+            <KPILegend isFullSize kpiLatestResultsRecord={kpiLatestResults} />
+          </Col>
+        )}
       </Row>
     );
   }, [
@@ -317,13 +266,11 @@ const KPIWidget = ({
 
   useEffect(() => {
     setKpiResults({});
-    setKpiLatestResults(undefined);
   }, [selectedDays]);
 
   useEffect(() => {
     if (kpiList.length) {
       fetchKpiResults();
-      fetchKpiLatestResults();
     }
   }, [kpiList, selectedDays]);
 

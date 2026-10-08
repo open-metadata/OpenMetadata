@@ -12,7 +12,7 @@
  */
 
 import { isAxiosError } from 'axios';
-import { isEqual } from 'lodash';
+import { chunk, isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -38,6 +38,11 @@ import {
   checkRdfEnabled,
   downloadGlossaryOntology,
 } from '../../../rest/rdfAPI';
+import {
+  BULK_ACTION_CONCURRENCY,
+  fetchAllPages,
+  runWithConcurrencyLimit,
+} from '../../../utils/AsyncUtils';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
@@ -156,11 +161,10 @@ async function fetchAllTermsForGlossary(
   glossary: Glossary
 ): Promise<GlossaryTerm[]> {
   const maxRenderedTerms = 1500;
-  const terms: GlossaryTerm[] = [];
-  let after: string | undefined;
-  do {
-    try {
-      const response = await getGlossaryTerms({
+  const { data: terms } = await fetchAllPages(
+    // A failed page ends the walk; the terms read so far still render.
+    (after) =>
+      getGlossaryTerms({
         glossary: glossary.id,
         fields: [
           TabSpecificField.RELATED_TERMS,
@@ -170,13 +174,9 @@ async function fetchAllTermsForGlossary(
         ],
         limit: ONTOLOGY_TERMS_PAGE_SIZE,
         after,
-      });
-      terms.push(...response.data);
-      after = response.paging?.after;
-    } catch {
-      break;
-    }
-  } while (after && terms.length < maxRenderedTerms);
+      }).catch(() => ({ data: [] })),
+    { shouldStop: (collected) => collected.length >= maxRenderedTerms }
+  );
 
   return terms.slice(0, maxRenderedTerms);
 }
@@ -185,26 +185,24 @@ async function fetchAllGlossariesPaginated(): Promise<{
   glossaries: Glossary[];
   complete: boolean;
 }> {
-  const collected: Glossary[] = [];
-  let afterCursor: string | undefined;
-  let pages = 0;
   const MAX_SAFE_PAGES = 500;
-  do {
-    try {
-      const response = await getGlossariesList({
+  let complete = true;
+  const { data: glossaries } = await fetchAllPages(
+    (after) =>
+      getGlossariesList({
         fields: 'owners,tags,termCount',
         limit: 100,
-        after: afterCursor,
-      });
-      collected.push(...response.data);
-      afterCursor = response.paging?.after;
-      pages += 1;
-    } catch {
-      return { glossaries: collected, complete: false };
-    }
-  } while (afterCursor && pages < MAX_SAFE_PAGES);
+        after,
+      }).catch(() => {
+        // A failed page ends the walk; the glossaries read so far are kept.
+        complete = false;
 
-  return { glossaries: collected, complete: true };
+        return { data: [] };
+      }),
+    { maxPages: MAX_SAFE_PAGES }
+  );
+
+  return { glossaries, complete };
 }
 
 function collectMissingRelatedTermIds(
@@ -266,28 +264,32 @@ async function resolveRelatedTerms(terms: GlossaryTerm[]): Promise<void> {
       return;
     }
 
-    for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
-      const batch = missingIds.slice(i, i + BATCH_SIZE);
-      try {
-        const fetched = await getGlossaryTermsByIds(batch, {
+    const fetchedBatches = await runWithConcurrencyLimit(
+      chunk(missingIds, BATCH_SIZE),
+      BULK_ACTION_CONCURRENCY,
+      (batch) =>
+        getGlossaryTermsByIds(batch, {
           fields: [
             TabSpecificField.RELATED_TERMS,
             TabSpecificField.CHILDREN,
             TabSpecificField.PARENT,
             TabSpecificField.OWNERS,
           ],
-        });
-        fetched.forEach((term) => {
-          terms.push(term);
-          loadedIds.add(term.id ?? '');
-        });
-      } catch {
-        // This batch is dead for the rest of the run. Remember the Ids so
-        // collectMissingRelatedTermIds doesn't hand them back next depth
-        // pass, but let the other batches in this pass still execute.
-        batch.forEach((id) => skippedIds.add(id));
-      }
-    }
+        }).catch(() => {
+          // This batch is dead for the rest of the run. Remember the Ids so
+          // collectMissingRelatedTermIds doesn't hand them back next depth
+          // pass, but let the other batches in this pass still execute.
+          batch.forEach((id) => skippedIds.add(id));
+
+          return [];
+        })
+    );
+    fetchedBatches.forEach((fetched) =>
+      fetched?.forEach((term) => {
+        terms.push(term);
+        loadedIds.add(term.id ?? '');
+      })
+    );
   }
 }
 
@@ -545,17 +547,14 @@ export function useOntologyExplorer({
 
         const mergedResponse: Record<string, number> = {};
         if (glossaryFqnsToFetch.length > 0) {
-          const { length } = glossaryFqnsToFetch;
-          const batchSize = GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY;
-          for (let i = 0; i < length; i += batchSize) {
-            const batch = glossaryFqnsToFetch.slice(i, i + batchSize);
-            const responses = await Promise.all(
-              batch.map((fqn) => getGlossaryTermsAssetCounts(fqn))
-            );
-            responses.forEach((response) => {
-              Object.assign(mergedResponse, response);
-            });
-          }
+          const responses = await runWithConcurrencyLimit(
+            glossaryFqnsToFetch,
+            GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY,
+            (fqn) => getGlossaryTermsAssetCounts(fqn)
+          );
+          responses.forEach((response) => {
+            Object.assign(mergedResponse, response);
+          });
         } else {
           Object.assign(mergedResponse, await getGlossaryTermsAssetCounts());
         }

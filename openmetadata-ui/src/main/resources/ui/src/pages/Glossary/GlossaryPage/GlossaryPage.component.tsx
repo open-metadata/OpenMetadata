@@ -61,7 +61,6 @@ import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { Paging } from '../../../generated/type/paging';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useElementInView } from '../../../hooks/useElementInView';
@@ -80,6 +79,7 @@ import {
   glossaryTermQueryKey,
   GLOSSARY_TERM_DEFAULT_FIELDS,
 } from '../../../rest/queries/glossaryTermQuery';
+import { fetchAllPages } from '../../../utils/AsyncUtils';
 import { getEntityMissingMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
@@ -174,35 +174,27 @@ const GlossaryPage = () => {
   const fetchGlossaryList = useCallback(
     async (startAfter?: string, targetFqn?: string) => {
       try {
-        let allGlossaries: Glossary[] = [];
-        // `startAfter` lets a caller force a page-1 refresh by passing `''`,
-        // bypassing a stale `paging.after` captured in this callback's deps.
-        let nextPage = startAfter ?? paging.after;
         const lookupFqn = targetFqn ?? glossaryFqn;
-        let isGlossaryFound = false;
-        let settledPaging: Paging | undefined;
         setIsLoading(true);
 
-        do {
-          const { data, paging: glossaryPaging } = await getGlossariesList({
-            fields: GLOSSARY_LIST_FIELDS,
-            limit: PAGE_SIZE_LARGE,
-            ...(nextPage && { after: nextPage }),
-          });
-
-          allGlossaries = [...allGlossaries, ...data];
-
-          if (lookupFqn) {
-            isGlossaryFound = allGlossaries.some(
-              (item) => item.fullyQualifiedName === lookupFqn
-            );
-          } else {
-            isGlossaryFound = true; // limit to first 50 records only if no glossaryFqn
-          }
-
-          nextPage = glossaryPaging?.after;
-          settledPaging = glossaryPaging;
-        } while (nextPage && !isGlossaryFound);
+        const { data: allGlossaries, paging: settledPaging } =
+          await fetchAllPages(
+            (after) =>
+              getGlossariesList({
+                fields: GLOSSARY_LIST_FIELDS,
+                limit: PAGE_SIZE_LARGE,
+                ...(after && { after }),
+              }),
+            {
+              // `startAfter` lets a caller force a page-1 refresh by passing `''`,
+              // bypassing a stale `paging.after` captured in this callback's deps.
+              after: startAfter ?? paging.after,
+              // Without a glossary to find, only the first page is needed.
+              shouldStop: (loaded) =>
+                !lookupFqn ||
+                loaded.some((item) => item.fullyQualifiedName === lookupFqn),
+            }
+          );
 
         setGlossaries(allGlossaries);
 

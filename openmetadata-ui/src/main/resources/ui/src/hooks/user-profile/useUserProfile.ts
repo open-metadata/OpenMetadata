@@ -25,7 +25,7 @@ import {
 import { getUserWithImage } from '../../utils/UserDataUtils';
 import { useApplicationStore } from '../useApplicationStore';
 
-let userProfilePicsLoading: string[] = [];
+const pendingProfileFetches = new Map<string, Promise<void>>();
 
 const isCacheableErrorStatus = (status?: number): boolean =>
   status === ClientErrors.NOT_FOUND ||
@@ -59,6 +59,40 @@ const handleProfileFetchError = (
   });
 };
 
+const loadUserProfilePic = async (name: string) => {
+  const { updateUserProfilePics } = useApplicationStore.getState();
+  try {
+    const user = await getUserByName(name, {
+      fields: TabSpecificField.PROFILE,
+    });
+
+    updateUserProfilePics({ id: name, user: getUserWithImage(user) });
+  } catch (error) {
+    handleProfileFetchError(error, name, name, updateUserProfilePics);
+  } finally {
+    pendingProfileFetches.delete(name);
+  }
+};
+
+/**
+ * Loads a user's profile into the shared `userProfilePics` cache. A cached name costs no
+ * request and a name already being fetched reuses that request, so callers can ask for the
+ * same users repeatedly (e.g. on every keystroke of a mention search).
+ */
+export const fetchUserProfilePic = (name: string): Promise<void> => {
+  if (useApplicationStore.getState().userProfilePics[name]) {
+    return Promise.resolve();
+  }
+
+  let pending = pendingProfileFetches.get(name);
+  if (!pending) {
+    pending = loadUserProfilePic(name);
+    pendingProfileFetches.set(name, pending);
+  }
+
+  return pending;
+};
+
 export const useUserProfile = ({
   permission,
   name,
@@ -70,10 +104,6 @@ export const useUserProfile = ({
 }): [string | null, boolean, User | undefined] => {
   const cacheKey = name;
   const user = useApplicationStore((state) => state.userProfilePics[cacheKey]);
-
-  const updateUserProfilePics = useApplicationStore(
-    (state) => state.updateUserProfilePics
-  );
 
   const [profilePic, setProfilePic] = useState(
     getImageWithResolutionAndFallback(
@@ -95,39 +125,14 @@ export const useUserProfile = ({
   }, [user, profilePic]);
 
   const fetchProfileIfRequired = useCallback(async () => {
-    const currentUserProfilePics =
-      useApplicationStore.getState().userProfilePics;
-
-    if (isTeam || currentUserProfilePics[cacheKey]) {
-      isTeam && setProfilePic(IconTeams);
+    if (isTeam) {
+      setProfilePic(IconTeams);
 
       return;
     }
 
-    if (userProfilePicsLoading.includes(cacheKey)) {
-      return;
-    }
-
-    userProfilePicsLoading = [...userProfilePicsLoading, cacheKey];
-
-    try {
-      let user = await getUserByName(name, {
-        fields: TabSpecificField.PROFILE,
-      });
-      user = getUserWithImage(user);
-
-      updateUserProfilePics({
-        id: cacheKey,
-        user,
-      });
-    } catch (error) {
-      handleProfileFetchError(error, cacheKey, name, updateUserProfilePics);
-    } finally {
-      userProfilePicsLoading = userProfilePicsLoading.filter(
-        (p) => p !== cacheKey
-      );
-    }
-  }, [cacheKey, name, isTeam, updateUserProfilePics]);
+    await fetchUserProfilePic(name);
+  }, [name, isTeam]);
 
   useEffect(() => {
     if (!permission) {
@@ -144,7 +149,7 @@ export const useUserProfile = ({
   return [
     profilePic,
     Boolean(
-      !isTeam && isUndefined(user) && userProfilePicsLoading.includes(cacheKey)
+      !isTeam && isUndefined(user) && pendingProfileFetches.has(cacheKey)
     ),
     user,
   ];

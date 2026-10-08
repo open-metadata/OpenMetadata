@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { chunk } from 'lodash';
 import { PagingResponse } from 'Models';
 import { PAGE_SIZE_MEDIUM } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
@@ -37,6 +38,10 @@ import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
 import { CSVExportResponse } from '../interface/entity/csv.interface';
 import { VotingDataProps } from '../interface/entity/vote.interface';
 import { MoveGlossaryTermWebsocketResponse } from '../interface/governance/glossary.interface';
+import {
+  BULK_ACTION_CONCURRENCY,
+  runWithConcurrencyLimit,
+} from '../utils/AsyncUtils';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
@@ -139,13 +144,10 @@ export const getGlossaryTermsByIds = async (
     return [];
   }
 
-  const batches: string[][] = [];
-  for (let i = 0; i < ids.length; i += GLOSSARY_TERMS_BY_IDS_BATCH_SIZE) {
-    batches.push(ids.slice(i, i + GLOSSARY_TERMS_BY_IDS_BATCH_SIZE));
-  }
-
-  const responses = await Promise.all(
-    batches.map((batch) =>
+  const responses = await runWithConcurrencyLimit(
+    chunk(ids, GLOSSARY_TERMS_BY_IDS_BATCH_SIZE),
+    BULK_ACTION_CONCURRENCY,
+    (batch) =>
       APIClient.get<GlossaryTerm[]>('/glossaryTerms/byIds', {
         signal,
         params: {
@@ -153,10 +155,9 @@ export const getGlossaryTermsByIds = async (
           ids: batch.join(','),
         },
       })
-    )
   );
 
-  return responses.flatMap((response) => response.data);
+  return responses.flatMap((response) => response?.data ?? []);
 };
 
 export const getGlossaryTermByFQN = async (fqn = '', params?: ListParams) => {

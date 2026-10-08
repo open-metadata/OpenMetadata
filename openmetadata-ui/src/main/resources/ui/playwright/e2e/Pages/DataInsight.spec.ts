@@ -51,6 +51,18 @@ const navigateToDataInsightPage = async (page: Page) => {
   await descriptionChartPromise;
 };
 
+// Each KPI's latest result arrives with the KPI list (`fields=…kpiResult`); there is no
+// per-KPI latest-result request to wait on.
+const waitForKpiListWithResults = (page: Page) =>
+  page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname === '/api/v1/kpi' &&
+      (url.searchParams.get('fields') ?? '').includes('kpiResult')
+    );
+  });
+
 test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   test.beforeAll(async ({ browser }) => {
     createdKpis.length = 0;
@@ -245,11 +257,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
-    const latestKPIResponse = page.waitForResponse(
-      `/api/v1/kpi/${
-        getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
-      }/latestKpiResult`
-    );
+    const latestKPIResponse = waitForKpiListWithResults(page);
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
@@ -278,11 +286,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
-    const latestKPIResponse = page.waitForResponse(
-      `/api/v1/kpi/${
-        getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
-      }/latestKpiResult`
-    );
+    const latestKPIResponse = waitForKpiListWithResults(page);
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
@@ -315,11 +319,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
-    const latestKPIResponse = page.waitForResponse(
-      `/api/v1/kpi/${
-        getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
-      }/latestKpiResult`
-    );
+    const latestKPIResponse = waitForKpiListWithResults(page);
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
@@ -341,11 +341,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
-    const latestKPIResponse = page.waitForResponse(
-      `/api/v1/kpi/${
-        getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
-      }/latestKpiResult`
-    );
+    const latestKPIResponse = waitForKpiListWithResults(page);
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;

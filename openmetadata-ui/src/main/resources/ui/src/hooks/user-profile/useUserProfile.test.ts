@@ -13,7 +13,7 @@
 import { waitFor } from '@testing-library/react';
 import { renderHook } from '@testing-library/react-hooks';
 import { getUserByName } from '../../rest/userAPI';
-import { useUserProfile } from './useUserProfile';
+import { fetchUserProfilePic, useUserProfile } from './useUserProfile';
 
 jest.mock('../useApplicationStore', () => {
   const mockUpdateUserProfilePics = jest.fn();
@@ -140,5 +140,42 @@ describe('useUserProfile hook', () => {
         },
       })
     );
+  });
+});
+
+describe('fetchUserProfilePic', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('does not request a user that is already cached', async () => {
+    await fetchUserProfilePic('userJohn');
+
+    expect(getUserByName).not.toHaveBeenCalled();
+  });
+
+  it('requests a user once while that request is in flight', async () => {
+    (getUserByName as jest.Mock).mockResolvedValueOnce({
+      name: 'alice',
+      profile: {},
+    });
+
+    await Promise.all([
+      fetchUserProfilePic('alice'),
+      fetchUserProfilePic('alice'),
+    ]);
+
+    expect(getUserByName).toHaveBeenCalledTimes(1);
+    expect(
+      (globalThis as Record<string, unknown>).__mockUpdateUserProfilePics
+    ).toHaveBeenCalledWith(expect.objectContaining({ id: 'alice' }));
+  });
+
+  it('settles without throwing when the request fails', async () => {
+    (getUserByName as jest.Mock).mockRejectedValueOnce({
+      response: { status: 404 },
+    });
+
+    await expect(fetchUserProfilePic('missing')).resolves.toBeUndefined();
   });
 });

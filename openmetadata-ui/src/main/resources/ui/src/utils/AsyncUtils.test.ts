@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { runWithConcurrencyLimit } from './AsyncUtils';
+import { fetchAllPages, runWithConcurrencyLimit } from './AsyncUtils';
 
 interface Deferred {
   promise: Promise<void>;
@@ -134,5 +134,76 @@ describe('runWithConcurrencyLimit', () => {
 
     expect(results).toEqual([]);
     expect(worker).not.toHaveBeenCalled();
+  });
+});
+
+describe('fetchAllPages', () => {
+  // Three pages chained by cursor: undefined -> 'p2' -> 'p3' -> end.
+  const pages: Record<
+    string,
+    { data: number[]; paging: { after?: string; total: number } }
+  > = {
+    start: { data: [1, 2], paging: { after: 'p2', total: 5 } },
+    p2: { data: [3, 4], paging: { after: 'p3', total: 5 } },
+    p3: { data: [5], paging: { total: 5 } },
+  };
+  const fetchPage = jest.fn(async (after?: string) => pages[after ?? 'start']);
+
+  beforeEach(() => fetchPage.mockClear());
+
+  it('follows the cursor until it runs out and returns the last paging', async () => {
+    const result = await fetchAllPages(fetchPage);
+
+    expect(fetchPage.mock.calls).toEqual([[undefined], ['p2'], ['p3']]);
+    expect(result).toEqual({ data: [1, 2, 3, 4, 5], paging: pages.p3.paging });
+  });
+
+  it('resumes from the given cursor', async () => {
+    const result = await fetchAllPages(fetchPage, { after: 'p2' });
+
+    expect(result.data).toEqual([3, 4, 5]);
+  });
+
+  it('stops after maxPages', async () => {
+    const result = await fetchAllPages(fetchPage, { maxPages: 2 });
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ data: [1, 2, 3, 4], paging: pages.p2.paging });
+  });
+
+  it('stops once shouldStop is satisfied by the items collected so far', async () => {
+    const result = await fetchAllPages(fetchPage, {
+      shouldStop: (collected) => collected.includes(2),
+    });
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    expect(result.data).toEqual([1, 2]);
+  });
+
+  it('reads no further page once the signal aborts', async () => {
+    const controller = new AbortController();
+    const result = await fetchAllPages(
+      async (after?: string) => {
+        controller.abort();
+
+        return pages[after ?? 'start'];
+      },
+      { signal: controller.signal }
+    );
+
+    expect(result.data).toEqual([1, 2]);
+  });
+
+  it('rejects when a page fails', async () => {
+    const error = new Error('page 2 failed');
+    const failing = async (after?: string) => {
+      if (after === 'p2') {
+        throw error;
+      }
+
+      return pages[after ?? 'start'];
+    };
+
+    await expect(fetchAllPages(failing)).rejects.toBe(error);
   });
 });

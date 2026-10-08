@@ -13,6 +13,7 @@
 import { Metric } from '../../generated/entity/data/metric';
 import { Include } from '../../generated/type/include';
 import { getMetrics } from '../../rest/metricsAPI';
+import { fetchAllPages } from '../AsyncUtils';
 import { getMetricColumnsAndDataSourceFromMetrics } from './CSV.utils';
 import type {
   BulkEditListingFilters,
@@ -64,58 +65,51 @@ export const fetchMetricBulkEditGrid = async ({
     scope.mode === 'selected' ? new Set(scope.names) : new Set<string>();
   const foundIds = new Set<string>();
   const foundNames = new Set<string>();
-  const matchedMetrics: Metric[] = [];
-  let after: string | undefined;
   let loadedCount = 0;
-  let shouldContinue = true;
+  let matchedCount = 0;
 
-  while (shouldContinue && !signal.aborted) {
-    const metricResponse = await getMetrics(
-      {
-        after,
-        fields: '*',
-        limit: LISTING_PAGE_SIZE,
-        include: Include.All,
-      },
-      { signal }
-    );
+  const hasFoundSelectedMetrics = () =>
+    scope.mode === 'selected' &&
+    (selectedIds.size
+      ? [...selectedIds].every((id) => foundIds.has(id))
+      : [...selectedNames].every((name) => foundNames.has(name)));
 
-    loadedCount += metricResponse.data.length;
+  const { data: matchedMetrics } = await fetchAllPages(
+    async (after) => {
+      const { data, paging } = await getMetrics(
+        {
+          after,
+          fields: '*',
+          limit: LISTING_PAGE_SIZE,
+          include: Include.All,
+        },
+        { signal }
+      );
 
-    metricResponse.data.forEach((metric) => {
-      const isSelectedScope = scope.mode === 'selected';
-      const isSelectedMetric =
-        selectedIds.has(metric.id) || selectedNames.has(metric.name);
-      const shouldIncludeMetric = isSelectedScope
-        ? isSelectedMetric
-        : matchesListingFilters(metric, scope.filters);
+      const pageMatches = data.filter((metric) =>
+        scope.mode === 'selected'
+          ? selectedIds.has(metric.id) || selectedNames.has(metric.name)
+          : matchesListingFilters(metric, scope.filters)
+      );
 
-      if (!shouldIncludeMetric) {
-        return;
-      }
+      pageMatches.forEach((metric) => {
+        if (selectedIds.has(metric.id)) {
+          foundIds.add(metric.id);
+        }
 
-      matchedMetrics.push(metric);
+        if (selectedNames.has(metric.name)) {
+          foundNames.add(metric.name);
+        }
+      });
 
-      if (selectedIds.has(metric.id)) {
-        foundIds.add(metric.id);
-      }
+      loadedCount += data.length;
+      matchedCount += pageMatches.length;
+      onProgress?.(loadedCount, matchedCount);
 
-      if (selectedNames.has(metric.name)) {
-        foundNames.add(metric.name);
-      }
-    });
-
-    onProgress?.(loadedCount, matchedMetrics.length);
-
-    const hasFoundSelectedMetrics =
-      scope.mode === 'selected' &&
-      (selectedIds.size
-        ? [...selectedIds].every((id) => foundIds.has(id))
-        : [...selectedNames].every((name) => foundNames.has(name)));
-
-    after = metricResponse.paging.after;
-    shouldContinue = Boolean(after) && !hasFoundSelectedMetrics;
-  }
+      return { data: pageMatches, paging };
+    },
+    { signal, shouldStop: hasFoundSelectedMetrics }
+  );
 
   const { columns, dataSource } = getMetricColumnsAndDataSourceFromMetrics(
     matchedMetrics,

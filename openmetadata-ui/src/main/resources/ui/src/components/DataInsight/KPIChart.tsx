@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components/charts';
 import { Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, round } from 'lodash';
+import { isEmpty, round } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -30,20 +30,17 @@ import {
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
-import {
-  Kpi,
-  KpiResult,
-  KpiTargetType,
-} from '../../generated/dataInsight/kpi/kpi';
-import {
-  ChartFilter,
-  UIKpiResult,
-} from '../../interface/data-insight.interface';
+import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
+import { ChartFilter } from '../../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
-import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
+import { getListKpiResult } from '../../rest/KpiAPI';
 import { getDataInsightTooltip } from '../../utils/DataInsightChartUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
-import { buildKpiChartRows, KpiChartRow } from '../../utils/KPI/KPIUtils';
+import {
+  buildKpiChartRows,
+  getKpiLatestResults,
+  KpiChartRow,
+} from '../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../PageHeader/PageHeader.component';
@@ -73,8 +70,11 @@ const KPIChart: FC<Props> = ({
   const [kpiResults, setKpiResults] = useState<
     Record<string, DataInsightCustomChartResult['results']>
   >({});
-  const [kpiLatestResults, setKpiLatestResults] =
-    useState<Record<string, UIKpiResult>>();
+  // The list is fetched with its latest results (the `kpiResult` field), so no per-KPI request.
+  const kpiLatestResults = useMemo(
+    () => getKpiLatestResults(kpiList),
+    [kpiList]
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleAddKpi = () => navigate(ROUTES.ADD_KPI);
@@ -105,51 +105,6 @@ const KPIChart: FC<Props> = ({
       });
 
       setKpiResults(kpiResultsList);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchKpiLatestResults = async () => {
-    setIsLoading(true);
-    try {
-      const promises = kpiList.map((kpi) =>
-        getLatestKpiResult(kpi.fullyQualifiedName ?? '')
-      );
-      const responses = await Promise.allSettled(promises);
-
-      const latestResults = responses.reduce((previous, curr) => {
-        if (curr.status === 'fulfilled') {
-          const resultValue: KpiResult = curr.value;
-          const kpiName = resultValue.kpiFqn ?? '';
-
-          // get the current kpi
-          const kpi = kpiList.find((k) => k.fullyQualifiedName === kpiName);
-
-          // get the kpiTarget
-          const kpiTarget = kpi?.targetValue;
-
-          if (!isUndefined(kpi) && !isUndefined(kpiTarget)) {
-            return {
-              ...previous,
-              [kpiName]: {
-                ...resultValue,
-                target: kpiTarget,
-                metricType: kpi?.metricType as KpiTargetType,
-                startDate: kpi?.startDate,
-                endDate: kpi?.endDate,
-                displayName: kpi.displayName ?? kpiName,
-              },
-            };
-          }
-        }
-
-        return previous;
-      }, {} as Record<string, UIKpiResult>);
-
-      setKpiLatestResults(latestResults);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -205,13 +160,11 @@ const KPIChart: FC<Props> = ({
 
   useEffect(() => {
     setKpiResults({});
-    setKpiLatestResults(undefined);
   }, [chartFilter]);
 
   useEffect(() => {
     if (kpiList.length) {
       fetchKpiResults();
-      fetchKpiLatestResults();
     }
   }, [kpiList, chartFilter]);
 
@@ -252,7 +205,7 @@ const KPIChart: FC<Props> = ({
                   />
                 </div>
               </Col>
-              {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
+              {!isEmpty(kpiLatestResults) && (
                 <Col span={DI_STRUCTURE.rightContainerSpan}>
                   <KPILatestResultsV1
                     kpiLatestResultsRecord={kpiLatestResults}

@@ -19,9 +19,13 @@ import { ServiceCategory } from '../../../../../enums/service.enum';
 import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';
 import { mockESIngestionData } from '../../../../../mocks/IngestionListTable.mock';
 import {
-  deployIngestionPipelineById,
+  deployIngestionPipelines,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../utils/ToastUtils';
 import { IngestionPipelineList } from './IngestionPipelineList.component';
 
 jest.mock('../../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
@@ -78,10 +82,18 @@ jest.mock('../IngestionListTable/IngestionListTable', () => {
 
 const AFTER_CURSOR = 'eyJkaXNwbGF5TmFtZVNvcnQiOiJBbHBoYSIsImlkIjoiaWQtMSJ9';
 
+jest.mock('../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
-  deployIngestionPipelineById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve()),
+  deployIngestionPipelines: jest.fn().mockImplementation(() =>
+    Promise.resolve([
+      { code: 200, platform: 'Airflow' },
+      { code: 200, platform: 'Airflow' },
+    ])
+  ),
   getIngestionPipelines: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: [mockIngestionData, mockESIngestionData],
@@ -182,7 +194,7 @@ describe('IngestionPipelineList', () => {
     );
   });
 
-  it('should not call deployIngestionPipelineById after bulk deploy button click without pipeline selection', async () => {
+  it('should not deploy after bulk deploy button click without pipeline selection', async () => {
     await renderList();
 
     const bulkDeployButton = screen.getByTestId('bulk-re-deploy-button');
@@ -191,21 +203,44 @@ describe('IngestionPipelineList', () => {
       userEvent.click(bulkDeployButton);
     });
 
-    expect(deployIngestionPipelineById).not.toHaveBeenCalled();
+    expect(deployIngestionPipelines).not.toHaveBeenCalled();
   });
 
-  it('should call deployIngestionPipelineById after bulk deploy button click after pipeline selection', async () => {
+  it('should deploy the selected pipelines in one bulk request', async () => {
     await renderList();
 
-    const rowSelection = screen.getByText('rowSelection');
+    fireEvent.click(screen.getByText('rowSelection'));
 
-    fireEvent.click(rowSelection);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bulk-re-deploy-button'));
+    });
 
-    const bulkDeployButton = screen.getByTestId('bulk-re-deploy-button');
+    expect(deployIngestionPipelines).toHaveBeenCalledTimes(1);
+    expect(deployIngestionPipelines).toHaveBeenCalledWith([
+      mockIngestionData.id,
+      mockESIngestionData.id,
+    ]);
+    expect(showSuccessToast).toHaveBeenCalled();
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
 
-    fireEvent.click(bulkDeployButton);
+  it('should report a failure the bulk response carries in a pipeline entry', async () => {
+    // The bulk endpoint answers 200 and reports a failed deploy in that pipeline's own entry.
+    (deployIngestionPipelines as jest.Mock).mockResolvedValueOnce([
+      { code: 200, platform: 'Airflow' },
+      { code: 500, platform: 'Airflow', reason: 'Error deploying pipeline' },
+    ]);
 
-    expect(deployIngestionPipelineById).toHaveBeenCalledTimes(2);
+    await renderList();
+
+    fireEvent.click(screen.getByText('rowSelection'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('bulk-re-deploy-button'));
+    });
+
+    expect(showErrorToast).toHaveBeenCalledWith('Error deploying pipeline');
+    expect(showSuccessToast).not.toHaveBeenCalled();
   });
 
   describe('sort order', () => {

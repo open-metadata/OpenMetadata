@@ -14,7 +14,6 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Badge, Typography } from '@openmetadata/ui-core-components';
 import { Space, Tooltip } from 'antd';
-import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
@@ -22,101 +21,15 @@ import { ReactComponent as ClassificationIcon } from '../assets/svg/classificati
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { SettledStatus } from '../enums/Axios.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Classification } from '../generated/entity/classification/classification';
-import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
 import { searchQuery } from '../rest/searchAPI';
-import {
-  getAllClassifications,
-  getClassificationByName,
-  getTags,
-} from '../rest/tagAPI';
 import { getEntityName } from './EntityNameUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryPureUtils';
 import { t } from './i18next/LocalUtil';
 import { getTagDisplay } from './TagsPureUtils';
-
-export const getClassifications = async (
-  fields?: Array<string> | string,
-  callGetClassificationByName = true
-) => {
-  try {
-    const listOfClassifications: Array<Classification> = [];
-    const classifications = await getAllClassifications({
-      fields,
-      limit: 1000,
-    });
-    const classificationList = classifications.data.map(
-      (category: Classification) => {
-        return {
-          name: category.name,
-          description: category.description,
-        } as Classification;
-      }
-    );
-    if (classificationList.length && callGetClassificationByName) {
-      const promiseArr = classificationList.map((category: Classification) =>
-        getClassificationByName(category.name, { fields })
-      );
-
-      const categories = await Promise.allSettled(promiseArr);
-
-      categories.forEach((category) => {
-        if (category.status === SettledStatus.FULFILLED) {
-          listOfClassifications.push(category.value);
-        }
-      });
-    }
-
-    return Promise.resolve({ data: listOfClassifications });
-  } catch (error) {
-    return Promise.reject({ data: (error as AxiosError).response });
-  }
-};
-
-/**
- * Return tags based on classifications
- * @param classifications -- Parent for tags
- * @param paging
- * @returns Tag[]
- */
-export const getTaglist = async (
-  classifications: Array<Classification> = [],
-  paging?: Paging
-) => {
-  try {
-    const tags: Tag[] = [];
-
-    const tagsListPromise = classifications.map((classification) =>
-      getTags({
-        parent: classification.name,
-        after: paging?.after,
-        before: paging?.before,
-        limit: 1000,
-      })
-    );
-
-    return await Promise.allSettled(tagsListPromise)
-      .then((tagList) => {
-        tagList.forEach((tag) => {
-          if (tag.status === SettledStatus.FULFILLED) {
-            tags.push(...tag.value.data);
-          }
-        });
-
-        return tags.map((tag) => tag.fullyQualifiedName || tag.name);
-      })
-      .catch((error) => {
-        return Promise.reject({ data: (error as AxiosError).response });
-      });
-  } catch (error) {
-    return Promise.reject({ data: (error as AxiosError).response });
-  }
-};
 
 export const getTagTooltip = (fqn: string, description?: string) => (
   <div className="text-left p-xss">

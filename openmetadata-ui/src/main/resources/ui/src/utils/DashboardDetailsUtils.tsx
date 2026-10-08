@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { get } from 'lodash';
+import { compact, get } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
@@ -22,7 +21,6 @@ import type {
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import Loader from '../components/common/Loader/Loader';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import type { ChartType } from '../components/Dashboard/DashboardDetails/DashboardDetails.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
@@ -31,6 +29,7 @@ import { PageType } from '../generated/system/ui/page';
 import { Include } from '../generated/type/include';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getChartById } from '../rest/chartAPI';
+import { BULK_ACTION_CONCURRENCY, runWithConcurrencyLimit } from './AsyncUtils';
 import type { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
 import { t } from './i18next/LocalUtil';
 
@@ -101,29 +100,18 @@ export const fetchCharts = async (
   charts: Dashboard['charts'],
   showDeleted = false
 ) => {
-  let chartsData: ChartType[] = [];
-  let promiseArr: Array<Promise<ChartType>> = [];
-  try {
-    if (charts?.length) {
-      promiseArr = charts.map((chart) =>
-        getChartById(chart.id, {
-          fields: TabSpecificField.TAGS,
-          include: showDeleted ? Include.Deleted : Include.NonDeleted,
-        })
-      );
-      const res = await Promise.allSettled(promiseArr);
+  // A chart that fails to load is left out of the list.
+  const chartsData = await runWithConcurrencyLimit(
+    charts ?? [],
+    BULK_ACTION_CONCURRENCY,
+    (chart) =>
+      getChartById(chart.id, {
+        fields: TabSpecificField.TAGS,
+        include: showDeleted ? Include.Deleted : Include.NonDeleted,
+      }).catch(() => undefined)
+  );
 
-      if (res.length) {
-        chartsData = res
-          .filter((chart) => chart.status === 'fulfilled')
-          .map((chart) => (chart as PromiseFulfilledResult<ChartType>).value);
-      }
-    }
-  } catch (err) {
-    throw new Error((err as AxiosError).message);
-  }
-
-  return chartsData;
+  return compact(chartsData);
 };
 
 export const getDashboardDetailPageTabs = ({

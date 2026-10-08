@@ -14,7 +14,10 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
+import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import DataInsightSummary from './DataInsightSummary';
 
 let activeTab = DataInsightTabs.DATA_ASSETS;
@@ -99,5 +102,30 @@ describe('Test DataInsightSummary Component', () => {
 
     // should not render the data assets summary
     expect(screen.queryByTestId('data-assets-summary')).toBeNull();
+  });
+
+  it('Should request both web analytics charts with the active filter', async () => {
+    activeTab = DataInsightTabs.APP_ANALYTICS;
+
+    await act(async () => {
+      render(
+        <DataInsightSummary
+          chartFilter={mockFilter}
+          onScrollToChart={mockScrollFunction}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(getAggregateChartData).toHaveBeenCalledWith({
+      ...mockFilter,
+      dataInsightChartName: DataInsightChartType.PageViewsByEntities,
+      dataReportIndex: DataReportIndex.WebAnalyticEntityViewReportDataIndex,
+    });
+    expect(getAggregateChartData).toHaveBeenCalledWith({
+      ...mockFilter,
+      dataInsightChartName: DataInsightChartType.DailyActiveUsers,
+      dataReportIndex: DataReportIndex.WebAnalyticUserActivityReportDataIndex,
+    });
   });
 });

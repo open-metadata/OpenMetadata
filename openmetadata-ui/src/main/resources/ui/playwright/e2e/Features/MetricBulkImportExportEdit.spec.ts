@@ -329,6 +329,35 @@ const cleanupMetricCustomProperty = async () => {
   }
 };
 
+// Each fixture metric has reviewers, so MetricApprovalWorkflow moves it from Draft to In Review
+// after the create call returns. A bulk-edit grid that reads a metric before that move puts
+// Draft in the CSV row, and the server rejects the row as a stage change the workflow owns.
+const waitForMetricsInReview = (metrics: MetricResponse[]) =>
+  expect
+    .poll(
+      async () => {
+        const statuses = await Promise.all(
+          metrics.map(async ({ id }) => {
+            const metric = await parseResponse<MetricResponse>(
+              await apiContext.get(`/api/v1/metrics/${id}`),
+              `fetch metric ${id}`
+            );
+
+            return metric.entityStatus;
+          })
+        );
+
+        return statuses.filter((status) => status !== 'In Review').length;
+      },
+      {
+        message:
+          'Wait for MetricApprovalWorkflow to move every fixture metric to In Review',
+        intervals: [1_000, 2_000, 5_000],
+        timeout: 120_000,
+      }
+    )
+    .toBe(0);
+
 const createFixtures = async (
   customPropertyName: string
 ): Promise<MetricBulkFixtures> => {
@@ -485,6 +514,8 @@ const createFixtures = async (
     ),
     'patch related metrics'
   );
+
+  await waitForMetricsInReview(metrics);
 
   return {
     prefix,
