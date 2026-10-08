@@ -438,3 +438,46 @@ test('Data Products Widget', async ({ page, persona }) => {
     await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
   });
 });
+
+// Ported from Collate's `LandingPageWidgets.spec.ts`: both cards moved into OSS
+// with the landing-page migration, so their lifecycle belongs beside the other
+// default-layout widgets rather than in a downstream suite.
+test('Context Center Widget', async ({ page, persona }) => {
+  test.slow(true);
+
+  // The card is Context Center; the key is the Knowledge Center one it kept.
+  const widgetKey = 'KnowledgePanel.KnowledgeCenter';
+
+  await waitForAllLoadersToDisappear(page);
+  await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
+
+test('Data Quality Widget', async ({ page, persona }) => {
+  test.slow(true);
+
+  const widgetKey = 'KnowledgePanel.DataQuality';
+
+  await waitForAllLoadersToDisappear(page);
+  await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Test widget displays test results', async () => {
+    await waitForAllLoadersToDisappear(page);
+    const widget = await waitForLandingPageWidget(page, widgetKey);
+
+    await expect(widget.getByTestId('data-quality-rows')).toBeVisible();
+  });
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});

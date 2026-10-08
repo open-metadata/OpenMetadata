@@ -659,7 +659,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/customizeLandingPage.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/utils/widgetFilters.ts"
       ],
-      "projects": ["chromium", "Data Insight"],
+      "projects": ["chromium", "Data Insight", "Basic"],
       "specs": [
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
@@ -668,6 +668,8 @@
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/LandingPage.spec.ts",
+        "playwright/e2e/Flow/LandingPageDataEstate.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
       ]
