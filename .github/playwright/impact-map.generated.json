@@ -8246,6 +8246,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/CustomProperty/CustomPropertyEditForm/CustomPropertyEditForm.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts"
       ]
     },
