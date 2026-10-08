@@ -181,8 +181,8 @@ test.describe('Context Center - Documents Page', () => {
           })
         );
       const results = [
-        ...(await deleteIds('files', contextFileIdsToCleanup)),
         ...(await deleteIds('folders', contextFolderIdsToCleanup)),
+        ...(await deleteIds('files', contextFileIdsToCleanup)),
       ];
       const failures = results.filter(
         (result): result is PromiseRejectedResult =>
@@ -808,7 +808,11 @@ test.describe('Context Center - Documents Page', () => {
   }) => {
     const fileName = `card-menu-delete-${uuid()}.txt`;
     const { apiContext } = documentSession;
-    await uploadDocument(apiContext, fileName, Buffer.from('delete from menu'));
+    const doc = await uploadDocument(
+      apiContext,
+      fileName,
+      Buffer.from('delete from menu')
+    );
 
     await navigateToDocuments(page);
 
@@ -828,6 +832,7 @@ test.describe('Context Center - Documents Page', () => {
     await page.getByTestId('confirm-button').click();
     const deleteRes = await deleteResPromise;
     expect(deleteRes.status()).toBe(200);
+    contextFileIdsToCleanup.delete(doc.id);
 
     await expect(getDocumentRowByName(page, fileName)).not.toBeVisible();
   });
@@ -1226,6 +1231,8 @@ test.describe('Context Center - Documents Page', () => {
       doc1.id,
       doc2.id,
     ]);
+    contextFileIdsToCleanup.delete(doc1.id);
+    contextFileIdsToCleanup.delete(doc2.id);
 
     await expect(
       await searchAndGetDocumentRow(page, firstName)
@@ -1514,7 +1521,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const uploadedRow = page.getByTestId(`document-row-${uploadedDocId}`);
+    const uploadedRow =  await searchAndGetDocumentRow(page, sharedFileName);
     await expect(uploadedRow).toBeVisible();
     await uploadedRow.scrollIntoViewIfNeeded();
 
