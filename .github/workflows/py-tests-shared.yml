@@ -620,7 +620,10 @@ jobs:
         run: |
           cd ingestion
           shopt -s nullglob
-          [ -f coverage-data/coverage-unit/.coverage ] && mv coverage-data/coverage-unit/.coverage .coverage.unit
+          # download-artifact extracts a lone match (unit-only PR runs) straight into path, not path/<name>/
+          for f in coverage-data/coverage-unit/.coverage coverage-data/.coverage; do
+            [ -f "$f" ] && mv "$f" .coverage.unit
+          done
           for dir in coverage-data/coverage-integration-*/; do
             shard=$(basename "$dir" | sed 's/coverage-integration-//')
             [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"

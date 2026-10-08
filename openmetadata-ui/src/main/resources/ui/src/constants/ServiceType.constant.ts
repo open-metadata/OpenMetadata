@@ -219,7 +219,6 @@ export const ADVANCED_PROPERTIES = [
   'useAccessHistory',
   'accessHistoryChunkSize',
   'scheme',
-  'sampleDataStorageConfig',
   'computeTableMetrics',
   'computeColumnMetrics',
   'includeViews',
