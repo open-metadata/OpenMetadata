@@ -1044,7 +1044,7 @@ public class TestCaseResolutionStatusResource
           MessageParser.EntityLink.parse(testCase.getEntityLink());
       return TestCaseResourceContext.builder().entityLink(entityLink).build();
     } else if (originEntityFQN != null) {
-      EntityInterface entityInterface =
+      EntityInterface<?> entityInterface =
           Entity.getEntityByName(Entity.TABLE, originEntityFQN, "", Include.ALL);
       String entityLinkStr =
           EntityUtil.buildEntityLink(Entity.TABLE, entityInterface.getFullyQualifiedName());

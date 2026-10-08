@@ -833,7 +833,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public EntityInterface getParentEntity(TestCase entity, String fields) {
+  public EntityInterface<?> getParentEntity(TestCase entity, String fields) {
     EntityReference testSuite = entity.getTestSuite();
 
     if (testSuite == null) {
@@ -910,11 +910,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    */
   EntityReference getOrCreateTestSuite(TestCase test) {
     var entityLink = EntityLink.parse(test.getEntityLink());
-    EntityInterface tableEntity = Entity.getEntity(entityLink, "", ALL);
+    EntityInterface<?> tableEntity = Entity.getEntity(entityLink, "", ALL);
     return getOrCreateTestSuite(test, tableEntity);
   }
 
-  private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface tableEntity) {
+  private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface<?> tableEntity) {
     try {
       return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO);
     } catch (EntityNotFoundException e) {
@@ -2355,8 +2355,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     private final TestSuite targetBundleSuite;
     private final List<UUID> importedTestCaseIds = new ArrayList<>();
     private final Map<String, UUID> importedTestSuiteIds = new HashMap<>();
-    private final EntityRepository<EntityInterface> versioningRepo =
-        (EntityRepository<EntityInterface>) Entity.getEntityRepository(TEST_SUITE);
+    private final EntityRepository<EntityInterface<?>> versioningRepo =
+        (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(TEST_SUITE);
     private final SubjectContext subjectContext;
 
     TestCaseCsv(String user, TestSuite targetBundleSuite) {
@@ -2586,7 +2586,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String entityLink = null;
       try {
         String candidate = convertFQNToEntityLink(entityFQN);
-        EntityInterface target =
+        EntityInterface<?> target =
             Entity.getEntity(EntityLink.parse(candidate), FIELD_DOMAINS, Include.NON_DELETED);
         if (subjectContext.hasDomains(target.getDomains())) {
           entityLink = candidate;

@@ -667,11 +667,11 @@ class LineageRepositoryTest {
     LineageDetails entityDetails =
         new LineageDetails().withPipeline(pipelineRef).withCreatedBy("testUser");
 
-    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromServiceRef);
     when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
 
-    EntityInterface toEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toServiceRef);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
@@ -747,11 +747,11 @@ class LineageRepositoryTest {
         mock(CollectionDAO.EntityRelationshipObject.class);
     when(existingRecord.getJson()).thenReturn(JsonUtils.pojoToJson(existingServiceDetails));
 
-    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromServiceRef);
     when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
 
-    EntityInterface toEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toServiceRef);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
@@ -829,15 +829,15 @@ class LineageRepositoryTest {
     LineageDetails entityDetails =
         new LineageDetails().withPipeline(pipelineRef).withCreatedBy("testUser");
 
-    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromServiceRef);
     when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
 
-    EntityInterface toEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toServiceRef);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
-    EntityInterface pipelineEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> pipelineEntityMock = mock(EntityInterface.class);
     when(pipelineEntityMock.getService()).thenReturn(pipelineServiceRef);
 
     CollectionDAO freshDao = mock(CollectionDAO.class);
@@ -913,11 +913,11 @@ class LineageRepositoryTest {
     LineageDetails entityDetails =
         new LineageDetails().withPipeline(null).withCreatedBy("testUser");
 
-    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromServiceRef);
     when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
 
-    EntityInterface toEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toServiceRef);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
@@ -1023,10 +1023,10 @@ class LineageRepositoryTest {
     EntityReference fromRef = new EntityReference().withId(UUID.randomUUID()).withType(entityType);
     EntityReference toRef = new EntityReference().withId(UUID.randomUUID()).withType(entityType);
 
-    EntityInterface fromEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> fromEntityMock = mock(EntityInterface.class);
     when(fromEntityMock.getService()).thenReturn(fromService);
     when(fromEntityMock.getEntityReference()).thenReturn(fromRef);
-    EntityInterface toEntityMock = mock(EntityInterface.class);
+    EntityInterface<?> toEntityMock = mock(EntityInterface.class);
     when(toEntityMock.getService()).thenReturn(toService);
     when(toEntityMock.getEntityReference()).thenReturn(toRef);
 
@@ -1050,7 +1050,7 @@ class LineageRepositoryTest {
         .when(() -> Entity.getEntity(eq(entityType), eq(toRef.getId()), any(), any()))
         .thenReturn(toEntityMock);
     if (childEdge.getPipeline() != null) {
-      EntityInterface pipelineEntityMock = mock(EntityInterface.class);
+      EntityInterface<?> pipelineEntityMock = mock(EntityInterface.class);
       when(pipelineEntityMock.getService()).thenReturn(serviceRef("pipelineService"));
       mockedEntity.when(() -> Entity.entityHasField("pipeline", "service")).thenReturn(true);
       mockedEntity

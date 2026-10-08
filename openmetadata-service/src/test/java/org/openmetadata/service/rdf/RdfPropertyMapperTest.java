@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
@@ -1629,7 +1630,7 @@ class RdfPropertyMapperTest {
     return entityReference;
   }
 
-  private static class TestRdfEntity implements EntityInterface {
+  private static class TestRdfEntity implements EntityInterface<EntityStatus> {
     private UUID id;
     private String description;
     private String displayName;
@@ -1784,7 +1785,7 @@ class RdfPropertyMapperTest {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends EntityInterface> T withHref(URI href) {
+    public <T extends EntityInterface<?>> T withHref(URI href) {
       this.href = href;
       return (T) this;
     }
