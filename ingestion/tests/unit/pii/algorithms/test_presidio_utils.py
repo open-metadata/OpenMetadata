@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import re
 from unittest.mock import Mock, patch
 
 import pytest
@@ -28,6 +29,10 @@ from metadata.pii.algorithms.presidio_utils import (
 )
 from metadata.pii.algorithms.tags import PIITag
 from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
+
+
+def _registered_recognizer(recognizer_class: type[EntityRecognizer]) -> EntityRecognizer:
+    return recognizer_factories.get(recognizer_class, recognizer_class)()
 
 
 @pytest.mark.parametrize(
@@ -52,7 +57,7 @@ from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
     ],
 )
 def test_card_results_use_original_candidate_spans(text, expected):
-    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    recognizer = _registered_recognizer(CreditCardRecognizer)
     results = recognizer.analyze(text, ["CREDIT_CARD"])
 
     assert any(text[result.start : result.end] == expected for result in results)
@@ -65,14 +70,14 @@ def test_card_results_use_original_candidate_spans(text, expected):
 
 @pytest.mark.parametrize("card", ["4939323083746", "4924867307503760", "4930582239178"])
 def test_valid_card_is_not_vetoed_by_phone_overlap(card):
-    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    recognizer = _registered_recognizer(CreditCardRecognizer)
     results = recognizer.analyze(f"Reference {card} recorded", ["CREDIT_CARD"])
     assert [(result.start, result.end, result.score) for result in results] == [(10, 10 + len(card), 1.0)]
 
 
 def test_competing_phone_and_card_evidence_remain_independent():
     value = "4991123456788"
-    card = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    card = _registered_recognizer(CreditCardRecognizer)
     phone = PhoneRecognizer()
     assert [(result.start, result.end, result.score) for result in card.analyze(value, ["CREDIT_CARD"])] == [
         (0, len(value), 1.0)
@@ -88,7 +93,7 @@ def test_competing_phone_and_card_evidence_remain_independent():
     ],
 )
 def test_card_does_not_recover_prefix_from_plausible_complete_candidate(text):
-    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    recognizer = _registered_recognizer(CreditCardRecognizer)
     assert recognizer.analyze(text, ["CREDIT_CARD"]) == []
 
 
@@ -96,7 +101,7 @@ def test_card_does_not_recover_prefix_from_plausible_complete_candidate(text):
 def test_compact_card_followed_by_distant_year_within_preprocessing_limit(length):
     card = "4111111111111111"
     text = card + " " * (length - len(card) - len("2025")) + "2025"
-    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    recognizer = _registered_recognizer(CreditCardRecognizer)
     results = recognizer.analyze(text, ["CREDIT_CARD"])
     assert [(result.start, result.end, text[result.start : result.end]) for result in results] == [(0, 16, card)]
 
@@ -126,7 +131,7 @@ def test_compact_card_followed_by_distant_year_within_preprocessing_limit(length
     ],
 )
 def test_card_rejects_invalid_enclosing_candidate(text):
-    recognizer = recognizer_factories.get(CreditCardRecognizer, CreditCardRecognizer)()
+    recognizer = _registered_recognizer(CreditCardRecognizer)
     assert recognizer.analyze(text, ["CREDIT_CARD"]) == []
 
 
@@ -191,9 +196,62 @@ def test_card_rejects_invalid_enclosing_candidate(text):
         (IpRecognizer, "IP_ADDRESS", "2001:db8::1/64", "2001:db8::1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "::", "::", 0.1),
     ],
+    ids=[
+        "url-prose-dot",
+        "url-query-exclamation",
+        "url-path-semicolon",
+        "url-fragment-exclamation",
+        "url-company-suffix",
+        "url-community-suffix",
+        "url-international-suffix",
+        "url-port",
+        "url-host-exclamation",
+        "url-scheme-in-path",
+        "url-uppercase-scheme",
+        "url-balanced-parentheses",
+        "url-delimited-path-dot",
+        "url-delimited-path-comma",
+        "url-quoted-path-comma",
+        "ipv4-port-health-path",
+        "ipv4-html-path",
+        "ftp-ipv4-path",
+        "smb-ipv4-path",
+        "ipv4-src-label",
+        "ipv4-client-label",
+        "ipv4-label-port-path",
+        "ipv4-nonnumeric-path",
+        "ipv4-port-nonnumeric-path",
+        "url-quoted-prose-bare-host-dot",
+        "url-quoted-bare-host-comma",
+        "url-delimited-bare-host-dot",
+        "url-quoted-query-dot",
+        "url-delimited-fragment-comma",
+        "ftp-ipv4-numeric-path",
+        "ftp-user-ipv4-numeric-path",
+        "ftp-empty-user-ipv4-numeric-path",
+        "smb-empty-user-ipv4-port-numeric-path",
+        "ftp-long-user-ipv4-numeric-path",
+        "smb-password-ipv4-port-numeric-path",
+        "ftp-encoded-user-ipv4-numeric-path",
+        "smb-ipv4-numeric-path",
+        "ipv4-numeric-word-path",
+        "ipv4-cidr-looking-json-path",
+        "ipv4-decimal-path",
+        "ipv6-prose",
+        "ipv4-unicode-offset",
+        "ipv6-expanded",
+        "ipv6-zone",
+        "ipv6-mapped",
+        "http-ipv4-numeric-path",
+        "http-ipv4-port-path",
+        "ipv4-port",
+        "ipv4-cidr",
+        "ipv6-cidr",
+        "ipv6-unspecified",
+    ],
 )
 def test_network_results_use_complete_original_candidate(recognizer_class, entity, text, expected, score):
-    recognizer = recognizer_factories.get(recognizer_class, recognizer_class)()
+    recognizer = _registered_recognizer(recognizer_class)
     results = recognizer.analyze(text, [entity])
 
     assert any(text[result.start : result.end] == expected and result.score == score for result in results)
@@ -206,14 +264,14 @@ def test_network_results_use_complete_original_candidate(recognizer_class, entit
 @pytest.mark.parametrize("length", [2049, 4999, 5000])
 def test_url_candidate_within_preprocessing_limit_keeps_full_span(length):
     url = "https://example.com/" + "a" * (length - len("https://example.com/"))
-    recognizer = recognizer_factories.get(UrlRecognizer, UrlRecognizer)()
+    recognizer = _registered_recognizer(UrlRecognizer)
     results = recognizer.analyze(url, ["URL"])
     assert [(result.start, result.end, url[result.start : result.end]) for result in results] == [(0, length, url)]
 
 
 def test_url_candidate_above_preprocessing_limit_is_bounded():
     url = "https://example.com/" + "a" * (5001 - len("https://example.com/"))
-    recognizer = recognizer_factories.get(UrlRecognizer, UrlRecognizer)()
+    recognizer = _registered_recognizer(UrlRecognizer)
     assert recognizer.analyze(url, ["URL"]) == []
 
 
@@ -257,7 +315,7 @@ def test_url_candidate_above_preprocessing_limit_is_bounded():
     ],
 )
 def test_network_rejects_invalid_longer_candidate(recognizer_class, entity, text):
-    recognizer = recognizer_factories.get(recognizer_class, recognizer_class)()
+    recognizer = _registered_recognizer(recognizer_class)
     assert recognizer.analyze(text, [entity]) == []
 
 
@@ -285,7 +343,7 @@ def test_network_rejects_invalid_longer_candidate(recognizer_class, entity, text
     ],
 )
 def test_multiple_candidates_have_exact_independent_spans(recognizer_class, entity, text, expected):
-    recognizer = recognizer_factories.get(recognizer_class, recognizer_class)()
+    recognizer = _registered_recognizer(recognizer_class)
     results = recognizer.analyze(text, [entity])
     assert [(result.start, result.end, text[result.start : result.end]) for result in results] == expected
 
@@ -299,7 +357,7 @@ def test_multiple_candidates_have_exact_independent_spans(recognizer_class, enti
     ],
 )
 def test_pathological_candidate_runs_are_bounded(recognizer_class, entity, text):
-    recognizer = recognizer_factories.get(recognizer_class, recognizer_class)()
+    recognizer = _registered_recognizer(recognizer_class)
     assert recognizer.analyze(text, [entity]) == []
 
 
@@ -312,6 +370,85 @@ def test_legacy_analyzer_uses_complete_candidate_spans():
         ("URL", "https://example.company/a"),
         ("IP_ADDRESS", "2001:db8::1"),
     }
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text", "candidate"),
+    [
+        (CreditCardRecognizer, "CREDIT_CARD", "é 4111-1111-1111-1111", "4111111111111111"),
+        (IpRecognizer, "IP_ADDRESS", "é 2001:db8::1/64", "2001:db8::1"),
+    ],
+    ids=["normalized-card", "ipv6-with-cidr"],
+)
+def test_candidate_analysis_preserves_upstream_results_and_artifact_coordinates(
+    monkeypatch, recognizer_class, entity, text, candidate
+):
+    upstream_analyze = recognizer_class.analyze
+    upstream_results = []
+    coordinates = []
+    candidate_artifacts = []
+
+    def capture(self, text, entities, nlp_artifacts=None, regex_flags=None):
+        candidate_artifacts.append(nlp_artifacts)
+        assert text == candidate
+        results = upstream_analyze(self, text, entities, nlp_artifacts, regex_flags)
+        upstream_results.extend(results)
+        coordinates.extend((result.start, result.end) for result in results)
+        return results
+
+    monkeypatch.setattr(recognizer_class, "analyze", capture)
+    recognizer = _registered_recognizer(recognizer_class)
+    engine = load_nlp_engine()
+    engine.load()
+    artifacts = engine.process_text(text, "en")
+    results = recognizer.analyze(text, [entity], artifacts)
+
+    assert candidate_artifacts == [None]
+    assert [(result.start, result.end) for result in upstream_results] == coordinates == [(0, len(candidate))]
+    assert len(results) == 1
+    assert results[0] is not upstream_results[0]
+    assert (results[0].start, results[0].end) == (2, 21 if entity == "CREDIT_CARD" else 13)
+    assert results[0].score == upstream_results[0].score
+    assert results[0].recognition_metadata == upstream_results[0].recognition_metadata
+    assert results[0].analysis_explanation == upstream_results[0].analysis_explanation
+
+
+def test_url_expansion_does_not_mutate_upstream_seed_offsets(monkeypatch):
+    upstream_analyze = UrlRecognizer.analyze
+    seeds = []
+    coordinates = []
+
+    def capture(self, text, entities, nlp_artifacts=None, regex_flags=None):
+        results = upstream_analyze(self, text, entities, nlp_artifacts, regex_flags)
+        seeds.extend(results)
+        coordinates.extend((result.start, result.end) for result in results)
+        return results
+
+    monkeypatch.setattr(UrlRecognizer, "analyze", capture)
+    text = '"https://example.com/a"'
+    results = _registered_recognizer(UrlRecognizer).analyze(text, ["URL"])
+    assert [(seed.start, seed.end) for seed in seeds] == coordinates == [(0, len(text))]
+    assert [(result.start, result.end) for result in results] == [(1, len(text) - 1)]
+    assert results[0] is not seeds[0]
+    assert results[0].score == seeds[0].score
+    assert results[0].recognition_metadata == seeds[0].recognition_metadata
+    assert results[0].analysis_explanation == seeds[0].analysis_explanation
+
+
+def test_url_seed_and_public_host_rules_remain_compatible_with_presidio():
+    upstream = UrlRecognizer()
+    value = '"https://example.com/a"'
+    seeds = upstream.analyze(value, ["URL"])
+    assert len(seeds) == 1
+    assert value[seeds[0].start] == '"'
+    assert seeds[0].analysis_explanation.pattern_name == "Quoted URL"
+    assert re.fullmatch(upstream.BASE_URL_REGEX, "example.company", re.IGNORECASE)
+    assert not re.fullmatch(upstream.BASE_URL_REGEX, "app.internal.local", re.IGNORECASE)
+    recognizer = _registered_recognizer(UrlRecognizer)
+    results = recognizer.analyze(value, ["URL"])
+    assert [(value[result.start : result.end], result.score) for result in results] == [
+        ("https://example.com/a", seeds[0].score)
+    ]
 
 
 def test_analyzer_supports_all_expected_pii_entities():
@@ -795,7 +932,7 @@ class TestDecorateRecognizer:
 
 def test_keyed_network_candidates_keep_unicode_offsets_and_metadata():
     text = "é src_ip:10.0.0.1/path; client_ip:192.168.1.1:8080/health"
-    recognizer = recognizer_factories.get(IpRecognizer, IpRecognizer)()
+    recognizer = _registered_recognizer(IpRecognizer)
     results = recognizer.analyze(text, ["IP_ADDRESS"])
     assert [(result.start, result.end) for result in results] == [(9, 17), (34, 45)]
     assert [text[result.start : result.end] for result in results] == ["10.0.0.1", "192.168.1.1"]
@@ -809,7 +946,7 @@ def test_keyed_network_candidates_keep_unicode_offsets_and_metadata():
 
 def test_delimited_bare_urls_keep_independent_unicode_spans():
     text = 'é "https://example.com." and <https://example.org,>'
-    recognizer = recognizer_factories.get(UrlRecognizer, UrlRecognizer)()
+    recognizer = _registered_recognizer(UrlRecognizer)
     results = recognizer.analyze(text, ["URL"])
     assert [(result.start, result.end) for result in results] == [(3, 22), (30, 49)]
     assert [text[result.start : result.end] for result in results] == ["https://example.com", "https://example.org"]

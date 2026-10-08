@@ -194,7 +194,7 @@ class TestPresidioRecognizerFactory:
         assert isinstance(result, EntityRecognizer)
 
     @pytest.mark.parametrize(
-        ("name", "language", "text", "expected", "entity", "threshold"),
+        ("name", "language", "text", "expected", "entity", "expected_score"),
         [
             (
                 PredefinedRecognizerName.CreditCardRecognizer,
@@ -202,7 +202,7 @@ class TestPresidioRecognizerFactory:
                 "Card 4111-1111-1111-1111 issued",
                 "4111-1111-1111-1111",
                 "CREDIT_CARD",
-                0.6,
+                1.0,
             ),
             (
                 PredefinedRecognizerName.UrlRecognizer,
@@ -222,11 +222,11 @@ class TestPresidioRecognizerFactory:
             ),
         ],
     )
-    def test_configured_predefined_candidate_spans(self, name, language, text, expected, entity, threshold):
+    def test_configured_predefined_candidate_spans(self, name, language, text, expected, entity, expected_score):
         config = Recognizer(
             name=f"configured_{name.value}",
             enabled=True,
-            confidenceThreshold=threshold,
+            confidenceThreshold=0.6,
             recognizerConfig=RecognizerConfig(
                 root=PredefinedRecognizer(
                     type="predefined",
@@ -243,9 +243,7 @@ class TestPresidioRecognizerFactory:
         assert recognizer.context == ["customer"]
         assert recognizer.supported_entities == [entity]
         results = recognizer.analyze(text, [entity])
-        assert [(text[result.start : result.end], result.score) for result in results] == [
-            (expected, 1.0 if entity == "CREDIT_CARD" else 0.6)
-        ]
+        assert [(text[result.start : result.end], result.score) for result in results] == [(expected, expected_score)]
 
     def test_create_predefined_recognizer_invalid_name(self):
         """Test that invalid predefined recognizer names return None"""

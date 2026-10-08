@@ -64,16 +64,37 @@ from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalyzer
 from metadata.pii.tag_processor import TagProcessor
 
-_SHIPPED_PII = json.loads(
-    (
-        Path(__file__).resolve().parents[5]
-        / "openmetadata-service/src/main/resources/json/data/tags/piiTagsWithRecognizers.json"
-    ).read_text()
-)
+
+def _load_shipped_pii(test_path: Path) -> dict[str, Any]:
+    relative_path = Path("openmetadata-service/src/main/resources/json/data/tags/piiTagsWithRecognizers.json")
+    for parent in test_path.resolve().parents:
+        resource = parent / relative_path
+        if resource.is_file():
+            return json.loads(resource.read_text())
+    pytest.skip("Shipped PII recognizers require the OpenMetadata monorepo resource: " + str(relative_path))
 
 
-def _shipped_classification() -> Classification:
-    settings = _SHIPPED_PII["createClassification"]
+@pytest.fixture(scope="session")
+def shipped_pii() -> dict[str, Any]:
+    return _load_shipped_pii(Path(__file__))
+
+
+def _processor(
+    classification: Classification, tags: list[Tag], language: ClassificationLanguage = ClassificationLanguage.en
+) -> TagProcessor:
+    config = Mock(spec=OpenMetadataWorkflowConfig)
+    config.source = Mock(spec=SourceConfig)
+    config.source.sourceConfig = Mock()
+    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=language)
+    return TagProcessor(
+        config=config,
+        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
+        classification_manager=FakeClassificationManager((classification, tags)),
+    )
+
+
+def _shipped_classification(shipped_pii: dict[str, Any]) -> Classification:
+    settings = shipped_pii["createClassification"]
     config = settings["autoClassificationConfig"]
     return ClassificationFactory.create(
         fqn="PII",
@@ -85,8 +106,10 @@ def _shipped_classification() -> Classification:
     )
 
 
-def _shipped_tag(classification: Classification, tag_name: str, recognizer_names: set[str] | None = None) -> Tag:
-    tag_data = next(tag for tag in _SHIPPED_PII["createTags"] if tag["name"] == tag_name)
+def _shipped_tag(
+    shipped_pii: dict[str, Any], classification: Classification, tag_name: str, recognizer_names: set[str] | None = None
+) -> Tag:
+    tag_data = next(tag for tag in shipped_pii["createTags"] if tag["name"] == tag_name)
     return TagFactory.create(
         tag_name=tag_name,
         tag_classification=classification,
@@ -100,6 +123,17 @@ def _shipped_tag(classification: Classification, tag_name: str, recognizer_names
     )
 
 
+def test_shipped_resource_absence_does_not_prevent_module_collection(tmp_path):
+    import runpy
+
+    relocated = tmp_path / "test_tag_processor_integration.py"
+    relocated.write_text(Path(__file__).read_text())
+    module = runpy.run_path(str(relocated))
+    assert "TestTagProcessorMultiClassification" in module
+    with pytest.raises(pytest.skip.Exception, match="require the OpenMetadata monorepo resource"):
+        module["_load_shipped_pii"](relocated)
+
+
 @pytest.mark.parametrize(
     "language, recognizer_name",
     [
@@ -109,9 +143,9 @@ def _shipped_tag(classification: Classification, tag_name: str, recognizer_names
         ("pl", "PolishCreditCardRecognizer"),
     ],
 )
-def test_shipped_card_evidence_and_default_tagging(language, recognizer_name):
-    classification = _shipped_classification()
-    tag = _shipped_tag(classification, "Sensitive", {recognizer_name})
+def test_shipped_card_evidence_and_default_tagging(shipped_pii, language, recognizer_name):
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, "Sensitive", {recognizer_name})
     column = Column(
         name="customer_card", fullyQualifiedName="db.schema.table.customer_card", dataType=DataType.VARCHAR, tags=[]
     )
@@ -124,15 +158,7 @@ def test_shipped_card_evidence_and_default_tagging(language, recognizer_name):
         ("4111-1111-1111-1111", 1.0)
     ]
 
-    config = Mock(spec=OpenMetadataWorkflowConfig)
-    config.source = Mock(spec=SourceConfig)
-    config.source.sourceConfig = Mock()
-    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=language_enum)
-    processor = TagProcessor(
-        config=config,
-        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
-        classification_manager=FakeClassificationManager((classification, [tag])),
-    )
+    processor = _processor(classification, [tag], language_enum)
     labels = processor.create_column_tag_labels(column, [value])
     assert [label.tagFQN.root for label in labels] == ["PII.Sensitive"]
     assert labels[0].labelType == LabelType.Generated
@@ -148,9 +174,11 @@ def test_shipped_card_evidence_and_default_tagging(language, recognizer_name):
         ("Sensitive", "IpRecognizer", "2001:db8::1g", None, []),
     ],
 )
-def test_shipped_network_evidence_and_default_tagging(tag_name, recognizer_name, value, expected, expected_labels):
-    classification = _shipped_classification()
-    tag = _shipped_tag(classification, tag_name, {recognizer_name})
+def test_shipped_network_evidence_and_default_tagging(
+    shipped_pii, tag_name, recognizer_name, value, expected, expected_labels
+):
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, tag_name, {recognizer_name})
     column = Column(
         name="service_value", fullyQualifiedName="db.schema.table.service_value", dataType=DataType.VARCHAR, tags=[]
     )
@@ -160,15 +188,7 @@ def test_shipped_network_evidence_and_default_tagging(tag_name, recognizer_name,
         [expected] if expected else []
     )
 
-    config = Mock(spec=OpenMetadataWorkflowConfig)
-    config.source = Mock(spec=SourceConfig)
-    config.source.sourceConfig = Mock()
-    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
-    processor = TagProcessor(
-        config=config,
-        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
-        classification_manager=FakeClassificationManager((classification, [tag])),
-    )
+    processor = _processor(classification, [tag], ClassificationLanguage.en)
     assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
 
 
@@ -182,22 +202,14 @@ def test_shipped_network_evidence_and_default_tagging(tag_name, recognizer_name,
     ],
 )
 def test_network_configured_context_preserves_recognizer_metadata(
-    tag_name, recognizer_name, column_name, value, expected_tag
+    shipped_pii, tag_name, recognizer_name, column_name, value, expected_tag
 ):
-    classification = _shipped_classification()
-    tag = _shipped_tag(classification, tag_name, {recognizer_name})
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, tag_name, {recognizer_name})
     column = Column(
         name=column_name, fullyQualifiedName=f"db.schema.table.{column_name}", dataType=DataType.VARCHAR, tags=[]
     )
-    config = Mock(spec=OpenMetadataWorkflowConfig)
-    config.source = Mock(spec=SourceConfig)
-    config.source.sourceConfig = Mock()
-    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
-    processor = TagProcessor(
-        config=config,
-        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
-        classification_manager=FakeClassificationManager((classification, [tag])),
-    )
+    processor = _processor(classification, [tag], ClassificationLanguage.en)
 
     labels = processor.create_column_tag_labels(column, [value])
     assert [label.tagFQN.root for label in labels] == [expected_tag]
@@ -206,9 +218,9 @@ def test_network_configured_context_preserves_recognizer_metadata(
     assert labels[0].metadata.recognizer.recognizerName == recognizer_name
 
 
-def test_luhn_valid_operational_lookalike_remains_ambiguous():
-    classification = _shipped_classification()
-    tag = _shipped_tag(classification, "Sensitive", {"EnglishCreditCardRecognizer"})
+def test_luhn_valid_operational_lookalike_receives_conservative_sensitive_tag(shipped_pii):
+    classification = _shipped_classification(shipped_pii)
+    tag = _shipped_tag(shipped_pii, classification, "Sensitive", {"EnglishCreditCardRecognizer"})
     column = Column(
         name="batch_reference", fullyQualifiedName="db.schema.table.batch_reference", dataType=DataType.VARCHAR, tags=[]
     )
@@ -219,15 +231,7 @@ def test_luhn_valid_operational_lookalike_remains_ambiguous():
         ("4111111111111111", 1.0)
     ]
 
-    config = Mock(spec=OpenMetadataWorkflowConfig)
-    config.source = Mock(spec=SourceConfig)
-    config.source.sourceConfig = Mock()
-    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
-    processor = TagProcessor(
-        config=config,
-        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
-        classification_manager=FakeClassificationManager((classification, [tag])),
-    )
+    processor = _processor(classification, [tag], ClassificationLanguage.en)
     assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == ["PII.Sensitive"]
 
 
@@ -267,10 +271,40 @@ def test_luhn_valid_operational_lookalike_remains_ambiguous():
         ("10.0.0.1/8.1", {"IP_ADDRESS": "10.0.0.1"}, []),
         ("http://app.internal.local/path", {}, []),
     ],
+    ids=[
+        "card-compact",
+        "card-phone-collision-13",
+        "card-phone-collision-16",
+        "card-phone-collision-alt-13",
+        "card-visa-19",
+        "email-address",
+        "url-nested-card",
+        "http-ipv4-port-numeric-path-no-context",
+        "ipv4-port-health-no-context",
+        "ipv4-html-path-no-context",
+        "ftp-ipv4-path-no-context",
+        "smb-ipv4-path-no-context",
+        "ipv4-src-label-no-context",
+        "ipv4-client-label-no-context",
+        "ipv4-label-port-path-no-context",
+        "ipv4-nonnumeric-path-no-context",
+        "ipv4-port-nonnumeric-path-no-context",
+        "url-quoted-prose-bare-host-dot",
+        "url-quoted-bare-host-below-threshold",
+        "url-delimited-bare-host-dot",
+        "url-quoted-query-dot",
+        "url-delimited-fragment-comma",
+        "ftp-ipv4-numeric-path-no-context",
+        "smb-ipv4-numeric-path-no-context",
+        "ipv4-numeric-word-path",
+        "cidr-looking-json-path-competing-date",
+        "ipv4-decimal-path",
+        "url-internal-host-rejected",
+    ],
 )
-def test_full_shipped_recognizer_interactions(value, expected_entities, expected_labels):
-    classification = _shipped_classification()
-    tags = [_shipped_tag(classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
+def test_full_shipped_recognizer_interactions(shipped_pii, value, expected_entities, expected_labels):
+    classification = _shipped_classification(shipped_pii)
+    tags = [_shipped_tag(shipped_pii, classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
     column = Column(name="payload", fullyQualifiedName="db.schema.table.payload", dataType=DataType.VARCHAR, tags=[])
     nlp_engine = load_nlp_engine(classification_language=ClassificationLanguage.en)
     evidence = [
@@ -283,15 +317,7 @@ def test_full_shipped_recognizer_interactions(value, expected_entities, expected
     if not expected_entities:
         assert all(result.entity_type != "URL" for result in evidence)
 
-    config = Mock(spec=OpenMetadataWorkflowConfig)
-    config.source = Mock(spec=SourceConfig)
-    config.source.sourceConfig = Mock()
-    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
-    processor = TagProcessor(
-        config=config,
-        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
-        classification_manager=FakeClassificationManager((classification, tags)),
-    )
+    processor = _processor(classification, tags, ClassificationLanguage.en)
     assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
 
 
@@ -320,10 +346,10 @@ def test_full_shipped_recognizer_interactions(value, expected_entities, expected
     ],
 )
 def test_shipped_recognizers_preserve_numeric_family_boundaries(
-    column_name, value, expected_card, expected_ip, expected_labels
+    shipped_pii, column_name, value, expected_card, expected_ip, expected_labels
 ):
-    classification = _shipped_classification()
-    tags = [_shipped_tag(classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
+    classification = _shipped_classification(shipped_pii)
+    tags = [_shipped_tag(shipped_pii, classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
     column = Column(
         name=column_name,
         fullyQualifiedName=f"db.schema.table.{column_name}",
@@ -338,15 +364,7 @@ def test_shipped_recognizers_preserve_numeric_family_boundaries(
         spans = [value[result.start : result.end] for result in evidence if result.entity_type == entity]
         assert spans == ([expected] if expected else [])
 
-    config = Mock(spec=OpenMetadataWorkflowConfig)
-    config.source = Mock(spec=SourceConfig)
-    config.source.sourceConfig = Mock()
-    config.source.sourceConfig.config = Mock(confidence=80, classificationLanguage=ClassificationLanguage.en)
-    processor = TagProcessor(
-        config=config,
-        metadata=create_autospec(OpenMetadata, spec_set=True, instance=True),
-        classification_manager=FakeClassificationManager((classification, tags)),
-    )
+    processor = _processor(classification, tags, ClassificationLanguage.en)
     assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels
 
 

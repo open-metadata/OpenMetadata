@@ -1,4 +1,12 @@
+import re
+
 from presidio_analyzer import Pattern
+
+CARD_GROUPING_PATTERNS = (
+    re.compile(r"\d{12,19}"),
+    re.compile(r"\d{4}(?P<sep>[ -])\d{4}(?P=sep)\d{4}(?P=sep)\d{4}(?:(?P=sep)\d{3})?"),
+    re.compile(r"\d{4}(?P<sep>[ -])\d{6}(?P=sep)\d{5}"),
+)
 
 credit_cards = [
     Pattern("Credit Card Number", pattern, 0.7)

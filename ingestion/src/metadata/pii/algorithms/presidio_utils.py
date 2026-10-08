@@ -18,10 +18,11 @@ import logging
 import re
 import types
 from collections.abc import Callable, Iterable
+from copy import copy
 from functools import cache, wraps
 from itertools import groupby
 from typing import ClassVar, cast
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, urlsplit
 
 import spacy
 from dateutil import parser
@@ -70,6 +71,20 @@ logger = pii_logger()
 MIN_SCORE_FOR_ENHANCEMENT = 0.3
 
 _CONTEXT_TOKEN_SEPARATORS = re.compile(r"[^0-9a-z]+")
+_MAX_CANDIDATE_LENGTH = 5000
+_MAX_IP_ADDRESS_LENGTH = 45
+_MAX_PORT = 65535
+_CARD_CANDIDATES = re.compile(r"\d[\d -]*\d|\d")
+_CARD_PARTS = re.compile(r"\S+")
+_TRAILING_YEAR = re.compile(r"(?:19|20)\d{2}")
+_IP_CANDIDATES = re.compile(r"[\w:.%-]+")
+_IP_LABEL = re.compile(r"[a-zA-Z_]\w*")
+_NON_HEX = re.compile(r"[^0-9a-fA-F]")
+_CIDR_SUFFIX = re.compile(r"/(\d+)(?![\w.])")
+_URI_AUTHORITY_PREFIX = re.compile(
+    r"(?<![\w.+-])[a-zA-Z][a-zA-Z0-9+.-]*://"
+    r"(?:(?:[a-zA-Z0-9._~!$&'()*+,;=:-]|%[0-9a-fA-F]{2})*@)?\[?$"
+)
 
 
 def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bool:
@@ -183,14 +198,73 @@ recognizer_factories = class_register()
 
 
 def _has_card_shape(candidate: str) -> bool:
-    return bool(
-        re.fullmatch(r"\d{12,19}", candidate)
-        or re.fullmatch(r"\d{4}(?P<sep>[ -])\d{4}(?P=sep)\d{4}(?P=sep)\d{4}(?:(?P=sep)\d{3})?", candidate)
-        or re.fullmatch(r"\d{4}(?P<sep>[ -])\d{6}(?P=sep)\d{5}", candidate)
+    return any(pattern.fullmatch(candidate) for pattern in patterns.CARD_GROUPING_PATTERNS)
+
+
+def _remap_result(result: RecognizerResult, start: int, end: int) -> RecognizerResult:
+    mapped = copy(result)
+    mapped.start, mapped.end = start, end
+    return mapped
+
+
+def _whole_candidate_results(
+    analyze: Callable[..., list[RecognizerResult]],
+    candidate: str,
+    entities: list[str],
+    start: int,
+    end: int,
+    regex_flags: int | None,
+) -> list[RecognizerResult]:
+    # Full-text NLP artifacts have incompatible offsets when analyzing a substring.
+    return [
+        _remap_result(result, start, end)
+        for result in analyze(candidate, entities, nlp_artifacts=None, regex_flags=regex_flags)
+        if result.start == 0 and result.end == len(candidate)
+    ]
+
+
+def _is_embedded_card_token(text: str, start: int, end: int) -> bool:
+    if start and (text[start - 1].isalnum() or text[start - 1] in "_.-"):
+        return True
+    return end < len(text) and (
+        text[end].isalnum() or text[end] in "_-" or (text[end] == "." and text[end + 1 : end + 2].isdigit())
     )
 
 
+def _is_phone_prefixed(text: str, start: int) -> bool:
+    preceding = start - 1
+    while preceding >= 0 and text[preceding] in " \t":
+        preceding -= 1
+    return preceding >= 0 and text[preceding] == "+"
+
+
+def _iter_card_candidates(text: str) -> Iterable[tuple[int, int]]:
+    for match in _CARD_CANDIDATES.finditer(text):
+        start, end = match.span()
+        if (
+            end - start <= _MAX_CANDIDATE_LENGTH
+            and not _is_embedded_card_token(text, start, end)
+            and not _is_phone_prefixed(text, start)
+        ):
+            yield start, end
+
+
+def _card_prefix_before_year(candidate: str) -> str | None:
+    # Recover a separate year only; shorter suffixes may complete a 19-digit card.
+    prefix, separator, suffix = candidate.rpartition(" ")
+    prefix = prefix.rstrip(" ")
+    if separator and _TRAILING_YEAR.fullmatch(suffix) and _has_card_shape(prefix):
+        return prefix
+    return None
+
+
 class SanitizedCreditCardRecognizer(CreditCardRecognizer):
+    def _analyze_card_candidate(
+        self, candidate: str, entities: list[str], start: int, end: int, regex_flags: int | None
+    ) -> list[RecognizerResult]:
+        normalized = self.sanitize_value(candidate, self.replacement_pairs)
+        return _whole_candidate_results(super().analyze, normalized, entities, start, end, regex_flags)
+
     def analyze(
         self,
         text: str,
@@ -199,53 +273,24 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
         regex_flags: int | None = None,
     ) -> list[RecognizerResult]:
         results: list[RecognizerResult] = []
-        for match in re.finditer(r"\d[\d -]*\d|\d", text):
-            start, end = match.span()
-            preceding = start - 1
-            while preceding >= 0 and text[preceding] in " \t":
-                preceding -= 1
-            if (
-                (start and (text[start - 1].isalnum() or text[start - 1] in "_.-+"))
-                or (
-                    end < len(text)
-                    and (
-                        text[end].isalnum()
-                        or text[end] in "_-"
-                        or (text[end] == "." and text[end + 1 : end + 2].isdigit())
-                    )
-                )
-                or (preceding >= 0 and text[preceding] == "+")
-            ):
-                continue
-            candidate = match.group()
-            if len(candidate) > 5000:
-                continue
-            spans = [(start, end)]
-            parts = list(re.finditer(r"\S+", candidate))
+        for start, end in _iter_card_candidates(text):
+            candidate = text[start:end]
+            if _has_card_shape(candidate):
+                whole_results = self._analyze_card_candidate(candidate, entities, start, end, regex_flags)
+                if whole_results:
+                    results.extend(whole_results)
+                    continue
+            parts = list(_CARD_PARTS.finditer(candidate))
             if len(parts) >= 2 and all(_has_card_shape(part.group()) for part in parts):
-                spans = [(start + part.start(), start + part.end()) for part in parts]
-            # A four-digit year is distinct from a card; shorter groups can complete one.
-            prefix, separator, suffix = candidate.rpartition(" ")
-            card_prefix = prefix.rstrip(" ")
-            if separator and re.fullmatch(r"(?:19|20)\d{2}", suffix) and _has_card_shape(card_prefix):
-                spans.append((start, start + len(card_prefix)))
-            for candidate_start, candidate_end in spans:
-                original = text[candidate_start:candidate_end]
-                normalized = self.sanitize_value(original, self.replacement_pairs)
-                if not _has_card_shape(original) or not 12 <= len(normalized) <= 19:
-                    continue
-                card_results = [
-                    result
-                    for result in super().analyze(normalized, entities, nlp_artifacts, regex_flags)
-                    if result.start == 0 and result.end == len(normalized)
-                ]
-                if not card_results:
-                    continue
-                for result in card_results:
-                    result.start, result.end = candidate_start, candidate_end
-                    results.append(result)
-                if candidate_start == start and candidate_end == end:
-                    break
+                for part in parts:
+                    results.extend(
+                        self._analyze_card_candidate(
+                            part.group(), entities, start + part.start(), start + part.end(), regex_flags
+                        )
+                    )
+            prefix = _card_prefix_before_year(candidate)
+            if prefix is not None:
+                results.extend(self._analyze_card_candidate(prefix, entities, start, start + len(prefix), regex_flags))
         return results
 
 
@@ -264,6 +309,57 @@ def credit_card_factory(
     )
 
 
+def _extend_to_url_end(text: str, start: int) -> int | None:
+    end = start
+    depth = 0
+    while end < len(text) and text[end] not in " \t\r\n<>\"'":
+        char = text[end]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            if depth == 0:
+                break
+            depth -= 1
+        end += 1
+    return None if depth else end
+
+
+def _trim_url_prose_punctuation(text: str, start: int, end: int) -> int:
+    if end == len(text) or text[end] not in ">\"'":
+        while end > start and text[end - 1] in ".,":
+            end -= 1
+    return end
+
+
+def _split_url(candidate: str) -> SplitResult | None:
+    has_scheme = candidate.lower().startswith(("http://", "https://"))
+    try:
+        return urlsplit(candidate if has_scheme else f"//{candidate}")
+    except ValueError:
+        return None
+
+
+def _parse_url_candidate(candidate: str) -> tuple[str, SplitResult] | None:
+    parsed = _split_url(candidate)
+    if parsed is None:
+        return None
+    if not parsed.path and not parsed.query and not parsed.fragment:
+        trimmed = candidate.rstrip(".,!;")
+        if trimmed != candidate:
+            candidate = trimmed
+            parsed = _split_url(candidate)
+            if parsed is None:
+                return None
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if port is not None and not 1 <= port <= _MAX_PORT:
+        return None
+    return candidate, parsed
+
+
+# Keep URL/IP class names: Presidio derives identity metadata from them and accepts no name override.
 class UrlRecognizer(PresidioUrlRecognizer):
     def analyze(
         self,
@@ -274,49 +370,32 @@ class UrlRecognizer(PresidioUrlRecognizer):
     ) -> list[RecognizerResult]:
         results: list[RecognizerResult] = []
         seen: set[tuple[int, int]] = set()
-        for match in super().analyze(text, entities, nlp_artifacts, regex_flags):
-            start = match.start + (text[match.start] in "\"'")
+        for seed in super().analyze(text, entities, nlp_artifacts, regex_flags):
+            # Presidio's quoted patterns can include the opening quote; other seeds start at the host.
+            start = seed.start + (text[seed.start] in "\"'")
             if start and (text[start - 1].isalnum() or text[start - 1] in "@._-"):
                 continue
-            end = start
-            depth = 0
-            while end < len(text) and text[end] not in " \t\r\n<>\"'":
-                char = text[end]
-                if char == "(":
-                    depth += 1
-                elif char == ")":
-                    if depth == 0:
-                        break
-                    depth -= 1
-                end += 1
-            if end == len(text) or text[end] not in ">\"'":
-                while end > start and text[end - 1] in ".,":
-                    end -= 1
+            end = _extend_to_url_end(text, start)
+            if end is None:
+                continue
+            end = _trim_url_prose_punctuation(text, start, end)
             candidate = text[start:end]
-            if len(candidate) > 5000 or depth or not candidate:
+            if not candidate or len(candidate) > _MAX_CANDIDATE_LENGTH:
                 continue
-            try:
-                has_scheme = candidate.lower().startswith(("http://", "https://"))
-                parsed = urlsplit(candidate if has_scheme else f"//{candidate}")
-                if not parsed.path and not parsed.query and not parsed.fragment and candidate[-1] in ".,!;":
-                    candidate = candidate.rstrip(".,!;")
-                    end = start + len(candidate)
-                    parsed = urlsplit(candidate if has_scheme else f"//{candidate}")
-                host = parsed.hostname
-                port = parsed.port
-            except ValueError:
+            parsed_candidate = _parse_url_candidate(candidate)
+            if parsed_candidate is None:
                 continue
+            candidate, parsed = parsed_candidate
+            # Keep Presidio's public-host policy, including its BASE_URL_REGEX suffix list.
             if (
                 parsed.scheme not in ("", "http", "https")
-                or not host
-                or not re.fullmatch(self.BASE_URL_REGEX, host, flags=re.IGNORECASE)
+                or not parsed.hostname
+                or not re.fullmatch(self.BASE_URL_REGEX, parsed.hostname, flags=re.IGNORECASE)
             ):
                 continue
-            if port is not None and not 1 <= port <= 65535:
-                continue
+            end = start + len(candidate)
             if (start, end) not in seen:
-                match.start, match.end = start, end
-                results.append(match)
+                results.append(_remap_result(seed, start, end))
                 seen.add((start, end))
         return results
 
@@ -328,18 +407,28 @@ def url_factory(*, supported_language: str = SUPPORTED_LANG, context: list[str] 
     return UrlRecognizer(supported_language=supported_language, context=context)
 
 
-def _has_invalid_cidr_suffix(
-    text: str, suffix: re.Match[str], token_end: int, address_end: int, max_prefixlen: int
-) -> bool:
-    prefix = suffix.group(1)
-    if token_end != address_end or len(prefix) > 3 or int(prefix) > max_prefixlen:
-        return True
-    suffix_end = token_end + suffix.end()
-    return suffix_end < len(text) and text[suffix_end] in "/:%-"
+def _cidr_suffix_is_valid(prefix: str, max_prefixlen: int, trailing_char: str | None) -> bool:
+    # Bound conversion too: Python rejects integer strings over its digit limit.
+    return len(prefix) <= 3 and int(prefix) <= max_prefixlen and (trailing_char is None or trailing_char not in "/:%-")
+
+
+def _skip_ip_label_prefix(token: str) -> int:
+    """Skip word-key labels, but retain hex-only prefixes that may be malformed IPv6."""
+    key, separator, _ = token.partition(":")
+    if separator and _IP_LABEL.fullmatch(key) and _NON_HEX.search(key):
+        return len(key) + 1
+    return 0
+
+
+def _is_uri_authority(text: str, start: int) -> bool:
+    # Malformed identifier-prefixed schemes must not turn a CIDR into a URI path.
+    return bool(_URI_AUTHORITY_PREFIX.search(text[max(0, start - _MAX_CANDIDATE_LENGTH) : start]))
 
 
 class IpRecognizer(PresidioIpRecognizer):
     def __init__(self, *, supported_language: str = SUPPORTED_LANG, context: list[str] | None = None):
+        # Anchored patterns retain Presidio's scores, invalidation and result metadata
+        # after ipaddress validates the complete candidate, including mapped IPv6.
         super().__init__(
             patterns=[
                 Pattern("IPv4", r"^[0-9.]+$", 0.6),
@@ -358,25 +447,14 @@ class IpRecognizer(PresidioIpRecognizer):
         regex_flags: int | None = None,
     ) -> list[RecognizerResult]:
         results: list[RecognizerResult] = []
-        for match in re.finditer(r"[\w:.%-]+", text):
+        for match in _IP_CANDIDATES.finditer(text):
             start, end = match.span()
             token_end = end
-            key, separator, _ = text[start:end].partition(":")
-            # Hex-only prefixes can be malformed IPv6; never salvage their IPv4 tail.
-            if separator and re.fullmatch(r"[a-zA-Z_]\w*", key) and re.search(r"[^0-9a-fA-F]", key):
-                start += len(key) + 1
-            # A scheme inside a malformed identifier must not turn a CIDR into a URI path.
-            in_url_authority = bool(
-                re.search(
-                    r"(?<![\w.+-])[a-zA-Z][a-zA-Z0-9+.-]*://"
-                    r"(?:(?:[a-zA-Z0-9._~!$&'()*+,;=:-]|%[0-9a-fA-F]{2})*@)?\[?$",
-                    text[max(0, start - 5000) : start],
-                )
-            )
+            start += _skip_ip_label_prefix(text[start:end])
             while end > start and text[end - 1] == ".":
                 end -= 1
             candidate = text[start:end]
-            if not any(char in candidate for char in ".:") or len(candidate) > 45:
+            if not any(char in candidate for char in ".:") or len(candidate) > _MAX_IP_ADDRESS_LENGTH:
                 continue
             if candidate.count(":") == 1:
                 address, _, port = candidate.rpartition(":")
@@ -385,7 +463,7 @@ class IpRecognizer(PresidioIpRecognizer):
                 except ValueError:
                     pass
                 else:
-                    if not port.isdecimal() or not 1 <= int(port) <= 65535:
+                    if not port.isdecimal() or not 1 <= int(port) <= _MAX_PORT:
                         continue
                     candidate = address
                     end = start + len(address)
@@ -393,16 +471,15 @@ class IpRecognizer(PresidioIpRecognizer):
                 parsed_address = ipaddress.ip_address(candidate)
             except ValueError:
                 continue
-            if not in_url_authority and token_end < len(text) and text[token_end] == "/":
-                suffix = re.match(r"/(\d+)(?![\w.])", text[token_end:])
-                if suffix is not None and _has_invalid_cidr_suffix(
-                    text, suffix, token_end, end, parsed_address.max_prefixlen
-                ):
-                    continue
-            for result in super().analyze(candidate, entities, nlp_artifacts, regex_flags):
-                if result.start == 0 and result.end == len(candidate):
-                    result.start, result.end = start, end
-                    results.append(result)
+            if token_end < len(text) and text[token_end] == "/":
+                suffix = _CIDR_SUFFIX.match(text[token_end:])
+                if suffix is not None and not _is_uri_authority(text, start):
+                    trailing_char = text[token_end + suffix.end() : token_end + suffix.end() + 1] or None
+                    if token_end != end or not _cidr_suffix_is_valid(
+                        suffix.group(1), parsed_address.max_prefixlen, trailing_char
+                    ):
+                        continue
+            results.extend(_whole_candidate_results(super().analyze, candidate, entities, start, end, regex_flags))
         return results
 
 
