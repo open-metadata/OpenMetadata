@@ -657,10 +657,6 @@ UPDATE announcement_entity
 SET json = JSON_REMOVE(json, '$.status')
 WHERE JSON_EXTRACT(json, '$.status') IS NOT NULL;
 
--- Flowable schema upgrades run after this migration and inherit the database default. Existing
--- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
-ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
 -- Perf: entity_usage is upserted on every usage event and read back by id alone
 -- (insertOrReplaceCount/insertOrUpdateCount recomputing count7/count30, getUsageById,
 -- getLatestUsage, getLatestUsageBatch, delete-by-id). Those reads filter on `id`; this index
@@ -685,3 +681,7 @@ SET @entity_usage_id_index_ddl = (
 PREPARE entity_usage_id_index_stmt FROM @entity_usage_id_index_ddl;
 EXECUTE entity_usage_id_index_stmt;
 DEALLOCATE PREPARE entity_usage_id_index_stmt;
+
+-- Flowable schema upgrades run after this migration and inherit the database default. Existing
+-- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
