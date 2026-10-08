@@ -484,6 +484,25 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "rotate_playwright_auth_state.py" in fixture_start
 
 
+def test_planning_runs_in_parallel_with_the_build() -> None:
+    """The planner only needs the selection, so it must not wait ~6 min for Maven.
+
+    Every job that consumes the distribution must still wait for the build.
+    """
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    plan_job = workflow.split("  plan-playwright:\n", 1)[1].split("  restore-playwright-fixture:", 1)[0]
+    assert plan_job.startswith("    needs: [detect-changes]\n")
+    assert "needs.build" not in plan_job
+    assert "openmetadata-distribution" not in plan_job
+
+    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  playwright-ci:", 1)[0]
+    shard_job = workflow.split("  playwright-ci:", 1)[1].split("  slack-notify:", 1)[0]
+    for consumer in (prepare_job, shard_job):
+        assert "name: openmetadata-distribution" in consumer
+        needs = consumer.split("needs:", 1)[1].split("runs-on:", 1)[0]
+        assert "build" in needs
+
+
 def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
     """Merge-queue refs are deleted on dequeue, so a save there helps nobody.
 
