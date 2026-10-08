@@ -424,9 +424,10 @@ describe('KnowledgeGraph', () => {
     await openGraph();
     await screen.findByTestId('edge-Orders-Downstream-Customers');
     await chooseLevel(3);
-    await press(screen.getByTestId('graph-filters-toggle'));
-    await press(screen.getByRole('button', { name: 'label.entity-type' }));
-    await press(screen.getByRole('menuitemcheckbox', { name: 'Table (2)' }));
+    // Entity Type picker lives inline next to the search bar now (B); its
+    // trigger is FilterSelectDropdown's `search-dropdown-${searchKey}`.
+    await press(screen.getByTestId('search-dropdown-entity-type'));
+    await press(screen.getByTestId('table'));
     fireEvent.keyDown(document.activeElement ?? document.body, {
       key: 'Escape',
     });
