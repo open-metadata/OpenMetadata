@@ -1,0 +1,107 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/rdfReasoningJobRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RdfReasoningJobRequest",
+  "description": "A reasoning job OpenMetadata submits to the RDF store. It is typed and bounded, and never carries files, remote URLs or code.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningJobRequest",
+  "definitions": {
+    "operation": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningOperation",
+      "description": "REFRESH recomputes the deductions from asserted input and publishes them as a new snapshot. CHECK answers one typed question about an import closure. EXPLAIN justifies one statement.",
+      "type": "string",
+      "enum": ["REFRESH", "CHECK", "EXPLAIN"]
+    },
+    "checkKind": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningCheckKind",
+      "description": "CONSISTENCY asks whether the closure has a model. SATISFIABILITY asks whether classExpression can have an instance. SUBSUMPTION asks whether every instance of classExpression is an instance of superClassExpression; a ONE_OF classExpression asks it of named individuals. ENTAILMENT asks whether the closure entails statement.",
+      "type": "string",
+      "enum": ["CONSISTENCY", "SATISFIABILITY", "SUBSUMPTION", "ENTAILMENT"]
+    },
+    "check": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningCheck",
+      "description": "The question a CHECK asks. SATISFIABILITY takes classExpression, SUBSUMPTION takes classExpression and superClassExpression, ENTAILMENT takes statement, and CONSISTENCY takes neither.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/checkKind"
+        },
+        "classExpression": {
+          "$ref": "../../type/ontologyExpression.json"
+        },
+        "superClassExpression": {
+          "$ref": "../../type/ontologyExpression.json"
+        },
+        "statement": {
+          "$ref": "../../type/rdfStatement.json"
+        }
+      },
+      "required": ["kind"],
+      "additionalProperties": false
+    },
+    "explain": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningExplain",
+      "description": "The statement an EXPLAIN justifies.",
+      "type": "object",
+      "properties": {
+        "statement": {
+          "$ref": "../../type/rdfStatement.json"
+        },
+        "maxJustifications": {
+          "description": "Most justifications to return. Each one is a minimal set of axioms and governance facts that entails the statement.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 1
+        }
+      },
+      "required": ["statement"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "requestId": {
+      "description": "Idempotency key. Submitting the same ID again returns the existing job instead of starting another.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "operation": {
+      "$ref": "#/definitions/operation"
+    },
+    "sourceRevision": {
+      "description": "The serving graph OpenMetadata read just before submitting. The store rejects the job when that dataset generation no longer serves.",
+      "$ref": "rdfReasoningSnapshot.json#/definitions/sourceRevision"
+    },
+    "ontologySelection": {
+      "$ref": "rdfReasoningSnapshot.json#/definitions/ontologySelection"
+    },
+    "ontologyIri": {
+      "description": "Root ontology of the import closure to check or explain. Required for CHECK and EXPLAIN.",
+      "type": "string",
+      "format": "uri"
+    },
+    "ontologyDigest": {
+      "description": "OpenMetadata's digest of the selected ontology input, recorded with the result.",
+      "$ref": "rdfReasoningSnapshot.json#/definitions/digest"
+    },
+    "ruleBundleDigest": {
+      "description": "OpenMetadata's digest of rules, recorded with the result. Required for REFRESH.",
+      "$ref": "rdfReasoningSnapshot.json#/definitions/digest"
+    },
+    "rules": {
+      "description": "The governance rules a REFRESH applies to a fixed point. Disabled rules take no part.",
+      "type": "array",
+      "items": {
+        "$ref": "../configuration/rdf/inferenceRule.json"
+      },
+      "maxItems": 256
+    },
+    "check": {
+      "$ref": "#/definitions/check"
+    },
+    "explain": {
+      "$ref": "#/definitions/explain"
+    }
+  },
+  "required": ["requestId", "operation", "sourceRevision", "ontologySelection"],
+  "additionalProperties": false
+}

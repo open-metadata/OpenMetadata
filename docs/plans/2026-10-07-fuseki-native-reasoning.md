@@ -441,19 +441,25 @@ Cancellation sends the running worker `SIGTERM`, then `SIGKILL` after a short gr
 startup the module kills or cleans up any worker recorded in an unfinished job directory before
 marking that job interrupted.
 
-Illustrative refresh request; IDs and digest are examples:
+A refresh request, as in the contract test's `rdf/reasoning/refresh-request.json`; IDs and digest
+are examples:
 
 ```json
 {
   "requestId": "c90c9724-b9d7-448a-af2f-f3c8ae4c54d2",
   "operation": "REFRESH",
-  "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
-  "liveWriteWatermark": 18442,
+  "sourceRevision": {
+    "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
+    "liveWriteWatermark": 18442
+  },
   "ontologySelection": "APPROVED",
-  "ruleBundleDigest": "sha256:example",
+  "ruleBundleDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   "rules": []
 }
 ```
+
+The digests are OM's identities for its ontology and rule input; the store records them with the
+result without interpreting them, and OM compares them when it computes freshness.
 
 Synchronize the bounded rule bundle from OM's rule repository. A `CHECK` selects an ontology/import
 version and a typed consistency, satisfiability, subsumption, or entailment request using the
@@ -814,12 +820,14 @@ fixtures for phase 6 rather than building a separate prototype framework.
 
 **Outcome:** every job and result can identify exactly which catalog, ontology, and rules it used.
 
-1. Define job/capability contracts as new `rdfReasoningJob.json` and `rdfReasoningCapabilities.json`
-   under `openmetadata-spec/src/main/resources/json/schema/api/rdf/`. Extend existing
-   `sparqlQuery.json`, `sparqlResponse.json`, and `rdfInferenceStatus.json` there for snapshot,
-   freshness, and structured failures. Reuse `type/ontologyExpression.json` and the existing
-   ontology explanation schemas. Update `api/configuration/rdfConfiguration.json` for remote
-   capability configuration and mandatory limits; regenerate models before Java consumers.
+1. Define the store protocol under `openmetadata-spec/src/main/resources/json/schema/api/rdf/`:
+   `rdfReasoningJobRequest.json`, `rdfReasoningJob.json` (state, outcome, structured problems),
+   `rdfReasoningCapabilities.json`, and `rdfReasoningSnapshot.json` (source revision, input
+   identity, freshness). Reuse `type/ontologyExpression.json`, `type/rdfStatement.json`, and
+   `inferenceRule.json`; regenerate models before Java consumers. Examples under
+   `openmetadata-service/src/test/resources/rdf/reasoning/` pin the wire format for the fork.
+   The OM-facing fields move to phase 7, which implements them: a `requireCurrent` flag that the
+   server accepted but ignored would let clients believe stale answers were rejected.
 2. Add a durable serving-generation identity and captured job/status fields through
    [RdfInfraDAOs.java](../../openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/RdfInfraDAOs.java),
    `RdfDatasetManager.java`, and `RdfRebuildStore.java`. Add matching, append-only MySQL/Postgres
@@ -956,7 +964,10 @@ authorization, orchestration, and bounded request/response handling.
    `rdf/OntologySparqlQueryService.java` and `resources/glossary/GlossaryResource.java`, keep
    asserted SQL queries unchanged and serve `rdfs`/`owl` from snapshots, returning unavailable when
    RDF is off; remove its in-OM OWL Mini. Migrate legacy modes explicitly; an unavailable or
-   `NOT_READY` extension must not activate local inference.
+   `NOT_READY` extension must not activate local inference. With this routing, add
+   `requireCurrent` to `sparqlQuery.json`, the serving snapshot and its freshness to
+   `sparqlResponse.json` and `rdfInferenceStatus.json`, and the remote capability configuration
+   and mandatory limits to `api/configuration/rdfConfiguration.json`.
 3. Update [SparqlQueryTool.java](../../openmetadata-mcp/src/main/java/org/openmetadata/mcp/tools/SparqlQueryTool.java)
    and `openmetadata-mcp/src/main/resources/json/data/mcp/tools.json`; add typed read-only check
    and explanation tools under `openmetadata-mcp/src/main/java/org/openmetadata/mcp/tools/`.

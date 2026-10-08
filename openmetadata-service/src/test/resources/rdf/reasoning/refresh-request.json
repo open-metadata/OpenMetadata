@@ -1,0 +1,11 @@
+{
+  "requestId": "c90c9724-b9d7-448a-af2f-f3c8ae4c54d2",
+  "operation": "REFRESH",
+  "sourceRevision": {
+    "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
+    "liveWriteWatermark": 18442
+  },
+  "ontologySelection": "APPROVED",
+  "ruleBundleDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "rules": []
+}
