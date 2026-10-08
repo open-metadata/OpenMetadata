@@ -19,6 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.StringWriter;
 import java.time.Duration;
@@ -27,6 +31,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -68,8 +73,13 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.rdf.ColumnLineageFixture;
 import org.openmetadata.service.rdf.SparqlQueryLimits;
+import org.openmetadata.service.rdf.agent.AgentSparqlAudit;
+import org.slf4j.LoggerFactory;
 
 /**
  * The RDF knowledge-graph MCP tools for callers who are not administrators.
@@ -93,6 +103,10 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
   private static final int INSERT_BATCH_CHARS = 60_000;
   private static final int PAGE_SIZE = 250;
   private static final String FORBIDDEN_STATUS = "403";
+  private static final int TOO_MANY_REQUESTS_STATUS = 429;
+  private static final int BAD_REQUEST_STATUS = 400;
+  private static final String FIXTURE_PREFIX = "rdfmcp";
+  private static final String GRANTED_USER = "granted";
   private static final Set<AppRunRecord.Status> FAILED_RUN_STATUSES =
       EnumSet.of(AppRunRecord.Status.FAILED, AppRunRecord.Status.ACTIVE_ERROR);
   private static final Set<AppRunRecord.Status> FINISHED_RUN_STATUSES =
@@ -124,7 +138,7 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
   static void setUp() throws Exception {
     assumeTrue(RdfTestUtils.isRdfEnabled(), "Requires the RDF integration-test profile");
     initAuth();
-    access = new RdfAccessFixtures("rdfmcp");
+    access = new RdfAccessFixtures(FIXTURE_PREFIX);
     access.markProjectionReady();
     createCallers();
     fixtureGraph = "urn:rdf-mcp-it:" + access.suffix() + ":graph";
@@ -304,6 +318,100 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
     assertThat(outcome.statusCode()).isEqualTo(400);
     assertThat(outcome.payload().path("error").asText())
         .contains("'inferenceLevel' must be 'none'");
+  }
+
+  @Test
+  void aNonAdministratorIsToldToRetryWhileTheProjectionRebuilds() throws Exception {
+    access.recordProjectionRun(AppRunRecord.Status.RUNNING);
+    try {
+      for (final ToolCall gated : sparqlToolCalls()) {
+        final ToolOutcome outcome = call(grantedToken, gated.tool(), gated.arguments());
+
+        assertThat(outcome.statusCode()).as(gated.tool()).isEqualTo(TOO_MANY_REQUESTS_STATUS);
+        assertThat(outcome.payload().path("error").asText())
+            .as(gated.tool())
+            .contains("rebuilding; retry later")
+            .contains("RdfIndexApp");
+      }
+      assertAdministratorAndTheOntologyStillAnswer();
+    } finally {
+      access.markProjectionReady();
+    }
+  }
+
+  @Test
+  void aNonAdministratorIsNotToldToRetryWhenTheProjectionIsDegraded() throws Exception {
+    access.recordProjectionRun(AppRunRecord.Status.FAILED);
+    try {
+      for (final ToolCall gated : sparqlToolCalls()) {
+        final ToolOutcome outcome = call(grantedToken, gated.tool(), gated.arguments());
+
+        assertThat(outcome.statusCode()).as(gated.tool()).isEqualTo(BAD_REQUEST_STATUS);
+        assertThat(outcome.payload().path("error").asText())
+            .as(gated.tool())
+            .contains("degraded")
+            .contains("full RdfIndexApp rebuild")
+            .doesNotContainIgnoringCase("retry");
+      }
+      assertAdministratorAndTheOntologyStillAnswer();
+    } finally {
+      access.markProjectionReady();
+    }
+  }
+
+  @Test
+  void aQueryOverMcpIsAuditedWithTheMcpBotAsServiceActorAndTheUserAsEffectiveUser()
+      throws Exception {
+    final Logger auditLogger = (Logger) LoggerFactory.getLogger(AgentSparqlAudit.class);
+    final ListAppender<ILoggingEvent> events = new ListAppender<>();
+    events.start();
+    auditLogger.setLevel(Level.INFO);
+    auditLogger.addAppender(events);
+    try {
+      final ToolOutcome outcome =
+          call(
+              grantedToken,
+              "sparql_query",
+              Map.of("query", "SELECT ?s WHERE { ?s ?p ?o } LIMIT 1"));
+
+      assertThat(outcome.error()).isFalse();
+      final String user =
+          (FIXTURE_PREFIX + GRANTED_USER + access.suffix()).toLowerCase(Locale.ROOT);
+      assertThat(
+              events.list.stream()
+                  .map(ILoggingEvent::getFormattedMessage)
+                  .filter(message -> message.contains("effectiveUser=" + user)))
+          .singleElement()
+          .asString()
+          .contains("serviceActor=" + mcpBotName())
+          .contains("outcome=SUCCESS");
+    } finally {
+      auditLogger.detachAppender(events);
+      auditLogger.setLevel(null);
+      events.stop();
+    }
+  }
+
+  private static void assertAdministratorAndTheOntologyStillAnswer() throws Exception {
+    assertThat(
+            call(
+                    adminToken,
+                    "sparql_query",
+                    Map.of("query", "SELECT ?s WHERE { ?s ?p ?o } LIMIT 1"))
+                .error())
+        .isFalse();
+    assertThat(call(adminToken, "find_by_tag", Map.of("tagFqn", "Tier.Tier1", "limit", 1)).error())
+        .isFalse();
+    assertThat(call(grantedToken, "ontology_describe", Map.of("maxBytes", 2048)).error()).isFalse();
+  }
+
+  /** Resolved the way {@code McpServer} does it, so the test names the bot the server really uses. */
+  private static String mcpBotName() {
+    final AbstractNativeApplication app =
+        ApplicationContext.getInstance().getAppIfExists(McpAppConstants.MCP_APP_NAME);
+    return app != null && app.getApp().getBot() != null
+        ? app.getApp().getBot().getName()
+        : McpAppConstants.MCP_APP_NAME + "Bot";
   }
 
   @Test
@@ -494,7 +602,7 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
     final var wildcard = access.allowRole(MetadataOperation.ALL, "All");
     final var deny = access.denyRole(MetadataOperation.EXECUTE_SPARQL_QUERY, Entity.RDF);
     adminToken = authToken;
-    grantedToken = "Bearer " + access.userToken("granted", List.of(grant.getId()));
+    grantedToken = "Bearer " + access.userToken(GRANTED_USER, List.of(grant.getId()));
     ungrantedToken = "Bearer " + access.userToken("plain", List.of());
     wildcardToken = "Bearer " + access.userToken("wildcard", List.of(wildcard.getId()));
     grantedAndDeniedToken =

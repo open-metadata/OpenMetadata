@@ -64,6 +64,7 @@ public final class RdfAccessFixtures implements AutoCloseable {
   private final OpenMetadataClient admin = SdkClients.adminClient();
   private final Deque<Runnable> cleanup = new ArrayDeque<>();
   private final List<String> principals = new ArrayList<>();
+  private long lastRunTimestamp;
 
   public RdfAccessFixtures(final String prefix) {
     this.prefix = prefix;
@@ -135,21 +136,30 @@ public final class RdfAccessFixtures implements AutoCloseable {
    * makes the shared projection read as ready regardless of what earlier classes left behind.
    */
   public void markProjectionReady() {
+    recordProjectionRun(AppRunRecord.Status.SUCCESS);
+    RdfProjectionHealth.markReady();
+  }
+
+  /**
+   * Records an {@code RdfIndexApp} run with the given status, newer than every run this fixture
+   * recorded before, so the resolver reads it as the latest: {@code RUNNING} is a rebuild in
+   * progress, {@code FAILED} a degraded projection, {@code SUCCESS} a ready one.
+   */
+  public void recordProjectionRun(final AppRunRecord.Status status) {
     final UUID appId = UUID.randomUUID();
-    final long now = System.currentTimeMillis();
+    lastRunTimestamp = Math.max(System.currentTimeMillis(), lastRunTimestamp + 1);
     final AppRunRecord run =
         new AppRunRecord()
             .withAppId(appId)
             .withAppName(RDF_INDEX_APP)
-            .withStatus(AppRunRecord.Status.SUCCESS)
-            .withTimestamp(now)
-            .withStartTime(now)
+            .withStatus(status)
+            .withTimestamp(lastRunTimestamp)
+            .withStartTime(lastRunTimestamp)
             .withExtension(STATUS);
     Entity.getCollectionDAO().appExtensionTimeSeriesDao().insert(JsonUtils.pojoToJson(run), STATUS);
     cleanup.push(
         () ->
             Entity.getCollectionDAO().appExtensionTimeSeriesDao().delete(appId.toString(), STATUS));
-    RdfProjectionHealth.markReady();
   }
 
   /** The test class must be {@code @Isolated}: the policy is shared and edited while {@code body} runs. */
