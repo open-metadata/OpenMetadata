@@ -22,7 +22,7 @@ import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
-import { EXTENSION_POINTS } from '../../../../../../utils/ExtensionPointTypes';
+import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';

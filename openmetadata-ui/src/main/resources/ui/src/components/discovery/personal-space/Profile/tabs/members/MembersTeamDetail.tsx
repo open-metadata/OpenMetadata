@@ -63,10 +63,8 @@ import {
 } from '../../../../../../rest/teamsAPI';
 import { getUsers, updateUserDetail } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import {
-  EXTENSION_POINTS,
-  type TabContribution,
-} from '../../../../../../utils/ExtensionPointTypes';
+import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
+import type { TabContribution } from '../../../../../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
