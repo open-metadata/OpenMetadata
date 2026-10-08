@@ -261,13 +261,6 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Install Ubuntu dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          libevent-dev jq
-          sudo make install_antlr_cli
-
       - name: Download Integration Test Runtime
         uses: actions/download-artifact@v7
         with:
