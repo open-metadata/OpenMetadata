@@ -105,6 +105,7 @@ export { CpuChip01 } from './CpuChip01';
 export { CpuChip02 } from './CpuChip02';
 export { CreatedTime } from './CreatedTime';
 export { CreditCard01 } from './CreditCard01';
+export { CurrencyDollarSuccess } from './CurrencyDollarSuccess';
 export { CubeOutline } from './CubeOutline';
 export { Cube01 } from './Cube01';
 export { Cube02 } from './Cube02';

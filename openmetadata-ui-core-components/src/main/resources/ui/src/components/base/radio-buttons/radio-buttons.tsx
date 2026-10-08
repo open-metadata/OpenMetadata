@@ -1,4 +1,10 @@
-import { type ReactNode, type Ref, createContext, useContext } from 'react';
+import {
+  createContext,
+  forwardRef,
+  type ReactNode,
+  type Ref,
+  useContext,
+} from 'react';
 import {
   Radio as AriaRadio,
   RadioGroup as AriaRadioGroup,
@@ -68,14 +74,20 @@ interface RadioButtonProps extends AriaRadioProps {
   indicatorClassName?: string;
 }
 
-export const RadioButton = ({
-  label,
-  hint,
-  className,
-  indicatorClassName,
-  size = 'sm',
-  ...ariaRadioProps
-}: RadioButtonProps) => {
+export const RadioButton = forwardRef<
+  HTMLLabelElement,
+  Omit<RadioButtonProps, 'ref'>
+>(function RadioButton(
+  {
+    label,
+    hint,
+    className,
+    indicatorClassName,
+    size = 'sm',
+    ...ariaRadioProps
+  },
+  ref
+) {
   const context = useContext(RadioGroupContext);
 
   size = context?.size ?? size;
@@ -105,7 +117,8 @@ export const RadioButton = ({
           sizes[size].root,
           typeof className === 'function' ? className(renderProps) : className
         )
-      }>
+      }
+      ref={ref}>
       {({ isSelected, isDisabled, isFocusVisible }) => (
         <>
           <RadioButtonBase
@@ -143,7 +156,7 @@ export const RadioButton = ({
       )}
     </AriaRadio>
   );
-};
+});
 RadioButton.displayName = 'RadioButton';
 
 interface RadioGroupProps extends RadioGroupContextType, AriaRadioGroupProps {
