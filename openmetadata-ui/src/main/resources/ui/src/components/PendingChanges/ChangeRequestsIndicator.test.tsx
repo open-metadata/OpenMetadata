@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import {
   ChangeRequest,
   ChangeRequestOrigin,
@@ -30,8 +31,12 @@ jest.mock('../../rest/changeRequestsAPI', () => ({
 }));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { name: 'alice' } }),
+  useApplicationStore: () => ({
+    currentUser: { id: 'user-alice', name: 'alice' },
+  }),
 }));
+
+jest.mock('../common/ProfilePicture/ProfilePicture', () => jest.fn(() => null));
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -73,7 +78,18 @@ const request = (overrides: Partial<ChangeRequest>): ChangeRequest => ({
 
 const renderIndicator = async () => {
   await act(async () => {
-    render(<ChangeRequestsIndicator entityId="entity-1" />);
+    render(
+      <MemoryRouter>
+        <ChangeRequestsIndicator entityId="entity-1" />
+      </MemoryRouter>
+    );
+  });
+};
+
+const openModal = async () => {
+  await renderIndicator();
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('pending-change-requests'));
   });
 };
 
@@ -90,19 +106,30 @@ describe('ChangeRequestsIndicator', () => {
     expect(screen.queryByTestId('pending-change-requests')).toBeNull();
   });
 
-  it('shows open requests and lets the requester withdraw at the viewed revision', async () => {
+  it('shows the request count and lists the open requests in the modal', async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
+      request({}),
+      request({ id: 'cr-2', requestedBy: 'bob' }),
+    ]);
+
+    await openModal();
+
+    expect(screen.getByTestId('pending-change-requests')).toHaveTextContent(
+      '2'
+    );
+    expect(screen.getByTestId('pending-changes-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('change-request-cr-1')).toBeInTheDocument();
+    expect(screen.getByTestId('change-request-cr-2')).toBeInTheDocument();
+  });
+
+  it('shows the previous and proposed value of an update and lets the requester withdraw', async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([request({})]);
     (withdrawChangeRequest as jest.Mock).mockResolvedValue({});
 
-    await renderIndicator();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('pending-change-requests'));
-    });
+    await openModal();
 
     const change = screen.getByTestId('change-description-updated');
 
-    expect(change).toHaveTextContent('label.updated');
-    expect(change).toHaveTextContent('label.previous');
     expect(change).toHaveTextContent('Old text');
     expect(change).toHaveTextContent('New text');
 
@@ -111,18 +138,43 @@ describe('ChangeRequestsIndicator', () => {
     });
 
     expect(withdrawChangeRequest).toHaveBeenCalledWith('cr-1', 2);
+    expect(getChangeRequestsForEntity).toHaveBeenCalledTimes(2);
   });
 
-  it("offers no withdraw on someone else's request", async () => {
+  it("offers no actions on someone else's request", async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
-      request({ requestedBy: 'bob' }),
+      request({ requestedBy: 'bob', taskId: 'task-1' }),
     ]);
 
-    await renderIndicator();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('pending-change-requests'));
-    });
+    await openModal();
 
     expect(screen.queryByTestId('withdraw-change-request')).toBeNull();
+    expect(screen.queryByRole('button', { name: /approve/i })).toBeNull();
+  });
+
+  it('filters the requests by requester or changed field', async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
+      request({}),
+      request({ id: 'cr-2', requestedBy: 'bob' }),
+    ]);
+
+    await openModal();
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('pending-changes-search'), {
+        target: { value: 'bob' },
+      });
+    });
+
+    expect(screen.queryByTestId('change-request-cr-1')).toBeNull();
+    expect(screen.getByTestId('change-request-cr-2')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('pending-changes-search'), {
+        target: { value: 'owners' },
+      });
+    });
+
+    expect(screen.queryByTestId('change-request-cr-2')).toBeNull();
+    expect(screen.getByText('message.no-match-found')).toBeInTheDocument();
   });
 });
