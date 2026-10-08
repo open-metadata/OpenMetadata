@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Harness-integrity checks — keep the agent-facing config from silently decaying.
 
-Seven checks, all emitting GitHub Actions **warning** annotations (never failing) unless
+Eight checks, all emitting GitHub Actions **warning** annotations (never failing) unless
 run with ``--strict``:
 
   1. dead-reference       — a path / make target / yarn script / maven goal named in the
@@ -16,13 +16,18 @@ run with ``--strict``:
                             as skipped though the spec has live `test(...)` calls (i.e.
                             the suite was re-enabled without a baseline refresh — the
                             shard planner will under-budget it; see #30812)
+  8. java-impact-map      — an integration test no bucket of .github/java-tests/impact-map.json
+                            reaches (so `make java_affected` never runs it before a PR), a
+                            bucket pattern matching nothing, or an engine the IT pom lacks
 
 Run locally with ``make harness-check`` or ``python3 scripts/harness/check_harness.py``.
 Stdlib only; deterministic; safe to run anywhere in the tree.
 """
 
+import importlib.util
 import json
 import os
+import pathlib
 import re
 import subprocess
 import sys
@@ -522,6 +527,30 @@ def check_generated_fresh():
     return warnings
 
 
+# ------------------------------------------------------------------------- check 8
+
+JAVA_IMPACT_MAP = ".github/java-tests/impact-map.json"
+JAVA_PLANNER = ".github/scripts/plan_local_java_tests.py"
+
+
+def check_java_impact_map():
+    """ITs run only in the merge queue, so the pre-PR run is the last chance to catch a
+    break. An IT no impact-map area owns is never selected; an unowned production file makes
+    every change to it run the full suite."""
+    if not (os.path.exists(rp(JAVA_IMPACT_MAP)) and os.path.exists(rp(JAVA_PLANNER))):
+        return []
+    spec = importlib.util.spec_from_file_location("plan_local_java_tests", rp(JAVA_PLANNER))
+    planner = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = planner
+    spec.loader.exec_module(planner)
+    impact_map = json.loads(read(JAVA_IMPACT_MAP))
+    try:
+        problems = planner.audit_impact_map(planner.Repo(pathlib.Path(REPO), impact_map), impact_map)
+    except SystemExit as exc:  # the planner exits on a map/pom mismatch; main() catches only Exception
+        problems = [str(exc)]
+    return [Warn("java-impact-map", JAVA_IMPACT_MAP, 1, problem) for problem in problems]
+
+
 # ------------------------------------------------------------------------------ main
 
 
@@ -533,6 +562,7 @@ CHECKS = [
     check_rule_globs,
     check_generated_fresh,
     check_baseline_freshness,
+    check_java_impact_map,
 ]
 
 
@@ -550,7 +580,7 @@ def main():
 
     print("\n=== harness-integrity summary ===")
     if not all_warnings:
-        print("no warnings — all six checks clean")
+        print("no warnings — all checks clean")
     else:
         by_check = {}
         for warn in all_warnings:

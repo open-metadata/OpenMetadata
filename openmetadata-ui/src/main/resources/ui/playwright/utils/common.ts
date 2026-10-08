@@ -545,23 +545,34 @@ export const waitForToastToDisappear = async (
 };
 
 /**
- * Waits until the toast stack holds no toast, so a click on something beneath it
- * cannot be swallowed.
+ * Activates `locator` with the keyboard instead of the mouse.
  *
- * The toast region renders fixed at bottom-center — the same spot as many
- * dialogs' action buttons (Test Connection's Done/OK, for one). The backend fans
- * async-delete notifications from parallel workers' cleanup out to every socket
- * of the logged-in user, so unrelated "…deleted successfully!" toasts can pile up
- * over a button and intercept the click. A count assertion is used instead of a
- * message-filtered `waitFor` because the intercepting toast can be any of them —
- * `toHaveCount(0)` retries until the whole stack has drained and never trips
- * strict mode.
+ * Reach for this whenever a control can sit under the toast stack: pagination
+ * rows, dialog footers (Test Connection's Done/OK), anything near the bottom of
+ * the viewport. The toast region renders fixed at bottom-center, and the backend
+ * fans async-delete/job notifications from parallel workers' cleanup out to every
+ * socket of the logged-in user, so an unrelated "…deleted successfully!" toast can
+ * cover a button and swallow the click.
+ *
+ * Waiting for the stack to drain first does not work: it is refilled by processes
+ * this test does not control, so emptiness is a race no timeout wins. `click({
+ * force: true })` does not work either: it only silences the hit-target check, and
+ * the browser still delivers the event to whatever occupies that coordinate — the
+ * toast. A key press is delivered to the focused element instead of to a point, so
+ * nothing drawn on top is on its path, and on a button the browser turns Enter into
+ * the same click event the mouse would have produced.
+ *
+ * Only for controls the browser activates with Enter (buttons, links, menu items).
+ * A checkbox needs Space, and a custom widget may need its own key.
  */
-export const waitForToastStackToClear = async (
-  page: Page,
-  timeout?: number
-) => {
-  await expect(page.getByTestId('alert-bar')).toHaveCount(0, { timeout });
+export const clickIgnoringToasts = async (locator: Locator) => {
+  // Asserted explicitly because `press` runs no actionability checks of its own —
+  // it is `focus()` plus a key, and focusing a hidden or detached element is a
+  // silent no-op that sends the key to the body and fails much later, somewhere
+  // confusing. These two make a broken control fail here, saying why.
+  await expect(locator).toBeVisible();
+  await expect(locator).toBeEnabled();
+  await locator.press('Enter');
 };
 
 /**

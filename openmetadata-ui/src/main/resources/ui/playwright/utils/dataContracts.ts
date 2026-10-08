@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   DataContractSecuritySlaData,
   DATA_CONTRACT_DETAILS,
@@ -75,6 +76,32 @@ const pollContractStatus = async (
     .toBe(true);
 };
 
+/**
+ * Reload the current entity page and wait until it is ready to assert against.
+ *
+ * `waitUntil: 'domcontentloaded'` is deliberate. Playwright's default, `load`,
+ * is gated on every subresource the document pulls in — the route chunks
+ * `React.lazy` requests, service icons, chart assets — and the same server
+ * that serves those assets also runs the contract validations these specs
+ * trigger. On a loaded CI shard one asset can stall past the 60s navigation
+ * timeout while the SPA has long since rendered, so the reload fails on a page
+ * that was ready to assert on. `load` was never the signal these callers
+ * wanted anyway.
+ *
+ * The header wait is not redundant: `domcontentloaded` resolves before React
+ * mounts, so a bare loader count would pass against an empty `#root` and push
+ * the whole page load into the next assertion's 15s expect budget.
+ */
+export const reloadContractPage = async (page: Page): Promise<void> => {
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await expect(page.getByTestId('data-assets-header')).toBeVisible({
+    timeout: ACTION_TIMEOUT,
+  });
+
+  await waitForAllLoadersToDisappear(page);
+};
+
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
   isContractStatusNotVisible?: boolean
@@ -119,9 +146,7 @@ export const saveAndTriggerDataContractValidation = async (
     );
   }
 
-  await page.reload();
-
-  await waitForAllLoadersToDisappear(page);
+  await reloadContractPage(page);
 
   return responseData;
 };
