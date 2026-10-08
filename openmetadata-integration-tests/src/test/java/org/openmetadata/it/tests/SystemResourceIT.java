@@ -88,6 +88,7 @@ import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.TestLoginCredentialsRequest;
 import org.openmetadata.schema.system.TestLoginProtocol;
 import org.openmetadata.schema.system.TestLoginResult;
@@ -106,7 +107,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.TestLoginCallbackPage;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -1869,6 +1872,48 @@ public class SystemResourceIT {
   }
 
   @Test
+  void test_validateSecurityConfig_checksAMaskedBindPasswordWithTheSavedOne(TestNamespace ns)
+      throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Restores the embedded server's configuration and needs an LDAP directory in this JVM");
+    InMemoryDirectoryServer directory =
+        startDirectory("ldapmasked" + ns.shortPrefix(), "directory-password");
+    String liveConfigJson =
+        JsonUtils.pojoToJson(SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
+    try {
+      // Basic stays the login provider so this server's own sign-in is untouched; the bind password
+      // is restored from the saved LDAP block whichever provider is active.
+      SecurityConfiguration saved = ldapCandidate(directory.getListenPort());
+      saved
+          .getAuthenticationConfiguration()
+          .withProvider(AuthProvider.BASIC)
+          .withProviderName("OpenMetadata");
+      putSecurityConfig(MAPPER.writeValueAsString(saved));
+
+      // What the SSO form holds: the configuration as read back, with the bind password masked.
+      SecurityConfiguration fromForm = getSecurityConfig();
+      fromForm
+          .getAuthenticationConfiguration()
+          .withProvider(AuthProvider.LDAP)
+          .withProviderName("LDAP");
+      assertEquals(
+          PasswordEntityMasker.PASSWORD_MASK,
+          fromForm.getAuthenticationConfiguration().getLdapConfiguration().getDnAdminPassword());
+
+      SecurityValidationResponse response = validateSecurityConfig(fromForm);
+
+      assertEquals(
+          SecurityValidationResponse.Status.SUCCESS,
+          response.getStatus(),
+          String.valueOf(response.getErrors()));
+    } finally {
+      putSecurityConfig(liveConfigJson);
+      directory.shutDown(true);
+    }
+  }
+
+  @Test
   void test_testLoginValidateToken_adminGetsResultWithoutCredentials() throws Exception {
     TestLoginTokenRequest request =
         new TestLoginTokenRequest()
@@ -2312,6 +2357,41 @@ public class SystemResourceIT {
                     .withEmail(email)
                     .withPassword(password)),
             RequestOptions.builder().build());
+  }
+
+  private static SecurityConfiguration getSecurityConfig() throws Exception {
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/security/config",
+                null,
+                RequestOptions.builder().build());
+    return MAPPER.readValue(json, SecurityConfiguration.class);
+  }
+
+  private static void putSecurityConfig(String securityConfigJson) throws Exception {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/system/security/config",
+            securityConfigJson,
+            RequestOptions.builder().build());
+  }
+
+  private static SecurityValidationResponse validateSecurityConfig(
+      SecurityConfiguration securityConfig) throws Exception {
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/system/security/validate",
+                MAPPER.writeValueAsString(securityConfig),
+                RequestOptions.builder().build());
+    return MAPPER.readValue(json, SecurityValidationResponse.class);
   }
 
   private static OAuthRecords.SsoTestLoginSession storedTestLogin(String testSessionId) {

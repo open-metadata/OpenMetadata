@@ -302,9 +302,10 @@ const AssetsFilterBar = ({
       <Col className="d-flex gap-3" span={24}>
         <Dropdown.Root>
           <ButtonUtility
+            className="tw:size-9"
             color="secondary"
             data-testid="asset-filter-button"
-            icon={<FilterIcon height={16} width={16} />}
+            icon={FilterIcon}
             size="sm"
             tooltip={t('label.filter-plural')}
           />
