@@ -183,7 +183,7 @@ function EmailConfigSettingsPage() {
                 }}
               />
             </Box>
-            <Box className="layout-column tw:block d-flex">
+            <Box className="layout-column d-flex">
               {isAdminUser && emailConfigValues?.senderMail && (
                 <Button type="primary" onClick={handleTestEmailModal}>
                   {t('label.test-email')}

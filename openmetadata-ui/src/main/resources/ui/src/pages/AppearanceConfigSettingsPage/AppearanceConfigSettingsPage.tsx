@@ -433,7 +433,7 @@ const AppearanceConfigSettingsPage = () => {
             wrap="wrap">
             <Box
               className="layout-column tw:block"
-              style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+              style={{ maxWidth: '100%', flex: '0 0 100%' }}>
               <Box
                 inline
                 align="center"
@@ -486,7 +486,7 @@ const AppearanceConfigSettingsPage = () => {
                           wrap="wrap">
                           <Box
                             className="layout-column tw:block"
-                            style={{ maxWidth: '50%', flex: `0 0 ${'50%'}` }}>
+                            style={{ maxWidth: '50%', flex: '0 0 50%' }}>
                             {getField(field)}
                           </Box>
                           <Box className="layout-column tw:block">
@@ -531,7 +531,7 @@ const AppearanceConfigSettingsPage = () => {
                           wrap="wrap">
                           <Box
                             className="layout-column tw:block"
-                            style={{ maxWidth: '50%', flex: `0 0 ${'50%'}` }}>
+                            style={{ maxWidth: '50%', flex: '0 0 50%' }}>
                             {getField(field)}
                           </Box>
                           <Box

@@ -139,7 +139,7 @@ function ServiceVersionMainTabContent({
       <Box
         className="layout-column tw:block entity-tag-right-panel-container"
         data-testid="entity-right-panel"
-        style={{ flex: `0 0 ${'220px'}` }}>
+        style={{ flex: '0 0 220px' }}>
         <Box
           inline
           align="stretch"

@@ -247,8 +247,8 @@ const AppSchedule = ({
         </Box>
         {!isAppDisabled && (
           <Box
-            className="layout-column tw:block d-flex items-center justify-end"
-            style={{ flex: `0 0 ${'200px'}` }}>
+            className="layout-column d-flex items-center justify-end"
+            style={{ flex: '0 0 200px' }}>
             <Box
               inline
               align="center"
@@ -292,7 +292,7 @@ const AppSchedule = ({
 
         <Box
           className="layout-column tw:block mt-4"
-          style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
           {appRunHistory}
         </Box>
       </Box>

@@ -77,7 +77,7 @@ const TeamsSubscription = ({
         return (
           <div className="d-flex gap-2">
             <Typography
-              className="font-medium text-sm text-secondary-new "
+              className="font-medium text-sm text-secondary-new"
               data-testid="subscription-no-data">
               {t('label.none')}
             </Typography>
@@ -137,9 +137,8 @@ const TeamsSubscription = ({
 
   return (
     <Box
-      inline
       align="start"
-      className="layout-space layout-space-horizontal teams-subscription-container d-flex flex-col gap-2"
+      className="layout-space layout-space-horizontal teams-subscription-container d-flex flex-col"
       data-testid="teams-subscription"
       gap={2}
       itemClassName="layout-space-item">

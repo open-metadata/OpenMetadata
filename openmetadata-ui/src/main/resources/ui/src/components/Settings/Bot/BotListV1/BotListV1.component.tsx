@@ -440,7 +440,7 @@ const BotListV1 = ({
 
   return handleErrorPlaceholder ? (
     <Box className="layout-row" wrap="wrap">
-      <Box className="layout-column tw:block w-full d-flex justify-end">
+      <Box className="layout-column w-full d-flex justify-end">
         <Toggle
           id="switch-deleted"
           isSelected={showDeleted}

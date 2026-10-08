@@ -181,9 +181,8 @@ const TeamsInfo = ({
   const emailRender = useMemo(
     () => (
       <Box
-        inline
         align="start"
-        className="layout-space layout-space-horizontal d-flex flex-col gap-2"
+        className="layout-space layout-space-horizontal d-flex flex-col"
         gap={2}
         itemClassName="layout-space-item">
         <div className="d-flex gap-1">
@@ -305,9 +304,8 @@ const TeamsInfo = ({
       <>
         <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
         <Box
-          inline
           align="start"
-          className="layout-space layout-space-horizontal d-flex flex-col gap-2"
+          className="layout-space layout-space-horizontal d-flex flex-col"
           gap={2}
           itemClassName="layout-space-item">
           <div className="d-flex  gap-2">
@@ -382,9 +380,8 @@ const TeamsInfo = ({
       <>
         <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
         <Box
-          inline
           align="start"
-          className="layout-space layout-space-horizontal d-flex flex-col gap-2"
+          className="layout-space layout-space-horizontal d-flex flex-col"
           gap={2}
           itemClassName="layout-space-item">
           <div className="d-flex gap-2">
@@ -478,9 +475,8 @@ const TeamsInfo = ({
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
 
       <Box
-        inline
         align="start"
-        className="layout-space layout-space-horizontal d-flex flex-col gap-2"
+        className="layout-space layout-space-horizontal d-flex flex-col"
         gap={2}
         itemClassName="layout-space-item">
         <Typography

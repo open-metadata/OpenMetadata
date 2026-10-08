@@ -153,7 +153,7 @@ const MarketPlaceAppDetails = () => {
 
   const leftPanel = useMemo(() => {
     return (
-      <div className="p-x-md p-t-md ">
+      <div className="p-x-md p-t-md">
         <Button
           className="p-0"
           icon={<LeftOutlined />}

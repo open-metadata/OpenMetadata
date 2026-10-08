@@ -1101,7 +1101,7 @@ const TeamDetailsV1 = ({
             </Box>
           </div>
         </div>
-        <div className="p-t-md ">
+        <div className="p-t-md">
           <TeamsInfo
             childTeamsCount={childTeams.length}
             currentTeam={currentTeam}

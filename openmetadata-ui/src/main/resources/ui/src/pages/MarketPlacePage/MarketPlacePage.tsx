@@ -143,7 +143,7 @@ const MarketPlacePage = () => {
             wrap="wrap">
             <Box
               className="layout-column tw:block"
-              style={{ maxWidth: '75%', flex: `0 0 ${'75%'}` }}>
+              style={{ maxWidth: '75%', flex: '0 0 75%' }}>
               <div className="d-flex items-center justify-between h-full">
                 <PageHeader
                   data={{
@@ -168,7 +168,7 @@ const MarketPlacePage = () => {
           className="layout-column tw:block"
           style={{
             maxWidth: '83.33333333333334%',
-            flex: `0 0 ${'83.33333333333334%'}`,
+            flex: '0 0 83.33333333333334%',
           }}>
           <Grid
             className="layout-row layout-grid marketplace-card-container"
@@ -202,7 +202,7 @@ const MarketPlacePage = () => {
         </Box>
         <Box
           className="layout-column tw:block"
-          style={{ maxWidth: '75%', flex: `0 0 ${'75%'}` }}>
+          style={{ maxWidth: '75%', flex: '0 0 75%' }}>
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}

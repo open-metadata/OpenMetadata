@@ -184,7 +184,6 @@ const GlobalSettingCategoryPage = () => {
 
         <Grid.Item className="layout-column" span={24}>
           <Box
-            inline
             align="center"
             className="layout-space layout-space-horizontal w-full d-flex justify-between"
             gap={2}
