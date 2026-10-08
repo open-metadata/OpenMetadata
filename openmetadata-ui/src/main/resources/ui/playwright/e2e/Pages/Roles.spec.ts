@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -63,7 +64,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // retry starts. Cap at 120s so failures fail fast and Playwright's
     // per-test retry recovers the run without triple-timing-out.
     // Happy-path runtime for this test on a warm shard is ~60-90s.
-    test.setTimeout(120_000);
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
     const roleName = `Role-test-${uuid()}`;
     const description = `This is ${roleName} description`;
@@ -219,12 +220,16 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await plusMoreButton.click();
         const combinedPoliciesText = [
           await roleRow.textContent(),
-          await page.locator('.ant-popover-content').textContent(),
+          await page.getByRole('dialog').textContent(),
         ]
           .filter(Boolean)
           .join(' ');
         expect(combinedPoliciesText).toContain(policies.dataConsumerPolicy);
         expect(combinedPoliciesText).toContain(policies.dataStewardPolicy);
+
+        // The popover's underlay blocks clicks on the page until it closes.
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toBeHidden();
       } else {
         await expect(roleRow).toContainText(policies.dataConsumerPolicy);
       }
@@ -386,7 +391,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .filter({ hasText: policies.organizationPolicy })
       ).toBeVisible();
 
-      const submitButton = page.locator('[type="button"]:has-text("Submit")');
+      const submitButton = page.locator('[type="button"]:has-text("Save")');
       await expect(submitButton).toBeVisible();
       await expect(submitButton).toBeEnabled();
 

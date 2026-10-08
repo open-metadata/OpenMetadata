@@ -1,0 +1,406 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import type { Meta, StoryObj } from '@storybook/react';
+import type { ReactNode } from 'react';
+import {
+  AreaChart,
+  BarChart,
+  ComposedChart,
+  EChart,
+  GeoMapChart,
+  LineChart,
+  PieChart,
+} from '../charts';
+import type { GeoJson } from '../charts';
+import usStatesGeoJson from './fixtures/us-states.geo.json';
+
+const meta = {
+  title: 'Charts/Overview',
+  parameters: { layout: 'padded' },
+} satisfies Meta;
+
+export default meta;
+type Story = StoryObj;
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const runs = DAYS.map((day, i) => ({
+  day,
+  success: 40 + ((i * 7) % 13),
+  failed: 3 + ((i * 5) % 6),
+  aborted: (i * 3) % 4,
+}));
+
+const runtime = Array.from({ length: 30 }, (_, i) => ({
+  ts: Date.UTC(2026, 8, 1 + i),
+  p50: 120 + Math.round(20 * Math.sin(i / 3)),
+  p95: 260 + Math.round(40 * Math.cos(i / 4)),
+}));
+
+const completeness = [
+  { field: 'Description', delta: 12 },
+  { field: 'Owners', delta: -4 },
+  { field: 'Tags', delta: 7 },
+  { field: 'Glossary terms', delta: -9 },
+  { field: 'Domain', delta: 3 },
+];
+
+const cost = DAYS.map((day, i) => ({
+  day,
+  storage: 1200 + i * 150,
+  compute: 800 + ((i * 230) % 700),
+  queries: 30_000 + i * 4_500,
+}));
+
+const status = [
+  { name: 'Success', value: 42, status: 'success' as const },
+  { name: 'Failed', value: 7, status: 'failed' as const },
+  { name: 'Aborted', value: 3, status: 'warning' as const },
+];
+
+// A 3×3 grid of made-up regions — real map data belongs to the caller.
+const REGION_NAMES = [
+  ['North West', 'North', 'North East'],
+  ['West', 'Central', 'East'],
+  ['South West', 'South', 'South East'],
+];
+
+const gridMap: GeoJson = {
+  type: 'FeatureCollection',
+  features: REGION_NAMES.flatMap((row, y) =>
+    row.map((name, x) => ({
+      type: 'Feature' as const,
+      properties: { name },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [x, -y],
+            [x + 1, -y],
+            [x + 1, -y - 1],
+            [x, -y - 1],
+            [x, -y],
+          ],
+        ],
+      },
+    }))
+  ),
+};
+
+const REGION_CODES: Record<string, string> = {
+  NW: 'North West',
+  N: 'North',
+  NE: 'North East',
+  W: 'West',
+  C: 'Central',
+  E: 'East',
+  SW: 'South West',
+  S: 'South',
+};
+
+const regionSales = [
+  { region: 'NW', value: 120 },
+  { region: 'N', value: 340 },
+  { region: 'NE', value: 90 },
+  { region: 'W', value: 260 },
+  { region: 'C', value: 510 },
+  { region: 'E', value: 180 },
+  { region: 'SW', value: 40 },
+  { region: 'S', value: 300 },
+  { region: 'Atlantis', value: 10 },
+];
+
+// US state geometry (Census-derived, public domain), simplified, with Alaska
+// and Hawaii moved into insets under the south-west.
+const usStates = usStatesGeoJson as GeoJson;
+
+const US_STATE_CODES: Record<string, string> = {
+  AL: 'Alabama',
+  AK: 'Alaska',
+  AZ: 'Arizona',
+  AR: 'Arkansas',
+  CA: 'California',
+  CO: 'Colorado',
+  CT: 'Connecticut',
+  DE: 'Delaware',
+  DC: 'District of Columbia',
+  FL: 'Florida',
+  GA: 'Georgia',
+  HI: 'Hawaii',
+  ID: 'Idaho',
+  IL: 'Illinois',
+  IN: 'Indiana',
+  IA: 'Iowa',
+  KS: 'Kansas',
+  KY: 'Kentucky',
+  LA: 'Louisiana',
+  ME: 'Maine',
+  MD: 'Maryland',
+  MA: 'Massachusetts',
+  MI: 'Michigan',
+  MN: 'Minnesota',
+  MS: 'Mississippi',
+  MO: 'Missouri',
+  MT: 'Montana',
+  NE: 'Nebraska',
+  NV: 'Nevada',
+  NH: 'New Hampshire',
+  NJ: 'New Jersey',
+  NM: 'New Mexico',
+  NY: 'New York',
+  NC: 'North Carolina',
+  ND: 'North Dakota',
+  OH: 'Ohio',
+  OK: 'Oklahoma',
+  OR: 'Oregon',
+  PA: 'Pennsylvania',
+  RI: 'Rhode Island',
+  SC: 'South Carolina',
+  SD: 'South Dakota',
+  TN: 'Tennessee',
+  TX: 'Texas',
+  UT: 'Utah',
+  VT: 'Vermont',
+  VA: 'Virginia',
+  WA: 'Washington',
+  WV: 'West Virginia',
+  WI: 'Wisconsin',
+  WY: 'Wyoming',
+};
+
+const assetsByState = Object.keys(US_STATE_CODES).map((region, i) => ({
+  region,
+  value: 20 + ((i * 37) % 480),
+}));
+
+const Frame = ({ children }: { children: ReactNode }) => (
+  <div style={{ maxWidth: 720 }}>{children}</div>
+);
+
+export const Line: Story = {
+  render: () => (
+    <Frame>
+      <LineChart
+        ariaLabel="Pipeline runs per day"
+        data={runs}
+        series={[
+          { key: 'success', name: 'Success' },
+          { key: 'failed', name: 'Failed' },
+          { key: 'aborted', name: 'Aborted' },
+        ]}
+        xKey="day"
+        yAxis={{ label: 'Runs' }}
+      />
+    </Frame>
+  ),
+};
+
+export const LineOnTimeAxisWithZoom: Story = {
+  render: () => (
+    <Frame>
+      <LineChart
+        ariaLabel="Runtime percentiles"
+        data={runtime}
+        series={[
+          { key: 'p50', name: 'p50' },
+          { key: 'p95', name: 'p95', showDots: true },
+        ]}
+        tooltip={{ valueFormatter: (value) => `${value}s` }}
+        xAxis={{ type: 'time' }}
+        xKey="ts"
+        yAxis={{ label: 'Seconds' }}
+        zoom="auto"
+      />
+    </Frame>
+  ),
+};
+
+export const StackedArea: Story = {
+  render: () => (
+    <Frame>
+      <AreaChart
+        ariaLabel="Test case status over time"
+        data={runs}
+        legend={{ position: 'top' }}
+        series={[
+          {
+            key: 'success',
+            name: 'Success',
+            stack: 'status',
+            status: 'success',
+          },
+          { key: 'failed', name: 'Failed', stack: 'status', status: 'failed' },
+          {
+            key: 'aborted',
+            name: 'Aborted',
+            stack: 'status',
+            status: 'warning',
+          },
+        ]}
+        xKey="day"
+      />
+    </Frame>
+  ),
+};
+
+export const BarWithReferenceLine: Story = {
+  render: () => (
+    <Frame>
+      <BarChart
+        showValueLabels
+        ariaLabel="Failed runs per day"
+        data={runs}
+        referenceLines={[{ axis: 'y', value: 5, label: 'Threshold' }]}
+        series={[{ key: 'failed', name: 'Failed', status: 'failed' }]}
+        xKey="day"
+      />
+    </Frame>
+  ),
+};
+
+export const HorizontalDivergingBar: Story = {
+  render: () => (
+    <Frame>
+      <BarChart
+        ariaLabel="Completeness change by field"
+        data={completeness}
+        getBarStatus={(row) => (row.delta < 0 ? 'failed' : 'success')}
+        layout="horizontal"
+        referenceLines={[{ axis: 'x', value: 0 }]}
+        series={[{ key: 'delta', name: 'Change' }]}
+        showValueLabels={(p) => `${p.value}%`}
+        xKey="field"
+      />
+    </Frame>
+  ),
+};
+
+export const ComposedTwoAxes: Story = {
+  render: () => (
+    <Frame>
+      <ComposedChart
+        ariaLabel="Cost and query volume"
+        data={cost}
+        series={[
+          { key: 'storage', name: 'Storage ($)', type: 'bar', stack: 'cost' },
+          { key: 'compute', name: 'Compute ($)', type: 'bar', stack: 'cost' },
+          { key: 'queries', name: 'Queries', type: 'line', yAxisIndex: 1 },
+        ]}
+        xKey="day"
+        yAxis={[{ label: 'Cost' }, { label: 'Queries' }]}
+      />
+    </Frame>
+  ),
+};
+
+export const Pie: Story = {
+  render: () => (
+    <Frame>
+      <PieChart showLabels ariaLabel="Test status" data={status} />
+    </Frame>
+  ),
+};
+
+export const DonutWithCentreLabel: Story = {
+  render: () => (
+    <Frame>
+      <PieChart
+        ariaLabel="Test status"
+        centerLabel={
+          <span className="tw:text-lg tw:font-semibold tw:text-primary">
+            52 tests
+          </span>
+        }
+        data={status}
+        innerRadius="55%"
+      />
+    </Frame>
+  ),
+};
+
+// The DQ dashboard donut: a grey track ring, and a zero slice drawing no arc.
+export const DonutWithTrack: Story = {
+  render: () => (
+    <Frame>
+      <PieChart
+        track
+        ariaLabel="Test status"
+        centerLabel={
+          <span className="tw:text-lg tw:font-semibold tw:text-primary">
+            49 tests
+          </span>
+        }
+        data={[...status.slice(0, 2), { ...status[2], value: 0 }]}
+        innerRadius="60%"
+        legend={{ show: false }}
+        minAngle={3}
+        outerRadius="80%"
+      />
+    </Frame>
+  ),
+};
+
+export const GeoMap: Story = {
+  render: () => (
+    <Frame>
+      <GeoMapChart
+        ariaLabel="Sales by region"
+        data={regionSales}
+        geoJson={gridMap}
+        mapName="story-grid"
+        resolveRegion={(raw) => REGION_CODES[raw]}
+      />
+    </Frame>
+  ),
+};
+
+export const UsStatesMap: Story = {
+  render: () => (
+    <Frame>
+      <GeoMapChart
+        ariaLabel="Data assets by US state"
+        data={assetsByState}
+        geoJson={usStates}
+        height={420}
+        mapName="story-us-states"
+        resolveRegion={(code) => US_STATE_CODES[code]}
+      />
+    </Frame>
+  ),
+};
+
+export const RawEChart: Story = {
+  render: () => (
+    <Frame>
+      <EChart
+        ariaLabel="Raw ECharts option"
+        option={(theme) => ({
+          xAxis: {
+            type: 'category',
+            data: DAYS,
+            axisLabel: { color: theme.axisTick },
+          },
+          yAxis: {
+            type: 'value',
+            splitLine: { lineStyle: { color: theme.grid } },
+          },
+          series: [
+            { type: 'bar', data: runs.map((r) => r.success) },
+            { type: 'line', data: runs.map((r) => r.failed * 10) },
+          ],
+        })}
+      />
+    </Frame>
+  ),
+};

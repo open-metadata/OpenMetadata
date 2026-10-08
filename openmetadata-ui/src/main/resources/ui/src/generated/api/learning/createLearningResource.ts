@@ -125,10 +125,13 @@ export interface EntityReference {
 }
 
 /**
- * Kind of learning asset represented.
+ * Kind of learning asset represented. A Link opens its URL in a new browser tab; a PDF is
+ * displayed in the resource player.
  */
 export enum ResourceType {
     Article = "Article",
+    Link = "Link",
+    PDF = "PDF",
     Storylane = "Storylane",
     Video = "Video",
 }
@@ -146,7 +149,7 @@ export interface ResourceSource {
      */
     provider?: string;
     /**
-     * Canonical URL.
+     * Canonical URL. Link and PDF resources require an http or https URL.
      */
     url: string;
 }

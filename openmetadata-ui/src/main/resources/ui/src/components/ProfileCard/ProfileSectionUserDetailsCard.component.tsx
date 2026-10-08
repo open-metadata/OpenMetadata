@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Badge, Button, Modal, Popover, Typography } from 'antd';
+import {
+  ButtonUtility,
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Badge, Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,11 +88,11 @@ const ProfileManageOptions = ({
           style={{ marginRight: '10px' }}
           {...ICON_DIMENSION_USER_PAGE}
         />
-        <Typography.Text className="profile-manage-label">
+        <Typography className="profile-manage-label">
           {t('label.edit-entity', {
             entity: t('label.display-name'),
           })}
-        </Typography.Text>
+        </Typography>
       </Button>
     )}
     {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
@@ -99,11 +105,11 @@ const ProfileManageOptions = ({
           style={{ marginRight: '10px' }}
           {...ICON_DIMENSION_USER_PAGE}
         />
-        <Typography.Text className="profile-manage-label">
+        <Typography className="profile-manage-label">
           {t('label.change-entity', {
             entity: t('label.password-lowercase'),
           })}
-        </Typography.Text>
+        </Typography>
       </Button>
     )}
     {userData?.deleted ? (
@@ -115,9 +121,9 @@ const ProfileManageOptions = ({
           style={{ marginRight: '10px' }}
           {...ICON_DIMENSION_USER_PAGE}
         />
-        <Typography.Text className="profile-manage-label">
+        <Typography className="profile-manage-label">
           {t('label.restore')}
-        </Typography.Text>
+        </Typography>
       </Button>
     ) : (
       isAdminUser && (
@@ -129,9 +135,9 @@ const ProfileManageOptions = ({
             style={{ marginRight: '10px' }}
             {...ICON_DIMENSION_USER_PAGE}
           />
-          <Typography.Text className="profile-manage-label">
+          <Typography className="profile-manage-label">
             {t('label.delete-profile')}
-          </Typography.Text>
+          </Typography>
         </Button>
       )
     )}
@@ -211,11 +217,12 @@ const ProfileSectionUserDetailsCard = ({
   const userEmailRender = useMemo(
     () =>
       !isMaskedEmail(userData.email) && (
-        <Typography.Paragraph
-          className="m-b-0 profile-details-email"
+        <Typography
+          as="p"
+          className="tw:wrap-break-word m-b-0 profile-details-email"
           data-testid="user-email-value">
           {userData.email}
-        </Typography.Paragraph>
+        </Typography>
       ),
     [userData.email]
   );
@@ -262,22 +269,26 @@ const ProfileSectionUserDetailsCard = ({
 
   return (
     <div className="d-flex flex-col w-full flex-center relative profile-section-user-details-card">
-      <Popover
-        destroyTooltipOnHide
-        content={manageProfileOptions}
-        open={isPopoverVisible}
-        overlayClassName="profile-management-popover"
-        placement="bottomLeft"
-        trigger="click"
-        onOpenChange={(visible) => setisPopoverVisible(visible)}>
-        {(isAdminUser || isLoggedInUser) && (
-          <MenuDots
-            className="cursor-pointer user-details-menu-icon"
+      {(isAdminUser || isLoggedInUser) && (
+        <PopoverTrigger
+          isOpen={isPopoverVisible}
+          onOpenChange={setisPopoverVisible}>
+          <ButtonUtility
+            aria-label={t('label.manage-entity', {
+              entity: t('label.profile'),
+            })}
+            className="user-details-menu-icon tw:p-0"
+            color="tertiary"
             data-testid="user-profile-manage-btn"
-            onClick={() => setisPopoverVisible((prev) => !prev)}
+            icon={<MenuDots height={24} width={24} />}
           />
-        )}
-      </Popover>
+          <Popover
+            className="profile-management-popover"
+            placement="bottom start">
+            {manageProfileOptions}
+          </Popover>
+        </PopoverTrigger>
+      )}
 
       <div className="m-t-sm">
         <UserPopOverCard userName={userData?.name}>
@@ -372,11 +383,11 @@ const ProfileSectionUserDetailsCard = ({
             })}
             onCancel={() => setShowRestoreModal(false)}
             onOk={handleRestore}>
-            <Typography.Text data-testid="restore-modal-body">
+            <Typography data-testid="restore-modal-body">
               {t('message.are-you-want-to-restore', {
                 entity: getEntityName(userData),
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         </Button>
       )}

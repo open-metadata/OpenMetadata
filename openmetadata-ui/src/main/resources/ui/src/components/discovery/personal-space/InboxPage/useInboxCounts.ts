@@ -13,11 +13,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
-import { InboxDateRange, InboxScope } from './inbox.utils';
+import { ActivityFilter, InboxCount, InboxDateRange } from './inbox.utils';
 import { useInboxActivity } from './useInboxActivity';
 
 export interface InboxCounts {
-  activityCount: number;
+  activityCount: InboxCount;
   taskCount: number;
   isLoading: boolean;
 }
@@ -29,27 +29,23 @@ const INBOX_COUNTS_STALE_TIME = 30 * 1000;
 /**
  * Activity + task badge totals. The activity count reuses the shared
  * `useInboxActivity` query (deduped with the tab's list, so the badge equals the
- * list); tasks are the user's visible-open total, keyed on
+ * list); tasks are the user's visible-open total — undated, like the Triage
+ * queue and the sidebar bubble it must agree with — keyed on
  * `INBOX_COUNTS_QUERY_KEY` so a mutation elsewhere can invalidate it.
  */
-export const useInboxCounts = (
-  scope: InboxScope,
-  dateRange?: InboxDateRange
-): InboxCounts => {
-  const startTs = dateRange?.startTs;
-  const endTs = dateRange?.endTs;
-
-  const { total: activityCount, isLoading: isActivityLoading } =
-    useInboxActivity(scope, dateRange);
+export const useInboxCounts = (dateRange?: InboxDateRange): InboxCounts => {
+  const {
+    total,
+    isCapped,
+    isLoading: isActivityLoading,
+  } = useInboxActivity(ActivityFilter.All, dateRange);
 
   const { data: taskCount = 0, isFetching: isTaskFetching } = useQuery({
-    queryKey: [INBOX_COUNTS_QUERY_KEY, scope, startTs, endTs],
+    queryKey: [INBOX_COUNTS_QUERY_KEY],
     // Only Open tasks, so the badge matches the sidebar red bubble.
     queryFn: () =>
       listMyVisibleTasks({
         limit: 1,
-        startTs,
-        endTs,
         statusGroup: TaskStatusGroup.Open,
       })
         .then((res) => res.paging?.total ?? 0)
@@ -58,7 +54,7 @@ export const useInboxCounts = (
   });
 
   return {
-    activityCount,
+    activityCount: { total, isCapped },
     taskCount,
     isLoading: isActivityLoading || isTaskFetching,
   };

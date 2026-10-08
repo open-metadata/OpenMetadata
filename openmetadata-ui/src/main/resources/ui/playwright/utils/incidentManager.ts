@@ -15,6 +15,7 @@ import {
   PipelineState,
   PipelineStatus,
 } from '../../src/generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
@@ -177,8 +178,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
   if (testCaseName) {
     const incidentRow = page
       .locator('tr')
-      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
-      .first();
+      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) });
     const editOwnerButton = incidentRow.getByTestId('edit-owner');
 
     await expect(editOwnerButton).toBeVisible();
@@ -205,7 +205,9 @@ export const addAssigneeFromPopoverWidget = async (data: {
     if (await assigneeOption.isVisible().catch(() => false)) {
       await assigneeOption.click();
     } else {
-      await expect(normalizedAssigneeOption).toBeVisible({ timeout: 30_000 });
+      await expect(normalizedAssigneeOption).toBeVisible({
+        timeout: ACTION_TIMEOUT,
+      });
       await normalizedAssigneeOption.click();
     }
 
@@ -229,7 +231,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
         ? incidentAssignee
         : page.getByTestId('assignee').first()
     ).toContainText(user.displayName, {
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
 
     return;
@@ -267,7 +269,6 @@ export const addAssigneeFromPopoverWidget = async (data: {
     ? page
         .locator('tr')
         .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
-        .first()
         .getByTestId('assignee')
     : page.getByTestId('assignee').first();
 
@@ -275,7 +276,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
     (await taskHeaderAssignee.isVisible().catch(() => false))
       ? taskHeaderAssignee
       : incidentAssignee
-  ).toContainText(user.displayName, { timeout: 30_000 });
+  ).toContainText(user.displayName, { timeout: ACTION_TIMEOUT });
 };
 
 export const assignIncident = async (data: {
@@ -289,9 +290,7 @@ export const assignIncident = async (data: {
   await expect
     .poll(
       async () => {
-        const incidentRow = page
-          .getByTestId(`test-case-${testCaseName}`)
-          .first();
+        const incidentRow = page.getByTestId(`test-case-${testCaseName}`);
         const incidentLink = page
           .getByRole('link', { name: testCaseName })
           .first();

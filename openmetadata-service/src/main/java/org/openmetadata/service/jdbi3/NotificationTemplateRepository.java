@@ -13,19 +13,13 @@
 
 package org.openmetadata.service.jdbi3;
 
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.Invocation;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.events.NotificationTemplateRenderRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateRenderResponse;
 import org.openmetadata.schema.api.events.NotificationTemplateSendRequest;
@@ -40,10 +34,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.channels.Channels;
+import org.openmetadata.service.events.subscription.channels.builtin.BuiltInChannels;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
@@ -58,8 +53,6 @@ import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.SubscriptionUtil;
-import org.openmetadata.service.util.email.EmailUtil;
 import org.openmetadata.service.util.resourcepath.ResourcePathResolver;
 import org.openmetadata.service.util.resourcepath.providers.NotificationTemplateResourcePathProvider;
 
@@ -325,8 +318,7 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
             .withName("test-subscription")
             .withDisplayName("Test Notification");
 
-    SubscriptionDestination emailDestination =
-        new SubscriptionDestination().withType(SubscriptionDestination.SubscriptionType.EMAIL);
+    SubscriptionDestination emailDestination = BuiltInChannels.previewDestination();
 
     TemplateRenderResult renderResult =
         renderWithMessageEngine(mockEvent, testSubscription, emailDestination, testTemplate);
@@ -458,42 +450,13 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     NotificationMessage message =
         messageEngine.generateMessageWithTemplate(event, subscription, destination, template);
 
-    switch (destination.getType()) {
-      case EMAIL -> sendEmailNotification((EmailMessage) message, destination);
-      case SLACK, MS_TEAMS, G_CHAT, WEBHOOK -> sendWebhookNotification(message, destination);
-      default -> throw new IllegalArgumentException(
-          "Unsupported destination type: " + destination.getType());
-    }
-  }
-
-  private void sendEmailNotification(
-      EmailMessage emailMessage, SubscriptionDestination destination) {
-    EmailAlertConfig emailConfig =
-        JsonUtils.convertValue(destination.getConfig(), EmailAlertConfig.class);
-    Set<String> receivers = emailConfig.getReceivers();
-
-    for (String receiver : receivers) {
-      EmailUtil.sendNotificationEmail(
-          receiver, emailMessage.getSubject(), emailMessage.getHtmlContent());
-    }
-  }
-
-  private void sendWebhookNotification(
-      NotificationMessage message, SubscriptionDestination destination) {
-    Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
-    String json = JsonUtils.pojoToJsonIgnoreNull(message);
-
-    try (Client client =
-        SubscriptionUtil.getClient(destination.getTimeout(), destination.getReadTimeout())) {
-      Invocation.Builder target = SubscriptionUtil.getTarget(client, webhook, json);
-
-      try (Response response =
-          target.post(jakarta.ws.rs.client.Entity.entity(json, MediaType.APPLICATION_JSON_TYPE))) {
-        if (response.getStatus() >= 300) {
-          throw new RuntimeException("Webhook failed with status: " + response.getStatus());
-        }
-      }
-    }
+    Channels.required(destination)
+        .transport()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "Unsupported destination type: " + destination.getType()))
+        .deliver(message, destination);
   }
 
   public class NotificationTemplateUpdater extends EntityUpdater {

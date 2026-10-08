@@ -17,10 +17,16 @@ export interface PersonaContext {
     /**
      * Stable definition hash followed by a content hash for detecting a changed materialization.
      */
-    fingerprint?:     string;
-    generatedAt?:     number;
-    manifest?:        ManifestEntry[];
-    persona?:         EntityReference;
+    fingerprint?: string;
+    generatedAt?: number;
+    manifest?:    ManifestEntry[];
+    persona?:     EntityReference;
+    /**
+     * The persona's prompt from its context definition; absent when unset or while the context
+     * is disabled. Carried only here because consumers treat the markdown document as reference
+     * data, not instructions.
+     */
+    prompt?:          string;
     rules?:           RuleResult[];
     searchScope?:     SearchScope;
     sharedKnowledge?: SharedKnowledge;

@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Space, Switch, Typography } from 'antd';
+import { Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -419,15 +423,15 @@ function ServiceMainTabContent({
                       entityType={serviceCategory}
                       extraTableFilters={
                         <>
-                          <span>
-                            <Switch
-                              checked={showDeleted}
+                          <span className="tw:inline-flex tw:items-center">
+                            <Toggle
                               data-testid="show-deleted"
-                              onClick={onShowDeletedChange}
+                              isSelected={showDeleted}
+                              onChange={onShowDeletedChange}
                             />
-                            <Typography.Text className="m-l-xs">
+                            <Typography className="m-l-xs">
                               {t('label.deleted')}
-                            </Typography.Text>
+                            </Typography>
                           </span>
 
                           {entityType === EntityType.DATABASE_SERVICE &&

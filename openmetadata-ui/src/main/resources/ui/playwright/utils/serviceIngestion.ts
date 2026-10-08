@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  APIRequestContext,
-  APIResponse,
-  expect,
-  Page,
-  Response,
-} from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -25,10 +19,9 @@ import { EntityClass } from '../support/entity/EntityClass';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  getApiContext,
+  clickIgnoringToasts,
   redirectToHomePage,
   toastNotification,
-  waitForToastStackToClear,
 } from './common';
 import {
   addMultiOwner,
@@ -104,7 +97,8 @@ export const deleteService = async (
   await page.goto(
     `/service/${getServiceCategoryFromService(typeOfService)}s/${getEncodedFqn(
       serviceName
-    )}?currentPage=1`
+    )}?currentPage=1`,
+    { waitUntil: 'domcontentloaded' }
   );
   await waitForAllLoadersToDisappear(page);
 
@@ -139,7 +133,7 @@ export const deleteService = async (
     BIG_ENTITY_DELETE_TIMEOUT
   ); // Wait for up to 5 minutes for the toast notification to appear
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   const serviceSearchResponse = page.waitForResponse((response) => {
@@ -214,12 +208,9 @@ export const testConnection = async (page: Page) => {
 
   await expect(testConnectionDialog).toBeVisible();
 
-  // The toast stack renders bottom-center, over the dialog's Done/OK button; a
-  // background "…deleted successfully!" toast from a parallel worker's cleanup
-  // can otherwise swallow this click. Wait for the stack to drain first.
-  await waitForToastStackToClear(page, 30_000);
-
-  await testConnectionDialog.getByRole('button', { name: /Done|OK/ }).click();
+  await clickIgnoringToasts(
+    testConnectionDialog.getByRole('button', { name: /Done|OK/ })
+  );
 
   // Wait for the success badge or the warning badge to appear
   const statusBadge = page.locator(
@@ -406,33 +397,6 @@ export const advanceToServiceConnectionStep = async (
   }
 };
 
-type RetryRequestData = {
-  page: Page;
-  retries?: number;
-} & (
-  | { url: string; fn?: never }
-  | { fn: () => Promise<APIResponse>; url?: never }
-);
-
-export const makeRetryRequest = async (data: RetryRequestData) => {
-  const { url, page, retries = 3, fn } = data;
-  const { apiContext } = await getApiContext(page);
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await (fn ? fn() : apiContext.get(url));
-
-      return response.json();
-    } catch (error) {
-      if (i === retries - 1) {
-        throw error;
-      }
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- exponential backoff for retry
-      await page.waitForTimeout(1000 * (i + 1));
-    }
-  }
-};
-
 const REMOTE_RUNNER_NAME = 'RemoteRunner';
 
 export const setRemoteRunnerAsDefault = async (
@@ -440,7 +404,7 @@ export const setRemoteRunnerAsDefault = async (
 ): Promise<void> => {
   const runnersRes = await apiContext.get('/api/v1/ingestionRunners?limit=100');
   if (!runnersRes.ok()) {
-    return;
+    throw new Error(`HTTP ${runnersRes.status()} querying ${runnersRes.url()}`);
   }
 
   const runnersBody = await runnersRes.json();
@@ -491,10 +455,7 @@ export const openAddAgentForm = async (page: Page, service: EntityClass) => {
 
   await page.getByTestId('add-new-ingestion-button').waitFor();
   await page.click('[data-testid="add-new-ingestion-button"]');
-  await page
-    .locator('.ant-dropdown:visible [data-menu-id*="metadata"]')
-    .waitFor();
-  await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
+  await page.getByTestId('agent-item-metadata').click();
 
   await waitForIngestionWorkflowForm(page);
 };

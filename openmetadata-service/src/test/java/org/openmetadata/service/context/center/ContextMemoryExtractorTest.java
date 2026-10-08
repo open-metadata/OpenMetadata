@@ -15,8 +15,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
@@ -53,6 +56,10 @@ class ContextMemoryExtractorTest {
     ContextMemory first = memories.getFirst();
     assertEquals(ContextMemorySourceType.FILE_EXTRACTION, first.getSourceType());
     assertEquals(source.getId(), first.getSourceEntity().getId());
+    assertEquals(source.getId(), first.getPrimaryEntity().getId());
+    assertEquals(ContextMemoryScope.ENTITY_SCOPED, first.getMemoryScope());
+    assertEquals(MemoryVisibility.ENTITY, first.getShareConfig().getVisibility());
+    assertEquals(EntityStatus.APPROVED, first.getEntityStatus());
     assertEquals("Q1", first.getQuestion());
   }
 
@@ -115,7 +122,7 @@ class ContextMemoryExtractorTest {
   }
 
   @Test
-  void partialChunkFailureStillYieldsPillsAndStats() {
+  void partialChunkFailureDoesNotReturnAnIncompleteSet() {
     String paragraph = "Lorem ipsum dolor sit amet consectetur adipiscing elit. ".repeat(200);
     String text = (paragraph + "\n\n").repeat(12); // > 60k chars => several chunks
     EntityReference source = fileRef(UUID.randomUUID(), "report");
@@ -123,12 +130,9 @@ class ContextMemoryExtractorTest {
         .thenThrow(new LLMCompletionException("provider exploded"))
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
-    ContextMemoryExtractor.DeriveResult result =
-        extractor().derive(text, source, ContextMemorySourceType.FILE_EXTRACTION);
-
-    assertEquals(1, result.memories().size(), "pills from surviving chunks must be kept");
-    assertTrue(result.chunksTotal() >= 2);
-    assertEquals(result.chunksTotal() - 1, result.chunksProcessed());
+    assertThrows(
+        LLMCompletionException.class,
+        () -> extractor().derive(text, source, ContextMemorySourceType.FILE_EXTRACTION));
   }
 
   @Test
@@ -173,14 +177,14 @@ class ContextMemoryExtractorTest {
   }
 
   @Test
-  void capsChunksForVeryLongText() {
+  void rejectsSourcesThatExceedTheChunkBudget() {
     String text = "word ".repeat(ContextMemoryExtractor.MAX_PROMPT_CHARS * 2); // 600k chars
     EntityReference source = fileRef(UUID.randomUUID(), "report");
-    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class))).thenReturn(List.of());
 
-    extractor().derive(text, source, ContextMemorySourceType.FILE_EXTRACTION);
-
-    verify(llmClient, org.mockito.Mockito.times(ContextMemoryExtractor.MAX_CHUNKS))
+    assertThrows(
+        LLMCompletionException.class,
+        () -> extractor().derive(text, source, ContextMemorySourceType.FILE_EXTRACTION));
+    verify(llmClient, org.mockito.Mockito.never())
         .completeStructured(any(), any(), eq(KnowledgePill.class));
   }
 }

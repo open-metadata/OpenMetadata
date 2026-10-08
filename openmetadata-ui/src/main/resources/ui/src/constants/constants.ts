@@ -410,6 +410,8 @@ export const ENTITY_PATH = {
   agentExecutions: 'agentExecution',
   mcpExecutions: 'mcpExecution',
   promptTemplates: 'promptTemplate',
+  teams: 'team',
+  users: 'user',
 };
 
 export const CUSTOM_PROPERTIES_DOCS =
@@ -500,6 +502,7 @@ export const VALIDATION_MESSAGES = {
 
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',
+  mutuallyExclusive: 'mutually exclusive',
 };
 
 export const ICON_DIMENSION = {

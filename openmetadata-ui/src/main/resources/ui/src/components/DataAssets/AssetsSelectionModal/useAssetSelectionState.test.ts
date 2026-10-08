@@ -26,6 +26,8 @@ import {
   addAssetsToGlossaryTerm,
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
+import { getMetricByFqn } from '../../../rest/metricsAPI';
+import { addMetricTabAssets } from '../../../rest/metricTabsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
@@ -57,6 +59,14 @@ jest.mock('../../../rest/glossaryAPI', () => ({
 jest.mock('../../../rest/tagAPI', () => ({
   getTagByFqn: jest.fn(),
   addAssetsToTags: jest.fn(),
+}));
+
+jest.mock('../../../rest/metricsAPI', () => ({
+  getMetricByFqn: jest.fn(),
+}));
+
+jest.mock('../../../rest/metricTabsAPI', () => ({
+  addMetricTabAssets: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -117,6 +127,10 @@ describe('useAssetSelectionState', () => {
       id: 'tag-id',
       fullyQualifiedName: 'tag.name',
     });
+    (getMetricByFqn as jest.Mock).mockResolvedValue({
+      id: 'metric-id',
+      fullyQualifiedName: 'revenue',
+    });
   });
 
   const renderAssetSelectionState = (
@@ -174,6 +188,16 @@ describe('useAssetSelectionState', () => {
     });
   });
 
+  it('should use DATA_ASSET search index for metric type', async () => {
+    renderAssetSelectionState({ type: AssetsOfEntity.METRIC });
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ searchIndex: SearchIndex.DATA_ASSET })
+      );
+    });
+  });
+
   it('should use ALL search index for domain type', async () => {
     renderAssetSelectionState({ type: AssetsOfEntity.DOMAIN });
 
@@ -219,6 +243,14 @@ describe('useAssetSelectionState', () => {
 
     await waitFor(() => {
       expect(getTagByFqn).toHaveBeenCalledWith('glossary.term');
+    });
+  });
+
+  it('should fetch the current metric for METRIC type', async () => {
+    renderAssetSelectionState({ type: AssetsOfEntity.METRIC });
+
+    await waitFor(() => {
+      expect(getMetricByFqn).toHaveBeenCalledWith('glossary.term');
     });
   });
 
@@ -542,6 +574,29 @@ describe('useAssetSelectionState', () => {
       expect(addAssetsToTags).toHaveBeenCalledWith('tag-id', expect.any(Array));
     });
 
+    it('should link metric assets via addMetricTabAssets', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('1')], 1)
+      );
+      (addMetricTabAssets as jest.Mock).mockResolvedValue({
+        status: Status.Success,
+      });
+
+      const { result } = renderAssetSelectionState({
+        type: AssetsOfEntity.METRIC,
+      });
+
+      await selectOneItem(result);
+
+      await act(async () => {
+        result.current.onSaveAction();
+      });
+
+      expect(addMetricTabAssets).toHaveBeenCalledWith('revenue', [
+        expect.objectContaining({ id: '1', type: 'table' }),
+      ]);
+    });
+
     it('should set failedStatus when the save response is not successful', async () => {
       (searchQuery as jest.Mock).mockResolvedValue(
         buildSearchResponse([buildHit('1')], 1)
@@ -795,6 +850,45 @@ describe('useAssetSelectionState', () => {
   });
 
   describe('websocket bulk assets channel', () => {
+    // Every case below goes through a job this hook actually started, since the
+    // listener now matches on jobId.
+    const startBulkJob = async (
+      result: ReturnType<typeof renderAssetSelectionState>['result']
+    ) => {
+      await waitFor(() => {
+        expect(result.current.items).toHaveLength(1);
+      });
+
+      act(() => {
+        result.current.handleCardClick({
+          id: '1',
+          entityType: 'table',
+        } as never);
+      });
+
+      await act(async () => {
+        result.current.onSaveAction();
+      });
+
+      await waitFor(() => {
+        expect(result.current.assetJobResponse).toEqual({ jobId: 'job-1' });
+      });
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('1')], 1)
+      );
+      (addAssetsToGlossaryTerm as jest.Mock).mockResolvedValue({
+        jobId: 'job-1',
+      });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it('should register and unregister the BULK_ASSETS_CHANNEL listener', () => {
       const { unmount } = renderAssetSelectionState();
 
@@ -810,12 +904,14 @@ describe('useAssetSelectionState', () => {
 
     it('should call onSave/onCancel when a COMPLETED success activity arrives', async () => {
       const { result } = renderAssetSelectionState();
+      await startBulkJob(result);
 
       const handler = mockSocket.on.mock.calls[0][1];
 
       act(() => {
         handler(
           JSON.stringify({
+            jobId: 'job-1',
             status: 'COMPLETED',
             result: { status: 'success' },
           })
@@ -832,6 +928,7 @@ describe('useAssetSelectionState', () => {
 
     it('should set failedStatus when a COMPLETED failure activity arrives', async () => {
       const { result } = renderAssetSelectionState();
+      await startBulkJob(result);
 
       const handler = mockSocket.on.mock.calls[0][1];
       const failureResult = { status: 'failure', failedRequest: [] };
@@ -839,6 +936,7 @@ describe('useAssetSelectionState', () => {
       act(() => {
         handler(
           JSON.stringify({
+            jobId: 'job-1',
             status: 'COMPLETED',
             result: failureResult,
           })
@@ -852,12 +950,14 @@ describe('useAssetSelectionState', () => {
 
     it('should set exportJob and clear assetJobResponse when a FAILED activity arrives', async () => {
       const { result } = renderAssetSelectionState();
+      await startBulkJob(result);
 
       const handler = mockSocket.on.mock.calls[0][1];
 
       act(() => {
         handler(
           JSON.stringify({
+            jobId: 'job-1',
             status: 'FAILED',
             error: 'job failed',
           })
@@ -871,6 +971,106 @@ describe('useAssetSelectionState', () => {
       });
 
       expect(result.current.assetJobResponse).toBeUndefined();
+    });
+
+    it('should ignore an activity for a job this hook did not start', async () => {
+      const { result } = renderAssetSelectionState();
+      await startBulkJob(result);
+
+      const handler = mockSocket.on.mock.calls[0][1];
+
+      act(() => {
+        handler(
+          JSON.stringify({
+            jobId: 'someone-elses-job',
+            status: 'COMPLETED',
+            result: { status: 'success' },
+          })
+        );
+      });
+
+      expect(mockOnSave).not.toHaveBeenCalled();
+      expect(mockOnCancel).not.toHaveBeenCalled();
+      expect(result.current.assetJobResponse).toEqual({ jobId: 'job-1' });
+    });
+
+    it('should handle our own terminal event that beats the save response', async () => {
+      // The server queues the job before it writes the response, so a small job
+      // can report COMPLETED while the hook still has no job id to match on.
+      let resolveSave!: (value: unknown) => void;
+      (addAssetsToGlossaryTerm as jest.Mock).mockReturnValue(
+        new Promise((resolve) => {
+          resolveSave = resolve;
+        })
+      );
+
+      const { result } = renderAssetSelectionState();
+
+      await waitFor(() => {
+        expect(result.current.items).toHaveLength(1);
+      });
+
+      act(() => {
+        result.current.handleCardClick({
+          id: '1',
+          entityType: 'table',
+        } as never);
+      });
+
+      act(() => {
+        result.current.onSaveAction();
+      });
+
+      const handler = mockSocket.on.mock.calls[0][1];
+
+      act(() => {
+        handler(
+          JSON.stringify({
+            jobId: 'job-1',
+            status: 'COMPLETED',
+            result: { status: 'success' },
+          })
+        );
+      });
+
+      expect(mockOnSave).not.toHaveBeenCalled();
+
+      await act(async () => {
+        resolveSave({ jobId: 'job-1' });
+      });
+
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalled();
+        expect(mockOnCancel).toHaveBeenCalled();
+      });
+
+      // Replayed, not parked in the in-progress state waiting for an event that
+      // has already been and gone.
+      expect(result.current.assetJobResponse).toBeUndefined();
+    });
+
+    it('should ignore an activity when no job is in flight', async () => {
+      const { result } = renderAssetSelectionState();
+
+      await waitFor(() => {
+        expect(mockSocket.on).toHaveBeenCalled();
+      });
+
+      const handler = mockSocket.on.mock.calls[0][1];
+
+      act(() => {
+        handler(
+          JSON.stringify({
+            jobId: 'someone-elses-job',
+            status: 'COMPLETED',
+            result: { status: 'success' },
+          })
+        );
+      });
+
+      expect(mockOnSave).not.toHaveBeenCalled();
+      expect(mockOnCancel).not.toHaveBeenCalled();
+      expect(result.current.failedStatus).toBeUndefined();
     });
   });
 });

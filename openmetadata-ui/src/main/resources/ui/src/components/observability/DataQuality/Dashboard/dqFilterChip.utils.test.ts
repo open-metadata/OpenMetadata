@@ -22,22 +22,36 @@ describe('dqFilterChip utils', () => {
       // The owner trigger sits beside FilterSelect chips rendered with
       // `bordered`; a borderless trigger here is the visual drift this guards
       // against.
-      expect(chipTriggerClassName).toContain('tw:shadow-xs-skeuomorphic');
-      expect(chipTriggerClassName).toContain('tw:after:outline-primary');
-      expect(chipTriggerClassName).toContain('tw:bg-surface');
-      expect(chipTriggerClassName).toContain('tw:px-3.5');
+      const className = chipTriggerClassName(false);
+
+      expect(className).toContain('tw:shadow-xs-skeuomorphic');
+      expect(className).toContain('tw:after:outline-primary');
+      expect(className).toContain('tw:bg-surface');
+      expect(className).toContain('tw:px-3.5');
     });
 
     it('should not carry the borderless quick-filter treatment', () => {
-      expect(chipTriggerClassName).not.toContain('tw:text-tertiary');
-      expect(chipTriggerClassName).not.toContain('tw:p-1 ');
+      expect(chipTriggerClassName(false)).not.toContain('tw:text-tertiary');
+      expect(chipTriggerClassName(false)).not.toContain('tw:p-1 ');
+    });
+
+    it('should swap the neutral label and outline for brand once a value is picked', () => {
+      const selected = chipTriggerClassName(true);
+
+      expect(selected).toContain('tw:text-fg-brand-primary');
+      expect(selected).toContain('tw:after:outline-brand');
+      expect(selected).toContain('tw:dark:after:outline-fg-brand-primary_alt');
+      expect(selected).not.toContain('tw:text-secondary');
+      expect(selected).not.toContain('tw:after:outline-primary');
+      expect(chipTriggerClassName(false)).not.toContain('brand-primary');
     });
   });
 
   describe('chipChevronClassName', () => {
-    it('should stay neutral like the FilterSelect trigger chevron', () => {
-      expect(chipChevronClassName).toContain('tw:text-fg-quaternary');
-      expect(chipChevronClassName).not.toContain('brand');
+    it('should brand the chevron once a value is picked, like FilterSelect does', () => {
+      expect(chipChevronClassName(true)).toContain('tw:text-fg-brand-primary');
+      expect(chipChevronClassName(true)).not.toContain('tw:text-fg-quaternary');
+      expect(chipChevronClassName(false)).toContain('tw:text-fg-quaternary');
     });
   });
 

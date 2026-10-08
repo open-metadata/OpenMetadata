@@ -340,8 +340,8 @@ test.describe('Context Center Articles', () => {
       page
         .getByTestId('knowledge-page-listing')
         .locator('[data-testid^="knowledge-card-"]')
-        .first()
-    ).toBeVisible();
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
@@ -368,10 +368,10 @@ test.describe('Context Center Articles', () => {
       ).toContainText('Context Center');
 
       await page
-        .locator('.ant-tree-treenode')
-        .filter({ hasText: /^Context Center$/ })
-        .locator('svg')
-        .first()
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({ has: page.getByTestId('explore-tree-title-Context Center') })
+        .getByTestId('tree-expand-btn')
         .click();
 
       await expect(
@@ -579,7 +579,9 @@ test.describe('Context Center Articles', () => {
       description
     );
     await expect(card.getByTestId('owner-label')).not.toBeVisible();
-    await expect(card.getByTestId('domain-link')).not.toBeVisible();
+    await expect(
+      card.locator('[data-testid^="domain-tag-"]')
+    ).not.toBeVisible();
 
     await card.click();
     await page.getByTestId('edit-domain-btn').click();
@@ -592,13 +594,12 @@ test.describe('Context Center Articles', () => {
     );
 
     await page
-      .getByTestId('domain-selectable-tree')
-      .getByTestId('searchbar')
+      .getByTestId('domain-selectable-tree-search')
       .fill(domain.responseData.name);
     await searchDomain;
 
     const domainTagSelector = page.getByTestId(
-      `tag-${domain.responseData.fullyQualifiedName}`
+      `tree-node-${domain.responseData.fullyQualifiedName}`
     );
     await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -814,13 +815,12 @@ test.describe('Context Center Articles', () => {
               .includes(encodeURIComponent(domain.responseData.name as string))
         );
         await page
-          .getByTestId('domain-selectable-tree')
-          .getByTestId('searchbar')
+          .getByTestId('domain-selectable-tree-search')
           .fill(domain.responseData.name as string);
         await searchResponse;
 
         const domainTagSelector = page.getByTestId(
-          `tag-${domain.responseData.fullyQualifiedName}`
+          `tree-node-${domain.responseData.fullyQualifiedName}`
         );
         await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -1426,7 +1426,10 @@ test.describe('Context Center Articles', () => {
               `/api/v1/conversations/${createdConversation.id}/reaction/rocket`
             ) && response.request().method() === 'PUT'
       );
-      await page.locator('[title="rocket"]:visible').click();
+      await page
+        .getByTestId('feed-reactions-popover')
+        .getByRole('button', { name: 'rocket', exact: true })
+        .click();
       await reactionResponse;
       await mainMessage.getByTestId('emoji-button').hover();
       await expect(
@@ -1824,6 +1827,7 @@ test.describe('Context Center Articles', () => {
     test('displayName: switching articles does not bleed unsaved title into next article', async ({
       page,
     }) => {
+      test.slow();
       const newDisplayName = `Updated Title ${uuid()}`;
 
       await test.step('Navigate to draft article A and type new display name without saving', async () => {

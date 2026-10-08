@@ -17,15 +17,10 @@ import {
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
-import { Hexagon01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
-const SAMPLE_DATA_STORAGE_CONFIG_ID = '/sampleDataStorageConfig';
-const STORAGE_CONFIG_ID_SUFFIX =
-  '/sampleDataStorageConfig/config/storageConfig';
-const AWS_S3_STORAGE_CONFIG_TITLE = 'AWS S3 Storage Config';
 const MAX_SEGMENTED_OPTION_COUNT = 3;
 const MAX_SEGMENTED_OPTION_LABEL_LENGTH = 28;
 const COMPACT_SELECTOR_ID_PATTERN = /(source|projectId)$/i;
@@ -56,9 +51,7 @@ const shouldRenderSegmentedOptions = (
   );
 
   const isSegmentedOptionCountWithinLimit =
-    options.length > 1 &&
-    options.length <= MAX_SEGMENTED_OPTION_COUNT &&
-    !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID);
+    options.length > 1 && options.length <= MAX_SEGMENTED_OPTION_COUNT;
 
   return (
     isSegmentedOptionCountWithinLimit &&
@@ -225,9 +218,6 @@ const CoreOneOfField = (props: FieldProps) => {
     selectedBranchIsObjectLike,
     shouldRenderAsTabs
   );
-  const isStorageConfigSelector = idSchema.$id.endsWith(
-    STORAGE_CONFIG_ID_SUFFIX
-  );
   const recommendedTitle = (uiSchema?.['ui:options']?.recommended ??
     undefined) as string | undefined;
 
@@ -237,20 +227,12 @@ const CoreOneOfField = (props: FieldProps) => {
         const label = getOptionTitle(option, index);
 
         return {
-          icon:
-            isStorageConfigSelector && label === AWS_S3_STORAGE_CONFIG_TITLE ? (
-              <Hexagon01
-                aria-hidden="true"
-                data-testid="storage-config-title-icon"
-                size={16}
-              />
-            ) : undefined,
           id: String(index),
           isRecommended: recommendedTitle === label,
           label,
         };
       }),
-    [isStorageConfigSelector, recommendedTitle, resolvedOptions]
+    [recommendedTitle, resolvedOptions]
   );
 
   const selectedIdSchema = useMemo(

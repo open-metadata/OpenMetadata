@@ -13,6 +13,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { DEFAULT_MEMORY_STATUSES } from '../../../../constants/ContextCenter.constants';
 import { Include } from '../../../../generated/type/include';
 import { listContextFiles } from '../../../../rest/assetAPI';
 import { getListContextMemories } from '../../../../rest/contextMemoryAPI';
@@ -64,9 +65,10 @@ export function useContextCenterBadges(enabled: boolean): ContextCenterBadges {
   const { data: memories } = useQuery({
     queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
     queryFn: () =>
-      getListContextMemories({ limit: COUNT_LIMIT }).then(
-        (res) => res.paging.total
-      ),
+      getListContextMemories({
+        limit: COUNT_LIMIT,
+        statuses: DEFAULT_MEMORY_STATUSES.join(','),
+      }).then((res) => res.paging.total),
     enabled,
   });
 

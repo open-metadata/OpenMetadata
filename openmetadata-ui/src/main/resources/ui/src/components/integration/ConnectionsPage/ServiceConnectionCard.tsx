@@ -30,6 +30,7 @@ import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBas
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import {
@@ -72,7 +73,7 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
   return (
     <Card
       isClickable
-      className="tw:flex tw:flex-col tw:gap-2.5 tw:p-4"
+      className="tw:flex tw:flex-col tw:gap-2.5 tw:p-4 tw:dark:bg-secondary tw:dark:hover:bg-secondary_hover"
       data-testid={`service-card-${service.name}`}
       variant="elevated"
       onClick={handleClick}>
@@ -124,7 +125,7 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
           className="tw:self-start tw:font-medium"
           color="success"
           size="sm">
-          {t(categoryConfig.titleKey)}
+          {getServiceCategoryLabel(categoryConfig.key)}
         </Badge>
       )}
 

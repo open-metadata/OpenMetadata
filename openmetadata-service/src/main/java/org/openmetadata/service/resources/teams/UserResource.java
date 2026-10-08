@@ -30,6 +30,7 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DEFAULT_BOT_ROLE;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -199,7 +200,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
   static final String FIELDS =
-      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences,extension";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -1113,6 +1114,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    boolean isSelf = getSubjectContext(securityContext).user().getId().equals(id);
+    // Editing another user needs EDIT_ALL on that user, as PUT requires, so broad grants on all
+    // resources (e.g. DataConsumer's EditDescription) only ever reach the caller's own profile.
+    if (!isSelf) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+          getResourceContextById(id));
+    }
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (!patchOpObject.containsKey("path")) {
@@ -1125,13 +1135,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
       if (patchOpObject.containsKey("value")) {
         // Check if updating personaPreferences - users can only update their own
-        if (path.startsWith("/personaPreferences")) {
-          String authenticatedUserName = securityContext.getUserPrincipal().getName();
-          User authenticatedUser =
-              repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
-          if (!authenticatedUser.getId().equals(id)) {
-            throw new AuthorizationException("Users can only update their own persona preferences");
-          }
+        if (path.startsWith("/personaPreferences") && !isSelf) {
+          throw new AuthorizationException("Users can only update their own persona preferences");
         }
         // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")

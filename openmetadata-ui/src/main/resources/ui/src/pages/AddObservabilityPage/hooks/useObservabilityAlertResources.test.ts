@@ -11,75 +11,41 @@
  *  limitations under the License.
  */
 
-import { renderHook, waitFor } from '@testing-library/react';
-import { AlertType } from '../../../generated/events/eventSubscription';
-import { useObservabilityAlertResources } from './useObservabilityAlertResources';
+import { renderHook } from '@testing-library/react';
+import { useSelectedAlertSources } from './useObservabilityAlertResources';
 
-const mockObservabilityResources = jest.fn();
-const mockNotificationResources = jest.fn();
+const mockUseWatch = jest.fn();
 
-jest.mock('../../../rest/observabilityAPI', () => ({
-  getResourceFunctions: () => mockObservabilityResources(),
-}));
-
-jest.mock('../../../rest/alertsAPI', () => ({
-  getResourceFunctions: () => mockNotificationResources(),
-}));
-
-// The hook only reads the selected source through Form.useWatch.
 jest.mock('antd', () => ({
-  Form: { useWatch: () => undefined },
+  Form: { useWatch: (...args: unknown[]) => mockUseWatch(...args) },
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
+const FORM = {} as Parameters<typeof useSelectedAlertSources>[0];
 
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
-
-const renderResources = (alertType?: AlertType) =>
-  renderHook(() =>
-    useObservabilityAlertResources(
-      {} as Parameters<typeof useObservabilityAlertResources>[0],
-      alertType
-    )
-  );
-
-describe('useObservabilityAlertResources', () => {
+describe('useSelectedAlertSources', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockObservabilityResources.mockResolvedValue({
-      data: [{ name: 'testCase' }],
-    });
-    mockNotificationResources.mockResolvedValue({
-      data: [{ name: 'all' }, { name: 'table' }],
-    });
+    mockUseWatch.mockReset();
   });
 
-  it('loads observability resources by default', async () => {
-    const { result } = renderResources();
+  // The AI alert form copies its sources into the form with no field for them, and a watch
+  // without preserve sees only fields that are mounted.
+  it('reads the chosen sources from the whole form store', () => {
+    renderHook(() => useSelectedAlertSources(FORM));
 
-    await waitFor(() =>
-      expect(result.current.filterResources.map((r) => r.name)).toEqual([
-        'testCase',
-      ])
+    expect(mockUseWatch).toHaveBeenCalledWith(
+      ['resources'],
+      expect.objectContaining({ form: FORM, preserve: true })
     );
-
-    expect(mockNotificationResources).not.toHaveBeenCalled();
   });
 
-  it('loads notification resources for notification alerts', async () => {
-    const { result } = renderResources(AlertType.Notification);
-
-    await waitFor(() =>
-      expect(result.current.filterResources.map((r) => r.name)).toEqual([
-        'all',
-        'table',
-      ])
+  it('hands every chosen source and the choices so far to the caller', () => {
+    const input = { filters: [{ name: 'filterByOwnerName' }] };
+    mockUseWatch.mockImplementation((name) =>
+      name === 'input' ? input : ['table', 'topic']
     );
 
-    expect(mockObservabilityResources).not.toHaveBeenCalled();
+    const { result } = renderHook(() => useSelectedAlertSources(FORM));
+
+    expect(result.current).toEqual({ sources: ['table', 'topic'], input });
   });
 });

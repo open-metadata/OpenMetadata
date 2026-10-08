@@ -69,11 +69,23 @@ List the user-visible scenarios this PR exercises. Example:
 - [ ] I added integration tests in `openmetadata-integration-tests/` for new/changed API endpoints.
 - [ ] Not applicable (no backend API changes).
 - Files added/updated:
+
+PR checks run only the Java unit tests; the integration tests run in the merge queue and JavaUIIT /
+search-it nightly. Before requesting review, run the Java tests this PR impacts (selected from
+`.github/java-tests/impact-map.json`):
+
+  make java_affected                            # list the impacted unit tests + ITs and the commands
+  make java_affected_run ARGS="--update-pr"     # run them and fill the block below
+
+Without `gh`, drop `--update-pr` and paste `target/java-tests/local-pr-results.md` between the markers.
 -->
+<!-- local-java-test-results:start -->
+<!-- local-java-test-results:end -->
 
 #### Ingestion integration tests
 <!--
 - [ ] I added/updated ingestion integration tests for connector changes.
+- [ ] I ran the integration tests covering my changed files locally (PR CI runs only unit tests; the merge queue runs `tests/integration/`).
 - [ ] Not applicable (no ingestion changes).
 - Files added/updated:
 -->
@@ -83,7 +95,17 @@ List the user-visible scenarios this PR exercises. Example:
 - [ ] I added Playwright E2E tests under `openmetadata-ui/.../ui/playwright/` for UI changes.
 - [ ] Not applicable (no UI changes).
 - Files added/updated:
+
+PR checks do not run Playwright; the merge queue runs the full suite. Before requesting review, run
+the specs impacted by this PR locally (selected from `.github/playwright/impact-map.json`):
+
+  make playwright_affected                            # list the impacted specs + the command
+  make playwright_affected_run ARGS="--update-pr"     # run them and fill the block below
+
+Without `gh`, drop `--update-pr` and paste `playwright/output/local-pr-results.md` between the markers.
 -->
+<!-- local-playwright-results:start -->
+<!-- local-playwright-results:end -->
 
 #### Manual testing performed
 <!--

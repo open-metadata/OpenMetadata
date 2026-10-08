@@ -14,10 +14,10 @@
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { authenticateAdminPage } from '../../utils/admin';
 import {
+  chooseSelectOption,
   getApiContext,
   getAuthContext,
   getSavedAdminToken,
-  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -77,13 +77,15 @@ const deleteRelationTypeByNameViaApi = async (
 };
 
 const goToRelationSettings = async (page: Page) => {
-  await page.goto(RELATION_SETTINGS_ROUTE);
+  await page.goto(RELATION_SETTINGS_ROUTE, { waitUntil: 'domcontentloaded' });
   // Wait for at least one row rather than intercepting the API response.
   // React Query may serve data from cache without a network request, so
   // page.waitForResponse would hang forever on repeat navigations.
   await expect(
-    page.locator('[data-testid="relation-types-table"] tbody tr').first()
-  ).toBeVisible();
+    page
+      .locator('[data-testid="relation-types-table"] tbody tr')
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 };
 
 const fillInput = async (page: Page, testId: string, value: string) => {
@@ -91,7 +93,7 @@ const fillInput = async (page: Page, testId: string, value: string) => {
 };
 
 const selectOption = async (page: Page, testId: string, option: string) => {
-  await selectOptionWithRetry(
+  await chooseSelectOption(
     page.getByTestId(testId),
     page.getByRole('option', { name: option, exact: true })
   );

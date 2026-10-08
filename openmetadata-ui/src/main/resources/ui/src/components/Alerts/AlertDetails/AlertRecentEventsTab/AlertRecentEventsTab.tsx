@@ -11,22 +11,19 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Bell01 } from '@untitledui/icons';
 import {
+  Box,
   Button,
-  Col,
-  Collapse,
   Dropdown,
-  Row,
+  EmptyPlaceholder,
   Skeleton,
-  Tooltip,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
+import { Col, Collapse, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
@@ -97,7 +94,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   );
 
   const handleFilterSelect = useCallback(
-    (item: MenuInfo) => setFilter(item.key as AlertRecentEventFilters),
+    (key: Key) => setFilter(key as AlertRecentEventFilters),
     [filter]
   );
 
@@ -145,7 +142,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           ).map((skeletonKey) => (
             <Panel
               data-testid="skeleton-loading-panel"
-              header={<Skeleton active paragraph={false} />}
+              header={<Skeleton height={16} width="100%" />}
               key={skeletonKey}
             />
           ))}
@@ -223,17 +220,15 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           </Col>
                           <Col>
                             {/* Display the change event id */}
-                            <Typography.Text>
-                              {changeEventData.id}
-                            </Typography.Text>
+                            <Typography>{changeEventData.id}</Typography>
                           </Col>
                         </Row>
                       </Col>
                       <Col>
                         {/* Display the event timestamp */}
-                        <Typography.Text className="text-grey-muted">
+                        <Typography color="secondary">
                           {formatDateTime(typedEvent.timestamp)}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
                   }
@@ -251,20 +246,20 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                   data-testid={`event-data-${key}`}
                                   gutter={[4, 4]}>
                                   <Col span={24}>
-                                    <Typography.Text
-                                      className="text-grey-muted"
+                                    <Typography
+                                      color="secondary"
                                       data-testid="event-data-key">
                                       {`${getLabelsForEventDetails(
                                         key as keyof AlertEventDetailsToDisplay
                                       )}:`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Col>
                                   <Col span={24}>
-                                    <Typography.Text
+                                    <Typography
                                       className="font-medium"
                                       data-testid="event-data-value">
                                       {value}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Col>
                                 </Row>
                               </Col>
@@ -275,11 +270,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                     {!isEmpty(changeEventData.changeDescription) && (
                       <>
                         <Col span={24}>
-                          <Typography.Text className="font-medium">
+                          <Typography className="font-medium">
                             {`${t('label.change-entity', {
                               entity: t('label.description'),
                             })}:`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col span={24}>
                           <SchemaEditor
@@ -336,39 +331,47 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           <Col>
             <Row gutter={[8, 8]}>
               <Col span={24}>
-                <Typography.Text className="font-medium">
+                <Typography className="font-medium">
                   {`${t('label.description')}:`}
-                </Typography.Text>
+                </Typography>
               </Col>
               <Col span={24}>
-                <Typography.Text className="text-grey-muted">
+                <Typography color="secondary">
                   {t('message.alert-recent-events-description', { alertName })}
-                </Typography.Text>
+                </Typography>
               </Col>
             </Row>
           </Col>
           <Col>
-            <Dropdown
-              menu={{
-                items: filterMenuItems,
-                selectedKeys: [filter],
-                onClick: handleFilterSelect,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
+            <Dropdown.Root>
               <Button
-                className="flex-center"
+                color="secondary"
                 data-testid="filter-button"
-                icon={<FilterIcon height={16} />}>
+                iconLeading={<FilterIcon height={16} width={16} />}
+                size="sm">
                 {filter !== AlertRecentEventFilters.ALL && (
-                  <Typography.Text
+                  <Typography
                     className="font-medium"
                     data-testid="applied-filter-text">{` : ${getAlertEventsFilterLabels(
                     filter as AlertRecentEventFilters
-                  )}`}</Typography.Text>
+                  )}`}</Typography>
                 )}
               </Button>
-            </Dropdown>
+              <Dropdown.Popover className="tw:w-auto">
+                <Dropdown.Menu
+                  aria-label={t('label.filter-plural')}
+                  selectedKeys={[filter]}
+                  onAction={handleFilterSelect}>
+                  {filterMenuItems.map((item) => (
+                    <Dropdown.Item
+                      id={item.key}
+                      key={item.key}
+                      label={item.label}
+                    />
+                  ))}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
           </Col>
         </Row>
       </Col>

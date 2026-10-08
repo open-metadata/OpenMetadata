@@ -17,11 +17,12 @@ import {
   ArrowUpRight,
   Check,
   ChevronRight,
+  Database01,
   File06,
   HelpCircle,
   Settings01,
   User01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo } from 'react';
@@ -44,6 +45,7 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
+import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getVersion } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { languageSelectOptions } from '../../../../utils/i18next/i18nextUtil';
@@ -92,7 +94,7 @@ const MenuRow: React.FC<MenuRowProps> = ({
   <Box align="start" gap={2}>
     {Icon && (
       <Icon
-        className="tw:mt-1 tw:shrink-0 tw:text-gray-400"
+        className="tw:mt-1 tw:shrink-0 tw:text-fg-quaternary"
         height={14}
         width={14}
       />
@@ -110,7 +112,7 @@ const MenuRow: React.FC<MenuRowProps> = ({
       </Box>
       {isActive && (
         <Check
-          className="tw:ml-2 tw:shrink-0 tw:text-blue-500"
+          className="tw:ml-2 tw:shrink-0 tw:text-fg-brand-primary"
           height={14}
           width={14}
         />
@@ -146,10 +148,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
             />
           )}
         </Dropdown.Item>
-        <Popover
-          className={SUBMENU_POPOVER_CLASS}
-          offset={4}
-          placement="right top">
+        <Popover className={SUBMENU_POPOVER_CLASS} placement="right top">
           <Menu
             className={SUBMENU_MENU_CLASS}
             onAction={(key) => item.onAction?.(String(key))}>
@@ -168,7 +167,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
                     gap={2}>
                     {child.icon && (
                       <child.icon
-                        className="tw:shrink-0 tw:text-gray-400"
+                        className="tw:shrink-0 tw:text-fg-quaternary"
                         height={child.iconSize ?? 14}
                         width={child.iconSize ?? 14}
                       />
@@ -178,7 +177,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
                     </span>
                     {child.isActive && (
                       <Check
-                        className="tw:ml-auto tw:shrink-0 tw:text-blue-500"
+                        className="tw:ml-auto tw:shrink-0 tw:text-fg-brand-primary"
                         height={14}
                         width={14}
                       />
@@ -222,6 +221,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
+  const { setHash } = useSettingsHash();
   const openPanel = usePersonalSpaceStore((state) => state.open);
   const {
     appVersion,
@@ -239,7 +239,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           // version display is non-critical
         });
     }
-  }, []);
+  }, [appVersion, setAppVersion]);
 
   const userExtras = currentUser as CurrentUserExtras | undefined;
   const displayName = useMemo(
@@ -323,6 +323,14 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
 
   const menuItems: MenuItemConfig[] = useMemo(
     () => [
+      {
+        type: 'item',
+        id: 'my-data',
+        dataTestId: 'ai-user-menu-my-data',
+        icon: Database01,
+        label: t('label.my-data'),
+        onAction: () => openPanel('my-data'),
+      },
       {
         type: 'item',
         id: 'persona',
@@ -451,7 +459,14 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             data-testid="ai-user-menu-profile"
             id="profile-header"
             textValue={displayName}
-            onAction={() => openPanel('profile')}>
+            onAction={() =>
+              setHash(
+                'profile',
+                currentUser?.name
+                  ? encodeURIComponent(currentUser.name)
+                  : undefined
+              )
+            }>
             <Box
               align="center"
               className="tw:relative tw:rounded-md tw:px-2.5 tw:py-2 tw:transition tw:duration-100 tw:ease-linear tw:group-hover:bg-primary_hover"

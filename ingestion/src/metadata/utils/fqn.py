@@ -68,6 +68,10 @@ T = TypeVar("T", bound=BaseModel)
 FQN_SEPARATOR: str = "."
 fqn_build_registry = class_register()
 
+# basic.json#/definitions/entityName. The generated EntityName model drops the pattern, so only the server enforces it.
+ENTITY_NAME_MAX_LENGTH = 256
+_ENTITY_NAME_PATTERN = re.compile(r'^((?!::)[^>"\x00-\x1f])*$')
+
 
 class FQNBuildingException(Exception):  # noqa: N818
     """
@@ -148,6 +152,12 @@ def _build(*args, quote: bool = True) -> str:
 
 def unquote_name(name: str) -> str:
     return name[1:-1] if name and name[0] == '"' and name[-1] == '"' else name
+
+
+def is_valid_entity_name(name: str) -> bool:
+    """Whether the server would accept ``name`` as an entity name (no '"', '>', '::' or control characters)."""
+    # fullmatch, since re's `$` also matches before a trailing newline
+    return 0 < len(name) <= ENTITY_NAME_MAX_LENGTH and _ENTITY_NAME_PATTERN.fullmatch(name) is not None
 
 
 def quote_name(name: str) -> str:
@@ -430,10 +440,10 @@ def _(
     if not entity and service_name and container_name:
         if parent_container:
             # Check if parent_container already starts with service_name
-            if parent_container.startswith(f"{service_name}."):
+            if parent_container.startswith(f"{quote_name(service_name)}."):
                 fqn = _build(parent_container, container_name, quote=False)
             else:
-                fqn = _build(service_name, parent_container, container_name, quote=False)
+                fqn = _build(quote_name(service_name), parent_container, container_name, quote=False)
         else:
             fqn = _build(service_name, container_name)
         return [fqn] if fetch_multiple_entities else fqn
@@ -902,10 +912,10 @@ def search_container_from_es(
 
     if parent_container:
         # Check if parent_container already starts with service_name
-        if service_name and parent_container.startswith(f"{service_name}."):
+        if service_name and parent_container.startswith(f"{quote_name(service_name)}."):
             fqn_search_string = _build(parent_container, container_name, quote=False)
         else:
-            fqn_search_string = _build(service_name or "*", parent_container, container_name, quote=False)
+            fqn_search_string = _build(quote_name(service_name or "*"), parent_container, container_name, quote=False)
     else:
         fqn_search_string = _build(service_name or "*", container_name)
 

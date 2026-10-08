@@ -212,18 +212,19 @@ jest.mock(
         )
       )
 );
-// `onViewAll` exposed as a clickable trigger (not just an opaque div) so tests can drive the
+// `onItemClick` exposed as a clickable trigger (not just an opaque div) so tests can drive the
 // drawer open through the *widget* path — the reachable path for a deleted entity, since
 // ManageButton's announcement menu item is independently gated on `!deleted` inside
 // ManageButton itself (ManageButton.tsx), regardless of the `onAnnouncementClick` value
-// DataAssetsHeader passes in.
+// DataAssetsHeader passes in. The widget lost its View all button when the banner replaced
+// the list, so the announcement itself is now what opens the drawer.
 jest.mock(
   '../../../components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () =>
     jest
       .fn()
-      .mockImplementation(({ onViewAll }: { onViewAll?: () => void }) => (
-        <button data-testid="announcements-widget-view-all" onClick={onViewAll}>
+      .mockImplementation(({ onItemClick }: { onItemClick?: () => void }) => (
+        <button data-testid="announcements-widget-item" onClick={onItemClick}>
           AnnouncementsWidgetV3Body.component
         </button>
       ))
@@ -652,6 +653,20 @@ describe('DataAssetsHeader component', () => {
     expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
   });
 
+  it('should not render source URL button when sourceUrl is not http(s)', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          sourceUrl: 'javascript:alert(1)',
+        }}
+      />
+    );
+
+    expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
+  });
+
   it('should show the source URL tooltip when the link receives focus', async () => {
     render(
       <DataAssetsHeader
@@ -672,6 +687,17 @@ describe('DataAssetsHeader component', () => {
 
     expect(sourceUrlButton).toHaveFocus();
     expect(await screen.findByText('label.source-url')).toBeVisible();
+  });
+
+  it('should render entity-specific header actions next to the manage menu', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        headerActions={<button data-testid="custom-header-action">Add</button>}
+      />
+    );
+
+    expect(screen.getByTestId('custom-header-action')).toBeInTheDocument();
   });
 
   it('should not render source URL button when sourceUrl is not present', () => {
@@ -1061,12 +1087,12 @@ describe('DataAssetsHeader component', () => {
 
   // Behavior parity with base commit 9cf866cd23: `createPermission={permissions?.EditAll}`
   // is unconditional — never gated by `deleted`. Driven through the AnnouncementsWidgetV3Body
-  // "view all" click rather than ManageButton — that's the reachable path for a *deleted*
+  // banner click rather than ManageButton — that's the reachable path for a *deleted*
   // entity, since ManageButton's own `onAnnouncementClick` menu item is independently gated
   // on `!deleted` inside ManageButton itself and would never surface the drawer for a
   // deleted entity in the first place.
   describe('AnnouncementDrawer.createPermission wiring', () => {
-    it('grants createPermission for a soft-deleted entity reached via the AnnouncementsWidgetV3Body view-all click, when EditAll is granted', async () => {
+    it('grants createPermission for a soft-deleted entity reached by clicking the announcement banner, when EditAll is granted', async () => {
       (getActiveAnnouncements as jest.Mock).mockResolvedValueOnce({
         data: [{ id: 'announcement-1' }],
       });
@@ -1079,9 +1105,7 @@ describe('DataAssetsHeader component', () => {
         />
       );
 
-      fireEvent.click(
-        await screen.findByTestId('announcements-widget-view-all')
-      );
+      fireEvent.click(await screen.findByTestId('announcements-widget-item'));
 
       expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
         'data-create-permission',
@@ -1102,9 +1126,7 @@ describe('DataAssetsHeader component', () => {
         />
       );
 
-      fireEvent.click(
-        await screen.findByTestId('announcements-widget-view-all')
-      );
+      fireEvent.click(await screen.findByTestId('announcements-widget-item'));
 
       expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
         'data-create-permission',

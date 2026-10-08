@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
+import {
+  Badge,
+  Popover,
+  PopoverTrigger,
+} from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
@@ -151,9 +157,20 @@ const RolesListPage = () => {
                 )
               )}
               {hasMore && (
-                <Popover
-                  className="cursor-pointer"
-                  content={
+                <PopoverTrigger>
+                  <AriaButton
+                    className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+                    data-testid="plus-more-count">
+                    <Badge
+                      className="tw:inline-flex tw:mr-2 m-l-xss"
+                      color="gray"
+                      size="sm"
+                      type="color">{`+${listLength - LIST_CAP} more`}</Badge>
+                  </AriaButton>
+                  <Popover
+                    arrow
+                    containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
+                    placement="bottom">
                     <Space wrap size={4}>
                       {record.policies.slice(LIST_CAP).map((policy) =>
                         viewPolicyPermission ? (
@@ -173,13 +190,8 @@ const RolesListPage = () => {
                         )
                       )}
                     </Space>
-                  }
-                  overlayClassName="w-40 text-center"
-                  trigger="click">
-                  <Tag className="m-l-xss" data-testid="plus-more-count">{`+${
-                    listLength - LIST_CAP
-                  } more`}</Tag>
-                </Popover>
+                  </Popover>
+                </PopoverTrigger>
               )}
             </Space>
           ) : (

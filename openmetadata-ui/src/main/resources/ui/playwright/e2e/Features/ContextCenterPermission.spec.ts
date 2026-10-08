@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
@@ -590,7 +591,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) and edit-domain/edit-owner actions are hidden', async () => {
         await viewOnlyPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(viewOnlyPage);
 
@@ -756,7 +758,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) action is hidden', async () => {
         await createAllPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(createAllPage);
 
@@ -847,7 +850,7 @@ test.describe('Context Center Permissions', () => {
             return names.has(childDN) && names.has(parentDN);
           },
           [childDisplayName, parentDisplayName],
-          { timeout: 30000, polling: 2000 }
+          { timeout: ACTION_TIMEOUT, polling: 2000 }
         );
 
         await navigateToArticles(createAllPage);
@@ -906,7 +909,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) action is hidden, but edit-domain/edit-owner actions are visible', async () => {
         await editAllPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(editAllPage);
 
@@ -964,7 +968,7 @@ test.describe('Context Center Permissions', () => {
             return names.has(childDN) && names.has(parentDN);
           },
           [childDisplayName, parentDisplayName],
-          { timeout: 30000, polling: 2000 }
+          { timeout: ACTION_TIMEOUT, polling: 2000 }
         );
 
         await navigateToArticles(editAllPage);
@@ -1074,7 +1078,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) action is visible', async () => {
         await deleteAllPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(deleteAllPage);
 
@@ -1098,7 +1103,8 @@ test.describe('Context Center Permissions', () => {
         await afterAction();
 
         await deleteAllPage.goto(
-          `/context-center/articles/${disposableArticle.fullyQualifiedName}`
+          `/context-center/articles/${disposableArticle.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(deleteAllPage);
 
@@ -1129,7 +1135,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) action is visible', async () => {
         await allPermissionPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(allPermissionPage);
 
@@ -1264,7 +1271,7 @@ test.describe('Context Center Permissions', () => {
 
         await waitForDocumentProcessingComplete(apiContext, uploadedData.id);
 
-        await createAllPage.reload();
+        await createAllPage.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(createAllPage);
         await navigateToDocuments(createAllPage);
 

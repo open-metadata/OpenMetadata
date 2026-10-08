@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowUpRight, BookOpen01, Key01, Lock01 } from '@untitledui/icons';
+import {
+  ArrowUpRight,
+  BookOpen01,
+  Key01,
+  Lock01,
+} from '@openmetadata/ui-core-components/icons';
 import { Col, Row } from 'antd';
 import { TFunction } from 'i18next';
 import { first, last, noop, startCase } from 'lodash';
@@ -82,7 +87,6 @@ const AUTH_FIELD_NAMES = new Set([
 const NESTED_FOCUS_FIELDS = new Set([
   'connectionOptions',
   'connectionArguments',
-  'sampleDataStorageConfig',
   'policyAgentConfig',
 ]);
 const LINEAGE_FIELDS = new Set(['useAccessHistory', 'accessHistoryChunkSize']);

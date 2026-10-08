@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Form, Input, Row } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Col, Form, Input, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,20 +33,16 @@ import {
 
 function ObservabilityAlertFormFields({
   alert,
-  containerEntities,
   extraFormWidgets,
   filterResources,
   form,
   isLoading,
   shouldShowActionsSection,
   shouldShowFiltersSection,
-  supportedFilters,
-  supportedTriggers,
   templateResourcePermission,
   templates,
 }: Readonly<ObservabilityAlertFormFieldsProps>) {
   const { t } = useTranslation();
-  const resources = Form.useWatch('resources', form);
   const destinations = Form.useWatch('destinations', form);
   const timeout = Form.useWatch('timeout', form);
   const readTimeout = Form.useWatch('readTimeout', form);
@@ -81,30 +78,37 @@ function ObservabilityAlertFormFields({
           {shouldShowFiltersSection && (
             <>
               <Col>
-                <Divider dashed type="vertical" />
+                <Divider
+                  dashed
+                  className="tw:mx-2 tw:h-6 tw:border-r"
+                  orientation="vertical"
+                />
               </Col>
               <Col span={24}>
-                <ObservabilityFormFiltersItem
-                  containerEntities={containerEntities}
-                  supportedFilters={supportedFilters}
-                />
+                <ObservabilityFormFiltersItem />
               </Col>
             </>
           )}
           {shouldShowActionsSection && (
             <>
               <Col>
-                <Divider dashed type="vertical" />
+                <Divider
+                  dashed
+                  className="tw:mx-2 tw:h-6 tw:border-r"
+                  orientation="vertical"
+                />
               </Col>
               <Col span={24}>
-                <ObservabilityFormTriggerItem
-                  supportedTriggers={supportedTriggers}
-                />
+                <ObservabilityFormTriggerItem />
               </Col>
             </>
           )}
           <Col>
-            <Divider dashed type="vertical" />
+            <Divider
+              dashed
+              className="tw:mx-2 tw:h-6 tw:border-r"
+              orientation="vertical"
+            />
           </Col>
           <Col span={24}>
             <DestinationFormItemFormBridge
@@ -116,7 +120,7 @@ function ObservabilityAlertFormFields({
                   <DestinationFormFieldRegistrar />
                 </Form.Item>
               )}
-              values={{ destinations, readTimeout, resources, timeout }}
+              values={{ destinations, readTimeout, timeout }}
               onChange={(values) => {
                 // Each shared field must be replaced at its root. Ant's bulk
                 // setter deep-merges destination array entries and would restore
@@ -133,7 +137,11 @@ function ObservabilityAlertFormFields({
               {Object.entries(extraFormWidgets).map(([name, Widget]) => (
                 <Fragment key={name}>
                   <Col>
-                    <Divider dashed type="vertical" />
+                    <Divider
+                      dashed
+                      className="tw:mx-2 tw:h-6 tw:border-r"
+                      orientation="vertical"
+                    />
                   </Col>
                   <Col span={24}>
                     <Widget

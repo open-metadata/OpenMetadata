@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { AlertTriangle } from '@untitledui/icons';
-import { isEmpty, isUndefined } from 'lodash';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
+import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AiFormModal } from '../../../components/common/atoms/drawer/AiFormModal';
@@ -97,19 +97,17 @@ function AlertEditModal({
   const [showHint, setShowHint] = useState(true);
   const {
     alert,
-    containerEntities,
     extraFormButtons,
-    extraFormWidgets,
     filterResources,
     form,
     handleSave,
     inlineAlertDetails,
     isLoading,
+    loadingState,
     saving,
+    selection,
     shouldShowActionsSection,
     shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
     templateResourcePermission,
     templates,
   } = useObservabilityAlertForm({
@@ -170,6 +168,7 @@ function AlertEditModal({
         loading={saving}
         templateResourcePermission={templateResourcePermission}
         templates={templates}
+        values={formData}
       />
     )
   );
@@ -198,20 +197,22 @@ function AlertEditModal({
       ) : (
         <AlertAiForm
           alert={alert}
-          containerEntities={containerEntities}
+          containerEntities={selection.support.containerEntities}
           filterResources={filterResources}
           formId={ALERT_AI_FORM_MODAL_ID}
           inlineAlert={inlineAlertDetails}
           mode={mode}
+          recipientCategories={selection.support.recipientCategories}
           shouldShowActionsSection={
             kind.hasTriggers && shouldShowActionsSection
           }
           shouldShowFiltersSection={shouldShowFiltersSection}
-          shouldShowTemplateSection={!isEmpty(extraFormWidgets)}
           showHint={showHint}
-          supportedFilters={supportedFilters}
-          supportedTriggers={supportedTriggers}
+          supportedFilters={selection.support.supportedFilters}
+          supportedTriggers={selection.support.supportedTriggers}
+          templateResourcePermission={templateResourcePermission}
           templates={templates}
+          templatesLoading={loadingState.templates}
           value={formData}
           onChange={setFormData}
           onSubmit={handleSave}

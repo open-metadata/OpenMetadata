@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space, Tag } from 'antd';
+import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -29,8 +29,8 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { stringToHTML } from '../../../utils/RichTextStringUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import Description from '../../common/EntityDescription/Description';
@@ -66,17 +66,22 @@ const TopicVersion: FC<TopicVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   useEffect(() => {
     setChangeDescription(
@@ -123,9 +128,14 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
 
     return isEmpty(schemaTypeDiffText) ? undefined : (
-      <Tag data-testid="schema-type-diff">
+      <Badge
+        className="tw:inline-flex tw:mr-2"
+        color="gray"
+        data-testid="schema-type-diff"
+        size="sm"
+        type="color">
         {stringToHTML(schemaTypeDiffText)}
-      </Tag>
+      </Badge>
     );
   }, [changeDescription, currentVersionData]);
 
@@ -221,6 +231,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.TOPIC}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

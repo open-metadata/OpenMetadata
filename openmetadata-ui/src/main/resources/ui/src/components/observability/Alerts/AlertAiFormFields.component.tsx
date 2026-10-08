@@ -19,10 +19,13 @@ import {
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { ComponentProps, useEffect, useMemo, useState } from 'react';
+import { ComponentType, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
+import alertsClassBase, {
+  AlertAiTemplateSectionProps,
+} from '../../../utils/AlertsClassBase';
 import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
 import {
@@ -39,28 +42,28 @@ import {
 } from './AlertAiFormFieldsPureUtils';
 import { getAlertAiSourceItems } from './AlertAiFormFieldsSearchUtils';
 import { renderSelectItem } from './AlertAiFormFieldsSelectUtils';
-import AlertAiNotificationSection from './AlertAiNotificationSection.component';
 import AlertAiRuleSection from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import { OBSERVABILITY_ALERT_FORM } from './alertFormDocs.constants';
 
 /**
- * Shown unless the caller says templates are unsupported (OSS). Kept as its own component
- * so the condition does not push AlertAiFormFields over the cyclomatic-complexity limit.
+ * The notification template section comes from `alertsClassBase` (Collate);
+ * OSS has none. Kept as its own component so the condition does not push
+ * AlertAiFormFields over the cyclomatic-complexity limit.
  */
 const AlertAiTemplateField = ({
   docProps,
-  show,
+  TemplateSection,
   ...sectionProps
-}: ComponentProps<typeof AlertAiNotificationSection> & {
+}: AlertAiTemplateSectionProps & {
   docProps: ReturnType<typeof useFieldDoc>;
-  show?: boolean;
+  TemplateSection: ComponentType<AlertAiTemplateSectionProps> | null;
 }) =>
-  show === false ? null : (
+  TemplateSection ? (
     <div {...docProps}>
-      <AlertAiNotificationSection {...sectionProps} />
+      <TemplateSection {...sectionProps} />
     </div>
-  );
+  ) : null;
 
 /** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
 function AlertAiFormFields({
@@ -70,17 +73,23 @@ function AlertAiFormFields({
   isViewOnly,
   inlineAlert,
   onChange,
+  recipientCategories,
   showBasicFields = true,
   shouldShowActionsSection,
   shouldShowFiltersSection,
-  shouldShowTemplateSection,
   supportedFilters,
   supportedTriggers,
+  templateResourcePermission,
   templates,
+  templatesLoading,
   validationErrors,
   value,
 }: Readonly<AlertAiFormFieldsProps>) {
   const { t } = useTranslation();
+  const TemplateSection = useMemo(
+    () => alertsClassBase.getAlertAiTemplateSection(),
+    []
+  );
   // Field docs for the Form Hint panel, sourced from ObservabilityAlertForm.md
   // (same markdown-backed mechanism the Data Quality forms use). Docs are
   // suppressed in the read-only configuration view, where there is nothing to
@@ -177,7 +186,7 @@ function AlertAiFormFields({
     name: 'alertDestinations',
   });
   const notificationTemplateDoc = useFieldDoc({
-    doc: docFor('notificationTemplate'),
+    doc: docFor('notificationTemplate', Boolean(TemplateSection)),
     label: t('label.notification-template'),
     name: 'alertNotificationTemplate',
   });
@@ -190,12 +199,12 @@ function AlertAiFormFields({
       return;
     }
 
-    onChange({
-      ...(value as Parameters<NonNullable<typeof onChange>>[0]),
+    onChange((prev) => ({
+      ...prev,
       input: {},
       destinations: [],
       resources: nextSource ? [nextSource] : [],
-    });
+    }));
   };
 
   return (
@@ -310,6 +319,7 @@ function AlertAiFormFields({
       <div {...destinationsDoc}>
         <AlertAiDestinationSection
           isViewOnly={isViewOnly}
+          recipientCategories={recipientCategories}
           selectedSource={selectedSource}
           validationErrors={validationErrors}
           value={value}
@@ -318,9 +328,11 @@ function AlertAiFormFields({
       </div>
 
       <AlertAiTemplateField
+        TemplateSection={TemplateSection}
         docProps={notificationTemplateDoc}
         isViewOnly={isViewOnly}
-        show={shouldShowTemplateSection}
+        loading={templatesLoading}
+        templateResourcePermission={templateResourcePermission}
         templates={templates}
         value={value}
         onChange={onChange}

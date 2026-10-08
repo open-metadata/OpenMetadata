@@ -23,10 +23,10 @@ This skill is loaded automatically at session start. It ensures you follow the r
 | UI a11y / UX / design audit | `/web-design-guidelines` |
 | React perf work (re-renders, waterfalls, bundle) | `/react-best-practices` |
 | Code review / PR review | `/code-review` then `/test-enforcement` |
-| Opening / finalizing a PR | `/test-enforcement` then `/verification` then `/pr-checklist` |
+| Opening / finalizing a PR | `/test-enforcement` then `/java-affected-tests` (any Java, schema, migration or pom change) then `/verification` then `/pr-checklist` |
 | Connector review | `/connector-review` |
 | E2E test creation | `/playwright` |
-| Finishing implementation | `/test-enforcement` then `/verification` |
+| Finishing implementation | `/test-enforcement` then `/java-affected-tests` (Java side) then `/verification` |
 
 > **Note:** Connector skills (`/connector-standards`, `/connector-building`, `/connector-review`) and `/playwright` are part of the OpenMetadata Skills plugin and ship together with this workflow skill. They are defined in the `skills/` directory alongside this file.
 
@@ -59,7 +59,7 @@ This skill is loaded automatically at session start. It ensures you follow the r
 
 5. **Review before merging.** Use `/code-review` for two-stage review (spec compliance + code quality).
 
-6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue, high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps.
+6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue (a test fix needs none), high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps.
 
 ### OpenMetadata Cross-Layer Checklist
 

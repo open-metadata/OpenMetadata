@@ -11,8 +11,10 @@
 
 """SQLAlchemy validator for table rule library SQL expression tests"""
 
-from jinja2 import Template
-from sqlalchemy import text
+from typing import TYPE_CHECKING, cast
+
+from jinja2.sandbox import SandboxedEnvironment
+from sqlalchemy import func, select, text
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -22,6 +24,9 @@ from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionV
 )
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import test_suite_logger
+
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import QueryRunner
 
 logger = test_suite_logger()
 
@@ -41,7 +46,8 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         for param_name in user_params:
             bind_params_template[param_name] = f":{param_name}"
 
-        template = Template(sql_template.root)
+        # User-authored template: sandboxed so it cannot reach Python internals.
+        template = SandboxedEnvironment().from_string(sql_template.root)
         compiled_sql = template.render(**bind_params_template)
 
         return compiled_sql, user_params
@@ -60,3 +66,12 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
             self.runner._session.rollback()
             logger.exception(f"Error executing SQL expression: {exc}")  # noqa: TRY401
             raise exc  # noqa: TRY201
+
+    def _run_row_count(self) -> int:
+        """Count the rows of the unsampled, unpartitioned table, the rows the rule's SQL reads"""
+        runner = cast("QueryRunner", self.runner)
+        try:
+            return runner.session.execute(select(func.count()).select_from(runner.table)).scalar() or 0
+        except Exception:
+            runner.session.rollback()
+            raise

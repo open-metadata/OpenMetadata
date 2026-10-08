@@ -245,8 +245,12 @@
   }
 
   &.block-editor-wrapper--bar-menu {
-    border: 1px solid var(--om-legacy-color-dadde6);
+    border: 1px solid var(--tw-color-border-primary);
     border-radius: var(--om-radius-sm);
+
+    &:focus-within {
+      border-color: var(--tw-color-border-brand);
+    }
 
     // do not show drag handle and block handle in bar menu mode
     .om-drag-handle,
@@ -443,7 +447,8 @@
 }
 
 .is-format-active {
-  .ant-typography {
+  .ant-typography,
+  .format-label {
     color: @primary-color;
   }
   svg {
@@ -510,16 +515,6 @@ body .om-image-node-embed-link-btn-col {
 .om-callout-node-danger {
   background-color: @callout-danger-bg;
   border-left-color: @error-color;
-}
-
-.callout-type-btn.ant-btn.ant-btn-text {
-  padding: var(--om-space-2) var(--om-space-4);
-}
-
-.om-callout-node-popover {
-  .ant-popover-inner-content {
-    padding: var(--om-space-12) var(--om-space-4);
-  }
 }
 
 .callout-menu {

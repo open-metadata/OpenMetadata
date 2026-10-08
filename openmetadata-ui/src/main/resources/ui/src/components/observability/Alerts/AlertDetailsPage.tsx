@@ -18,10 +18,14 @@ import {
   PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
+import {
+  Edit03,
+  RefreshCw04,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { Key, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -37,17 +41,20 @@ import {
   AlertType,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
+import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
 import { useFqn } from '../../../hooks/useFqn';
-import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
-import { useAlertDetailsPage } from '../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage';
+import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import AlertAiDiagnosticTab from './AlertAiDiagnosticTab';
+import AlertAiEventCounts from './AlertAiEventCounts';
 import AlertAiForm from './AlertAiForm.component';
 import { getAlertAiResources } from './AlertAiFormFieldsPureUtils';
+import AlertAiRecentEventsTab from './AlertAiRecentEventsTab';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 import AlertEditModal from './AlertEditModal.component';
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
@@ -93,26 +100,20 @@ const AlertDetailsPage = ({
     [fqn, kind, navigate]
   );
 
-  const detailsState = useAlertDetailsPage({
+  const detailsState = useAlertDetailsData({
     afterDeleteAction: handleAfterDelete,
     isNotificationAlert,
     onEditAlert: handleEditAlert,
     onTabChange: (tab) => handleTabChange(tab),
-  }) as ReturnType<typeof useAlertDetailsPage> & {
-    fetchAlertDetails?: () => Promise<void>;
-  };
-  const alertFormState = useObservabilityAlertForm({
-    alertType: kind.alertType,
-    fqn,
   });
-
   const {
     alertDetails,
+    alertEventCounts,
+    alertEventCountsLoading,
     deletePermission,
     editDescriptionPermission,
     editOwnersPermission,
     editPermission,
-    extraInfo,
     fetchAlertDetails,
     handleAlertDelete,
     handleAlertEdit,
@@ -126,7 +127,6 @@ const AlertDetailsPage = ({
     setShowDeleteModal,
     showDeleteModal,
     tab,
-    tabItems,
     viewPermission,
   } = detailsState;
 
@@ -141,16 +141,17 @@ const AlertDetailsPage = ({
         : undefined,
     [alertDetails]
   );
-  const [selectedSource] = alertConfigValue
-    ? getAlertAiResources(alertConfigValue)
-    : [];
-  const selectedAlertResource = useMemo(
-    () =>
-      alertFormState.filterResources.find(
-        (resource) => resource.name === selectedSource
-      ),
-    [alertFormState.filterResources, selectedSource]
+  // The configuration view follows every source the alert watches, as the server answers for them.
+  const sources = useMemo(
+    () => (alertConfigValue ? getAlertAiResources(alertConfigValue) : []),
+    [alertConfigValue]
   );
+  const alertFormState = useAlertFormData({
+    alertType: kind.alertType,
+    fqn,
+    sources,
+  });
+  const { support } = alertFormState.selection;
 
   const handleConfirmDelete = useCallback(async () => {
     if (!alertDetails?.id) {
@@ -177,10 +178,36 @@ const AlertDetailsPage = ({
 
   const handleEditModalSaved = useCallback(async () => {
     setIsEditModalOpen(false);
-    await fetchAlertDetails?.();
+    await fetchAlertDetails();
   }, [fetchAlertDetails]);
 
+  const tabItems = useMemo(
+    () => [
+      {
+        key: AlertDetailTabs.CONFIGURATION,
+        label: t('label.configuration'),
+      },
+      {
+        key: AlertDetailTabs.RECENT_EVENTS,
+        label: t('label.recent-event-plural'),
+      },
+      {
+        key: AlertDetailTabs.DIAGNOSTIC_INFO,
+        label: t('label.diagnostic-info'),
+      },
+    ],
+    [t]
+  );
+
   const activeTabContent = useMemo<ReactNode>(() => {
+    if (tab === AlertDetailTabs.RECENT_EVENTS && alertDetails) {
+      return <AlertAiRecentEventsTab alertDetails={alertDetails} />;
+    }
+
+    if (tab === AlertDetailTabs.DIAGNOSTIC_INFO) {
+      return <AlertAiDiagnosticTab fqn={fqn} />;
+    }
+
     if (tab === AlertDetailTabs.CONFIGURATION && alertConfigValue) {
       return (
         <AlertAiForm
@@ -188,27 +215,30 @@ const AlertDetailsPage = ({
           alert={alertConfigValue}
           filterResources={alertFormState.filterResources}
           mode="view"
+          recipientCategories={support.recipientCategories}
           shouldShowActionsSection={kind.hasTriggers}
-          shouldShowTemplateSection={!isEmpty(alertFormState.extraFormWidgets)}
-          supportedFilters={selectedAlertResource?.supportedFilters}
-          supportedTriggers={selectedAlertResource?.supportedActions}
+          supportedFilters={support.supportedFilters}
+          supportedTriggers={support.supportedTriggers}
+          templateResourcePermission={alertFormState.templateResourcePermission}
           templates={alertFormState.templates}
+          templatesLoading={alertFormState.loadingState.templates}
           value={alertConfigValue}
         />
       );
     }
 
-    return tabItems?.find((item) => item.key === tab)?.children;
+    return null;
   }, [
     alertConfigValue,
-    alertFormState.extraFormWidgets,
+    alertDetails,
+    fqn,
     alertFormState.filterResources,
+    alertFormState.loadingState.templates,
+    alertFormState.templateResourcePermission,
     alertFormState.templates,
     kind.hasTriggers,
-    selectedAlertResource?.supportedActions,
-    selectedAlertResource?.supportedFilters,
+    support,
     tab,
-    tabItems,
   ]);
 
   const headerTabs = useMemo(
@@ -218,7 +248,7 @@ const AlertDetailsPage = ({
         data-testid="alert-details-tabs"
         size="sm"
         type="underline">
-        {tabItems?.map((item) => (
+        {tabItems.map((item) => (
           <Tabs.Item
             id={String(item.key)}
             key={String(item.key)}
@@ -261,13 +291,17 @@ const AlertDetailsPage = ({
             }
           />
         )}
-        {extraInfo}
+        <AlertAiEventCounts
+          counts={alertEventCounts}
+          loading={alertEventCountsLoading}
+        />
       </Box>
     ),
     [
       alertDetails?.owners,
+      alertEventCounts,
+      alertEventCountsLoading,
       editOwnersPermission,
-      extraInfo,
       onOwnerUpdate,
       ownerLoading,
     ]

@@ -954,7 +954,9 @@
     border-radius: @ask-nav-item-radius;
     padding: 0;
     cursor: pointer;
-    color: @ask-text-quaternary;
+    // Same rest weight as the nav icons it sits above, so the rail header does
+    // not read a shade paler than the list below it.
+    color: @ask-icon-rest;
     opacity: 0;
     transition: opacity 150ms @ask-transition-ease,
       background-color 150ms @ask-transition-ease;
@@ -1085,7 +1087,7 @@
     align-items: center;
     flex-shrink: 0;
 
-    .ask-domain-scope__rail-btn {
+    .ask-domain-scope__icon-btn {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1394,7 +1396,7 @@
     border-radius: @ask-nav-item-radius;
     padding: 0;
     cursor: pointer;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     transition: background-color 150ms @ask-transition-ease;
 
     &:hover {

@@ -18,14 +18,13 @@ import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  assignDomain,
   descriptionBox,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
   uuid,
-  waitForAntdPopupToSettle,
 } from './common';
+import { setDomain } from './domainPicker';
 import {
   addMultiOwner,
   addOwner,
@@ -780,7 +779,7 @@ export const executionOnOwnerTeam = async (
   await expect(page.getByTestId('edit-team-subscription')).toBeVisible();
   await expect(page.getByTestId('edit-team-type-icon')).toBeVisible();
 
-  await assignDomain(page, data.domain.responseData);
+  await setDomain(page, data.domain.responseData);
 
   await addMultiOwner({
     page,
@@ -822,7 +821,7 @@ export const executionOnOwnerGroupTeam = async (
   await expect(page.getByTestId('edit-team-subscription')).toBeVisible();
   await expect(page.getByTestId('edit-team-type-icon')).not.toBeVisible();
 
-  await assignDomain(page, data.domain.responseData);
+  await setDomain(page, data.domain.responseData);
 
   await addEmailTeam(page, data.email);
 
@@ -847,9 +846,8 @@ export const selectAssetsFilterFromDropdown = async (
   filterLabel: string
 ) => {
   await page.getByTestId('asset-filter-button').click();
-  const menuItem = page.getByRole('menuitem', { name: filterLabel });
+  const menuItem = page.getByRole('menuitemcheckbox', { name: filterLabel });
   await expect(menuItem).toBeVisible();
-  await waitForAntdPopupToSettle(page);
   await menuItem.click();
 };
 

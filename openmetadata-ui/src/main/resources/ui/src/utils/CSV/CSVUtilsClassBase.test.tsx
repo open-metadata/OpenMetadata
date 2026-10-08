@@ -45,8 +45,8 @@ jest.mock(
     __esModule: true,
     default: jest.fn(
       (props: {
-        mode?: 'multiple';
-        onChange?: (option: DataAssetOption | DataAssetOption[]) => void;
+        multiple?: boolean;
+        onChange?: (option?: DataAssetOption | DataAssetOption[]) => void;
         searchIndex?: SearchIndex;
       }) => {
         mockDataAssetAsyncSelectList(props);
@@ -54,14 +54,14 @@ jest.mock(
         return (
           <button
             data-testid={
-              props.mode === 'multiple'
+              props.multiple
                 ? 'asset-select-list-multiple'
                 : 'asset-select-list-single'
             }
             type="button"
             onClick={() =>
               props.onChange?.(
-                props.mode === 'multiple'
+                props.multiple
                   ? [mockSelectedReferenceOption]
                   : mockSelectedReferenceOption
               )
@@ -498,10 +498,56 @@ describe('CSV utils ClassBase', () => {
       expect(codeEditor).not.toBe(lazyTextEditor);
     });
 
-    it('should commit metric bulk edit description changes from the inline editor', () => {
+    it.each([EntityType.METRIC, EntityType.TABLE])(
+      'should commit %s bulk edit description changes from the inline editor',
+      (entityType) => {
+        const editor = csvUtils.getEditor(
+          'description',
+          entityType,
+          multipleOwner,
+          { usePlainTextEditor: true }
+        );
+        const onRowChange = jest.fn();
+        const onClose = jest.fn();
+
+        if (!editor) {
+          throw new Error('Expected description editor to be defined');
+        }
+
+        render(
+          <>
+            {editor({
+              row: { description: 'Current description' },
+              column: { key: 'description' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+
+        const textarea = screen.getByRole('textbox');
+
+        expect(
+          screen.getByTestId('bulk-edit-description-editor')
+        ).toBeInTheDocument();
+
+        fireEvent.change(textarea, {
+          target: { value: 'Updated description' },
+        });
+        fireEvent.blur(textarea);
+
+        expect(onRowChange).toHaveBeenCalledWith(
+          { description: 'Updated description' },
+          true
+        );
+        expect(onClose).toHaveBeenCalledWith(true);
+      }
+    );
+
+    it('should format selected description text without committing until the save shortcut', () => {
       const editor = csvUtils.getEditor(
         'description',
-        EntityType.METRIC,
+        EntityType.TABLE,
         multipleOwner,
         { usePlainTextEditor: true }
       );
@@ -515,7 +561,7 @@ describe('CSV utils ClassBase', () => {
       render(
         <>
           {editor({
-            row: { description: 'Current description' },
+            row: { description: 'Important update' },
             column: { key: 'description' },
             onRowChange,
             onClose,
@@ -523,22 +569,55 @@ describe('CSV utils ClassBase', () => {
         </>
       );
 
-      const textarea = screen.getByRole('textbox');
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+      textarea.setSelectionRange(0, 9);
+      const bold = screen.getByRole('button', { name: 'label.bold' });
+      fireEvent.mouseDown(bold);
+      fireEvent.click(bold);
 
-      expect(
-        screen.getByTestId('bulk-edit-description-editor')
-      ).toBeInTheDocument();
+      expect(textarea).toHaveValue('**Important** update');
+      expect(onRowChange).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
 
-      fireEvent.change(textarea, {
-        target: { value: 'Updated description' },
-      });
-      fireEvent.blur(textarea);
+      fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
       expect(onRowChange).toHaveBeenCalledWith(
-        { description: 'Updated description' },
+        { description: '**Important** update' },
         true
       );
       expect(onClose).toHaveBeenCalledWith(true);
+    });
+
+    it('should cancel a changed bulk description with Escape', () => {
+      const editor = csvUtils.getEditor(
+        'description',
+        EntityType.TABLE,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected description editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { description: 'Original' },
+            column: { key: 'description' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+      const textarea = screen.getByRole('textbox');
+      fireEvent.change(textarea, { target: { value: 'Discard this' } });
+      fireEvent.keyDown(textarea, { key: 'Escape' });
+
+      expect(onRowChange).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledWith(false);
     });
 
     it('should use a normal text input for metric bulk edit text cells', () => {
@@ -740,7 +819,7 @@ describe('CSV utils ClassBase', () => {
       );
       expect(mockDataAssetAsyncSelectList).toHaveBeenCalledWith(
         expect.objectContaining({
-          mode: 'multiple',
+          multiple: true,
           searchIndex: SearchIndex.USER,
           value: undefined,
         })

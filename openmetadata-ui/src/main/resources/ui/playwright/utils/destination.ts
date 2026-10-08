@@ -27,19 +27,26 @@ const selectOwnedOption = async ({
   page,
 }: SelectOwnedOptionArgs) => {
   await control.focus();
-  if ((await control.getAttribute('aria-expanded')) !== 'true') {
-    await open();
-  }
-  await expect(control).toHaveAttribute('aria-expanded', 'true');
-  const listboxId = await control.getAttribute('aria-controls');
-  if (!listboxId) {
-    throw new Error('Destination popup did not expose aria-controls');
-  }
-  const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
-  await listbox.getByRole('option', { exact: true, name: optionName }).click();
-  // The exiting overlay still owns focus until it unmounts. Opening the next
-  // picker during that transition can restore focus into the old control.
-  await expect(listbox).toBeHidden();
+  // Index-keyed destination rows remount on every form-value write, tearing down
+  // the open listbox mid-click ("element detached from the DOM"). Reopen and
+  // re-resolve the listbox on every attempt so a torn-down popover can recover.
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await open();
+    }
+    await expect(control).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 2_000,
+    });
+    const listboxId = (await control.getAttribute('aria-controls')) ?? '';
+    expect(listboxId).toBeTruthy();
+    const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+    await listbox
+      .getByRole('option', { exact: true, name: optionName })
+      .click({ timeout: 2_000 });
+    // The exiting overlay still owns focus until it unmounts. Opening the next
+    // picker during that transition can restore focus into the old control.
+    await expect(listbox).toBeHidden({ timeout: 2_000 });
+  }).toPass({ timeout: 10_000 });
 };
 
 export const selectComboBoxOption = async ({
@@ -97,9 +104,12 @@ export const ensureAccordionExpanded = async (
   });
   await expect(trigger).toBeVisible();
 
-  if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
-    await trigger.click();
-  }
-
-  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 10_000 });
 };

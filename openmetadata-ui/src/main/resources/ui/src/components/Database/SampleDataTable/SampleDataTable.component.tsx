@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Select, Space, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -21,7 +21,6 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.svg';
-import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -43,6 +42,10 @@ import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -149,11 +152,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
         name: column,
         title: (
           <div className="d-flex flex-column">
-            <Typography.Text> {column}</Typography.Text>
+            <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
-              <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
+              <Typography
+                className="text-xs font-normal"
+                color="secondary">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
-              )})`}</Typography.Text>
+              )})`}</Typography>
             )}
           </div>
         ),
@@ -217,7 +222,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
     }
   };
 
-  const manageButtonContent: ItemType[] = [
+  const manageButtonContent: ManageMenuItem[] = [
     {
       label: (
         <ManageButtonItemLabel
@@ -230,8 +235,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
         />
       ),
       key: 'export-button',
-      onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
-        e.domEvent.stopPropagation();
+      onClick: () => {
         setShowActions(false);
         exportToCSV();
       },
@@ -253,8 +257,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
               />
             ),
             key: 'delete-button',
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
+            onClick: () => {
               setShowActions(false);
               handleDeleteModal();
             },
@@ -292,7 +295,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
       <ErrorPlaceHolder className="error-placeholder">
-        <Typography.Paragraph>
+        <Typography as="p" className="tw:mb-3.5!">
           <Transi18next
             i18nKey="message.view-sample-data-entity"
             renderElement={
@@ -308,7 +311,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
               entity: t('label.auto-classification'),
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }
@@ -322,9 +325,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       id="sampleDataDetails">
       <Space className="m-y-xss justify-between w-full">
         <Space>
-          <Typography.Text className="text-grey-muted">
-            {t('label.row-limit')}:
-          </Typography.Text>
+          <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
             className="w-28"
             data-testid="row-limit-select"
@@ -340,28 +341,15 @@ const SampleDataTable: FC<SampleDataProps> = ({
             ))}
           </Select>
         </Space>
-        <Dropdown
-          menu={{
-            items: manageButtonContent,
-          }}
-          open={showActions}
-          overlayClassName="manage-dropdown-list-container"
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          onOpenChange={setShowActions}>
-          <Tooltip
-            placement="topLeft"
-            title={t('label.manage-entity', {
-              entity: t('label.sample-data'),
-            })}>
-            <Button
-              className="flex-center px-1.5"
-              data-testid="sample-data-manage-button"
-              onClick={() => setShowActions(true)}>
-              <IconDropdown className="anticon self-center " />
-            </Button>
-          </Tooltip>
-        </Dropdown>
+        <ManageMenu
+          data-testid="sample-data-manage-button"
+          isOpen={showActions}
+          items={manageButtonContent}
+          label={t('label.manage-entity', {
+            entity: t('label.sample-data'),
+          })}
+          onOpenChange={setShowActions}
+        />
       </Space>
 
       <TableComponent

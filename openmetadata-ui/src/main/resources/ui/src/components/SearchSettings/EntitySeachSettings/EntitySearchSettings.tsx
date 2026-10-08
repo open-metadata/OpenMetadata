@@ -11,19 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Col,
-  Collapse,
-  InputNumber,
-  Row,
-  Select,
-  Switch,
-  Tag,
-  Typography,
-} from 'antd';
+import { Badge, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Col, Collapse, InputNumber, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, omit, startCase } from 'lodash';
-import type { MenuInfo } from 'rc-menu/lib/interface';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../constants/constants';
@@ -236,10 +227,7 @@ const EntitySearchSettings = () => {
       .map((field: AllowedFieldField) => ({
         key: field.name,
         label: field.name,
-        onClick: (e: MenuInfo) => {
-          e.domEvent.stopPropagation();
-          handleFieldSelection(field.name);
-        },
+        onClick: () => handleFieldSelection(field.name),
       }));
   }, [entityFields, searchSettings.searchFields]);
 
@@ -686,9 +674,14 @@ const EntitySearchSettings = () => {
   const renderRankingFields = (fields: string[] = []) => (
     <div className="ranking-field-list">
       {fields.map((field) => (
-        <Tag className="ranking-field-tag" key={field}>
+        <Badge
+          className="tw:block tw:max-w-full tw:truncate"
+          color="gray"
+          key={field}
+          size="md"
+          type="color">
           {field}
-        </Tag>
+        </Badge>
       ))}
     </div>
   );
@@ -713,14 +706,14 @@ const EntitySearchSettings = () => {
         key={stageKey}>
         <Row align="middle" className="m-b-xs" gutter={[12, 12]}>
           <Col flex="auto">
-            <Typography.Text className="ranking-stage-title">
+            <Typography className="ranking-stage-title">
               {stageName ? startCase(stageName) : t('label.no-data')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col className="ranking-number-control">
-            <Typography.Text className="text-grey-muted text-xs font-normal">
+            <Typography className="text-xs font-normal" color="secondary">
               {t('label.weight')}
-            </Typography.Text>
+            </Typography>
             <InputNumber
               min={1}
               value={stage.weight ?? null}
@@ -734,23 +727,23 @@ const EntitySearchSettings = () => {
           </Col>
         </Row>
         {stage.purpose && (
-          <Typography.Paragraph className="ranking-stage-purpose">
+          <Typography as="p" className="ranking-stage-purpose">
             {stage.purpose}
-          </Typography.Paragraph>
+          </Typography>
         )}
         <Row className="ranking-stage-meta" gutter={[12, 12]}>
           <Col span={12}>
-            <Typography.Text className="text-grey-muted text-xs font-normal">
+            <Typography className="text-xs font-normal" color="secondary">
               {t('label.match-type')}
-            </Typography.Text>
-            <Typography.Paragraph className="ranking-stage-value">
+            </Typography>
+            <Typography as="p" className="ranking-stage-value">
               {matchType}
-            </Typography.Paragraph>
+            </Typography>
           </Col>
           <Col span={12}>
-            <Typography.Text className="text-grey-muted text-xs font-normal">
+            <Typography className="text-xs font-normal" color="secondary">
               {t('label.field-plural')}
-            </Typography.Text>
+            </Typography>
             {renderRankingFields(stage.fields)}
           </Col>
         </Row>
@@ -763,9 +756,9 @@ const EntitySearchSettings = () => {
 
     if (!ranking) {
       return (
-        <Typography.Text className="text-grey-muted">
+        <Typography color="secondary">
           {t('message.no-data-available')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -776,22 +769,23 @@ const EntitySearchSettings = () => {
         <div className="ranking-settings-card">
           <Row align="middle" gutter={[12, 12]}>
             <Col span={16}>
-              <Typography.Text className="text-grey-muted text-xs font-normal">
+              <Typography className="text-xs font-normal" color="secondary">
                 {t('label.algorithm')}
-              </Typography.Text>
-              <Typography.Paragraph className="m-0">
+              </Typography>
+              <Typography as="p" className="m-0">
                 {ranking.algorithm
                   ? startCase(ranking.algorithm)
                   : t('label.no-data')}
-              </Typography.Paragraph>
+              </Typography>
             </Col>
             <Col className="ranking-enabled-control" span={8}>
-              <Typography.Text className="text-grey-muted text-xs font-normal">
+              <Typography className="text-xs font-normal" color="secondary">
                 {t('label.enabled')}
-              </Typography.Text>
-              <Switch
-                checked={ranking.enabled ?? false}
+              </Typography>
+              <Toggle
                 data-testid="ranking-enabled-switch"
+                isSelected={ranking.enabled ?? false}
+                size="sm"
                 onChange={handleRankingEnabledChange}
               />
             </Col>
@@ -803,18 +797,18 @@ const EntitySearchSettings = () => {
         {signals && (
           <div className="ranking-settings-card" data-testid="ranking-signals">
             {signals.purpose && (
-              <Typography.Paragraph className="text-grey-muted m-b-xs">
+              <Typography as="p" className="m-b-xs" color="secondary">
                 {signals.purpose}
-              </Typography.Paragraph>
+              </Typography>
             )}
-            <Typography.Paragraph className="text-grey-muted m-b-sm">
+            <Typography as="p" className="m-b-sm" color="secondary">
               {t('message.search-ranking-signals-explanation')}
-            </Typography.Paragraph>
+            </Typography>
             <Row gutter={[12, 12]}>
               <Col span={12}>
-                <Typography.Text className="text-grey-muted text-xs font-normal">
+                <Typography className="text-xs font-normal" color="secondary">
                   {t('label.boost-mode')}
-                </Typography.Text>
+                </Typography>
                 <Select
                   bordered={false}
                   className="w-full border-none custom-select"
@@ -824,9 +818,9 @@ const EntitySearchSettings = () => {
                 />
               </Col>
               <Col span={12}>
-                <Typography.Text className="text-grey-muted text-xs font-normal">
+                <Typography className="text-xs font-normal" color="secondary">
                   {t('label.score-mode')}
-                </Typography.Text>
+                </Typography>
                 <Select
                   bordered={false}
                   className="w-full border-none custom-select"
@@ -836,9 +830,9 @@ const EntitySearchSettings = () => {
                 />
               </Col>
               <Col className="ranking-number-control" span={12}>
-                <Typography.Text className="text-grey-muted text-xs font-normal">
+                <Typography className="text-xs font-normal" color="secondary">
                   {t('label.max')}
-                </Typography.Text>
+                </Typography>
                 <InputNumber
                   min={0.1}
                   step={0.1}
@@ -851,9 +845,9 @@ const EntitySearchSettings = () => {
                 />
               </Col>
               <Col span={12}>
-                <Typography.Text className="text-grey-muted text-xs font-normal">
+                <Typography className="text-xs font-normal" color="secondary">
                   {t('label.field-plural')}
-                </Typography.Text>
+                </Typography>
                 {renderRankingFields(signals.fields)}
               </Col>
             </Row>
@@ -880,17 +874,20 @@ const EntitySearchSettings = () => {
           <div
             className="page-header-container"
             data-testid="page-header-container">
-            <Typography.Title
+            <Typography
+              as="h5"
               className="heading"
               data-testid="heading"
-              level={5}>
+              size="text-md"
+              weight="semibold">
               {entityData?.label}
-            </Typography.Title>
-            <Typography.Paragraph
+            </Typography>
+            <Typography
+              as="p"
               className="sub-heading"
               data-testid="sub-heading">
               {entityData?.description}
-            </Typography.Paragraph>
+            </Typography>
           </div>
         </Col>
       </Row>
@@ -906,9 +903,9 @@ const EntitySearchSettings = () => {
             onChange={handleCollapseChange}>
             <Collapse.Panel
               header={
-                <Typography.Text className="text-md font-semibold">
+                <Typography className="text-md font-semibold">
                   {t('label.ranking-detail-plural')}
-                </Typography.Text>
+                </Typography>
               }
               key="ranking">
               <div className="bg-white border-radius-card p-box configuration-container ranking-configuration-container">
@@ -954,9 +951,11 @@ const EntitySearchSettings = () => {
                   {/* Score Mode and Boost Mode Section */}
                   <Col className="flex flex-col w-full">
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                      <Typography.Text className="text-grey-muted text-xs font-normal">
+                      <Typography
+                        className="text-xs font-normal"
+                        color="secondary">
                         {t('label.score-mode')}
-                      </Typography.Text>
+                      </Typography>
                       <Select
                         bordered={false}
                         className="w-full border-none custom-select"
@@ -969,9 +968,11 @@ const EntitySearchSettings = () => {
                       />
                     </div>
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                      <Typography.Text className="text-grey-muted text-xs font-normal">
+                      <Typography
+                        className="text-xs font-normal"
+                        color="secondary">
                         {t('label.boost-mode')}
-                      </Typography.Text>
+                      </Typography>
                       <Select
                         bordered={false}
                         className="w-full border-none custom-select"

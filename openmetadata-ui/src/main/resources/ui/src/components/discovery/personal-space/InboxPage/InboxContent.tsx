@@ -11,24 +11,22 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { DateRangeObject } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../hooks/authHooks';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
-import {
-  getEndOfDayInMillis,
-  getStartOfDayInMillis,
-} from '../../../../utils/date-time/DateTimeUtils';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-import InboxDateFilter from './components/InboxDateFilter';
 import {
+  DEFAULT_INBOX_DATE_PRESET,
+  formatInboxCount,
   getDefaultInboxDateRange,
+  getInboxDateRange,
+  InboxCount,
   InboxDateRange,
-  InboxScope,
+  INBOX_DATE_RANGE_OPTIONS,
 } from './inbox.utils';
+import InboxPage from './InboxPage';
 import ActivityTab from './tabs/ActivityTab';
 import TasksTab from './tabs/TasksTab';
 import { useInboxCounts } from './useInboxCounts';
@@ -37,63 +35,67 @@ export type InboxTabKey = 'activity' | 'tasks';
 
 const DEFAULT_TAB: InboxTabKey = 'activity';
 
+// The same outlined count badge as the Activity sub-tabs, brand on the selected
+// tab. The tab's own `badge` prop draws a pill, so the count is rendered here.
+const renderTabLabel = (label: string, count: InboxCount) =>
+  function TabLabel({ isSelected }: { isSelected: boolean }) {
+    return (
+      <>
+        {label}
+        {count.total > 0 && (
+          <Badge
+            // Keeps a badged tab as tall as a bare one.
+            className="tw:-my-px"
+            color={isSelected ? 'brand' : 'gray'}
+            size="sm"
+            type="color">
+            {formatInboxCount(count)}
+          </Badge>
+        )}
+      </>
+    );
+  };
+
 /**
- * The Inbox body: the Activity / Tasks sub-tab switcher (with live counts) plus
- * the active tab's feed/task list and shared date filter. Reused by the routed
- * Inbox page and the Triage tab of the personal-space modal.
+ * The Inbox: the Activity / Triage tabs (with live counts) in the page header,
+ * over the active surface. Activity is a dated feed and carries a date filter;
+ * Triage is a work queue, so an open task never ages out of it.
  */
 const InboxContent: React.FC = () => {
   const { t } = useTranslation();
-  const { isAdminUser } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   // Sub-tab derived from path so it's deep-linkable.
   const selectedTab: InboxTabKey =
     pathname === PERSONAL_SPACE_ROUTES.INBOX_TASKS ? 'tasks' : DEFAULT_TAB;
 
-  // Mirrors OSS ActivityFeedTab: activity is always the current user's own
-  // events; only the conversation fallback widens for admins (every
-  // conversation) vs. everyone else (owned/followed threads).
-  const effectiveScope: InboxScope = isAdminUser ? 'all' : 'me';
-
-  const defaultDateRange = useMemo(
-    () =>
-      ({ ...getDefaultInboxDateRange(), key: 'last30days' } as DateRangeObject),
-    []
-  );
-
   const storedDateRange = usePersonalSpaceStore((s) => s.inboxDateRange);
   const setInboxDateRange = usePersonalSpaceStore((s) => s.setInboxDateRange);
   const [dateRange, setDateRange] = useState<InboxDateRange>(
-    storedDateRange ?? defaultDateRange
+    () =>
+      storedDateRange ?? {
+        ...getDefaultInboxDateRange(),
+        key: DEFAULT_INBOX_DATE_PRESET,
+      }
   );
-  // Tracks whether the active window differs from the default 30-day range, so
-  // an empty Activity feed can show the "no results" vs first-run empty state.
-  // Compare on the preset key (not timestamps, which drift between mounts).
-  const [isDateFiltered, setIsDateFiltered] = useState<boolean>(
-    Boolean(storedDateRange) && storedDateRange?.key !== defaultDateRange.key
-  );
+  // A narrowed window turns an empty feed into "no activity in this period".
+  // Compared on the preset key: timestamps drift between mounts.
+  const isDateFiltered = dateRange.key !== DEFAULT_INBOX_DATE_PRESET;
 
   // Counts come from a shared fetch (not the mounted tab) so both tab badges
   // stay accurate when switching between Activity and Tasks.
-  const { activityCount, taskCount } = useInboxCounts(
-    effectiveScope,
-    dateRange
-  );
+  const { activityCount, taskCount } = useInboxCounts(dateRange);
 
-  const handleDateRangeChange = useCallback(
-    (value: DateRangeObject) => {
+  const handleDatePresetChange = useCallback(
+    (key: string) => {
       const nextRange: InboxDateRange = {
-        startTs: getStartOfDayInMillis(value.startTs),
-        endTs: getEndOfDayInMillis(value.endTs),
-        key: value.key,
-        title: value.title,
+        ...getInboxDateRange(INBOX_DATE_RANGE_OPTIONS[key].days),
+        key,
       };
       setDateRange(nextRange);
       setInboxDateRange(nextRange);
-      setIsDateFiltered(value.key !== defaultDateRange.key);
     },
-    [setInboxDateRange, defaultDateRange.key]
+    [setInboxDateRange]
   );
 
   const onTabChange = useCallback(
@@ -107,60 +109,52 @@ const InboxContent: React.FC = () => {
     [navigate]
   );
 
+  const tabs = (
+    <Tabs
+      className="tw:mt-3"
+      selectedKey={selectedTab}
+      onSelectionChange={onTabChange}>
+      {/* The header's bottom border is the rule under these tabs; the list's
+          own separator would draw a second, shorter line right above it. */}
+      <Tabs.List className="tw:before:hidden" size="sm" type="underline">
+        <Tabs.Item id="activity">
+          {renderTabLabel(t('label.activity'), activityCount)}
+        </Tabs.Item>
+        <Tabs.Item id="tasks">
+          {renderTabLabel(t('label.triage'), {
+            total: taskCount,
+            isCapped: false,
+          })}
+        </Tabs.Item>
+      </Tabs.List>
+    </Tabs>
+  );
+
+  const content =
+    selectedTab === 'tasks' ? (
+      <TasksTab />
+    ) : (
+      <Box className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col" direction="col">
+        <ActivityTab
+          dateRange={dateRange}
+          isFiltered={isDateFiltered}
+          onDatePresetChange={handleDatePresetChange}
+        />
+      </Box>
+    );
+
   return (
-    <Box
-      className="ai-inbox-content tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:px-2"
-      data-testid="inbox-content"
-      direction="col">
-      <Box
-        align="center"
-        className="tw:shrink-0 tw:justify-between tw:gap-3"
-        direction="row">
-        <Tabs
-          className="tw:w-fit"
-          selectedKey={selectedTab}
-          onSelectionChange={onTabChange}>
-          <Tabs.List size="sm" type="button-minimal">
-            <Tabs.Item
-              badge={activityCount || undefined}
-              id="activity"
-              label={t('label.activity')}
-            />
-            <Tabs.Item
-              badge={taskCount || undefined}
-              id="tasks"
-              label={t('label.task-plural')}
-            />
-          </Tabs.List>
-        </Tabs>
-
-        {selectedTab === 'activity' && (
-          <InboxDateFilter
-            dateRange={dateRange}
-            defaultDateRange={defaultDateRange}
-            onDateRangeChange={handleDateRangeChange}
-          />
-        )}
-      </Box>
-
-      <Box
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
-        direction="col">
-        {selectedTab === 'tasks' ? (
-          <TasksTab
-            dateRange={dateRange}
-            defaultDateRange={defaultDateRange}
-            onDateRangeChange={handleDateRangeChange}
-          />
-        ) : (
-          <ActivityTab
-            dateRange={dateRange}
-            isFiltered={isDateFiltered}
-            scope={effectiveScope}
-          />
-        )}
-      </Box>
-    </Box>
+    <InboxPage
+      content={
+        <Box
+          className="ai-inbox-content tw:flex tw:h-full tw:min-h-0 tw:flex-col"
+          data-testid="inbox-content"
+          direction="col">
+          {content}
+        </Box>
+      }
+      tabs={tabs}
+    />
   );
 };
 

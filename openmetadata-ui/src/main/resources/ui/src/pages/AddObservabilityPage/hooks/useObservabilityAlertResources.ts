@@ -13,95 +13,29 @@
 
 import type { FormInstance } from 'antd';
 import { Form } from 'antd';
-import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
-import { AlertType } from '../../../generated/events/eventSubscription';
-import { getResourceFunctions as getNotificationResourceFunctions } from '../../../rest/alertsAPI';
-import { getResourceFunctions as getObservabilityResourceFunctions } from '../../../rest/observabilityAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  ModifiedCreateEventSubscription,
-  ObservabilityFilterResourceDescriptor,
-  UseObservabilityAlertResourcesReturn,
-} from '../AddObservabilityPage.interface';
-import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 
-export function useObservabilityAlertResources(
-  form: FormInstance<ModifiedCreateEventSubscription>,
-  alertType: AlertType = AlertType.Observability
-): UseObservabilityAlertResourcesReturn {
-  const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [filterResources, setFilterResources] = useState<
-    ObservabilityFilterResourceDescriptor[]
-  >([]);
+// One array for "nothing selected", so what depends on the sources does not change every render.
+const NO_SOURCES: string[] = [];
 
-  const [selectedTrigger] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
+/**
+ * The sources and the choices so far of a classic antd alert form. Kept in this file, which already
+ * imports antd Form, so the antd import does not spread to a new file.
+ */
+export function useSelectedAlertSources(
+  form: FormInstance<ModifiedCreateEventSubscription>
+): {
+  sources: string[];
+  input?: ModifiedCreateEventSubscription['input'];
+} {
+  // The AI alert form copies its sources into this form without a field for them, so read the store.
+  const sources =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], {
+      form,
+      preserve: true,
+    }) ?? NO_SOURCES;
+  const input = Form.useWatch('input', form);
 
-  const fetchFunctions = async () => {
-    try {
-      setLoading(true);
-      const filterResources =
-        alertType === AlertType.Notification
-          ? await getNotificationResourceFunctions()
-          : await getObservabilityResourceFunctions();
-
-      setFilterResources(
-        filterResources.data.map(toObservabilityFilterResourceDescriptor)
-      );
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchFunctions();
-  }, [alertType]);
-
-  const selectedResource = useMemo(
-    () => filterResources.find((resource) => resource.name === selectedTrigger),
-    [filterResources, selectedTrigger]
-  );
-
-  const supportedFilters = useMemo(
-    () => selectedResource?.supportedFilters,
-    [selectedResource]
-  );
-
-  const containerEntities = useMemo<
-    UseObservabilityAlertResourcesReturn['containerEntities']
-  >(() => selectedResource?.containerEntities, [selectedResource]);
-
-  const supportedTriggers = useMemo(
-    () => selectedResource?.supportedActions,
-    [selectedResource]
-  );
-
-  const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
-  );
-
-  const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
-    [selectedTrigger, supportedTriggers]
-  );
-
-  return {
-    containerEntities,
-    filterResources,
-    loading,
-    shouldShowActionsSection,
-    shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
-  };
+  return { sources, input };
 }
