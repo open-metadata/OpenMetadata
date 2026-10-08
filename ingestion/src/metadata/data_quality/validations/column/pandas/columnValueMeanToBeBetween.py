@@ -86,102 +86,97 @@ class ColumnValueMeanToBeBetweenValidator(BaseColumnValueMeanToBeBetweenValidato
         checker = self._get_validation_checker(test_params)
         dimension_results = []
 
-        try:
-            dfs = self.runner
-            mean_impl = Metrics.mean(column).get_pandas_computation()
+        dfs = self.runner
+        mean_impl = Metrics.mean(column).get_pandas_computation()
 
-            dimension_aggregates = defaultdict(
-                lambda: {
-                    Metrics.mean.name: mean_impl.create_accumulator(),
-                    DIMENSION_TOTAL_COUNT_KEY: 0,
+        dimension_aggregates = defaultdict(
+            lambda: {
+                Metrics.mean.name: mean_impl.create_accumulator(),
+                DIMENSION_TOTAL_COUNT_KEY: 0,
+            }
+        )
+
+        for df in dfs:
+            df_typed = cast(pd.DataFrame, df)  # noqa: TC006
+            grouped = df_typed.groupby(dimension_col.name, dropna=False)
+
+            for dimension_value, group_df in grouped:
+                dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
+
+                dimension_aggregates[dimension_value][Metrics.mean.name] = mean_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.mean.name],
+                    group_df,
+                )
+
+                dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += len(group_df)
+
+        results_data = []
+        for dimension_value, agg in dimension_aggregates.items():
+            mean_value = mean_impl.aggregate_accumulator(agg[Metrics.mean.name])
+
+            if mean_value is None:
+                logger.warning(
+                    "Skipping '%s=%s' dimension since 'mean' is 'None'",
+                    dimension_col.name,
+                    dimension_value,
+                )
+                continue
+
+            total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
+
+            # Statistical validator: when mean fails, ALL rows in dimension fail
+            failed_count = total_rows if checker.violates_pandas({Metrics.mean.name: mean_value}) else 0
+
+            results_data.append(
+                {
+                    DIMENSION_VALUE_KEY: dimension_value,
+                    Metrics.mean.name: mean_value,
+                    Metrics.valuesCount.name: agg[Metrics.mean.name].count_value,
+                    Metrics.sum.name: agg[Metrics.mean.name].sum_value,
+                    DIMENSION_TOTAL_COUNT_KEY: total_rows,
+                    DIMENSION_FAILED_COUNT_KEY: failed_count,
                 }
             )
 
-            for df in dfs:
-                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
-                grouped = df_typed.groupby(dimension_col.name, dropna=False)
+        results_df = pd.DataFrame(results_data)
 
-                for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
+        if not results_df.empty:
+            results_df = calculate_impact_score_pandas(
+                results_df,
+                failed_column=DIMENSION_FAILED_COUNT_KEY,
+                total_column=DIMENSION_TOTAL_COUNT_KEY,
+            )
 
-                    dimension_aggregates[dimension_value][Metrics.mean.name] = mean_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.mean.name],
-                        group_df,
-                    )
+            def calculate_weighted_mean(df_aggregated, others_mask, metric_column):
+                result = df_aggregated[metric_column].copy()
+                if others_mask.any():
+                    others_sum = df_aggregated.loc[others_mask, Metrics.sum.name].iloc[0]
+                    others_count = df_aggregated.loc[others_mask, Metrics.valuesCount.name].iloc[0]
+                    if others_count > 0:
+                        result.loc[others_mask] = others_sum / others_count
+                return result
 
-                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += len(group_df)
+            results_df = aggregate_others_statistical_pandas(
+                results_df,
+                dimension_column=DIMENSION_VALUE_KEY,
+                agg_functions={
+                    Metrics.sum.name: "sum",
+                    Metrics.valuesCount.name: "sum",
+                    DIMENSION_TOTAL_COUNT_KEY: "sum",
+                    DIMENSION_FAILED_COUNT_KEY: "sum",
+                },
+                final_metric_calculators={Metrics.mean.name: calculate_weighted_mean},
+                exclude_from_final=[Metrics.sum.name, Metrics.valuesCount.name],
+                top_n=top_n,
+                violation_metrics=[Metrics.mean.name],
+                violation_predicate=checker.violates_pandas,
+            )
 
-            results_data = []
-            for dimension_value, agg in dimension_aggregates.items():
-                mean_value = mean_impl.aggregate_accumulator(agg[Metrics.mean.name])
-
-                if mean_value is None:
-                    logger.warning(
-                        "Skipping '%s=%s' dimension since 'mean' is 'None'",
-                        dimension_col.name,
-                        dimension_value,
-                    )
-                    continue
-
-                total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
-
-                # Statistical validator: when mean fails, ALL rows in dimension fail
-                failed_count = total_rows if checker.violates_pandas({Metrics.mean.name: mean_value}) else 0
-
-                results_data.append(
-                    {
-                        DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.mean.name: mean_value,
-                        Metrics.valuesCount.name: agg[Metrics.mean.name].count_value,
-                        Metrics.sum.name: agg[Metrics.mean.name].sum_value,
-                        DIMENSION_TOTAL_COUNT_KEY: total_rows,
-                        DIMENSION_FAILED_COUNT_KEY: failed_count,
-                    }
-                )
-
-            results_df = pd.DataFrame(results_data)
-
-            if not results_df.empty:
-                results_df = calculate_impact_score_pandas(
-                    results_df,
-                    failed_column=DIMENSION_FAILED_COUNT_KEY,
-                    total_column=DIMENSION_TOTAL_COUNT_KEY,
-                )
-
-                def calculate_weighted_mean(df_aggregated, others_mask, metric_column):
-                    result = df_aggregated[metric_column].copy()
-                    if others_mask.any():
-                        others_sum = df_aggregated.loc[others_mask, Metrics.sum.name].iloc[0]
-                        others_count = df_aggregated.loc[others_mask, Metrics.valuesCount.name].iloc[0]
-                        if others_count > 0:
-                            result.loc[others_mask] = others_sum / others_count
-                    return result
-
-                results_df = aggregate_others_statistical_pandas(
-                    results_df,
-                    dimension_column=DIMENSION_VALUE_KEY,
-                    agg_functions={
-                        Metrics.sum.name: "sum",
-                        Metrics.valuesCount.name: "sum",
-                        DIMENSION_TOTAL_COUNT_KEY: "sum",
-                        DIMENSION_FAILED_COUNT_KEY: "sum",
-                    },
-                    final_metric_calculators={Metrics.mean.name: calculate_weighted_mean},
-                    exclude_from_final=[Metrics.sum.name, Metrics.valuesCount.name],
-                    top_n=top_n,
-                    violation_metrics=[Metrics.mean.name],
-                    violation_predicate=checker.violates_pandas,
-                )
-
-                dimension_results = self._process_dimension_rows(
-                    results_df.to_dict("records"),
-                    dimension_col.name,
-                    metrics_to_compute,
-                    test_params,
-                )
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
+            dimension_results = self._process_dimension_rows(
+                results_df.to_dict("records"),
+                dimension_col.name,
+                metrics_to_compute,
+                test_params,
+            )
 
         return dimension_results

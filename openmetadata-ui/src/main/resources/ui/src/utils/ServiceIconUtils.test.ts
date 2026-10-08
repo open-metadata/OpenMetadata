@@ -18,7 +18,7 @@ jest.mock(
 );
 
 import rill from '../assets/svg/service-icon-rill.svg';
-import { getServiceIcon } from './ServiceIconUtils';
+import { getServiceIcon, getServiceLogoThemeClass } from './ServiceIconUtils';
 
 describe('ServiceIconUtils', () => {
   it('resolves the Clickzetta service icon case-insensitively', () => {
@@ -28,4 +28,25 @@ describe('ServiceIconUtils', () => {
   it('should return the Rill service icon', () => {
     expect(getServiceIcon('Rill')).toBe(rill);
   });
+});
+
+describe('service logo dark theme', () => {
+  it.each(['PowerBI', 'power-bi', 'POWER_BI', 'Kafka', 'KafkaConnect'])(
+    'makes monochrome %s artwork legible only in dark mode',
+    (serviceType) => {
+      expect(
+        getServiceLogoThemeClass(serviceType)
+          .split(' ')
+          .every((value) => value.startsWith('tw:dark:'))
+      ).toBe(true);
+      expect(getServiceLogoThemeClass(serviceType)).toContain('tw:dark:invert');
+    }
+  );
+
+  it.each(['BigQuery', 'Snowflake', 'Superset', '', undefined])(
+    'preserves the original artwork for %s',
+    (serviceType) => {
+      expect(getServiceLogoThemeClass(serviceType)).toBe('');
+    }
+  );
 });

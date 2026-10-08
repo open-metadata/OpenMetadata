@@ -341,10 +341,11 @@ public class ServicesOverviewRepository {
   @SuppressWarnings("unchecked")
   private List<ServiceSummary> hydrateType(
       String entityType, List<UUID> ids, ServicesOverviewRequest r) {
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    List<EntityInterface> entities =
-        (List<EntityInterface>) repository.getDao().findEntitiesByIds(ids, r.include());
-    ((EntityRepository<EntityInterface>) repository)
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
+    List<EntityInterface<?>> entities =
+        (List<EntityInterface<?>>) repository.getDao().findEntitiesByIds(ids, r.include());
+    ((EntityRepository<EntityInterface<?>>) repository)
         .setFieldsInBulk(repository.getFields(SUMMARY_FIELDS), entities);
     return entities.stream().map(entity -> toSummary(entity, entityType)).toList();
   }
@@ -356,7 +357,7 @@ public class ServicesOverviewRepository {
         : summary;
   }
 
-  private ServiceSummary toSummary(EntityInterface entity, String entityType) {
+  private ServiceSummary toSummary(EntityInterface<?> entity, String entityType) {
     return new ServiceSummary()
         .withId(entity.getId())
         .withEntityType(entityType)
@@ -376,7 +377,7 @@ public class ServicesOverviewRepository {
    * types with no shared interface, so the value is read reflectively rather than through a cast
    * ladder. The column is also generated from this same JSON field, so it always exists.
    */
-  private String serviceTypeOf(EntityInterface entity) {
+  private String serviceTypeOf(EntityInterface<?> entity) {
     String serviceType = null;
     try {
       Object value = entity.getClass().getMethod("getServiceType").invoke(entity);

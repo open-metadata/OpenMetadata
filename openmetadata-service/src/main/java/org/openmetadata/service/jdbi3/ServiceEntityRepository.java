@@ -338,7 +338,7 @@ public abstract class ServiceEntityRepository<
   private boolean serviceWithNameExists(
       String serviceEntityType, String name, UUID excludedServiceId) {
     try {
-      EntityInterface other =
+      EntityInterface<?> other =
           Entity.getEntityByName(serviceEntityType, name, "", Include.NON_DELETED);
       return !other.getId().equals(excludedServiceId);
     } catch (EntityNotFoundException e) {

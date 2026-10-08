@@ -13,13 +13,13 @@
       "properties": {
         "from": {
           "description": "Stage the entity is in.",
-          "$ref": "../../type/status.json"
+          "type": "string"
         },
         "to": {
           "description": "Stages the entity can move to from it.",
           "type": "array",
           "items": {
-            "$ref": "../../type/status.json"
+            "type": "string"
           }
         }
       },
@@ -39,7 +39,7 @@
           "description": "Stages an entity of this type can be in. Most types use the general stages; a type with a lifecycle of its own uses the stages it declares, which can include stages no other type has.",
           "type": "array",
           "items": {
-            "$ref": "../../type/status.json"
+            "type": "string"
           }
         },
         "transitions": {
@@ -66,7 +66,7 @@
       "description": "Every lifecycle stage an entity can be in. Each entity type uses the stages its own entry lists.",
       "type": "array",
       "items": {
-        "$ref": "../../type/status.json"
+        "type": "string"
       }
     },
     "entityTypes": {
