@@ -256,7 +256,7 @@ const MlModelFeaturesList = () => {
                         wrap="nowrap">
                         <Box
                           className="layout-column tw:block"
-                          style={{ flex: `0 0 ${'130px'}` }}>
+                          style={{ flex: '0 0 130px' }}>
                           <Typography color="secondary">
                             {`${t('label.glossary-term-plural')} :`}
                           </Typography>
@@ -287,7 +287,7 @@ const MlModelFeaturesList = () => {
                         wrap="nowrap">
                         <Box
                           className="layout-column tw:block"
-                          style={{ flex: `0 0 ${'130px'}` }}>
+                          style={{ flex: '0 0 130px' }}>
                           <Typography color="secondary">
                             {`${t('label.tag-plural')} :`}
                           </Typography>
@@ -317,7 +317,7 @@ const MlModelFeaturesList = () => {
                         wrap="nowrap">
                         <Box
                           className="layout-column tw:block"
-                          style={{ flex: `0 0 ${'130px'}` }}>
+                          style={{ flex: '0 0 130px' }}>
                           <Typography color="secondary">
                             {`${t('label.description')} :`}
                           </Typography>

@@ -67,7 +67,7 @@ export const TableDetailsPageSkeleton = () => {
             </Box>
             <Box
               className="layout-column tw:block"
-              style={{ flex: `0 0 ${'240px'}` }}>
+              style={{ flex: '0 0 240px' }}>
               <Box
                 inline
                 align="center"

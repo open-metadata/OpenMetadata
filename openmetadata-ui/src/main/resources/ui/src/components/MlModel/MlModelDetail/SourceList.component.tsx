@@ -67,19 +67,19 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
               className="layout-column tw:block"
               style={{
                 maxWidth: '4.166666666666666%',
-                flex: `0 0 ${'4.166666666666666%'}`,
+                flex: '0 0 4.166666666666666%',
               }}>
               {String(i + 1).padStart(2, '0')}
             </Box>
             <Box
               className="layout-column tw:block"
-              style={{ maxWidth: '25%', flex: `0 0 ${'25%'}` }}>
+              style={{ maxWidth: '25%', flex: '0 0 25%' }}>
               <Typography color="secondary">{`${t('label.name')}:`}</Typography>
               <Typography className="m-l-xs">{source.name}</Typography>
             </Box>
             <Box
               className="layout-column tw:block"
-              style={{ maxWidth: '25%', flex: `0 0 ${'25%'}` }}>
+              style={{ maxWidth: '25%', flex: '0 0 25%' }}>
               <Typography color="secondary">{`${t('label.type')}:`}</Typography>
               <Typography className="m-l-xs">{source.dataType}</Typography>
             </Box>
@@ -87,12 +87,12 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
               className="layout-column tw:block"
               style={{
                 maxWidth: '45.83333333333333%',
-                flex: `0 0 ${'45.83333333333333%'}`,
+                flex: '0 0 45.83333333333333%',
               }}>
               <Box className="layout-row" wrap="wrap">
                 <Box
                   className="layout-column tw:block"
-                  style={{ flex: `0 0 ${'100px'}` }}>
+                  style={{ flex: '0 0 100px' }}>
                   <Typography color="secondary">
                     {`${t('label.data-entity', {
                       entity: t('label.source'),

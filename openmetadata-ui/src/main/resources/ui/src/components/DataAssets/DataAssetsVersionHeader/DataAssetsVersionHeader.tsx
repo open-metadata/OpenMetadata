@@ -79,7 +79,7 @@ function DataAssetsVersionHeader({
       wrap="wrap">
       <Box
         className="layout-column tw:block self-center"
-        style={{ maxWidth: '87.5%', flex: `0 0 ${'87.5%'}` }}>
+        style={{ maxWidth: '87.5%', flex: '0 0 87.5%' }}>
         <Grid
           className="layout-row layout-grid"
           style={{ ...getLayoutGutter(16, 12) }}>
@@ -150,7 +150,7 @@ function DataAssetsVersionHeader({
       </Box>
       <Box
         className="layout-column tw:block"
-        style={{ maxWidth: '12.5%', flex: `0 0 ${'12.5%'}` }}>
+        style={{ maxWidth: '12.5%', flex: '0 0 12.5%' }}>
         <Box className="layout-row" justify="end" wrap="wrap">
           <Box className="layout-column tw:block">
             <Tooltip title={t('label.exit-version-history')}>

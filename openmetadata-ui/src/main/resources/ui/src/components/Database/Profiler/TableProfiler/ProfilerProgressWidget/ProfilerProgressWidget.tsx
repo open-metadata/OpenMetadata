@@ -36,14 +36,14 @@ const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({
       wrap="wrap">
       <Box
         className="layout-column tw:block"
-        style={{ maxWidth: '25%', flex: `0 0 ${'25%'}` }}>
+        style={{ maxWidth: '25%', flex: '0 0 25%' }}>
         <p className="percent-info" data-testid="percent-info">
           {calculatePercentage(value, 1, 2, true)}
         </p>
       </Box>
       <Box
         className="layout-column tw:block"
-        style={{ maxWidth: '75%', flex: `0 0 ${'75%'}` }}>
+        style={{ maxWidth: '75%', flex: '0 0 75%' }}>
         <Progress
           data-testid="progress-bar"
           percent={modifiedValue}

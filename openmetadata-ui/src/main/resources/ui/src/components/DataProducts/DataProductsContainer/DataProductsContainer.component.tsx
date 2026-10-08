@@ -249,7 +249,7 @@ const DataProductsContainer = ({
 
     return (
       <Box className="layout-row" data-testid="data-products-list" wrap="wrap">
-        <Box className="layout-column tw:block flex flex-wrap gap-2">
+        <Box className="layout-column flex flex-wrap gap-2">
           {!newLook && addTagButton}
           {renderDataProducts}
         </Box>

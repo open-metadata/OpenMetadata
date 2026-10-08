@@ -213,9 +213,7 @@ const QueryUsedByOtherTable = ({
 
   return (
     <Box className="layout-row" data-testid="para-container" wrap="wrap">
-      <Box
-        className="layout-column tw:block"
-        style={{ flex: `0 0 ${'200px'}` }}>
+      <Box className="layout-column tw:block" style={{ flex: '0 0 200px' }}>
         <Typography>{`${t('message.query-used-by-other-tables')}:`}</Typography>
       </Box>
       <Box className="layout-column tw:block">

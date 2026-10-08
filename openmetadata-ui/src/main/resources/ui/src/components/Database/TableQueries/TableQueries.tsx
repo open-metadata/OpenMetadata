@@ -578,7 +578,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       wrap="nowrap">
       <Box
         className="layout-column tw:block tab-content-height-with-resizable-panel"
-        style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+        style={{ maxWidth: '100%', flex: '0 0 100%' }}>
         <ResizablePanels
           firstPanel={{
             className: 'entity-resizable-panel-container',

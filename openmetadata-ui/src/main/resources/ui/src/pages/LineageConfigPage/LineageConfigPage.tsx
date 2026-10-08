@@ -229,8 +229,8 @@ const LineageConfigPage = () => {
                   </Form>
                   <Box className="layout-row m-b-xl" justify="end" wrap="wrap">
                     <Box
-                      className="layout-column tw:block d-flex justify-end gap-2"
-                      style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                      className="layout-column d-flex justify-end gap-2"
+                      style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                       <Button
                         data-testid="cancel-button"
                         onClick={() => navigate(-1)}>
