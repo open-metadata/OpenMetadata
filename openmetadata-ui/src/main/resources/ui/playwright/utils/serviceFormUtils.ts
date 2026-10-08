@@ -33,7 +33,6 @@ const getOneOfOptionLabels = (optionName: string) => {
 // from the other side. Casing is the only thing the table changes, so matching the title
 // and its spaced form case-insensitively covers the transform without restating it.
 // The pattern stays anchored, so it is as strict as `exact: true` about substrings.
-// `getFormDisplayLabel`'s own behaviour is pinned in formBuilderV1LabelUtils.test.ts.
 const getOneOfOptionNamePattern = (optionName: string) =>
   new RegExp(
     `^(${getOneOfOptionLabels(optionName).map(escapeRegExp).join('|')})$`,
