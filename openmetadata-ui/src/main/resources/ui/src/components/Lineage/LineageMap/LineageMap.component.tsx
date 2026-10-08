@@ -22,7 +22,11 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowsUp, Home02, LayersThree01 } from '@untitledui/icons';
+import {
+  ArrowsUp,
+  Home02,
+  LayersThree01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
@@ -51,6 +55,7 @@ import ReactFlow, {
   ReactFlowProvider,
   type FitViewOptions,
 } from 'reactflow';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import {
   COLUMN_NODE_HEIGHT,
   LINEAGE_CHILD_ITEMS_PER_PAGE,
@@ -60,7 +65,6 @@ import {
   NODE_HEIGHT_WITH_CHILDREN,
   NODE_WIDTH,
 } from '../../../constants/Lineage.constants';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
@@ -77,12 +81,17 @@ import { PipelineViewMode } from '../../../generated/configuration/lineageSettin
 import { EntityReference } from '../../../generated/entity/type';
 import { LineageLayer } from '../../../generated/settings/settings';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import {
   EntityChildren,
   LineageConfig,
   LineageNodeType,
 } from '../../../interface/lineage.interface';
+import {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../../../interface/queryFilter.interface';
 import type { LineageSceneFocus } from '../../../rest/lineageAPI';
 import {
   getLineageEdgeDetails,
@@ -92,6 +101,13 @@ import {
   addLineageHandler,
   removeLineageHandler,
 } from '../../../utils/EntityLineagePureUtils';
+import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
+import {
+  onAddPipelineClick,
+  onColumnEdgeRemove,
+  onEdgeClick,
+} from '../../../utils/Lineage/handlers/edgeMutations';
+import { onPaneClick } from '../../../utils/Lineage/handlers/nodeMutations';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -103,6 +119,7 @@ import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.componen
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from '../Lineage.interface';
+import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
 import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import LineageSkeleton from '../LineageSkeleton.component';
 import type { LineageSceneRequest } from './LineageMap.utils';
@@ -953,15 +970,8 @@ const LineageMapCanvas = ({
   const location = useCustomLocation();
   const navigate = useNavigate();
   const { isTourOpen, isTourPage } = useTourProvider();
-  const {
-    queryFilter,
-    onAddPipelineClick,
-    onColumnEdgeRemove,
-    onEdgeClick: onProviderEdgeClick,
-    onNodeClick: onProviderNodeClick,
-    onPaneClick: onProviderPaneClick,
-    setSceneNodes,
-  } = useLineageProvider();
+  const { activeDomain, isDomainRestricted } = useDomainStore();
+  const { onNodeClick: onProviderNodeClick } = useLineageHandlers();
   const request = useMemo(
     () =>
       getSceneRequestFromSearch(
@@ -1004,18 +1014,60 @@ const LineageMapCanvas = ({
     isEditMode,
     selectedColumn,
     selectedNode,
+    selectedQuickFilters,
     setActiveLayer,
     setActiveNode,
     setColumnsHavingLineage,
     setColumnsInCurrentPages,
     setIsCreatingEdge,
     setIsPlatformLineage,
+    setNodes: setSceneNodes,
     setSceneBand,
     setSelectedColumn,
     setSelectedEdge,
     setSelectedNode,
     setTracedColumns,
   } = useLineageStore();
+  const queryFilter = useMemo(() => {
+    const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
+    const shouldScopeToDomain =
+      isDomainRestricted && activeDomain !== DEFAULT_DOMAIN_VALUE;
+
+    if (!shouldScopeToDomain) {
+      return JSON.stringify(quickFilterQuery) ?? '';
+    }
+
+    const domainClause: QueryFieldInterface = {
+      bool: {
+        should: [
+          { term: { 'domains.fullyQualifiedName': activeDomain } },
+          {
+            prefix: { 'domains.fullyQualifiedName': `${activeDomain}.` },
+          } as QueryFieldInterface,
+        ],
+        minimum_should_match: 1,
+      },
+    };
+
+    const existingMust = quickFilterQuery?.query?.bool?.must;
+    let mustArray: QueryFieldInterface[] = [];
+    if (Array.isArray(existingMust)) {
+      mustArray = [...existingMust];
+    } else if (existingMust) {
+      mustArray = [existingMust];
+    }
+
+    const scopedQuery: QueryFilterInterface = {
+      query: {
+        bool: {
+          ...quickFilterQuery?.query?.bool,
+          must: [...mustArray, domainClause],
+        },
+      },
+    };
+
+    return JSON.stringify(scopedQuery);
+  }, [selectedQuickFilters, activeDomain, isDomainRestricted]);
   const previousMutationTickRef = useRef(lineageMutationTick);
   const canEditScene = isEditMode && scene?.band !== LineageBand.Layer;
 
@@ -1797,7 +1849,7 @@ const LineageMapCanvas = ({
         return;
       }
       if (!isEditable) {
-        onProviderEdgeClick(edge);
+        onEdgeClick(edge);
 
         return;
       }
@@ -1818,7 +1870,7 @@ const LineageMapCanvas = ({
         if (isEditMode) {
           setSelectedEdge(hydratedEdge);
         } else {
-          onProviderEdgeClick(hydratedEdge);
+          onEdgeClick(hydratedEdge);
         }
       } catch (error) {
         if ((error as AxiosError).response?.status === 404) {
@@ -1832,7 +1884,6 @@ const LineageMapCanvas = ({
     },
     [
       isEditMode,
-      onProviderEdgeClick,
       refetchCurrentScene,
       scene,
       setActiveNode,
@@ -1921,8 +1972,8 @@ const LineageMapCanvas = ({
     setSelectedEdge(undefined);
     setSelectedNode(undefined);
     setActiveNode(undefined);
-    onProviderPaneClick();
-  }, [onProviderPaneClick, setActiveNode, setSelectedEdge, setSelectedNode]);
+    onPaneClick();
+  }, [setActiveNode, setSelectedEdge, setSelectedNode]);
 
   const handleNewNodeSelect = useCallback(
     (nodeId: string, value: EntityReference) => {

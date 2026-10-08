@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Steps, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Steps } from 'antd';
 import { isEmpty, isUndefined, last, toLower } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,29 +51,29 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       switch (status.testCaseResolutionStatusType) {
         case TestCaseResolutionStatusTypes.ACK:
           details = status.updatedBy ? (
-            <Typography.Text className="text-grey-muted text-xss">
+            <Typography className="text-xss" color="secondary">
               {`By ${getEntityName(status.updatedBy)} on `}
-            </Typography.Text>
+            </Typography>
           ) : null;
 
           break;
         case TestCaseResolutionStatusTypes.Assigned:
           details = status.testCaseResolutionStatusDetails?.assignee ? (
-            <Typography.Text className="text-grey-muted text-xss">
+            <Typography className="text-xss" color="secondary">
               {`To ${getEntityName(
                 status.testCaseResolutionStatusDetails?.assignee
               )} on `}
-            </Typography.Text>
+            </Typography>
           ) : null;
 
           break;
         case TestCaseResolutionStatusTypes.Resolved:
           details = status.testCaseResolutionStatusDetails?.resolvedBy ? (
-            <Typography.Text className="text-grey-muted text-xss">
+            <Typography className="text-xss" color="secondary">
               {`By ${getEntityName(
                 status.testCaseResolutionStatusDetails.resolvedBy
               )} on `}
-            </Typography.Text>
+            </Typography>
           ) : null;
 
           break;
@@ -86,17 +86,17 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
         className: toLower(status.testCaseResolutionStatusType),
         title: (
           <div>
-            <Typography.Paragraph className="m-b-0">
+            <Typography as="p" className="m-b-0 tw:text-primary">
               {status.testCaseResolutionStatusType}
-            </Typography.Paragraph>
-            <Typography.Paragraph className="m-b-0">
+            </Typography>
+            <Typography as="p" className="m-b-0">
               {details}
               {status.updatedAt && (
-                <Typography.Text className="text-grey-muted text-xss">
+                <Typography className="text-xss" color="secondary">
                   {formatDateTime(status.updatedAt)}
-                </Typography.Text>
+                </Typography>
               )}
-            </Typography.Paragraph>
+            </Typography>
           </div>
         ),
         key: status.testCaseResolutionStatusType,
@@ -130,9 +130,9 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       <Col span={24}>
         <Space className="justify-between w-full">
           <div className="gap-2 flex-center">
-            <Typography.Text className="text-grey-muted">
+            <Typography color="secondary">
               {`${t('label.assignee')}: `}
-            </Typography.Text>
+            </Typography>
             {isUndefined(task.assignees) || isEmpty(task.assignees) ? (
               NO_DATA_PLACEHOLDER
             ) : (
@@ -140,9 +140,9 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
             )}
           </div>
           <div className="gap-2 flex-center">
-            <Typography.Text className="text-grey-muted">
+            <Typography color="secondary">
               {`${t('label.created-by')}: `}
-            </Typography.Text>
+            </Typography>
             {task.createdBy ? (
               <Owner owners={[task.createdBy]} />
             ) : (
@@ -154,16 +154,16 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       <Col span={24}>
         <Space className="justify-between w-full">
           <div className="gap-2 flex-center">
-            <Typography.Text className="text-grey-muted">
+            <Typography color="secondary">
               {`${t('label.severity')}: `}
-            </Typography.Text>
+            </Typography>
             <Severity severity={latestTestCaseResolutionStatus?.severity} />
           </div>
           {isResolved && (
             <div className="gap-2 flex-center" data-testid="failure-reason">
-              <Typography.Text className="text-grey-muted">
+              <Typography color="secondary">
                 {`${t('label.failure-reason')}: `}
-              </Typography.Text>
+              </Typography>
               {latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
                 ?.testCaseFailureReason ?? NO_DATA_PLACEHOLDER}
             </div>
@@ -172,9 +172,9 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       </Col>
       {isResolved && (
         <Col span={24}>
-          <Typography.Text className="text-grey-muted">
+          <Typography color="secondary">
             {`${t('label.failure-comment')}: `}
-          </Typography.Text>
+          </Typography>
           <RichTextEditorPreviewerV1
             markdown={
               latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails

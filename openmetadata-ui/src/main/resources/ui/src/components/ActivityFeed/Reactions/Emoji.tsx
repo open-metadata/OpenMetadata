@@ -12,7 +12,7 @@
  */
 
 import '@github/g-emoji-element';
-import { Button, Popover } from 'antd';
+import { Button, HoverCard } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { createElement, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +40,6 @@ const Emoji: FC<EmojiProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [visible, setVisible] = useState(false);
 
   const reactionObject = useMemo(
     () => REACTION_LIST.find((value) => value.reaction === reaction),
@@ -103,35 +102,31 @@ const Emoji: FC<EmojiProps> = ({
   );
 
   return (
-    <Popover
-      content={popoverContent}
+    <HoverCard
+      className="tw:p-3"
+      content={popoverContent()}
       key={reaction}
-      open={visible}
-      trigger="hover"
-      zIndex={9999}
-      onOpenChange={setVisible}>
+      placement="top">
       <Button
         className={classNames(
-          'ant-btn-reaction m-r-xss flex-center transparent',
-          {
-            'ant-btn-isReacted': isReacted,
-          }
+          'tw:h-[22px] tw:gap-1 tw:rounded-md! tw:px-2! tw:py-0!',
+          isReacted
+            ? 'tw:text-brand-secondary tw:after:outline-brand'
+            : 'tw:text-secondary'
         )}
+        color="secondary"
         data-testid="emoji-button"
-        disabled={isUpdating}
-        key={reaction}
-        shape="round"
-        size="small"
-        onClick={handleEmojiOnClick}
-        onMouseOver={() => setVisible(true)}>
+        isDisabled={isUpdating}
+        size="xs"
+        onClick={handleEmojiOnClick}>
         {element}
-        <span className="text-xs m-l-xs self-center" data-testid="emoji-count">
+        <span className="tw:ml-1 tw:text-xs" data-testid="emoji-count">
           {reactionList.length.toLocaleString('en-US', {
             useGrouping: false,
           })}
         </span>
       </Button>
-    </Popover>
+    </HoverCard>
   );
 };
 

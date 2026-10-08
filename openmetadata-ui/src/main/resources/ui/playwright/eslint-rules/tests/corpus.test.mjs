@@ -42,10 +42,15 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 1,
-    'om-playwright/no-positional-locator': 1122,
+    // The merged fixes target named elements in replyAnnouncement,
+    // DomainFilterQueryFilter, ActivityFeed, and SearchExport; the core
+    // Popover/Dropdown migration also removed a positional locator.
+    // Removing the S3 sample-data storage tests and scoping
+    // ChangeSummaryBadge's button lookup remove three more positional locators.
+    'om-playwright/no-positional-locator': 602,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
-    'playwright/no-wait-for-selector': 24,
+    'playwright/no-wait-for-selector': 18,
   };
 
   assert.deepStrictEqual(

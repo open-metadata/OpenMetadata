@@ -29,13 +29,16 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 
@@ -52,6 +55,7 @@ class IngestionPipelineMigrationEntryPointTest {
     when(handle.createQuery(anyString()).mapTo(String.class).list()).thenReturn(List.of());
     setField(migration, "handle", handle);
     setField(migration, "collectionDAO", collectionDAO);
+    setField(migration, "migrationDAO", mock(MigrationDAO.class));
 
     try (MockedStatic<ConversationMigration> conversationMigration =
             mockStatic(ConversationMigration.class);
@@ -63,8 +67,12 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(DataContractEntityReferenceMigration.class);
         MockedStatic<IngestionPipelineMigrationUtil> ingestionPipelineMigration =
             mockStatic(IngestionPipelineMigrationUtil.class);
+        MockedStatic<MlFeatureTagBackfill> mlFeatureTagBackfill =
+            mockStatic(MlFeatureTagBackfill.class);
         MockedStatic<SearchTermBoostRepair> searchTermBoostRepair =
-            mockStatic(SearchTermBoostRepair.class)) {
+            mockStatic(SearchTermBoostRepair.class);
+        MockedStatic<AlertBacklogMigration> alertBacklogMigration =
+            mockStatic(AlertBacklogMigration.class)) {
       migration.runDataMigration();
 
       ingestionPipelineMigration.verify(

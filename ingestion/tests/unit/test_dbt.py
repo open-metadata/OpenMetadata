@@ -2755,7 +2755,9 @@ class DbtUnitTest(TestCase):
 
         def fake_get_table_entity(table_fqn):
             if table_fqn == expected_fqn:
-                return MagicMock()
+                table = MagicMock()
+                table.id.root = uuid.uuid4()
+                return table
             return None
 
         with patch.object(self.dbt_source_obj, "_get_table_entity", side_effect=fake_get_table_entity):  # noqa: SIM117
@@ -4215,6 +4217,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link = MagicMock()
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+        data_model_link.upstream_table_ids = {}
 
         results = list(DbtSource.create_dbt_lineage(source, data_model_link))
 
@@ -4237,6 +4240,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
         data_model_link.datamodel.sql = None
+        data_model_link.upstream_table_ids = {}
 
         results = list(DbtSource.create_dbt_lineage(source, data_model_link))
 
@@ -4255,6 +4259,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link = MagicMock()
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+        data_model_link.upstream_table_ids = {}
 
         list(DbtSource.create_dbt_lineage(source, data_model_link))
 
@@ -4274,6 +4279,7 @@ class TestDbtLineageUnresolvedUpstream:
             data_model_link = MagicMock()
             data_model_link.table_entity = to_entity
             data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+            data_model_link.upstream_table_ids = {}
             list(DbtSource.create_dbt_lineage(source, data_model_link))
 
         assert source.status.warning.call_count == 1
@@ -4288,10 +4294,98 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link = MagicMock()
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders", "svc.db.sch.raw_customers"]
+        data_model_link.upstream_table_ids = {}
 
         list(DbtSource.create_dbt_lineage(source, data_model_link))
 
         assert source.status.warning.call_count == 2
+
+
+class TestDbtLineageReusesParsedUpstream:
+    """Issue #34011.
+
+    Parsing a model already searches OpenMetadata for each upstream table and gets
+    the table back, including its id. Lineage used that result as a yes/no and
+    searched again. This runs the real manifest through yield and lineage. The
+    only stand-in is the catalog search, which answers with the tables that exist.
+    """
+
+    MANIFEST = Path(__file__).parent / "resources" / "datasets" / "manifest_upstream_lineage.json"
+    SERVICE = "snowflake_svc"
+    RAW_FQN = "snowflake_svc.analytics.public.raw_orders"
+    ORDERS_FQN = "snowflake_svc.analytics.public.orders"
+
+    @classmethod
+    def _catalog(cls):
+        def table(fqn):
+            return Table(
+                id=uuid.uuid4(),
+                name=fqn.rsplit(".", 1)[-1],
+                columns=[],
+                fullyQualifiedName=fqn,
+            )
+
+        return {cls.RAW_FQN: table(cls.RAW_FQN), cls.ORDERS_FQN: table(cls.ORDERS_FQN)}
+
+    @staticmethod
+    def _search(catalog, searches):
+        def _es(*_args, fqn_search_string, **_kwargs):
+            searches.append(fqn_search_string)
+            for known, entity in catalog.items():
+                service, _, rest = known.partition(".")
+                searched_service, _, searched_rest = fqn_search_string.partition(".")
+                if searched_rest == rest and searched_service in (service, "*"):
+                    return [entity]
+            return []
+
+        return _es
+
+    def _source(self, catalog, searches):
+        from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import (
+            DbtLocalConfig,
+        )
+        from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
+
+        source = DbtSource.__new__(DbtSource)
+        source.config = SimpleNamespace(serviceName=self.SERVICE)
+        source.source_config = DbtPipeline(
+            dbtConfigSource=DbtLocalConfig(dbtConfigType="local", dbtManifestFilePath="manifest.json"),
+            includeTags=False,
+        )
+        source.metadata = MagicMock()
+        source.metadata.es_search_from_fqn.side_effect = self._search(catalog, searches)
+        source.status = MagicMock()
+        source.tag_classification_name = "dbtTags"
+        source.reported_unresolved_upstreams = set()
+        source.context = SimpleNamespace(get=lambda: self._ctx)
+        return source
+
+    def test_lineage_does_not_search_for_an_upstream_it_already_resolved(self):
+        from metadata.ingestion.source.database.dbt.models import DbtObjects
+
+        catalog = self._catalog()
+        searches = []
+        self._ctx = SimpleNamespace()
+        source = self._source(catalog, searches)
+
+        with self.MANIFEST.open(encoding="utf-8") as manifest_file:
+            manifest = parse_manifest(json.load(manifest_file))
+
+        links = []
+        for item in source.yield_data_models(DbtObjects(dbt_manifest=manifest)):
+            assert item.left is None, item.left
+            links.append(item.right)
+
+        orders = next(link for link in links if str(link.table_entity.fullyQualifiedName.root) == self.ORDERS_FQN)
+        assert orders.datamodel.upstream == [self.RAW_FQN]
+
+        searches_after_parse = len(searches)
+        results = list(source.create_dbt_lineage(orders))
+
+        assert len(searches) == searches_after_parse, searches[searches_after_parse:]
+        assert len(results) == 1
+        assert results[0].right.lineage_request.edge.fromEntity.id.root == catalog[self.RAW_FQN].id.root
+        source.status.warning.assert_not_called()
 
 
 class TestAddDbtTestResultFailureReporting:
@@ -5044,3 +5138,178 @@ class TestDbtDataProducts:
         source.metadata.add_assets_to_data_product.assert_called_once()
         assert "Marketing" in caplog.text
         assert "domain" in caplog.text.lower()
+
+
+class TestDbtMetricGovernanceMetadata:
+    """yield_dbt_metrics must propagate node-level meta governance metadata to the metric."""
+
+    def _source(self, metric_custom_properties=None):
+        source = DbtSource.__new__(DbtSource)
+        source.metadata = MagicMock()
+        source.status = MagicMock()
+        source.config = MagicMock()
+        source.config.serviceName = "my_svc"
+        source.source_config = MagicMock()
+        source.source_config.includeTags = False
+        source.omd_metric_custom_properties = metric_custom_properties or {}
+        return source
+
+    def _simple_metric(self, meta=None):
+        metric_node = SimpleNamespace(
+            name="segmented_drivers",
+            type=SimpleNamespace(value="simple"),
+            description="Distinct drivers.",
+            label="Segmented Drivers",
+            type_params=SimpleNamespace(measure=SimpleNamespace(name="driver_count")),
+            time_granularity=SimpleNamespace(value="month"),
+            tags=[],
+            depends_on=SimpleNamespace(nodes=[]),
+            meta=meta,
+        )
+        return {
+            "metric_node": metric_node,
+            "semantic_models": {},
+            "all_metrics": {metric_node.name: metric_node},
+        }
+
+    def test_metric_governance_metadata_is_propagated(self):
+        from metadata.generated.schema.entity.data.metric import MetricType
+
+        source = self._source(
+            metric_custom_properties={"steward": {"name": "steward", "propertyType": {"name": "string"}}}
+        )
+        source.get_dbt_owner = MagicMock(return_value=MOCK_OWNER)
+        source.get_dbt_domain = MagicMock(
+            return_value=EntityReference(
+                id="0f4e1cd5-6a6e-4f5f-9f0e-0f3a2b1c9d8e",
+                type="domain",
+                name="Customer",
+                fullyQualifiedName="Customer",
+            )
+        )
+        # tags / tag channel is empty for this case
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {
+            "openmetadata": {
+                "owner": "data_analytics",
+                "domain": "Customer",
+                "unit": "count",
+                "customProperties": {"steward": "some.user"},
+            }
+        }
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+
+        assert request.name.root == "segmented_drivers"
+        assert request.metricType == MetricType.SIMPLE
+        assert request.metricExpression.code == "driver_count"
+        assert request.owners == MOCK_OWNER
+        assert request.domains == ["Customer"]
+        assert request.unitOfMeasurement.value == "COUNT"
+        assert request.customUnitOfMeasurement is None
+        assert request.extension.root == {"steward": "some.user"}
+        assert request.relatedMetrics is None
+
+    def test_metric_without_meta_governance_stays_unchanged(self):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        metric_requests = [
+            item for item in DbtSource.yield_dbt_metrics(source, self._simple_metric()) if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+        assert request.owners is None
+        assert request.domains is None
+        assert request.unitOfMeasurement is None
+        assert request.extension is None
+
+    def _request_for_unit(self, unit):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {"openmetadata": {"unit": unit}}
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        return metric_requests[0].right
+
+    def test_free_form_unit_is_sent_as_other_with_the_custom_unit(self):
+        """
+        MetricRepository.validateCustomUnitOfMeasurement nulls customUnitOfMeasurement unless
+        unitOfMeasurement is OTHER, so a free-form unit sent on its own is dropped server-side.
+        """
+        request = self._request_for_unit("basis points")
+
+        assert request.unitOfMeasurement.value == "OTHER"
+        assert request.customUnitOfMeasurement == "basis points"
+
+    def test_explicit_other_unit_still_carries_a_custom_unit(self):
+        """OTHER without a customUnitOfMeasurement is rejected by the server, losing the metric."""
+        request = self._request_for_unit("other")
+
+        assert request.unitOfMeasurement.value == "OTHER"
+        assert request.customUnitOfMeasurement == "other"
+
+    def test_custom_properties_undefined_for_metrics_are_dropped(self):
+        """
+        EntityRepository.validateExtension rejects the whole create request on an unknown field,
+        so a property defined only for tables must not reach the metric extension.
+        """
+        source = self._source(
+            metric_custom_properties={"steward": {"name": "steward", "propertyType": {"name": "string"}}}
+        )
+        source.get_dbt_owner = MagicMock(return_value=MOCK_OWNER)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {
+            "openmetadata": {
+                "owner": "data_analytics",
+                "customProperties": {"steward": "some.user", "tableOnlyProperty": "value"},
+            }
+        }
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+
+        assert request.extension.root == {"steward": "some.user"}
+        # the metric itself and the rest of its governance metadata survive
+        assert request.owners == MOCK_OWNER
+
+    def test_metric_with_only_unknown_custom_properties_sends_no_extension(self):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {"openmetadata": {"customProperties": {"tableOnlyProperty": "value"}}}
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        assert metric_requests[0].right.extension is None

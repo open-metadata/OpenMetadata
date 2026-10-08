@@ -74,6 +74,8 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.datacontract.odcs.ODCSImportAnalyzer;
+import org.openmetadata.service.datacontract.odcs.ODCSLenientReader;
 import org.openmetadata.service.datacontract.odcs.ODCSQualityRuleExporter;
 import org.openmetadata.service.datacontract.odcs.ODCSQualityRuleImporter;
 import org.openmetadata.service.datacontract.odcs.ODCSTestCaseMaterializer;
@@ -116,6 +118,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
   private final ODCSQualityRuleImporter qualityRuleImporter;
   private final ODCSQualityRuleExporter qualityRuleExporter;
+  private final ODCSImportAnalyzer importAnalyzer;
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
@@ -133,6 +136,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
             new ODCSTestCaseMaterializer(
                 (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE)),
             DataContractResource::loadTableWithColumns);
+    this.importAnalyzer =
+        new ODCSImportAnalyzer(qualityRuleImporter, repository::validateContractWithoutThrowing);
     this.qualityRuleExporter =
         new ODCSQualityRuleExporter(
             testCase ->
@@ -1048,35 +1053,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         getResourceContextById(entityId));
 
     EntityInterface entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
-
-    // Get the entity's direct contract (if exists)
-    DataContract directContract = repository.getEntityDataContractSafely(entity);
-
-    // Get the effective contract (with inherited properties)
-    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
-
-    if (effectiveContract == null) {
-      throw EntityNotFoundException.byMessage(
-          String.format("No data contract found for entity %s", entityId));
-    }
-
-    // If entity has no direct contract but has an inherited one, materialize an empty contract
-    DataContract contractForValidation;
-    if (directContract == null && Boolean.TRUE.equals(effectiveContract.getInherited())) {
-      // Materialize an empty contract for this entity to store validation results
-      // Use the Data Product contract name as prefix for the new contract name
-      contractForValidation =
-          repository.materializeInheritedContract(
-              entity, effectiveContract.getName(), securityContext.getUserPrincipal().getName());
-    } else {
-      contractForValidation = directContract != null ? directContract : effectiveContract;
-    }
-
-    // Validate using the effective contract (to include inherited rules)
-    // but store results against the entity's own contract
-    RestUtil.PutResponse<DataContractResult> result =
-        repository.validateContractWithEffective(contractForValidation, effectiveContract);
-    return result.toResponse();
+    return repository
+        .validateEntityContract(entity, securityContext.getUserPrincipal().getName())
+        .orElseThrow(
+            () ->
+                EntityNotFoundException.byMessage(
+                    String.format("No data contract found for entity %s", entityId)))
+        .toResponse();
   }
 
   // Add runId and dataContractFQN to the result if not incoming
@@ -1482,20 +1465,33 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string"))
           @QueryParam("objectName")
           String objectName,
+      @Parameter(
+              description =
+                  "Whether the import would create test cases from the ODCS quality rules; the "
+                      + "report then says which rule becomes which test case.",
+              schema = @Schema(type = "boolean", defaultValue = "true"))
+          @QueryParam("createTestCases")
+          @DefaultValue("true")
+          boolean createTestCases,
       String yamlContent) {
-    try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      JsonNode rootNode = yamlMapper.readTree(yamlContent);
-      ODCSConverter.normalizeODCSInput(rootNode);
-      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
-      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-
-      ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
-      return Response.ok(validation).build();
-    } catch (JsonProcessingException e) {
-      throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
-    }
+    EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+    ODCSTestCaseWriteGuard testCaseGuard =
+        new ODCSTestCaseWriteGuard(authorizer, limits, securityContext);
+    ODCSImportAnalyzer.QualityRuleOptions quality =
+        new ODCSImportAnalyzer.QualityRuleOptions(
+            createTestCases,
+            createTestCases && testCaseGuard.canCreateTestCasesOn(entityRef),
+            linkedTestCaseIds(loadExistingContract(entityRef)),
+            securityContext.getUserPrincipal().getName());
+    ContractValidation validation =
+        importAnalyzer.analyze(
+            new ODCSImportAnalyzer.Request(
+                YAML_MAPPER,
+                readTree(YAML_MAPPER, yamlContent, "YAML"),
+                entityRef,
+                objectName,
+                quality));
+    return Response.ok(validation).build();
   }
 
   @PUT
@@ -1636,11 +1632,17 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     }
   }
 
+  /**
+   * Values the model cannot read, such as a logical type from a newer ODCS version, are left out
+   * rather than failing the import; the validate endpoint reports them.
+   */
   private static ODCSDataContract readODCS(ObjectMapper mapper, String content, String format) {
+    return ODCSLenientReader.readOrReject(mapper, readTree(mapper, content, format));
+  }
+
+  private static JsonNode readTree(ObjectMapper mapper, String content, String format) {
     try {
-      JsonNode rootNode = mapper.readTree(content);
-      ODCSConverter.normalizeODCSInput(rootNode);
-      return mapper.treeToValue(rootNode, ODCSDataContract.class);
+      return mapper.readTree(content);
     } catch (JsonProcessingException e) {
       throw new IllegalArgumentException(
           String.format("Invalid ODCS %s content: %s", format, e.getMessage()), e);

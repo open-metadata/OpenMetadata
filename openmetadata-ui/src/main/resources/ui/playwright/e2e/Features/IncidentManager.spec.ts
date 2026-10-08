@@ -17,6 +17,7 @@ import {
   type Page,
 } from '@playwright/test';
 import { get } from 'lodash';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
@@ -89,7 +90,7 @@ const openIncidentTaskTab = async (page: Page, waitForTaskPanel = false) => {
 
   if (waitForTaskPanel) {
     await expect(page.getByTestId('task-cta-buttons')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
   }
 };
@@ -151,44 +152,38 @@ const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
   const rows = page.locator(
     '[data-testid="test-case-incident-manager-table"] tbody tr'
   );
-  const rowCount = await rows.count();
+  const allRows = await rows.all();
 
-  expect(rowCount).toBeGreaterThan(0);
+  expect(allRows.length).toBeGreaterThan(0);
 
-  for (let index = 0; index < rowCount; index++) {
-    await expect(rows.nth(index)).toContainText(text);
+  for (const row of allRows) {
+    await expect(row).toContainText(text);
   }
 };
 
 const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
-  const visibleReassignButton = page
-    .getByRole('button', { name: /^Re-?assign$/ })
-    .last();
-  const primaryActionButton = page
-    .locator(
-      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
-    )
-    .last();
-  const actionTrigger = page
-    .locator(
-      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
-    )
-    .last();
-  const editAssigneesButton = page
-    .locator('[data-testid="edit-assignees"]:visible')
-    .last();
+  const visibleReassignButton = page.getByRole('button', {
+    name: /^Re-?assign$/,
+  });
+  const primaryActionButton = page.locator(
+    '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+  );
+  const actionTrigger = page.locator(
+    '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+  );
+  const editAssigneesButton = page.locator(
+    '[data-testid="edit-assignees"]:visible'
+  );
   const reassignModal = page
     .locator('.ant-modal-wrap:visible')
     .filter({ hasText: /Re-?assign Task/i });
   const reassignMenuItem = page
     .locator('.task-action-dropdown:visible')
-    .getByRole('menuitem', { name: /^Reassign$/ })
-    .last();
+    .getByRole('menuitem', { name: /^Reassign$/ });
   const incidentListRowAction = testCaseName
     ? page
         .locator('[data-testid="test-case-incident-manager-table"] tbody tr')
         .filter({ hasText: testCaseName })
-        .first()
         .locator('button')
         .last()
     : null;
@@ -265,13 +260,13 @@ const reassignIncidentTask = async (
   const reassignModal = await openIncidentReassignModal(page, testCaseName);
   const assigneeSelect = reassignModal.getByTestId('select-assignee');
   const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
-  const assigneeInput = assigneeSelect.locator('input').last();
+  const assigneeInput = assigneeSelect.getByRole('combobox');
   const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
 
   await expect(assigneeSelector).toBeVisible();
   await assigneeSelector.click();
   await assigneeInput.fill(assignee.displayName);
-  await expect(assigneeOption).toBeVisible({ timeout: 30_000 });
+  await expect(assigneeOption).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   await assigneeOption.click();
 
@@ -302,17 +297,15 @@ const openIncidentResolveDialog = async (
   page: Page,
   allowProgressTransition = true
 ) => {
-  const primaryActionButton = page
-    .locator(
-      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
-    )
-    .last();
-  const actionTrigger = page
-    .locator(
-      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
-    )
-    .last();
-  const resolveModal = page.locator('.ant-modal .ant-modal-content').last();
+  const primaryActionButton = page.locator(
+    '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+  );
+  const actionTrigger = page.locator(
+    '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+  );
+  const resolveModal = page.locator(
+    '.ant-modal-wrap:visible .ant-modal-content'
+  );
   const modalTextareas = resolveModal.locator('textarea');
 
   if (await isVisible(resolveModal)) {
@@ -405,7 +398,7 @@ const openIncidentResolveDialog = async (
   await expect(resolveModal).toBeVisible({
     timeout: 10_000,
   });
-  await expect(modalTextareas.first()).toBeVisible({
+  await expect(modalTextareas).not.toHaveCount(0, {
     timeout: 10_000,
   });
 
@@ -605,7 +598,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         testCase.fullyQualifiedName
       )}/test-case-results`;
       actorPage = await browser.newPage();
-      await user1.login(actorPage);
+      await user1.signIn(actorPage);
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
@@ -738,7 +731,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Resolve incident', async () => {
       const currentUrl = actorPage.url();
       actorPage = await browser.newPage();
-      await user3.login(actorPage);
+      await user3.signIn(actorPage);
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );

@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Badge,
-  Card,
-  Divider,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Badge, Card, Divider } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../../../styles/variables.less';
@@ -97,15 +92,11 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   ) : (
     <SectionWithEdit
       showEditButton={false}
-      title={
-        <div className="d-flex">
-          <Typography className="section-title mr-2">
-            {t('label.data-quality-test-plural')}
-          </Typography>
-          <Badge color="gray" size="sm">
-            {totalTests}
-          </Badge>
-        </div>
+      title={t('label.data-quality-test-plural')}
+      titleExtra={
+        <Badge color="gray" size="sm">
+          {totalTests}
+        </Badge>
       }
       onEdit={onEdit}>
       {totalTests === 0 ? (

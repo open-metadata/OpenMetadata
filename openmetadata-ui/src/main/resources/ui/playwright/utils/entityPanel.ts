@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { clickOutside, redirectToExplorePage } from './common';
 import {
   applyGlossaryPicker,
@@ -168,12 +169,12 @@ export const openEntitySummaryPanel = async ({
       // callback that hangs until the whole test times out.
       await page.waitForURL(/[?&]search=[^&]+/, {
         waitUntil: 'domcontentloaded',
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       });
 
       const tab = page
         .getByTestId('explore-left-panel')
-        .getByRole('menuitem', { name: exploreTab });
+        .getByRole('tab', { name: exploreTab });
       await tab.waitFor({ state: 'visible' });
       await tab.click();
       await waitForAllLoadersToDisappear(page);
@@ -251,10 +252,7 @@ export async function navigateToExploreAndSelectTable(
   const summaryPanel = page.getByTestId('entity-summary-panel-container');
   await summaryPanel.waitFor({ state: 'visible' });
 
-  // Wait for the loader elements count to become 0
-  await expect(summaryPanel.getByTestId('loader')).toHaveCount(0, {
-    timeout: 30000,
-  });
+  await waitForAllLoadersToDisappear(summaryPanel);
 }
 
 export const waitForPatchResponse = async (page: Page) => {
@@ -273,7 +271,7 @@ export const waitForPatchResponse = async (page: Page) => {
 
 export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
-  const tab = summaryPanel.getByRole('menuitem', {
+  const tab = summaryPanel.getByRole('tab', {
     name: new RegExp(tabName, 'i'),
   });
 
@@ -378,49 +376,6 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await row.click();
 
   await applyGlossaryPicker(page);
-};
-
-export const editDomain = async (page: Page, domainName: string) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const domainsSection = summaryPanel.locator('.domains-section');
-
-  await domainsSection
-    .locator('[data-testid="add-domain"]')
-    .scrollIntoViewIfNeeded();
-  await page.getByTestId('add-domain').waitFor({
-    state: 'visible',
-  });
-  await page.locator('[data-testid="add-domain"]').click();
-  const search = page.getByTestId('domain-selectable-tree-search');
-
-  await search.waitFor({ state: 'visible' });
-
-  const searchDomainPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`)
-  );
-
-  await search.fill(domainName);
-
-  const searchDomainResponse = await searchDomainPromise;
-  expect(searchDomainResponse.status()).toBe(200);
-
-  const tagSelector = page
-    .getByTestId('domain-selectable-tree-popover')
-    .getByText(domainName);
-  await tagSelector.waitFor({ state: 'visible' });
-
-  const patchReqPromise = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await tagSelector.click();
-
-  const patchResponse = await patchReqPromise;
-  expect(patchResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
 };
 
 export const verifyDeletedEntityNotVisible = async (
@@ -567,42 +522,6 @@ export const removeOwnerFromPanel = async (
   }
 
   const updateButton = page.getByTestId('selectable-list-update-btn');
-  if (await updateButton.isVisible()) {
-    await updateButton.click();
-  }
-
-  await patchPromise;
-};
-
-export const removeDomainFromPanel = async (page: Page, domainName: string) => {
-  await page.getByTestId('add-domain').waitFor({
-    state: 'visible',
-  });
-
-  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
-  await page.getByTestId('add-domain').click({ force: true });
-
-  const domainSearch = page.getByTestId('domain-selectable-tree-search');
-  await domainSearch.waitFor({ state: 'visible' });
-
-  const searchDomainPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`)
-  );
-
-  await domainSearch.fill(domainName);
-
-  await searchDomainPromise;
-
-  const domainItem = page
-    .getByTestId('domain-selectable-tree-popover')
-    .getByText(domainName);
-  const patchPromise = waitForPatchResponse(page);
-
-  await domainItem.click();
-
-  const updateButton = page.getByRole('button', { name: 'Update' });
   if (await updateButton.isVisible()) {
     await updateButton.click();
   }

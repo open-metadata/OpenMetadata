@@ -7,6 +7,7 @@
     "close": "Sluiten",
     "close-navigation-menu": "Navigatiemenu sluiten",
     "copy-link": "Link kopiëren",
+    "count-remaining": "nog {{count}}",
     "count-selected": "{{count}} geselecteerd",
     "current-page": "Huidige pagina",
     "date-range-picker": "Datumbereikkiezer",
@@ -33,8 +34,10 @@
     "remove-filter": "Filter verwijderen",
     "search": "Zoeken",
     "select-all": "Alles selecteren",
+    "select-date": "Datum selecteren",
     "select-dates": "Datums selecteren",
     "select-only-one-row": "Eén rij selecteren",
+    "show-count-more": "Nog {{count}} tonen",
     "show-hidden-breadcrumbs": "Verborgen kruimelpad weergeven",
     "today": "Vandaag",
     "tree-select": "Boomselectie"

@@ -19,10 +19,10 @@ import {
   SelectPopover,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { isAppleDevice } from '@react-aria/utils';
-import { SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
-import type { FormEvent, RefObject } from 'react';
+import type { FormEvent, ReactNode, RefObject } from 'react';
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCloseCircleOutlined } from '../../../../assets/svg/close-circle-outlined.svg';
@@ -42,6 +42,10 @@ export interface ExploreSearchInputProps {
   isNLPActive: boolean;
   isNLPEnabled: boolean;
   searchCriteria?: SearchIndex;
+  /** Placeholder text. Defaults to Explore's own. */
+  placeholder?: string;
+  /** Popover body. Defaults to Explore's entity suggestions. */
+  suggestions?: ReactNode;
   searchContainerRef: RefObject<HTMLFormElement>;
   onSearchChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -75,10 +79,10 @@ const INPUT_CONTAINER_CLASS = classNames(
 );
 
 const NLP_TOGGLE_BASE_CLASS =
-  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-brand-600 tw:transition-none';
+  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-utility-brand-600 tw:transition-none';
 
 const NLP_TOGGLE_INACTIVE_CLASS =
-  'tw:border-[0.5px] tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:p-1 tw:hover:bg-[rgba(21,112,239,0.06)] tw:hover:text-brand-600';
+  'tw:border tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:p-1 tw:hover:bg-utility-brand-100';
 
 const NLP_TOGGLE_ACTIVE_CLASS = 'tw:border-0 tw:bg-transparent tw:p-0';
 
@@ -87,7 +91,7 @@ const SUGGESTIONS_CONTAINER_CLASS =
 
 const SEARCH_POPOVER_CLASS = classNames(
   'tw:max-h-96! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point)',
-  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-primary',
+  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-overlay-surface',
   'tw:px-0! tw:py-4! tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
   'tw:will-change-transform'
 );
@@ -117,6 +121,43 @@ const SEARCH_PLACEHOLDER_KEY = 'message.explore-search-placeholder';
 
 const getSearchShortcutLabel = () => (isAppleDevice() ? '⌘K' : 'Ctrl+K');
 
+/** Explore's own suggestions, unless the caller supplies its own results. */
+const PopoverBody = ({
+  suggestions,
+  isNLPActive,
+  isSearchBoxOpen,
+  searchCriteria,
+  suggestionSearch,
+  onSearchBoxOpenChange,
+  onSuggestionSelect,
+}: Pick<
+  ExploreSearchInputProps,
+  | 'suggestions'
+  | 'isNLPActive'
+  | 'isSearchBoxOpen'
+  | 'searchCriteria'
+  | 'suggestionSearch'
+  | 'onSearchBoxOpenChange'
+  | 'onSuggestionSelect'
+>) => {
+  if (suggestions) {
+    return <>{suggestions}</>;
+  }
+
+  return (
+    <Suspense fallback={null}>
+      <Suggestions
+        isNLPActive={isNLPActive}
+        isOpen={isSearchBoxOpen}
+        searchCriteria={searchCriteria}
+        searchText={suggestionSearch}
+        setIsOpen={onSearchBoxOpenChange}
+        onSearchTextUpdate={onSuggestionSelect}
+      />
+    </Suspense>
+  );
+};
+
 export const ExploreSearchInput = ({
   searchValue,
   suggestionSearch,
@@ -124,6 +165,8 @@ export const ExploreSearchInput = ({
   isNLPActive,
   isNLPEnabled,
   searchCriteria,
+  placeholder,
+  suggestions,
   searchContainerRef,
   onSearchChange,
   onSubmit,
@@ -136,6 +179,7 @@ export const ExploreSearchInput = ({
   const isSearchPopoverOpen =
     isSearchBoxOpen && (Boolean(searchValue) || isNLPActive);
   const searchShortcutLabel = getSearchShortcutLabel();
+  const placeholderText = placeholder ?? t(SEARCH_PLACEHOLDER_KEY);
 
   return (
     <Box className="tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-3">
@@ -146,7 +190,7 @@ export const ExploreSearchInput = ({
         itself, not synthetic interactivity added to a non-interactive element.
       */}
       <form
-        aria-label={t(SEARCH_PLACEHOLDER_KEY)}
+        aria-label={placeholderText}
         className="tw:relative tw:w-full tw:min-w-0"
         data-testid="explore-search-form"
         ref={searchContainerRef}
@@ -198,10 +242,10 @@ export const ExploreSearchInput = ({
             className={INPUT_FIELD_CONTAINER_CLASS}
             data-testid="explore-search-input"
             fontSize="xs"
-            icon={SearchMd}
-            iconClassName="tw:size-4 tw:text-brand-600"
+            icon={Search}
+            iconClassName="tw:size-4 tw:text-utility-brand-600"
             inputClassName={INPUT_CLASS}
-            placeholder={t(SEARCH_PLACEHOLDER_KEY)}
+            placeholder={placeholderText}
             value={searchValue}
             wrapperClassName={INPUT_WRAPPER_CLASS}
             onChange={onSearchChange}
@@ -227,7 +271,7 @@ export const ExploreSearchInput = ({
             />
           )}
           <kbd
-            aria-label={`${t(SEARCH_PLACEHOLDER_KEY)} (${searchShortcutLabel})`}
+            aria-label={`${placeholderText} (${searchShortcutLabel})`}
             className={SEARCH_SHORTCUT_CLASS}
             data-testid="explore-search-shortcut">
             {searchShortcutLabel}
@@ -240,7 +284,6 @@ export const ExploreSearchInput = ({
           containerPadding={0}
           data-testid="explore-search-popover"
           isOpen={isSearchPopoverOpen}
-          offset={12}
           placement="bottom"
           size="sm"
           style={{
@@ -254,16 +297,15 @@ export const ExploreSearchInput = ({
               isNLPActive ? NLP_SUGGESTION_ITEM_CLASS : ''
             }`}
             data-testid="explore-search-results">
-            <Suspense fallback={null}>
-              <Suggestions
-                isNLPActive={isNLPActive}
-                isOpen={isSearchBoxOpen}
-                searchCriteria={searchCriteria}
-                searchText={suggestionSearch}
-                setIsOpen={onSearchBoxOpenChange}
-                onSearchTextUpdate={onSuggestionSelect}
-              />
-            </Suspense>
+            <PopoverBody
+              isNLPActive={isNLPActive}
+              isSearchBoxOpen={isSearchBoxOpen}
+              searchCriteria={searchCriteria}
+              suggestionSearch={suggestionSearch}
+              suggestions={suggestions}
+              onSearchBoxOpenChange={onSearchBoxOpenChange}
+              onSuggestionSelect={onSuggestionSelect}
+            />
           </div>
         </SelectPopover>
       </form>

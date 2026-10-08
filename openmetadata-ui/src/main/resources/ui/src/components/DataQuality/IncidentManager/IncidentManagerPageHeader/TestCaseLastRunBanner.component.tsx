@@ -30,6 +30,7 @@ import {
   getIncidentTitle,
   getMetricSummary,
   getNextRunLabel,
+  getNotRunMessageKey,
   getRunDescription,
 } from './TestCaseLastRunBanner.utils';
 
@@ -38,7 +39,7 @@ const TestCaseLastRunBanner = ({
   incidentTask,
   nextRunTimestamp,
   onAcknowledge,
-  parameterValues,
+  testCase,
   testCaseResult,
   testCaseStatus: authoritativeTestCaseStatus,
   testCaseStatusData,
@@ -54,7 +55,7 @@ const TestCaseLastRunBanner = ({
         config={NO_RUN_CONFIG}
         description={
           <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-xs tw:leading-normal tw:text-secondary">
-            {t('message.test-case-not-run-yet')}
+            {t(getNotRunMessageKey(nextRunTimestamp))}
           </p>
         }
         rightSection={
@@ -80,7 +81,7 @@ const TestCaseLastRunBanner = ({
     );
   }
 
-  const { result, testResultValue, timestamp } = testCaseResult;
+  const { result, timestamp } = testCaseResult;
   const config = STATUS_CONFIG[testCaseStatus];
   const description = getRunDescription(
     result,
@@ -89,8 +90,8 @@ const TestCaseLastRunBanner = ({
   );
   const incidentLink = getIncidentLink(taskLinkInfo, testCaseStatus);
   const metricSummary = getMetricSummary(
-    parameterValues,
-    testResultValue,
+    testCase,
+    testCaseResult,
     testCaseStatus
   );
   const incidentTitle = incidentTask
@@ -127,7 +128,7 @@ const TestCaseLastRunBanner = ({
       }
       rightSection={
         <div
-          className="tw:flex tw:shrink-0 tw:items-stretch tw:justify-end tw:gap-6 tw:lg:w-80"
+          className="tw:flex tw:shrink-0 tw:items-stretch tw:justify-end tw:gap-6 tw:lg:min-w-80"
           data-testid="test-case-last-run-right-section">
           <ResultExpected
             config={config}

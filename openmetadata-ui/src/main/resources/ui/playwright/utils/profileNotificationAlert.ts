@@ -21,12 +21,17 @@
  * This file provides CoreUI-compatible replacements. Legacy utils are NOT modified.
  */
 
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { ALERT_DESCRIPTION } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TableClass } from '../support/entity/TableClass';
-import { redirectToHomePage, toastNotification } from './common';
+import {
+  chooseSelectOption,
+  redirectToHomePage,
+  toastNotification,
+} from './common';
 import { selectDropdownOption } from './destination';
 import { getEntityDisplayName, waitForAllLoadersToDisappear } from './entity';
 
@@ -97,7 +102,7 @@ const fillAutocompleteAndSelect = async ({
     name: new RegExp(searchText, 'i'),
   });
 
-  await expect(option).toBeVisible({ timeout: 30_000 });
+  await expect(option).toBeVisible({ timeout: ACTION_TIMEOUT });
   await option.click();
   await input.press('Tab');
 };
@@ -366,6 +371,16 @@ export const addMultipleFiltersProfile = async ({
 // ─── Destination helper ───────────────────────────────────────────────────────
 
 /**
+ * Fill a controlled input and assert the value landed. One fill, one assertion — no retry: the
+ * functional-updater fix means writes no longer clobber each other, so a value that fails to stick
+ * is a real regression this must surface, not hide.
+ */
+const fillAndVerify = async (input: Locator, value: string) => {
+  await input.fill(value);
+  await expect(input).toHaveValue(value);
+};
+
+/**
  * Add an internal destination in the profile notification form.
  * Waits for the conditional type-select to mount after category selection.
  */
@@ -380,24 +395,12 @@ export const addInternalDestinationProfile = async ({
   category: string;
   type: string;
 }) => {
-  // Select category via combobox
-  const categoryInput = page
-    .getByTestId(`destination-category-select-${destinationNumber}`)
-    .getByRole('combobox');
-  await expect(categoryInput).toBeVisible();
-  await categoryInput.click();
-  await categoryInput.fill('');
-  await categoryInput.press('ArrowDown');
-
-  const option = page.getByRole('option', { exact: true, name: category });
-  await expect(option).toBeVisible();
-  await option.click();
-
-  // Wait for the remounted row to settle and the conditional type-select to appear
-  const typeSelect = page.getByTestId(
-    `destination-type-select-${destinationNumber}`
+  await chooseSelectOption(
+    page.getByTestId(`destination-category-select-${destinationNumber}`),
+    page
+      .getByRole('listbox', { name: /destination/i })
+      .getByRole('option', { name: category, exact: true })
   );
-  await expect(typeSelect).toBeVisible({ timeout: 30_000 });
 
   await selectDropdownOption({
     page,
@@ -431,29 +434,23 @@ export const addExternalDestinationProfile = async ({
     queryParams?: Array<{ key: string; value: string }>;
   };
 }) => {
-  const categoryInput = page
-    .getByTestId(`destination-category-select-${destinationNumber}`)
-    .getByRole('combobox');
-  await expect(categoryInput).toBeVisible();
-  await categoryInput.click();
-  await categoryInput.fill('');
-  await categoryInput.press('ArrowDown');
-
-  const option = page.getByRole('option', { exact: true, name: category });
-  await expect(option).toBeVisible();
-  await option.click();
+  await chooseSelectOption(
+    page.getByTestId(`destination-category-select-${destinationNumber}`),
+    page
+      .getByRole('listbox', { name: /destination/i })
+      .getByRole('option', { name: category, exact: true })
+  );
 
   if (category === 'Email') {
     const emailInput = page.getByTestId(`email-input-${destinationNumber}`);
-    await expect(emailInput).toBeVisible();
-    await emailInput.locator('input').fill(input);
+    await fillAndVerify(emailInput.locator('input'), input);
     await page.keyboard.press('Enter');
+    await expect(page.getByTestId(`email-tag-${input}`)).toBeVisible();
   } else {
     const endpointInput = page.getByTestId(
       `endpoint-input-${destinationNumber}`
     );
-    await expect(endpointInput).toBeVisible();
-    await endpointInput.locator('input').fill(input);
+    await fillAndVerify(endpointInput.locator('input'), input);
   }
 
   if (advancedConfig) {
@@ -476,14 +473,18 @@ export const addExternalDestinationProfile = async ({
         await page
           .getByTestId(`add-header-button-${destinationNumber}`)
           .click();
-        await page
-          .getByTestId(`header-key-input-${destinationNumber}-${i}`)
-          .locator('input')
-          .fill(h.key);
-        await page
-          .getByTestId(`header-value-input-${destinationNumber}-${i}`)
-          .locator('input')
-          .fill(h.value);
+        await fillAndVerify(
+          page
+            .getByTestId(`header-key-input-${destinationNumber}-${i}`)
+            .locator('input'),
+          h.key
+        );
+        await fillAndVerify(
+          page
+            .getByTestId(`header-value-input-${destinationNumber}-${i}`)
+            .locator('input'),
+          h.value
+        );
       }
     }
 
@@ -493,14 +494,18 @@ export const addExternalDestinationProfile = async ({
         await page
           .getByTestId(`add-query-param-button-${destinationNumber}`)
           .click();
-        await page
-          .getByTestId(`query-param-key-input-${destinationNumber}-${i}`)
-          .locator('input')
-          .fill(qp.key);
-        await page
-          .getByTestId(`query-param-value-input-${destinationNumber}-${i}`)
-          .locator('input')
-          .fill(qp.value);
+        await fillAndVerify(
+          page
+            .getByTestId(`query-param-key-input-${destinationNumber}-${i}`)
+            .locator('input'),
+          qp.key
+        );
+        await fillAndVerify(
+          page
+            .getByTestId(`query-param-value-input-${destinationNumber}-${i}`)
+            .locator('input'),
+          qp.value
+        );
       }
     }
   }

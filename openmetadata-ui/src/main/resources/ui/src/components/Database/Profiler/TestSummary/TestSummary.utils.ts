@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { getParameterBounds } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
@@ -29,46 +29,83 @@ export interface ResultHistoryCaption {
   comparison?: CaptionPart;
 }
 
-const format = (value: number) => value.toLocaleString();
+export const formatNumber = (value: number) => value.toLocaleString();
 
-const getComparison = (
-  testCase: TestCase,
-  impliedExpected?: number
-): CaptionPart | undefined => {
+export interface ParameterExpectation {
+  expected?: number;
+  min?: number;
+  max?: number;
+  threshold?: number;
+}
+
+/**
+ * What a test case's parameters say a run is measured against: one expected
+ * value when there is one (stated, or implied by the definition, as for
+ * not-null), otherwise a range or one side of it. Shared by the result history
+ * caption and the run details card so the two cannot disagree.
+ */
+export const resolveParameterExpectation = (
+  testCase: TestCase
+): ParameterExpectation => {
+  const { expected, min, max, threshold } = getParameterBounds(
+    testCase.parameterValues ?? []
+  );
+  const expectedValue =
+    expected ??
+    RESULT_METRIC_BY_DEFINITION[testCase.testDefinition?.name ?? '']
+      ?.impliedExpected;
+
+  return isUndefined(expectedValue)
+    ? { min, max, threshold }
+    : { expected: expectedValue, threshold };
+};
+
+const getComparison = (testCase: TestCase): CaptionPart | undefined => {
   if (testCase.useDynamicAssertion) {
     return { key: 'label.caption-learned-range' };
   }
 
-  const { expected, min, max, threshold } = getParameterBounds(
-    testCase.parameterValues ?? []
-  );
-  const expectedValue = expected ?? impliedExpected;
+  const {
+    expected: expectedValue,
+    min,
+    max,
+    threshold,
+  } = resolveParameterExpectation(testCase);
 
   if (!isUndefined(expectedValue)) {
     return {
       key: 'label.caption-expected-value',
-      values: { value: format(expectedValue) },
+      values: { value: formatNumber(expectedValue) },
     };
   }
 
   if (!isUndefined(min) && !isUndefined(max)) {
     return {
       key: 'label.caption-allowed-range',
-      values: { min: format(min), max: format(max) },
+      values: { min: formatNumber(min), max: formatNumber(max) },
     };
   }
 
   if (!isUndefined(max)) {
-    return { key: 'label.caption-allowed-max', values: { value: format(max) } };
+    return {
+      key: 'label.caption-allowed-max',
+      values: { value: formatNumber(max) },
+    };
   }
 
   if (!isUndefined(min)) {
-    return { key: 'label.caption-allowed-min', values: { value: format(min) } };
+    return {
+      key: 'label.caption-allowed-min',
+      values: { value: formatNumber(min) },
+    };
   }
 
   return isUndefined(threshold)
     ? undefined
-    : { key: 'label.caption-threshold', values: { value: format(threshold) } };
+    : {
+        key: 'label.caption-threshold',
+        values: { value: formatNumber(threshold) },
+      };
 };
 
 /**
@@ -85,7 +122,7 @@ export const getResultHistoryCaption = (
   const metric =
     RESULT_METRIC_BY_DEFINITION[testCase.testDefinition?.name ?? ''] ??
     DEFAULT_RESULT_METRIC;
-  const comparison = getComparison(testCase, metric.impliedExpected);
+  const comparison = getComparison(testCase);
 
   return {
     metric: {
@@ -99,3 +136,15 @@ export const getResultHistoryCaption = (
     ...(comparison && { comparison }),
   };
 };
+
+/**
+ * Whether the test has never run: nothing in the range and no latest result.
+ * A version's snapshot carries no latest result, so on the version page a
+ * test whose runs are all outside the range would read as never run; that
+ * page keeps the range's own empty state.
+ */
+export const hasTestCaseNeverRun = (
+  testCase: Pick<TestCase, 'testCaseResult'>,
+  results: unknown[],
+  isVersionPage: boolean
+) => !isVersionPage && isEmpty(results) && isUndefined(testCase.testCaseResult);

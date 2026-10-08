@@ -239,7 +239,7 @@ class GlobalSettingsClassBase {
             icon: MlModelIcon,
           },
           {
-            label: t('label.storage-plural'),
+            label: t('label.storage'),
             description: t('message.page-sub-header-for-storages'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.STORAGE_SERVICE,
@@ -249,7 +249,7 @@ class GlobalSettingsClassBase {
             icon: StorageIcon,
           },
           {
-            label: t('label.search'),
+            label: t('label.search-engine-plural'),
             description: t('message.page-sub-header-for-search'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.SEARCH_SERVICE,
@@ -259,7 +259,7 @@ class GlobalSettingsClassBase {
             icon: SearchIconV1,
           },
           {
-            label: t('label.metadata'),
+            label: t('label.catalog-plural'),
             description: t('message.page-sub-header-for-metadata'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.METADATA_SERVICE,
@@ -922,6 +922,24 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: WorksheetIcon,
+          },
+          {
+            label: t('label.team-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.team-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TEAMS}`,
+            icon: TeamsIcon,
+          },
+          {
+            label: t('label.user-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.user-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.USERS}`,
+            icon: UsersIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

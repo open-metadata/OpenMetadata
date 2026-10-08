@@ -24,7 +24,11 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  Edit01 as Edit,
+  Trash01 as Delete,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -48,6 +52,7 @@ import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getPolicies,
   getRoleByName,
@@ -71,6 +76,8 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import CopyLinkButton from '../../../../../CopyLinkButton/CopyLinkButton.component';
+import { profileHash } from '../members/profileHash.utils';
 import type { AccessControlView } from './AccessControl.types';
 
 type RoleTab = 'policies' | 'teams' | 'users';
@@ -202,6 +209,7 @@ const EntityTable: FC<EntityTableProps> = ({
         )}
       </Table.Header>
       <Table.Body
+        dependencies={[showRemove, canEditAll, isLoadingOnSave]}
         items={items ?? []}
         renderEmptyState={() => (
           <Box
@@ -215,6 +223,7 @@ const EntityTable: FC<EntityTableProps> = ({
           <Table.Row
             columns={columns}
             data-testid={getEntityName(item)}
+            dependencies={[showRemove, canEditAll, isLoadingOnSave]}
             id={item.fullyQualifiedName ?? item.name ?? item.id}
             key={item.fullyQualifiedName ?? item.name ?? item.id}>
             {(col) => (
@@ -388,6 +397,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { contains } = useFilter({ sensitivity: 'base' });
+  const { goTo } = useSettingsHash();
 
   const [role, setRole] = useState<Role>();
   const [isLoading, setIsLoading] = useState(true);
@@ -435,12 +445,13 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     try {
       const data = await getRoleByName(fqn, 'policies,teams,users');
       setRole(data);
+      onRename?.(getEntityName(data));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [fqn]);
+  }, [fqn, onRename]);
 
   useEffect(() => {
     fetchRole();
@@ -497,22 +508,30 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
       />
     ) : undefined;
 
-    const renameButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <ButtonUtility
-        color="tertiary"
-        data-testid="rename-role-btn"
-        icon={Edit}
-        isDisabled={!canEditAll}
-        size="xs"
-        tooltip={String(
-          canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
-        )}
-        tooltipPlacement="right"
-        onPress={() => {
-          setRenameValue(role.displayName || role.name || '');
-          setIsRenameOpen(true);
-        }}
-      />
+    const titleSuffixNode: React.ReactNode = isRenameOpen ? undefined : (
+      <Box align="center" direction="row" gap={1}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="rename-role-btn"
+          icon={Edit}
+          isDisabled={!canEditAll}
+          size="xs"
+          tooltip={String(
+            canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
+          )}
+          tooltipPlacement="right"
+          onPress={() => {
+            setRenameValue(role.displayName || role.name || '');
+            setIsRenameOpen(true);
+          }}
+        />
+        <CopyLinkButton
+          testId="copy-link-btn"
+          tooltip={String(t('label.copy'))}
+          url={window.location.href}>
+          <Copy01 className="tw:size-3" />
+        </CopyLinkButton>
+      </Box>
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
@@ -530,7 +549,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
       />
     );
 
-    onSetHeaderTitleSuffix?.(renameButtonNode);
+    onSetHeaderTitleSuffix?.(titleSuffixNode);
     onSetHeaderActions?.(deleteButtonNode);
     onSetHeaderTitleInput?.(titleInputNode);
   }, [
@@ -923,10 +942,13 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         items={role?.teams}
         showRemove={Boolean(isAdminUser)}
         t={t}
+        onNavigateToDetail={(item) =>
+          goTo(profileHash.team(item.fullyQualifiedName ?? item.name ?? ''))
+        }
         onRemove={(item) => handleEntityRemove(item, 'team')}
       />
     ),
-    [columns, handleEntityRemove, isAdminUser, isLoadingOnSave, role, t]
+    [columns, goTo, handleEntityRemove, isAdminUser, isLoadingOnSave, role, t]
   );
 
   const renderUsersTab = useCallback(
@@ -942,10 +964,13 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         items={role?.users}
         showRemove={Boolean(isAdminUser)}
         t={t}
+        onNavigateToDetail={(item) =>
+          goTo(profileHash.user(item.name ?? item.fullyQualifiedName ?? ''))
+        }
         onRemove={(item) => handleEntityRemove(item, 'user')}
       />
     ),
-    [columns, handleEntityRemove, isAdminUser, isLoadingOnSave, role, t]
+    [columns, goTo, handleEntityRemove, isAdminUser, isLoadingOnSave, role, t]
   );
 
   if (isLoading) {

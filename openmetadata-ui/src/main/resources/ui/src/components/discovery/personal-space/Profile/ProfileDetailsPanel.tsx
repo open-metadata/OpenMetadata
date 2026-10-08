@@ -17,7 +17,7 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check } from '@untitledui/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import startCase from 'lodash/startCase';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';

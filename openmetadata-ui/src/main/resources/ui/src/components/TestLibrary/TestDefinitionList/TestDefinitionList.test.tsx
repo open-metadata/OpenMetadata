@@ -130,7 +130,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Toggle: jest.requireActual('@openmetadata/ui-core-components').Toggle,
     CloseButton: jest
       .fn()
       .mockImplementation(({ onPress }) => (
@@ -699,11 +701,10 @@ describe('TestDefinitionList Component', () => {
       const initialCallCount = (patchTestDefinition as jest.Mock).mock.calls
         .length;
 
-      fireEvent.click(externalSwitch);
-
-      await waitFor(() => {
-        expect(patchTestDefinition).toHaveBeenCalledTimes(initialCallCount);
-      });
+      // The guard is the native `disabled` input: browsers drop clicks on it,
+      // but jsdom still toggles a disabled checkbox on a synthetic click.
+      expect(externalSwitch).toBeDisabled();
+      expect(patchTestDefinition).toHaveBeenCalledTimes(initialCallCount);
     });
 
     it('should allow toggling OpenMetadata test definitions', async () => {

@@ -30,12 +30,12 @@ const REST_LIST = '/api/v1/contextCenter/pages';
 const DOMAIN_A_ARTICLE_COUNT = 6;
 const DOMAIN_B_ARTICLE_COUNT = 4;
 
-const domainA = new Domain();
-const domainB = new Domain();
-const classification = new ClassificationClass();
-const topicTag = new TagClass({ classification: classification.data.name });
+let domainA: Domain;
+let domainB: Domain;
+let classification: ClassificationClass;
+let topicTag: TagClass;
 
-const createdArticleFqns: string[] = [];
+let createdArticleFqns: string[];
 
 const createArticle = async (
   apiContext: APIRequestContext,
@@ -84,8 +84,7 @@ const applyDomainFilter = async (page: Page, domainDisplayName: string) => {
   const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes(PAGE_INDEX_SEARCH) &&
-      response.url().includes('index=page') &&
-      response.status() === 200
+      response.url().includes('index=page')
   );
   await page.getByTestId('update-btn').click();
 
@@ -109,7 +108,16 @@ test.describe(
     let adminId = '';
 
     test.beforeAll('Setup entities and articles', async ({ browser }) => {
-      test.setTimeout(3 * 60 * 1000);
+      test.setTimeout(4 * 60 * 1000);
+
+      // beforeAll can run twice in one worker under fullyParallel (see frontend-playwright.md);
+      // rebuild all describe-scope state here so a re-run never reuses an entity a prior afterAll
+      // deleted, nor waits on FQNs it already hard-deleted.
+      domainA = new Domain();
+      domainB = new Domain();
+      classification = new ClassificationClass();
+      topicTag = new TagClass({ classification: classification.data.name });
+      createdArticleFqns = [];
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -151,9 +159,15 @@ test.describe(
         createdArticleFqns.push(fqn);
       }
 
+      // The sort tests query the Elasticsearch `page` index directly (sort by publicationDate /
+      // totalVotes cannot be served from the REST DB API), so every seeded article must be indexed
+      // before the specs run. Each create is asserted 201 above; this waits for async indexing.
+      // Residual infra risk: if the search-index consumer for `page` entities is not running or is
+      // badly backed up in the lane, indexing never completes and this times out regardless of test
+      // code — the throw names the first FQN that never appeared so the cause is unambiguous.
       await Promise.all(
         createdArticleFqns.map((fqn) =>
-          waitForSearchIndexed(apiContext, fqn, 'page', { timeout: 90_000 })
+          waitForSearchIndexed(apiContext, fqn, 'page', { timeout: 180_000 })
         )
       );
 
@@ -215,6 +229,7 @@ test.describe(
           domainA.responseData.displayName
         );
         const response = await searchResponse;
+        expect(response.status()).toBe(200);
         const body = await response.json();
 
         expect(body.hits.total.value).toBe(DOMAIN_A_ARTICLE_COUNT);
@@ -223,12 +238,11 @@ test.describe(
       });
 
       await test.step('Clear resets to the unfiltered listing', async () => {
-        const listResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(REST_LIST) && response.status() === 200
+        const listResponse = page.waitForResponse((response) =>
+          response.url().includes(REST_LIST)
         );
         await page.getByTestId('clear-articles-filters').click();
-        await listResponse;
+        expect((await listResponse).status()).toBe(200);
 
         await waitForAllLoadersToDisappear(page);
         await expect(page.getByTestId('clear-articles-filters')).toHaveCount(0);
@@ -243,11 +257,10 @@ test.describe(
         const listResponse = page.waitForResponse(
           (response) =>
             response.url().includes(REST_LIST) &&
-            response.url().includes('sortBy=displayName') &&
-            response.status() === 200
+            response.url().includes('sortBy=displayName')
         );
         await selectSort(page, 'Alphabetical');
-        await listResponse;
+        expect((await listResponse).status()).toBe(200);
       });
 
       await test.step('Publication date uses the ES search path', async () => {
@@ -255,11 +268,10 @@ test.describe(
           (response) =>
             response.url().includes(PAGE_INDEX_SEARCH) &&
             response.url().includes('index=page') &&
-            response.url().includes('sort_field=page.publicationDate') &&
-            response.status() === 200
+            response.url().includes('sort_field=page.publicationDate')
         );
         await selectSort(page, 'Publication date');
-        await searchResponse;
+        expect((await searchResponse).status()).toBe(200);
       });
 
       await test.step('Popularity uses the ES search path', async () => {
@@ -267,11 +279,10 @@ test.describe(
           (response) =>
             response.url().includes(PAGE_INDEX_SEARCH) &&
             response.url().includes('index=page') &&
-            response.url().includes('sort_field=totalVotes') &&
-            response.status() === 200
+            response.url().includes('sort_field=totalVotes')
         );
         await selectSort(page, 'Popularity');
-        await searchResponse;
+        expect((await searchResponse).status()).toBe(200);
       });
     });
 
@@ -287,6 +298,7 @@ test.describe(
           domainA.responseData.displayName
         );
         const response = await searchResponse;
+        expect(response.status()).toBe(200);
         const body = await response.json();
 
         expect(body.hits.total.value).toBe(DOMAIN_A_ARTICLE_COUNT);
@@ -302,11 +314,11 @@ test.describe(
           const searchResponse = page.waitForResponse(
             (response) =>
               response.url().includes(PAGE_INDEX_SEARCH) &&
-              response.url().includes('index=page') &&
-              response.status() === 200
+              response.url().includes('index=page')
           );
           await selectSort(page, sortLabel);
           const response = await searchResponse;
+          expect(response.status()).toBe(200);
           const body = await response.json();
 
           expect(body.hits.total.value).toBe(DOMAIN_A_ARTICLE_COUNT);

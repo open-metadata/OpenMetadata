@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Form, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   ModifiedCreateEventSubscription,
@@ -27,7 +29,6 @@ import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 function ObservabilityAlertForm({
   alert,
   breadcrumb,
-  containerEntities,
   extraFormButtons,
   extraFormWidgets,
   filterResources,
@@ -38,10 +39,9 @@ function ObservabilityAlertForm({
   isEditMode,
   isLoading,
   saving,
+  selection,
   shouldShowActionsSection,
   shouldShowFiltersSection,
-  supportedFilters,
-  supportedTriggers,
   templateResourcePermission,
   templates,
 }: Readonly<ObservabilityAlertFormProps>) {
@@ -54,12 +54,12 @@ function ObservabilityAlertForm({
       </Col>
 
       <Col span={24}>
-        <Typography.Title level={5}>
+        <Typography as="h5" size="text-md" weight="semibold">
           {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
             entity: t('label.alert'),
           })}
-        </Typography.Title>
-        <Typography.Text>{t('message.alerts-description')}</Typography.Text>
+        </Typography>
+        <Typography>{t('message.alerts-description')}</Typography>
       </Col>
 
       <Col span={24}>
@@ -73,20 +73,19 @@ function ObservabilityAlertForm({
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSave}>
           <Row gutter={[20, 20]}>
-            <ObservabilityAlertFormFields
-              alert={alert}
-              containerEntities={containerEntities}
-              extraFormWidgets={extraFormWidgets}
-              filterResources={filterResources}
-              form={form}
-              isLoading={isLoading}
-              shouldShowActionsSection={shouldShowActionsSection}
-              shouldShowFiltersSection={shouldShowFiltersSection}
-              supportedFilters={supportedFilters}
-              supportedTriggers={supportedTriggers}
-              templateResourcePermission={templateResourcePermission}
-              templates={templates}
-            />
+            <AlertSelectionProvider value={selection}>
+              <ObservabilityAlertFormFields
+                alert={alert}
+                extraFormWidgets={extraFormWidgets}
+                filterResources={filterResources}
+                form={form}
+                isLoading={isLoading}
+                shouldShowActionsSection={shouldShowActionsSection}
+                shouldShowFiltersSection={shouldShowFiltersSection}
+                templateResourcePermission={templateResourcePermission}
+                templates={templates}
+              />
+            </AlertSelectionProvider>
 
             {!isUndefined(inlineAlertDetails) && (
               <Col span={24}>

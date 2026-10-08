@@ -604,6 +604,8 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude Process Chains that match the pattern.
  *
+ * Regex exclude or include pipelines that match the pattern.
+ *
  * Regex to only include/exclude directories that match the pattern.
  *
  * Regex to only include/exclude files that match the pattern.
@@ -791,6 +793,10 @@ export interface PipelineStatus {
      * executionDate of the pipeline run for this particular execution.
      */
     timestamp?: number;
+    /**
+     * User who triggered the run on demand, when known. Not set for scheduled runs.
+     */
+    triggeredBy?: string;
 }
 
 /**
@@ -4059,6 +4065,8 @@ export interface ServiceConnection {
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
+ * Tableau Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -4409,6 +4417,8 @@ export interface Connection {
      *
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
+     *
+     * Tableau Server URL.
      *
      * Host and port of the ElasticSearch service.
      *
@@ -4946,8 +4956,7 @@ export interface Connection {
     /**
      * Option to include policy tags as part of column description.
      */
-    includePolicyTags?:       boolean;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    includePolicyTags?: boolean;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
@@ -5936,6 +5945,8 @@ export interface Connection {
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -5946,6 +5957,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -6102,6 +6115,12 @@ export interface Connection {
      * {"S3_Connector": "my-s3-service"}
      */
     serviceMapping?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -7257,8 +7276,7 @@ export interface AirflowConnectionConnection {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -7485,96 +7503,6 @@ export enum Region {
 }
 
 /**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    /**
-     * Bucket Name
-     */
-    bucketName?: string;
-    /**
-     * Provide the pattern of the path where the generated sample data file needs to be stored.
-     */
-    filePathPattern?: string;
-    /**
-     * When this field enabled a single parquet file will be created to store sample data,
-     * otherwise we will create a new file per day
-     */
-    overwriteData?: boolean;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:        string;
-    storageConfig?: AwsCredentials;
-    [property: string]: any;
-}
-
-/**
- * AWS credentials configs.
- *
- * AWS credentials required to access the S3 file.
- *
- * AWS credentials for generating MWAA CLI token.
- *
- * AWS credentials configuration.
- */
-export interface AwsCredentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  */
 export enum ConnectionScheme {
@@ -7770,8 +7698,7 @@ export interface DatabaseConnectionClass {
     /**
      * Password to connect to MSSQL.
      */
-    password?:                string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    password?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -7993,8 +7920,7 @@ export interface HiveMetastoreConnectionDetails {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -8739,6 +8665,7 @@ export enum AirflowConnectionType {
     Superset = "Superset",
     Synapse = "Synapse",
     Tableau = "Tableau",
+    TableauPipeline = "TableauPipeline",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
     Timescale = "Timescale",

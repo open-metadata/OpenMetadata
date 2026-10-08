@@ -19,9 +19,7 @@ import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
 import java.util.ArrayList;
 import java.util.Collections;
 import org.apache.commons.lang3.StringUtils;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.util.email.EmailUtil;
 
 public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
@@ -73,30 +71,8 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public EmailMessage buildEntityMessage(String publisherName, ChangeEvent event) {
-    return getEmailMessage(createEntityMessage(publisherName, event));
-  }
-
-  @Override
   public EmailMessage buildTestMessage() {
     return getEmailTestMessage();
-  }
-
-  @Override
-  public EmailMessage buildThreadMessage(String publisherName, ChangeEvent event) {
-    return getEmailMessage(createThreadMessage(publisherName, event));
-  }
-
-  public EmailMessage getEmailMessage(OutgoingMessage outgoingMessage) {
-    if (!outgoingMessage.getMessages().isEmpty()) {
-      EmailMessage emailMessage = new EmailMessage();
-      emailMessage.setUserName(outgoingMessage.getUserName());
-      emailMessage.setEntityUrl(outgoingMessage.getEntityUrl());
-      emailMessage.setUpdatedBy(outgoingMessage.getUserName());
-      emailMessage.setChangeMessage(new ArrayList<>(outgoingMessage.getMessages()));
-      return emailMessage;
-    }
-    throw new UnhandledServerException("No messages found for the event");
   }
 
   public EmailMessage getEmailTestMessage() {

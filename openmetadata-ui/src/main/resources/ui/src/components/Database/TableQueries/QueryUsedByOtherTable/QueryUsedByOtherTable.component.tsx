@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Popover, Row, Space, Typography } from 'antd';
+import {
+  Button,
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -33,8 +39,6 @@ import {
   QueryUsedByOtherTableProps,
   QueryUsedByTable,
 } from '../TableQueries.interface';
-
-const { Text } = Typography;
 
 const QueryUsedByOtherTable = ({
   query,
@@ -66,10 +70,10 @@ const QueryUsedByOtherTable = ({
 
   const tableNames = useMemo(
     () => (
-      <Text>
+      <Typography>
         {topThreeTable.length
           ? topThreeTable.map((table, index) => (
-              <Text className="m-r-xss" key={table.name}>
+              <Typography className="m-r-xss" key={table.name}>
                 <Link
                   to={getEntityDetailsPath(
                     EntityType.TABLE,
@@ -78,14 +82,27 @@ const QueryUsedByOtherTable = ({
                   {getEntityName(table)}
                 </Link>
                 {topThreeTable.length - 1 !== index && ','}
-              </Text>
+              </Typography>
             ))
           : '--'}
         {remainingTable.length ? (
           <>
-            <Text className="m-r-xss">{t('label.and-lowercase')}</Text>
-            <Popover
-              content={
+            <Typography className="m-r-xss">
+              {t('label.and-lowercase')}
+            </Typography>
+            <PopoverTrigger>
+              <Button
+                noTextPadding
+                className="show-more"
+                color="link-color"
+                data-testid="show-more"
+                size="sm">
+                {`${remainingTable.length} ${t('label.more-lowercase')}`}
+              </Button>
+              <Popover
+                arrow
+                containerClassName="tw:px-4 tw:py-3"
+                placement="bottom">
                 <Space direction="vertical">
                   {remainingTable.map((table) => (
                     <Link
@@ -98,16 +115,11 @@ const QueryUsedByOtherTable = ({
                     </Link>
                   ))}
                 </Space>
-              }
-              placement="bottom"
-              trigger="click">
-              <Text className="show-more" data-testid="show-more">
-                {`${remainingTable.length} ${t('label.more-lowercase')}`}
-              </Text>
-            </Popover>
+              </Popover>
+            </PopoverTrigger>
           </>
         ) : null}
-      </Text>
+      </Typography>
     ),
     [topThreeTable, remainingTable]
   );
@@ -195,7 +207,7 @@ const QueryUsedByOtherTable = ({
   return (
     <Row wrap data-testid="para-container">
       <Col flex="200px">
-        <Text>{`${t('message.query-used-by-other-tables')}:`}</Text>
+        <Typography>{`${t('message.query-used-by-other-tables')}:`}</Typography>
       </Col>
       <Col>{isEditMode ? selectList : tableNames}</Col>
     </Row>

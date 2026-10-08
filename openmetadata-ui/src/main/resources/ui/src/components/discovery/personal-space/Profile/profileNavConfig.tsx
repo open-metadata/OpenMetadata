@@ -12,16 +12,20 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { PermissionDebugger as AccessControlIcon } from '@openmetadata/ui-core-components/icons';
 import {
   Bell01,
   Key01,
+  PermissionDebugger as AccessControlIcon,
+  Policy as GovernanceTabIcon,
   Settings02,
   ShieldTick,
   User01,
-} from '@untitledui/icons';
+  Users01,
+} from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
+import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
+import type { ProfileNavId } from '../../../../constants/Profile.constants';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
@@ -30,22 +34,21 @@ import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
+import BotsPanel from './tabs/bots/BotsPanel';
+import GovernancePanel from './tabs/governance/GovernancePanel';
+import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
-export type ProfileNavId =
-  | 'profile'
-  | 'permissions'
-  | 'access-token'
-  | 'my-connections'
-  | 'access-control'
-  | 'custom-properties'
-  | 'notification';
+// Single source of truth lives in Profile.constants (hook-safe layer); re-exported
+// here so existing imports of `ProfileNavId` from this module keep working.
+export type { ProfileNavId };
 
 /** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
 export type ProfileNavGroup =
   | 'account'
   | 'administration'
+  | 'features'
   | 'workspace'
   | 'application'
   | 'credentials';
@@ -54,6 +57,7 @@ export type ProfileNavGroup =
 export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   account: 'label.account',
   administration: 'label.administration',
+  features: 'label.feature-plural',
   workspace: 'label.workspace',
   application: 'label.application',
   credentials: 'label.credential-plural',
@@ -63,6 +67,7 @@ export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
 export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'account',
   'administration',
+  'features',
   'workspace',
   'application',
   'credentials',
@@ -175,12 +180,36 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
       <AccessControlPanel onHeaderChange={onHeaderChange} />
     ),
   },
+  {
+    id: 'bots',
+    group: 'administration',
+    label: 'label.bot-plural',
+    description: 'message.page-sub-header-for-bots',
+    icon: BotIcon as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <BotsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   // The "My Connections" tab is contributed by the Query Runner plugin through
   // the `profile.tabs` extension point (see ProfilePage), so the app-mode
   // profile works standalone in OSS when the plugin is absent.
 ];
 
 export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'members',
+    group: 'workspace',
+    label: 'label.member-plural',
+    description: 'message.team-member-management-description',
+    icon: Users01,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <MembersPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   {
     id: 'custom-properties',
     group: 'workspace',
@@ -215,7 +244,25 @@ export const APPLICATION_NAV_ITEMS: ProfileNavItem[] = [
   },
 ];
 
+export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'governance',
+    group: 'features',
+    label: 'label.governance',
+    description: 'message.governance-settings-description',
+    icon: GovernanceTabIcon as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <GovernancePanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+];
+
 export const getProfileNavItem = (id: ProfileNavId): ProfileNavItem =>
-  [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...APPLICATION_NAV_ITEMS].find(
-    (item) => item.id === id
-  ) ?? PROFILE_NAV_ITEMS[0];
+  [
+    ...PROFILE_NAV_ITEMS,
+    ...WORKSPACE_NAV_ITEMS,
+    ...APPLICATION_NAV_ITEMS,
+    ...FEATURES_NAV_ITEMS,
+  ].find((item) => item.id === id) ?? PROFILE_NAV_ITEMS[0];

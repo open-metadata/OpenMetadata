@@ -48,6 +48,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.findEntityByNameOrNull;
@@ -55,6 +56,9 @@ import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityStatusMoveNotInLifecycle;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityStatusNotInLifecycle;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityStatusOwnedByWorkflow;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
@@ -172,6 +176,7 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
+import org.openmetadata.schema.CreationAudited;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
@@ -235,6 +240,9 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.EntityLifecycle;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
+import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -548,6 +556,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
   @Getter protected final boolean supportsEntityStatus;
+
+  /**
+   * Lifecycle stage a new entity starts in when its create request carries none. Most entities
+   * describe assets that already exist in the data infrastructure, so they start Approved; entity
+   * types created and reviewed in OpenMetadata start in Draft instead.
+   */
+  protected EntityStatus defaultEntityStatus = EntityStatus.UNPROCESSED;
+
+  /**
+   * Whether an active governance workflow that sets this entity type's lifecycle stage is the only
+   * way to change it. Off for entity types whose stage a dedicated service drives through its own
+   * endpoints, such as AI asset governance.
+   */
+  protected boolean workflowsOwnEntityStatus = true;
+
+  /** Whether only a reviewer may delete an entity of this type while it is in review. */
+  protected boolean onlyReviewersDeleteInReview = false;
+
+  /**
+   * Whether an approval task on an entity of this type reviews its lifecycle stage, so the open
+   * task closes once the stage leaves review or goes back to Draft. Elsewhere an approval task can
+   * review any change, such as a tag, and stays with the workflow run that opened it.
+   */
+  protected boolean approvalTaskReviewsEntityStatus = false;
+
+  /** Decides which active governance workflows own an entity's lifecycle stage. */
+  protected StageOwnership stageOwnership = EntityStatusWorkflows.ACTIVE;
+
+  /**
+   * The lifecycle stages this entity type uses and the moves between them. Most types use the
+   * general lifecycle; a type with stages of its own declares its lifecycle here.
+   */
+  protected EntityLifecycle entityLifecycle = EntityLifecycle.GENERAL;
+
   protected boolean quoteFqn =
       false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
   protected boolean renameAllowed = false; // Entity can be renamed
@@ -1416,20 +1458,182 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
-   * Set default status for entities that support status field.
-   * All entities use EntityStatus.APPROVED as the default.
-   * Override this method only for entities that need custom status logic (e.g., GlossaryTerm with reviewers)
+   * Lifecycle stage a new entity starts in: the one its create request asked for, else {@link
+   * #defaultEntityStatus}. Override when the stage must be derived whatever the request says, e.g.
+   * from the reviewers who will approve the entity. Only consulted at creation: an update that
+   * omits the stage keeps the stored one.
    */
-  protected void setDefaultStatus(T entity, boolean update) {
-    if (!supportsEntityStatus) {
-      return;
+  protected EntityStatus initialEntityStatus(T entity) {
+    return Objects.requireNonNullElse(entity.getEntityStatus(), defaultEntityStatus);
+  }
+
+  /** Puts a new entity in the stage it starts in; every create path calls it before storing. */
+  void assignInitialEntityStatus(T entity) {
+    if (supportsEntityStatus) {
+      requireStageInLifecycle(entity.getEntityStatus());
+      if (requestsStageOwnedByWorkflow(entity)) {
+        entity.setEntityStatus(null);
+      }
+      entity.setEntityStatus(initialEntityStatus(entity));
     }
-    // Skip if status is already set
-    if (entity.getEntityStatus() != null) {
-      return;
+  }
+
+  // A new entity cannot be created straight into a stage that a workflow owns: it starts where
+  // every new entity of its type starts, and the workflow moves it from there.
+  private boolean requestsStageOwnedByWorkflow(T entity) {
+    return entity.getEntityStatus() != null
+        && workflowsOwnEntityStatus
+        && !EntityStatusWorkflows.isWorkflowChange(entity)
+        && stageOwnership.owningStageOf(entityType, entity).isPresent();
+  }
+
+  /** Active workflows that own this entity type's lifecycle stage, sorted; empty when none can. */
+  public List<String> getStageWorkflows() {
+    return supportsEntityStatus && workflowsOwnEntityStatus
+        ? stageOwnership.owningStageOf(entityType)
+        : List.of();
+  }
+
+  private void validateEntityStatusChange(T current, T change, EntityStatus from, EntityStatus to) {
+    requireMoveInLifecycle(from, to);
+    checkEntityStatusNotOwnedByWorkflow(current, change);
+    // A workflow's approval task already decided who may approve (reviewers, owners or named
+    // candidates), so the reviewer rule only guards direct edits and imports.
+    if (from == EntityStatus.IN_REVIEW
+        && (to == EntityStatus.APPROVED || to == EntityStatus.REJECTED)
+        && !EntityStatusWorkflows.isWorkflowChange(change)) {
+      checkUpdatedByReviewer(current, change.getUpdatedBy());
     }
-    // Set default status to UNPROCESSED
-    entity.setEntityStatus(EntityStatus.UNPROCESSED);
+  }
+
+  /**
+   * Applies the update path's stage rules to a CSV row that the batched import stores without an
+   * {@link EntityUpdater}: a row without a stage keeps the stored one, and a stage change must be a
+   * move in the type's lifecycle that no active workflow owns. Throws so the row is reported as
+   * failed instead of silently leaving the lifecycle.
+   */
+  public void applyEntityStatusRulesForImport(T original, T updated, String importedBy) {
+    if (supportsEntityStatus) {
+      if (updated.getEntityStatus() == null) {
+        updated.setEntityStatus(original.getEntityStatus());
+      }
+      EntityStatus from = original.getEntityStatus();
+      EntityStatus to = updated.getEntityStatus();
+      if (from != to) {
+        updated.setUpdatedBy(importedBy);
+        loadReviewersForStageCheck(original, from);
+        validateEntityStatusChange(original, updated, from, to);
+      }
+    }
+  }
+
+  // An import row is matched from stored JSON, which holds no relationship fields, so the reviewer
+  // rule would see an entity without reviewers. Load them the way a PATCH does, inherited ones
+  // included, before checking who may move the entity out of review.
+  private void loadReviewersForStageCheck(T original, EntityStatus from) {
+    if (supportsReviewers && from == EntityStatus.IN_REVIEW) {
+      T withReviewers =
+          get(null, original.getId(), getFields(FIELD_REVIEWERS), Include.NON_DELETED, false);
+      original.setReviewers(withReviewers.getReviewers());
+    }
+  }
+
+  private void checkEntityStatusNotOwnedByWorkflow(T current, T change) {
+    if (workflowsOwnEntityStatus && !EntityStatusWorkflows.isWorkflowChange(change)) {
+      stageOwnership
+          .owningStageOf(entityType, current)
+          .ifPresent(
+              workflow -> {
+                throw new AuthorizationException(
+                    entityStatusOwnedByWorkflow(
+                        entityType, current.getFullyQualifiedName(), workflow));
+              });
+    }
+  }
+
+  public EntityLifecycle getEntityLifecycle() {
+    return entityLifecycle;
+  }
+
+  private void requireStageInLifecycle(EntityStatus stage) {
+    if (stage != null && !entityLifecycle.includes(stage)) {
+      throw new BadRequestException(entityStatusNotInLifecycle(entityType, stage.value()));
+    }
+  }
+
+  // An entity saved before it had a stage can take any stage of its lifecycle
+  private void requireMoveInLifecycle(EntityStatus from, EntityStatus to) {
+    if (from == null) {
+      requireStageInLifecycle(to);
+    } else if (!entityLifecycle.allows(from, to)) {
+      throw new BadRequestException(
+          entityStatusMoveNotInLifecycle(entityType, from.value(), to.value()));
+    }
+  }
+
+  /** When an entity has reviewers, only one of them may approve, reject or delete it in review. */
+  public static void checkUpdatedByReviewer(EntityInterface entity, String updatedBy) {
+    List<EntityReference> reviewers = entity.getReviewers();
+    if (!nullOrEmpty(reviewers)) {
+      boolean isReviewer =
+          reviewers.stream()
+              .anyMatch(
+                  e -> {
+                    if (e.getType().equals(TEAM)) {
+                      Team team =
+                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                      return team.getUsers().stream()
+                          .anyMatch(
+                              u ->
+                                  u.getName().equals(updatedBy)
+                                      || u.getFullyQualifiedName().equals(updatedBy));
+                    } else {
+                      return e.getName().equals(updatedBy)
+                          || e.getFullyQualifiedName().equals(updatedBy);
+                    }
+                  });
+      if (!isReviewer) {
+        throw new AuthorizationException(notReviewer(updatedBy));
+      }
+    }
+  }
+
+  private void checkInReviewEntityDeletedByReviewer(T entity, String deletedBy) {
+    if (onlyReviewersDeleteInReview && entity.getEntityStatus() == EntityStatus.IN_REVIEW) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
+  /**
+   * An open approval task only applies while the entity is in review. Once the entity is approved,
+   * rejected or sent back to Draft, the task is closed instead of being left dangling.
+   */
+  private void closeApprovalTaskOnEntityStatusChange(T original, T updated) {
+    if (approvalTaskReviewsEntityStatus && updated.getUpdatedBy() != null) {
+      approvalTaskClosingComment(entityType, original.getEntityStatus(), updated.getEntityStatus())
+          .ifPresent(comment -> closeApprovalTask(updated, comment));
+    }
+  }
+
+  static Optional<String> approvalTaskClosingComment(
+      String entityType, EntityStatus from, EntityStatus to) {
+    String entityTypeName =
+        entityType.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase(Locale.ROOT);
+    Optional<String> comment = Optional.empty();
+    if (from == EntityStatus.IN_REVIEW && to == EntityStatus.APPROVED) {
+      comment = Optional.of("Approved the " + entityTypeName);
+    } else if (from == EntityStatus.IN_REVIEW && to == EntityStatus.REJECTED) {
+      comment = Optional.of("Rejected the " + entityTypeName);
+    } else if (from != EntityStatus.DRAFT && to == EntityStatus.DRAFT) {
+      comment = Optional.of("Closed due to " + entityTypeName + " going back to DRAFT.");
+    }
+    return comment;
+  }
+
+  private void closeApprovalTask(T entity, String comment) {
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   /**
@@ -3097,7 +3301,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
-    setDefaultStatus(entity, update);
     if (!update) {
       // Only on create: on PATCH the incoming entity carries the *stored* certification even when
       // the patch never touched it, so validating there would start rejecting unrelated edits to
@@ -3105,6 +3308,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
       prepareCertification(entity);
     }
     // Domain is already validated
+  }
+
+  /**
+   * Stamp who created the entity and when, derived from updatedAt/updatedBy so a freshly created
+   * entity satisfies createdAt == updatedAt and createdBy == updatedBy.
+   *
+   * <p>This is called from {@link #createNewEntity(Object)} rather than from prepare: PUT reaches
+   * the create path through {@code EntityResource.createOrUpdate}, which calls
+   * {@code prepareInternal(entity, true)}, so a prepare-time hook would skip every entity created
+   * by ingestion. createNewEntity is the one funnel all create paths share, and by then the
+   * late updatedBy override in {@code createInternal} has already been applied.
+   *
+   * <p>Entities whose schema does not declare these fields fall through to the no-op
+   * EntityInterface defaults.
+   */
+  private void setCreationAudit(T entity) {
+    if (!(entity instanceof CreationAudited audited)) {
+      return;
+    }
+    if (audited.getCreatedAt() == null) {
+      audited.setCreatedAt(
+          entity.getUpdatedAt() != null ? entity.getUpdatedAt() : System.currentTimeMillis());
+    }
+    if (nullOrEmpty(audited.getCreatedBy())) {
+      audited.setCreatedBy(entity.getUpdatedBy());
+    }
+  }
+
+  /**
+   * Creation audit is immutable. Carrying it from the stored entity onto the incoming one before any
+   * diffing means a PUT that omits it or a PATCH that rewrites it cannot move it, and no change is
+   * ever recorded against it.
+   */
+  private void carryCreationAudit(T original, T updated) {
+    if (original instanceof CreationAudited stored && updated instanceof CreationAudited incoming) {
+      incoming.setCreatedAt(stored.getCreatedAt());
+      incoming.setCreatedBy(stored.getCreatedBy());
+    }
   }
 
   public final void storeRelationshipsInternal(T entity) {
@@ -4007,10 +4248,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       lockManager.checkModificationsAllowed(entities);
     }
 
-    // 2. Set impersonatedBy for each entity
+    // 2. Set impersonatedBy and the creation audit for each entity
     for (T entity : entities) {
       entity.setImpersonatedBy(impersonatedBy);
+      setCreationAudit(entity);
     }
+    entities.forEach(this::assignInitialEntityStatus);
 
     // 3. Store entities and relationships in one atomic transaction. Cache invalidations issued by
     // storeRelationshipsInternal are recorded and drained post-commit (no Redis round trip while
@@ -4051,6 +4294,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T updated = updates.get(i);
       // Copy ID and version from original
       updated.setId(original.getId());
+      carryCreationAudit(original, updated);
       updated.setVersion(nextVersion(original.getVersion()));
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
@@ -4193,13 +4437,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ListCountCache.invalidate(entityType);
   }
 
-  @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
     try (var ignored = phase("lifecycleDispatch")) {
       EntityLifecycleEventDispatcher.getInstance()
           .onEntityUpdated(updated, updated.getChangeDescription(), null);
     }
     RdfUpdater.updateEntity(updated);
+    closeApprovalTaskOnEntityStatusChange(original, updated);
   }
 
   @SuppressWarnings("unused")
@@ -4681,6 +4925,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected DeleteLifecycle beginDeleteLifecycle(T entity, String deletedBy) {
+    checkInReviewEntityDeletedByReviewer(entity, deletedBy);
     preDelete(entity, deletedBy);
     return DeleteLifecycle.NOOP;
   }
@@ -5237,11 +5482,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
           () ->
               Entity.getJdbi()
                   .inTransaction(
-                      handle -> {
-                        RepositoryTransactionContext.runWith(
-                            handle.attach(CollectionDAO.class), flushBody);
-                        return null;
-                      }));
+                      handle ->
+                          TransactionRollbackTracker.runAttempt(
+                              () -> {
+                                RepositoryTransactionContext.runWith(
+                                    handle.attach(CollectionDAO.class), flushBody);
+                                return null;
+                              })));
     } finally {
       exitRetryableBoundary(ownsRetry);
     }
@@ -5279,6 +5526,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected T createNewEntity(T entity) {
+    setCreationAudit(entity);
     createNewEntityFlush(entity);
     try (var ignored = phase("createPostCreate")) {
       postCreate(entity);
@@ -5287,6 +5535,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createNewEntityFlush(T entity) {
+    assignInitialEntityStatus(entity);
     flushInOneTransaction(() -> createNewEntityFlushBody(entity));
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
@@ -5352,10 +5601,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return DeadlockRetry.execute(
         () ->
             daoCollection.inTransaction(
-                ignored -> {
-                  scope.reopenForAttempt();
-                  return work.get();
-                }));
+                ignored ->
+                    TransactionRollbackTracker.runAttempt(
+                        () -> {
+                          scope.reopenForAttempt();
+                          return work.get();
+                        })));
   }
 
   /** Nested boundary: the outermost one owns the retry, so this only joins its transaction. */
@@ -5573,6 +5824,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
+    entities.forEach(this::setCreationAudit);
     createManyEntitiesFlush(entities);
     try (var ignored = phase("postCreate")) {
       postCreate(entities);
@@ -5582,6 +5834,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createManyEntitiesFlush(List<T> entities) {
+    entities.forEach(this::assignInitialEntityStatus);
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
@@ -9636,6 +9889,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
+        carryCreationAudit(original, updated);
         updateDeleted();
         compareAndUpdate(FIELD_DESCRIPTION, this::updateDescription);
         compareAndUpdate(FIELD_DISPLAY_NAME, this::updateDisplayName);
@@ -9668,6 +9922,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
+        carryCreationAudit(original, updated);
         updateDeleted();
         updateDescription();
         updateDisplayName();
@@ -9692,14 +9947,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Default implementation. Override this to add any entity specific field updates
     }
 
+    /**
+     * Whether a bot write must keep a non-empty description. A bot PUT never changes it without
+     * overrideMetadata; with it (a bulk force-sync) a real source value may replace it, but an empty
+     * one must not blank it - a connector that finds no comment omits the field, and that absence
+     * is not "delete the description". An ingestion-bot PATCH follows the same rule: pre-2.0
+     * clients still patch existing tables with the source's empty column comments under
+     * overrideMetadata. App bots are exempt, since some (the Automator's remove-description action)
+     * clear descriptions on purpose.
+     */
+    protected final boolean keepsStoredDescription(String stored, String incoming) {
+      boolean botPut =
+          operation.isPut() && updatedByBot() && (!overrideMetadata || nullOrEmpty(incoming));
+      boolean ingestionPatchBlanking =
+          operation.isPatch()
+              && INGESTION_BOT_NAME.equals(updatingUser.getName())
+              && nullOrEmpty(incoming);
+      return !nullOrEmpty(stored) && (botPut || ingestionPatchBlanking);
+    }
+
     private void updateDescription() {
-      if (operation.isPut()
-          && !nullOrEmpty(original.getDescription())
-          && updatedByBot()
-          && !overrideMetadata) {
-        // Revert change to non-empty description if it is being updated by a bot
-        // This is to prevent bots from overwriting the description. Description need to be
-        // updated with a PATCH request, or via the bulk path with overrideMetadata=true
+      if (keepsStoredDescription(original.getDescription(), updated.getDescription())) {
         updated.setDescription(original.getDescription());
         return;
       }
@@ -9736,11 +10004,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // authorizes with the coarse EDIT_ALL operation, which does not intersect that field-level
       // deny, so re-apply it here. Bots the policy allows - for example the SCIM bot syncing
       // identity attributes through the repository - fall through and update it. A bulk force-sync
-      // (overrideMetadata=true) also bypasses this guard.
+      // (overrideMetadata=true) also bypasses this guard, unless it would blank the displayName.
       boolean preserveUserDisplayName =
           updatedByBot()
               && !nullOrEmpty(original.getDisplayName())
-              && !overrideMetadata
+              && (!overrideMetadata || nullOrEmpty(updated.getDisplayName()))
               && !Objects.equals(original.getDisplayName(), updated.getDisplayName())
               && updatingBotDeniedOperation(MetadataOperation.EDIT_DISPLAY_NAME);
       if (preserveUserDisplayName) {
@@ -9750,61 +10018,51 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    private void updateEntityStatus(boolean consolidatingChanges) {
-      if (supportsEntityStatus) {
-        if (original.getEntityStatus() == updated.getEntityStatus()) {
-          return;
+    void updateEntityStatus(boolean consolidatingChanges) {
+      if (!supportsEntityStatus) {
+        return;
+      }
+      keepStoredEntityStatusWhenOmitted();
+      EntityStatus from = original.getEntityStatus();
+      EntityStatus to = updated.getEntityStatus();
+      if (from != to) {
+        if (!consolidatingChanges && !isDiffFromSessionStart()) {
+          validateEntityStatusChange(from, to);
         }
-        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
-        if (!consolidatingChanges
-            && original.getEntityStatus() == EntityStatus.IN_REVIEW
-            && (updated.getEntityStatus() == EntityStatus.APPROVED
-                || updated.getEntityStatus() == EntityStatus.REJECTED)) {
-          checkUpdatedByReviewer(original, updated.getUpdatedBy());
-        }
-        recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
+        recordChange(FIELD_ENTITY_STATUS, from, to);
       }
     }
 
-    public static void checkUpdatedByReviewer(EntityInterface entity, String updatedBy) {
-      // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-      List<EntityReference> reviewers = entity.getReviewers();
-      if (!nullOrEmpty(reviewers)) {
-        // Updating user must be one of the reviewers
-        boolean isReviewer =
-            reviewers.stream()
-                .anyMatch(
-                    e -> {
-                      if (e.getType().equals(TEAM)) {
-                        Team team =
-                            Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                        return team.getUsers().stream()
-                            .anyMatch(
-                                u ->
-                                    u.getName().equals(updatedBy)
-                                        || u.getFullyQualifiedName().equals(updatedBy));
-                      } else {
-                        return e.getName().equals(updatedBy)
-                            || e.getFullyQualifiedName().equals(updatedBy);
-                      }
-                    });
-        if (!isReviewer) {
-          throw new AuthorizationException(notReviewer(updatedBy));
-        }
+    // A consolidated update diffs from the version before the user's session, so its stage change
+    // can include one an earlier version made, such as a workflow approving on the user's behalf.
+    // This request's own stage change was already validated against the stored entity.
+    private boolean isDiffFromSessionStart() {
+      return previous != null && original == previous;
+    }
+
+    // Most create requests cannot carry a stage, so a PUT, bulk or import update built from one
+    // arrives without it and must not reset the stage the entity is in.
+    private void keepStoredEntityStatusWhenOmitted() {
+      if (updated.getEntityStatus() == null) {
+        updated.setEntityStatus(original.getEntityStatus());
       }
+    }
+
+    private void validateEntityStatusChange(EntityStatus from, EntityStatus to) {
+      EntityRepository.this.validateEntityStatusChange(original, updated, from, to);
     }
 
     private void updateOwners() {
-      // A bot whose policy denies EditOwners (e.g. the ingestion bot via DefaultBotPolicy /
-      // IngestionBotPolicy) must not clobber user-curated owners. A PUT or bulk update authorizes
-      // with the coarse EDIT_ALL operation, which does not intersect that field-level deny, so
-      // re-apply it here. Bots the policy allows fall through and update owners as before. A bulk
-      // force-sync (overrideMetadata=true) also bypasses this guard.
+      // A bot PUT only fills owners on an entity that has none: owners sent by ingestion
+      // (ownerConfig, includeOwners) must not replace the ones a user assigned, as includeOwners
+      // documents. This can't be left to the bot policy - no shipped bot policy denies EditOwners,
+      // so a policy check never fired. A PATCH, or a bulk run with overrideMetadata=true, still
+      // reassigns them.
       boolean preserveUserOwners =
-          updatedByBot()
-              && !nullOrEmpty(original.getOwners())
-              && !overrideMetadata
-              && updatingBotDeniedOperation(MetadataOperation.EDIT_OWNERS);
+          operation.isPut()
+              && updatedByBot()
+              && !nullOrEmpty(getEntityReferences(original.getOwners()))
+              && !overrideMetadata;
       if (preserveUserOwners) {
         updated.setOwners(original.getOwners());
         return;
@@ -9898,6 +10156,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         checkMutuallyExclusive(updatedTags);
       } else {
         // PATCH and an explicit PUT override replace tags.
+        if (operation.isPut()) {
+          keepTagsOutsideRequestedClassifications(origTags, updatedTags);
+        }
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         List<TagLabel> persistableUpdatedTags = getNonDerivedTags(updatedTags);
         Set<String> updatedTagKeys = createTagKeySet(persistableUpdatedTags);
@@ -9951,6 +10212,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
           new ArrayList<>(),
           tagLabelMatch);
       updatedTags.sort(compareTagLabel);
+    }
+
+    /**
+     * An override run replaces tags only within the classifications and glossaries it sends. Tier,
+     * automator-propagated and user-applied tags from any other one are never emitted by a source,
+     * so their absence from the request must not delete them.
+     */
+    private void keepTagsOutsideRequestedClassifications(
+        List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      Set<String> requestedRoots =
+          getNonDerivedTags(updatedTags).stream()
+              .map(tag -> FullyQualifiedName.getRoot(tag.getTagFQN()))
+              .collect(Collectors.toSet());
+      EntityUtil.mergeTags(
+          updatedTags,
+          origTags.stream()
+              .filter(tag -> !requestedRoots.contains(FullyQualifiedName.getRoot(tag.getTagFQN())))
+              .toList());
     }
 
     protected void updateTagsForImport(
@@ -10302,6 +10581,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    /**
+     * Updates a field only users set and no connector sends, such as retentionPeriod. A bot PUT
+     * always omits it, so - override or not - that absence keeps the stored value instead of
+     * blanking it.
+     */
+    protected final <V> void updateUserOnlyField(
+        String fieldName, V origValue, V updatedValue, Consumer<V> setUpdated) {
+      if (operation.isPut() && updatedByBot() && updatedValue == null && origValue != null) {
+        setUpdated.accept(origValue);
+        return;
+      }
+      recordChange(fieldName, origValue, updatedValue);
+    }
+
     private void updateLifeCycle() {
       if (!supportsLifeCycle) {
         return;
@@ -10358,11 +10651,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (operation.isPut()
           && !nullOrEmpty(original.getCertification())
           && updatedByBot()
-          && !overrideMetadata) {
+          && (!overrideMetadata || updatedCertification == null)) {
         // Revert change to non-empty certification if it is being updated by a bot, matching the
         // guard on description/owners: a stored value wins over anything a scheduled re-sync
         // sends. Certification can still be updated with a PATCH request, or via the bulk path
-        // with overrideMetadata=true.
+        // with overrideMetadata=true when the request carries one.
         updated.setCertification(original.getCertification());
         return;
       }
@@ -11235,9 +11528,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(columnPrefix, stored, updated);
-        if (!Objects.equals(stored.getExtension(), updated.getExtension())) {
-          storeColumnExtension(entityId, updated);
-        }
+        updateColumnExtension(entityId, columnPrefix, stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateColumns(
@@ -11256,6 +11547,51 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       // NO-OP – to be overridden by entity-specific updaters when needed.
+    }
+
+    /**
+     * Whether column custom-property (extension) changes are recorded as FieldChanges. Only
+     * entities that hydrate column extension on read and register a column custom-property type
+     * (Table via {@code tableColumn}, DashboardDataModel via {@code dashboardDataModelColumn})
+     * override this to {@code true}. For the rest the read path never loads the baseline, so
+     * recording would emit a spurious change on every update; they keep the persist-only behavior.
+     */
+    protected boolean supportsColumnExtension() {
+      return false;
+    }
+
+    private void updateColumnExtension(
+        UUID entityId, String columnPrefix, Column origColumn, Column updatedColumn) {
+      if (!supportsColumnExtension()) {
+        if (!Objects.equals(origColumn.getExtension(), updatedColumn.getExtension())) {
+          storeColumnExtension(entityId, updatedColumn);
+        }
+        return;
+      }
+      // A PUT never removes an existing column custom property (mirrors entity-level
+      // updateExtension): a connector re-ingesting the table omits the field, and that absence
+      // must not be read as a deletion.
+      if (operation == Operation.PUT
+          && updatedColumn.getExtension() == null
+          && origColumn.getExtension() != null) {
+        updatedColumn.setExtension(origColumn.getExtension());
+      }
+      boolean changed =
+          recordChange(
+              EntityUtil.getFieldName(columnPrefix, FIELD_EXTENSION),
+              origColumn.getExtension(),
+              updatedColumn.getExtension(),
+              true);
+      if (changed) {
+        if (updatedColumn.getExtension() == null) {
+          daoCollection
+              .entityExtensionDAO()
+              .delete(
+                  entityId, FullyQualifiedName.buildHash(updatedColumn.getFullyQualifiedName()));
+        } else {
+          storeColumnExtension(entityId, updatedColumn);
+        }
+      }
     }
 
     private static final class ColumnLineageChanges {
@@ -11282,14 +11618,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateColumnDescription(
         String fieldPrefix, Column origColumn, Column updatedColumn) {
-      // A bot PUT preserves a non-empty column description. A bulk force-sync
-      // (overrideMetadata=true) may replace it with a real source comment, but must never blank
-      // it: a connector that finds no comment on the column omits the field entirely, and an
-      // override run must not read that absence as "delete the description".
-      if (operation.isPut()
-          && !nullOrEmpty(origColumn.getDescription())
-          && updatedByBot()
-          && (!overrideMetadata || nullOrEmpty(updatedColumn.getDescription()))) {
+      if (keepsStoredDescription(origColumn.getDescription(), updatedColumn.getDescription())) {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }

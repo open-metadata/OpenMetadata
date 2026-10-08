@@ -13,13 +13,8 @@
 
 package org.openmetadata.service.notifications.recipients.strategy.impl;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -29,166 +24,81 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.Lookup;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
 /**
- * Resolves entity owners with inherited ownership support.
- *
- * This resolver handles ownership inheritance which is critical for TestCase and other
- * entities that inherit ownership from their parent entities. When fetched with the "owners"
- * field parameter, Entity.getEntity() automatically resolves inherited ownership.
- *
- * Delegates user and team ID-based resolution to UserRecipientResolver and
- * TeamRecipientResolver to avoid code duplication.
+ * Resolves the owners of an entity, users and teams, as recipients. Fetching an entity with the
+ * "owners" field resolves inherited ownership, which test cases rely on. For a conversation, its
+ * creator and the owners of the entity it is about.
  */
-@Slf4j
 public class OwnerRecipientResolver implements RecipientResolutionStrategy {
 
-  private final UserRecipientResolver userResolver;
-  private final TeamRecipientResolver teamResolver;
+  private final UserRecipientResolver users;
+  private final TeamRecipientResolver teams;
 
-  public OwnerRecipientResolver(
-      UserRecipientResolver userResolver, TeamRecipientResolver teamResolver) {
-    this.userResolver = userResolver;
-    this.teamResolver = teamResolver;
+  public OwnerRecipientResolver(UserRecipientResolver users, TeamRecipientResolver teams) {
+    this.users = users;
+    this.teams = teams;
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-
-    try {
-      String entityType = event.getEntityType();
-
-      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
-        Conversation conversation = AlertsRuleEvaluator.getConversation(event);
-        if (conversation == null) {
-          return Collections.emptySet();
-        }
-        return resolveOwnersFromConversation(conversation, destination);
-      }
-
-      // Standard handling for other entities
-      EntityInterface entity = AlertsRuleEvaluator.getEntity(event);
-      if (entity == null) {
-        return Collections.emptySet();
-      }
-      return resolveOwnersFromEntity(entity, destination);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to resolve owners for event entity {} {}",
-          event.getEntityType(),
-          event.getEntityId(),
-          e);
-      return Collections.emptySet();
-    }
+    return Entity.CONVERSATION.equalsIgnoreCase(event.getEntityType())
+        ? Recipients.from(
+            Lookup.of(
+                "the conversation of event " + event.getId(),
+                () -> AlertsRuleEvaluator.getConversation(event)),
+            conversation -> ofConversation(conversation, destination))
+        : Recipients.from(
+            Lookup.of(
+                "the entity of event " + event.getId(), () -> AlertsRuleEvaluator.getEntity(event)),
+            entity -> of(entity, destination));
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       UUID entityId,
       String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination) {
-
-    try {
-      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
-        Conversation conversation = Entity.getConversationRepository().getEventPayload(entityId);
-        return resolveOwnersFromConversation(conversation, destination);
-      }
-
-      // Standard handling for other entities
-      EntityInterface entity =
-          Entity.getEntity(
-              entityType,
-              entityId,
-              "owners", // This parameter triggers ownership inheritance
-              Include.NON_DELETED);
-      return resolveOwnersFromEntity(entity, destination);
-
-    } catch (Exception e) {
-      LOG.warn("Failed to resolve owners for entity {} {}", entityType, entityId, e);
-      return Collections.emptySet();
-    }
+    return Entity.CONVERSATION.equalsIgnoreCase(entityType)
+        ? Recipients.from(
+            Lookup.of(
+                "conversation " + entityId,
+                () -> Entity.getConversationRepository().getEventPayload(entityId)),
+            conversation -> ofConversation(conversation, destination))
+        : Recipients.from(stored(entityType, entityId), entity -> of(entity, destination));
   }
 
-  private @NotNull Set<Recipient> resolveOwnersFromConversation(
+  private Recipients ofConversation(
       Conversation conversation, SubscriptionDestination destination) {
-    Set<Recipient> recipients = new HashSet<>();
-
-    if (conversation == null) {
-      return recipients;
-    }
-
-    if (conversation.getCreatedBy() != null) {
-      recipients.addAll(resolveEntityReferences(List.of(conversation.getCreatedBy()), destination));
-    }
-
-    if (conversation.getEntityRef() != null) {
-      try {
-        EntityInterface parentEntity =
-            Entity.getEntity(
-                conversation.getEntityRef().getType(),
-                conversation.getEntityRef().getId(),
-                "owners",
-                Include.NON_DELETED);
-        if (parentEntity != null && parentEntity.getOwners() != null) {
-          recipients.addAll(resolveEntityReferences(parentEntity.getOwners(), destination));
-        }
-      } catch (Exception e) {
-        LOG.debug("Failed to resolve parent entity owners for conversation", e);
-      }
-    }
-
-    return recipients;
+    EntityReference creator = conversation.getCreatedBy();
+    Recipients ofCreator =
+        creator == null
+            ? Recipients.none()
+            : Principals.of(List.of(creator), users, teams, destination);
+    return ofCreator.and(ofSubject(conversation, destination));
   }
 
-  private @NotNull Set<Recipient> resolveOwnersFromEntity(
-      EntityInterface entity, SubscriptionDestination destination) {
-    if (entity == null || entity.getOwners() == null) {
-      return Collections.emptySet();
-    }
-
-    return resolveEntityReferences(entity.getOwners(), destination);
+  private Recipients ofSubject(Conversation conversation, SubscriptionDestination destination) {
+    EntityReference subject = conversation.getEntityRef();
+    return subject == null
+        ? Recipients.none()
+        : Recipients.from(
+            stored(subject.getType(), subject.getId()), entity -> of(entity, destination));
   }
 
-  /**
-   * Resolve entity references (users and teams) to recipients.
-   *
-   * Delegates to UserRecipientResolver and TeamRecipientResolver to handle the actual
-   * conversion from IDs to Recipients, avoiding code duplication.
-   *
-   * @param entityReferences list of entity references to resolve
-   * @param destination the subscription destination
-   * @return set of resolved recipients
-   */
-  private Set<Recipient> resolveEntityReferences(
-      List<EntityReference> entityReferences, SubscriptionDestination destination) {
+  private Recipients of(EntityInterface entity, SubscriptionDestination destination) {
+    return Principals.of(entity.getOwners(), users, teams, destination);
+  }
 
-    Set<Recipient> recipients = new HashSet<>();
-
-    // Extract user IDs and resolve via UserRecipientResolver
-    List<UUID> userIds =
-        entityReferences.stream()
-            .filter(e -> Entity.USER.equalsIgnoreCase(e.getType()))
-            .map(EntityReference::getId)
-            .toList();
-    if (!userIds.isEmpty()) {
-      recipients.addAll(userResolver.resolve(userIds, destination));
-    }
-
-    // Extract team IDs and resolve via TeamRecipientResolver
-    List<UUID> teamIds =
-        entityReferences.stream()
-            .filter(e -> Entity.TEAM.equalsIgnoreCase(e.getType()))
-            .map(EntityReference::getId)
-            .toList();
-    if (!teamIds.isEmpty()) {
-      recipients.addAll(teamResolver.resolve(teamIds, destination));
-    }
-
-    return recipients;
+  private static Lookup<EntityInterface> stored(String entityType, UUID entityId) {
+    return Lookup.of(
+        entityType + " " + entityId,
+        () -> Entity.getEntity(entityType, entityId, "owners", Include.NON_DELETED));
   }
 
   @Override

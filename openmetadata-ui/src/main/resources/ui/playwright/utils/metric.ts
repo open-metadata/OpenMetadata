@@ -15,6 +15,7 @@ import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
 import { uuid } from './common';
 import { hardDeleteEntity } from './entity';
+import { clickUntilVisible } from './waitHelpers';
 
 const openMetricDefinitionEditor = async (page: Page) => {
   await page.getByTestId('metric-definition-edit').click();
@@ -158,10 +159,10 @@ export const updateRelatedMetric = async (
     type === 'add'
       ? page.getByTestId('add-related-metrics-container')
       : page.getByTestId('edit-related-metrics');
-  await trigger.click();
-
   const relatedMetricForm = page.getByTestId('related-metric-form');
-  await expect(relatedMetricForm).toBeVisible();
+  // The details grid is still re-laying out its widgets after load, so the
+  // button can move between pointerdown and pointerup and the press is dropped.
+  await clickUntilVisible(trigger, relatedMetricForm);
 
   const searchPromise = page.waitForResponse((response) => {
     const url = new URL(response.url());

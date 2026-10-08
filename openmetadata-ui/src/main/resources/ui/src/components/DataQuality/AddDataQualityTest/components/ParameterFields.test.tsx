@@ -28,7 +28,7 @@ import {
 import ParameterFields from './ParameterFields';
 import { FormValues } from './TestCaseFormV1.interface';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Trash01: () => <span data-testid="trash-icon" />,
 }));
 
@@ -36,7 +36,8 @@ const renderWithForm = (
   definition: TestDefinition,
   table?: Table,
   onSubmit?: (values: FormValues) => void,
-  testDefinitionDoc?: string
+  testDefinitionDoc?: string,
+  isDimensionalTest?: boolean
 ) => {
   const Wrapper = () => {
     const form = useForm<FormValues>();
@@ -53,6 +54,7 @@ const renderWithForm = (
         <ParameterFields
           definition={definition}
           form={form}
+          isDimensionalTest={isDimensionalTest}
           table={table}
           testDefinitionDoc={testDefinitionDoc}
         />
@@ -440,6 +442,50 @@ describe('ParameterFields', () => {
       screen.getByTestId('parameter-thresholdUnit')
     );
     expect(screen.getAllByTestId('parameter-thresholdUnit')).toHaveLength(1);
+  });
+
+  describe('dimensionFailurePolicy', () => {
+    const definition = {
+      name: 'columnValuesToBeNotNull',
+      parameterDefinition: [
+        {
+          name: 'threshold',
+          displayName: 'Failure Threshold',
+          dataType: TestDataType.Number,
+        },
+        {
+          name: 'dimensionFailurePolicy',
+          displayName: 'Dimension Failure Policy',
+          dataType: TestDataType.String,
+          optionValues: ['OVERALL_ONLY', 'ANY_DIMENSION'],
+        },
+      ],
+    } as TestDefinition;
+
+    it('is hidden on a table or column test', () => {
+      renderWithForm(definition);
+
+      expect(screen.getByTestId('parameter-threshold')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('parameter-dimensionFailurePolicy')
+      ).not.toBeInTheDocument();
+    });
+
+    it('is shown on a dimension-level test, with its options as sentences', () => {
+      renderWithForm(definition, undefined, undefined, undefined, true);
+
+      expect(
+        screen.getByTestId('parameter-dimensionFailurePolicy')
+      ).toBeInTheDocument();
+
+      const options = screen
+        .getAllByRole('option', { hidden: true })
+        .map((option) => option.textContent);
+
+      expect(options).toContain('label.dimension-failure-policy-overall-only');
+      expect(options).toContain('label.dimension-failure-policy-any-dimension');
+      expect(options).not.toContain('ANY_DIMENSION');
+    });
   });
 
   it.each([

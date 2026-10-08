@@ -1,7 +1,7 @@
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { DotsVertical } from '@untitledui/icons';
+import { DotsVertical } from '../../../icons';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
@@ -156,10 +156,11 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
 type DropdownPopoverProps = AriaPopoverProps;
 
 const DropdownPopover = (props: DropdownPopoverProps) => {
-  const { placement = 'bottom right', ...rest } = props;
+  const { placement = 'bottom right', offset = 4, ...rest } = props;
 
   return (
     <AriaPopover
+      offset={offset}
       placement={placement}
       {...rest}
       className={(state) =>

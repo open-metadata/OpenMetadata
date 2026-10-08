@@ -3,8 +3,8 @@ import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { TextAreaBase } from '@/components/base/textarea/textarea';
 import { cx } from '@/utils/cx';
-import { Eye, EyeOff, UploadCloud01 } from '@untitledui/icons';
-import { useState } from 'react';
+import { Eye, EyeOff, UploadCloud01 } from '../../../icons';
+import { forwardRef, useState } from 'react';
 import { FileTrigger } from 'react-aria-components';
 import { InputBase, TextField, type InputBaseProps } from './input';
 
@@ -28,28 +28,33 @@ export interface PasswordInputProps
   extends Omit<InputBaseProps, 'label' | 'hint' | 'trailingSlot'>,
     BaseProps {}
 
-export const PasswordInput = ({
-  size = 'sm',
-  fontSize = 'sm',
-  placeholder,
-  label,
-  hint,
-  hideRequiredIndicator,
-  allowUpload = false,
-  acceptedFileTypes,
-  uploadLabel = 'Upload key file',
-  multiline = false,
-  rows,
-  ref,
-  groupRef,
-  iconClassName,
-  inputClassName,
-  wrapperClassName,
-  tooltipClassName,
-  // Everything else (value, onChange, isRequired, isDisabled, isInvalid, id, etc.)
-  // goes into ...props so they reach TextField/AriaTextField
-  ...props
-}: PasswordInputProps) => {
+export const PasswordInput = forwardRef<
+  HTMLInputElement,
+  Omit<PasswordInputProps, 'ref'>
+>(function PasswordInput(
+  {
+    size = 'sm',
+    fontSize = 'sm',
+    placeholder,
+    label,
+    hint,
+    hideRequiredIndicator,
+    allowUpload = false,
+    acceptedFileTypes,
+    uploadLabel = 'Upload key file',
+    multiline = false,
+    rows,
+    groupRef,
+    iconClassName,
+    inputClassName,
+    wrapperClassName,
+    tooltipClassName,
+    // Everything else (value, onChange, isRequired, isDisabled, isInvalid, id, etc.)
+    // goes into ...props so they reach TextField/AriaTextField
+    ...props
+  },
+  ref
+) {
   const [showPassword, setShowPassword] = useState(false);
   const { onChange, isRequired, isDisabled, isInvalid, value } = props;
 
@@ -144,6 +149,6 @@ export const PasswordInput = ({
       {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
     </div>
   );
-};
+});
 
 PasswordInput.displayName = 'PasswordInput';

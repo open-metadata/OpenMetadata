@@ -26,13 +26,10 @@ class KnowledgePageMapperTest {
   }
 
   @Test
-  void anOmittedEntityStatusIsCarriedThroughUnchanged() {
-    // Omits entityStatus entirely instead of setting it to null. Asserts propagation rather than a
-    // literal value on purpose: createPage.json declares "default": "Approved" next to a $ref, and
-    // whether jsonschema2pojo materializes that default at all depends on schema processing order,
-    // so the generated field is null on some builds and Unprocessed on others. Either way the
-    // mapper must hand the value through untouched - null then reaches
-    // EntityRepository.setDefaultStatus, which fills in Unprocessed.
+  void anOmittedEntityStatusIsLeftForTheRepository() {
+    // Omits entityStatus entirely instead of setting it to null. createPage.json declares no
+    // default for it, so the omitted stage stays null and the repository starts the page in its
+    // initial stage (Draft) when the page is created.
     CreatePage request =
         withRelatedEntity(
             new CreatePage()
@@ -42,13 +39,13 @@ class KnowledgePageMapperTest {
 
     Page page = new KnowledgePageMapper().createToEntity(request, "admin");
 
-    assertEquals(request.getEntityStatus(), page.getEntityStatus());
+    assertNull(page.getEntityStatus());
   }
 
   @Test
   void anExplicitNullEntityStatusIsLeftForTheRepositoryDefault() {
     // The mapper must not invent a status of its own: a null reaches the repository, which then
-    // fills in Unprocessed via setDefaultStatus.
+    // assigns the page's initial stage.
     Page page = new KnowledgePageMapper().createToEntity(createPage(null), "admin");
 
     assertNull(page.getEntityStatus());

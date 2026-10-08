@@ -274,6 +274,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
@@ -386,8 +388,8 @@ jest.mock(
   })
 );
 
-jest.mock('@untitledui/icons', () => ({
-  SearchLg: () => <span data-testid="search-icon" />,
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Search: () => <span data-testid="search-icon" />,
 }));
 
 jest.mock('../../SummaryPannel/PieChartSummaryPanel.component', () => ({

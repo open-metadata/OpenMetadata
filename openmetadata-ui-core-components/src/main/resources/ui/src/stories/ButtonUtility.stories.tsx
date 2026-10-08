@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edit01, HelpCircle, InfoCircle, Trash01 } from '@untitledui/icons';
+import { Edit01, HelpCircle, InfoCircle, Trash01 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { ButtonUtility } from '../components/base/buttons/button-utility';
 

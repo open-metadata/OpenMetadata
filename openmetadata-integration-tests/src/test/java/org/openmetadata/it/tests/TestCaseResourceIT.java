@@ -20,6 +20,7 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -56,7 +57,11 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.DimensionValue;
+import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
+import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
@@ -2837,6 +2842,70 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     }
   }
 
+  /**
+   * A dimension result reports the bounds it was evaluated against, which differ from the
+   * configured ones once a failure threshold widens them. They have to survive the write and the
+   * read, or the dimension charts fall back to the configured range.
+   */
+  @Test
+  void test_dimensionResultKeepsTheBoundsItWasEvaluatedAgainst(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("dimension_bounds"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "90")
+            .parameter("maxValue", "120")
+            .create();
+    long timestamp = System.currentTimeMillis();
+
+    TestCaseDimensionResult dimensionResult =
+        new TestCaseDimensionResult()
+            .withId(UUID.randomUUID())
+            .withTestCaseResultId(UUID.randomUUID())
+            .withTimestamp(timestamp)
+            .withDimensionKey("channel=phone")
+            .withDimensionValues(
+                List.of(new DimensionValue().withName("channel").withValue("phone")))
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withMinBound(63.0)
+            .withMaxBound(156.0);
+    CreateTestCaseResult result = new CreateTestCaseResult();
+    result.setTimestamp(timestamp);
+    result.setTestCaseStatus(TestCaseStatus.Success);
+    result.setResult("passed");
+    result.setMinBound(63.0);
+    result.setMaxBound(156.0);
+    result.setDimensionResults(List.of(dimensionResult));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/dimensionResults/"
+                    + URLEncoder.encode(testCase.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                        .replace("+", "%20"),
+                null,
+                RequestOptions.builder()
+                    .queryParam("startTs", String.valueOf(timestamp - 1))
+                    .queryParam("endTs", String.valueOf(timestamp + 1))
+                    .build());
+    TestCaseDimensionResult stored =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseDimensionResult>>() {})
+            .getData()
+            .stream()
+            .filter(dim -> "channel=phone".equals(dim.getDimensionKey()))
+            .findFirst()
+            .orElseThrow();
+
+    assertEquals(63.0, stored.getMinBound());
+    assertEquals(156.0, stored.getMaxBound());
+  }
+
   private String searchTestCaseResults(String path, String query) {
     return SdkClients.adminClient()
         .getHttpClient()
@@ -4275,6 +4344,107 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
                   fetchedCase.getTestCaseResult().getTestCaseStatus());
             });
+  }
+
+  @Test
+  void post_testCaseResultWithDurationAndErrorDetails_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_error_details");
+    CreateTestCaseResult create = abortedResultWithErrorDetails();
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    assertDurationAndErrorDetails(
+        create,
+        client.testCases().get(testCase.getId().toString(), "testCaseResult").getTestCaseResult());
+
+    List<TestCaseResult> stored = listTestCaseResults(testCase.getFullyQualifiedName());
+    assertEquals(1, stored.size());
+    assertDurationAndErrorDetails(create, stored.getFirst());
+  }
+
+  @Test
+  void post_testCaseResultWithoutDurationOrErrorDetails_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_legacy_shape");
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(System.currentTimeMillis());
+    create.setTestCaseStatus(TestCaseStatus.Success);
+    create.setResult("legacy result");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    TestCaseResult stored = listTestCaseResults(testCase.getFullyQualifiedName()).getFirst();
+    assertEquals("legacy result", stored.getResult());
+    assertNull(stored.getDuration());
+    assertNull(stored.getErrorDetails());
+  }
+
+  @Test
+  void get_testCaseResultSearchLatestWithDurationAndErrorDetails_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_latest_error_details");
+    CreateTestCaseResult create = abortedResultWithErrorDetails();
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response =
+                  searchLatestTestCaseResult(
+                      testCase.getFullyQualifiedName(), TEST_CASE_RESULT_FIELDS);
+              assertTrue(
+                  response != null && !response.isBlank(),
+                  "latest test case result must be returned once indexed");
+              assertDurationAndErrorDetails(
+                  create, JsonUtils.readValue(response, TestCaseResult.class));
+            });
+  }
+
+  private TestCase createRowCountTestCase(
+      OpenMetadataClient client, TestNamespace ns, String name) {
+    return TestCaseBuilder.create(client)
+        .name(ns.prefix(name))
+        .forTable(createTable(ns))
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+  }
+
+  /** The SDK's list call deserializes into raw maps, so read the typed payload directly. */
+  private List<TestCaseResult> listTestCaseResults(String testCaseFQN) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/testCaseResults/" + testCaseFQN,
+                null,
+                RequestOptions.builder().build());
+    return JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseResult>>() {})
+        .getData();
+  }
+
+  private static CreateTestCaseResult abortedResultWithErrorDetails() {
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(System.currentTimeMillis());
+    create.setTestCaseStatus(TestCaseStatus.Aborted);
+    create.setResult("Error computing tableRowCountToEqual: connection refused");
+    create.setDuration(1234.5);
+    create.setErrorDetails(
+        new TestCaseErrorDetails()
+            .withErrorType("OperationalError")
+            .withMessage("connection refused")
+            .withStackTrace("Traceback (most recent call last):\n  ...\nOperationalError"));
+    return create;
+  }
+
+  private static void assertDurationAndErrorDetails(
+      CreateTestCaseResult expected, TestCaseResult actual) {
+    assertNotNull(actual);
+    assertEquals(expected.getResult(), actual.getResult());
+    assertEquals(expected.getDuration(), actual.getDuration());
+    assertEquals(expected.getErrorDetails(), actual.getErrorDetails());
   }
 
   @Test

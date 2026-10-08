@@ -158,6 +158,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `tdd` | implementing a feature or bug fix (RED→GREEN→REFACTOR) |
 | `systematic-debugging` | a failing test/build/runtime issue whose cause isn't obvious |
 | `test-enforcement` | before a PR — 90% changed-class coverage, ITs for new endpoints, Playwright for UI |
+| `java-affected-tests` | before a PR touching Java/schemas/migrations — runs the impacted unit tests + ITs (PR CI runs no ITs) |
 | `verification` | before claiming "done" — run real commands, show evidence |
 | `code-review` | reviewing a diff/PR — spec compliance then code quality |
 | `java-checkstyle` | after touching `.java` — runs `mvn spotless:apply` and verifies |
@@ -167,6 +168,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `connector-standards` / `connector-building` / `connector-review` | building or reviewing an ingestion connector |
 | `playwright` / `writing-playwright-tests` / `playwright-validation` | authoring or validating Playwright E2E tests |
 | `pr-checklist` | opening/finalizing a PR (fills the repo PR template) |
+| `openmetadata-pr-review` | reviewing a real GitHub PR (number/URL/batch) — maintainer merge verdict: live diff, CI, meaningful-test rubric |
 
 > `openmetadata-workflow` is a meta-skill that routes tasks to the skills above; it is auto-loaded at
 > session start when the `openmetadata-skills` plugin is installed.

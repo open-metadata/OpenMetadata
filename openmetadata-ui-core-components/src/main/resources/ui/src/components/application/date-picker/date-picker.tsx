@@ -1,6 +1,6 @@
 import { getLocalTimeZone, today } from '@internationalized/date';
 import { useControlledState } from '@react-stately/utils';
-import { Calendar as CalendarIcon } from '@untitledui/icons';
+import { Calendar as CalendarIcon } from '../../../icons';
 import { useDateFormatter } from 'react-aria';
 import type {
   DatePickerProps as AriaDatePickerProps,
@@ -13,6 +13,7 @@ import {
   Popover as AriaPopover,
 } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { Calendar } from './calendar';
 
@@ -23,6 +24,8 @@ interface DatePickerProps extends AriaDatePickerProps<DateValue> {
   onApply?: () => void;
   /** The function to call when the cancel button is clicked. */
   onCancel?: () => void;
+  /** Stretch the trigger to the width of its container, like a form input. */
+  fullWidth?: boolean;
 }
 
 export const DatePicker = ({
@@ -31,8 +34,10 @@ export const DatePicker = ({
   onChange,
   onApply,
   onCancel,
+  fullWidth,
   ...props
 }: DatePickerProps) => {
+  const { t } = useCoreTranslation();
   const formatter = useDateFormatter({
     month: 'short',
     day: 'numeric',
@@ -46,7 +51,7 @@ export const DatePicker = ({
 
   const formattedDate = value
     ? formatter.format(value.toDate(getLocalTimeZone()))
-    : 'Select date';
+    : t('label.select-date', 'Select date');
 
   return (
     <AriaDatePicker
@@ -55,21 +60,26 @@ export const DatePicker = ({
       value={value}
       onChange={setValue}>
       <AriaGroup>
-        <Button color="secondary" iconLeading={CalendarIcon} size="md">
+        <Button
+          className={fullWidth ? 'tw:w-full tw:justify-start' : undefined}
+          color="secondary"
+          iconLeading={CalendarIcon}
+          size="md">
           {formattedDate}
         </Button>
       </AriaGroup>
       <AriaPopover
         className={({ isEntering, isExiting }) =>
           cx(
-            'tw:origin-(--trigger-anchor-point) tw:will-change-transform',
+            // React Aria limits the popover height, but its calendar can exceed that limit in a modal.
+            'tw:origin-(--trigger-anchor-point) tw:will-change-transform tw:overflow-y-auto',
             isEntering &&
               'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
             isExiting &&
               'tw:duration-100 tw:ease-in tw:animate-out tw:fade-out tw:placement-right:slide-out-to-left-0.5 tw:placement-top:slide-out-to-bottom-0.5 tw:placement-bottom:slide-out-to-top-0.5'
           )
         }
-        offset={8}
+        offset={4}
         placement="bottom right">
         {/* outline-[3px] ports the bare `tw:ring` faithfully (3px in Tailwind v4, almost
             certainly unintended vs the ring-1 used elsewhere — tracked as a follow-up). */}
@@ -87,7 +97,7 @@ export const DatePicker = ({
                     onCancel?.();
                     close();
                   }}>
-                  Cancel
+                  {t('label.cancel', 'Cancel')}
                 </Button>
                 <Button
                   color="primary"
@@ -96,7 +106,7 @@ export const DatePicker = ({
                     onApply?.();
                     close();
                   }}>
-                  Apply
+                  {t('label.apply', 'Apply')}
                 </Button>
               </div>
             </>

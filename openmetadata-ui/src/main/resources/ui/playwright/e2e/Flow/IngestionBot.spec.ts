@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { expect, test as base } from '../../support/fixtures/base';
@@ -62,7 +63,7 @@ const test = base.extend<{
         !('serviceWorker' in navigator) ||
         Boolean(navigator.serviceWorker.controller),
       undefined,
-      { timeout: 30_000 }
+      { timeout: ACTION_TIMEOUT }
     );
 
     await setToken(page, tokenData.config.JWTToken);
@@ -103,7 +104,10 @@ test.describe('Ingestion Bot', () => {
       index + 1
     }`, async ({ ingestionBotPage, page }) => {
       test.slow();
-      const { assets, assetCleanup } = await setupAssetsForDomain(page);
+      // Later steps assign the domain to the assets' service as well.
+      const { assets, assetCleanup } = await setupAssetsForDomain(page, {
+        ownServices: true,
+      });
       try {
         const { apiContext, afterAction } = await getApiContext(page);
         try {

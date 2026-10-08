@@ -1,13 +1,19 @@
+import traceback
 from ast import literal_eval
 from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_IMPACT_SCORE_KEY,
     DIMENSION_VALUE_KEY,
+    MAX_ERROR_MESSAGE_CHARS,
+    MAX_STACK_TRACE_CHARS,
+    TRUNCATION_MARKER,
     BaseTestValidator,
+    error_details,
 )
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
@@ -279,6 +285,8 @@ class TestBaseTestValidator:
         mock_dimension_result_1.result = "Passed: 80, Failed: 20"
         mock_dimension_result_1.testResultValue = []
         mock_dimension_result_1.impactScore = None
+        mock_dimension_result_1.minBound = None
+        mock_dimension_result_1.maxBound = None
 
         mock_dimension_result_2 = MagicMock(spec=DimensionResult)
         mock_dimension_result_2.dimensionValues = [
@@ -293,6 +301,8 @@ class TestBaseTestValidator:
         mock_dimension_result_2.result = "Passed: 50, Failed: 50"
         mock_dimension_result_2.testResultValue = []
         mock_dimension_result_2.impactScore = None
+        mock_dimension_result_2.minBound = None
+        mock_dimension_result_2.maxBound = None
 
         # Mock _run_dimensional_validation to return DimensionResult objects
         validator._run_dimensional_validation = MagicMock(
@@ -372,6 +382,24 @@ class TestBaseTestValidator:
 
         # Verify dimensional validation WAS attempted
         validator._run_dimensional_validation.assert_called_once()
+
+    def test_a_result_that_did_not_abort_has_no_error_details(self, validator):
+        assert validator.run_validation().errorDetails is None
+
+    def test_an_explicit_exception_wins_over_the_one_being_handled(self, validator):
+        result = _while_handling(
+            ValueError("being handled"),
+            lambda: validator.get_test_case_result_object(
+                validator.execution_date, TestCaseStatus.Aborted, "aborted", [], exc=KeyError("explicit")
+            ),
+        )
+
+        assert result.errorDetails.errorType == "KeyError"
+
+    def test_an_aborted_result_outside_an_except_block_has_no_error_details(self, validator):
+        result = validator.get_test_case_result_object(validator.execution_date, TestCaseStatus.Aborted, "aborted", [])
+
+        assert result.errorDetails is None
 
 
 class TestGetTopDimensions:
@@ -563,3 +591,87 @@ class TestProcessDimensionRows:
         rows = [{DIMENSION_VALUE_KEY: f"D{i}", DIMENSION_IMPACT_SCORE_KEY: 0.5} for i in range(5)]
         results = validator._process_dimension_rows(rows, "dim_col", {"VALUE": None}, {})
         assert len(results) == 3
+
+
+class QueryCanceled(Exception):  # noqa: N818 - mirrors the name of psycopg2's class
+    """Stands in for psycopg2's QueryCanceled, raised on a statement timeout"""
+
+
+def _raise(exc: BaseException, cause: BaseException | None = None) -> None:
+    raise exc from cause
+
+
+def _raised(exc: BaseException, cause: BaseException | None = None) -> BaseException:
+    """The exception as it is once raised, with its traceback and cause attached"""
+    with pytest.raises(type(exc)) as info:
+        _raise(exc, cause)
+    return info.value
+
+
+def _while_handling(exc: BaseException, action):
+    try:
+        _raise(exc)
+    except type(exc):
+        return action()
+
+
+def _rewrap_as_sqlalchemy_error(wrapped: BaseException) -> None:
+    # As the SQA validator mixin does: a bare SQLAlchemyError raised while handling the original.
+    try:
+        _raise(wrapped)
+    except type(wrapped) as caught:
+        raise SQLAlchemyError(caught)  # noqa: B904
+
+
+def test_error_type_is_the_driver_exception_behind_sqlalchemy():
+    details = error_details(_raised(OperationalError("SELECT 1", {}, QueryCanceled("statement timeout"))))
+
+    assert details.errorType == "QueryCanceled"
+    assert "OperationalError" in details.stackTrace
+
+
+def test_error_type_reaches_the_driver_through_a_rewrapped_sqlalchemy_error():
+    with pytest.raises(SQLAlchemyError) as info:
+        _rewrap_as_sqlalchemy_error(OperationalError("SELECT 1", {}, QueryCanceled("statement timeout")))
+
+    assert error_details(info.value).errorType == "QueryCanceled"
+
+
+def test_error_type_of_our_own_timeout_is_kept():
+    assert error_details(_raised(TimeoutError("[SIGNUM 14] Timer expired"))).errorType == "TimeoutError"
+
+
+def _long_chain(links: int) -> BaseException:
+    """An exception whose chained causes format to a trace far longer than the cap"""
+    cause: BaseException | None = None
+    for link in range(links):
+        cause = _raised(ValueError(f"step {link} " + "y" * 60), cause)
+    return _raised(RuntimeError("boom"), cause)
+
+
+def test_a_long_stack_trace_keeps_its_tail_behind_a_marker():
+    exc = _long_chain(links=200)
+    assert len("".join(traceback.format_exception(exc))) > MAX_STACK_TRACE_CHARS
+
+    stack_trace = error_details(exc).stackTrace
+
+    assert stack_trace.startswith("... [truncated ")
+    assert len(stack_trace) <= MAX_STACK_TRACE_CHARS + len(TRUNCATION_MARKER.format(count=10**9))
+    assert stack_trace.rstrip().endswith("RuntimeError: boom")
+
+
+def test_a_short_stack_trace_and_message_are_unchanged():
+    exc = _raised(ValueError("no such column"))
+
+    details = error_details(exc)
+
+    assert details.message == "no such column"
+    assert details.stackTrace == "".join(traceback.format_exception(exc))
+
+
+def test_a_long_message_is_capped():
+    message = error_details(_raised(ValueError("SELECT " + "c, " * MAX_ERROR_MESSAGE_CHARS))).message
+
+    assert message.startswith("SELECT c, ")
+    assert len(message) <= MAX_ERROR_MESSAGE_CHARS + len(TRUNCATION_MARKER.format(count=10**9))
+    assert "[truncated " in message

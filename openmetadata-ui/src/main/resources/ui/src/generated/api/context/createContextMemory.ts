@@ -29,7 +29,12 @@ export interface CreateContextMemory {
     /**
      * Fully qualified names of the domains this memory belongs to.
      */
-    domains?:               string[];
+    domains?: string[];
+    /**
+     * Lifecycle stage the memory starts in. When omitted, the memory starts Unprocessed and is
+     * excluded from grounding until Approved. A Deprecated memory requires supersededBy.
+     */
+    entityStatus?:          EntityStatus;
     machineRepresentation?: MachineRepresentation;
     memoryScope?:           MemoryScope;
     memoryType?:            MemoryType;
@@ -62,7 +67,6 @@ export interface CreateContextMemory {
     sourceFile?:         EntityReference;
     sourceHumanMessage?: string;
     sourceType?:         SourceType;
-    status?:             MemoryStatus;
     /**
      * Optional summary of the memory.
      */
@@ -75,6 +79,24 @@ export interface CreateContextMemory {
      * Short title shown in Context Center.
      */
     title?: string;
+}
+
+/**
+ * Lifecycle stage the memory starts in. When omitted, the memory starts Unprocessed and is
+ * excluded from grounding until Approved. A Deprecated memory requires supersededBy.
+ *
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -123,10 +145,12 @@ export enum MemoryScope {
 }
 
 /**
- * High-level type of reusable memory.
+ * High-level type of reusable memory. Learning is something the agent had to discover in a
+ * conversation, e.g. a failed query and its fix.
  */
 export enum MemoryType {
     FAQ = "Faq",
+    Learning = "Learning",
     Note = "Note",
     Preference = "Preference",
     Runbook = "Runbook",
@@ -236,29 +260,21 @@ export enum ShareRole {
 export enum ShareVisibility {
     Entity = "Entity",
     Private = "Private",
+    Public = "Public",
     Shared = "Shared",
 }
 
 /**
- * How the memory was created.
+ * How the memory was created. ConversationExtraction is captured automatically at the end
+ * of a chat turn; it is ground truth, not regenerable like a file or page pill.
  */
 export enum SourceType {
     ChatPromotion = "ChatPromotion",
+    ConversationExtraction = "ConversationExtraction",
     FileExtraction = "FileExtraction",
     Manual = "Manual",
     PageExtraction = "PageExtraction",
     RememberRequest = "RememberRequest",
-}
-
-/**
- * Lifecycle state of the memory. Any status may be set at creation (e.g. importing an
- * already-archived memory); the Draft -> Active -> Archived transition rules are only
- * enforced on subsequent updates.
- */
-export enum MemoryStatus {
-    Active = "Active",
-    Archived = "Archived",
-    Draft = "Draft",
 }
 
 /**

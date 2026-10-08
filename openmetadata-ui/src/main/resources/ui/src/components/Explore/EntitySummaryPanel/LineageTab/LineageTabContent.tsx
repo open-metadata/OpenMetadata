@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Owner, Tooltip } from '@openmetadata/ui-core-components';
-import { Button, Typography } from 'antd';
+import {
+  Owner,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -153,9 +157,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             {searchClassBase.getEntityIcon(entityType)}
           </span>
         )}
-        <Typography.Text className="item-entity-type-text">
+        <Typography className="item-entity-type-text">
           {capitalize(entityType)}
-        </Typography.Text>
+        </Typography>
       </>
     );
   };
@@ -178,50 +182,28 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
   return (
     <div className="lineage-tab-content">
-      <div className="lineage-filter-buttons">
-        <Button
-          className={`lineage-filter-button ${
-            filter === 'upstream' ? 'active' : ''
-          }`}
-          data-testid={`upstream-button-${
-            filter === 'upstream' ? 'active' : ''
-          }`}
-          size="small"
-          onClick={() => onFilterChange('upstream')}>
-          <span
-            className="lineage-filter-button-text"
-            data-testid="upstream-button-text">
-            {t('label.upstream')}
-          </span>
-          <span
-            className={`lineage-filter-button-count ${
-              filter === 'upstream' ? 'active' : ''
-            }`}>
-            {upstreamCount}
-          </span>
-        </Button>
-        <Button
-          className={`lineage-filter-button ${
-            filter === 'downstream' ? 'active' : ''
-          }`}
-          data-testid={`downstream-button-${
-            filter === 'downstream' ? 'active' : ''
-          }`}
-          size="small"
-          onClick={() => onFilterChange('downstream')}>
-          <span
-            className="lineage-filter-button-text"
-            data-testid="downstream-button-text">
-            {t('label.downstream')}
-          </span>
-          <span
-            className={`lineage-filter-button-count ${
-              filter === 'downstream' ? 'active' : ''
-            }`}>
-            {downstreamCount}
-          </span>
-        </Button>
-      </div>
+      <Tabs
+        className="tw:sticky tw:top-0 tw:z-2 tw:mb-3 tw:pt-2"
+        selectedKey={filter}
+        onSelectionChange={(key) =>
+          onFilterChange(key as LineageTabContentProps['filter'])
+        }>
+        <Tabs.List size="sm" type="button-border">
+          {(['upstream', 'downstream'] as const).map((direction) => (
+            <Tabs.Item
+              badge={direction === 'upstream' ? upstreamCount : downstreamCount}
+              data-testid={`${direction}-button-${
+                filter === direction ? 'active' : ''
+              }`}
+              id={direction}
+              key={direction}>
+              <span data-testid={`${direction}-button-text`}>
+                {t(`label.${direction}`)}
+              </span>
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+      </Tabs>
       <SearchBarComponent
         containerClassName="searchbar-container"
         placeholder={t('label.search-for-type', {
@@ -285,9 +267,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                 </div>
                 <div className="lineage-card-content">
-                  <Typography.Text className="item-name-text">
+                  <Typography className="item-name-text">
                     {getEntityName(item.entity)}
-                  </Typography.Text>
+                  </Typography>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
                     {renderEntityTypeInfo(item.entity.entityType)}
                     <span className="item-bullet-separator">
@@ -305,9 +287,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center  no-data-placeholder">
+              <Typography as="p" className="text-center  no-data-placeholder">
                 {t('label.lineage-not-found')}
-              </Typography.Paragraph>
+              </Typography>
             </ErrorPlaceHolderNew>
           </div>
         )}

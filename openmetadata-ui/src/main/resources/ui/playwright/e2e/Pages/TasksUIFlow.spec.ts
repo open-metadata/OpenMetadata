@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -23,6 +24,7 @@ import {
   getDescriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForPageLoaded } from '../../utils/polling';
 import {
   waitForTaskCreateResponse,
@@ -39,7 +41,11 @@ import {
 const adminFile = 'playwright/.auth/admin.json';
 test.use({ storageState: adminFile });
 
-const entityClasses = [TableClass, DashboardClass, TopicClass, PipelineClass];
+const entityClasses = pickEntityMatrix(
+  __filename,
+  [TableClass, DashboardClass, TopicClass, PipelineClass],
+  [TableClass]
+);
 
 let entities: InstanceType<(typeof entityClasses)[number]>[] = [];
 
@@ -108,7 +114,7 @@ const openFirstTaskCard = async (page: Page) => {
   const taskCard = page.locator('[data-testid="task-feed-card"]').first();
   const taskDetailTab = page.locator('[data-testid="task-tab"]');
 
-  await expect(taskCard).toBeVisible({ timeout: 30_000 });
+  await expect(taskCard).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   await taskCard.click();
   await expect(taskDetailTab).toBeVisible();
@@ -466,7 +472,7 @@ test.describe('Task Activity Feed Integration', () => {
         .locator('[data-testid="task-feed-card"]')
         .first();
 
-      await expect(closedTaskCard).toBeVisible({ timeout: 30_000 });
+      await expect(closedTaskCard).toBeVisible({ timeout: ACTION_TIMEOUT });
     });
   });
 

@@ -10,8 +10,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Metrics;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -52,6 +56,7 @@ import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.jdbi.OMSqlLogger;
 
 /**
  * Integration tests for the Activity Stream API (/v1/activity).
@@ -69,6 +74,8 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ActivityResourceIT {
+  private static final Set<String> REPLY_STATEMENTS =
+      Set.of("ConversationDAO.insertIfAbsent", "ConversationDAO.findByIdForUpdate");
 
   private static final String ACTIVITY_PATH = "/v1/activity";
   private static final String CONVERSATIONS_PATH = "/v1/conversations";
@@ -166,6 +173,7 @@ public class ActivityResourceIT {
         createTestActivityEventWithAbout(
             table, "<#E::table::" + table.getFullyQualifiedName() + ">");
     int replyCount = 10;
+    double deadlocksBefore = conversationDeadlocks();
     List<CompletableFuture<ConversationReply>> writes =
         IntStream.range(0, replyCount)
             .mapToObj(
@@ -189,6 +197,18 @@ public class ActivityResourceIT {
     assertEquals(replyCount, replies.getPaging().getTotal());
     assertEquals(
         replyCount, replies.getData().stream().map(ConversationReply::getId).distinct().count());
+    assertEquals(
+        deadlocksBefore,
+        conversationDeadlocks(),
+        "concurrent replies must queue on the conversation row, not deadlock and retry");
+  }
+
+  private static double conversationDeadlocks() {
+    return Metrics.globalRegistry.find(OMSqlLogger.DEADLOCK_METRIC).counters().stream()
+        .filter(
+            counter -> REPLY_STATEMENTS.contains(counter.getId().getTag(OMSqlLogger.STATEMENT_TAG)))
+        .mapToDouble(Counter::count)
+        .sum();
   }
 
   @Test
@@ -365,6 +385,80 @@ public class ActivityResourceIT {
         listActivityReplies(SdkClients.adminClient(), activity.getId(), 20, null, null)
             .getData()
             .isEmpty());
+  }
+
+  @Test
+  void test_mentionsFeedFollowsMentionsInActivityReplies(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-reply-mentions");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    ConversationReply reply =
+        addActivityReply(
+            SdkClients.adminClient(),
+            activity.getId(),
+            "<#E::user::shared_user2> can you check this change?");
+
+    assertTrue(mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()));
+    assertFalse(
+        mentionedActivityIds(SdkClients.user1Client()).contains(activity.getId()),
+        "Only the mentioned user sees the activity");
+
+    patchConversationReply(
+        SdkClients.adminClient(), activity.getId(), reply.getId(), "No mention any more");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "Editing the mention out drops the activity");
+
+    patchConversationReply(
+        SdkClients.adminClient(), activity.getId(), reply.getId(), "<#E::user::shared_user2>");
+    deleteConversationReply(SdkClients.adminClient(), activity.getId(), reply.getId());
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "Deleting the reply drops the activity");
+  }
+
+  @Test
+  void test_mentionsFeedSupportsDomainFilter(TestNamespace ns) throws Exception {
+    Domain allowedDomain = createDomain(ns, "mentions-allowed-domain");
+    Domain blockedDomain = createDomain(ns, "mentions-blocked-domain");
+    Table table = createTableInDomain(ns, "mentions-domain-table", allowedDomain);
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">", allowedDomain);
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + SharedEntities.get().USER2.getName() + "> please review");
+
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client(), allowedDomain.getFullyQualifiedName())
+            .contains(activity.getId()),
+        "Mentions in the requested domain are returned");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client(), blockedDomain.getFullyQualifiedName())
+            .contains(activity.getId()),
+        "Mentions outside the requested domain are excluded");
+  }
+
+  @Test
+  void test_mentionsFeedIncludesTeamMentions(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-team-mentions");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    // shared_user2 belongs to TEAM21; shared_user1 does not.
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::team::" + SharedEntities.get().TEAM21.getName() + "> please review");
+
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "A member of the mentioned team sees the activity");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user1Client()).contains(activity.getId()),
+        "A user outside the mentioned team does not");
   }
 
   @Test
@@ -1522,6 +1616,25 @@ public class ActivityResourceIT {
                 null,
                 options.build());
     return MAPPER.readValue(response, ConversationReplyList.class);
+  }
+
+  private List<UUID> mentionedActivityIds(OpenMetadataClient client) throws Exception {
+    return mentionedActivityIds(client, null);
+  }
+
+  private List<UUID> mentionedActivityIds(OpenMetadataClient client, String domainFqn)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                ACTIVITY_PATH + "/mentions",
+                null,
+                buildActivityRequestOptions(200, 1, domainFqn));
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
   }
 
   private ActivityEventList getMyFeed(OpenMetadataClient client, int limit, int days)
