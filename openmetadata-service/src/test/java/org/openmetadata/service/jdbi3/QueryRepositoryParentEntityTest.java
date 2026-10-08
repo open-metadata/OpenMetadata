@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,6 +64,13 @@ class QueryRepositoryParentEntityTest {
 
     mockedEntity = mockStatic(Entity.class);
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+    // EntityRepository's constructor derives allowedFields from Entity.getEntityFields(entityClass)
+    // and validates the patch/put field strings against it. mockStatic(Entity.class) stubs every
+    // static method, so without this stub getEntityFields() returns an empty set and
+    // 'new QueryRepository()' throws IllegalArgumentException: Invalid field name queryUsedIn.
+    mockedEntity
+        .when(() -> Entity.getEntityFields(any()))
+        .thenReturn(Set.of("users", "query", "queryUsedIn", "processedLineage"));
     mockedEntity
         .when(() -> Entity.getEntity(any(EntityReference.class), eq(FIELDS), eq(Include.ALL)))
         .thenReturn(service);
