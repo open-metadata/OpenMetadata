@@ -358,7 +358,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   @Override
   protected String getCsvImportContainerName(
-      TestNamespace ns, org.openmetadata.schema.EntityInterface entity) {
+      TestNamespace ns, org.openmetadata.schema.EntityInterface<?> entity) {
     return entity.getFullyQualifiedName();
   }
 

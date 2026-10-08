@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -48,7 +49,6 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -280,15 +280,19 @@ class AIContextBuilderTest {
   @Test
   void isActivePill_admitsOnlyApprovedMemories() {
     assertTrue(
-        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.APPROVED)));
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.APPROVED)));
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.DRAFT)),
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.DRAFT)),
         "Draft memories are not settled knowledge");
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.ARCHIVED)),
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.ARCHIVED)),
         "Archived memories must not reach agents as current context");
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.REJECTED)),
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.REJECTED)),
         "Rejected memories were found to be wrong");
   }
 
@@ -296,10 +300,10 @@ class AIContextBuilderTest {
   void pillsForContext_dropsRetiredAndHiddenPillsBeforeTheCap() {
     List<ContextMemory> attached = new ArrayList<>();
     for (int i = 0; i < 20; i++) {
-      attached.add(pill("retired-" + i, EntityStatus.REJECTED));
+      attached.add(pill("retired-" + i, ContextMemoryStatus.REJECTED));
     }
-    ContextMemory hidden = pill("hidden", EntityStatus.APPROVED);
-    ContextMemory usable = pill("usable", EntityStatus.APPROVED);
+    ContextMemory hidden = pill("hidden", ContextMemoryStatus.APPROVED);
+    ContextMemory usable = pill("usable", ContextMemoryStatus.APPROVED);
     attached.add(hidden);
     attached.add(usable);
 
@@ -314,13 +318,13 @@ class AIContextBuilderTest {
   void pillsForContext_capsTheUsablePills() {
     List<ContextMemory> attached = new ArrayList<>();
     for (int i = 0; i < 25; i++) {
-      attached.add(pill("approved-" + i, EntityStatus.APPROVED));
+      attached.add(pill("approved-" + i, ContextMemoryStatus.APPROVED));
     }
 
     assertEquals(20, AIContextBuilder.pillsForContext(attached, pills -> pills).size());
   }
 
-  private static ContextMemory pill(String name, EntityStatus status) {
+  private static ContextMemory pill(String name, ContextMemoryStatus status) {
     return new ContextMemory().withId(UUID.randomUUID()).withName(name).withEntityStatus(status);
   }
 

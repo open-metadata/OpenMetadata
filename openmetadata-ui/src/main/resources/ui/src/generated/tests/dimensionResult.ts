@@ -33,6 +33,16 @@ export interface DimensionResult {
      */
     impactScore?: number;
     /**
+     * Upper bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    maxBound?: number;
+    /**
+     * Lower bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    minBound?: number;
+    /**
      * Number of rows that passed for this dimension
      */
     passedRows?: number;

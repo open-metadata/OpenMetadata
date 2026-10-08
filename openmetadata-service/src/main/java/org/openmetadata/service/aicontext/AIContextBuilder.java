@@ -32,6 +32,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
@@ -188,12 +189,12 @@ public class AIContextBuilder {
   }
 
   public AIContext build() {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntityByName(entityType, fqn, fieldsFor(entityType), Include.NON_DELETED);
     return buildForEntity(entity);
   }
 
-  AIContext buildForEntity(EntityInterface entity) {
+  AIContext buildForEntity(EntityInterface<?> entity) {
     EntityLineage lineage = fetchLineage(entity);
     List<LineageEdgeContext> upstreamEdges = edgeContexts(lineage, true);
     List<LineageEdgeContext> downstreamEdges = edgeContexts(lineage, false);
@@ -435,11 +436,11 @@ public class AIContextBuilder {
    * the right service without re-fetching the entity. Tables only for now — the type that backs the
    * analytics/SQL-generation path.
    */
-  static EntityReference serviceRef(EntityInterface entity) {
+  static EntityReference serviceRef(EntityInterface<?> entity) {
     return entity instanceof Table table ? table.getService() : null;
   }
 
-  static String serviceType(EntityInterface entity) {
+  static String serviceType(EntityInterface<?> entity) {
     String serviceType = null;
     if (entity instanceof Table table && table.getServiceType() != null) {
       serviceType = table.getServiceType().value();
@@ -447,7 +448,7 @@ public class AIContextBuilder {
     return serviceType;
   }
 
-  private Observability resolveObservability(EntityInterface entity, DataQuality dataQuality) {
+  private Observability resolveObservability(EntityInterface<?> entity, DataQuality dataQuality) {
     Observability observability = null;
     if (entity instanceof Table) {
       observability = new Observability().withDataQuality(dataQuality);
@@ -465,7 +466,7 @@ public class AIContextBuilder {
         && nullOrEmpty(observability.getColumnProfiles());
   }
 
-  private void applyProfile(Observability observability, EntityInterface entity) {
+  private void applyProfile(Observability observability, EntityInterface<?> entity) {
     if (authorizer != null
         && securityContext != null
         && canViewKnowledge(
@@ -518,7 +519,7 @@ public class AIContextBuilder {
         .withCardinalityDistribution(columnProfile.getCardinalityDistribution());
   }
 
-  private DataQuality resolveDataQuality(EntityInterface entity) {
+  private DataQuality resolveDataQuality(EntityInterface<?> entity) {
     DataQuality dataQuality = null;
     if (entity instanceof Table table) {
       EntityReference testSuiteRef = table.getTestSuite();
@@ -650,7 +651,7 @@ public class AIContextBuilder {
     return value == null ? null : String.valueOf(value);
   }
 
-  private EntityLineage fetchLineage(EntityInterface entity) {
+  private EntityLineage fetchLineage(EntityInterface<?> entity) {
     EntityLineage lineage = null;
     try {
       lineage = Entity.getLineageRepository().get(entityType, entity.getId().toString(), 1, 1);
@@ -733,7 +734,7 @@ public class AIContextBuilder {
     return supported;
   }
 
-  private List<KnowledgeItem> resolveGlossaryTerms(EntityInterface entity) {
+  private List<KnowledgeItem> resolveGlossaryTerms(EntityInterface<?> entity) {
     List<KnowledgeItem> items = new ArrayList<>();
     for (String termFqn : capped(collectGlossaryFqns(entity), MAX_KNOWLEDGE_ITEMS)) {
       KnowledgeItem item = toGlossaryKnowledgeItem(termFqn);
@@ -744,13 +745,13 @@ public class AIContextBuilder {
     return items;
   }
 
-  static Set<String> collectGlossaryFqns(EntityInterface entity) {
+  static Set<String> collectGlossaryFqns(EntityInterface<?> entity) {
     Set<String> fqns = new LinkedHashSet<>();
     addGlossaryFqns(entity.getTags(), fqns);
     return fqns;
   }
 
-  static List<String> extractClassificationTags(EntityInterface entity) {
+  static List<String> extractClassificationTags(EntityInterface<?> entity) {
     List<String> tags = new ArrayList<>();
     for (TagLabel tag : listOrEmpty(entity.getTags())) {
       if (tag.getSource() != TagLabel.TagSource.GLOSSARY) {
@@ -853,7 +854,7 @@ public class AIContextBuilder {
     return status == null || status == EntityStatus.APPROVED;
   }
 
-  private List<KnowledgeItem> resolveArticles(EntityInterface entity) {
+  private List<KnowledgeItem> resolveArticles(EntityInterface<?> entity) {
     List<KnowledgeItem> items = new ArrayList<>();
     addItems(
         items,
@@ -907,7 +908,7 @@ public class AIContextBuilder {
     }
   }
 
-  private List<EntityReference> findAttachedPills(EntityInterface entity) {
+  private List<EntityReference> findAttachedPills(EntityInterface<?> entity) {
     // Edge direction: primaryEntity --APPLIED_TO--> contextMemory (see ContextMemoryRepository).
     // The asset is the FROM side, so the pills are resolved as the TO side via findTo.
     List<EntityReference> pills = new ArrayList<>();
@@ -940,7 +941,7 @@ public class AIContextBuilder {
    * may reach agents as current context (issue #32260).
    */
   static boolean isActivePill(ContextMemory pill) {
-    return pill.getEntityStatus() == EntityStatus.APPROVED;
+    return pill.getEntityStatus() == ContextMemoryStatus.APPROVED;
   }
 
   private static String pillContent(ContextMemory pill) {
@@ -953,7 +954,7 @@ public class AIContextBuilder {
     return unescapeRichText(content);
   }
 
-  private List<KnowledgeItem> resolveMetrics(EntityInterface entity) {
+  private List<KnowledgeItem> resolveMetrics(EntityInterface<?> entity) {
     List<KnowledgeItem> items = new ArrayList<>();
     List<EntityReference> references = new ArrayList<>(findAttachedMetrics(entity));
     if (entity instanceof Metric metric) {
@@ -966,7 +967,7 @@ public class AIContextBuilder {
     return items;
   }
 
-  private List<EntityReference> findAttachedMetrics(EntityInterface entity) {
+  private List<EntityReference> findAttachedMetrics(EntityInterface<?> entity) {
     List<EntityReference> metrics = new ArrayList<>();
     try {
       metrics =
@@ -1003,7 +1004,7 @@ public class AIContextBuilder {
    * progressive-disclosure path. Keeps the per-type extraction (metric expression, pill answer)
    * in one place so it matches what the bundle excerpts.
    */
-  public static String fullContentOf(EntityInterface entity) {
+  public static String fullContentOf(EntityInterface<?> entity) {
     String content;
     if (entity instanceof Metric metric) {
       content = metricContent(metric);
@@ -1039,7 +1040,7 @@ public class AIContextBuilder {
     return content.toString();
   }
 
-  private List<EntityReference> findAttachedPages(EntityInterface entity) {
+  private List<EntityReference> findAttachedPages(EntityInterface<?> entity) {
     List<EntityReference> pages = new ArrayList<>();
     try {
       pages =
@@ -1073,7 +1074,7 @@ public class AIContextBuilder {
   }
 
   private AssetContext buildAssetContext(
-      EntityInterface entity, List<KnowledgeItem> metrics, List<KnowledgeItem> articles) {
+      EntityInterface<?> entity, List<KnowledgeItem> metrics, List<KnowledgeItem> articles) {
     AssetContext context = new AssetContext();
     if (entity instanceof Table table) {
       TableContext tableContext = buildTableContext(table).withSampleData(resolveSampleData(table));
@@ -1171,7 +1172,7 @@ public class AIContextBuilder {
    * {@code aiContextForeignKeyTargets} keyword list of the columns this table's foreign keys
    * reference. Only tables carry structural context today; other entity types are a no-op.
    */
-  public static void applySearchFields(Map<String, Object> doc, EntityInterface entity) {
+  public static void applySearchFields(Map<String, Object> doc, EntityInterface<?> entity) {
     if (entity instanceof Table table) {
       TableContext context = buildTableContext(table);
       doc.put("aiContext", Map.of("table", JsonUtils.getMap(context)));

@@ -13,14 +13,9 @@
 
 import { useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../../../constants/constants';
-import {
-  DOMAIN_DEFAULT_QUICK_FILTERS,
-  DOMAIN_FILTERS,
-  SUBDOMAIN_DEFAULT_QUICK_FILTERS,
-  SUB_DOMAIN_FILTERS,
-} from '../../../../../constants/Domain.constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import domainClassBase from '../../../../../utils/Domain/DomainClassBase';
 import { useListingData } from '../../compositions/useListingData';
 import { CellRenderer, ColumnConfig, ListingData } from '../../shared/types';
 import { useDomainColumns } from '../ui/useDomainColumns';
@@ -95,14 +90,11 @@ export const useDomainListing = (
   const { renderers } = useDomainRenderers(domainRenderersConfig);
   // Define filterKeys for domain filters
   const filterKeys = useMemo(
-    () =>
-      isSubDomain
-        ? SUBDOMAIN_DEFAULT_QUICK_FILTERS
-        : DOMAIN_DEFAULT_QUICK_FILTERS,
+    () => domainClassBase.getListingQuickFilterKeys(isSubDomain),
     [isSubDomain]
   );
   const filterConfigs = useMemo(
-    () => (isSubDomain ? SUB_DOMAIN_FILTERS : DOMAIN_FILTERS),
+    () => domainClassBase.getListingFilters(isSubDomain),
     [isSubDomain]
   );
 

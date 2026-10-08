@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  DatePicker,
   Dialog,
   FeaturedIcon,
   FormField,
@@ -23,12 +24,10 @@ import {
   Label,
   Modal,
   ModalOverlay,
+  parseDate,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Announcement02,
-  Calendar,
-} from '@openmetadata/ui-core-components/icons';
+import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
@@ -54,31 +53,6 @@ interface AnnouncementFormProps {
   onSubmit: (values: AnnouncementFormValues) => void;
 }
 
-/**
- * A native date input rather than a component: core's `Input` is a react-aria
- * TextField, which has no `date` type, and its `DatePicker` is typed against
- * `@internationalized/date` from the design system's own node_modules, so the
- * `DateValue` it expects is a different type identity from the one this app
- * resolves. The native control is localized, keyboard-accessible and needs
- * neither a cast nor a dependency.
- *
- * The frame puts the calendar on the left. The native picker indicator is
- * stretched invisibly over the whole control instead of hidden, so a click
- * anywhere still opens the picker rather than only on the icon.
- */
-// Kept as whole literals so Tailwind still sees each class.
-const DATE_INPUT_CLASS = [
-  'tw:relative tw:w-full tw:rounded-lg tw:bg-primary tw:py-2 tw:pr-3 tw:pl-9',
-  'tw:text-sm tw:text-primary tw:shadow-xs',
-  'tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
-  'tw:focus-visible:outline-2 tw:focus-visible:outline-brand',
-  'tw:[&::-webkit-calendar-picker-indicator]:absolute',
-  'tw:[&::-webkit-calendar-picker-indicator]:inset-0',
-  'tw:[&::-webkit-calendar-picker-indicator]:size-full',
-  'tw:[&::-webkit-calendar-picker-indicator]:cursor-pointer',
-  'tw:[&::-webkit-calendar-picker-indicator]:opacity-0',
-].join(' ');
-
 const DateField = ({
   boundary = 'start',
   id,
@@ -97,26 +71,16 @@ const DateField = ({
     <Label isRequired htmlFor={id}>
       {label}
     </Label>
-    <div className="tw:relative">
-      {/* `z-1` because the input below is itself positioned (it has to be, so
-          the picker indicator can stretch over it) and carries an opaque
-          background — at `z-index: auto` paint order is DOM order, so the
-          input would cover this icon. `pointer-events-none` keeps the click
-          falling through to the indicator. */}
-      <Calendar
-        aria-hidden
-        className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:left-3 tw:z-1 tw:size-4 tw:-translate-y-1/2 tw:text-fg-quaternary"
-      />
-      <input
-        aria-label={label}
-        className={DATE_INPUT_CLASS}
-        data-testid={id}
-        id={id}
-        type="date"
-        value={toDateInputValue(value)}
-        onChange={(e) => onChange(fromDateInputValue(e.target.value, boundary))}
-      />
-    </div>
+    <DatePicker
+      fullWidth
+      aria-label={label}
+      data-testid={id}
+      id={id}
+      value={value == null ? null : parseDate(toDateInputValue(value))}
+      onChange={(date) =>
+        onChange(fromDateInputValue(date?.toString() ?? '', boundary))
+      }
+    />
   </Box>
 );
 
@@ -362,10 +326,9 @@ const AnnouncementForm = ({
                 {({ field, fieldState }) => (
                   <Box className="tw:gap-1.5" direction="col">
                     <Label isRequired>{t('label.description')}</Label>
-                    {/* The block editor, not core's DESCRIPTION field: that one
-                        renders a plain TextArea, and an announcement's
-                        description is markdown that the banner and drawer both
-                        render through RichTextEditorPreviewerV1. */}
+                    {/* Keep rich-text formatting in both themes. Core's plain
+                        textarea would change the editing workflow; only the
+                        dark field surface and border adopt the core tokens. */}
                     <RichTextEditor
                       data-testid="description"
                       initialValue={field.value}
