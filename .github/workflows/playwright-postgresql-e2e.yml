@@ -389,6 +389,9 @@ jobs:
         continue-on-error: true
         run: echo "PW_REPORT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
+      # The same pass also writes a merged JSON report: it is the only per-test
+      # record of a green merge-group run (queue shards upload results JSON
+      # only on failure), and the flaky-test listing below reads it.
       - name: Merge HTML report
         id: merge-report
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
@@ -396,13 +399,40 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: ${{ runner.temp }}/playwright-report
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/playwright-merged-results/results.json
         run: |
           if ! find "$RUNNER_TEMP/playwright-blobs" -type f -name '*.zip' -print -quit | grep -q .; then
             echo "No Playwright blob reports were uploaded" >&2
             exit 1
           fi
           timeout --foreground --signal=TERM --kill-after=30s 3m \
-            npx playwright merge-reports --reporter=html "$RUNNER_TEMP/playwright-blobs"
+            npx playwright merge-reports --reporter=html,json "$RUNNER_TEMP/playwright-blobs"
+
+      # Reporting only: tests that failed and then passed on retry, from every
+      # shard, into the job summary and an artifact the daily CI health report
+      # aggregates. Never fails the check.
+      - name: List flaky tests
+        id: list-flaky
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        run: |
+          timeout --foreground --signal=TERM --kill-after=30s 1m \
+            python3 .github/scripts/playwright_flaky_tests.py \
+              --report-glob "$RUNNER_TEMP/playwright-merged-results/results.json" \
+              --report-glob "$GITHUB_WORKSPACE/results/playwright-results-json-*/results.json" \
+              --output "$RUNNER_TEMP/playwright-flaky/playwright-flaky-tests.json" \
+              --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload flaky tests
+        if: ${{ always() && steps.list-flaky.outcome == 'success' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-flaky-tests
+          path: ${{ runner.temp }}/playwright-flaky/playwright-flaky-tests.json
+          overwrite: true
+          retention-days: 8
+          if-no-files-found: ignore
 
       - name: Merge Playwright timing history
         id: merge-timings
